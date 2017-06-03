@@ -1,7 +1,7 @@
 # L2
 
 * [Introduction](#introduction)
-* [Primitive Expressions](#primitives)
+* [Primitive Expressions](#primitive-expressions)
   * [Begin](#begin)
   * [Binary](#binary)
   * [Reference](#reference)
@@ -19,7 +19,7 @@ The approach taken to achieve this has been to make C's features more composable
 1. irregular syntax is replaced by S-expressions; because simple syntax composes well with a non-trivial preprocessor (and no, I have not merely transplanted Common Lisp's macros into C)
 2. loop constructs is replaced with what I could only describe as a more structured variant of setjmp and longjmp without stack destruction (and no, there is no performance overhead associated with this)
 
-The entirity of the language can be communicated in less than 5 pages. There are 9 language primitives and for each one of them I describe their syntax, what exactly they do in English, the i386 assembly they translate into, and an example usage of them. Following this comes a brief description of L2's internal representation and the 5 functions (loosely speaking) that manipulate it. Following this comes a sort of "glossary" that shows how not only C's constructs, but more exotic stuff like coroutines, Python's generators, and Scheme's lambdas can be defined in terms of L2.
+The entirity of the language can be communicated in less than 5 pages. There are 9 language primitives and for each one of them I describe their syntax, what exactly they do in English, the i386 assembly they translate into, and an example usage of them. Following this comes a brief description of L2's internal representation and the 9 functions (loosely speaking) that manipulate it. Following this comes a sort of "glossary" that shows how not only C's constructs, but more exotic stuff like coroutines, Python's generators, and Scheme's lambdas can be defined in terms of L2.
 
 ## Primitive Expressions
 ### Begin
@@ -114,56 +114,70 @@ Both the above expressions are equivalent. Evaluates `continuation0`, `expressio
 
 The expression `(begin (with-continuation cutter (continue (make-continuation cuttee () (begin [bar] [bar] (continue cutter (b 00000000000000000000000000000000)) [bar] [bar] [bar])))) [foo])` prints the text "barbarfoo" to standard output.
 
-## Compilation
-After substituting out the syntactic sugar used for the `invoke` and `continue` expressions. We find that all L2 programs are just compositions of the `<s-expression>`s `<symbol>` and `(<form> <form> ... <form>)`. If we now replace every symbol with a list of its characters so that for example `foo` becomes `(f o o)`, we now find that all L2 programs are now just compositions of the `<s-expression>`s `<character>` and `(<form> <form> ... <form>)`.
+## Compilation Environment
+### S-Expression Manipulation
+After substituting out the syntactic sugar used for the `invoke` and `continue` expressions. We find that all L2 programs are just compositions of the `<pre-s-expression>`s: `<symbol>` and `(<pre-s-expression> <pre-s-expression> ... <pre-s-expression>)`. If we now replace every symbol with a list of its characters so that for example `foo` becomes `(f o o)`, we now find that all L2 programs are now just compositions of the `<s-expression>`s `<character>` and `(<s-expression> <s-expression> ... <s-expression>)`. The following functions that manipulate these s-expressions are not part of the L2 language and hence the compiler does not give references to them special treatment during compilation. However, when compiled code is loaded into an L2 compiler, undefined references to these functions are to be dynamically resolved.
 
-### `[lst x y]`
+#### `[lst x y]`
 `x` must be a s-expression and `y` a list.
 
 Makes a list where `x` is first and `y` is the rest.
 
 Say the s-expression `foo` is stored at `a` and the list `(bar)` is stored at `b`. Then `[lst [& a] [& b]]` is the s-expression `(foo bar)`.
-### `[lst? x]`
+#### `[lst? x]`
 `x` must be a s-expression.
 
 Evaluates to the complement of zero if `x` is also list. Otherwise evaluates to zero.
 
 Say the s-expression `foo` is stored at `a`. Then `[lst? [& a]]` evaluates to `(b 11111111111111111111111111111111)`.
-### `[fst x]`
+#### `[fst x]`
 `x` must be a list.
 
 Evaluates to a s-expression that is the first of `x`.
 
 Say the list `foo` is stored at `a`. Then `[fst [& a]]` is the s-expression `a`. This `a` is not a list but is a character.
-### `[rst x]`
+#### `[rst x]`
 `x` must be a list`.
 
 Evaluates to a list that is the rest of `x`.
 
 Say the list `foo` is stored at `a`. Then `[rst [& a]]` is the s-expression `oo`.
-### `[sexpr x]`
+#### `[sexpr x]`
 `x` must be a list.
 
 Evaluates to an s-expression wrapper of `x`.
 
 Say the s-expression `foo` is stored at `a` and `(bar)` is stored at `b`. Then `[lst [sexpr [rst [& a]]] [& b]]` is the s-expression `(oo bar)`. Note that without the `sexpr` invokation, the preconditions of `lst` would be violated.
-### `[nil]`
+#### `[nil]`
 Evaluates to the empty list.
 
 Say the s-expression `foo` is stored at `a`. Then `[lst [& a] [nil]]` is the s-expression `(foo)`.
-### `[nil? x]`
+#### `[nil? x]`
 `x` must be a list.
 
 Evaluates to the complement of zero if `x` is the empty list. Otherwise evaluates to zero.
 
 Say the s-expression `((foo bar bar bar))` is stored at `x`. Then `[nil? [rst [& x]]]` evaluates to `(b 11111111111111111111111111111111)`.
-### `[-<character>-]`
+#### `[-<character>-]`
 Evaluates to the character `<character>`.
 
 The expression `[lst [-f-] [lst [-o-] [lst [-o-] [nil]]]]` evaluates to `foo`.
-### `[<character>? x]`
+#### `[<character>? x]`
 `x` must be a s-expression.
 
 Evaluates to the complement of zero if `x` is the character <character>. Otherwise evaluates to zero.
 
 Say the s-expression `(foo (bar bar) foo foo)` is stored at `x`. Then `[m? [& x]]` evaluates to `(b 00000000000000000000000000000000)`.
+
+### Expression
+```scheme
+(function0 expression1 ... expressionN)
+```
+If the above expression is not a primitive expression, then `function0` is evaluated in the current environment. The resulting value of this evluation is then invoked with the (unevaluated) list of s-expressions `(expression1 expression2 ... expressionN)` as its only argument. The list of s-expressions returned by this function then replaces the entire list of s-expressions `(function0 expression1 ... expressionN)`. If the result of this replacement is still a non-primitive expression, then the above process is repeated.
+
+The expression `((function comment (sexprs) [fst [& sexprs]]) [foo] This comment is ignored. No, seriously.)` is replaced by `[foo]`.
+### Shell
+```scheme
+expression0 expression1 ... expressionN
+```
+A shell is implemented
