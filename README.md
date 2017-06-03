@@ -1,7 +1,7 @@
 # L2
 
 * [Introduction](#introduction)
-* [Primitives](#primitives)
+* [Primitive Expressions](#primitives)
   * [Begin](#begin)
   * [Binary](#binary)
   * [Reference](#reference)
@@ -21,7 +21,7 @@ The approach taken to achieve this has been to make C's features more composable
 
 The entirity of the language can be communicated in less than 5 pages. There are 9 language primitives and for each one of them I describe their syntax, what exactly they do in English, the i386 assembly they translate into, and an example usage of them. Following this comes a brief description of L2's internal representation and the 5 functions (loosely speaking) that manipulate it. Following this comes a sort of "glossary" that shows how not only C's constructs, but more exotic stuff like coroutines, Python's generators, and Scheme's lambdas can be defined in terms of L2.
 
-## Primitives
+## Primitive Expressions
 ### Begin
 ```scheme
 (begin expression1 expression2 ... expressionN)
@@ -113,3 +113,57 @@ Both the above expressions are equivalent. Evaluates `continuation0`, `expressio
 `N+1` words must be reserved in the current function's stack-frame plan. The expression is implemented by emitting the instructions for any of the subexpressions with the location of the resulting value fixed to the corresponding reserved word. The same is done with the remaining expressions repeatedly until the instructions for all the subexpressions have been emitted. Then an instruction to `mov` the first reserved word to an implementation-defined offset from the beginning of the continuation is emitted, followed by an instruction to `mov` the second reserved word to an address immediately after that, and so on, ending with an instruction to `mov` the last reserved word into the last memory address of that area. The program's state, that is, the callee-saved registers, the frame-pointer, and the address of the instruction that would have been executed next (a total of 5 words on the i386) is what is stored at the beginning of a continuation. Instructions to `mov` these values from the buffer into the appropiate registers and then set the program counter appropiately are, at last, emitted.
 
 The expression `(begin (with-continuation cutter (continue (make-continuation cuttee () (begin [bar] [bar] (continue cutter (b 00000000000000000000000000000000)) [bar] [bar] [bar])))) [foo])` prints the text "barbarfoo" to standard output.
+
+## Compilation
+After substituting out the syntactic sugar used for the `invoke` and `continue` expressions. We find that all L2 programs are just compositions of the `<s-expression>`s `<symbol>` and `(<form> <form> ... <form>)`. If we now replace every symbol with a list of its characters so that for example `foo` becomes `(f o o)`, we now find that all L2 programs are now just compositions of the `<s-expression>`s `<character>` and `(<form> <form> ... <form>)`.
+
+### `[lst x y]`
+`x` must be a s-expression and `y` a list.
+
+Makes a list where `x` is first and `y` is the rest.
+
+Say the s-expression `foo` is stored at `a` and the list `(bar)` is stored at `b`. Then `[lst [& a] [& b]]` is the s-expression `(foo bar)`.
+### `[lst? x]`
+`x` must be a s-expression.
+
+Evaluates to the complement of zero if `x` is also list. Otherwise evaluates to zero.
+
+Say the s-expression `foo` is stored at `a`. Then `[lst? [& a]]` evaluates to `(b 11111111111111111111111111111111)`.
+### `[fst x]`
+`x` must be a list.
+
+Evaluates to a s-expression that is the first of `x`.
+
+Say the list `foo` is stored at `a`. Then `[fst [& a]]` is the s-expression `a`. This `a` is not a list but is a character.
+### `[rst x]`
+`x` must be a list`.
+
+Evaluates to a list that is the rest of `x`.
+
+Say the list `foo` is stored at `a`. Then `[rst [& a]]` is the s-expression `oo`.
+### `[sexpr x]`
+`x` must be a list.
+
+Evaluates to an s-expression wrapper of `x`.
+
+Say the s-expression `foo` is stored at `a` and `(bar)` is stored at `b`. Then `[lst [sexpr [rst [& a]]] [& b]]` is the s-expression `(oo bar)`. Note that without the `sexpr` invokation, the preconditions of `lst` would be violated.
+### `[nil]`
+Evaluates to the empty list.
+
+Say the s-expression `foo` is stored at `a`. Then `[lst [& a] [nil]]` is the s-expression `(foo)`.
+### `[nil? x]`
+`x` must be a list.
+
+Evaluates to the complement of zero if `x` is the empty list. Otherwise evaluates to zero.
+
+Say the s-expression `((foo bar bar bar))` is stored at `x`. Then `[nil? [rst [& x]]]` evaluates to `(b 11111111111111111111111111111111)`.
+### `[-<character>-]`
+Evaluates to the character `<character>`.
+
+The expression `[lst [-f-] [lst [-o-] [lst [-o-] [nil]]]]` evaluates to `foo`.
+### `[<character>? x]`
+`x` must be a s-expression.
+
+Evaluates to the complement of zero if `x` is the character <character>. Otherwise evaluates to zero.
+
+Say the s-expression `(foo (bar bar) foo foo)` is stored at `x`. Then `[m? [& x]]` evaluates to `(b 00000000000000000000000000000000)`.
