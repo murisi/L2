@@ -1,4 +1,17 @@
 # L2
+
+* [Introduction](#introduction)
+* [Primitives](#primitives)
+  * [Begin](#begin)
+  * [Binary](#binary)
+  * [Reference](#reference)
+  * [If](#if)
+  * [Function](#function)
+  * [Invoke](#invoke)
+  * [With Continuation](#with-continuation)
+  * [Make Continuation](#make-continuation)
+  * [Continue](#continue)
+
 ## Introduction
 L2 is an attempt to find the smallest most distilled programming language equivalent to C. The goal is to turn as much of C's preprocessor directives, control structures, statements, literals, and functions requiring compiler assistance (setjmp, longjmp, alloca, ...) into things definable inside L2. The language does not surject to all of C, its most glaring omission being that of a type-system. However, I reckon the result is still pretty interesting.
 
@@ -7,16 +20,6 @@ The approach taken to achieve this has been to make C's features more composable
 2. loop constructs is replaced with what I could only describe as a more structured variant of setjmp and longjmp without stack destruction (and no, there is no performance overhead associated with this)
 
 The entirity of the language can be communicated in less than 5 pages. There are 9 language primitives and for each one of them I describe their syntax, what exactly they do in English, the i386 assembly they translate into, and an example usage of them. Following this comes a brief description of L2's internal representation and the 5 functions (loosely speaking) that manipulate it. Following this comes a sort of "glossary" that shows how not only C's constructs, but more exotic stuff like coroutines, Python's generators, and Scheme's lambdas can be defined in terms of L2.
-
-* [Begin](#begin)
-* [Binary](#binary)
-* [Reference](#reference)
-* [If](#if)
-* [Function](#function)
-* [Invoke](#invoke)
-* [With-Continuation](#with-continuation)
-* [Make-Continuation](#make-continuation)
-* [Continue](#continue)
 
 ## Primitives
 ### Begin
@@ -80,7 +83,7 @@ Both the above expressions are equivalent. Evaluates `function0`, `expression1`,
 
 Say a function with the reference `-` is defined to return the value of subtracting its second parameter from its first. Then `(invoke putchar (invoke - (b 00000000000000000000000001100011) (b 00000000000000000000000000000001)))` prints the text "b" to standard output.
 
-### With-Continuation
+### With Continuation
 ```scheme
 (with-continuation continuation0 expression0)
 ```
@@ -90,7 +93,7 @@ An implementation-defined number of words (5 on the i386) must be reserved in th
 
 Note that the expression `{continuation0 expression0}` continues to the continuation reference by `continuation0` with resulting value of evaluating `expression0` as its argument. With the note in mind, the expression `(begin [putchar (with-continuation ignore (begin {ignore (b 00000000000000000000000001001110)} [foo] [foo] [foo]))] [bar])` prints the text "nbar" to standard output.
 
-### Make-Continuation
+### Make Continuation
 ```scheme
 (make-continuation continuation0 (reference1 reference2 ... referenceN) expression0)
 ```
