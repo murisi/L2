@@ -1,6 +1,6 @@
 BSD 3-Clause License
 
-Copyright (c) 2017, murisi
+Copyright (c) 2017, Murisi Tarusenga
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
