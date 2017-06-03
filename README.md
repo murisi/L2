@@ -29,6 +29,16 @@ This expression is implemented by loading an immediate value into a memory locat
 
 Say the expression `[putchar x]` prints the character `x`. Then `[putchar (b 00000000000000000000000001100001)]` prints the text "a" to standard output.
 
+### Function
+```scheme
+(function function0 (reference1 reference2 ... referenceN) expression0)
+```
+Makes a function to be invoked with exactly `N` arguments. When the function is invoked, `expression0` is evaluated in an environment where `function0` is a reference to the function itself and `reference1`, `reference2`, up to `referenceN` are references to the results of evaluating the corresponding arguments in the invoke expression invoking this function. Once the evaluation is complete, control flow returns to the invoke expression and the invoke expression's result is the result of evaluating `expression0`. The result of this function expression is a reference to the function.
+
+This expression is implemented by first emitting an instruction to `mov` the address `function0` (a label to be emitted later) into the memory location determined by the surrounding expression. Then an instruction is emitted to `jmp` to the end of all the instructions that are emitted for this function. Then the label named `function0` is emitted. Then instructios to `push` each callee-saved register onto the stack are emitted. Then an instruction to push the frame-pointer onto the stack is emitted. Then an instruction to move the value of the stack-pointer into the frame-pointer is emitted. Then an instruction to `sub` from the stack-pointer the amount of words reserved on this function's stack-frame is emitted. After this the instructions for `expression0` are emitted with the location of the result fixed to a word within the stack-pointer's drop. After this an instruction is emitted to `mov` the word from this location into the register `eax`. And finally, instructions are emitted to `leave` the current function's stack-frame, `pop` the callee-save registers, and `ret` to the address of the caller.
+
+Say the expression `[& x]` evaluates to the value at the reference `x`. Then `[putchar [(function my- (a b) [- [& b] [& a]]) (b 00000000000000000000000000000001) (b 00000000000000000000000001100011)]]` prints the text "b" to standard output.
+
 ### Invoke
 ```scheme
 (invoke function0 expression1 expression2 ... expressionN)
@@ -38,13 +48,13 @@ Both the above expressions are equivalent. Evaluates `function0`, `expression1`,
 
 `N+1` words must be reserved in the current function's stack-frame plan. The expression is implemented by emitting the instructions for any of the subexpressions with the location of the result fixed to the corresponding reserved word. The same is done with the remaining expressions repeatedly until the instructions for all the subexpressions have been emitted. Then an instruction to `push` the last reserved word onto the stack is emitted, followed by the second last, and so on, ending with an instruction to `push` the first reserved word onto the stack. A `call` instruction with the zeroth reserved word as the operand is then emitted. An `add` instruction that pops N words off the stack is then emitted. Then an instruction is emitted to `mov` the register `eax` into a memory location determined by the surrounding expression.
 
-Say the function `-` is defined to return the result of subtracting its second parameter from its first. Then `(invoke putchar (invoke - (b 00000000000000000000000001100011) (b 00000000000000000000000000000001)))` prints the text "b" to standard output.
+Say a function with the reference `-` is defined to return the result of subtracting its second parameter from its first. Then `(invoke putchar (invoke - (b 00000000000000000000000001100011) (b 00000000000000000000000000000001)))` prints the text "b" to standard output.
 
-### Function
+### Make-Continuation
 ```scheme
-(function function0 (reference1 reference2 ... referenceN) expression0)
+(make-continuation continuation0 (reference1 reference2 ... referenceN) expression0)
 ```
-Makes a function to be invoked with exactly `N` arguments. When the function is invoked, `expression0` is evaluated in an environment where `function0` is a reference to the function itself and `reference1`, `reference2`, up to `referenceN` are references to the results of evaluating the corresponding arguments in the invoke expression invoking this function. The result of the invoke expression invoking this function then becomes the result of evaluating `expression0`. The result of this function expression is a reference to the function.
+Makes a continuation to be continued to with exactly `N` arguments. When the continuation is continued to, `expression0` is evaluated in an environment where `continuation0` is a reference to the continuation itself and `reference1`, `reference2`, up to `referenceN` are references to the results of evaluating the corresponding arguments in the continue expression continuing to this function. Undefined behavior results if the evaluation of `expression0` completes - i.e. programmer must direct the control flow out of `continuation0` somewhere within `expression0`. The result of this make-continuation expression is a reference to the continuation.
 
 This expression is implemented by first emitting an instruction to `mov` the address `function0` (a label to be emitted later) into the memory location determined by the surrounding expression. Then an instruction is emitted to `jmp` to the end of all the instructions that are emitted for this function. Then the label named `function0` is emitted. Then instructios to `push` each callee-saved register onto the stack are emitted. Then an instruction to push the frame-pointer onto the stack is emitted. Then an instruction to move the value of the stack-pointer into the frame-pointer is emitted. Then an instruction to `sub` from the stack-pointer the amount of words reserved on this function's stack-frame is emitted. After this the instructions for `expression0` are emitted with the location of the result fixed to a word within the stack-pointer's drop. After this an instruction is emitted to `mov` the word from this location into the register `eax`. And finally, instructions are emitted to `leave` the current function's stack-frame, `pop` the callee-save registers, and `ret` to the address of the caller.
 
@@ -58,3 +68,5 @@ Say the expression `[& x]` evaluates to the value at the reference `x`. Then `[p
 Both the above expressions are equivalent. Evaluates `continuation0`, `expression1`, `expression2`, up to `expressionN` in an unspecified order and then continues to `continuation0`, a reference to a continuation, providing it with a local copies of `expression1` up to `expressionN` in order. The result of this expression is unspecified.
 
 `N+1` words must be reserved in the current function's stack-frame plan. The expression is implemented by emitting the instructions for any of the subexpressions with the location of the result fixed to the corresponding reserved word. The same is done with the remaining expressions repeatedly until the instructions for all the subexpressions have been emitted. Then an instruction to `mov` the first reserved word to an implementation-defined offset from the beginning of the continuation is emitted, followed by an instruction to `mov` the second reserved word to an address immediately after that, and so on, ending with an instruction to `mov` the last reserved word into the memory address of that area. The program's state, that is, the callee-saved registers, the frame-pointer, and the address of the instruction that would have been executed next (a total of 5 words on the i386) is what is stored at the beginning of a continuation. Instructions to `mov` these values from the buffer into the appropiate registers and then set the program counter appropiately are emitted.
+
+Say a continuation reference `x` is defined. Then `{x (b 00000000000000000000000000000001) (b 00000000000000000000000001100011)}` continues
