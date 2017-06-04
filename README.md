@@ -25,14 +25,14 @@ The approach taken to achieve this has been to make C's features more composable
 1. irregular syntax is replaced by S-expressions; because simple syntax composes well with a non-trivial preprocessor (and no, I have not merely transplanted Common Lisp's macros into C)
 2. loop constructs are replaced with what I could only describe as a more structured variant of setjmp and longjmp without stack destruction (and no, there is no performance overhead associated with this)
 
-The entirity of the language can be communicated in less than 5 pages. There are 9 language primitives and for each one of them I describe their syntax, what exactly they do in English, the i386 assembly they translate into, and an example usage of them. Following this comes a brief description of L2's internal representation and the 9 functions (loosely speaking) that manipulate it. Following this comes a sort of "glossary" that shows how not only C's constructs, but more exotic stuff like coroutines, Python's generators, and Scheme's lambdas can be defined in terms of L2.
+The entirity of the language can be communicated in less than 5 pages. There are 9 language primitives and for each one of them I describe their syntax, what exactly they do in English, the i386 assembly they translate into, and an example usage of them. Following this comes a brief description of L2's internal representation and the 9 functions (loosely speaking) that manipulate it. Following this comes a sort of "glossary" that shows how not only C's constructs, but more exotic stuff like coroutines, Python's generators, and racket's lambdas can be defined in terms of L2.
 
 ## Running L2
 ### Building L2
 ```shell
 ./buildl2
 ```
-The L2 compiler depends only upon the GNU C compiler. To build L2, simply run the `buildl2` script at the root of the repository. This will create a directory called bin containing the files `l2compile` and `demort.o`. `l2compile` is the compiler for L2 and its interface is described below. `demort.o` is not a part of L2, but it will be used in the demonstrations below.
+The L2 compiler depends only upon the GNU C compiler. To build L2, simply run the `buildl2` script at the root of the repository. This will create a directory called `bin` containing the files `l2compile` and `demort.o`. `l2compile` is the compiler for L2 and its interface is described below. `demort.o` is not a part of L2, but it will be used in the demonstrations below.
 
 ### Shell Interface
 ```shell
@@ -40,15 +40,37 @@ The L2 compiler depends only upon the GNU C compiler. To build L2, simply run th
 ./bin/l2compile (-pic | -pdc) -library output objects.o ... (- inputs.l2 ...) ...
 ./bin/l2compile (-pic | -pdc) -program output objects.o ... (- inputs.l2 ...) ...
 ```
-Starting at the first hyphen argument, the compiler reads `inputs.l2 ...` until either the next hyphen argument is found or the command line arguments are finished. Each of the files read should be of the form `expression1 expression2 ... expressionN`. The compiler then concatenates all the L2 files read, in the same order. After that, the compiler compiles each expression in the concatenated L2 file emitting the corresponding object code in the same order as the expressions of the concatenated file. Each expression is compiled in the environment: the set of defined symbols.
+Starting at the first hyphen argument, the compiler reads `inputs.l2 ...` until either the next hyphen argument is found or the command line arguments are finished. Each of the files read should be of the form `expression1 expression2 ... expressionN`. The compiler then concatenates all the L2 files read, in the same order. After that, the compiler compiles each expression in the concatenated L2 file emitting the corresponding object code in the same order as the expressions of the concatenated file. L2 is executed top-down, there is no main function. Each expression is compiled in the environment: the set of defined symbols.
 
 If there are still unconsumed hyphens, then the object file is packaged into a shared library along with `objects.o ...`, and this shared library is dynamically loaded into the environment. And the compilation process starts again, only this time with the next set of `inputs.l2...`. If there are no more unconsumed hyphens, then the output should either be a position independent or dependent object, shared library, or program called `output` as specified by the first 3 arguments to `l2compile`. If the final output is not an object file, then `objects.o ...` are linked into it.
 
-The initial environment, the one that is there before any group of files is compiled, comprises 17 functions: `lst`, `lst?`, `fst`, `rst`, `sexpr`, `nil`, `nil?`, `-<character>-`, `<character>?`, `begin`, `b`, `if`, `function`, `invoke`, `with-continuation`, `make-continuation`, and `continue`. The former 9 are defined later. Each one of the latter 8 functions does nothing else but return an s-expression formed by prepending its function name to the list of s-expressions supplied to them. For example, the `b` function could have the following definition: `(function b (sexprs) [lst [lst [-b-] [nil]] [& sexprs]])`. 
+The initial environment, the one that is there before any group of files is compiled, comprises 17 functions: `lst`, `lst?`, `fst`, `rst`, `sexpr`, `nil`, `nil?`, `-<character>-`, `<character>?`, `begin`, `b`, `if`, `function`, `invoke`, `with-continuation`, `make-continuation`, and `continue`. The former 9 are defined later. Each one of the latter 8 functions does nothing else but return an s-expression formed by prepending its function name to the list of s-expressions supplied to them. For example, the `b` function could have the following definition: `(function b (sexprs) [lst [lst [-b-] [nil]] [& sexprs]])`.
+
+#### Example
+file1.l2:
+```racket
+(function foo (sexprs)
+	(with-continuation return
+		(begin
+			[putchar [+ (b 00000000000000000000000001100001) (b 00000000000000000000000000000001)]]
+			{return [lst [lst [-b-] [lst [-e-] [lst [-g-] [lst [-i-] [lst [-n-] [nil]]]]]] [nil]]})))
+
+[putchar (b 00000000000000000000000001100001)]
+```
+file2.l2:
+```racket
+(function bar ()
+	[putchar (b 00000000000000000000000001100011)])
+(foo this text does not matter)
+[putchar (b 00000000000000000000000001100100)]
+```
+Running `./bin/l2compile -pdc -program myprogram bin/demort.o - file1.l2 - file2.l2` produces a program called `myprogram`. During the compilation, the text "ab" should have been printed to standard output. The "a" comes from the last expression of file1.l2. It was printed after the compilation of file1.l2, when it was being loaded into the compiler. Why? Because L2 libraries are executed from top to bottom when they are dynamically loaded (and also when they are statically linked). The "b" comes from within the function in file1.l2. It was executed when the expression `(foo this text does not matter)` in file2.l2 was being compiled. Why? Because the `foo` causes the compiler to invoke a function called `foo` in the environment. The s-expression `(this text does not matter)` is the argument to the function `foo`, but the function `foo` ignores it and returns the s-expression `(begin)`. Hence `(begin)` replaces `(foo this text does not matter)` in `file2.l2`. Now `file2.l2` is entirely made up of primitive expressions which are compiled in the way specified below. The resulting executable `myprogram` is run using the command `./myprogram`. It prints the text "d" when executed. Why? Because the last expression of file2.l2 is the only one that actually does something.
+
+If instead we run `./bin/l2compile -pic -library mylibrary.so bin/demort.o - file1.l2 - file2.l2`, a shared library named `mylibrary.so` is produced. Running `objdump -T mylibrary.so` on it shows us that the function `bar` is exported. It also shows us that `foo` is not exported. Why is the second fact true? Because file1.l2 does not come after the final hyphen. It only has relevance during the compilation process. Why is the first fact true? Because file1.l2 comes after the final hyphen and because `bar` is a top-level expression. When mylibrary.so is dynamically loaded, the text "d" will be printed to standard output. And if the symbol `bar` is invoked, the text "c" will be printed to standard output.
 
 ## Primitive Expressions
 ### Begin
-```scheme
+```racket
 (begin expression1 expression2 ... expressionN)
 ```
 Evaluates its subexpressions sequentially from left to right. That is, it evaluates `expression1`, then `expression2`, and so on, ending with the execution of `expressionN`. Specifying zero subexpressions is valid. The return value is unspecified.
@@ -58,7 +80,7 @@ This expression is implemented by emitting the instructions for `expression1`, t
 Say the expression `[foo]` prints the text "foo" to standard output and the expression `[bar]` prints the text "bar" to standard output. Then `(begin [foo] [bar] [foo] [foo] [foo])` prints the text "foobarfoofoofoo" to standard output.
 
 ### Binary
-```scheme
+```racket
 (b b31b30...b0)
 ```
 The resulting value is the 32 bit number specified in binary inside the brackets. Specifying less than or more than 32 bits is an error. Useful for implementing character and string literals, and numbers in other bases.
@@ -68,7 +90,7 @@ This expression is implemented by emitting an instruction to `mov` an immediate 
 Say the expression `[putchar x]` prints the character `x`. Then `[putchar (b 00000000000000000000000001100001)]` prints the text "a" to standard output.
 
 ### Reference
-```scheme
+```racket
 reference0
 ```
 The resulting value is the address in memory to which this reference refers.
@@ -78,7 +100,7 @@ This expression is implemented by the emission of an instruction to `lea` of som
 Say the expression `[& x]` evaluates to the value at the reference `x` and the expression `[set x y]` puts the value `y` into the reference `x`. Then `(begin [set x (b 00000000000000000000000001100001)] [putchar [& x]])` prints the text "a" to standard output.
 
 ### If
-```scheme
+```racket
 (if expression0 expression1 expression2)
 ```
 If `expression0` is non-zero, then only `expression1` is evaluated and its resulting value becomes that of the whole expression. If `expression0` is zero, then only `expression2` is evaluated and its resulting value becomes that of the whole expression.
@@ -88,7 +110,7 @@ This expression is implemented by first emitting an instruction to `or` `express
 The expression `[putchar (if (b 00000000000000000000000000000000) (b 00000000000000000000000001100001) (b 00000000000000000000000001100010))]` prints the text "b" to standard output.
 
 ### Function
-```scheme
+```racket
 (function function0 (reference1 reference2 ... referenceN) expression0)
 ```
 Makes a function to be invoked with exactly `N` arguments. When the function is invoked, `expression0` is evaluated in an environment where `function0` is a reference to the function itself and `reference1`, `reference2`, up to `referenceN` are references to the resulting values of evaluating the corresponding arguments in the invoke expression invoking this function. Once the evaluation is complete, control flow returns to the invoke expression and the invoke expression's resulting value is the resulting value of evaluating `expression0`. The resulting value of this function expression is a reference to the function.
@@ -98,7 +120,7 @@ This expression is implemented by first emitting an instruction to `mov` the add
 The expression `[putchar [(function my- (a b) [- [& b] [& a]]) (b 00000000000000000000000000000001) (b 00000000000000000000000001100011)]]` prints the text "b" to standard output.
 
 ### Invoke
-```scheme
+```racket
 (invoke function0 expression1 expression2 ... expressionN)
 [function0 expression1 expression2 ... expressionN]
 ```
@@ -109,7 +131,7 @@ Both the above expressions are equivalent. Evaluates `function0`, `expression1`,
 Say a function with the reference `-` is defined to return the value of subtracting its second parameter from its first. Then `(invoke putchar (invoke - (b 00000000000000000000000001100011) (b 00000000000000000000000000000001)))` prints the text "b" to standard output.
 
 ### With Continuation
-```scheme
+```racket
 (with-continuation continuation0 expression0)
 ```
 Makes a continuation to the containing expression that is to be continued to with exactly one argument. Then `expression0` is evaluated in an environment where `continuation0` is a reference to the aforementioned continuation. The resulting value of this expression is unspecified if the evaluation of `expression0` completes. If the continuation `continuation0` is continued to, then this `with-continuation` expression evaluates to the resulting value of the single argument within the responsible continue expression.
@@ -119,7 +141,7 @@ An implementation-defined number of words (5 on the i386) must be reserved in th
 Note that the expression `{continuation0 expression0}` continues to the continuation reference by `continuation0` with resulting value of evaluating `expression0` as its argument. With the note in mind, the expression `(begin [putchar (with-continuation ignore (begin {ignore (b 00000000000000000000000001001110)} [foo] [foo] [foo]))] [bar])` prints the text "nbar" to standard output.
 
 ### Make Continuation
-```scheme
+```racket
 (make-continuation continuation0 (reference1 reference2 ... referenceN) expression0)
 ```
 Makes a continuation to be continued to with exactly `N` arguments. When the continuation is continued to, `expression0` is evaluated in an environment where `continuation0` is a reference to the continuation itself and `reference1`, `reference2`, up to `referenceN` are references to the resulting values of evaluating the corresponding arguments in the continue expression continuing to this function. Undefined behavior occurs if the evaluation of `expression0` completes - i.e. programmer must direct the control flow out of `continuation0` somewhere within `expression0`. The resulting value of this make-continuation expression is a reference to the continuation.
@@ -129,7 +151,7 @@ An implementation-defined number of words (5 on the i386) must be reserved in th
 The expression `{(make-continuation forever (a b) (begin [putchar [& a]] [putchar [& b]] {forever [- [& a] (b 00000000000000000000000000000001)] [- [& b] (b 00000000000000000000000000000001)]})) (b 00000000000000000000000001011010) (b 00000000000000000000000001111010)}` prints the text "ZzYyXxWw"... to standard output.
 
 ### Continue
-```scheme
+```racket
 (continue continuation0 expression1 expression2 ... expressionN)
 {continuation0 expression1 expression2 ... expressionN}
 ```
@@ -194,7 +216,7 @@ Evaluates to the complement of zero if `x` is the character <character>. Otherwi
 Say the s-expression `(foo (bar bar) foo foo)` is stored at `x`. Then `[m? [& x]]` evaluates to `(b 00000000000000000000000000000000)`.
 
 ## Expression
-```scheme
+```racket
 (function0 expression1 ... expressionN)
 ```
 If the above expression is not a primitive expression, then `function0` is evaluated in the environment. The resulting value of this evluation is then invoked with the (unevaluated) list of s-expressions `(expression1 expression2 ... expressionN)` as its only argument. The list of s-expressions returned by this function then replaces the entire list of s-expressions `(function0 expression1 ... expressionN)`. If the result of this replacement is still a non-primitive expression, then the above process is repeated. When this process terminates, the appropiate assembly code for the resulting primitive expression is emitted.
