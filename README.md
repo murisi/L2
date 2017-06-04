@@ -1,7 +1,7 @@
 # L2
 
 * [Introduction](#introduction)
-* [Running L2](#running-l2)
+* [Getting Started](#getting-started)
   * [Building L2](#building-l2)
   * [Shell Interface](#shell-interface)
 * [Primitive Expressions](#primitive-expressions)
@@ -27,7 +27,7 @@ The approach taken to achieve this has been to make C's features more composable
 
 The entirity of the language can be communicated in less than 5 pages. There are 9 language primitives and for each one of them I describe their syntax, what exactly they do in English, the i386 assembly they translate into, and an example usage of them. Following this comes a brief description of L2's internal representation and the 9 functions (loosely speaking) that manipulate it. Following this comes a sort of "glossary" that shows how not only C's constructs, but more exotic stuff like coroutines, Python's generators, and racket's lambdas can be defined in terms of L2.
 
-## Running L2
+## Getting Started
 ### Building L2
 ```shell
 ./buildl2
