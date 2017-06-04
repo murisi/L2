@@ -29,16 +29,20 @@ The entirity of the language can be communicated in less than 5 pages. There are
 
 ## Running L2
 ### Building L2
-### Shell Interface
-p(i|d)c are abbreviations for position (in|)dependent code in the following:
 ```shell
-l2compile (-pic | -pdc) -object output objects.o ... (- inputs.l2 ...) ...
-l2compile (-pic | -pdc) -library output objects.o ... (- inputs.l2 ...) ...
-l2compile (-pic | -pdc) -program output objects.o ... (- inputs.l2 ...) ...
+./buildl2
+```
+The L2 compiler depends only upon the GNU C compiler. To build L2, simply run the `buildl2` script at the root of the repository. This will create a directory called bin containing the files `l2compile` and `demort.o`. `l2compile` is the compiler for L2 and its interface is described below. `demort.o` is not a part of L2, but it will be used in the demonstrations below.
+
+### Shell Interface
+```shell
+./bin/l2compile (-pic | -pdc) -object output objects.o ... (- inputs.l2 ...) ...
+./bin/l2compile (-pic | -pdc) -library output objects.o ... (- inputs.l2 ...) ...
+./bin/l2compile (-pic | -pdc) -program output objects.o ... (- inputs.l2 ...) ...
 ```
 Starting at the first hyphen argument, the compiler reads `inputs.l2 ...` until either the next hyphen argument is found or the command line arguments are finished. Each of the files read should be of the form `expression1 expression2 ... expressionN`. The compiler then concatenates all the L2 files read, in the same order. After that, the compiler compiles each expression in the concatenated L2 file emitting the corresponding object code in the same order as the expressions of the concatenated file. Each expression is compiled in the environment: the set of defined symbols.
 
-If there are still unconsumed hyphens, then the object file is packaged into a shared library along with `objects.o`, and this shared library is dynamically loaded into the environment. And the compilation process starts again, only this time with the next set of `inputs.l2...`. If there are no more unconsumed hyphens, then the output should either be a position independent or dependent object, shared library, or program called `output` as specified by the first 3 arguments to `l2compile`. If the final output is not an object file, then `objects.o ...` are linked into it.
+If there are still unconsumed hyphens, then the object file is packaged into a shared library along with `objects.o ...`, and this shared library is dynamically loaded into the environment. And the compilation process starts again, only this time with the next set of `inputs.l2...`. If there are no more unconsumed hyphens, then the output should either be a position independent or dependent object, shared library, or program called `output` as specified by the first 3 arguments to `l2compile`. If the final output is not an object file, then `objects.o ...` are linked into it.
 
 The initial environment, the one that is there before any group of files is compiled, comprises 17 functions: `lst`, `lst?`, `fst`, `rst`, `sexpr`, `nil`, `nil?`, `-<character>-`, `<character>?`, `begin`, `b`, `if`, `function`, `invoke`, `with-continuation`, `make-continuation`, and `continue`. The former 9 are defined later. Each one of the latter 8 functions does nothing else but return an s-expression formed by prepending its function name to the list of s-expressions supplied to them. For example, the `b` function could have the following definition: `(function b (sexprs) [lst [lst [-b-] [nil]] [& sexprs]])`. 
 
