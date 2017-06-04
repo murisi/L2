@@ -16,6 +16,7 @@
   * [Continue](#continue)
 * [Internal Representation](#internal-representation)
 * [Expression](#expression)
+* [Application Binary Interface](#application-binary-interface)
 
 ## Introduction
 L2 is an attempt to find the smallest most distilled programming language equivalent to C. The goal is to turn as much of C's preprocessor directives, control structures, statements, literals, and functions requiring compiler assistance (setjmp, longjmp, alloca, ...) into things definable inside L2. The language does not surject to all of C, its most glaring omission being that of a type-system. However, I reckon the result is still pretty interesting.
@@ -35,7 +36,11 @@ l2compile (-pic | -pdc) -object output objects.o ... (- inputs.l2 ...) ...
 l2compile (-pic | -pdc) -library output objects.o ... (- inputs.l2 ...) ...
 l2compile (-pic | -pdc) -program output objects.o ... (- inputs.l2 ...) ...
 ```
-Uses objects.o ... as libraries for remaining stages of the compilation and, if the final output is not an object file, embeds them into the final output. Concatenates the first group inputs.l2 ..., compiles the concatenation, and uses the executable as an environment for the remaining stages of compilation. Does the same process repeatedly until the last group is reached. Finally, concatenates last group, compiles concatenation into either a position independent or dependent object, shared library, or program called output as specified by the flags.
+Starting at the first hyphen argument, the compiler reads `inputs.l2 ...` until either the next hyphen argument is found or the command line arguments are finished. Each of the files read should be of the form `expression1 expression2 ... expressionN`. The compiler then concatenates all the L2 files read, in the same order. After that, the compiler compiles each expression in the concatenated L2 file emitting the corresponding object code in the same order as the expressions of the concatenated file. Each expression is compiled in the environment: the set of defined symbols.
+
+If there are still unconsumed hyphens, then the object file is packaged into a shared library along with `objects.o`, and this shared library is dynamically loaded into the environment. And the compilation process starts again, only this time with the next set of `inputs.l2...`. If there are no more unconsumed hyphens, then the output should either be a position independent or dependent object, shared library, or program called `output` as specified by the first 3 arguments to `l2compile`. If the final output is not an object file, then `objects.o ...` are linked into it.
+
+The initial environment, the one that is there before any group of files is compiled, comprises 17 functions: `lst`, `lst?`, `fst`, `rst`, `sexpr`, `nil`, `nil?`, `-<character>-`, `<character>?`, `begin`, `b`, `if`, `function`, `invoke`, `with-continuation`, `make-continuation`, and `continue`. The former 9 are defined later. Each one of the latter 8 functions does nothing else but return an s-expression formed by prepending its function name to the list of s-expressions supplied to them. For example, the `b` function could have the following definition: `(function b (sexprs) [lst [lst [-b-] [nil]] [& sexprs]])`. 
 
 ## Primitive Expressions
 ### Begin
@@ -176,7 +181,7 @@ Say the s-expression `((foo bar bar bar))` is stored at `x`. Then `[nil? [rst [&
 ### `[-<character>-]`
 Evaluates to the character `<character>`.
 
-The expression `[lst [-f-] [lst [-o-] [lst [-o-] [nil]]]]` evaluates to `foo`.
+The expression `[lst [-f-] [lst [-o-] [lst [-o-] [nil]]]]` evaluates to the s-expression `foo`.
 ### `[<character>? x]`
 `x` must be a s-expression.
 
@@ -188,6 +193,6 @@ Say the s-expression `(foo (bar bar) foo foo)` is stored at `x`. Then `[m? [& x]
 ```scheme
 (function0 expression1 ... expressionN)
 ```
-If the above expression is not a primitive expression, then `function0` is evaluated in the current environment. The resulting value of this evluation is then invoked with the (unevaluated) list of s-expressions `(expression1 expression2 ... expressionN)` as its only argument. The list of s-expressions returned by this function then replaces the entire list of s-expressions `(function0 expression1 ... expressionN)`. If the result of this replacement is still a non-primitive expression, then the above process is repeated. When this process terminates, the appropiate assembly code for the resulting primitive expression is emitted.
+If the above expression is not a primitive expression, then `function0` is evaluated in the environment. The resulting value of this evluation is then invoked with the (unevaluated) list of s-expressions `(expression1 expression2 ... expressionN)` as its only argument. The list of s-expressions returned by this function then replaces the entire list of s-expressions `(function0 expression1 ... expressionN)`. If the result of this replacement is still a non-primitive expression, then the above process is repeated. When this process terminates, the appropiate assembly code for the resulting primitive expression is emitted.
 
 The expression `((function comment (sexprs) [fst [& sexprs]]) [foo] This comment is ignored. No, seriously.)` is replaced by `[foo]`, which in turn compiles into assembly similar to what is generated for other invoke expressions.
