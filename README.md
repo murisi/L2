@@ -1,6 +1,9 @@
 # L2
 
 * [Introduction](#introduction)
+* [Running L2](#running-l2)
+  * [Building L2](#building-l2)
+  * [Shell Interface](#shell-interface)
 * [Primitive Expressions](#primitive-expressions)
   * [Begin](#begin)
   * [Binary](#binary)
@@ -11,6 +14,8 @@
   * [With Continuation](#with-continuation)
   * [Make Continuation](#make-continuation)
   * [Continue](#continue)
+* [Internal Representation](#internal-representation)
+* [Expression](#expression)
 
 ## Introduction
 L2 is an attempt to find the smallest most distilled programming language equivalent to C. The goal is to turn as much of C's preprocessor directives, control structures, statements, literals, and functions requiring compiler assistance (setjmp, longjmp, alloca, ...) into things definable inside L2. The language does not surject to all of C, its most glaring omission being that of a type-system. However, I reckon the result is still pretty interesting.
@@ -20,6 +25,17 @@ The approach taken to achieve this has been to make C's features more composable
 2. loop constructs are replaced with what I could only describe as a more structured variant of setjmp and longjmp without stack destruction (and no, there is no performance overhead associated with this)
 
 The entirity of the language can be communicated in less than 5 pages. There are 9 language primitives and for each one of them I describe their syntax, what exactly they do in English, the i386 assembly they translate into, and an example usage of them. Following this comes a brief description of L2's internal representation and the 9 functions (loosely speaking) that manipulate it. Following this comes a sort of "glossary" that shows how not only C's constructs, but more exotic stuff like coroutines, Python's generators, and Scheme's lambdas can be defined in terms of L2.
+
+## Running L2
+### Building L2
+### Shell Interface
+p(i|d)c are abbreviations for position (in|)dependent code in the following:
+```shell
+l2compile (-pic | -pdc) -object output objects.o ... (- inputs.l2 ...) ...
+l2compile (-pic | -pdc) -library output objects.o ... (- inputs.l2 ...) ...
+l2compile (-pic | -pdc) -program output objects.o ... (- inputs.l2 ...) ...
+```
+Uses objects.o ... as libraries for remaining stages of the compilation and, if the final output is not an object file, embeds them into the final output. Concatenates the first group inputs.l2 ..., compiles the concatenation, and uses the executable as an environment for the remaining stages of compilation. Does the same process repeatedly until the last group is reached. Finally, concatenates last group, compiles concatenation into either a position independent or dependent object, shared library, or program called output as specified by the flags.
 
 ## Primitive Expressions
 ### Begin
@@ -168,20 +184,10 @@ Evaluates to the complement of zero if `x` is the character <character>. Otherwi
 
 Say the s-expression `(foo (bar bar) foo foo)` is stored at `x`. Then `[m? [& x]]` evaluates to `(b 00000000000000000000000000000000)`.
 
-## Compilation Process
-### Expression
+## Expression
 ```scheme
 (function0 expression1 ... expressionN)
 ```
 If the above expression is not a primitive expression, then `function0` is evaluated in the current environment. The resulting value of this evluation is then invoked with the (unevaluated) list of s-expressions `(expression1 expression2 ... expressionN)` as its only argument. The list of s-expressions returned by this function then replaces the entire list of s-expressions `(function0 expression1 ... expressionN)`. If the result of this replacement is still a non-primitive expression, then the above process is repeated. When this process terminates, the appropiate assembly code for the resulting primitive expression is emitted.
 
 The expression `((function comment (sexprs) [fst [& sexprs]]) [foo] This comment is ignored. No, seriously.)` is replaced by `[foo]`, which in turn compiles into assembly similar to what is generated for other invoke expressions.
-
-### Shell Interface
-p(i|d)c are abbreviations for position (in|)dependent code in the following:
-```shell
-l2compile (-pic | -pdc) -object output objects.o ... (- inputs.l2 ...) ...
-l2compile (-pic | -pdc) -library output objects.o ... (- inputs.l2 ...) ...
-l2compile (-pic | -pdc) -program output objects.o ... (- inputs.l2 ...) ...
-```
-Uses objects.o ... as libraries for remaining stages of the compilation and, if the final output is not an object file, embeds them into the final output. Concatenates the first group inputs.l2 ..., compiles the concatenation, and uses the executable as an environment for the remaining stages of compilation. Does the same process repeatedly until the last group is reached. Finally, concatenates last group, compiles concatenation into either a position independent or dependent object, shared library, or program called output as specified by the flags.
