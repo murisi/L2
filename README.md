@@ -36,9 +36,9 @@ The L2 compiler depends only upon the GNU C compiler. To build L2, simply run th
 
 ### Shell Interface
 ```shell
-./bin/l2compile (-pic | -pdc) -object output objects.o ... (- inputs.l2 ...) ...
-./bin/l2compile (-pic | -pdc) -library output objects.o ... (- inputs.l2 ...) ...
-./bin/l2compile (-pic | -pdc) -program output objects.o ... (- inputs.l2 ...) ...
+./bin/l2compile (-pic | -pdc) -object output objects.o ... (- inputs.l2 ...) ... - inputs.l2 ...
+./bin/l2compile (-pic | -pdc) -library output objects.o ... (- inputs.l2 ...) ... - inputs.l2 ...
+./bin/l2compile (-pic | -pdc) -program output objects.o ... (- inputs.l2 ...) ... - inputs.l2 ...
 ```
 Starting at the first hyphen argument, the compiler reads `inputs.l2 ...` until either the next hyphen argument is found or the command line arguments are finished. Each of the files read should be of the form `expression1 expression2 ... expressionN`. The compiler then concatenates all the L2 files read, in the same order. After that, the compiler compiles each expression in the concatenated L2 file emitting the corresponding object code in the same order as the expressions of the concatenated file. L2 is executed top-down, there is no main function. Each expression is compiled in the environment: the set of defined symbols.
 
@@ -67,6 +67,8 @@ file2.l2:
 Running `./bin/l2compile -pdc -program myprogram bin/demort.o - file1.l2 - file2.l2` produces a program called `myprogram`. During the compilation, the text "ab" should have been printed to standard output. The "a" comes from the last expression of file1.l2. It was printed after the compilation of file1.l2, when it was being loaded into the compiler. Why? Because L2 libraries are executed from top to bottom when they are dynamically loaded (and also when they are statically linked). The "b" comes from within the function in file1.l2. It was executed when the expression `(foo this text does not matter)` in file2.l2 was being compiled. Why? Because the `foo` causes the compiler to invoke a function called `foo` in the environment. The s-expression `(this text does not matter)` is the argument to the function `foo`, but the function `foo` ignores it and returns the s-expression `(begin)`. Hence `(begin)` replaces `(foo this text does not matter)` in `file2.l2`. Now `file2.l2` is entirely made up of primitive expressions which are compiled in the way specified below. The resulting executable `myprogram` is run using the command `./myprogram`. It prints the text "d" when executed. Why? Because the last expression of file2.l2 is the only one that actually does something.
 
 If instead we run `./bin/l2compile -pic -library mylibrary.so bin/demort.o - file1.l2 - file2.l2`, a shared library named `mylibrary.so` is produced. Running `objdump -T mylibrary.so` on it shows us that the function `bar` is exported. It also shows us that `foo` is not exported. Why is the second fact true? Because file1.l2 does not come after the final hyphen. It only has relevance during the compilation process. Why is the first fact true? Because file1.l2 comes after the final hyphen and because `bar` is a top-level expression. When mylibrary.so is dynamically loaded, the text "d" will be printed to standard output. And if the symbol `bar` is invoked, the text "c" will be printed to standard output.
+
+Running `./bin/l2compile -pic -object mylibrary.o bin/demort.o - file1.l2 - file2.l2` followed by `./bin/l2compile -pdc -program myprogram mylibrary.o bin/demort.o - file1.l2 -` produces the program `myprogram`. The execution of the first command should have caused the compiler to print "ab" to standard output for the same reasons as above. The execution of the second command should have caused the compiler 
 
 ## Primitive Expressions
 ### Begin
