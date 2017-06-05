@@ -130,9 +130,16 @@ The expression `[putchar [(function my- (a b) [- [& b] [& a]]) (b 00000000000000
 ```
 Both the above expressions are equivalent. Evaluates `function0`, `expression1`, `expression2`, up to `expressionN` in an unspecified order and then invokes `function0`, a reference to a function, providing it with the resulting values of evaluating `expression1` up to `expressionN`, in order. The resulting value of this expression is determined by the function being invoked.
 
-`N+1` words must be reserved in the current function's stack-frame plan. The expression is implemented by emitting the instructions for any of the subexpressions with the location of the resulting value fixed to the corresponding reserved word. The same is done with the remaining expressions repeatedly until the instructions for all the subexpressions have been emitted. Then an instruction to `push` the last reserved word onto the stack is emitted, followed by the second last, and so on, ending with an instruction to `push` the first reserved word onto the stack. A `call` instruction with the zeroth reserved word as the operand is then emitted. An `add` instruction that pops N words off the stack is then emitted. Then an instruction is emitted to `mov` the register `eax` into a memory location designated by the surrounding expression.
+`N+1` words must be reserved in the current function's stack-frame plan. The expression is implemented by emitting the instructions for any of the subexpressions with the location of the resulting value fixed to the corresponding reserved word. The same is done with the remaining expressions repeatedly until the instructions for all the subexpressions have been emitted. Then an instruction to `push` the last reserved word onto the stack is emitted, followed by the second last, and so on, ending with an instruction to `push` the first reserved word onto the stack. A `call` instruction with the zeroth reserved word as the operand is then emitted. Note that L2 expects registers `esp`, `ebp`, `ebx`, `esi`, and `edi` to be preserved across `call`s. An `add` instruction that pops N words off the stack is then emitted. Then an instruction is emitted to `mov` the register `eax` into a memory location designated by the surrounding expression.
 
-Say a function with the reference `-` is defined to return the value of subtracting its second parameter from its first. Then `(invoke putchar (invoke - (b 00000000000000000000000001100011) (b 00000000000000000000000000000001)))` prints the text "b" to standard output.
+A function with the reference `-` that returns the value of subtracting its second parameter from its first could be defined as follows:
+```assembly
+-:
+movl 4(%esp), %eax
+subl 8(%esp), %eax
+ret
+```
+The following invokation of it, `(invoke putchar (invoke - (b 00000000000000000000000001100011) (b 00000000000000000000000000000001)))`, prints the text "b" to standard output.
 
 ### With Continuation
 ```racket
@@ -234,11 +241,6 @@ Note that everything in L2 has size 4 bytes in the following.
 Function invokations in L2 are effected by pushing the arguments of the invokation onto the stack in reverse order and executing the `call` instruction on the target function's address. When the function returns, it is expected that the return value is in register `eax` and that the values of `esp`, `ebp`, `ebx`, `esi`, and `edi` have been preserved across the call.
 
 For example, a valid definition for a function `subtract` that when invoked like `[subtract x y]` returns `x-y` is the following:
-```assembly
-subtract:
-movl 4(%esp), %eax
-subl 8(%esp), %eax
-ret
-```
+
 ### Continuations
 Continuations in L2 are effected 
