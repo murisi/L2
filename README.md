@@ -17,6 +17,8 @@
 * [Internal Representation](#internal-representation)
 * [Expression](#expression)
 * [Application Binary Interface](#application-binary-interface)
+  * [Invokations](#invokations)
+  * [Continuations](#continuations)
 
 ## Introduction
 L2 is an attempt to find the smallest most distilled programming language equivalent to C. The goal is to turn as much of C's preprocessor directives, control structures, statements, literals, and functions requiring compiler assistance (setjmp, longjmp, alloca, ...) into things definable inside L2. The language does not surject to all of C, its most glaring omission being that of a type-system. However, I reckon the result is still pretty interesting.
@@ -25,14 +27,14 @@ The approach taken to achieve this has been to make C's features more composable
 1. irregular syntax is replaced by S-expressions; because simple syntax composes well with a non-trivial preprocessor (and no, I have not merely transplanted Common Lisp's macros into C)
 2. loop constructs are replaced with what I could only describe as a more structured variant of setjmp and longjmp without stack destruction (and no, there is no performance overhead associated with this)
 
-The entirity of the language can be communicated in less than 5 pages. There are 9 language primitives and for each one of them I describe their syntax, what exactly they do in English, the i386 assembly they translate into, and an example usage of them. Following this comes a brief description of L2's internal representation and the 9 functions (loosely speaking) that manipulate it. Following this comes a sort of "glossary" that shows how not only C's constructs, but more exotic stuff like coroutines, Python's generators, and racket's lambdas can be defined in terms of L2.
+The entirity of the language can be communicated in less than 5 pages. There are 9 language primitives and for each one of them I describe their syntax, what exactly they do in English, the i386 assembly they translate into, and an example usage of them. Following this comes a brief description of L2's internal representation and the 9 functions (loosely speaking) that manipulate it. Following this comes a sort of "glossary" that shows how not only C's constructs, but more exotic stuff like coroutines, Python's generators, and Scheme's lambdas can be defined in terms of L2.
 
 ## Getting Started
 ### Building L2
 ```shell
 ./buildl2
 ```
-The L2 compiler depends only upon the GNU C compiler. To build L2, simply run the `buildl2` script at the root of the repository. This will create a directory called `bin` containing the files `l2compile` and `demort.o`. `l2compile` is the compiler for L2 and its interface is described below. `demort.o` is not a part of L2, but it will be used in the demonstrations below.
+The L2 compiler needs a Linux distribution running on the i386 or AMD64 architecture with the GNU C compiler installed to run successfully. To build L2, simply run the `buildl2` script at the root of the repository. This will create a directory called `bin` containing the files `l2compile` and `demort.o`. `l2compile` is the compiler for L2 and its interface is described below. `demort.o` is not a part of L2, but it will be used in the demonstrations below.
 
 ### Shell Interface
 ```shell
@@ -224,3 +226,16 @@ Say the s-expression `(foo (bar bar) foo foo)` is stored at `x`. Then `[m? [& x]
 If the above expression is not a primitive expression, then `function0` is evaluated in the environment. The resulting value of this evluation is then invoked with the (unevaluated) list of s-expressions `(expression1 expression2 ... expressionN)` as its only argument. The list of s-expressions returned by this function then replaces the entire list of s-expressions `(function0 expression1 ... expressionN)`. If the result of this replacement is still a non-primitive expression, then the above process is repeated. When this process terminates, the appropiate assembly code for the resulting primitive expression is emitted.
 
 The expression `((function comment (sexprs) [fst [& sexprs]]) [foo] This comment is ignored. No, seriously.)` is replaced by `[foo]`, which in turn compiles into assembly similar to what is generated for other invoke expressions.
+
+## Application Binary Interface
+### Invokations
+Note that every value in L2 has size 4 bytes in the following. Function invokations in L2 are effected by pushing the arguments of the invokation onto the stack in reverse order and executing the `call` instruction on the target function's address. When the function returns, it is expected that the return value is in register `eax` and that the values of `esp`, `ebp`, `ebx`, `esi`, and `edi` have been preserved across the call.
+
+For example, a valid definition for a function `subtract` that when invoked like `[subtract x y]` returns `x-y` is the following:
+```assembly
+subtract:
+movl 4(%esp), %eax
+subl 8(%esp), %eax
+ret
+```
+### Continuations
