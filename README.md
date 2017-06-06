@@ -506,10 +506,10 @@ string.l2:
 								[' instrs]]}))
 				[fst [' str]] [' index] [' instrs]})) [' l] (d 0) [nil]}))
 ```
-It can be used as follows:
+`"` can be used as follows:
 
 test.l2:
-```racket
+```
 [printf (" This is how the quote macro is used. Now printing number in speechmarks "%i") (d 123)]
 ```
 The above example is compiled using the command `./bin/l2compile -pdc -program test demort.o - abbreviations.l2 - numbers.l2 - character.l2 - backquote.l2 - string.l2 - test.l2`.
@@ -541,7 +541,7 @@ let.l2:
 			(,[map [frst [' l]] fst])
 			{return (,[frrst [' l]])})) [map [frst [' l]] frst]]))))
 ```
-It can be used as follows:
+`let` can be used as follows:
 
 test.l2:
 ```
