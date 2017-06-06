@@ -253,7 +253,7 @@ If the above expression is not a primitive expression, then `function0` is evalu
 The expression `((function comment (sexprs) [fst [' sexprs]]) [foo] This comment is ignored. No, seriously.)` is replaced by `[foo]`, which in turn compiles into assembly similar to what is generated for other invoke expressions.
 
 ## Reductions
-In the extensive list processing that follows, the follwing functions prove to be convenient abbreviations:
+In the extensive list processing that follows in this section, the following functions prove to be convenient abbreviations:
 
 abbreviations.l2:
 ```racket
@@ -291,7 +291,7 @@ test.l2:
 The above example is compiled using the command `./bin/l2compile -pdc -program test demort.o - abbreviations.l2 - comment.l2 - test.l2`.
 
 ### Numbers:
-Integer literals prove to be quite tedious in L2. The following function, `d`, implement decimal arithmetic by reading in an s-expression in base 10 and writing out the equivalent s-expression in base 2:
+Integer literals prove to be quite tedious in L2 as can be seen from some of the examples in the primitive expressions section. The following function, `d`, implements decimal arithmetic by reading in an s-expression in base 10 and writing out the equivalent s-expression in base 2:
 
 numbers.l2
 ```racket
@@ -330,6 +330,108 @@ test.l2
 [putchar (d 65)]
 ```
 The above example is compiled using the command `./bin/l2compile -pdc -program test demort.o - abbreviations.l2 - numbers.l2 - test.l2`.
+
+### Characters
+With `d` implemented, a somewhat more readable implementation of characters is possible. The following function takes a character s-expression and returns its ascii encoding using the `d` expression.
+
+character.l2:
+```racket
+(function char (l) [(function aux (c)
+		(if [!? [' c]] (`(d 33))
+		(if ["? [' c]] (`(d 34))
+		(if [$? [' c]] (`(d 36))
+		(if [%? [' c]] (`(d 37))
+		(if [&? [' c]] (`(d 38))
+		(if ['? [' c]] (`(d 39))
+		(if [*? [' c]] (`(d 42))
+		(if [+? [' c]] (`(d 43))
+		(if [,? [' c]] (`(d 44))
+		(if [-? [' c]] (`(d 45))
+		(if [.? [' c]] (`(d 46))
+		(if [/? [' c]] (`(d 47))
+		(if [0? [' c]] (`(d 48))
+		(if [1? [' c]] (`(d 49))
+		(if [2? [' c]] (`(d 50))
+		(if [3? [' c]] (`(d 51))
+		(if [4? [' c]] (`(d 52))
+		(if [5? [' c]] (`(d 53))
+		(if [6? [' c]] (`(d 54))
+		(if [7? [' c]] (`(d 55))
+		(if [8? [' c]] (`(d 56))
+		(if [9? [' c]] (`(d 57))
+		(if [:? [' c]] (`(d 58))
+		(if [;? [' c]] (`(d 59))
+		(if [<? [' c]] (`(d 60))
+		(if [=? [' c]] (`(d 61))
+		(if [>? [' c]] (`(d 62))
+		(if [?? [' c]] (`(d 63))
+		(if [A? [' c]] (`(d 65))
+		(if [B? [' c]] (`(d 66))
+		(if [C? [' c]] (`(d 67))
+		(if [D? [' c]] (`(d 68))
+		(if [E? [' c]] (`(d 69))
+		(if [F? [' c]] (`(d 70))
+		(if [G? [' c]] (`(d 71))
+		(if [H? [' c]] (`(d 72))
+		(if [I? [' c]] (`(d 73))
+		(if [J? [' c]] (`(d 74))
+		(if [K? [' c]] (`(d 75))
+		(if [L? [' c]] (`(d 76))
+		(if [M? [' c]] (`(d 77))
+		(if [N? [' c]] (`(d 78))
+		(if [O? [' c]] (`(d 79))
+		(if [P? [' c]] (`(d 80))
+		(if [Q? [' c]] (`(d 81))
+		(if [R? [' c]] (`(d 82))
+		(if [S? [' c]] (`(d 83))
+		(if [T? [' c]] (`(d 84))
+		(if [U? [' c]] (`(d 85))
+		(if [V? [' c]] (`(d 86))
+		(if [W? [' c]] (`(d 87))
+		(if [X? [' c]] (`(d 88))
+		(if [Y? [' c]] (`(d 89))
+		(if [Z? [' c]] (`(d 90))
+		(if [\? [' c]] (`(d 92))
+		(if [^? [' c]] (`(d 94))
+		(if [_? [' c]] (`(d 95))
+		(if [`? [' c]] (`(d 96))
+		(if [a? [' c]] (`(d 97))
+		(if [b? [' c]] (`(d 98))
+		(if [c? [' c]] (`(d 99))
+		(if [d? [' c]] (`(d 100))
+		(if [e? [' c]] (`(d 101))
+		(if [f? [' c]] (`(d 102))
+		(if [g? [' c]] (`(d 103))
+		(if [h? [' c]] (`(d 104))
+		(if [i? [' c]] (`(d 105))
+		(if [j? [' c]] (`(d 106))
+		(if [k? [' c]] (`(d 107))
+		(if [l? [' c]] (`(d 108))
+		(if [m? [' c]] (`(d 109))
+		(if [n? [' c]] (`(d 110))
+		(if [o? [' c]] (`(d 111))
+		(if [p? [' c]] (`(d 112))
+		(if [q? [' c]] (`(d 113))
+		(if [r? [' c]] (`(d 114))
+		(if [s? [' c]] (`(d 115))
+		(if [t? [' c]] (`(d 116))
+		(if [u? [' c]] (`(d 117))
+		(if [v? [' c]] (`(d 118))
+		(if [w? [' c]] (`(d 119))
+		(if [x? [' c]] (`(d 120))
+		(if [y? [' c]] (`(d 121))
+		(if [z? [' c]] (`(d 122))
+		(if [|? [' c]] (`(d 124))
+		(if [~? [' c]] (`(d 126)) (`(d 0)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
+	[ffst [' l]]])
+```
+`char` can be used as follows:
+
+test.l2:
+```scheme
+[putchar (char A)]
+```
+The above example is compiled using the command `./bin/l2compile -pdc -program test demort.o - abbreviations.l2 - numbers.l2 - character.l2 - test.l2`.
 
 ### Quoting
 The `foo` example in the internal representation section shows how tedious writing a function that outputs a symbol can be. The backquote function reduces this tedium. It takes a single s-expression as its argument and, generally, it returns an s-expression that makes that s-expression. The exception to this rule is that if a sub-expression of its input s-expression is of the form `(, expr0)`, then the result of evaluating `expr0` is inserted into that position of the output s-expression. It can be implemented as follows:
@@ -374,3 +476,40 @@ test.l2:
 [A]
 ```
 The above example is compiled using the command `./bin/l2compile -pdc -program test demort.o - abbreviations.l2 - numbers.l2 - backquote.l2 - anotherfunction.l2 - test.l2`.
+
+### Strings
+The above exposition has purposefully avoided making strings because it is tedious to do using only binary and reference arithmetic. The quote function takes a list of lists of character s-expressions and returns the sequence of operations required to write its ascii encoding into memory. It is accompanied helper function called `reverse` that reverses strings:
+
+string.l2:
+```racket
+(function reverse (l)
+	(with-continuation return
+		{(make-continuation _ (l reversed)
+			(if [nil? [' l]]
+				{return [' reversed]}
+				{_ [rst [' l]] [lst [fst [' l]] [' reversed]]})) [' l] [nil]}))
+
+(function " (l) (with-continuation return
+	{(make-continuation add-word (str index instrs)
+		(if [nil? [' str]]
+			{return (`(with-continuation return
+				[allocate (,[binary->base2sexpr [' index]])
+					(make-continuation _ (str) (,[lst (` begin) [reverse [lst (`{return [' str]}) [' instrs]]]]))]))}
+			
+			{(make-continuation add-char (word index instrs)
+					(if [nil? [' word]]
+						{add-word [rst [' str]] [+ [' index] (d 1)]
+							[lst (`[set-char [+ [' str] (,[binary->base2sexpr [' index]])]
+								(,(if [nil? [rst [' str]]] (`(d 0)) (`(d 32))))]) [' instrs]]}
+						{add-char [rst [' word]] [+ [' index] (d 1)]
+							[lst (`[set-char [+ [' str] (,[binary->base2sexpr [' index]])] (char (,[lst [fst [' word]] [nil]]))])
+								[' instrs]]}))
+				[fst [' str]] [' index] [' instrs]})) [' l] (d 0) [nil]}))
+```
+It can be used as follows:
+
+test.l2:
+```racket
+[printf (" This is how the quote macro is used. Now printing number in speechmarks "%i") (d 123)]
+```
+The above example is compiled using the command `./bin/l2compile -pdc -program test demort.o - abbreviations.l2 - numbers.l2 - character.l2 - backquote.l2 - string.l2 - test.l2`.
