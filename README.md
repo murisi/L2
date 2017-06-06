@@ -16,6 +16,7 @@
   * [Continue](#continue)
 * [Internal Representation](#internal-representation)
 * [Expression](#expression)
+* [Reductions](#reductions)
 
 ## Introduction
 L2 is an attempt to find the smallest most distilled programming language equivalent to C. The goal is to turn as much of C's preprocessor directives, control structures, statements, literals, and functions requiring compiler assistance (setjmp, longjmp, alloca, ...) into things definable inside L2. The language does not surject to all of C, its most glaring omission being that of a type-system. However, I reckon the result is still pretty interesting.
@@ -43,7 +44,7 @@ Starting at the first hyphen argument, the compiler reads `inputs.l2 ...` until 
 
 If there are still unconsumed hyphens, then the object file is packaged into a shared library along with `objects.o ...`, and this shared library is dynamically loaded into the environment. And the compilation process starts again, only this time with the next set of `inputs.l2...`. If there are no more unconsumed hyphens, then the output should either be a position independent or dependent object, shared library, or program called `output` as specified by the first 3 arguments to `l2compile`. If the final output is not an object file, then `objects.o ...` are embeded or linked into it.
 
-The initial environment, the one that is there before any group of files is compiled, comprises 17 functions: `lst`, `lst?`, `fst`, `rst`, `sexpr`, `nil`, `nil?`, `-<character>-`, `<character>?`, `begin`, `b`, `if`, `function`, `invoke`, `with-continuation`, `make-continuation`, and `continue`. The former 9 are defined later. Each one of the latter 8 functions does nothing else but return an s-expression formed by prepending its function name to the list of s-expressions supplied to them. For example, the `b` function could have the following definition: `(function b (sexprs) [lst [lst [-b-] [nil]] [& sexprs]])`.
+The initial environment, the one that is there before any group of files is compiled, comprises 17 functions: `lst`, `lst?`, `fst`, `rst`, `sexpr`, `nil`, `nil?`, `-<character>-`, `<character>?`, `begin`, `b`, `if`, `function`, `invoke`, `with-continuation`, `make-continuation`, and `continue`. The former 9 are defined later. Each one of the latter 8 functions does nothing else but return an s-expression formed by prepending its function name to the list of s-expressions supplied to them. For example, the `b` function could have the following definition: `(function b (sexprs) [lst [lst [-b-] [nil]] [' sexprs]])`.
 
 #### Example
 file1.l2:
@@ -98,7 +99,7 @@ The resulting value is the address in memory to which this reference refers.
 
 This expression is implemented by the emission of an instruction to `lea` of some data into a memory location designated by the surrounding expression.
 
-Say the expression `[& x]` evaluates to the value at the reference `x` and the expression `[set x y]` puts the value `y` into the reference `x`. Then `(begin [set x (b 00000000000000000000000001100001)] [putchar [& x]])` prints the text "a" to standard output.
+Say the expression `[' x]` evaluates to the value at the reference `x` and the expression `[set x y]` puts the value `y` into the reference `x`. Then `(begin [set x (b 00000000000000000000000001100001)] [putchar [' x]])` prints the text "a" to standard output.
 
 ### If
 ```racket
@@ -118,7 +119,7 @@ Makes a function to be invoked with exactly `N` arguments. When the function is 
 
 This expression is implemented by first emitting an instruction to `mov` the address `function0` (a label to be emitted later) into the memory location designated by the surrounding expression. Then an instruction is emitted to `jmp` to the end of all the instructions that are emitted for this function. Then the label named `function0` is emitted. Then instructios to `push` each callee-saved register onto the stack are emitted. Then an instruction to push the frame-pointer onto the stack is emitted. Then an instruction to move the value of the stack-pointer into the frame-pointer is emitted. Then an instruction to `sub` from the stack-pointer the amount of words reserved on this function's stack-frame is emitted. After this the instructions for `expression0` are emitted with the location of the resulting value fixed to a word within the stack-pointer's drop. After this an instruction is emitted to `mov` the word from this location into the register `eax`. And finally, instructions are emitted to `leave` the current function's stack-frame, `pop` the callee-save registers, and `ret` to the address of the caller.
 
-The expression `[putchar [(function my- (a b) [- [& b] [& a]]) (b 00000000000000000000000000000001) (b 00000000000000000000000001100011)]]` prints the text "b" to standard output.
+The expression `[putchar [(function my- (a b) [- [' b] [' a]]) (b 00000000000000000000000000000001) (b 00000000000000000000000001100011)]]` prints the text "b" to standard output.
 
 ### Invoke
 ```racket
@@ -173,7 +174,7 @@ Makes a continuation to be continued to with exactly `N` arguments. When the con
 
 5+N words must be reserved in the current function's stack-frame plan. Call the reference to the first word of the reservation `continuation0`. This expression is implemented by first emitting an instruction to `mov` the reference `continuation0` into the memory location designated by the surrounding expression. Instructions are then emitted to store the program's state at `continuation0`, that is, instructions are emitted to `mov` `ebp`, the address of the instruction that should be executed after continuing (a label to be emitted later), `edi`, `esi`, and `ebx`, in that order, to the first 5 words at `continuation0`. Then an instruction is emitted to `jmp` to the end of all the instructions that are emitted for this make-continuation expression. Then the label for the first instruction of the continuation is emitted. After this the instructions for `expression0` are emitted.
 
-The expression `{(make-continuation forever (a b) (begin [putchar [& a]] [putchar [& b]] {forever [- [& a] (b 00000000000000000000000000000001)] [- [& b] (b 00000000000000000000000000000001)]})) (b 00000000000000000000000001011010) (b 00000000000000000000000001111010)}` prints the text "ZzYyXxWw"... to standard output.
+The expression `{(make-continuation forever (a b) (begin [putchar [' a]] [putchar [' b]] {forever [- [' a] (b 00000000000000000000000000000001)] [- [' b] (b 00000000000000000000000000000001)]})) (b 00000000000000000000000001011010) (b 00000000000000000000000001111010)}` prints the text "ZzYyXxWw"... to standard output.
 
 ### Continue
 ```racket
@@ -197,41 +198,41 @@ After substituting out the syntactic sugar used for the `invoke` and `continue` 
 
 Makes a list where `x` is first and `y` is the rest.
 
-Say the s-expression `foo` is stored at `a` and the list `(bar)` is stored at `b`. Then `[lst [& a] [& b]]` is the s-expression `(foo bar)`.
+Say the s-expression `foo` is stored at `a` and the list `(bar)` is stored at `b`. Then `[lst [' a] [' b]]` is the s-expression `(foo bar)`.
 ### `[lst? x]`
 `x` must be a s-expression.
 
 Evaluates to the complement of zero if `x` is also list. Otherwise evaluates to zero.
 
-Say the s-expression `foo` is stored at `a`. Then `[lst? [& a]]` evaluates to `(b 11111111111111111111111111111111)`.
+Say the s-expression `foo` is stored at `a`. Then `[lst? [' a]]` evaluates to `(b 11111111111111111111111111111111)`.
 ### `[fst x]`
 `x` must be a list.
 
 Evaluates to a s-expression that is the first of `x`.
 
-Say the list `foo` is stored at `a`. Then `[fst [& a]]` is the s-expression `a`. This `a` is not a list but is a character.
+Say the list `foo` is stored at `a`. Then `[fst [' a]]` is the s-expression `a`. This `a` is not a list but is a character.
 ### `[rst x]`
 `x` must be a list`.
 
 Evaluates to a list that is the rest of `x`.
 
-Say the list `foo` is stored at `a`. Then `[rst [& a]]` is the s-expression `oo`.
+Say the list `foo` is stored at `a`. Then `[rst [' a]]` is the s-expression `oo`.
 ### `[sexpr x]`
 `x` must be a list.
 
 Evaluates to an s-expression wrapper of `x`.
 
-Say the s-expression `foo` is stored at `a` and `(bar)` is stored at `b`. Then `[lst [sexpr [rst [& a]]] [& b]]` is the s-expression `(oo bar)`. Note that without the `sexpr` invokation, the preconditions of `lst` would be violated.
+Say the s-expression `foo` is stored at `a` and `(bar)` is stored at `b`. Then `[lst [sexpr [rst [' a]]] [' b]]` is the s-expression `(oo bar)`. Note that without the `sexpr` invokation, the preconditions of `lst` would be violated.
 ### `[nil]`
 Evaluates to the empty list.
 
-Say the s-expression `foo` is stored at `a`. Then `[lst [& a] [nil]]` is the s-expression `(foo)`.
+Say the s-expression `foo` is stored at `a`. Then `[lst [' a] [nil]]` is the s-expression `(foo)`.
 ### `[nil? x]`
 `x` must be a list.
 
 Evaluates to the complement of zero if `x` is the empty list. Otherwise evaluates to zero.
 
-Say the s-expression `((foo bar bar bar))` is stored at `x`. Then `[nil? [rst [& x]]]` evaluates to `(b 11111111111111111111111111111111)`.
+Say the s-expression `((foo bar bar bar))` is stored at `x`. Then `[nil? [rst [' x]]]` evaluates to `(b 11111111111111111111111111111111)`.
 ### `[-<character>-]`
 Evaluates to the character `<character>`.
 
@@ -241,7 +242,7 @@ The expression `[lst [-f-] [lst [-o-] [lst [-o-] [nil]]]]` evaluates to the s-ex
 
 Evaluates to the complement of zero if `x` is the character <character>. Otherwise evaluates to zero.
 
-Say the s-expression `(foo (bar bar) foo foo)` is stored at `x`. Then `[m? [& x]]` evaluates to `(b 00000000000000000000000000000000)`.
+Say the s-expression `(foo (bar bar) foo foo)` is stored at `x`. Then `[m? [' x]]` evaluates to `(b 00000000000000000000000000000000)`.
 
 ## Expression
 ```racket
@@ -249,4 +250,6 @@ Say the s-expression `(foo (bar bar) foo foo)` is stored at `x`. Then `[m? [& x]
 ```
 If the above expression is not a primitive expression, then `function0` is evaluated in the environment. The resulting value of this evluation is then invoked with the (unevaluated) list of s-expressions `(expression1 expression2 ... expressionN)` as its only argument. The list of s-expressions returned by this function then replaces the entire list of s-expressions `(function0 expression1 ... expressionN)`. If the result of this replacement is still a non-primitive expression, then the above process is repeated. When this process terminates, the appropiate assembly code for the resulting primitive expression is emitted.
 
-The expression `((function comment (sexprs) [fst [& sexprs]]) [foo] This comment is ignored. No, seriously.)` is replaced by `[foo]`, which in turn compiles into assembly similar to what is generated for other invoke expressions.
+The expression `((function comment (sexprs) [fst [' sexprs]]) [foo] This comment is ignored. No, seriously.)` is replaced by `[foo]`, which in turn compiles into assembly similar to what is generated for other invoke expressions.
+
+#Reductions
