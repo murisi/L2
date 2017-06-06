@@ -335,7 +335,7 @@ The above example is compiled using the command `./bin/l2compile -pdc -program t
 With `d` implemented, a somewhat more readable implementation of characters is possible. The following function takes a character s-expression and returns its ascii encoding using the `d` expression.
 
 character.l2:
-```racket
+```
 (function char (l) [(function aux (c)
 		(if [!? [' c]] (`(d 33))
 		(if ["? [' c]] (`(d 34))
@@ -428,12 +428,12 @@ character.l2:
 `char` can be used as follows:
 
 test.l2:
-```scheme
+```racket
 [putchar (char A)]
 ```
 The above example is compiled using the command `./bin/l2compile -pdc -program test demort.o - abbreviations.l2 - numbers.l2 - character.l2 - test.l2`.
 
-### Quoting
+### Backquoting
 The `foo` example in the internal representation section shows how tedious writing a function that outputs a symbol can be. The backquote function reduces this tedium. It takes a single s-expression as its argument and, generally, it returns an s-expression that makes that s-expression. The exception to this rule is that if a sub-expression of its input s-expression is of the form `(, expr0)`, then the result of evaluating `expr0` is inserted into that position of the output s-expression. It can be implemented as follows:
 
 backquote.l2:
@@ -478,10 +478,10 @@ test.l2:
 The above example is compiled using the command `./bin/l2compile -pdc -program test demort.o - abbreviations.l2 - numbers.l2 - backquote.l2 - anotherfunction.l2 - test.l2`.
 
 ### Strings
-The above exposition has purposefully avoided making strings because it is tedious to do using only binary and reference arithmetic. The quote function takes a list of lists of character s-expressions and returns the sequence of operations required to write its ascii encoding into memory. It is accompanied helper function called `reverse` that reverses strings:
+The above exposition has purposefully avoided making strings because it is tedious to do using only binary and reference arithmetic. The quote function takes a list of lists of character s-expressions and returns the sequence of operations required to write its ascii encoding into memory. These "operations" are essentially decreasing the stack-pointer, putting the characters into that memory, and returning the address of that memory. Quote is accompanied by a helper function called `reverse` that reverses lists:
 
 string.l2:
-```racket
+```
 (function reverse (l)
 	(with-continuation return
 		{(make-continuation _ (l reversed)
@@ -513,3 +513,38 @@ test.l2:
 [printf (" This is how the quote macro is used. Now printing number in speechmarks "%i") (d 123)]
 ```
 The above example is compiled using the command `./bin/l2compile -pdc -program test demort.o - abbreviations.l2 - numbers.l2 - character.l2 - backquote.l2 - string.l2 - test.l2`.
+
+### Variable Binding
+Variable binding is enabled by the `make-continuation` expression. `make-continuation` is special because, like `function`, it allows references to be bound. Unlike `function`, however, expressions within `make-continuation` can directly access its parent function's variables. The `let` binding function implements the following transformation:
+```racket
+(let reference0 ((params args) ...) expr0)
+->
+(with-continuation return
+	{(make-continuation reference0 (params ...)
+		{return expr}) vals ...})
+```
+It is implemented as follows:
+
+let.l2:
+```racket
+(** Returns a list with mapper applied to each element.
+(function map (l mapper)
+	(with-continuation return
+		{(make-continuation aux (in out)
+			(if [nil? [' in]]
+				{return [reverse [' out]]}
+				{aux [rst [' in]] [lst [[' mapper] [fst [' in]]] [' out]]})) [' l] [nil]})))
+
+(function let (l)
+	(`(with-continuation return
+		(,[llst (` continue) (`(make-continuation (,[fst [' l]])
+			(,[map [frst [' l]] fst])
+			{return (,[frrst [' l]])})) [map [frst [' l]] frst]]))))
+```
+It can be used as follows:
+
+test.l2:
+```
+(let _((x (d 12))) [printf (" x is %i) [' x]])
+```
+The above example is compiled using the command `./bin/l2compile -pdc -program test demort.o - abbreviations.l2 - numbers.l2 - character.l2 - backquote.l2 - string.l2 - let.l2 - test.l2`.
