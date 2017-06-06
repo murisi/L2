@@ -252,4 +252,125 @@ If the above expression is not a primitive expression, then `function0` is evalu
 
 The expression `((function comment (sexprs) [fst [' sexprs]]) [foo] This comment is ignored. No, seriously.)` is replaced by `[foo]`, which in turn compiles into assembly similar to what is generated for other invoke expressions.
 
-#Reductions
+## Reductions
+In the extensive list processing that follows, the follwing functions prove to be convenient abbreviations:
+
+abbreviations.l2:
+```racket
+(function frst (l) [fst [rst [' l]]])
+(function frfst (l) [fst [rst [fst [' l]]]])
+(function frrst (l) [fst [rst [rst [' l]]]])
+(function frrrst (l) [fst [rst [rst [rst [' l]]]]])
+(function rfst (l) [rst [fst [' l]]])
+(function ffst (l) [fst [fst [' l]]])
+(function llst (a b c) [lst [' a] [lst [' b] [' c]]])
+(function lllst (a b c d) [lst [' a] [lst [' b] [lst [' c] [' d]]]])
+(function llllst (a b c d e) [lst [' a] [lst [' b] [lst [' c] [lst [' d] [' e]]]]])
+(function llllllst (a b c d e f g) [lst [' a] [lst [' b] [lst [' c] [lst [' d] [lst [' e] [lst [' f] [' g]]]]]]])
+```
+
+### Commenting
+L2 has no built-in mechanism for commenting code written in it. The following comment function that follows takes a list of s-expressions as its argument and returns the last s-expression in that list (which is guaranteed to be a list of s-expressions) effectively causing the other s-expressions to be ignored. Its implementation follows:
+
+comment.l2:
+```racket
+(function ** (l)
+	(with-continuation return
+		{(make-continuation find (first last)
+			(if [nil? [' last]]
+				{return [' first]}
+				{find [fst [' last]] [rst [' last]]})) [fst [' l]] [rst [' l]]}))
+```
+
+It is used as follows:
+
+test.l2:
+```racket
+(** This is a comment, and the next thing is what is actually compiled: (begin))
+```
+The above example is compiled using the command `./bin/l2compile -pdc -program test demort.o - abbreviations.l2 - comment.l2 - test.l2`.
+
+### Numbers:
+Integer literals prove to be quite tedious in L2. The following function, `d`, implement decimal arithmetic by reading in an s-expression in base 10 and writing out the equivalent s-expression in base 2:
+
+numbers.l2
+```racket
+(** Turns a 4-byte integer into base-2 s-expression representation of it.
+(function binary->base2sexpr (binary)
+	[lst [lst [-b-] [nil]] [lst (with-continuation return
+		{(make-continuation write (count in out)
+			(if [' count]
+				{write [- [' count] (b 00000000000000000000000000000001)]
+					[>> [' in] (b 00000000000000000000000000000001)]
+					[lst (if [and [' in] (b 00000000000000000000000000000001)] [-1-] [-0-]) [' out]]}
+				{return [' out]})) (b 00000000000000000000000000100000) [' binary] [nil]}) [nil]]]))
+
+(function d (l)
+	[binary->base2sexpr
+		(** Turns the base-10 s-expression input into a 4-byte integer.
+			(with-continuation return {(make-continuation read (in out)
+				(if [nil? [' in]]
+					{return [' out]}
+					{read [rst [' in]] [+ [* [' out] (b 00000000000000000000000000001010)]
+						(if [9? [fst [' in]]] (b 00000000000000000000000000001001)
+						(if [8? [fst [' in]]] (b 00000000000000000000000000001000)
+						(if [7? [fst [' in]]] (b 00000000000000000000000000000111)
+						(if [6? [fst [' in]]] (b 00000000000000000000000000000110)
+						(if [5? [fst [' in]]] (b 00000000000000000000000000000101)
+						(if [4? [fst [' in]]] (b 00000000000000000000000000000100)
+						(if [3? [fst [' in]]] (b 00000000000000000000000000000011)
+						(if [2? [fst [' in]]] (b 00000000000000000000000000000010)
+						(if [1? [fst [' in]]] (b 00000000000000000000000000000001)
+							(b 00000000000000000000000000000000))))))))))]})) [fst [' l]] (b 00000000000000000000000000000000)}))])
+```
+`d` can be used as follows:
+
+test.l2
+```racket
+[putchar (d 65)]
+```
+The above example is compiled using the command `./bin/l2compile -pdc -program test demort.o - abbreviations.l2 - numbers.l2 - test.l2`.
+
+### Quoting
+The `foo` example in the internal representation section shows how tedious writing a function that outputs a symbol can be. The backquote function reduces this tedium. It takes a single s-expression as its argument and, generally, it returns an s-expression that makes that s-expression. The exception to this rule is that if a sub-expression of its input s-expression is of the form `(, expr0)`, then the result of evaluating `expr0` is inserted into that position of the output s-expression. It can be implemented as follows:
+
+backquote.l2:
+```racket
+(function ` (l)
+	[(function aux (s)
+		(if [nil? [' s]]
+			[lst [sexpr [llllllst [-i-][-n-][-v-][-o-][-k-][-e-][nil]]]
+				[lst [sexpr [lllst [-n-][-i-][-l-][nil]]] [nil]]]
+		
+		(if (if [lst? [' s]] (if [not [nil? [' s]]] (if [lst? [fst [' s]]] (if [not [nil? [fst [' s]]]]
+			(if [,? [ffst [' s]]] [nil? [rfst [' s]]] (d 0)) (d 0)) (d 0)) (d 0)) (d 0))
+					[frst [' s]]
+		
+		[lst [sexpr [llllllst [-i-][-n-][-v-][-o-][-k-][-e-][nil]]]
+			[lst [sexpr [lllst [-l-][-s-][-t-][nil]]]
+				[lst (if [lst? [fst [' s]]]
+					[sexpr [aux [fst [' s]]]]
+					[sexpr [lst
+						[sexpr [llllllst [-i-][-n-][-v-][-o-][-k-][-e-][nil]]]
+							[lst [sexpr [lst [---] [lst [fst [' s]] [lst [---] [nil]]]]] [nil]]]])
+						[lst [sexpr [aux [rst [' s]]]] [nil]]]]]))) [fst [' l]]])
+```
+It can be used in the following two equivalent ways:
+
+anotherfunction.l2:
+```racket
+(function make-A-function (l)
+	(` (function A (,[nil]) [putchar (d 65)])))
+```
+```racket
+(function make-A-function (l)
+	(`(function A () [putchar (d 65)])))
+```
+Which can in turn be used as follows:
+
+test.l2:
+```racket
+(make-A-function)
+[A]
+```
+The above example is compiled using the command `./bin/l2compile -pdc -program test demort.o - abbreviations.l2 - numbers.l2 - backquote.l2 - anotherfunction.l2 - test.l2`.
