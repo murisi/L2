@@ -526,7 +526,7 @@ The above exposition has purposefully avoided making strings because it is tedio
 ```
 #### shell
 ```shell
-./bin/l2compile -pdc -program test demort.o - abbreviations.l2 comments.l2 - numbers.l2 - characters.l2 reverse.l2 strings.l2 backquote.l2 - test.l2
+./bin/l2compile -pdc -program test demort.o - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 - characters.l2 reverse.l2 strings.l2 - test.l2
 ```
 
 ### Conditional Compilation
