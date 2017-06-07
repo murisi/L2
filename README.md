@@ -287,7 +287,7 @@ L2 has no built-in mechanism for commenting code written in it. The following co
 (** This is a comment, and the next thing is what is actually compiled: (begin))
 ```
 #### shell
-`./bin/l2compile -pdc -program test demort.o - abbreviations.l2 - comment.l2 - test.l2`
+`./bin/l2compile -pdc -program test demort.o - abbreviations.l2 comment.l2 - test.l2`
 
 ### Numbers:
 Integer literals prove to be quite tedious in L2 as can be seen from some of the examples in the primitive expressions section. The following function, `d`, implements decimal arithmetic by reading in an s-expression in base 10 and writing out the equivalent s-expression in base 2:
@@ -327,12 +327,12 @@ Integer literals prove to be quite tedious in L2 as can be seen from some of the
 [putchar (d 65)]
 ```
 #### shell
-`./bin/l2compile -pdc -program test demort.o - abbreviations.l2 - numbers.l2 - test.l2`
+`./bin/l2compile -pdc -program test demort.o - abbreviations.l2 numbers.l2 - test.l2`
 
 ### Characters
 With `d` implemented, a somewhat more readable implementation of characters is possible. The `char` function takes a singleton list containing character s-expression and returns its ascii encoding using the `d` expression. Its implementation and use follows:
 
-#### character.l2
+#### characters.l2
 ```
 (function char (l) [(function aux (c)
 		(if [!? [' c]] (`(d 33))
@@ -428,7 +428,7 @@ With `d` implemented, a somewhat more readable implementation of characters is p
 [putchar (char A)]
 ```
 #### shell
-`./bin/l2compile -pdc -program test demort.o - abbreviations.l2 - numbers.l2 - character.l2 - test.l2`
+`./bin/l2compile -pdc -program test demort.o - abbreviations.l2 numbers.l2 - characters.l2 - test.l2`
 
 ### Backquoting
 The `foo` example in the internal representation section shows how tedious writing a function that outputs a symbol can be. The backquote function reduces this tedium. It takes a single s-expression as its argument and, generally, it returns an s-expression that makes that s-expression. The exception to this rule is that if a sub-expression of its input s-expression is of the form `(, expr0)`, then the result of evaluating `expr0` is inserted into that position of the output s-expression. Backquote can be implemented and used as follows:
@@ -470,20 +470,22 @@ The `foo` example in the internal representation section shows how tedious writi
 [A]
 ```
 #### shell
-`./bin/l2compile -pdc -program test demort.o - abbreviations.l2 - numbers.l2 - backquote.l2 - anotherfunction.l2 - test.l2`
+`./bin/l2compile -pdc -program test demort.o - abbreviations.l2 numbers.l2 - backquote.l2 - anotherfunction.l2 - test.l2`
 
 ### Strings
-The above exposition has purposefully avoided making strings because it is tedious to do using only binary and reference arithmetic. The quote function takes a list of lists of character s-expressions and returns the sequence of operations required to write its ascii encoding into memory. These "operations" are essentially decreasing the stack-pointer, putting the characters into that memory, and returning the address of that memory. Quote is accompanied by a helper function called `reverse` that reverses lists:
+The above exposition has purposefully avoided making strings because it is tedious to do using only binary and reference arithmetic. The quote function takes a list of lists of character s-expressions and returns the sequence of operations required to write its ascii encoding into memory. These "operations" are essentially decreasing the stack-pointer, putting the characters into that memory, and returning the address of that memory. Because the stack-frame of a function is destroyed upon its return, strings implemented in this way should not be returned. Quote is implemented below along with its helper function called `reverse` that reverses lists:
 
-#### string.l2
-```
+#### reverse.l2
+```racket
 (function reverse (l)
 	(with-continuation return
 		{(make-continuation _ (l reversed)
 			(if [nil? [' l]]
 				{return [' reversed]}
 				{_ [rst [' l]] [lst [fst [' l]] [' reversed]]})) [' l] [nil]}))
-
+```
+#### strings.l2
+```
 (function " (l) (with-continuation return
 	{(make-continuation add-word (str index instrs)
 		(if [nil? [' str]]
@@ -506,7 +508,7 @@ The above exposition has purposefully avoided making strings because it is tedio
 [printf (" This is how the quote macro is used. Now printing number in speechmarks "%i") (d 123)]
 ```
 #### shell
-`./bin/l2compile -pdc -program test demort.o - abbreviations.l2 - numbers.l2 - character.l2 - backquote.l2 - string.l2 - test.l2`
+`./bin/l2compile -pdc -program test demort.o - abbreviations.l2 numbers.l2 - characters.l2 reverse.l2 strings.l2 backquote.l2 - test.l2`
 
 ### Variable Binding
 Variable binding is enabled by the `make-continuation` expression. `make-continuation` is special because, like `function`, it allows references to be bound. Unlike `function`, however, expressions within `make-continuation` can directly access its parent function's variables. The `let` binding function implements the following transformation:
@@ -539,7 +541,7 @@ It is implemented and used as follows:
 (let _((x (d 12))) [printf (" x is %i) [' x]])
 ```
 #### shell
-`./bin/l2compile -pdc -program test demort.o - abbreviations.l2 - numbers.l2 - backquote.l2 - character.l2 - string.l2 - let.l2 - test.l2`
+`./bin/l2compile -pdc -program test demort.o - abbreviations.l2 numbers.l2 - backquote.l2 - characters.l2 strings.l2 let.l2 - test.l2`
 
 ### Switch Statement
 Now we will implement a variant of the switch statement that is parameterized by an equality predicate. The `switch` selection function implements the following transformation:
@@ -552,7 +554,9 @@ Now we will implement a variant of the switch statement that is parameterized by
 		(if [[' tempeq0] [' tempval0] vals2]
 			exprs2
 			...
-				(if [[' tempeq0] [' tempval0] valsN] exprsN expr0))))
+				(if [[' tempeq0] [' tempval0] valsN]
+					exprsN
+					expr0))))
 ```
 It is implemented and used as follows:
 #### switch.l2
@@ -576,3 +580,5 @@ It is implemented and used as follows:
 	((d 30) [printf (" d is 30!)])
 	[printf (" s is something else.)])
 ```
+#### shell
+`./bin/l2compile -pdc -program test demort.o - abbreviations.l2 numbers.l2 - backquote.l2 - reverse.l2 switch.l2 characters.l2 strings.l2 let.l2 - test.l2`
