@@ -47,7 +47,7 @@ If there are still unconsumed hyphens, then the object file is packaged into a s
 The initial environment, the one that is there before any group of files is compiled, comprises 17 functions: `lst`, `lst?`, `fst`, `rst`, `sexpr`, `nil`, `nil?`, `-<character>-`, `<character>?`, `begin`, `b`, `if`, `function`, `invoke`, `with-continuation`, `make-continuation`, and `continue`. The former 9 are defined later. Each one of the latter 8 functions does nothing else but return an s-expression formed by prepending its function name to the list of s-expressions supplied to them. For example, the `b` function could have the following definition: `(function b (sexprs) [lst [lst [-b-] [nil]] [' sexprs]])`.
 
 #### Example
-file1.l2:
+##### file1.l2
 ```racket
 (function foo (sexprs)
 	(with-continuation return
@@ -57,7 +57,7 @@ file1.l2:
 
 [putchar (b 00000000000000000000000001100001)]
 ```
-file2.l2:
+##### file2.l2
 ```racket
 (function bar ()
 	[putchar (b 00000000000000000000000001100011)])
@@ -459,7 +459,7 @@ The `foo` example in the internal representation section shows how tedious writi
 (function make-A-function (l)
 	(` (function A (,[nil]) [putchar (d 65)])))
 ```
-##### or
+##### or equivalently
 ```racket
 (function make-A-function (l)
 	(`(function A () [putchar (d 65)])))
@@ -539,7 +539,7 @@ It is implemented and used as follows:
 (let _((x (d 12))) [printf (" x is %i) [' x]])
 ```
 #### shell
-`./bin/l2compile -pdc -program test demort.o - abbreviations.l2 - numbers.l2 - character.l2 - backquote.l2 - string.l2 - let.l2 - test.l2`
+`./bin/l2compile -pdc -program test demort.o - abbreviations.l2 - numbers.l2 - backquote.l2 - character.l2 - string.l2 - let.l2 - test.l2`
 
 ### Switch Statement
 Now we will implement a variant of the switch statement that is parameterized by an equality predicate. The `switch` selection function implements the following transformation:
