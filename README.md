@@ -289,7 +289,7 @@ L2 has no built-in mechanism for commenting code written in it. The following co
 #### shell
 `./bin/l2compile -pdc -program test demort.o - abbreviations.l2 comment.l2 - test.l2`
 
-### Numbers:
+### Numbers
 Integer literals prove to be quite tedious in L2 as can be seen from some of the examples in the primitive expressions section. The following function, `d`, implements decimal arithmetic by reading in an s-expression in base 10 and writing out the equivalent s-expression in base 2:
 
 #### numbers.l2
@@ -517,7 +517,7 @@ Variable binding is enabled by the `make-continuation` expression. `make-continu
 ->
 (with-continuation return
 	{(make-continuation reference0 (params ...)
-		{return expr}) vals ...})
+		{return expr0}) vals ...})
 ```
 It is implemented and used as follows:
 #### let.l2
@@ -545,7 +545,7 @@ It is implemented and used as follows:
 		[what?]
 		[what?]))
 ```
-Note in the above code that `what?` is only able to access `x` because `x` is defined outside of all functions and hence is statically allocated.
+Note in the above code that `what?` is only able to access `x` because `x` is defined outside of all functions and hence is statically allocated. Also note that continuing to `_` with a single argument rebinds `x` and restarts execution at the `begin` statement.
 
 #### shell
 `./bin/l2compile -pdc -program test demort.o - abbreviations.l2 numbers.l2 - backquote.l2 - characters.l2 strings.l2 let.l2 - test.l2`
