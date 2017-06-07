@@ -35,14 +35,14 @@ The approach taken to achieve this has been to make C's features more composable
 
 There are [9 language primitives](#primitive-expressions) and for each one of them I describe their syntax, what exactly they do in English, the i386 assembly they translate into, and an example usage of them. Following this comes a brief description of [L2's internal representation and the 9 functions (loosely speaking) that manipulate it](#internal-representation). After that comes a description of how [a non-primitive L2 expression](#expression) is compiled. The above descriptions take about 8 pages and are essentially a complete description of L2.
 
-This README ends with a list of reductions that shows how some of C's constructs can be defined in terms of L2. More exotic things like coroutines, generators, and lambdas are possible using L2's continuations, but I have not documented these for I have not been able to motivate them. In a word, the key to achieving all of these is preventing a function's return, and thus the destruction of its stack-frame, by "continuing" out of it.
+This README ends with a [list of reductions](#reductions) that shows how some of C's constructs can be defined in terms of L2. More exotic things like coroutines, generators, and lambdas are possible using L2's continuations, but I have not documented these for I have not been able to motivate them. In a word, the key to achieving all of these is preventing a function's return, and thus the destruction of its stack-frame, by "continuing" out of it.
 
 ## Getting Started
 ### Building L2
 ```shell
 ./buildl2
 ```
-The L2 compiler needs a Linux distribution running on the i386 or AMD64 architecture with the GNU C compiler installed to run successfully. To build L2, simply run the `buildl2` script at the root of the repository. The build should be fast - there are only 2000 lines of C code to compile. This will create a directory called `bin` containing the files `l2compile` and `demort.o`. `l2compile` is the compiler for L2 and its interface is described below. `demort.o` is not a part of L2, but it will be used in the demonstrations below.
+The L2 compiler needs a Linux distribution running on the i386 (or AMD64 with libc6-dev-i386 installed) architecture with the GNU C compiler installed to run successfully. To build L2, simply run the `buildl2` script at the root of the repository. The build should be fast - there are only 2000 lines of C code to compile. This will create a directory called `bin` containing the files `l2compile` and `demort.o`. `l2compile` is the compiler for L2 and its interface is described below. `demort.o` is not a part of L2, but it will be used in the demonstrations below.
 
 ### Shell Interface
 ```shell
