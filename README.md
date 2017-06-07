@@ -287,12 +287,12 @@ L2 has no built-in mechanism for commenting code written in it. The following co
 (** This is a comment, and the next thing is what is actually compiled: (begin))
 ```
 #### shell
-`./bin/l2compile -pdc -program test demort.o - abbreviations.l2 - comment.l2 - test.l2`.
+`./bin/l2compile -pdc -program test demort.o - abbreviations.l2 - comment.l2 - test.l2`
 
 ### Numbers:
 Integer literals prove to be quite tedious in L2 as can be seen from some of the examples in the primitive expressions section. The following function, `d`, implements decimal arithmetic by reading in an s-expression in base 10 and writing out the equivalent s-expression in base 2:
 
-numbers.l2
+#### numbers.l2
 ```racket
 (** Turns a 4-byte integer into base-2 s-expression representation of it.
 (function binary->base2sexpr (binary)
@@ -322,18 +322,17 @@ numbers.l2
 						(if [1? [fst [' in]]] (b 00000000000000000000000000000001)
 							(b 00000000000000000000000000000000))))))))))]})) [fst [' l]] (b 00000000000000000000000000000000)}))])
 ```
-`d` can be used as follows:
-
-test.l2
+#### test.l2
 ```racket
 [putchar (d 65)]
 ```
-The above example is compiled using the command `./bin/l2compile -pdc -program test demort.o - abbreviations.l2 - numbers.l2 - test.l2`.
+#### shell
+`./bin/l2compile -pdc -program test demort.o - abbreviations.l2 - numbers.l2 - test.l2`
 
 ### Characters
-With `d` implemented, a somewhat more readable implementation of characters is possible. The following function takes a character s-expression and returns its ascii encoding using the `d` expression.
+With `d` implemented, a somewhat more readable implementation of characters is possible. The `char` function takes a singleton list containing character s-expression and returns its ascii encoding using the `d` expression. Its implementation and use follows:
 
-character.l2:
+#### character.l2
 ```
 (function char (l) [(function aux (c)
 		(if [!? [' c]] (`(d 33))
@@ -424,18 +423,17 @@ character.l2:
 		(if [~? [' c]] (`(d 126)) (`(d 0)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
 	[ffst [' l]]])
 ```
-`char` can be used as follows:
-
-test.l2:
+#### test.l2
 ```racket
 [putchar (char A)]
 ```
-The above example is compiled using the command `./bin/l2compile -pdc -program test demort.o - abbreviations.l2 - numbers.l2 - character.l2 - test.l2`.
+#### shell
+`./bin/l2compile -pdc -program test demort.o - abbreviations.l2 - numbers.l2 - character.l2 - test.l2`
 
 ### Backquoting
-The `foo` example in the internal representation section shows how tedious writing a function that outputs a symbol can be. The backquote function reduces this tedium. It takes a single s-expression as its argument and, generally, it returns an s-expression that makes that s-expression. The exception to this rule is that if a sub-expression of its input s-expression is of the form `(, expr0)`, then the result of evaluating `expr0` is inserted into that position of the output s-expression. It can be implemented as follows:
+The `foo` example in the internal representation section shows how tedious writing a function that outputs a symbol can be. The backquote function reduces this tedium. It takes a single s-expression as its argument and, generally, it returns an s-expression that makes that s-expression. The exception to this rule is that if a sub-expression of its input s-expression is of the form `(, expr0)`, then the result of evaluating `expr0` is inserted into that position of the output s-expression. Backquote can be implemented and used as follows:
 
-backquote.l2:
+#### backquote.l2
 ```racket
 (function ` (l)
 	[(function aux (s)
@@ -456,30 +454,28 @@ backquote.l2:
 							[lst [sexpr [lst [---] [lst [fst [' s]] [lst [---] [nil]]]]] [nil]]]])
 						[lst [sexpr [aux [rst [' s]]]] [nil]]]]]))) [fst [' l]]])
 ```
-It can be used in the following two equivalent ways:
-
-anotherfunction.l2:
+#### anotherfunction.l2:
 ```racket
 (function make-A-function (l)
 	(` (function A (,[nil]) [putchar (d 65)])))
 ```
+##### or
 ```racket
 (function make-A-function (l)
 	(`(function A () [putchar (d 65)])))
 ```
-Which can in turn be used as follows:
-
-test.l2:
+#### test.l2
 ```racket
 (make-A-function)
 [A]
 ```
-The above example is compiled using the command `./bin/l2compile -pdc -program test demort.o - abbreviations.l2 - numbers.l2 - backquote.l2 - anotherfunction.l2 - test.l2`.
+#### shell
+`./bin/l2compile -pdc -program test demort.o - abbreviations.l2 - numbers.l2 - backquote.l2 - anotherfunction.l2 - test.l2`
 
 ### Strings
 The above exposition has purposefully avoided making strings because it is tedious to do using only binary and reference arithmetic. The quote function takes a list of lists of character s-expressions and returns the sequence of operations required to write its ascii encoding into memory. These "operations" are essentially decreasing the stack-pointer, putting the characters into that memory, and returning the address of that memory. Quote is accompanied by a helper function called `reverse` that reverses lists:
 
-string.l2:
+#### string.l2
 ```
 (function reverse (l)
 	(with-continuation return
@@ -505,13 +501,12 @@ string.l2:
 								[' instrs]]}))
 				[fst [' str]] [' index] [' instrs]})) [' l] (d 0) [nil]}))
 ```
-`"` can be used as follows:
-
-test.l2:
+#### test.l2
 ```
 [printf (" This is how the quote macro is used. Now printing number in speechmarks "%i") (d 123)]
 ```
-The above example is compiled using the command `./bin/l2compile -pdc -program test demort.o - abbreviations.l2 - numbers.l2 - character.l2 - backquote.l2 - string.l2 - test.l2`.
+#### shell
+`./bin/l2compile -pdc -program test demort.o - abbreviations.l2 - numbers.l2 - character.l2 - backquote.l2 - string.l2 - test.l2`
 
 ### Variable Binding
 Variable binding is enabled by the `make-continuation` expression. `make-continuation` is special because, like `function`, it allows references to be bound. Unlike `function`, however, expressions within `make-continuation` can directly access its parent function's variables. The `let` binding function implements the following transformation:
@@ -522,9 +517,8 @@ Variable binding is enabled by the `make-continuation` expression. `make-continu
 	{(make-continuation reference0 (params ...)
 		{return expr}) vals ...})
 ```
-It is implemented as follows:
-
-let.l2:
+It is implemented and used as follows:
+#### let.l2
 ```racket
 (** Returns a list with mapper applied to each element.
 (function map (l mapper)
@@ -540,13 +534,12 @@ let.l2:
 			(,[map [frst [' l]] fst])
 			{return (,[frrst [' l]])})) [map [frst [' l]] frst]]))))
 ```
-`let` can be used as follows:
-
-test.l2:
+#### test.l2
 ```
 (let _((x (d 12))) [printf (" x is %i) [' x]])
 ```
-The above example is compiled using the command `./bin/l2compile -pdc -program test demort.o - abbreviations.l2 - numbers.l2 - character.l2 - backquote.l2 - string.l2 - let.l2 - test.l2`.
+#### shell
+`./bin/l2compile -pdc -program test demort.o - abbreviations.l2 - numbers.l2 - character.l2 - backquote.l2 - string.l2 - let.l2 - test.l2`
 
 ### Switch Statement
 Now we will implement a variant of the switch statement that is parameterized by an equality predicate. The `switch` selection function implements the following transformation:
@@ -561,9 +554,8 @@ Now we will implement a variant of the switch statement that is parameterized by
 			...
 				(if [[' tempeq0] [' tempval0] valsN] exprsN expr0))))
 ```
-It is implemented as follows:
-
-switch.l2:
+It is implemented and used as follows:
+#### switch.l2
 ```racket
 (function switch (l)
 	(`(let temp0 ((tempeq0 (,[fst [' l]])) (tempval0 (,[frst [' l]])))
@@ -576,7 +568,7 @@ switch.l2:
 							(,[frfst [' remaining]]) (,[' else-clause])))}))
 				[rst [reverse [rrst [' l]]]] [fst [reverse [' l]]]})))))
 ```
-`switch` can be used as follows:
+#### test.l2
 ```
 (switch = (d 10)
 	((d 20) [printf (" d is 20!)])
