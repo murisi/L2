@@ -270,9 +270,9 @@ abbreviations.l2:
 ```
 
 ### Commenting
-L2 has no built-in mechanism for commenting code written in it. The following comment function that follows takes a list of s-expressions as its argument and returns the last s-expression in that list (which is guaranteed to be a list of s-expressions) effectively causing the other s-expressions to be ignored. Its implementation follows:
+L2 has no built-in mechanism for commenting code written in it. The following comment function that follows takes a list of s-expressions as its argument and returns the last s-expression in that list (which itself is guaranteed to be a list of s-expressions) effectively causing the other s-expressions to be ignored. Its implementation and use follows:
 
-comment.l2:
+#### comment.l2
 ```racket
 (function ** (l)
 	(with-continuation return
@@ -282,13 +282,12 @@ comment.l2:
 				{find [fst [' last]] [rst [' last]]})) [fst [' l]] [rst [' l]]}))
 ```
 
-It is used as follows:
-
-test.l2:
+#### test.l2
 ```racket
 (** This is a comment, and the next thing is what is actually compiled: (begin))
 ```
-The above example is compiled using the command `./bin/l2compile -pdc -program test demort.o - abbreviations.l2 - comment.l2 - test.l2`.
+#### shell
+`./bin/l2compile -pdc -program test demort.o - abbreviations.l2 - comment.l2 - test.l2`.
 
 ### Numbers:
 Integer literals prove to be quite tedious in L2 as can be seen from some of the examples in the primitive expressions section. The following function, `d`, implements decimal arithmetic by reading in an s-expression in base 10 and writing out the equivalent s-expression in base 2:
@@ -548,3 +547,40 @@ test.l2:
 (let _((x (d 12))) [printf (" x is %i) [' x]])
 ```
 The above example is compiled using the command `./bin/l2compile -pdc -program test demort.o - abbreviations.l2 - numbers.l2 - character.l2 - backquote.l2 - string.l2 - let.l2 - test.l2`.
+
+### Switch Statement
+Now we will implement a variant of the switch statement that is parameterized by an equality predicate. The `switch` selection function implements the following transformation:
+```racket
+(switch eq0 val0 (vals exprs) ... expr0)
+->
+(let temp0 ((tempeq0 eq0) (tempval0 val0))
+	(if [[' tempeq0] [' tempval0] vals1]
+		exprs1
+		(if [[' tempeq0] [' tempval0] vals2]
+			exprs2
+			...
+				(if [[' tempeq0] [' tempval0] valsN] exprsN expr0))))
+```
+It is implemented as follows:
+
+switch.l2:
+```racket
+(function switch (l)
+	(`(let temp0 ((tempeq0 (,[fst [' l]])) (tempval0 (,[frst [' l]])))
+		(,(with-continuation return
+			{(make-continuation aux (remaining else-clause)
+				(if [nil? [' remaining]]
+					{return [' else-clause]}
+					{aux [rst [' remaining]]
+						(`(if (,[llllst (` invoke) (` [' tempeq0]) (` [' tempval0]) [ffst [' remaining]] [nil]])
+							(,[frfst [' remaining]]) (,[' else-clause])))}))
+				[rst [reverse [rrst [' l]]]] [fst [reverse [' l]]]})))))
+```
+`switch` can be used as follows:
+```
+(switch = (d 10)
+	((d 20) [printf (" d is 20!)])
+	((d 10) [printf (" d is 10!)])
+	((d 30) [printf (" d is 30!)])
+	[printf (" s is something else.)])
+```
