@@ -56,8 +56,6 @@ If there are still unconsumed hyphens, then the object file is packaged into a s
 
 The initial environment, the one that is there before any group of files is compiled, comprises 17 functions: `lst`, `lst?`, `fst`, `rst`, `sexpr`, `nil`, `nil?`, `-<character>-`, `<character>?`, `begin`, `b`, `if`, `function`, `invoke`, `with-continuation`, `make-continuation`, and `continue`. The former 9 are defined later. Each one of the latter 8 functions does nothing else but return an s-expression formed by prepending its function name to the list of s-expressions supplied to them. For example, the `b` function could have the following definition: `(function b (sexprs) [lst [lst [-b-] [nil]] [' sexprs]])`.
 
-Note that the compiler will noticeably slow down as the amount of metaprogramming increases.
-
 #### Example
 ##### file1.l2
 ```racket
