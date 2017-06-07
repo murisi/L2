@@ -42,7 +42,7 @@ This README ends with a [list of reductions](#reductions) that shows how some of
 ```shell
 ./buildl2
 ```
-The L2 compiler needs a Linux distribution running on the i386 (or AMD64 with libc6-dev-i386 installed) architecture with the GNU C compiler installed to run successfully. To build L2, simply run the `buildl2` script at the root of the repository. The build should be fast - there are only 2000 lines of C code to compile. This will create a directory called `bin` containing the files `l2compile` and `demort.o`. `l2compile` is the compiler for L2 and its interface is described below. `demort.o` is not a part of L2, but it will be used in the demonstrations below.
+**The L2 compiler needs a Linux distribution running on the i386 (or AMD64 with libc6-dev-i386 installed) architecture with the GNU C compiler installed to run successfully.** To build L2, simply run the `buildl2` script at the root of the repository. The build should be fast - there are only 2000 lines of C code to compile. This will create a directory called `bin` containing the files `l2compile` and `demort.o`. `l2compile` is the compiler for L2 and its interface is described below. `demort.o` is not a part of L2, but it will be used in the demonstrations below.
 
 ### Shell Interface
 ```shell
