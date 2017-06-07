@@ -538,8 +538,15 @@ It is implemented and used as follows:
 ```
 #### test.l2
 ```
-(let _((x (d 12))) [printf (" x is %i) [' x]])
+(let _((x (d 12)))
+	(begin
+		(function what? () [printf (" x is %i) [' x]])
+		[what?]
+		[what?]
+		[what?]))
 ```
+Note in the above code that `what?` is only able to access `x` because `x` is defined outside of all functions and hence is statically allocated.
+
 #### shell
 `./bin/l2compile -pdc -program test demort.o - abbreviations.l2 numbers.l2 - backquote.l2 - characters.l2 strings.l2 let.l2 - test.l2`
 
@@ -581,4 +588,15 @@ It is implemented and used as follows:
 	[printf (" s is something else.)])
 ```
 #### shell
-`./bin/l2compile -pdc -program test demort.o - abbreviations.l2 numbers.l2 - backquote.l2 - reverse.l2 switch.l2 characters.l2 strings.l2 let.l2 - test.l2`
+`./bin/l2compile -pdc -program test demort.o - abbreviations.l2 numbers.l2 - backquote.l2 reverse.l2 - switch.l2 characters.l2 strings.l2 let.l2 - test.l2`
+
+### Conditional Compilation
+Up till now, I have not used any expression but a reference expression as the first subexpression of an expression. The following code uses such a construction to implement conditional compilation.
+#### test.l2
+```
+((if [> (d 10) (d 20)] fst frst)
+	[printf (" I am not compiled!)]
+	[printf (" I am the one compiled!)])
+```
+#### shell
+`./bin/l2compile -pdc -program test demort.o - abbreviations.l2 numbers.l2 - backquote.l2 reverse.l2 - characters.l2 strings.l2 - test.l2`
