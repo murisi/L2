@@ -525,7 +525,9 @@ The above exposition has purposefully avoided making strings because it is tedio
 [printf (" This is how the quote macro is used. Now printing number in speechmarks "%i") (d 123)]
 ```
 #### shell
-`./bin/l2compile -pdc -program test demort.o - abbreviations.l2 comments.l2 - numbers.l2 - characters.l2 reverse.l2 strings.l2 backquote.l2 - test.l2`
+```shell
+./bin/l2compile -pdc -program test demort.o - abbreviations.l2 comments.l2 - numbers.l2 - characters.l2 reverse.l2 strings.l2 backquote.l2 - test.l2
+```
 
 ### Conditional Compilation
 Up till now, references to functions defined elsewhere have been the only things used as the first subexpression of an expression. Sometimes, however, the clarity of the whole expression can be improved by inlining the function. The following code proves this in the context of conditional compilation.
@@ -536,7 +538,9 @@ Up till now, references to functions defined elsewhere have been the only things
 	[printf (" I am the one compiled!)])
 ```
 #### shell
-`./bin/l2compile -pdc -program test demort.o - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 reverse.l2 - characters.l2 strings.l2 - test.l2`
+```shell
+./bin/l2compile -pdc -program test demort.o - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 reverse.l2 - characters.l2 strings.l2 - test.l2
+```
 
 ### Variable Binding
 Variable binding is enabled by the `make-continuation` expression. `make-continuation` is special because, like `function`, it allows references to be bound. Unlike `function`, however, expressions within `make-continuation` can directly access its parent function's variables. The `let` binding function implements the following transformation:
@@ -576,7 +580,9 @@ It is implemented and used as follows:
 Note in the above code that `what?` is only able to access `x` because `x` is defined outside of all functions and hence is statically allocated. Also note that continuing to `_` with a single argument rebinds `x` and restarts execution at the `begin` statement.
 
 #### shell
-`./bin/l2compile -pdc -program test demort.o - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 - characters.l2 strings.l2 let.l2 - test.l2`
+```shell
+./bin/l2compile -pdc -program test demort.o - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 - characters.l2 strings.l2 let.l2 - test.l2
+```
 
 ### Switch Statement
 Now we will implement a variant of the switch statement that is parameterized by an equality predicate. The `switch` selection function implements the following transformation:
@@ -616,4 +622,6 @@ It is implemented and used as follows:
 	[printf (" s is something else.)])
 ```
 #### shell
-`./bin/l2compile -pdc -program test demort.o - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 reverse.l2 - switch.l2 characters.l2 strings.l2 let.l2 - test.l2`
+```shell
+./bin/l2compile -pdc -program test demort.o - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 reverse.l2 - switch.l2 characters.l2 strings.l2 let.l2 - test.l2
+```
