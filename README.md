@@ -17,6 +17,14 @@
 * [Internal Representation](#internal-representation)
 * [Expression](#expression)
 * [Reductions](#reductions)
+  * [Commenting](#commenting)
+  * [Numbers](#numbers)
+  * [Characters](#characters)
+  * [Conditional Compilation](#conditional-compilation)
+  * [Backquoting](#backquoting)
+  * [Strings](#strings)
+  * [Variable Binding](#variable-binding)
+  * [Switch Statement](#switch-statement)
 
 ## Introduction
 L2 is an attempt to find the smallest most distilled programming language equivalent to C. The goal is to turn as much of C's preprocessor directives, control structures, statements, literals, and functions requiring compiler assistance (setjmp, longjmp, alloca, ...) into things definable inside L2. The language does not surject to all of C, its most glaring omission being that of a type-system. However, I reckon the result is still pretty interesting.
@@ -254,8 +262,7 @@ The expression `((function comment (sexprs) [fst [' sexprs]]) [foo] This comment
 
 ## Reductions
 In the extensive list processing that follows in this section, the following functions prove to be convenient abbreviations:
-
-abbreviations.l2:
+#### abbreviations.l2
 ```racket
 (function frst (l) [fst [rst [' l]]])
 (function frfst (l) [fst [rst [fst [' l]]]])
@@ -430,6 +437,17 @@ With `d` implemented, a somewhat more readable implementation of characters is p
 #### shell
 `./bin/l2compile -pdc -program test demort.o - abbreviations.l2 numbers.l2 - characters.l2 - test.l2`
 
+### Conditional Compilation
+Up till now, references to functions defined elsewhere have been the only things used as the first subexpression of an expression. Sometimes, however, the clarity of the whole expression can be improved by inlining the function. The following code proves this in the context of conditional compilation.
+#### test.l2
+```
+((if [> (d 10) (d 20)] fst frst)
+	[printf (" I am not compiled!)]
+	[printf (" I am the one compiled!)])
+```
+#### shell
+`./bin/l2compile -pdc -program test demort.o - abbreviations.l2 numbers.l2 - backquote.l2 reverse.l2 - characters.l2 strings.l2 - test.l2`
+
 ### Backquoting
 The `foo` example in the internal representation section shows how tedious writing a function that outputs a symbol can be. The backquote function reduces this tedium. It takes a single s-expression as its argument and, generally, it returns an s-expression that makes that s-expression. The exception to this rule is that if a sub-expression of its input s-expression is of the form `(, expr0)`, then the result of evaluating `expr0` is inserted into that position of the output s-expression. Backquote can be implemented and used as follows:
 
@@ -589,14 +607,3 @@ It is implemented and used as follows:
 ```
 #### shell
 `./bin/l2compile -pdc -program test demort.o - abbreviations.l2 numbers.l2 - backquote.l2 reverse.l2 - switch.l2 characters.l2 strings.l2 let.l2 - test.l2`
-
-### Conditional Compilation
-Up till now, I have not used any expression but a reference expression as the first subexpression of an expression. The following code uses such a construction to implement conditional compilation.
-#### test.l2
-```
-((if [> (d 10) (d 20)] fst frst)
-	[printf (" I am not compiled!)]
-	[printf (" I am the one compiled!)])
-```
-#### shell
-`./bin/l2compile -pdc -program test demort.o - abbreviations.l2 numbers.l2 - backquote.l2 reverse.l2 - characters.l2 strings.l2 - test.l2`
