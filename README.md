@@ -20,9 +20,9 @@
   * [Commenting](#commenting)
   * [Numbers](#numbers)
   * [Characters](#characters)
-  * [Conditional Compilation](#conditional-compilation)
   * [Backquoting](#backquoting)
   * [Strings](#strings)
+  * [Conditional Compilation](#conditional-compilation)
   * [Variable Binding](#variable-binding)
   * [Switch Statement](#switch-statement)
 
@@ -437,17 +437,6 @@ With `d` implemented, a somewhat more readable implementation of characters is p
 #### shell
 `./bin/l2compile -pdc -program test demort.o - abbreviations.l2 numbers.l2 - characters.l2 - test.l2`
 
-### Conditional Compilation
-Up till now, references to functions defined elsewhere have been the only things used as the first subexpression of an expression. Sometimes, however, the clarity of the whole expression can be improved by inlining the function. The following code proves this in the context of conditional compilation.
-#### test.l2
-```
-((if [> (d 10) (d 20)] fst frst)
-	[printf (" I am not compiled!)]
-	[printf (" I am the one compiled!)])
-```
-#### shell
-`./bin/l2compile -pdc -program test demort.o - abbreviations.l2 numbers.l2 - backquote.l2 reverse.l2 - characters.l2 strings.l2 - test.l2`
-
 ### Backquoting
 The `foo` example in the internal representation section shows how tedious writing a function that outputs a symbol can be. The backquote function reduces this tedium. It takes a single s-expression as its argument and, generally, it returns an s-expression that makes that s-expression. The exception to this rule is that if a sub-expression of its input s-expression is of the form `(, expr0)`, then the result of evaluating `expr0` is inserted into that position of the output s-expression. Backquote can be implemented and used as follows:
 
@@ -527,6 +516,17 @@ The above exposition has purposefully avoided making strings because it is tedio
 ```
 #### shell
 `./bin/l2compile -pdc -program test demort.o - abbreviations.l2 numbers.l2 - characters.l2 reverse.l2 strings.l2 backquote.l2 - test.l2`
+
+### Conditional Compilation
+Up till now, references to functions defined elsewhere have been the only things used as the first subexpression of an expression. Sometimes, however, the clarity of the whole expression can be improved by inlining the function. The following code proves this in the context of conditional compilation.
+#### test.l2
+```
+((if [> (d 10) (d 20)] fst frst)
+	[printf (" I am not compiled!)]
+	[printf (" I am the one compiled!)])
+```
+#### shell
+`./bin/l2compile -pdc -program test demort.o - abbreviations.l2 numbers.l2 - backquote.l2 reverse.l2 - characters.l2 strings.l2 - test.l2`
 
 ### Variable Binding
 Variable binding is enabled by the `make-continuation` expression. `make-continuation` is special because, like `function`, it allows references to be bound. Unlike `function`, however, expressions within `make-continuation` can directly access its parent function's variables. The `let` binding function implements the following transformation:
