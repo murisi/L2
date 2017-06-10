@@ -628,16 +628,16 @@ It is implemented and used as follows:
 A restricted form of closures can be implemented in L2. The key to their implementation is to use the continue expression to "continue" out of the function that is supposed to provide the lexical environment. By doing this instead of merely returning from the environment function, the stack-pointer and thus the stack-frame of the environment are preserved. The following example implements a function that receives a single argument and "returns" (more accurately: continues) a continuation that adds this value to its own argument. But first, the following transformations are needed:
 ```racket
 (lambda (args ...) expr0)
-TO
+->
 (make-continuation lambda0 (cont0 args ...)
 	{[' cont0] expr0})
 
 (; func0 args ...)
-TO
+->
 (with-continuation return [func0 return args ...])
 
 (: cont0 args ...)
-TO
+->
 (with-continuation return {cont0 return args ...})
 ```
 These are implemented and used as follows:
