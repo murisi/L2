@@ -256,7 +256,7 @@ Say the s-expression `(foo (bar bar) foo foo)` is stored at `x`. Then `[m? [' x]
 ```racket
 (function0 expression1 ... expressionN)
 ```
-If the above expression is not a primitive expression, then `function0` is evaluated in the environment. The resulting value of this evluation is then invoked with the (unevaluated) list of s-expressions `(expression1 expression2 ... expressionN)` as its only argument. The list of s-expressions returned by this function then replaces the entire list of s-expressions `(function0 expression1 ... expressionN)`. If the result of this replacement is still a non-primitive expression, then the above process is repeated. When this process terminates, the appropiate assembly code for the resulting primitive expression is emitted.
+If the above expression is not a [primitive expression](#primitive-expressions), then `function0` is evaluated in the environment. The resulting value of this evaluation is then invoked with the (unevaluated) list of [s-expressions](#internal-representation) `(expression1 expression2 ... expressionN)` as its only argument. The list of s-expressions returned by this function then replaces the entire list of s-expressions `(function0 expression1 ... expressionN)`. If the result of this replacement is still a non-primitive expression, then the above process is repeated. When this process terminates, the appropiate assembly code for the resulting primitive expression is emitted.
 
 The expression `((function comment (sexprs) [fst [' sexprs]]) [foo] This comment is ignored. No, seriously.)` is replaced by `[foo]`, which in turn compiles into assembly similar to what is generated for other invoke expressions.
 
