@@ -627,6 +627,11 @@ It is implemented and used as follows:
 ### Closures
 A restricted form of closures can be implemented in L2. The key to their implementation is to use the continue expression to "continue" out of the function that is supposed to provide the lexical environment. By doing this instead of merely returning from the environment function, the stack-pointer and thus the stack-frame of the environment are preserved. The following example implements a function that receives a single argument and "returns" (more accurately: continues) a continuation that adds this value to its own argument. But first, the following transformations are needed:
 ```racket
+(environment env0 (args ...) expr0)
+->
+(function env0 (cont0 args ...)
+	{[' cont0] expr0})
+
 (lambda (args ...) expr0)
 ->
 (make-continuation lambda0 (cont0 args ...)
@@ -643,6 +648,10 @@ A restricted form of closures can be implemented in L2. The key to their impleme
 These are implemented and used as follows:
 #### closures.l2
 ```racket
+(function environment (l)
+	(`(function (,[fst [' l]]) (,[lst (` cont0) [frst [' l]]])
+		{[' cont0] (,[frrst [' l]])})))
+
 (function lambda (l)
 	(`(make-continuation lambda0 (,[lst (` cont0) [fst [' l]]])
 		{[' cont0] (,[frst [' l]])})))
@@ -655,8 +664,8 @@ These are implemented and used as follows:
 ```
 #### test.l2
 ```
-(function adder (cont x)
-	{[' cont] (lambda (y) [+ [' x] [' y]])})
+(environment adder (x)
+	(lambda (y) [+ [' x] [' y]]))
 
 (let _((add5 (; adder (d 5))) (add7 (; adder (d 7))))
 	(begin
