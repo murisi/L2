@@ -7,7 +7,7 @@ The approach taken to achieve this has been to make C's features more composable
 
 There are [9 language primitives](#primitive-expressions) and for each one of them I describe their syntax, what exactly they do in English, the i386 assembly they translate into, and an example usage of them. Following this comes a brief description of [L2's internal representation and the 9 functions (loosely speaking) that manipulate it](#internal-representation). After that comes a description of how [a non-primitive L2 expression](#expression) is compiled. The above descriptions take about 8 pages and are essentially a complete description of L2.
 
-This README ends with a [list of reductions](#reductions) that shows how some of C's constructs can be defined in terms of L2. More exotic things like coroutines, generators, and lambdas are possible using L2's continuations, but I have not documented these for I have not been able to motivate them. In a word, the key to achieving all of these is preventing a function's return, and thus the destruction of its stack-frame, by "continuing" out of it.
+This README ends with a [list of reductions](#reductions) that shows how some of C's constructs can be defined in terms of L2. I have also demonstrated [closures](#closures) to hint at hw more exotic things like coroutines and generators are possible using L2's continuations.
 
 * [Getting Started](#getting-started)
   * [Building L2](#building-l2)
@@ -32,7 +32,8 @@ This README ends with a [list of reductions](#reductions) that shows how some of
   * [Strings](#strings)
   * [Conditional Compilation](#conditional-compilation)
   * [Variable Binding](#variable-binding)
-  * [Switch Statement](#switch-statement)
+  * [Switch Expression](#switch-expression)
+  * [Closures](#closures)
 
 ## Getting Started
 ### Building L2
@@ -581,7 +582,7 @@ Note in the above code that `what?` is only able to access `x` because `x` is de
 ./bin/l2compile -pdc -program test demort.o - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 - characters.l2 strings.l2 let.l2 - test.l2
 ```
 
-### Switch Statement
+### Switch Expression
 Now we will implement a variant of the switch statement that is parameterized by an equality predicate. The `switch` selection function implements the following transformation:
 ```racket
 (switch eq0 val0 (vals exprs) ... expr0)
@@ -621,4 +622,49 @@ It is implemented and used as follows:
 #### shell
 ```shell
 ./bin/l2compile -pdc -program test demort.o - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 reverse.l2 - switch.l2 characters.l2 strings.l2 let.l2 - test.l2
+```
+
+### Closures
+A restricted form of closures can be implemented in L2. The key to their implementation is to use the continue expression to "continue" out of the function that is supposed to provide the lexical environment. By doing this instead of merely returning from the environment function, the stack-pointer and thus the stack-frame of the environment are preserved. The following example implements a function that receives a single argument and "returns" (more accurately: continues) a continuation that adds this value to its own argument. But first the following transformations are needed:
+```racket
+(lambda (args ...) expr0)
+TO
+(make-continuation lambda0 (cont0 args ...)
+	{[' cont0] expr0})
+
+(; func0 args ...)
+TO
+(with-continuation return [func0 return args ...])
+
+(: cont0 args ...)
+TO
+(with-continuation return {cont0 return args ...})
+```
+These are implemented and used as follows:
+#### closures.l2
+```racket
+(function lambda (l)
+	(`(make-continuation lambda0 (,[lst (` cont0) [fst [' l]]])
+		{[' cont0] (,[frst [' l]])})))
+
+(function ; (l)
+	(`(with-continuation return (,[lllst (` invoke) [fst [' l]] (` return) [rst [' l]]]))))
+
+(function : (l)
+	(`(with-continuation return (,[lllst (` continue) [fst [' l]] (` return) [rst [' l]]]))))
+```
+#### test.l2
+```
+(function adder (cont x)
+	{[' cont] (lambda (y) [+ [' x] [' y]])})
+
+(let _((add5 (; adder (d 5))) (add7 (; adder (d 7))))
+	(begin
+		[printf (" %i,) (: [' add5] (d 2))]
+		[printf (" %i,) (: [' add7] (d 3))]
+		[printf (" %i,) (: [' add5] (d 1))]))
+```
+#### shell
+```shell
+./bin/l2compile -pdc -program test demort.o - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 reverse.l2 - characters.l2 strings.l2 closures.l2 let.l2 - test.l2
 ```
