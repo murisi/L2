@@ -1,6 +1,14 @@
 # L2
+L2 is an attempt to find the smallest most distilled programming language equivalent to C. The goal is to turn as much of C's preprocessor directives, control structures, statements, literals, and functions requiring compiler assistance (setjmp, longjmp, alloca, ...) into things definable inside L2 (with perhaps a little assembly). The language does not surject to all of C, its most glaring omission being that of a type-system. However, I reckon the result is still pretty interesting.
 
-* [Introduction](#introduction)
+The approach taken to achieve this has been to make C's features more composable, more multipurpose, and, at least on one occasion, add a new feature so that a whole group of distinct features could be dropped. In particular, the most striking changes are that C's:
+1. irregular syntax is replaced by [S-expressions](#internal-representation); because simple syntax composes well with a non-trivial preprocessor (and [no, I have not merely transplanted Common Lisp's macros into C](#expression))
+2. loop constructs are replaced with what I could only describe as [a more structured variant of setjmp and longjmp without stack destruction](#with-continuation) (and [no, there is no performance overhead associated with this](#an-optimization))
+
+There are [9 language primitives](#primitive-expressions) and for each one of them I describe their syntax, what exactly they do in English, the i386 assembly they translate into, and an example usage of them. Following this comes a brief description of [L2's internal representation and the 9 functions (loosely speaking) that manipulate it](#internal-representation). After that comes a description of how [a non-primitive L2 expression](#expression) is compiled. The above descriptions take about 8 pages and are essentially a complete description of L2.
+
+This README ends with a [list of reductions](#reductions) that shows how some of C's constructs can be defined in terms of L2. More exotic things like coroutines, generators, and lambdas are possible using L2's continuations, but I have not documented these for I have not been able to motivate them. In a word, the key to achieving all of these is preventing a function's return, and thus the destruction of its stack-frame, by "continuing" out of it.
+
 * [Getting Started](#getting-started)
   * [Building L2](#building-l2)
   * [Shell Interface](#shell-interface)
@@ -25,17 +33,6 @@
   * [Conditional Compilation](#conditional-compilation)
   * [Variable Binding](#variable-binding)
   * [Switch Statement](#switch-statement)
-
-## Introduction
-L2 is an attempt to find the smallest most distilled programming language equivalent to C. The goal is to turn as much of C's preprocessor directives, control structures, statements, literals, and functions requiring compiler assistance (setjmp, longjmp, alloca, ...) into things definable inside L2 (with perhaps a little assembly). The language does not surject to all of C, its most glaring omission being that of a type-system. However, I reckon the result is still pretty interesting.
-
-The approach taken to achieve this has been to make C's features more composable, more multipurpose, and, at least on one occasion, add a new feature so that a whole group of distinct features could be dropped. In particular, the most striking changes are that C's:
-1. irregular syntax is replaced by [S-expressions](#internal-representation); because simple syntax composes well with a non-trivial preprocessor (and [no, I have not merely transplanted Common Lisp's macros into C](#expression))
-2. loop constructs are replaced with what I could only describe as [a more structured variant of setjmp and longjmp without stack destruction](#with-continuation) (and [no, there is no performance overhead associated with this](#an-optimization))
-
-There are [9 language primitives](#primitive-expressions) and for each one of them I describe their syntax, what exactly they do in English, the i386 assembly they translate into, and an example usage of them. Following this comes a brief description of [L2's internal representation and the 9 functions (loosely speaking) that manipulate it](#internal-representation). After that comes a description of how [a non-primitive L2 expression](#expression) is compiled. The above descriptions take about 8 pages and are essentially a complete description of L2.
-
-This README ends with a [list of reductions](#reductions) that shows how some of C's constructs can be defined in terms of L2. More exotic things like coroutines, generators, and lambdas are possible using L2's continuations, but I have not documented these for I have not been able to motivate them. In a word, the key to achieving all of these is preventing a function's return, and thus the destruction of its stack-frame, by "continuing" out of it.
 
 ## Getting Started
 ### Building L2
