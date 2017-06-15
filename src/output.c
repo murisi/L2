@@ -143,11 +143,10 @@ char *compile(list exprs, bool PIC, jmp_buf *handler) {
 }
 
 char *dynamic_load(list exprs, jmp_buf *handler) {
-	char *sofilefn = cprintf("%s", "./so_fileXXXXXX.so");
-	int sodes = mkstemps(sofilefn, 3);
-	
 	char *ofilefn = compile(exprs, true, handler);
 	prepend(ofilefn, &make_shared_library_object_files);
+	char *sofilefn = cprintf("%s", "./so_fileXXXXXX.so");
+	int sodes = mkstemps(sofilefn, 3);
 	make_shared_library(true, sofilefn);
 	make_shared_library_object_files = rst(make_shared_library_object_files);
 	remove(ofilefn);
