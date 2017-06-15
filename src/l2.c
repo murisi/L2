@@ -131,7 +131,10 @@ int main(int argc, char *argv[]) {
 	
 	for(;;) {
 		int j;
-		for(expressions = nil(), j = ++i; i < argc && strcmp(argv[i], "-"); i++) {
+		expressions = nil();
+		list expansion_lists = nil();
+		
+		for(j = ++i; i < argc && strcmp(argv[i], "-"); i++) {
 			processing_from = i;
 			processing_to = i + 1;
 			FILE *l2file = fopen(argv[i], "r");
@@ -146,15 +149,16 @@ int main(int argc, char *argv[]) {
 				list sexpr = build_expr_list(l2file);
 				build_syntax_tree_handler = &handler;
 				build_syntax_tree_expansion_lists = nil();
-				union expression *expr;
-				build_syntax_tree(sexpr, &expr);
-				expand_expressions(build_syntax_tree_expansion_lists);
-				append(expr, &expressions);
+				build_syntax_tree(sexpr, append(NULL, &expressions));
+				merge_onto(build_syntax_tree_expansion_lists, &expansion_lists);
 			}
 			fclose(l2file);
 		}
 		processing_from = j;
 		processing_to = i;
+		expand_expressions_handler = &handler;
+		expand_expressions(expansion_lists);
+		
 		if(i == argc) break;
 		
 		char *sofn = dynamic_load(expressions, &handler);

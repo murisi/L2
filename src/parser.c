@@ -154,6 +154,8 @@ void merge_onto(list src, list *dest) {
 	}
 }
 
+jmp_buf *expand_expressions_handler;
+
 void expand_expressions(list expansion_lists) {
 	expansion_lists = reverse(expansion_lists);
 	list expansions, *remaining_expansion_lists;
@@ -172,7 +174,7 @@ void expand_expressions(list expansion_lists) {
 		void *handle = dlopen(sofn, RTLD_NOW | RTLD_LOCAL);
 		if(!handle) {
 			remove(sofn);
-			longjmp(*build_syntax_tree_handler, (int) make_environment(cprintf("%s", dlerror())));
+			longjmp(*expand_expressions_handler, (int) make_environment(cprintf("%s", dlerror())));
 		}
 		
 		char *expander_container_name;
@@ -181,6 +183,7 @@ void expand_expressions(list expansion_lists) {
 			list (*macro)(list) = macro_container();
 			list transformed = macro(expansion->argument);
 			
+			build_syntax_tree_handler = expand_expressions_handler;
 			build_syntax_tree_expansion_lists = nil();
 			build_syntax_tree_under(transformed, expansion->dest, (*expansion->dest)->base.parent);
 			merge_onto(reverse(build_syntax_tree_expansion_lists), &(*remaining_expansion_lists)->rst);
