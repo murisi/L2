@@ -52,10 +52,10 @@ void set_frst(list l, void *data) {
 		_foreach_v = _foreach_v->rst)
 
 #define foreachzipped(t, v, u, w) \
-	list _foreach_v = u; \
-	list _foreach_x = w; \
-	for(; !is_nil(_foreach_v) ? (t = _foreach_v->fst, v = _foreach_x->fst, true) : (t = NULL, v = NULL, false); \
-		_foreach_v = _foreach_v->rst, _foreach_x = _foreach_x->rst)
+	list _foreach_s = u; \
+	list _foreach_t = w; \
+	for(; !is_nil(_foreach_s) ? (t = _foreach_s->fst, v = _foreach_t->fst, true) : (t = NULL, v = NULL, false); \
+		_foreach_s = _foreach_s->rst, _foreach_t = _foreach_t->rst)
 
 #define foreachlist(w, t, u) \
 	w = &(u); \
@@ -68,7 +68,7 @@ void *append(void *data, list *l) {
 	*l = malloc(sizeof(struct _list_));
 	(*l)->fst = data;
 	(*l)->rst = nil();
-	return data;
+	return &(*l)->fst;
 }
 
 list lst(void *data, list l) {
@@ -84,6 +84,8 @@ void append_list(list *fst, list snd) {
 	}
 	*fst = snd;
 }
+
+////////////////////////////////////////////////////Should return address of data within list
 
 void *prepend(void *data, list *l) {
 	list ret = malloc(sizeof(struct _list_));

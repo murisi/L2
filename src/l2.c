@@ -145,7 +145,10 @@ int main(int argc, char *argv[]) {
 				build_expr_list_handler = &handler;
 				list sexpr = build_expr_list(l2file);
 				build_syntax_tree_handler = &handler;
-				union expression *expr = build_syntax_tree(sexpr, NULL);
+				build_syntax_tree_expansion_lists = nil();
+				union expression *expr;
+				build_syntax_tree(sexpr, &expr);
+				expand_expressions(build_syntax_tree_expansion_lists);
 				append(expr, &expressions);
 			}
 			fclose(l2file);
