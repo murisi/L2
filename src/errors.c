@@ -1,5 +1,6 @@
 enum error_type {
 	no,
+	missing_file,
 	param_count_mismatch,
 	special_form,
 	unexpected_character,
@@ -8,6 +9,10 @@ enum error_type {
 };
 
 struct no_error {
+	enum error_type type;
+};
+
+struct missing_file_error {
 	enum error_type type;
 };
 
@@ -41,6 +46,7 @@ struct environment_error {
 
 union error {
 	struct no_error no;
+	struct missing_file_error missing_file;
 	struct param_count_mismatch_error param_count_mismatch;
 	struct special_form_error special_form;
 	struct unexpected_character_error unexpected_character;
@@ -51,6 +57,12 @@ union error {
 union error *make_no() {
 	union error *err = malloc(sizeof(union error));
 	err->no.type = no;
+	return err;
+}
+
+union error *make_missing_file() {
+	union error *err = malloc(sizeof(union error));
+	err->missing_file.type = missing_file;
 	return err;
 }
 

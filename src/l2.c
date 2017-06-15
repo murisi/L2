@@ -121,6 +121,9 @@ int main(int argc, char *argv[]) {
 			} case environment: {
 				printf("The following occured when trying to use an environment: %s\n", err->environment.error_string);
 				return 5;
+			} case missing_file: {
+				printf("File is missing.\n");
+				return 6;
 			}
 		}
 	}
@@ -133,8 +136,7 @@ int main(int argc, char *argv[]) {
 			processing_to = i + 1;
 			FILE *l2file = fopen(argv[i], "r");
 			if(l2file == NULL) {
-				printf("%s does not exist\n", argv[i]);
-				return 2;
+				longjmp(handler, (int) make_missing_file());
 			}
 			
 			int c;
