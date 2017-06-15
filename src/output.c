@@ -73,6 +73,11 @@ void make_program(bool PIC, char *outfile) {
 
 bool equals(void *a, void *b) { return a == b; }
 
+#define visit_expressions_with(x, y) { \
+	visit_expressions_visitor = y; \
+	visit_expressions(x); \
+}
+
 char *compile(list exprs, bool PIC, jmp_buf *handler) {
 	union expression *container = make_begin(), *t;
 	list toplevel_function_references = nil();
@@ -87,51 +92,29 @@ char *compile(list exprs, bool PIC, jmp_buf *handler) {
 	put(program, function.expression, container);
 	
 	vfind_multiple_definitions_handler = handler;
-	visit_expressions_visitor = &vfind_multiple_definitions;
-	program = visit_expressions(program);
+	visit_expressions_with(&program, vfind_multiple_definitions);
 
 	vlink_references_program = program; //Static argument to following function
 	vlink_references_handler = handler;
-	visit_expressions_visitor = &vlink_references;
-	program = visit_expressions(program);
+	visit_expressions_with(&program, vlink_references);
 	
-	visit_expressions_visitor = &vblacklist_references;
-	program = visit_expressions(program);
+	visit_expressions_with(&program, vblacklist_references);
 	vrename_definition_references_name_records = nil();
-	visit_expressions_visitor = &vrename_definition_references;
-	program = visit_expressions(program);
-	visit_expressions_visitor = &vrename_usage_references;
-	program = visit_expressions(program);
+	visit_expressions_with(&program, vrename_definition_references);
+	visit_expressions_with(&program, vrename_usage_references);
 	
-	visit_expressions_visitor = &vescape_analysis;
-	program = visit_expressions(program);
-
+	visit_expressions_with(&program, vescape_analysis);
 	program = use_return_value(program, generate_reference());
-
+	
 	generator_PIC = PIC;
-	
-	visit_expressions_visitor = &vlayout_frames;
-	program = visit_expressions(program);
-
-	visit_expressions_visitor = &vgenerate_references;
-	program = visit_expressions(program);
-
-	visit_expressions_visitor = &vgenerate_continuation_expressions;
-	program = visit_expressions(program);
-
-	visit_expressions_visitor = &vgenerate_constants;
-	program = visit_expressions(program);
-
-	visit_expressions_visitor = &vgenerate_ifs;
-	program = visit_expressions(program);
-	
-	visit_expressions_visitor = &vgenerate_function_expressions;
-	program = visit_expressions(program);
-
+	visit_expressions_with(&program, vlayout_frames);
+	visit_expressions_with(&program, vgenerate_references);
+	visit_expressions_with(&program, vgenerate_continuation_expressions);
+	visit_expressions_with(&program, vgenerate_constants);
+	visit_expressions_with(&program, vgenerate_ifs);
+	visit_expressions_with(&program, vgenerate_function_expressions);
 	program = generate_toplevel(program, toplevel_function_references);
-
-	visit_expressions_visitor = &vmerge_begins;
-	program = visit_expressions(program);
+	visit_expressions_with(&program, vmerge_begins);
 	
 	char sfilefn[] = "./s_fileXXXXXX.s";
 	FILE *sfile = fdopen(mkstemps(sfilefn, 2), "w+");

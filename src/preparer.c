@@ -207,41 +207,40 @@ union expression *vrename_usage_references(union expression *s) {
 
 union expression *(*visit_expressions_visitor)(union expression *);
 
-union expression *visit_expressions(union expression *s) {
-	switch(s->base.type) {
+void visit_expressions(union expression **s) {
+	switch((*s)->base.type) {
 		case begin: {
 			union expression **t;
-			foreach(t, address_list(s->begin.expressions)) {
-				*t = visit_expressions(*t);
-				(*t)->base.parent = s;
+			foreach(t, address_list((*s)->begin.expressions)) {
+				visit_expressions(t);
 			}
 			break;
 		} case _if: {
-			put(s, _if.condition, visit_expressions(s->_if.condition));
-			put(s, _if.consequent, visit_expressions(s->_if.consequent));
-			put(s, _if.alternate, visit_expressions(s->_if.alternate));
+			visit_expressions(&(*s)->_if.condition);
+			visit_expressions(&(*s)->_if.consequent);
+			visit_expressions(&(*s)->_if.alternate);
 			break;
 		} case function: case makec: case withc: {
-			if(s->base.type == function || s->base.type == makec) {
+			if((*s)->base.type == function || (*s)->base.type == makec) {
 				union expression **t;
-				foreach(t, address_list(s->function.parameters)) {
-					*t = visit_expressions(*t);
-					(*t)->base.parent = s;
+				foreach(t, address_list((*s)->function.parameters)) {
+					visit_expressions(t);
 				}
 			}
-			put(s, function.reference, visit_expressions(s->function.reference));
-			put(s, function.expression, visit_expressions(s->function.expression));
+			visit_expressions(&(*s)->function.reference);
+			visit_expressions(&(*s)->function.expression);
 			break;
 		} case _continue: case invoke: {
 			union expression **t;
-			foreach(t, lst(&s->invoke.reference, address_list(s->invoke.arguments))) {
-				*t = visit_expressions(*t);
-				(*t)->base.parent = s;
+			foreach(t, lst(&(*s)->invoke.reference, address_list((*s)->invoke.arguments))) {
+				visit_expressions(t);
 			}
 			break;
 		}
 	}
-	return (*visit_expressions_visitor)(s);
+	union expression *parent = (*s)->base.parent;
+	*s = (*visit_expressions_visitor)(*s);
+	(*s)->base.parent = parent;
 }
 
 #define emit(x) { \
