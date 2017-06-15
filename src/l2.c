@@ -71,6 +71,7 @@ int main(int argc, char *argv[]) {
 	generate_string_blacklist = nil();
 	init_i386_registers();
 	list shared_library_names = nil(), shared_library_handles = nil();
+	int processing_from, processing_to;
 	
 	//Initialize the error handler
 	jmp_buf handler;
@@ -86,10 +87,12 @@ int main(int argc, char *argv[]) {
 		}
 		
 		print_annotated_syntax_tree_annotator = &empty_annotator;
+		if(err->no.type == no) {
+			return 0;
+		}
+		printf("Error found between %s and %s inclusive: ", argv[processing_from], argv[processing_to - 1]);
 		switch(err->no.type) {
-			case no: {
-				return 0;
-			} case param_count_mismatch: {
+			case param_count_mismatch: {
 				printf("The number of arguments in ");
 				print_annotated_syntax_tree(err->param_count_mismatch.src_expression);
 				printf(" does not match the number of parameters in ");
@@ -124,7 +127,10 @@ int main(int argc, char *argv[]) {
 	list expressions;
 	
 	for(;;) {
-		for(expressions = nil(), i++; i < argc && strcmp(argv[i], "-"); i++) {
+		int j;
+		for(expressions = nil(), j = ++i; i < argc && strcmp(argv[i], "-"); i++) {
+			processing_from = i;
+			processing_to = i + 1;
 			FILE *l2file = fopen(argv[i], "r");
 			if(l2file == NULL) {
 				printf("%s does not exist\n", argv[i]);
@@ -142,7 +148,8 @@ int main(int argc, char *argv[]) {
 			}
 			fclose(l2file);
 		}
-		
+		processing_from = j;
+		processing_to = i;
 		if(i == argc) break;
 		
 		char *sofn = dynamic_load(expressions, &handler);
@@ -170,5 +177,4 @@ int main(int argc, char *argv[]) {
 		rename(compile(expressions, PIC, &handler), argv[3]);
 	}
 	longjmp(handler, (int) make_no());
-	return 0;
 }
