@@ -10,7 +10,7 @@ list continue_primitive(list arg) { return lst(build_symbol_sexpr("continue"), a
 struct expansion {
 	union expression *function;
 	list argument;
-	union expression **dest;
+	union expression **target;
 };
 
 #define build_syntax_tree_under(x, y, z) { \
@@ -20,27 +20,42 @@ struct expansion {
 	(*_build_syntax_tree_under_v)->base.parent = _build_syntax_tree_under_u; \
 }
 
+/*
+ * Argument l is a pointer to a list of lists. An index of -1 refers to the last
+ * element of l, an index of -2 refers to the second last element in l, and so
+ * on. The following function returns the element at index index of l. If the
+ * element doesn't exist, just enough empty lists are inserted at the beginning
+ * of the list of lists to make it exist.
+ */
+
 list *list_at(int index, list *l) {
-	while(!is_nil(*l) && index > 0) {
+	int len = length(*l);
+	while(-len < index) {
 		l = &(*l)->rst;
-		index--;
+		len--;
 	}
-	if(is_nil(*l)) {
-		while(true) {
-			*l = lst(nil(), nil());
-			if(index == 0) break;
-			l = &(*l)->rst;
-			index--;
-		}
+	while(index < -len) {
+		*l = lst(nil(), *l);
+		len++;
 	}
 	return (list *) &(*l)->fst;
 }
+
+/*
+ * Builds a syntax tree at s from the list of s-expressions d. Expansion
+ * expressions are not immediately compiled and executed as this is inefficient.
+ * Rather, the list of lists, build_syntax_tree_expansion_lists, is used to
+ * store all the expansions that need to happen. More specifically, the first
+ * list in build_syntax_tree_expansion_lists stores all the expansions that need
+ * to happen first, the second list stores all the expansions that need to
+ * happen second, and so on.
+ */
 
 jmp_buf *build_syntax_tree_handler;
 list build_syntax_tree_expansion_lists;
 
 void build_syntax_tree(list d, union expression **s) {
-	static int expansion_depth = 0;
+	static int expansion_depth = -1;
 	*s = calloc(1, sizeof(union expression));
 	
 	if(is_string(d)) {
@@ -135,13 +150,20 @@ void build_syntax_tree(list d, union expression **s) {
 	} else {
 		struct expansion *e = malloc(sizeof(struct expansion));
 		e->argument = rst(d);
-		e->dest = s;
-		expansion_depth++;
-		build_syntax_tree_under(fst(d), &e->function, *s);
+		e->target = s;
 		expansion_depth--;
+		build_syntax_tree_under(fst(d), &e->function, *s);
+		expansion_depth++;
 		prepend(e, list_at(expansion_depth, &build_syntax_tree_expansion_lists));
 	}
 }
+
+/*
+ * Argument src is a list of lists and dest is a pointer to a list of lists. The
+ * function appends each list in src to the corresponding list in dest. If the
+ * corresponding list does not exist, it is implicitly assummed to be the empty
+ * list.
+ */
 
 void merge_onto(list src, list *dest) {
 	while(!is_nil(src) && !is_nil(*dest)) {
@@ -154,10 +176,19 @@ void merge_onto(list src, list *dest) {
 	}
 }
 
+/*
+ * Does the expansions in the expansions lists. For the purposes of efficiency,
+ * the first expansion list is compiled and sent to the assembler together.
+ * With the expanders compiled, the expansions are done, and the resulting list
+ * of s-expressions is parsed using build_syntax_tree. This action may create
+ * more expansion lists - this is merged onto the remaing expansion lists that
+ * this function has to deal with. This process is done for the second expansion
+ * list and so on.
+ */
+
 jmp_buf *expand_expressions_handler;
 
 void expand_expressions(list expansion_lists) {
-	expansion_lists = reverse(expansion_lists);
 	list expansions, *remaining_expansion_lists;
 	foreachlist(remaining_expansion_lists, expansions, expansion_lists) {
 		struct expansion *expansion;
@@ -185,8 +216,8 @@ void expand_expressions(list expansion_lists) {
 			
 			build_syntax_tree_handler = expand_expressions_handler;
 			build_syntax_tree_expansion_lists = nil();
-			build_syntax_tree_under(transformed, expansion->dest, (*expansion->dest)->base.parent);
-			merge_onto(reverse(build_syntax_tree_expansion_lists), &(*remaining_expansion_lists)->rst);
+			build_syntax_tree_under(transformed, expansion->target, (*expansion->target)->base.parent);
+			merge_onto(build_syntax_tree_expansion_lists, &(*remaining_expansion_lists)->rst);
 		}
 		dlclose(handle);
 		remove(sofn);
