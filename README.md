@@ -145,7 +145,7 @@ movl 4(%esp), %eax
 subl 8(%esp), %eax
 ret
 ```
-The following invokation of it, `(invoke putchar (invoke - (b 00000000000000000000000001100011) (b 00000000000000000000000000000001)))`, prints the text "b" to standard output.
+The following invocation of it, `(invoke putchar (invoke - (b 00000000000000000000000001100011) (b 00000000000000000000000000000001)))`, prints the text "b" to standard output.
 
 ### With Continuation
 ```racket
@@ -230,7 +230,7 @@ Say the list `foo` is stored at `a`. Then `[rst [' a]]` is the s-expression `oo`
 
 Evaluates to an s-expression wrapper of `x`.
 
-Say the s-expression `foo` is stored at `a` and `(bar)` is stored at `b`. Then `[lst [sexpr [rst [' a]]] [' b]]` is the s-expression `(oo bar)`. Note that without the `sexpr` invokation, the preconditions of `lst` would be violated.
+Say the s-expression `foo` is stored at `a` and `(bar)` is stored at `b`. Then `[lst [sexpr [rst [' a]]] [' b]]` is the s-expression `(oo bar)`. Note that without the `sexpr` invocation, the preconditions of `lst` would be violated.
 ### `[nil]`
 Evaluates to the empty list.
 
