@@ -22,7 +22,7 @@ The L2 project is an experiment and it is very possible that the above effort co
  * Success: Amount of code in L2 compiler written in L2 (excluding macros to implement C's builtins) is less than or equal to that of compiler written in C.
 
 ## Measuring Advantageousness
-If the L2 programming language is usable, then the natural question is: Is using L2 ever advantageous? The following are some of my thoughts; perhaps someone can substantiate or refute them with code:
+If the L2 programming language is usable, then the natural question is: Is using L2 ever advantageous? The following are some of my thoughts; perhaps someone can add to them, or substantiate or refute them with code:
  * Pthreads maybe easier to use in L2 than in C because
    * L2 functions are valid anywhere an expression is
    * L2 supports static non-global variables
