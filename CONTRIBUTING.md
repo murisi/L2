@@ -1,5 +1,10 @@
 # Contributing
-Thank you for your interest in the L2 project. I apologize for taking so long to write this document - I did not really know what to do with the programming language I had designed. You can contact me by email on murisit@gmail.com.
+Thank you for your interest in the L2 project. I apologize for taking so long to write this document - I did not really know what to do with the programming language I had designed until now.
+
+ * [What Now?](#what-now)
+ * [Measuring Usability](#measuring-usability)
+ * [Measuring Advantageousness](#measuring-advantageousness)
+ * [Project Style](#project-style)
 
 ## What Now?
 I think a good goal for now for this project is to determine whether the language is usable, rather than merely just being a curiosity. In that direction, I think we should try to bootstrap an L2 compiler. I reckon this should be as easy as:
@@ -48,3 +53,11 @@ If the L2 programming language is usable, then the natural question is: Is using
    * For another, L2's untypedness eliminates the undefined behaviors stemming from conversions between differently sized types
  * Perhaps L2 is more scriptable than C because of the context-freeness of its primitive expressions?
  * Perhaps L2 is easier to teach/learn because its specification is small?
+
+## Project Style
+ * The things that need/you want to be implemented should be put in the issue tracker
+ * Disagreement with what/how things should be implemented go to the issue tracker
+ * Out-of-the-box thinking is encouraged - I honestly do not know where this project is going to go
+ * If you would like to solve an issue, comment as such on the issue tracker
+ * Try to do small pull requests as you do your hacking so that I can detect errors early
+ * If the above does not answer all questions, you can contact me at murisit@gmail.com
