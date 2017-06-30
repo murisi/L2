@@ -8,7 +8,10 @@ I think a good goal for now for this project is to determine whether the languag
  * [Accumulating test code into a test folder](#10) so that we immediately know when the compiler is broken. When this folder is in place, please do not submit code that does not pass these tests.
  * [Converting the L2 compiler written in C into one written in L2](#11). I reckon this should not be too difficult as L2 is only superficially different from C.
 
-## Possible Failures
-It is very possible that the above effort could fail. I reckon we could fail to meet the above goals because:
- * We end up spending an inordinate amount of time tracking down bugs that would have been prevented by a type system like C's. I'm hoping that the bugs caused by L2 being untyped and unsafe are not subtle, and that they occur very close to the erronous lines of L2 code. I want the experience of running GNU Debugger on L2 code to be as enlightening/informative as running Lisp code in an REPL.
- * The language is too tedious to read or write. If this is so, hopefully we can figure out why this is the case and do something to mitigate. However, I hope that this is not the case and that the total lines of L2 code that we write (excluding macros to implement iteration and selection statements) will be less than or equal to the total lines of C code.
+## Measuring Success and Failure
+It is very possible that the above effort could fail. Here is how I'm measuring success and failure:
+ * Failure: We spend an inordinate amount of time tracking down bugs that would have been prevented by a type system like C's.
+ * Success: Bugs caused by L2 being untyped and unsafe are not subtle, and occur very close to the erronous lines of L2 code.
+ * Success: Experience of running GNU Debugger on L2 code to be as enlightening/informative as running Lisp code in an REPL.
+ * Failure: It is more tedious to read or write L2 code than C code.
+ * Success: Amount of code in L2 compiler written in L2 (excluding macros to implement C's builtins) is less than or equal to that of compiler written in C.
