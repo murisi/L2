@@ -235,12 +235,51 @@ char *sequence(char *in1, char *in2) {
 			o->count = 1;
 			prepend(o, &member_counts);
 		}
-		system(cprintf("ar -xN %i ../%s %s\n", o->count, in2, o->member));
-		system(cprintf("ar -q ../%s %s", outfn, o->member));
+		system(cprintf("ar -xN %i '../%s' '%s'\n", o->count, in2, o->member));
+		system(cprintf("ar -q '../%s' '%s'", outfn, o->member));
 		remove(o->member);
 	}
 	chdir("../");
 	remove(tempdir);
+	return outfn;
+}
+
+/*
+ * Makes a new static library whose's ordered list of objects consists
+ * of an object that jumps to the label by the name given in the string
+ * skiplabel, followed by the ordered list of objects in static library
+ * in, followed by an object comprising of a label by the name given in
+ * the string skiplabel, and returns a path to this static library.
+ */
+
+char *skip(char *in, char *skiplabel) {
+	char entryfn[] = "./entryXXXXXX.s";
+	FILE *entryfile = fdopen(mkstemps(entryfn, 2), "w+");
+	fprintf(entryfile, ".text\njmp %s\n", skiplabel);
+	fclose(entryfile);
+	
+	char exitfn[] = "./exitXXXXXX.s";
+	FILE *exitfile = fdopen(mkstemps(exitfn, 2), "w+");
+	fprintf(exitfile, ".global %s\n%s:\n", skiplabel, skiplabel);
+	fclose(exitfile);
+	
+	system(cprintf("gcc -m32 -g -o '%s.o' -c '%s'", entryfn, entryfn));
+	remove(entryfn);
+	system(cprintf("gcc -m32 -g -o '%s.o' -c '%s'", exitfn, exitfn));
+	remove(exitfn);
+	
+	char *outfn = cprintf("%s", "./libXXXXXX.a");
+	mkstemps(outfn, 2);
+	remove(outfn);
+	system(cprintf("ar -rcs '%s' '%s'", outfn, cprintf("%s.o", entryfn)));
+	remove(cprintf("%s.o", entryfn));
+	
+	char *f2fn = sequence(outfn, in);
+	remove(outfn);
+	system(cprintf("ar -q '%s' '%s'", f2fn, cprintf("%s.o", exitfn)));
+	remove(cprintf("%s.o", exitfn));
+	
+	return f2fn;
 }
 
 #include "parser.c"
