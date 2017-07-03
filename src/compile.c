@@ -7,6 +7,7 @@
 #include "limits.h"
 #include "stdlib.h"
 
+#include "unistd.h"
 #include "dlfcn.h"
 
 #define true (~((int) 0))
@@ -98,7 +99,7 @@ void make_program(bool PIC, char *outfile) {
 	
 	system(cprintf("gcc -m32 -g -o '%s.o' -c '%s'", entryfn, entryfn));
 	system(cprintf("gcc -m32 -g -o '%s.o' -c '%s'", exitfn, exitfn));
-	system(cprintf("gcc -m elf_i386 -L . --allow-multiple-definition --whole-archive -o '%s' '%s.o' %s '%s.o'", outfile, entryfn,
+	system(cprintf("ld -m elf_i386 -L . --allow-multiple-definition --whole-archive -o '%s' '%s.o' %s '%s.o'", outfile, entryfn,
 		to_command_line_args(reverse(make_program_object_files)), exitfn));
 	remove(entryfn);
 	remove(cprintf("%s.o", entryfn));
@@ -194,8 +195,52 @@ char *dynamic_load(list exprs, jmp_buf *handler) {
 	return sofilefn;
 }
 
+struct occurrences {
+	char *member;
+	int count;
+};
+
+bool occurrences_for(void *o, void *ctx) {
+	return !strcmp(((struct occurrences *) o)->member, ctx);
+}
+
+#define MEMBER_BUFFER_SIZE 1024
+
+/*
+ * Makes a new static library whose's ordered list of objects are the concatenation
+ * of the ordered list of objects in the static library in2 onto the ordered list of
+ * objects in the static library in1, and returns the path to the new static library.
+ */
+
 char *sequence(char *in1, char *in2) {
-	printf("In here!\n");
+	char *outfn = cprintf("%s", "./libXXXXXX.a");
+	mkstemps(outfn, 2);
+	system(cprintf("cp '%s' '%s'", in1, outfn));
+	
+	char *tempdir = cprintf("%s", "./objectsXXXXXX");
+	mkdtemp(tempdir);
+	chdir(tempdir);
+	
+	list member_counts = nil();
+	char member[MEMBER_BUFFER_SIZE];
+	FILE *f2 = popen(cprintf("ar -t '../%s'", in2), "r");
+	while(fgets(member, MEMBER_BUFFER_SIZE, f2)) {
+		member[strlen(member) - 1] = '\0';
+		struct occurrences *o = exists(occurrences_for, member_counts, member);
+		if(o) {
+			o->count++;
+		} else {
+			o = malloc(sizeof(struct occurrences));
+			o->member = cprintf("%s", member);
+			o->count = 1;
+			prepend(o, &member_counts);
+		}
+		system(cprintf("ar -xN %i ../%s %s\n", o->count, in2, o->member));
+		system(cprintf("ar -q ../%s %s", outfn, o->member));
+		remove(o->member);
+	}
+	chdir("../");
+	remove(tempdir);
 }
 
 #include "parser.c"

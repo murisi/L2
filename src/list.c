@@ -132,12 +132,12 @@ list reverse(list l) {
 	return ret;
 }
 
-bool exists(bool (*pred)(void *, void *), list l, void *ctx) {
+void *exists(bool (*pred)(void *, void *), list l, void *ctx) {
 	void *d;
 	foreach(d, l) {
 		if(pred(d, ctx)) {
-			return true;
+			return d;
 		}
 	}
-	return false;
+	return NULL;
 }
