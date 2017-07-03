@@ -11,6 +11,7 @@ char longjmp_hack[sizeof(int) - sizeof(void *)];
 #include "stdlib.h"
 
 #include "dlfcn.h"
+#include "signal.h"
 
 #define true (~((int) 0))
 #define false ((int) 0)
@@ -38,67 +39,103 @@ char *cprintf(const char *format, ...) {
 #include "output.c"
 #include "parser.c"
 
-void help_then_exit() {
-	printf("Usage 1: l2compile (-pic | -pdc) -object output objects.o ... (- inputs.l2 ...) ... - inputs.l2 ...\n"
-		"Usage 2: l2compile (-pic | -pdc) -library output objects.o ... (- inputs.l2 ...) ... - inputs.l2 ...\n"
-		"Usage 3: l2compile (-pic | -pdc) -program output objects.o ... (- inputs.l2 ...) ... - inputs.l2 ...\n\n"
-		"Uses objects.o ... as libraries for remaining stages of the compilation and, if the final output is\n"
-		"not an object file, embeds them into the final output. Concatenates the first group inputs.l2 ...,\n"
-		"compiles the concatenation, and uses the executable as an environment for the remaining stages of\n"
-		"compilation. Does the same process repeatedly until the last group is reached. Finally, concatenates\n"
-		"last group, compiles concatenation into either a position independent or dependent object, shared\n"
-		"library, or program called output as specified by the flags.\n");
-	exit(6);
+#define NO 0
+#define MISSING_FILE 6
+#define ARGUMENTS 7
+
+struct no_error {
+	int type;
+};
+
+struct missing_file_error {
+	int type;
+};
+
+struct arguments_error {
+	int type;
+};
+
+union evaluate_error {
+	struct no_error no;
+	struct missing_file_error missing_file;
+	struct arguments_error arguments;
+	struct param_count_mismatch_error param_count_mismatch;
+	struct special_form_error special_form;
+	struct unexpected_character_error unexpected_character;
+	struct multiple_definition_error multiple_definition;
+	struct environment_error environment;
+};
+
+struct no_error *make_no() {
+	struct no_error *err = malloc(sizeof(struct no_error));
+	err->type = NO;
+	return err;
+}
+
+struct missing_file_error *make_missing_file() {
+	struct missing_file_error *err = malloc(sizeof(struct missing_file_error));
+	err->type = MISSING_FILE;
+	return err;
+}
+
+struct arguments_error *make_arguments() {
+	struct arguments_error *err = malloc(sizeof(struct arguments_error));
+	err->type = ARGUMENTS;
+	return err;
+}
+
+volatile bool input_finished = false;
+
+void int_handler() {
+	input_finished = true;
+}
+
+#define INPUT_BUFFER_SIZE 1024
+
+FILE *open_prompt(jmp_buf *handler) {
+	printf("- ");
+	char str[INPUT_BUFFER_SIZE];
+	FILE *l2file = tmpfile();
+	if(!l2file) return NULL;
+	while(fgets(str, INPUT_BUFFER_SIZE, stdin)) {
+		if(input_finished) {
+			longjmp(*handler, (int) make_no());
+		} else if(strlen(str) + 1 == INPUT_BUFFER_SIZE) {
+			fclose(l2file);
+			exit(0);
+		}
+		fputs(str, l2file);
+		printf("+ ");
+	}
+	rewind(l2file);
+	return l2file;
 }
 
 int main(int argc, char *argv[]) {
-	if(argc < 4 || (strcmp(argv[1], "-pic") && strcmp(argv[1], "-pdc")) || (strcmp(argv[2], "-program") &&
-		strcmp(argv[2], "-library") && strcmp(argv[2], "-object"))) {
-			help_then_exit();
-	}
-	
 	make_shared_library_object_files = nil();
 	make_program_object_files = nil();
-	int i;
-	for(i = 4; i < argc && strcmp(argv[i], "-"); i++) {
-		prepend(argv[i], &make_shared_library_object_files);
-		prepend(argv[i], &make_program_object_files);
-	}
-	if(i == argc) {
-		help_then_exit();
-	}
 	generate_string_blacklist = nil();
 	init_i386_registers();
 	list shared_library_names = nil(), shared_library_handles = nil();
-	int processing_from, processing_to;
+	volatile int processing_from, processing_to, i;
 	
 	//Initialize the error handler
 	jmp_buf handler;
-	union error *err;
-	if(err = (union error *) setjmp(handler)) {
-		void *handle;
-		{foreach(handle, shared_library_handles) {
-			dlclose(handle);
-		}}
-		char *filename;
-		foreach(filename, shared_library_names) {
-			remove(filename);
+	union evaluate_error *err;
+	if(err = (union evaluate_error *) setjmp(handler)) {
+		if(err->no.type != NO) {
+			printf("Error found between %s and %s inclusive: ", argv[processing_from], argv[processing_to - 1]);
 		}
-		
 		print_annotated_syntax_tree_annotator = &empty_annotator;
-		if(err->no.type == no) {
-			return 0;
-		}
-		printf("Error found between %s and %s inclusive: ", argv[processing_from], argv[processing_to - 1]);
 		switch(err->no.type) {
-			case param_count_mismatch: {
+			case PARAM_COUNT_MISMATCH: {
 				printf("The number of arguments in ");
 				print_annotated_syntax_tree(err->param_count_mismatch.src_expression);
 				printf(" does not match the number of parameters in ");
 				print_annotated_syntax_tree(err->param_count_mismatch.dest_expression);
 				printf(".\n");
-				return 1;
-			} case special_form: {
+				break;
+			} case SPECIAL_FORM: {
 				if(err->special_form.subexpression_list) {
 					printf("The subexpression ");
 					print_expr_list(err->special_form.subexpression_list);
@@ -110,33 +147,71 @@ int main(int argc, char *argv[]) {
 					print_expr_list(err->special_form.expression_list);
 					printf(" has an incorrect number of subexpressions.\n");
 				}
-				return 2;
-			} case unexpected_character: {
+				break;
+			} case UNEXPECTED_CHARACTER: {
 				printf("Unexpectedly read %c at %ld.\n", err->unexpected_character.character, err->unexpected_character.position);
-				return 3;
-			} case multiple_definition: {
+				break;
+			} case MULTIPLE_DEFINITION: {
 				printf("The definition of %s erroneously occured multiple times.\n", err->multiple_definition.reference_value);
-				return 4;
-			} case environment: {
+				break;
+			} case ENVIRONMENT: {
 				printf("The following occured when trying to use an environment: %s\n", err->environment.error_string);
-				return 5;
-			} case missing_file: {
+				break;
+			} case MISSING_FILE: {
 				printf("File is missing.\n");
-				return 6;
+				return MISSING_FILE;
+			} case ARGUMENTS: {
+				printf("Bad command line arguments.\n");
+				printf("Usage: l2compile objects.o ... (- inputs.l2 ...) ... - inputs.l2 ...\n\n"
+					"Uses objects.o ... as libraries for remaining stages of the compilation and, if the final output is\n"
+					"not an object file, embeds them into the final output. Concatenates the first group inputs.l2 ...,\n"
+					"compiles the concatenation, and uses the executable as an environment for the remaining stages of\n"
+					"compilation. Does the same process repeatedly until the last group is reached. Finally, concatenates\n"
+					"last group, compiles concatenation into either a position independent or dependent object, shared\n"
+					"library, or program called output as specified by the flags.\n");
+				return ARGUMENTS;
 			}
 		}
+		if(processing_from == argc && err->no.type != NO) {
+			i = argc - 1;
+			goto prompt;
+		} else {
+			void *handle;
+			{foreach(handle, shared_library_handles) {
+				dlclose(handle);
+			}}
+			char *filename;
+			foreach(filename, shared_library_names) {
+				remove(filename);
+			}
+			return err->no.type;
+		}
 	}
-	list expressions;
 	
-	for(;;) {
+	processing_from = 1;
+	processing_to = argc;
+	
+	if(argc < 2) {
+		longjmp(handler, (int) make_arguments());
+	}
+	
+	for(i = 1; i < argc && strcmp(argv[i], "-"); i++) {
+		prepend(argv[i], &make_shared_library_object_files);
+		prepend(argv[i], &make_program_object_files);
+	}
+	if(i == argc) {
+		longjmp(handler, (int) make_arguments());
+	}
+	signal(SIGINT, int_handler);
+	prompt: while(i < argc) {
 		int j;
-		expressions = nil();
+		list expressions = nil();
 		list expansion_lists = nil();
 		
-		for(j = ++i; i < argc && strcmp(argv[i], "-"); i++) {
+		for(j = ++i; (j == argc && i == argc) || (i < argc && strcmp(argv[i], "-")); i++) {
 			processing_from = i;
 			processing_to = i + 1;
-			FILE *l2file = fopen(argv[i], "r");
+			FILE *l2file = (j == argc) ? open_prompt(&handler) : fopen(argv[i], "r");
 			if(l2file == NULL) {
 				longjmp(handler, (int) make_missing_file());
 			}
@@ -155,34 +230,20 @@ int main(int argc, char *argv[]) {
 		}
 		processing_from = j;
 		processing_to = i;
+		if(j == argc) i -= 2;
 		expand_expressions_handler = &handler;
 		expand_expressions(expansion_lists);
-		
-		if(i == argc) break;
 		
 		char *sofn = dynamic_load(expressions, &handler);
 		void *handle = dlopen(sofn, RTLD_NOW | RTLD_GLOBAL);
 		if(!handle) {
 			longjmp(handler, (int) make_environment(cprintf("%s", dlerror())));
+		} else if(processing_from == argc) {
+			printf("\n");
 		}
 		prepend(sofn, &shared_library_names);
 		prepend(handle, &shared_library_handles);
 	}
-	bool PIC = !strcmp(argv[1], "-pic");
-	if(!strcmp(argv[2], "-program")) {
-		char *ofilefn = compile(expressions, PIC, &handler);
-		prepend(ofilefn, &make_program_object_files);
-		make_program(PIC, argv[3]);
-		make_program_object_files = rst(make_program_object_files);
-		remove(ofilefn);
-	} else if(!strcmp(argv[2], "-library")) {
-		char *ofilefn = compile(expressions, PIC, &handler);
-		prepend(ofilefn, &make_shared_library_object_files);
-		make_shared_library(PIC, argv[3]);
-		make_shared_library_object_files = rst(make_shared_library_object_files);
-		remove(ofilefn);
-	} else if(!strcmp(argv[2], "-object")) {
-		rename(compile(expressions, PIC, &handler), argv[3]);
-	}
+	printf("\n");
 	longjmp(handler, (int) make_no());
 }

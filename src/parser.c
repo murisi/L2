@@ -191,6 +191,8 @@ jmp_buf *expand_expressions_handler;
 void expand_expressions(list expansion_lists) {
 	list expansions, *remaining_expansion_lists;
 	foreachlist(remaining_expansion_lists, expansions, expansion_lists) {
+		list urgent_expansion_lists = nil();
+		
 		struct expansion *expansion;
 		list expander_containers = nil();
 		list expander_container_names = nil();
@@ -217,9 +219,12 @@ void expand_expressions(list expansion_lists) {
 			build_syntax_tree_handler = expand_expressions_handler;
 			build_syntax_tree_expansion_lists = nil();
 			build_syntax_tree_under(transformed, expansion->target, (*expansion->target)->base.parent);
-			merge_onto(build_syntax_tree_expansion_lists, &(*remaining_expansion_lists)->rst);
+			merge_onto(build_syntax_tree_expansion_lists, &urgent_expansion_lists);
 		}
 		dlclose(handle);
 		remove(sofn);
+		
+		append_list(&urgent_expansion_lists, (*remaining_expansion_lists)->rst);
+		(*remaining_expansion_lists)->rst = urgent_expansion_lists;
 	}
 }

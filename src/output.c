@@ -19,8 +19,8 @@ list make_shared_library_object_files;
 void make_shared_library(bool PIC, char *sofile) {
 	char entryfn[] = "./entryXXXXXX.s";
 	FILE *entryfile = fdopen(mkstemps(entryfn, 2), "w+");
-	fputs(".section .init_array,\"aw\"\n" ".align 4\n" ".long main\n" ".text\n" "main:\n" "pushl %ebp\n" "movl %esp, %ebp\n"
-		"pushl %esi\n" "pushl %edi\n" "pushl %ebx\n", entryfile);
+	fputs(".section .init_array,\"aw\"\n" ".align 4\n" ".long main\n" ".text\n" "main:\n" "pushl %esi\n" "pushl %edi\n" "pushl %ebx\n"
+		"pushl %ebp\n" "movl %esp, %ebp\n", entryfile);
 	if(PIC) {
 		fputs("jmp thunk_end\n" "get_pc_thunk:\n" "movl (%esp), %ebx\n" "ret\n" "thunk_end:\n" "call get_pc_thunk\n"
 			"addl $_GLOBAL_OFFSET_TABLE_, %ebx\n", entryfile);
@@ -29,7 +29,7 @@ void make_shared_library(bool PIC, char *sofile) {
 
 	char exitfn[] = "./exitXXXXXX.s";
 	FILE *exitfile = fdopen(mkstemps(exitfn, 2), "w+");
-	fputs("popl %ebx\n" "popl %edi\n" "popl %esi\n" "movl $0, %eax\n" "leave\n" "ret\n", exitfile);
+	fputs("leave\n" "popl %ebx\n" "popl %edi\n" "popl %esi\n" "movl $0, %eax\n" "ret\n", exitfile);
 	fclose(exitfile);
 	
 	system(cprintf("gcc -m32 -g -o '%s.o' -c '%s'", entryfn, entryfn));
@@ -47,9 +47,9 @@ list make_program_object_files;
 void make_program(bool PIC, char *outfile) {
 	char entryfn[] = "./entryXXXXXX.s";
 	FILE *entryfile = fdopen(mkstemps(entryfn, 2), "w+");
-	fputs(".text\n" ".comm argc,4,4\n" ".comm argv,4,4\n" ".globl main\n" "main:\n" "pushl %ebp\n" "movl %esp, %ebp\n"
-		"movl 8(%ebp), %eax\n" "movl %eax, argc\n" "movl 12(%ebp), %eax\n" "movl %eax, argv\n" "pushl %esi\n" "pushl %edi\n"
-		"pushl %ebx\n", entryfile);
+	fputs(".text\n" ".comm argc,4,4\n" ".comm argv,4,4\n" ".globl main\n" "main:\n" "pushl %esi\n" "pushl %edi\n" "pushl %ebx\n"
+		"pushl %ebp\n" "movl %esp, %ebp\n" "movl 20(%ebp), %eax\n" "movl %eax, argc\n" "movl 24(%ebp), %eax\n" "movl %eax, argv\n",
+		entryfile);
 	if(PIC) {
 		fputs("jmp thunk_end\n" "get_pc_thunk:\n" "movl (%esp), %ebx\n" "ret\n" "thunk_end:\n" "call get_pc_thunk\n"
 			"addl $_GLOBAL_OFFSET_TABLE_, %ebx\n", entryfile);
@@ -58,7 +58,7 @@ void make_program(bool PIC, char *outfile) {
 
 	char exitfn[] = "./exitXXXXXX.s";
 	FILE *exitfile = fdopen(mkstemps(exitfn, 2), "w+");
-	fputs("popl %ebx\n" "popl %edi\n" "popl %esi\n" "movl $0, %eax\n" "leave\n" "ret\n", exitfile);
+	fputs("leave\n" "popl %ebx\n" "popl %edi\n" "popl %esi\n" "movl $0, %eax\n" "ret\n", exitfile);
 	fclose(exitfile);
 	
 	system(cprintf("gcc -m32 -g -o '%s.o' -c '%s'", entryfn, entryfn));
