@@ -338,7 +338,7 @@ char *dynamic(char *in) {
 	remove(entryfn);
 	system(cprintf("gcc -m32 -g -o '%s.o' -c '%s'", exitfn, exitfn));
 	remove(exitfn);
-	system(cprintf("ld -m elf_i386 -shared -L . --allow-multiple-definition --whole-archive -o '%s' '%s.o' '%s' '%s.o'", outfn,
+	system(cprintf("gcc -m32 -shared -L . -Wl,--allow-multiple-definition -Wl,--whole-archive -o '%s' '%s.o' '%s' '%s.o'", outfn,
 		entryfn, in, exitfn));
 	remove(cprintf("%s.o", entryfn));
 	remove(cprintf("%s.o", exitfn));
@@ -377,7 +377,7 @@ char *executable(char *in) {
 	remove(entryfn);
 	system(cprintf("gcc -m32 -g -o '%s.o' -c '%s'", exitfn, exitfn));
 	remove(exitfn);
-	system(cprintf("ld -m elf_i386 -L . --allow-multiple-definition --whole-archive -o '%s' '%s.o' '%s' '%s.o'", outfn, entryfn, in,
+	system(cprintf("gcc -m32 -L . -Wl,--allow-multiple-definition -Wl,--whole-archive -o '%s' '%s.o' '%s' '%s.o'", outfn, entryfn, in,
 		exitfn));
 	remove(cprintf("%s.o", entryfn));
 	remove(cprintf("%s.o", exitfn));
