@@ -1,12 +1,7 @@
 #define NO 0
-#define MISSING_FILE 6
 #define ARGUMENTS 7
 
 struct no_error {
-	int type;
-};
-
-struct missing_file_error {
 	int type;
 };
 
@@ -28,12 +23,6 @@ union evaluate_error {
 struct no_error *make_no() {
 	struct no_error *err = malloc(sizeof(struct no_error));
 	err->type = NO;
-	return err;
-}
-
-struct missing_file_error *make_missing_file() {
-	struct missing_file_error *err = malloc(sizeof(struct missing_file_error));
-	err->type = MISSING_FILE;
 	return err;
 }
 

@@ -3,6 +3,7 @@
 #define UNEXPECTED_CHARACTER 3
 #define MULTIPLE_DEFINITION 4
 #define ENVIRONMENT 5
+#define MISSING_FILE 6
 
 struct param_count_mismatch_error {
 	int type;
@@ -32,12 +33,17 @@ struct environment_error {
 	char *error_string;
 };
 
+struct missing_file_error {
+	int type;
+};
+
 union compile_error {
 	struct param_count_mismatch_error param_count_mismatch;
 	struct special_form_error special_form;
 	struct unexpected_character_error unexpected_character;
 	struct multiple_definition_error multiple_definition;
 	struct environment_error environment;
+	struct missing_file_error missing_file;
 };
 
 struct param_count_mismatch_error *make_param_count_mismatch(union expression *src_expression, union expression *dest_expression) {
@@ -75,5 +81,11 @@ struct environment_error *make_environment(char *error_string) {
 	struct environment_error *err = malloc(sizeof(struct environment_error));
 	err->type = ENVIRONMENT;
 	err->error_string = error_string;
+	return err;
+}
+
+struct missing_file_error *make_missing_file() {
+	struct missing_file_error *err = malloc(sizeof(struct missing_file_error));
+	err->type = MISSING_FILE;
 	return err;
 }

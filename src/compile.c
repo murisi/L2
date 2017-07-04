@@ -384,3 +384,39 @@ char *executable(char *in) {
 }
 
 #include "parser.c"
+
+char *library(char *ina, char *inl2, jmp_buf *handler) {
+	FILE *l2file = fopen(inl2, "r");
+	if(l2file == NULL) {
+		longjmp(*handler, (int) make_missing_file());
+	}
+	
+	list expressions = nil();
+	list expansion_lists = nil();
+	
+	int c;
+	while((c = after_leading_space(l2file)) != EOF) {
+		ungetc(c, l2file);
+		build_expr_list_handler = handler;
+		list sexpr = build_expr_list(l2file);
+		build_syntax_tree_handler = handler;
+		build_syntax_tree_expansion_lists = nil();
+		build_syntax_tree(sexpr, append(NULL, &expressions));
+		merge_onto(build_syntax_tree_expansion_lists, &expansion_lists);
+	}
+	fclose(l2file);
+	
+	char *sofile = dynamic(ina);
+	void *handle = dlopen(sofile, RTLD_NOW | RTLD_GLOBAL | RTLD_DEEPBIND);
+	if(!handle) {
+		longjmp(*handler, (int) make_environment(cprintf("%s", dlerror())));
+	}
+	
+	expand_expressions_handler = handler;
+	expand_expressions(expansion_lists);
+	char *outa = compile(expressions, true, handler);
+	dlclose(handle);
+	remove(sofile);
+	
+	return outa;
+}
