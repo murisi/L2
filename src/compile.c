@@ -308,8 +308,9 @@ char *skip(char *in, char *skiplabel) {
  * Makes a new dynamic library from the static library in the path
  * given by the string in. When dynamic library is loaded using dlopen,
  * all the object files from the static library are executed sequentially.
- * Afterwords, all the functions from the static library are available.
- * This function returns the path to this newly made dynamic library.
+ * Afterwords, all the functions from the static library are available
+ * for calling, as is expected of a dynamic library. This function returns
+ * the path to this newly made dynamic library.
  */
 
 char *dynamic(char *in) {
@@ -335,8 +336,47 @@ char *dynamic(char *in) {
 	remove(entryfn);
 	system(cprintf("gcc -m32 -g -o '%s.o' -c '%s'", exitfn, exitfn));
 	remove(exitfn);
-	system(cprintf("ld -m elf_i386 -shared -L . --allow-multiple-definition --whole-archive -o '%s' '%s.o' %s '%s.o'", outfn, entryfn,
-		in, exitfn));
+	system(cprintf("ld -m elf_i386 -shared -L . --allow-multiple-definition --whole-archive -o '%s' '%s.o' '%s' '%s.o'", outfn,
+		entryfn, in, exitfn));
+	remove(cprintf("%s.o", entryfn));
+	remove(cprintf("%s.o", exitfn));
+	
+	return outfn;
+}
+
+/*
+ * Makes a new executable from the static library in the path given by
+ * the string in. When the executable is executed, all the object files
+ * from the static library are executed sequentially. This function returns
+ * the path to this newly made dynamic library.
+ */
+
+char *executable(char *in) {
+	char *outfn = cprintf("%s", "./exeXXXXXX");
+	mkstemp(outfn);
+	
+	char entryfn[] = "./entryXXXXXX.s";
+	FILE *entryfile = fdopen(mkstemps(entryfn, 2), "w+");
+	fputs(".text\n" ".comm argc,4,4\n" ".comm argv,4,4\n" ".globl main\n" "main:\n" "pushl %esi\n" "pushl %edi\n" "pushl %ebx\n"
+		"pushl %ebp\n" "movl %esp, %ebp\n" "movl 20(%ebp), %eax\n" "movl %eax, argc\n" "movl 24(%ebp), %eax\n" "movl %eax, argv\n",
+		entryfile);
+	if(true) {
+		fputs("jmp thunk_end\n" "get_pc_thunk:\n" "movl (%esp), %ebx\n" "ret\n" "thunk_end:\n" "call get_pc_thunk\n"
+			"addl $_GLOBAL_OFFSET_TABLE_, %ebx\n", entryfile);
+	}
+	fclose(entryfile);
+
+	char exitfn[] = "./exitXXXXXX.s";
+	FILE *exitfile = fdopen(mkstemps(exitfn, 2), "w+");
+	fputs("leave\n" "popl %ebx\n" "popl %edi\n" "popl %esi\n" "movl $0, %eax\n" "ret\n", exitfile);
+	fclose(exitfile);
+	
+	system(cprintf("gcc -m32 -g -o '%s.o' -c '%s'", entryfn, entryfn));
+	remove(entryfn);
+	system(cprintf("gcc -m32 -g -o '%s.o' -c '%s'", exitfn, exitfn));
+	remove(exitfn);
+	system(cprintf("ld -m elf_i386 -L . --allow-multiple-definition --whole-archive -o '%s' '%s.o' '%s' '%s.o'", outfn, entryfn, in,
+		exitfn));
 	remove(cprintf("%s.o", entryfn));
 	remove(cprintf("%s.o", exitfn));
 	
