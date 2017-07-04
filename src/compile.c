@@ -34,6 +34,8 @@ char *cprintf(const char *format, ...) {
 #include "preparer.c"
 #include "generator.c"
 
+static void initialize() __attribute__((constructor));
+
 char *to_command_line_args(list strs) {
 	int args_length = 0;
 	char *tmp;
@@ -419,4 +421,11 @@ char *library(char *ina, char *inl2, jmp_buf *handler) {
 	remove(sofile);
 	
 	return outa;
+}
+
+void initialize() {
+	make_shared_library_object_files = nil();
+	make_program_object_files = nil();
+	generate_string_blacklist = nil();
+	init_i386_registers();
 }

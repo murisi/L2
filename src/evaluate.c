@@ -32,10 +32,6 @@ FILE *open_prompt(jmp_buf *handler) {
 }
 
 int main(int argc, char *argv[]) {
-	make_shared_library_object_files = nil();
-	make_program_object_files = nil();
-	generate_string_blacklist = nil();
-	init_i386_registers();
 	list shared_library_names = nil(), shared_library_handles = nil();
 	volatile int processing_from, processing_to, i;
 	
