@@ -195,13 +195,35 @@ char *dynamic_load(list exprs, jmp_buf *handler) {
 	return sofilefn;
 }
 
+/*
+ * Copies the file of the path given by the string in, into the path given by the string
+ * out and returns the out path.
+ */
+
+char *copy(char *out, char *in) {
+	system(cprintf("cp '%s' '%s'", in, out));
+	return out;
+}
+
+/*
+ * Returns the path of a newly made file that is the concatenation of the file of the path
+ * in the string in2 to the file of the path in the string in1.
+ */
+
+char *concatenate(char *in1, char *in2) {
+	char *outfn = cprintf("%s", "./catXXXXXX");
+	mkstemp(outfn);
+	system(cprintf("cat '%s' '%s' > '%s'", in1, in2, outfn));
+	return outfn;
+}
+
 struct occurrences {
 	char *member;
 	int count;
 };
 
 bool occurrences_for(void *o, void *ctx) {
-	return !strcmp(((struct occurrences *) o)->member, ctx);
+	return strequal(((struct occurrences *) o)->member, ctx);
 }
 
 #define MEMBER_BUFFER_SIZE 1024
@@ -215,7 +237,7 @@ bool occurrences_for(void *o, void *ctx) {
 char *sequence(char *in1, char *in2) {
 	char *outfn = cprintf("%s", "./libXXXXXX.a");
 	mkstemps(outfn, 2);
-	system(cprintf("cp '%s' '%s'", in1, outfn));
+	copy(outfn, in1);
 	
 	char *tempdir = cprintf("%s", "./objectsXXXXXX");
 	mkdtemp(tempdir);
