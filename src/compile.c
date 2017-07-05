@@ -265,13 +265,6 @@ char *dynamic(char *in) {
 	return outfn;
 }
 
-char *dynamic_load(list exprs, jmp_buf *handler) {
-	char *ofilefn = compile(exprs, true, handler);
-	char *sofilefn = dynamic(ofilefn);
-	remove(ofilefn);
-	return sofilefn;
-}
-
 /*
  * Makes a new executable from the static library in the path given by
  * the string in. When the executable is executed, all the object files
@@ -312,10 +305,17 @@ char *executable(char *in) {
 
 #include "parser.c"
 
+/*
+ * Makes a new static library from the L2 file at the path inl2. The resulting
+ * static library executes the L2 source file from top to bottom and then makes
+ * all the top-level functions visible to the rest of the executable that it is
+ * embedded in. This function returns the path to this newly made static library.
+ */
+
 char *library(char *inl2, jmp_buf *handler) {
 	FILE *l2file = fopen(inl2, "r");
 	if(l2file == NULL) {
-		longjmp(*handler, (int) make_missing_file());
+		longjmp(*handler, (int) make_missing_file(inl2));
 	}
 	
 	list expressions = nil();
@@ -338,6 +338,10 @@ char *library(char *inl2, jmp_buf *handler) {
 	return compile(expressions, true, handler);
 }
 
+/*
+ * Returns the path to an empty static library.
+ */
+
 char *nil_library() {
 	char *outfn = cprintf("%s", "./libXXXXXX.a");
 	mkstemps(outfn, 2);
@@ -345,6 +349,10 @@ char *nil_library() {
 	system(cprintf("ar rcs '%s'", outfn));
 	return outfn;
 }
+
+/*
+ * Returns the path to an empty L2 source file.
+ */
 
 char *nil_source() {
 	char *outfn = cprintf("%s", "./XXXXXX.l2");

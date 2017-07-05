@@ -2,27 +2,37 @@
 #include "compile.c"
 #include "evaluate_errors.c"
 
-volatile bool input_finished = false;
+volatile bool input_cancelled = false;
 
 void int_handler() {
-	input_finished = true;
+	input_cancelled = true;
 }
 
 #define INPUT_BUFFER_SIZE 1024
 
 char *prompt_file(jmp_buf *handler) {
-	printf("- ");
+	prompt: printf("- ");
 	char str[INPUT_BUFFER_SIZE];
 	char *outfn = cprintf("%s", "./XXXXXX.l2");
 	FILE *l2file = fdopen(mkstemps(outfn, 3), "w+");
-	if(!l2file) return NULL;
+	bool input_started = false;
+	
 	while(fgets(str, INPUT_BUFFER_SIZE, stdin)) {
-		if(input_finished) {
-			longjmp(*handler, (int) make_no());
+		if(input_cancelled) {
+			remove(outfn);
+			fclose(l2file);
+			if(input_started) {
+				input_cancelled = false;
+				goto prompt;
+			} else {
+				longjmp(*handler, (int) make_no());
+			}
 		} else if(strlen(str) + 1 == INPUT_BUFFER_SIZE) {
+			remove(outfn);
 			fclose(l2file);
 			exit(0);
 		}
+		input_started = true;
 		fputs(str, l2file);
 		printf("+ ");
 	}
@@ -73,7 +83,7 @@ int main(int argc, char *argv[]) {
 				printf("The following occured when trying to use an environment: %s\n", err->environment.error_string);
 				break;
 			} case MISSING_FILE: {
-				printf("File is missing.\n");
+				printf("There is no file at the path %s.\n", err->missing_file.path);
 				return MISSING_FILE;
 			} case ARGUMENTS: {
 				printf("Bad command line arguments.\n");

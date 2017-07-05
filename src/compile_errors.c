@@ -35,6 +35,7 @@ struct environment_error {
 
 struct missing_file_error {
 	int type;
+	char *path;
 };
 
 union compile_error {
@@ -84,8 +85,9 @@ struct environment_error *make_environment(char *error_string) {
 	return err;
 }
 
-struct missing_file_error *make_missing_file() {
+struct missing_file_error *make_missing_file(char *path) {
 	struct missing_file_error *err = malloc(sizeof(struct missing_file_error));
 	err->type = MISSING_FILE;
+	err->path = path;
 	return err;
 }

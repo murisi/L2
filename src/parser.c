@@ -203,7 +203,7 @@ void expand_expressions(list expansion_lists) {
 			append(expander_container->function.reference->reference.name, &expander_container_names);
 		}
 		
-		char *sofn = dynamic_load(expander_containers, build_syntax_tree_handler);
+		char *sofn = dynamic(compile(expander_containers, true, build_syntax_tree_handler));
 		void *handle = dlopen(sofn, RTLD_NOW | RTLD_LOCAL);
 		if(!handle) {
 			remove(sofn);
