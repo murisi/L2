@@ -131,7 +131,7 @@ int main(int argc, char *argv[]) {
 		for(j = ++i; (j == argc && i == argc) || (i < argc && strcmp(argv[i], "-")); i++) {
 			processing_from = i;
 			processing_to = i + 1;
-			source = concatenate(source, (j == argc) ? prompt_expressions(&handler) : argv[i]);
+			source = concatenate(source, (j == argc) ? prompt_expressions(&handler) : argv[i], &handler);
 		}
 		processing_from = j;
 		processing_to = i;

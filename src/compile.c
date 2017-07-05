@@ -140,10 +140,20 @@ char *copy(char *out, char *in, jmp_buf *handler) {
  * in the string in2 to the file of the path in the string in1.
  */
 
-char *concatenate(char *in1, char *in2) {
+char *concatenate(char *in1, char *in2, jmp_buf *handler) {
+	FILE *f1 = fopen(in1, "r");
+	if(!f1) {
+		longjmp(*handler, (int) make_missing_file(in1));
+	}
+	FILE *f2 = fopen(in2, "r");
+	if(!f2) {
+		longjmp(*handler, (int) make_missing_file(in2));
+	}
 	char *outfn = cprintf("%s", ".catXXXXXX");
 	mkstemp(outfn);
 	system(cprintf("cat '%s' '%s' > '%s'", in1, in2, outfn));
+	fclose(f1);
+	fclose(f2);
 	return outfn;
 }
 
@@ -165,6 +175,10 @@ bool occurrences_for(void *o, void *ctx) {
  */
 
 char *sequence(char *in1, char *in2, jmp_buf *handler) {
+	FILE *in2file = fopen(in2, "r");
+	if(!in2file) {
+		longjmp(*handler, (int) make_missing_file(in2));
+	}
 	char *outfn = cprintf("%s", ".libXXXXXX.a");
 	mkstemps(outfn, 2);
 	copy(outfn, in1, handler);
@@ -191,8 +205,10 @@ char *sequence(char *in1, char *in2, jmp_buf *handler) {
 		system(cprintf("ar -q '../%s' '%s'", outfn, o->member));
 		remove(o->member);
 	}
+	fclose(f2);
 	chdir("../");
 	remove(tempdir);
+	fclose(in2file);
 	return outfn;
 }
 
@@ -204,7 +220,7 @@ char *sequence(char *in1, char *in2, jmp_buf *handler) {
  * the string skiplabel, and returns a path to this static library.
  */
 
-char *skip(char *in, char *skiplabel, jmp_buf *handler) {
+char *skip(char *in, char *skiplabel, jmp_buf *handler) {	
 	char entryfn[] = ".entryXXXXXX.s";
 	FILE *entryfile = fdopen(mkstemps(entryfn, 2), "w+");
 	fprintf(entryfile, ".text\njmp %s\n", skiplabel);
@@ -230,7 +246,6 @@ char *skip(char *in, char *skiplabel, jmp_buf *handler) {
 	remove(outfn);
 	system(cprintf("ar -q '%s' '%s'", f2fn, cprintf("%s.o", exitfn)));
 	remove(cprintf("%s.o", exitfn));
-	
 	return f2fn;
 }
 
@@ -243,7 +258,12 @@ char *skip(char *in, char *skiplabel, jmp_buf *handler) {
  * the path to this newly made dynamic library.
  */
 
-char *dynamic(char *in) {
+char *dynamic(char *in, jmp_buf *handler) {
+	FILE *f = fopen(in, "r");
+	if(!f) {
+		longjmp(*handler, (int) make_missing_file(in));
+	}
+	
 	char *outfn = cprintf("%s", "./.libXXXXXX.so");
 	mkstemps(outfn, 3);
 	
@@ -271,6 +291,7 @@ char *dynamic(char *in) {
 	remove(cprintf("%s.o", entryfn));
 	remove(cprintf("%s.o", exitfn));
 	
+	fclose(f);
 	return outfn;
 }
 
@@ -281,7 +302,12 @@ char *dynamic(char *in) {
  * the path to this newly made dynamic library.
  */
 
-char *executable(char *in) {
+char *executable(char *in, jmp_buf *handler) {
+	FILE *f = fopen(in, "r");
+	if(!f) {
+		longjmp(*handler, (int) make_missing_file(in));
+	}
+	
 	char entryfn[] = ".entryXXXXXX.s";
 	FILE *entryfile = fdopen(mkstemps(entryfn, 2), "w+");
 	fputs(".text\n" ".comm argc,4,4\n" ".comm argv,4,4\n" ".globl main\n" "main:\n" "pushl %esi\n" "pushl %edi\n" "pushl %ebx\n"
@@ -309,6 +335,7 @@ char *executable(char *in) {
 	remove(cprintf("%s.o", entryfn));
 	remove(cprintf("%s.o", exitfn));
 	
+	fclose(f);
 	return outfn;
 }
 
@@ -335,7 +362,7 @@ char *nil_source() {
 }
 
 void *load(char *library_path, jmp_buf *handler) {
-	void *handle = dlopen(dynamic(library_path), RTLD_NOW | RTLD_GLOBAL | RTLD_DEEPBIND);
+	void *handle = dlopen(dynamic(library_path, handler), RTLD_NOW | RTLD_GLOBAL | RTLD_DEEPBIND);
 	if(!handle) {
 		longjmp(*handler, (int) make_environment(cprintf("%s", dlerror())));
 	}
