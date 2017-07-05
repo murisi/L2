@@ -1,5 +1,3 @@
-//To ensure pointers can be passed through longjmp
-char longjmp_hack[sizeof(int) - sizeof(void *)];
 #include "signal.h"
 #include "compile.c"
 #include "evaluate_errors.c"
@@ -12,7 +10,7 @@ void int_handler() {
 
 #define INPUT_BUFFER_SIZE 1024
 
-char *open_prompt(jmp_buf *handler) {
+char *prompt_file(jmp_buf *handler) {
 	printf("- ");
 	char str[INPUT_BUFFER_SIZE];
 	char *outfn = cprintf("%s", "./XXXXXX.l2");
@@ -124,14 +122,12 @@ int main(int argc, char *argv[]) {
 	signal(SIGINT, int_handler);
 	prompt: while(i < argc) {
 		int j;
-		list expressions = nil();
-		list expansion_lists = nil();
 		char *source = nil_source();
 		
 		for(j = ++i; (j == argc && i == argc) || (i < argc && strcmp(argv[i], "-")); i++) {
 			processing_from = i;
 			processing_to = i + 1;
-			source = concatenate(source, (j == argc) ? open_prompt(&handler) : argv[i]);
+			source = concatenate(source, (j == argc) ? prompt_file(&handler) : argv[i]);
 		}
 		processing_from = j;
 		processing_to = i;

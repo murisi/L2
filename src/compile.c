@@ -1,3 +1,6 @@
+//To ensure pointers can be passed through longjmp
+char longjmp_hack[sizeof(int) - sizeof(void *)];
+
 #include "setjmp.h"
 #include "stdio.h"
 #include "ctype.h"
