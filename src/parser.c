@@ -203,10 +203,8 @@ void expand_expressions(list expansion_lists) {
 			append(expander_container->function.reference->reference.name, &expander_container_names);
 		}
 		
-		char *sofn = dynamic(compile(expander_containers, true, build_syntax_tree_handler));
-		void *handle = dlopen(sofn, RTLD_NOW | RTLD_LOCAL);
+		void *handle = load(compile(expander_containers, true, build_syntax_tree_handler), build_syntax_tree_handler);
 		if(!handle) {
-			remove(sofn);
 			longjmp(*expand_expressions_handler, (int) make_environment(cprintf("%s", dlerror())));
 		}
 		
@@ -221,8 +219,7 @@ void expand_expressions(list expansion_lists) {
 			build_syntax_tree_under(transformed, expansion->target, (*expansion->target)->base.parent);
 			merge_onto(build_syntax_tree_expansion_lists, &urgent_expansion_lists);
 		}
-		dlclose(handle);
-		remove(sofn);
+		unload(handle);
 		
 		append_list(&urgent_expansion_lists, (*remaining_expansion_lists)->rst);
 		(*remaining_expansion_lists)->rst = urgent_expansion_lists;

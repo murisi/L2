@@ -41,7 +41,7 @@ char *prompt_expressions(jmp_buf *handler) {
 }
 
 int main(int argc, char *argv[]) {
-	list shared_library_names = nil(), shared_library_handles = nil();
+	list shared_library_handles = nil();
 	volatile int processing_from, processing_to, i;
 	
 	//Initialize the error handler
@@ -102,12 +102,8 @@ int main(int argc, char *argv[]) {
 			goto prompt;
 		} else {
 			void *handle;
-			{foreach(handle, shared_library_handles) {
-				dlclose(handle);
-			}}
-			char *filename;
-			foreach(filename, shared_library_names) {
-				remove(filename);
+			foreach(handle, shared_library_handles) {
+				unload(handle);
 			}
 			return err->no.type;
 		}
@@ -127,7 +123,7 @@ int main(int argc, char *argv[]) {
 	for(i = 1; i < argc && strcmp(argv[i], "-"); i++) {
 		init_library = sequence(init_library, argv[i]);
 	}
-	dlopen(dynamic(init_library), RTLD_NOW | RTLD_GLOBAL | RTLD_DEEPBIND);
+	load(init_library, &handler);
 	
 	signal(SIGINT, int_handler);
 	prompt: while(i < argc) {
@@ -143,14 +139,10 @@ int main(int argc, char *argv[]) {
 		processing_to = i;
 		if(j == argc) i -= 2;
 		
-		char *sofn = dynamic(library(source, &handler));
-		void *handle = dlopen(sofn, RTLD_NOW | RTLD_GLOBAL | RTLD_DEEPBIND);
-		if(!handle) {
-			longjmp(handler, (int) make_environment(cprintf("%s", dlerror())));
-		} else if(processing_from == argc) {
+		void *handle = load(library(source, &handler), &handler);
+		if(processing_from == argc) {
 			printf("\n");
 		}
-		prepend(sofn, &shared_library_names);
 		prepend(handle, &shared_library_handles);
 	}
 	printf("\n");

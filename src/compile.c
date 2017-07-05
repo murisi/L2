@@ -37,9 +37,13 @@ char *cprintf(const char *format, ...) {
 #include "preparer.c"
 #include "generator.c"
 
-static void initialize() __attribute__((constructor));
+__attribute__((constructor)) static void initialize() {
+	generate_string_blacklist = nil();
+}
 
-bool equals(void *a, void *b) { return a == b; }
+bool equals(void *a, void *b) {
+	return a == b;
+}
 
 #define visit_expressions_with(x, y) { \
 	visit_expressions_visitor = y; \
@@ -303,6 +307,40 @@ char *executable(char *in) {
 	return outfn;
 }
 
+/*
+ * Returns the path to an empty static library.
+ */
+
+char *nil_library() {
+	char *outfn = cprintf("%s", ".libXXXXXX.a");
+	mkstemps(outfn, 2);
+	remove(outfn);
+	system(cprintf("ar rcs '%s'", outfn));
+	return outfn;
+}
+
+/*
+ * Returns the path to an empty L2 source file.
+ */
+
+char *nil_source() {
+	char *outfn = cprintf("%s", ".XXXXXX.l2");
+	close(mkstemps(outfn, 3));
+	return outfn;
+}
+
+void *load(char *library_path, jmp_buf *handler) {
+	void *handle = dlopen(dynamic(library_path), RTLD_NOW | RTLD_GLOBAL | RTLD_DEEPBIND);
+	if(!handle) {
+		longjmp(*handler, (int) make_environment(cprintf("%s", dlerror())));
+	}
+	return handle;
+}
+
+void unload(void *handle) {
+	dlclose(handle);
+}
+
 #include "parser.c"
 
 /*
@@ -336,31 +374,4 @@ char *library(char *inl2, jmp_buf *handler) {
 	expand_expressions_handler = handler;
 	expand_expressions(expansion_lists);
 	return compile(expressions, true, handler);
-}
-
-/*
- * Returns the path to an empty static library.
- */
-
-char *nil_library() {
-	char *outfn = cprintf("%s", ".libXXXXXX.a");
-	mkstemps(outfn, 2);
-	remove(outfn);
-	system(cprintf("ar rcs '%s'", outfn));
-	return outfn;
-}
-
-/*
- * Returns the path to an empty L2 source file.
- */
-
-char *nil_source() {
-	char *outfn = cprintf("%s", ".XXXXXX.l2");
-	close(mkstemps(outfn, 3));
-	return outfn;
-}
-
-void initialize() {
-	generate_string_blacklist = nil();
-	init_i386_registers();
 }

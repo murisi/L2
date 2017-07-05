@@ -1,7 +1,7 @@
 bool generator_PIC;
 union expression *ebp, *esp, *esi, *edi, *ebx, *ecx, *edx, *eax, *dx, *dl, *cx, *cl;
 
-void init_i386_registers() {
+__attribute__((constructor)) static void init_i386_registers() {
 	ebp = make_reference("ebp");
 	esp = make_reference("esp");
 	esi = make_reference("esi");
@@ -64,7 +64,7 @@ union expression *make_suffixed(union expression *ref, char *suffix) {
 	return make_reference(cprintf("%s%s", ref->reference.name, suffix));
 }
 
-union expression *load(union expression *ref, int offset, union expression *dest_reg, union expression *scratch_reg) {
+union expression *make_load(union expression *ref, int offset, union expression *dest_reg, union expression *scratch_reg) {
 	union expression *container = make_begin();
 	if(ref->reference.referent->reference.offset) {
 		emit(make_instr("(movl (mem disp base) reg)", 3, make_offset(ref->reference.referent->reference.offset, offset), use(ebp),
@@ -78,7 +78,7 @@ union expression *load(union expression *ref, int offset, union expression *dest
 	return container;
 }
 
-union expression *store(union expression *src_reg, union expression *ref, int offset, union expression *scratch_reg) {
+union expression *make_store(union expression *src_reg, union expression *ref, int offset, union expression *scratch_reg) {
 	union expression *container = make_begin();
 	if(ref->reference.referent->reference.offset) {
 		emit(make_instr("(movl reg (mem disp base))", 3, src_reg, make_offset(ref->reference.referent->reference.offset, offset),
@@ -97,7 +97,7 @@ union expression *vgenerate_ifs(union expression *n) {
 	if(n->base.type == _if) {
 		union expression *container = make_begin();
 		
-		emit(load(n->_if.condition, 0, use(edx), use(esi)));
+		emit(make_load(n->_if.condition, 0, use(edx), use(esi)));
 		emit(make_instr("(orl reg reg)", 2, use(edx), use(edx)));
 		
 		union expression *alternate_label = generate_reference();
@@ -131,7 +131,7 @@ union expression *vgenerate_references(union expression *n) {
 	if(n->base.type == reference && n->reference.return_value) {
 		union expression *container = make_begin();
 		emit(make_load_address(n, use(ecx)));
-		emit(store(use(ecx), n->base.return_value, 0, use(edx)));
+		emit(make_store(use(ecx), n->base.return_value, 0, use(edx)));
 		return container;
 	} else {
 		return n;
@@ -144,12 +144,12 @@ union expression *cont_instr_ref(union expression *n) {
 
 union expression *make_continuation(union expression *n) {
 	union expression *container = make_begin();
-	emit(store(use(ebx), n->makec.reference, CONT_EBX, use(ecx)));
-	emit(store(use(esi), n->makec.reference, CONT_ESI, use(ecx)));
-	emit(store(use(edi), n->makec.reference, CONT_EDI, use(ecx)));
+	emit(make_store(use(ebx), n->makec.reference, CONT_EBX, use(ecx)));
+	emit(make_store(use(esi), n->makec.reference, CONT_ESI, use(ecx)));
+	emit(make_store(use(edi), n->makec.reference, CONT_EDI, use(ecx)));
 	emit(make_load_address(cont_instr_ref(n), use(edx)));
-	emit(store(use(edx), n->makec.reference, CONT_CIR, use(ecx)));
-	emit(store(use(ebp), n->makec.reference, CONT_EBP, use(ecx)));
+	emit(make_store(use(edx), n->makec.reference, CONT_CIR, use(ecx)));
+	emit(make_store(use(ebp), n->makec.reference, CONT_EBP, use(ecx)));
 	return container;
 }
 
@@ -157,7 +157,7 @@ union expression *move_arguments(union expression *n, int offset) {
 	union expression *container = make_begin();
 	union expression *t;
 	foreach(t, n->_continue.arguments) {
-		emit(load(t, 0, use(edx), use(esi)));
+		emit(make_load(t, 0, use(edx), use(esi)));
 		emit(make_instr("(movl reg (mem disp base))", 3, use(edx), make_constant(offset), use(ecx)));
 		offset += WORD_SIZE;
 	}
@@ -170,7 +170,7 @@ union expression *vgenerate_continuation_expressions(union expression *n) {
 		case makec: {
 			union expression *container = make_begin();
 			emit(make_load_address(n->makec.escapes ? n->makec.reference : cont_instr_ref(n), use(ecx)));
-			emit(store(use(ecx), n->makec.return_value, 0, use(edx)));
+			emit(make_store(use(ecx), n->makec.return_value, 0, use(edx)));
 			if(n->makec.escapes) {
 				emit(make_continuation(n));
 			}
@@ -189,8 +189,8 @@ union expression *vgenerate_continuation_expressions(union expression *n) {
 			}
 			emit(n->withc.expression);
 			emit(make_instr("(label name)", 1, cont_instr_ref(n)));
-			emit(load(fst(n->withc.parameter), 0, use(ecx), use(edx)));
-			emit(store(use(ecx), n->withc.return_value, 0, use(edx)));
+			emit(make_load(fst(n->withc.parameter), 0, use(ecx), use(edx)));
+			emit(make_store(use(ecx), n->withc.return_value, 0, use(edx)));
 			return container;
 		} case _continue: {
 			union expression *container = make_begin();
@@ -201,7 +201,7 @@ union expression *vgenerate_continuation_expressions(union expression *n) {
 				}
 				emit(make_instr("(jmp rel)", 1, cont_instr_ref(n->_continue.short_circuit)));
 			} else {
-				emit(load(n->_continue.reference, 0, use(ecx), use(edx)));
+				emit(make_load(n->_continue.reference, 0, use(ecx), use(edx)));
 				emit(move_arguments(n, CONT_SIZE));
 				emit(make_instr("(movl (mem disp base) reg)", 3, make_constant(CONT_EBX), use(ecx), use(ebx)));
 				emit(make_instr("(movl (mem disp base) reg)", 3, make_constant(CONT_ESI), use(ecx), use(esi)));
@@ -222,7 +222,7 @@ union expression *vgenerate_constants(union expression *n) {
 	if(n->base.type == constant && n->constant.return_value) {
 		union expression *container = make_begin();
 		emit(make_instr("(movl imm reg)", 2, make_constant(n->constant.value), use(ecx)));
-		emit(store(use(ecx), n->constant.return_value, 0, use(esi)));
+		emit(make_store(use(ecx), n->constant.return_value, 0, use(esi)));
 		return container;
 	} else {
 		return n;
@@ -259,7 +259,7 @@ union expression *vgenerate_function_expressions(union expression *n) {
 	if(n->base.type == function && n->function.parent) {
 		union expression *container = make_begin();
 		emit(make_load_address(n->function.reference, use(ecx)));
-		emit(store(use(ecx), n->function.return_value, 0, use(edx)));
+		emit(make_store(use(ecx), n->function.return_value, 0, use(edx)));
 		
 		union expression *after_reference = generate_reference();
 		
@@ -283,7 +283,7 @@ union expression *vgenerate_function_expressions(union expression *n) {
 		emit(n->function.expression);
 		
 		//Place the return value
-		emit(load(n->function.expression_return_value, 0, use(eax), use(esi)));
+		emit(make_load(n->function.expression_return_value, 0, use(eax), use(esi)));
 		
 		emit(make_instr("(leave)", 0));
 		//Restore callee-saved registers
@@ -300,14 +300,14 @@ union expression *vgenerate_function_expressions(union expression *n) {
 		//Push arguments onto stack
 		union expression *t;
 		foreach(t, reverse(n->invoke.arguments)) {
-			emit(load(t, 0, use(ecx), use(edx)));
+			emit(make_load(t, 0, use(ecx), use(edx)));
 			emit(make_instr("(pushl reg)", 1, use(ecx)));
 		}
 		
-		emit(load(n->invoke.reference, 0, use(ecx), use(edx)));
+		emit(make_load(n->invoke.reference, 0, use(ecx), use(edx)));
 		emit(make_instr("(call reg)", 1, use(ecx)));
 		
-		emit(store(use(eax), n->invoke.return_value, 0, use(edx)));
+		emit(make_store(use(eax), n->invoke.return_value, 0, use(edx)));
 		emit(make_instr("(addl imm reg)", 2, make_constant(WORD_SIZE * length(n->invoke.arguments)), use(esp)));
 		return container;
 	} else {
