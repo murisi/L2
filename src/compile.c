@@ -36,79 +36,6 @@ char *cprintf(const char *format, ...) {
 
 static void initialize() __attribute__((constructor));
 
-char *to_command_line_args(list strs) {
-	int args_length = 0;
-	char *tmp;
-	{foreach(tmp, strs) {
-		args_length += strlen(tmp) + 5;
-	}}
-	char *clas = calloc(args_length + 1, sizeof(char));
-	clas[0] = '\0';
-	foreach(tmp, strs) {
-		strcat(clas, " -l:");
-		strcat(clas, tmp);
-		strcat(clas, " ");
-	}
-	return clas;
-}
-
-list make_shared_library_object_files;
-
-void make_shared_library(bool PIC, char *sofile) {
-	char entryfn[] = "./entryXXXXXX.s";
-	FILE *entryfile = fdopen(mkstemps(entryfn, 2), "w+");
-	fputs(".section .init_array,\"aw\"\n" ".align 4\n" ".long main\n" ".text\n" "main:\n" "pushl %esi\n" "pushl %edi\n" "pushl %ebx\n"
-		"pushl %ebp\n" "movl %esp, %ebp\n", entryfile);
-	if(PIC) {
-		fputs("jmp thunk_end\n" "get_pc_thunk:\n" "movl (%esp), %ebx\n" "ret\n" "thunk_end:\n" "call get_pc_thunk\n"
-			"addl $_GLOBAL_OFFSET_TABLE_, %ebx\n", entryfile);
-	}
-	fclose(entryfile);
-
-	char exitfn[] = "./exitXXXXXX.s";
-	FILE *exitfile = fdopen(mkstemps(exitfn, 2), "w+");
-	fputs("leave\n" "popl %ebx\n" "popl %edi\n" "popl %esi\n" "movl $0, %eax\n" "ret\n", exitfile);
-	fclose(exitfile);
-	
-	system(cprintf("gcc -m32 -g -o '%s.o' -c '%s'", entryfn, entryfn));
-	system(cprintf("gcc -m32 -g -o '%s.o' -c '%s'", exitfn, exitfn));
-	system(cprintf("ld -m elf_i386 -shared -L . --allow-multiple-definition --whole-archive -o '%s' '%s.o' %s '%s.o'", sofile, entryfn,
-		to_command_line_args(reverse(make_shared_library_object_files)), exitfn));
-	remove(entryfn);
-	remove(cprintf("%s.o", entryfn));
-	remove(exitfn);
-	remove(cprintf("%s.o", exitfn));
-}
-
-list make_program_object_files;
-
-void make_program(bool PIC, char *outfile) {
-	char entryfn[] = "./entryXXXXXX.s";
-	FILE *entryfile = fdopen(mkstemps(entryfn, 2), "w+");
-	fputs(".text\n" ".comm argc,4,4\n" ".comm argv,4,4\n" ".globl main\n" "main:\n" "pushl %esi\n" "pushl %edi\n" "pushl %ebx\n"
-		"pushl %ebp\n" "movl %esp, %ebp\n" "movl 20(%ebp), %eax\n" "movl %eax, argc\n" "movl 24(%ebp), %eax\n" "movl %eax, argv\n",
-		entryfile);
-	if(PIC) {
-		fputs("jmp thunk_end\n" "get_pc_thunk:\n" "movl (%esp), %ebx\n" "ret\n" "thunk_end:\n" "call get_pc_thunk\n"
-			"addl $_GLOBAL_OFFSET_TABLE_, %ebx\n", entryfile);
-	}
-	fclose(entryfile);
-
-	char exitfn[] = "./exitXXXXXX.s";
-	FILE *exitfile = fdopen(mkstemps(exitfn, 2), "w+");
-	fputs("leave\n" "popl %ebx\n" "popl %edi\n" "popl %esi\n" "movl $0, %eax\n" "ret\n", exitfile);
-	fclose(exitfile);
-	
-	system(cprintf("gcc -m32 -g -o '%s.o' -c '%s'", entryfn, entryfn));
-	system(cprintf("gcc -m32 -g -o '%s.o' -c '%s'", exitfn, exitfn));
-	system(cprintf("ld -m elf_i386 -L . --allow-multiple-definition --whole-archive -o '%s' '%s.o' %s '%s.o'", outfile, entryfn,
-		to_command_line_args(reverse(make_program_object_files)), exitfn));
-	remove(entryfn);
-	remove(cprintf("%s.o", entryfn));
-	remove(exitfn);
-	remove(cprintf("%s.o", exitfn));
-}
-
 bool equals(void *a, void *b) { return a == b; }
 
 #define visit_expressions_with(x, y) { \
@@ -184,17 +111,6 @@ char *compile(list exprs, bool PIC, jmp_buf *handler) {
 	system(cprintf("ar -rcs %s %s\n", afn, ofilefn));
 	remove(ofilefn);
 	return afn;
-}
-
-char *dynamic_load(list exprs, jmp_buf *handler) {
-	char *ofilefn = compile(exprs, true, handler);
-	prepend(ofilefn, &make_shared_library_object_files);
-	char *sofilefn = cprintf("%s", "./so_fileXXXXXX.so");
-	int sodes = mkstemps(sofilefn, 3);
-	make_shared_library(true, sofilefn);
-	make_shared_library_object_files = rst(make_shared_library_object_files);
-	remove(ofilefn);
-	return sofilefn;
 }
 
 /*
@@ -338,12 +254,19 @@ char *dynamic(char *in) {
 	remove(entryfn);
 	system(cprintf("gcc -m32 -g -o '%s.o' -c '%s'", exitfn, exitfn));
 	remove(exitfn);
-	system(cprintf("gcc -m32 -shared -L . -Wl,--allow-multiple-definition -Wl,--whole-archive -o '%s' '%s.o' '%s' '%s.o'", outfn,
+	system(cprintf("gcc -m32 -shared -L . -o '%s' -Wl,--whole-archive '%s.o' '%s' '%s.o' -Wl,--no-whole-archive", outfn,
 		entryfn, in, exitfn));
 	remove(cprintf("%s.o", entryfn));
 	remove(cprintf("%s.o", exitfn));
 	
 	return outfn;
+}
+
+char *dynamic_load(list exprs, jmp_buf *handler) {
+	char *ofilefn = compile(exprs, true, handler);
+	char *sofilefn = dynamic(ofilefn);
+	remove(ofilefn);
+	return sofilefn;
 }
 
 /*
@@ -377,8 +300,7 @@ char *executable(char *in) {
 	remove(entryfn);
 	system(cprintf("gcc -m32 -g -o '%s.o' -c '%s'", exitfn, exitfn));
 	remove(exitfn);
-	system(cprintf("gcc -m32 -L . -Wl,--allow-multiple-definition -Wl,--whole-archive -o '%s' '%s.o' '%s' '%s.o'", outfn, entryfn, in,
-		exitfn));
+	system(cprintf("gcc -m32 -L . -o '%s' -Wl,--whole-archive '%s.o' '%s' '%s.o' -Wl,--no-whole-archive", outfn, entryfn, in, exitfn));
 	remove(cprintf("%s.o", entryfn));
 	remove(cprintf("%s.o", exitfn));
 	
@@ -387,7 +309,7 @@ char *executable(char *in) {
 
 #include "parser.c"
 
-char *library(char *ina, char *inl2, jmp_buf *handler) {
+char *library(char *inl2, jmp_buf *handler) {
 	FILE *l2file = fopen(inl2, "r");
 	if(l2file == NULL) {
 		longjmp(*handler, (int) make_missing_file());
@@ -408,24 +330,26 @@ char *library(char *ina, char *inl2, jmp_buf *handler) {
 	}
 	fclose(l2file);
 	
-	char *sofile = dynamic(ina);
-	void *handle = dlopen(sofile, RTLD_NOW | RTLD_GLOBAL | RTLD_DEEPBIND);
-	if(!handle) {
-		longjmp(*handler, (int) make_environment(cprintf("%s", dlerror())));
-	}
-	
 	expand_expressions_handler = handler;
 	expand_expressions(expansion_lists);
-	char *outa = compile(expressions, true, handler);
-	dlclose(handle);
-	remove(sofile);
-	
-	return outa;
+	return compile(expressions, true, handler);
+}
+
+char *nil_library() {
+	char *outfn = cprintf("%s", "./libXXXXXX.a");
+	mkstemps(outfn, 2);
+	remove(outfn);
+	system(cprintf("ar rcs '%s'", outfn));
+	return outfn;
+}
+
+char *nil_source() {
+	char *outfn = cprintf("%s", "./XXXXXX.l2");
+	close(mkstemps(outfn, 3));
+	return outfn;
 }
 
 void initialize() {
-	make_shared_library_object_files = nil();
-	make_program_object_files = nil();
 	generate_string_blacklist = nil();
 	init_i386_registers();
 }

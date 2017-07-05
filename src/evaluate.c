@@ -12,10 +12,11 @@ void int_handler() {
 
 #define INPUT_BUFFER_SIZE 1024
 
-FILE *open_prompt(jmp_buf *handler) {
+char *open_prompt(jmp_buf *handler) {
 	printf("- ");
 	char str[INPUT_BUFFER_SIZE];
-	FILE *l2file = tmpfile();
+	char *outfn = cprintf("%s", "./XXXXXX.l2");
+	FILE *l2file = fdopen(mkstemps(outfn, 3), "w+");
 	if(!l2file) return NULL;
 	while(fgets(str, INPUT_BUFFER_SIZE, stdin)) {
 		if(input_finished) {
@@ -27,8 +28,8 @@ FILE *open_prompt(jmp_buf *handler) {
 		fputs(str, l2file);
 		printf("+ ");
 	}
-	rewind(l2file);
-	return l2file;
+	fflush(l2file);
+	return outfn;
 }
 
 int main(int argc, char *argv[]) {
@@ -110,47 +111,33 @@ int main(int argc, char *argv[]) {
 	if(argc < 2) {
 		longjmp(handler, (int) make_arguments());
 	}
-	
-	for(i = 1; i < argc && strcmp(argv[i], "-"); i++) {
-		prepend(argv[i], &make_shared_library_object_files);
-		prepend(argv[i], &make_program_object_files);
-	}
+	for(i = 1; i < argc && strcmp(argv[i], "-"); i++);
 	if(i == argc) {
 		longjmp(handler, (int) make_arguments());
 	}
+	char *init_library = nil_library();
+	for(i = 1; i < argc && strcmp(argv[i], "-"); i++) {
+		init_library = sequence(init_library, argv[i]);
+	}
+	dlopen(dynamic(init_library), RTLD_NOW | RTLD_GLOBAL | RTLD_DEEPBIND);
+	
 	signal(SIGINT, int_handler);
 	prompt: while(i < argc) {
 		int j;
 		list expressions = nil();
 		list expansion_lists = nil();
+		char *source = nil_source();
 		
 		for(j = ++i; (j == argc && i == argc) || (i < argc && strcmp(argv[i], "-")); i++) {
 			processing_from = i;
 			processing_to = i + 1;
-			FILE *l2file = (j == argc) ? open_prompt(&handler) : fopen(argv[i], "r");
-			if(l2file == NULL) {
-				longjmp(handler, (int) make_missing_file());
-			}
-			
-			int c;
-			while((c = after_leading_space(l2file)) != EOF) {
-				ungetc(c, l2file);
-				build_expr_list_handler = &handler;
-				list sexpr = build_expr_list(l2file);
-				build_syntax_tree_handler = &handler;
-				build_syntax_tree_expansion_lists = nil();
-				build_syntax_tree(sexpr, append(NULL, &expressions));
-				merge_onto(build_syntax_tree_expansion_lists, &expansion_lists);
-			}
-			fclose(l2file);
+			source = concatenate(source, (j == argc) ? open_prompt(&handler) : argv[i]);
 		}
 		processing_from = j;
 		processing_to = i;
 		if(j == argc) i -= 2;
-		expand_expressions_handler = &handler;
-		expand_expressions(expansion_lists);
 		
-		char *sofn = dynamic_load(expressions, &handler);
+		char *sofn = dynamic(library(source, &handler));
 		void *handle = dlopen(sofn, RTLD_NOW | RTLD_GLOBAL | RTLD_DEEPBIND);
 		if(!handle) {
 			longjmp(handler, (int) make_environment(cprintf("%s", dlerror())));
