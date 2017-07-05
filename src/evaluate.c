@@ -19,7 +19,6 @@ char *prompt_expressions(jmp_buf *handler) {
 	
 	while(fgets(str, INPUT_BUFFER_SIZE, stdin)) {
 		if(input_cancelled) {
-			remove(outfn);
 			fclose(l2file);
 			if(input_started) {
 				input_cancelled = false;
@@ -28,9 +27,8 @@ char *prompt_expressions(jmp_buf *handler) {
 				longjmp(*handler, (int) make_no());
 			}
 		} else if(strlen(str) + 1 == INPUT_BUFFER_SIZE) {
-			remove(outfn);
 			fclose(l2file);
-			exit(0);
+			longjmp(*handler, (int) make_unexpected_character(str[INPUT_BUFFER_SIZE - 1], INPUT_BUFFER_SIZE));
 		}
 		input_started = true;
 		fputs(str, l2file);
@@ -103,7 +101,7 @@ int main(int argc, char *argv[]) {
 		} else {
 			void *handle;
 			foreach(handle, shared_library_handles) {
-				unload(handle);
+				unload(handle, NULL);
 			}
 			return err->no.type;
 		}
@@ -121,9 +119,9 @@ int main(int argc, char *argv[]) {
 	}
 	char *init_library = nil_library();
 	for(i = 1; i < argc && strcmp(argv[i], "-"); i++) {
-		init_library = sequence(init_library, argv[i]);
+		init_library = sequence(init_library, argv[i], &handler);
 	}
-	load(init_library, &handler);
+	prepend(load(init_library, &handler), &shared_library_handles);
 	
 	signal(SIGINT, int_handler);
 	prompt: while(i < argc) {
@@ -139,11 +137,10 @@ int main(int argc, char *argv[]) {
 		processing_to = i;
 		if(j == argc) i -= 2;
 		
-		void *handle = load(library(source, &handler), &handler);
+		prepend(load(library(source, &handler), &handler), &shared_library_handles);
 		if(processing_from == argc) {
 			printf("\n");
 		}
-		prepend(handle, &shared_library_handles);
 	}
 	printf("\n");
 	longjmp(handler, (int) make_no());

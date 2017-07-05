@@ -125,8 +125,13 @@ char *compile(list exprs, bool PIC, jmp_buf *handler) {
  * out and returns the out path.
  */
 
-char *copy(char *out, char *in) {
+char *copy(char *out, char *in, jmp_buf *handler) {
+	FILE *f = fopen(in, "r");
+	if(!f) {
+		longjmp(*handler, (int) make_missing_file(in));
+	}
 	system(cprintf("cp '%s' '%s'", in, out));
+	fclose(f);
 	return out;
 }
 
@@ -159,10 +164,10 @@ bool occurrences_for(void *o, void *ctx) {
  * objects in the static library in1, and returns the path to the new static library.
  */
 
-char *sequence(char *in1, char *in2) {
+char *sequence(char *in1, char *in2, jmp_buf *handler) {
 	char *outfn = cprintf("%s", ".libXXXXXX.a");
 	mkstemps(outfn, 2);
-	copy(outfn, in1);
+	copy(outfn, in1, handler);
 	
 	char *tempdir = cprintf("%s", ".objectsXXXXXX");
 	mkdtemp(tempdir);
@@ -199,7 +204,7 @@ char *sequence(char *in1, char *in2) {
  * the string skiplabel, and returns a path to this static library.
  */
 
-char *skip(char *in, char *skiplabel) {
+char *skip(char *in, char *skiplabel, jmp_buf *handler) {
 	char entryfn[] = ".entryXXXXXX.s";
 	FILE *entryfile = fdopen(mkstemps(entryfn, 2), "w+");
 	fprintf(entryfile, ".text\njmp %s\n", skiplabel);
@@ -221,7 +226,7 @@ char *skip(char *in, char *skiplabel) {
 	system(cprintf("ar -rcs '%s' '%s'", outfn, cprintf("%s.o", entryfn)));
 	remove(cprintf("%s.o", entryfn));
 	
-	char *f2fn = sequence(outfn, in);
+	char *f2fn = sequence(outfn, in, handler);
 	remove(outfn);
 	system(cprintf("ar -q '%s' '%s'", f2fn, cprintf("%s.o", exitfn)));
 	remove(cprintf("%s.o", exitfn));
@@ -277,9 +282,6 @@ char *dynamic(char *in) {
  */
 
 char *executable(char *in) {
-	char *outfn = cprintf("%s", ".exeXXXXXX");
-	mkstemp(outfn);
-	
 	char entryfn[] = ".entryXXXXXX.s";
 	FILE *entryfile = fdopen(mkstemps(entryfn, 2), "w+");
 	fputs(".text\n" ".comm argc,4,4\n" ".comm argv,4,4\n" ".globl main\n" "main:\n" "pushl %esi\n" "pushl %edi\n" "pushl %ebx\n"
@@ -300,6 +302,9 @@ char *executable(char *in) {
 	remove(entryfn);
 	system(cprintf("gcc -m32 -g -o '%s.o' -c '%s'", exitfn, exitfn));
 	remove(exitfn);
+	
+	char *outfn = cprintf("%s", ".exeXXXXXX");
+	mkstemp(outfn);
 	system(cprintf("gcc -m32 -L . -o '%s' -Wl,--whole-archive '%s.o' '%s' '%s.o' -Wl,--no-whole-archive", outfn, entryfn, in, exitfn));
 	remove(cprintf("%s.o", entryfn));
 	remove(cprintf("%s.o", exitfn));
@@ -337,8 +342,10 @@ void *load(char *library_path, jmp_buf *handler) {
 	return handle;
 }
 
-void unload(void *handle) {
-	dlclose(handle);
+void unload(void *handle, jmp_buf *handler) {
+	if(dlclose(handle)) {
+		longjmp(*handler, (int) make_environment(cprintf("%s", dlerror())));
+	}
 }
 
 #include "parser.c"

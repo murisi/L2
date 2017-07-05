@@ -219,7 +219,7 @@ void expand_expressions(list expansion_lists) {
 			build_syntax_tree_under(transformed, expansion->target, (*expansion->target)->base.parent);
 			merge_onto(build_syntax_tree_expansion_lists, &urgent_expansion_lists);
 		}
-		unload(handle);
+		unload(handle, build_syntax_tree_handler);
 		
 		append_list(&urgent_expansion_lists, (*remaining_expansion_lists)->rst);
 		(*remaining_expansion_lists)->rst = urgent_expansion_lists;
