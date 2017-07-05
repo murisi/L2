@@ -84,18 +84,18 @@ char *compile(list exprs, bool PIC, jmp_buf *handler) {
 	program = generate_toplevel(program, toplevel_function_references);
 	visit_expressions_with(&program, vmerge_begins);
 	
-	char sfilefn[] = "./s_fileXXXXXX.s";
+	char sfilefn[] = ".s_fileXXXXXX.s";
 	FILE *sfile = fdopen(mkstemps(sfilefn, 2), "w+");
 	print_assembly(program->begin.expressions, sfile);
 	fflush(sfile);
 	
-	char *ofilefn = cprintf("%s", "./o_fileXXXXXX.o");
+	char *ofilefn = cprintf("%s", ".o_fileXXXXXX.o");
 	int odes = mkstemps(ofilefn, 2);
 	system(cprintf("gcc -m32 -g -c -o '%s' '%s'", ofilefn, sfilefn));
 	remove(sfilefn);
 	fclose(sfile);
 	
-	char sympairsfn[] = "./sym_pairsXXXXXX";
+	char sympairsfn[] = ".sym_pairsXXXXXX";
 	FILE *sympairsfile = fdopen(mkstemp(sympairsfn), "w+");
 	struct name_record *r;
 	foreach(r, vrename_definition_references_name_records) {
@@ -108,7 +108,7 @@ char *compile(list exprs, bool PIC, jmp_buf *handler) {
 	system(cprintf("objcopy --redefine-syms='%s' '%s'", sympairsfn, ofilefn));
 	remove(sympairsfn);
 	
-	char *afn = cprintf("%s", "./libXXXXXX.a");
+	char *afn = cprintf("%s", ".libXXXXXX.a");
 	mkstemps(afn, 2);
 	remove(afn);
 	system(cprintf("ar -rcs %s %s\n", afn, ofilefn));
@@ -132,7 +132,7 @@ char *copy(char *out, char *in) {
  */
 
 char *concatenate(char *in1, char *in2) {
-	char *outfn = cprintf("%s", "./catXXXXXX");
+	char *outfn = cprintf("%s", ".catXXXXXX");
 	mkstemp(outfn);
 	system(cprintf("cat '%s' '%s' > '%s'", in1, in2, outfn));
 	return outfn;
@@ -156,11 +156,11 @@ bool occurrences_for(void *o, void *ctx) {
  */
 
 char *sequence(char *in1, char *in2) {
-	char *outfn = cprintf("%s", "./libXXXXXX.a");
+	char *outfn = cprintf("%s", ".libXXXXXX.a");
 	mkstemps(outfn, 2);
 	copy(outfn, in1);
 	
-	char *tempdir = cprintf("%s", "./objectsXXXXXX");
+	char *tempdir = cprintf("%s", ".objectsXXXXXX");
 	mkdtemp(tempdir);
 	chdir(tempdir);
 	
@@ -196,12 +196,12 @@ char *sequence(char *in1, char *in2) {
  */
 
 char *skip(char *in, char *skiplabel) {
-	char entryfn[] = "./entryXXXXXX.s";
+	char entryfn[] = ".entryXXXXXX.s";
 	FILE *entryfile = fdopen(mkstemps(entryfn, 2), "w+");
 	fprintf(entryfile, ".text\njmp %s\n", skiplabel);
 	fclose(entryfile);
 	
-	char exitfn[] = "./exitXXXXXX.s";
+	char exitfn[] = ".exitXXXXXX.s";
 	FILE *exitfile = fdopen(mkstemps(exitfn, 2), "w+");
 	fprintf(exitfile, ".global %s\n%s:\n", skiplabel, skiplabel);
 	fclose(exitfile);
@@ -211,7 +211,7 @@ char *skip(char *in, char *skiplabel) {
 	system(cprintf("gcc -m32 -g -o '%s.o' -c '%s'", exitfn, exitfn));
 	remove(exitfn);
 	
-	char *outfn = cprintf("%s", "./libXXXXXX.a");
+	char *outfn = cprintf("%s", ".libXXXXXX.a");
 	mkstemps(outfn, 2);
 	remove(outfn);
 	system(cprintf("ar -rcs '%s' '%s'", outfn, cprintf("%s.o", entryfn)));
@@ -235,10 +235,10 @@ char *skip(char *in, char *skiplabel) {
  */
 
 char *dynamic(char *in) {
-	char *outfn = cprintf("%s", "./libXXXXXX.so");
+	char *outfn = cprintf("%s", "./.libXXXXXX.so");
 	mkstemps(outfn, 3);
 	
-	char entryfn[] = "./entryXXXXXX.s";
+	char entryfn[] = ".entryXXXXXX.s";
 	FILE *entryfile = fdopen(mkstemps(entryfn, 2), "w+");
 	fputs(".section .init_array,\"aw\"\n" ".align 4\n" ".long main\n" ".text\n" "main:\n" "pushl %esi\n" "pushl %edi\n" "pushl %ebx\n"
 		"pushl %ebp\n" "movl %esp, %ebp\n", entryfile);
@@ -248,7 +248,7 @@ char *dynamic(char *in) {
 	}
 	fclose(entryfile);
 
-	char exitfn[] = "./exitXXXXXX.s";
+	char exitfn[] = ".exitXXXXXX.s";
 	FILE *exitfile = fdopen(mkstemps(exitfn, 2), "w+");
 	fputs("leave\n" "popl %ebx\n" "popl %edi\n" "popl %esi\n" "movl $0, %eax\n" "ret\n", exitfile);
 	fclose(exitfile);
@@ -273,10 +273,10 @@ char *dynamic(char *in) {
  */
 
 char *executable(char *in) {
-	char *outfn = cprintf("%s", "./exeXXXXXX");
+	char *outfn = cprintf("%s", ".exeXXXXXX");
 	mkstemp(outfn);
 	
-	char entryfn[] = "./entryXXXXXX.s";
+	char entryfn[] = ".entryXXXXXX.s";
 	FILE *entryfile = fdopen(mkstemps(entryfn, 2), "w+");
 	fputs(".text\n" ".comm argc,4,4\n" ".comm argv,4,4\n" ".globl main\n" "main:\n" "pushl %esi\n" "pushl %edi\n" "pushl %ebx\n"
 		"pushl %ebp\n" "movl %esp, %ebp\n" "movl 20(%ebp), %eax\n" "movl %eax, argc\n" "movl 24(%ebp), %eax\n" "movl %eax, argv\n",
@@ -287,7 +287,7 @@ char *executable(char *in) {
 	}
 	fclose(entryfile);
 
-	char exitfn[] = "./exitXXXXXX.s";
+	char exitfn[] = ".exitXXXXXX.s";
 	FILE *exitfile = fdopen(mkstemps(exitfn, 2), "w+");
 	fputs("leave\n" "popl %ebx\n" "popl %edi\n" "popl %esi\n" "movl $0, %eax\n" "ret\n", exitfile);
 	fclose(exitfile);
@@ -343,7 +343,7 @@ char *library(char *inl2, jmp_buf *handler) {
  */
 
 char *nil_library() {
-	char *outfn = cprintf("%s", "./libXXXXXX.a");
+	char *outfn = cprintf("%s", ".libXXXXXX.a");
 	mkstemps(outfn, 2);
 	remove(outfn);
 	system(cprintf("ar rcs '%s'", outfn));
@@ -355,7 +355,7 @@ char *nil_library() {
  */
 
 char *nil_source() {
-	char *outfn = cprintf("%s", "./XXXXXX.l2");
+	char *outfn = cprintf("%s", ".XXXXXX.l2");
 	close(mkstemps(outfn, 3));
 	return outfn;
 }

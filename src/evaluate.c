@@ -10,10 +10,10 @@ void int_handler() {
 
 #define INPUT_BUFFER_SIZE 1024
 
-char *prompt_file(jmp_buf *handler) {
+char *prompt_expressions(jmp_buf *handler) {
 	prompt: printf("- ");
 	char str[INPUT_BUFFER_SIZE];
-	char *outfn = cprintf("%s", "./XXXXXX.l2");
+	char *outfn = cprintf("%s", ".XXXXXX.l2");
 	FILE *l2file = fdopen(mkstemps(outfn, 3), "w+");
 	bool input_started = false;
 	
@@ -87,8 +87,8 @@ int main(int argc, char *argv[]) {
 				return MISSING_FILE;
 			} case ARGUMENTS: {
 				printf("Bad command line arguments.\n");
-				printf("Usage: l2compile objects.o ... (- inputs.l2 ...) ... - inputs.l2 ...\n\n"
-					"Uses objects.o ... as libraries for remaining stages of the compilation and, if the final output is\n"
+				printf("Usage: l2compile libraries.a ... (- inputs.l2 ...) ... - inputs.l2 ...\n\n"
+					"Uses libraries.a ... as libraries for remaining stages of the compilation and, if the final output is\n"
 					"not an object file, embeds them into the final output. Concatenates the first group inputs.l2 ...,\n"
 					"compiles the concatenation, and uses the executable as an environment for the remaining stages of\n"
 					"compilation. Does the same process repeatedly until the last group is reached. Finally, concatenates\n"
@@ -137,7 +137,7 @@ int main(int argc, char *argv[]) {
 		for(j = ++i; (j == argc && i == argc) || (i < argc && strcmp(argv[i], "-")); i++) {
 			processing_from = i;
 			processing_to = i + 1;
-			source = concatenate(source, (j == argc) ? prompt_file(&handler) : argv[i]);
+			source = concatenate(source, (j == argc) ? prompt_expressions(&handler) : argv[i]);
 		}
 		processing_from = j;
 		processing_to = i;
