@@ -220,7 +220,7 @@ char *sequence(char *in1, char *in2, jmp_buf *handler) {
  * the string skiplabel, and returns a path to this static library.
  */
 
-char *skip(char *in, char *skiplabel, jmp_buf *handler) {	
+char *skip(char *in, char *skiplabel, jmp_buf *handler) {
 	char entryfn[] = ".entryXXXXXX.s";
 	FILE *entryfile = fdopen(mkstemps(entryfn, 2), "w+");
 	fprintf(entryfile, ".text\njmp %s\n", skiplabel);
