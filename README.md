@@ -293,7 +293,7 @@ L2 has no built-in mechanism for commenting code written in it. The following co
 ```
 #### shell
 ```shell
-./bin/l2compile -pdc -program test demort.o - abbreviations.l2 comments.l2 - test.l2
+./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - test.l2
 ```
 
 ### Numbers
@@ -335,7 +335,7 @@ Integer literals prove to be quite tedious in L2 as can be seen from some of the
 ```
 #### shell
 ```shell
-./bin/l2compile -pdc -program test demort.o - abbreviations.l2 comments.l2 - numbers.l2 - test.l2
+./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - test.l2
 ```
 
 ### Backquoting
@@ -379,7 +379,7 @@ The `foo` example in the internal representation section shows how tedious writi
 ```
 #### shell
 ```shell
-./bin/l2compile -pdc -program test demort.o - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 - anotherfunction.l2 - test.l2
+./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 - anotherfunction.l2 - test.l2
 ```
 
 ### Characters
@@ -482,7 +482,7 @@ With `d` implemented, a somewhat more readable implementation of characters is p
 ```
 #### shell
 ```shell
-./bin/l2compile -pdc -program test demort.o - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 - characters.l2 - test.l2
+./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 - characters.l2 - test.l2
 ```
 
 ### Strings
@@ -522,7 +522,7 @@ The above exposition has purposefully avoided making strings because it is tedio
 ```
 #### shell
 ```shell
-./bin/l2compile -pdc -program test demort.o - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 - characters.l2 reverse.l2 strings.l2 - test.l2
+./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 - characters.l2 reverse.l2 strings.l2 - test.l2
 ```
 
 ### Conditional Compilation
@@ -535,7 +535,7 @@ Up till now, references to functions defined elsewhere have been the only things
 ```
 #### shell
 ```shell
-./bin/l2compile -pdc -program test demort.o - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 reverse.l2 - characters.l2 strings.l2 - test.l2
+./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 reverse.l2 - characters.l2 strings.l2 - test.l2
 ```
 
 ### Variable Binding
@@ -577,7 +577,7 @@ Note in the above code that `what?` is only able to access `x` because `x` is de
 
 #### shell
 ```shell
-./bin/l2compile -pdc -program test demort.o - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 - characters.l2 strings.l2 let.l2 - test.l2
+./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 - characters.l2 strings.l2 let.l2 - test.l2
 ```
 
 ### Switch Expression
@@ -619,7 +619,7 @@ It is implemented and used as follows:
 ```
 #### shell
 ```shell
-./bin/l2compile -pdc -program test demort.o - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 reverse.l2 - switch.l2 characters.l2 strings.l2 let.l2 - test.l2
+./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 reverse.l2 - switch.l2 characters.l2 strings.l2 let.l2 - test.l2
 ```
 
 ### Closures
@@ -673,5 +673,5 @@ These are implemented and used as follows:
 ```
 #### shell
 ```shell
-./bin/l2compile -pdc -program test demort.o - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 reverse.l2 - characters.l2 strings.l2 closures.l2 let.l2 - test.l2
+./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 reverse.l2 - characters.l2 strings.l2 closures.l2 let.l2 - test.l2
 ```
