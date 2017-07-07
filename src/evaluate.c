@@ -131,6 +131,9 @@ int main(int argc, char *argv[]) {
 		for(j = ++i; (j == argc && i == argc) || (i < argc && strcmp(argv[i], "-")); i++) {
 			processing_from = i;
 			processing_to = i + 1;
+			if(j == argc) {
+				printf("\n");
+			}
 			source = concatenate(source, (j == argc) ? prompt_expressions(&handler) : argv[i], &handler);
 		}
 		processing_from = j;
@@ -138,9 +141,6 @@ int main(int argc, char *argv[]) {
 		if(j == argc) i -= 2;
 		
 		prepend(load(library(source, &handler), &handler), &shared_library_handles);
-		if(processing_from == argc) {
-			printf("\n");
-		}
 	}
 	printf("\n");
 	longjmp(handler, (int) make_no());
