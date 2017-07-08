@@ -685,11 +685,39 @@ My L2 system provides a library called `l2compile.a` to enable the compilation o
 
 Evaluates to the path of a static library produced from compiling the source file `x`.
 
-Typing `[printf (" %s) [library (" test1.l2)]]`, pressing Enter, then pressing Ctrl-D prints ".libvORuaz.a".
+Typing `[puts [library (" test2.l2)]]`, pressing Enter, then pressing Ctrl-D prints ".libvORuaz.a".
 
 ### `[sequence x y]`
 `x` and `y` must be paths to static libraries.
 
 Evaluates to the path of a static library whose's ordered sequence of object files is the concatenation of those of `x` and those of `y`.
 
-Typing 
+Typing
+
+### `[executable x]`
+
+### `[copy x y]`
+
+### `[nil-library]`
+
+### `[skip]`
+
+### `[concatenate x y]`
+`x` and `y` must be paths to L2 source files.
+
+Evaluates to the path of an L2 source file produced by concatenating the source files `x` and `y`.
+
+Typing `[puts [concatenate (" abbreviations.l2) (" comments.l2)]]`, pressing Enter, then pressing Ctrl-D prints ".catnX1RiH".
+
+### `[nil-source]`
+
+### `[load x]`
+
+### `[unload x]`
+
+### `[dynamic x]`
+`x` must be the path of a static library.
+
+Evaluates to the path of a dynamic library that executes `x` on loading and that exports all the functions of `x`.
+
+Typing `[puts [dynamic [library (" comments.l2)]]]`, pressing Enter, then pressing Ctrl-D prints
