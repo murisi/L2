@@ -11,7 +11,7 @@ This README ends with a [list of reductions](#reductions) that shows how some of
 
 * [Getting Started](#getting-started)
   * [Building L2](#building-l2)
-  * [Shell Interface](#shell-interface)
+  * [The Evaluator](#the-evaluator)
 * [Primitive Expressions](#primitive-expressions)
   * [Begin](#begin)
   * [Binary](#binary)
@@ -34,6 +34,7 @@ This README ends with a [list of reductions](#reductions) that shows how some of
   * [Variable Binding](#variable-binding)
   * [Switch Expression](#switch-expression)
   * [Closures](#closures)
+* [Compilation Library](#compilation-library)
 
 ## Getting Started
 ### Building L2
@@ -42,7 +43,7 @@ This README ends with a [list of reductions](#reductions) that shows how some of
 ```
 **My L2 system needs a Linux distribution running on the i386 (or AMD64 with libc6-dev-i386 installed) architecture with the GNU C compiler installed to run successfully.** To build the system, simply run the `buildl2` script at the root of the repository. The build should be fast - there are only about 2300 lines of C code to compile. This will create a directory called `bin` containing the files `l2evaluate`, `l2compile.a`, and `i386.a`. `l2evaluate` is an evaluator of L2 code: it reads in L2 code, compiles it, then executes it. `l2compile.a` is the library that the evaluator uses to compile L2 code. `i386.a` is a library of instruction wrappers to provide i386 functionality (ADD, SUB, MOV, ...) not exposed by the L2 language.
 
-### Shell Interface
+### The Evaluator
 ```shell
 ./bin/l2evaluate libraries.a ... (- inputs.l2 ...) ... - inputs.l2 ...
 ```
@@ -675,3 +676,6 @@ These are implemented and used as follows:
 ```shell
 ./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 reverse.l2 - characters.l2 strings.l2 closures.l2 let.l2 - test.l2
 ```
+
+## Compilation Library
+My L2 system provides a library called `l2compile.a` to enable the compilation of L2 source files. Below is a description of the functions this library exports; they can be invoked using any source language so long as [the calling convention](#invoke) outlined above is adhered to. One way to invoke these functions is from within [the evaluator](#the-evaluator) using the command: `./bin/l2evaluate ./bin/i386.a ./bin/l2compile.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 reverse.l2 - characters.l2 strings.l2 closures.l2 let.l2 -`. In fact, this command is so convenient that I have packaged it in a script called [`l2evaluate-with-compile`](#l2evaluate-with-compile) at the root of the repository.
