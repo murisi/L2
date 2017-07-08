@@ -288,13 +288,13 @@ L2 has no built-in mechanism for commenting code written in it. The following co
 				{find [fst [' last]] [rst [' last]]})) [fst [' l]] [rst [' l]]}))
 ```
 
-#### test.l2
+#### test1.l2
 ```racket
 (** This is a comment, and the next thing is what is actually compiled: (begin))
 ```
 #### shell
 ```shell
-./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - test.l2
+./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - test1.l2
 ```
 
 ### Numbers
@@ -330,13 +330,13 @@ Integer literals prove to be quite tedious in L2 as can be seen from some of the
 						(if [1? [fst [' in]]] (b 00000000000000000000000000000001)
 							(b 00000000000000000000000000000000))))))))))]})) [fst [' l]] (b 00000000000000000000000000000000)}))])
 ```
-#### test.l2
+#### test2.l2
 ```racket
 [putchar (d 65)]
 ```
 #### shell
 ```shell
-./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - test.l2
+./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - test2.l2
 ```
 
 ### Backquoting
@@ -373,14 +373,14 @@ The `foo` example in the internal representation section shows how tedious writi
 (function make-A-function (l)
 	(`(function A () [putchar (d 65)])))
 ```
-#### test.l2
+#### test3.l2
 ```racket
 (make-A-function)
 [A]
 ```
 #### shell
 ```shell
-./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 - anotherfunction.l2 - test.l2
+./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 - anotherfunction.l2 - test3.l2
 ```
 
 ### Characters
@@ -477,13 +477,13 @@ With `d` implemented, a somewhat more readable implementation of characters is p
 		(if [~? [' c]] (`(d 126)) (`(d 0)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
 	[ffst [' l]]])
 ```
-#### test.l2
+#### test4.l2
 ```racket
 [putchar (char A)]
 ```
 #### shell
 ```shell
-./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 - characters.l2 - test.l2
+./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 - characters.l2 - test4.l2
 ```
 
 ### Strings
@@ -517,18 +517,18 @@ The above exposition has purposefully avoided making strings because it is tedio
 								[' instrs]]}))
 				[fst [' str]] [' index] [' instrs]})) [' l] (d 0) [nil]}))
 ```
-#### test.l2
+#### test5.l2
 ```
 [printf (" This is how the quote macro is used. Now printing number in speechmarks "%i") (d 123)]
 ```
 #### shell
 ```shell
-./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 - characters.l2 reverse.l2 strings.l2 - test.l2
+./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 - characters.l2 reverse.l2 strings.l2 - test5.l2
 ```
 
 ### Conditional Compilation
 Up till now, references to functions defined elsewhere have been the only things used as the first subexpression of an expression. Sometimes, however, the clarity of the whole expression can be improved by inlining the function. The following code proves this in the context of conditional compilation.
-#### test.l2
+#### test6.l2
 ```
 ((if [> (d 10) (d 20)] fst frst)
 	[printf (" I am not compiled!)]
@@ -536,7 +536,7 @@ Up till now, references to functions defined elsewhere have been the only things
 ```
 #### shell
 ```shell
-./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 reverse.l2 - characters.l2 strings.l2 - test.l2
+./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 reverse.l2 - characters.l2 strings.l2 - test6.l2
 ```
 
 ### Variable Binding
@@ -565,7 +565,7 @@ It is implemented and used as follows:
 			(,[map [frst [' l]] fst])
 			{return (,[frrst [' l]])})) [map [frst [' l]] frst]]))))
 ```
-#### test.l2
+#### test7.l2
 ```
 (let _((x (d 12)))
 	(begin
@@ -578,7 +578,7 @@ Note in the above code that `what?` is only able to access `x` because `x` is de
 
 #### shell
 ```shell
-./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 - characters.l2 strings.l2 let.l2 - test.l2
+./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 - characters.l2 strings.l2 let.l2 - test7.l2
 ```
 
 ### Switch Expression
@@ -610,7 +610,7 @@ It is implemented and used as follows:
 							(,[frfst [' remaining]]) (,[' else-clause])))}))
 				[rst [reverse [rrst [' l]]]] [fst [reverse [' l]]]})))))
 ```
-#### test.l2
+#### test8.l2
 ```
 (switch = (d 10)
 	((d 20) [printf (" d is 20!)])
@@ -620,7 +620,7 @@ It is implemented and used as follows:
 ```
 #### shell
 ```shell
-./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 reverse.l2 - switch.l2 characters.l2 strings.l2 let.l2 - test.l2
+./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 reverse.l2 - switch.l2 characters.l2 strings.l2 let.l2 - test8.l2
 ```
 
 ### Closures
@@ -661,7 +661,7 @@ These are implemented and used as follows:
 (function : (l)
 	(`(with-continuation return (,[lllst (` continue) [fst [' l]] (` return) [rst [' l]]]))))
 ```
-#### test.l2
+#### test9.l2
 ```
 (environment adder (x)
 	(lambda (y) [+ [' x] [' y]]))
@@ -674,8 +674,22 @@ These are implemented and used as follows:
 ```
 #### shell
 ```shell
-./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 reverse.l2 - characters.l2 strings.l2 closures.l2 let.l2 - test.l2
+./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 reverse.l2 - characters.l2 strings.l2 closures.l2 let.l2 - test9.l2
 ```
 
 ## Compilation Library
-My L2 system provides a library called `l2compile.a` to enable the compilation of L2 source files. Below is a description of the functions this library exports; they can be invoked using any source language so long as [the calling convention](#invoke) outlined above is adhered to. One way to invoke these functions is from within [the evaluator](#the-evaluator) using the command: `./bin/l2evaluate ./bin/i386.a ./bin/l2compile.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 reverse.l2 - characters.l2 strings.l2 closures.l2 let.l2 -`. In fact, this command is so convenient that I have packaged it in a script called [`l2evaluate-with-compile`](l2evaluate-with-compile) at the root of the repository.
+My L2 system provides a library called `l2compile.a` to enable the compilation of L2 source files. Below is a description of the functions this library exports; they can be invoked using any source language so long as [the calling convention](#invoke) outlined above is adhered to. In what follows, I invoke these functions is from within [the evaluator](#the-evaluator) using the command: `./bin/l2evaluate ./bin/i386.a ./bin/l2compile.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 reverse.l2 - characters.l2 strings.l2 closures.l2 let.l2 -`. In fact, this command is so convenient that I have packaged it in a script called [`l2evaluate-with-compile`](l2evaluate-with-compile) at the root of the repository.
+
+### `[library x]`
+`x` must be the path of an L2 source file.
+
+Evaluates to the path of a static library produced from compiling the source file `x`.
+
+Typing `[printf (" %s) [library (" test1.l2)]]`, pressing Enter, then pressing Ctrl-D prints ".libvORuaz.a".
+
+### `[sequence x y]`
+`x` and `y` must be paths to static libraries.
+
+Evaluates to the path of a static library whose's ordered sequence of object files is the concatenation of those of `x` and those of `y`.
+
+Typing 
