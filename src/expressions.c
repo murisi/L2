@@ -150,7 +150,22 @@ union expression *make_reference(char *name) {
 	return ref;
 }
 
-bool strequal(void *a, void *b) { return strcmp(a, b) == 0; }
+char *cprintf(const char *format, ...) {
+	va_list ap, aq;
+	va_start(ap, format);
+	va_copy(aq, ap);
+	
+	char *str = calloc(vsnprintf(NULL, 0, format, ap) + 1, sizeof(char));
+	vsprintf(str, format, aq);
+	
+	va_end(aq);
+	va_end(ap);
+	return str;
+}
+
+bool strequal(void *a, void *b) {
+	return strcmp(a, b) == 0;
+}
 
 list generate_string_blacklist;
 

@@ -1,7 +1,7 @@
 bool generator_PIC;
 union expression *ebp, *esp, *esi, *edi, *ebx, *ecx, *edx, *eax, *dx, *dl, *cx, *cl;
 
-__attribute__((constructor)) static void init_i386_registers() {
+void generator_init() {
 	ebp = make_reference("ebp");
 	esp = make_reference("esp");
 	esi = make_reference("esi");

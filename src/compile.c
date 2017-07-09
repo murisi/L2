@@ -16,30 +16,12 @@ char longjmp_hack[sizeof(int) - sizeof(void *)];
 #define true (~((int) 0))
 #define false ((int) 0)
 typedef int bool;
-
-char *cprintf(const char *format, ...) {
-	va_list ap, aq;
-	va_start(ap, format);
-	va_copy(aq, ap);
-	
-	char *str = calloc(vsnprintf(NULL, 0, format, ap) + 1, sizeof(char));
-	vsprintf(str, format, aq);
-	
-	va_end(aq);
-	va_end(ap);
-	return str;
-}
-
 #include "list.c"
 #include "compile_errors.c"
 #include "lexer.c"
 #include "expressions.c"
 #include "preparer.c"
 #include "generator.c"
-
-__attribute__((constructor)) static void initialize() {
-	generate_string_blacklist = nil();
-}
 
 bool equals(void *a, void *b) {
 	return a == b;
@@ -70,6 +52,7 @@ char *compile(list exprs, bool PIC, jmp_buf *handler) {
 	vlink_references_handler = handler;
 	visit_expressions_with(&program, vlink_references);
 	
+	generate_string_blacklist = nil();
 	visit_expressions_with(&program, vblacklist_references);
 	vrename_definition_references_name_records = nil();
 	visit_expressions_with(&program, vrename_definition_references);
@@ -79,6 +62,7 @@ char *compile(list exprs, bool PIC, jmp_buf *handler) {
 	program = use_return_value(program, generate_reference());
 	
 	generator_PIC = PIC;
+	generator_init();
 	visit_expressions_with(&program, vlayout_frames);
 	visit_expressions_with(&program, vgenerate_references);
 	visit_expressions_with(&program, vgenerate_continuation_expressions);
