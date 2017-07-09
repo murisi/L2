@@ -692,14 +692,14 @@ Typing `[puts [library (" test9.l2)]]`, pressing Enter, then pressing Ctrl-D pri
 
 Evaluates to the path of a static library whose's ordered sequence of object files is the concatenation of those of `x` and those of `y`.
 
-Typing `[puts [sequence (" bin/i386.a) [library (" test9.l2)]]]`, pressing Enter, then pressing Ctrl-D prints "".
+Typing `[puts [sequence (" bin/i386.a) [library (" test9.l2)]]]`, pressing Enter, then pressing Ctrl-D prints ".libnApfuA.a".
 
 ### `[executable x]`
 `x` must be the path to a static library.
 
 Evaluates to the path of an executable whose's behavior is the "concatenation" of the ordered object files in `x`.
 
-Typing `[puts [executable [sequence (" bin/i386.a) [library (" test9.l2)]]]]`, pressing Enter, then Ctrl-D prints "". Running this executable should give the same output as in [the section above](#test9.l2).
+Typing `[puts [executable [sequence (" bin/i386.a) [library (" test9.l2)]]]]`, pressing Enter, then Ctrl-D prints ".exe6u1i1s". Running this executable should give the same output as in [the section above](#test9.l2).
 
 ### `[copy x y]`
 `x` must be a path to a non-existing file. `y` must be a path to an existing file.
@@ -713,7 +713,7 @@ Evaluates to the path of an empty static library.
 
 This function plays the role of "zero" in the arithmetic of static libraries.
 
-Typing `[puts [executable [nil-library]]]`, pressing Enter, then Ctrl-D prints "". Running this executable should do nothing.
+Typing `[puts [executable [nil-library]]]`, pressing Enter, then Ctrl-D prints ".exeOj671O". Running this executable should do nothing.
 
 ### `[skip x y]`
 `x` must be a path to a static library. `y` must be a symbol not occuring in the static library `x`.
@@ -722,7 +722,7 @@ Evaluates to the path of a static library whose's first object file comprises a 
 
 This function is useful for jumping over static libraries produced by C compilers. Otherwise L2's top-down mode of execution would cause C function definitions to be executed upon encounter rather than only on invocation.
 
-Typing `[puts [executable [skip [sequence (" bin/i386.a) [library (" test9.l2)]] (" skipper)]]]`, pressing Enter, then Ctrl-D prints "". Running this executable should do nothing.
+Typing `[puts [executable [skip [sequence (" bin/i386.a) [library (" test9.l2)]] (" skipper)]]]`, pressing Enter, then Ctrl-D prints ".exeBokO5Q". Running this executable should do nothing.
 
 ### `[concatenate x y]`
 `x` and `y` must be paths to L2 source files.
@@ -736,14 +736,14 @@ Evaluates to the path of an empty source file.
 
 This function plays the role of "zero" in the arithmetic of source files.
 
-Typing `[puts [executable [library [nil-source]]]]`, pressing Enter, then Ctrl-D prints "". Running this executable should do nothing.
+Typing `[puts [executable [library [nil-source]]]]`, pressing Enter, then Ctrl-D prints ".exelbIIhj". Running this executable should do nothing.
 
 ### `[load x]`
 `x` must be the path to a static library.
 
 Augments the current environment with the static library `x`. Evaluates to a handle to the loaded library.
 
-Type `[load [library (" file1.l2)]]`, press Enter, then Ctrl-D. Entering `(foo this text does not matter)`, pressing Enter, then Ctrl-D should print "b".
+Typing `[load [library (" file1.l2)]]`, pressing Enter, then Ctrl-D should print "a". Entering `(foo this text does not matter)`, pressing Enter, then Ctrl-D should print "b".
 
 ### `[unload x]`
 `x` should be the handle to a loaded library.
@@ -757,4 +757,4 @@ In an environment where `load` has not yet ben used, type `[unload [load [librar
 
 Evaluates to the path of a dynamic library that executes `x` on loading and that exports all the functions of `x`.
 
-Typing `[puts [dynamic [library (" comments.l2)]]]`, pressing Enter, then pressing Ctrl-D prints "". Running `objdump` on it should show that `**` is an exported symbol.
+Typing `[puts [dynamic [library (" comments.l2)]]]`, pressing Enter, then pressing Ctrl-D prints "./.libLDsGsm.so". The output of `objdump -T ./.libLDsGsm.so` should show that `**` is an exported symbol.
