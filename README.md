@@ -715,14 +715,14 @@ This function plays the role of "zero" in the arithmetic of static libraries.
 
 Typing `[puts [executable [nil-library]]]`, pressing Enter, then Ctrl-D prints "". Running this executable should do nothing.
 
-### `[skip x]`
-`x` must be a path to a static library.
+### `[skip x y]`
+`x` must be a path to a static library. `y` must be a symbol not occuring in the static library `x`.
 
-Evaluates to the path of a static library whose's first object file jumps to the last object file, whose's following object files are those of `x` in order, and whose's last object file is the jump target.
+Evaluates to the path of a static library whose's first object file comprises a jump to `y`, whose's following object files are those of `x` in order, and whose's last object file comprises the label `y`.
 
 This function is useful for jumping over static libraries produced by C compilers. Otherwise L2's top-down mode of execution would cause C function definitions to be executed upon encounter rather than only on invocation.
 
-Typing `[puts [executable [skip [sequence (" bin/i386.a) [library (" test9.l2)]]]]]`, pressing Enter, then Ctrl-D prints "". Running this executable should do nothing.
+Typing `[puts [executable [skip [sequence (" bin/i386.a) [library (" test9.l2)]] (" skipper)]]]`, pressing Enter, then Ctrl-D prints "". Running this executable should do nothing.
 
 ### `[concatenate x y]`
 `x` and `y` must be paths to L2 source files.
