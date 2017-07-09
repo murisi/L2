@@ -685,22 +685,44 @@ My L2 system provides a library called `l2compile.a` to enable the compilation o
 
 Evaluates to the path of a static library produced from compiling the source file `x`.
 
-Typing `[puts [library (" test2.l2)]]`, pressing Enter, then pressing Ctrl-D prints ".libvORuaz.a".
+Typing `[puts [library (" test9.l2)]]`, pressing Enter, then pressing Ctrl-D prints ".libvORuaz.a".
 
 ### `[sequence x y]`
 `x` and `y` must be paths to static libraries.
 
 Evaluates to the path of a static library whose's ordered sequence of object files is the concatenation of those of `x` and those of `y`.
 
-Typing
+Typing `[puts [sequence (" bin/i386.a) [library (" test9.l2)]]]`, pressing Enter, then pressing Ctrl-D prints "".
 
 ### `[executable x]`
+`x` must be the path to a static library.
+
+Evaluates to the path of an executable whose's behavior is the "concatenation" of the ordered object files in `x`.
+
+Typing `[puts [executable [sequence (" bin/i386.a) [library (" test9.l2)]]]]`, pressing Enter, then Ctrl-D prints "". Running this executable should give the same output as in [the section above](#test9.l2).
 
 ### `[copy x y]`
+`x` must be a path to a non-existing file. `y` must be a path to an existing file.
+
+Copies the file at path `y` to the path `x`. Invokation evaluates to `x`.
+
+Typing `[puts [copy (" test9) [executable [sequence (" bin/i386.a) [library (" test9.l2)]]]]]`, pressing Enter, then Ctrl-D prints "test9". Running this executable should give the same output as above.
 
 ### `[nil-library]`
+Evaluates to the path of an empty static library.
 
-### `[skip]`
+This function plays the role of "zero" in the arithmetic of static libraries.
+
+Typing `[puts [executable [nil-library]]]`, pressing Enter, then Ctrl-D prints "". Running this executable should do nothing.
+
+### `[skip x]`
+`x` must be a path to a static library.
+
+Evaluates to the path of a static library whose's first object file jumps to the last object file, whose's following object files are those of `x` in order, and whose's last object file is the jump target.
+
+This function is useful for jumping over static libraries produced by C compilers. Otherwise L2's top-down mode of execution would cause C function definitions to be executed upon encounter rather than only on invocation.
+
+Typing `[puts [executable [skip [sequence (" bin/i386.a) [library (" test9.l2)]]]]]`, pressing Enter, then Ctrl-D prints "". Running this executable should do nothing.
 
 ### `[concatenate x y]`
 `x` and `y` must be paths to L2 source files.
@@ -710,14 +732,29 @@ Evaluates to the path of an L2 source file produced by concatenating the source 
 Typing `[puts [concatenate (" abbreviations.l2) (" comments.l2)]]`, pressing Enter, then pressing Ctrl-D prints ".catnX1RiH".
 
 ### `[nil-source]`
+Evaluates to the path of an empty source file.
+
+This function plays the role of "zero" in the arithmetic of source files.
+
+Typing `[puts [executable [library [nil-source]]]]`, pressing Enter, then Ctrl-D prints "". Running this executable should do nothing.
 
 ### `[load x]`
+`x` must be the path to a static library.
+
+Augments the current environment with the static library `x`. Evaluates to a handle to the loaded library.
+
+Type `[load [library (" file1.l2)]]`, press Enter, then Ctrl-D. Entering `(foo this text does not matter)`, pressing Enter, then Ctrl-D should print "b".
 
 ### `[unload x]`
+`x` should be the handle to a loaded library.
+
+Removes from the current environment the loaded library to which `x` refers. Evaluates to an unspecified value.
+
+In an environment where `load` has not yet ben used, type `[unload [load [library (" file1.l2)]]]`, press Enter, then Ctrl-D. Entering `(foo this text does not matter)`, pressing Enter, then Ctrl-D should produce an error.
 
 ### `[dynamic x]`
 `x` must be the path of a static library.
 
 Evaluates to the path of a dynamic library that executes `x` on loading and that exports all the functions of `x`.
 
-Typing `[puts [dynamic [library (" comments.l2)]]]`, pressing Enter, then pressing Ctrl-D prints
+Typing `[puts [dynamic [library (" comments.l2)]]]`, pressing Enter, then pressing Ctrl-D prints "". Running `objdump` on it should show that `**` is an exported symbol.
