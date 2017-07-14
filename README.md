@@ -9,6 +9,7 @@ There are [9 language primitives](#primitive-expressions) and for each one of th
 
 Afterwards, there is a [list of reductions](#reductions) that shows how some of C's constructs can be defined in terms of L2. Here, I have also demonstrated [closures](#closures) to hint at how more exotic things like coroutines and generators are possible using L2's [continuations](#continue). And, finally, this README ends with a description of [my L2 system's compilation library](#compilation-library), a binary interface for compiling L2 code.
 
+### Contents
 | **[Getting Started](#getting-started)** | [Primitive Expressions](#primitive-expressions) | [Reductions](#reductions) |
 |:--- |:--- |:--- |
 | [Building L2](#building-l2) | [Begin](#begin) | [Commenting](#commenting) |
