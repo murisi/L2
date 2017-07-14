@@ -691,7 +691,7 @@ This is implemented as follows:
 
 [foo (" C) (" D)]
 ```
-In the function `foo`, if `[' x]` were equal to `[' y]`, then the else branch of the `assume`'s `if` expression would be taken. Since this branch does nothing, `make-continuation`'s body expression would finish evaluating. But this is the undefined behavior stated in [the first paragraph of the description of the `make-continuation` expression](#make-continuation). Therefore an L2 compiler does not have to worry about what happens in the case that `[' x]` equals `[' y]`, and can rather optimize the first branch of `assume`'s `if` expression assuming that `[' x]` is not equal to `[' y]`. Therefore, a hypothetical optimizing compiler would replace the last `[get-char [' x]]`, a load from memory, with `(char A)`, a constant.
+In the function `foo`, if `[' x]` were equal to `[' y]`, then the else branch of the `assume`'s `if` expression would be taken. Since this branch does nothing, `make-continuation`'s body expression would finish evaluating. But this is the undefined behavior stated in [the first paragraph of the description of the `make-continuation` expression](#make-continuation). Therefore an L2 compiler does not have to worry about what happens in the case that `[' x]` equals `[' y]`. In light of this and the fact that the `if` condition is pure, the whole `assume` expression can be replaced with the first branch of `assume`'s `if`  expression. And more importantly, the the first branch of `assume`'s `if` expression can be optimized assuming that `[' x]` is not equal to `[' y]`. Therefore, a hypothetical optimizing compiler would also replace the last `[get-char [' x]]`, a load from memory, with `(char A)`, a constant.
 
 #### shell
 ```shell
