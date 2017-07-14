@@ -9,33 +9,18 @@ There are [9 language primitives](#primitive-expressions) and for each one of th
 
 Afterwards, there is a [list of reductions](#reductions) that shows how some of C's constructs can be defined in terms of L2. Here, I have also demonstrated [closures](#closures) to hint at how more exotic things like coroutines and generators are possible using L2's [continuations](#continue). And, finally, this README ends with a description of [my L2 system's compilation library](#compilation-library), a binary interface for compiling L2 code.
 
-* [Getting Started](#getting-started)
-  * [Building L2](#building-l2)
-  * [The Evaluator](#the-evaluator)
-* [Primitive Expressions](#primitive-expressions)
-  * [Begin](#begin)
-  * [Binary](#binary)
-  * [Reference](#reference)
-  * [If](#if)
-  * [Function](#function)
-  * [Invoke](#invoke)
-  * [With Continuation](#with-continuation)
-  * [Make Continuation](#make-continuation)
-  * [Continue](#continue)
-* [Internal Representation](#internal-representation)
-* [Expression](#expression)
-* [Reductions](#reductions)
-  * [Commenting](#commenting)
-  * [Numbers](#numbers)
-  * [Backquoting](#backquoting)
-  * [Characters](#characters)
-  * [Strings](#strings)
-  * [Conditional Compilation](#conditional-compilation)
-  * [Variable Binding](#variable-binding)
-  * [Switch Expression](#switch-expression)
-  * [Closures](#closures)
-  * [Assume](#assume)
-* [Compilation Library](#compilation-library)
+| **[Getting Started](#getting-started)** | [Primitive Expressions](#primitive-expressions) | [Reductions](#reductions) |
+|:--- |:--- |:--- |
+| [Building L2](#building-l2) | [Begin](#begin) | [Commenting](#commenting) |
+| [The Evaluator](#the-evaluator) | [Binary](#binary) | [Numbers](#numbers) |
+| **[Internal Representation](#internal-representation)** | [Reference](#reference) | [Backquoting](#backquoting) |
+| **[Expression](#expression)** | [If](#if) | [Characters](#characters) |
+| **[Compilation Library](#compilation-library)** | [Function](#function) | [Strings](#strings) |
+| |  [Invoke](#invoke) | [Conditional Compilation](#conditional-compilation) |
+| |  [With Continuation](#with-continuation) | [Variable Binding](#variable-binding) |
+| |  [Make Continuation](#make-continuation) | [Switch Expression](#switch-expression) |
+| |  [Continue](#continue) | [Closures](#closures) |
+| | | [Assume](#assume) |
 
 ## Getting Started
 ### Building L2
