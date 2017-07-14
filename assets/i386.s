@@ -1,6 +1,8 @@
 .text
-.global valueat
+.global get
+.global getchar
 .global set
+.global setchar
 .global add
 .global subtract
 .global multiply
@@ -15,13 +17,18 @@
 .global or
 .global not
 .global allocate
-.global setchar
 
 jmp l2rt_end
 
-valueat:
+get:
 movl 4(%esp), %eax
 movl 0(%eax), %eax
+ret
+
+getchar:
+movl 4(%esp), %ecx
+xorl %eax, %eax
+movb 0(%ecx), %al
 ret
 
 set:
