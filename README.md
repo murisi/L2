@@ -34,6 +34,7 @@ Afterwards, there is a [list of reductions](#reductions) that shows how some of 
   * [Variable Binding](#variable-binding)
   * [Switch Expression](#switch-expression)
   * [Closures](#closures)
+  * [Assume](#assume)
 * [Compilation Library](#compilation-library)
 
 ## Getting Started
@@ -676,6 +677,41 @@ These are implemented and used as follows:
 ```shell
 ./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 reverse.l2 - characters.l2 strings.l2 closures.l2 let.l2 - test9.l2
 ```
+
+### Assume
+There are far fewer subtle ways to trigger undefined behaviors in L2 than in other unsafe languages because L2 does not have dereferencing, arithmetic operators, types, or other such functionality built in; the programmer has to implement this functionality themselves in [assembly routines callable from L2](bin/i386.a). This shift in responsibility means that any L2 compiler is freed up to treat invocations of undefined behaviors in L2 code as intentional. The following usage of undefined behavior within the function `assume` is inspired by [Regehr](https://blog.regehr.org/archives/1096). The function `assume`, which compiles `y` assuming that the condition `x` holds, implements the following transformation.
+```racket
+(assume x y)
+->
+(with-continuation return
+	{(make-continuation tempas0 ()
+		(if x {return y} (begin)))})
+```
+This is implemented as follows:
+#### assume.l2
+```racket
+(function assume (l)
+	(`(with-continuation return
+		{(make-continuation tempas0 ()
+			(if (,[fst [' l]]) {return (,[frst [' l]])} (begin)))})))
+```
+#### test10.l2
+```
+(function foo (x y)
+	(assume [not [= [' x] [' y]]] (begin
+		[set-char [' x] (char A)]
+		[set-char [' y] (char B)]
+		[printf (" %c) [get-char [' x]]])))
+
+[foo (" C) (" D)]
+```
+In the function `foo`, if `[' x]` were equal to `[' y]`, then the else branch of the `assume`'s `if` expression would be taken. Since this branch does nothing, `make-continuation`'s body expression would finish evaluating. But this is the undefined behavior stated in [the first paragraph of the description of the `make-continuation` expression](#make-continuation). Therefore an L2 compiler does not have to worry about what happens in the case that `[' x]` equals `[' y]`, and can rather optimize the first branch of `assume`'s `if` expression assuming that `[' x]` is not equal to `[' y]`. Therefore, a hypothetical optimizing compiler would replace the last `[get-char [' x]]`, a load from memory, with `(char A)`, a constant.
+
+#### shell
+```shell
+./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 reverse.l2 - characters.l2 strings.l2 assume.l2 - test10.l2
+```
+Note that the `assume` expression can also be used to achieve C's `restrict` keyword simply by making its condition the conjunction of inequalities on the memory locations of the extremeties of some arrays.
 
 ## Compilation Library
 My L2 system provides a library called `l2compile.a` to enable the compilation of L2 source files. Below is a description of the functions this library exports; they can be invoked using any source language so long as [the calling convention](#invoke) outlined above is adhered to. In what follows, I invoke these functions is from within [the evaluator](#the-evaluator) using the command: `./bin/l2evaluate ./bin/i386.a ./bin/l2compile.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 reverse.l2 - characters.l2 strings.l2 closures.l2 let.l2 -`. In fact, this command is so convenient that I have packaged it in a script called [`l2evaluate-with-compile`](l2evaluate-with-compile) at the root of the repository.
