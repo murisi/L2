@@ -574,7 +574,7 @@ It is implemented and used as follows:
 		[what?]
 		[what?]))
 ```
-Note in the above code that `what?` is only able to access `x` because `x` is defined outside of all functions and hence is statically allocated.
+Note in the above code that `what?` is only able to access `x` because `x` is defined outside of all functions and hence is statically allocated. Also note that L2 permits reference shadowing, so `let` expressions can be nested without worrying, for instance, about the impact of an inner `templet0` on an outer one.
 
 #### shell
 ```shell
