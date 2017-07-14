@@ -711,7 +711,7 @@ In the function `foo`, if `[' x]` were equal to `[' y]`, then the else branch of
 ```shell
 ./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 reverse.l2 - characters.l2 strings.l2 assume.l2 - test10.l2
 ```
-Note that the `assume` expression can also be used to achieve C's `restrict` keyword simply by making its condition the conjunction of inequalities on the memory locations of the extremeties of some arrays.
+Note that the `assume` expression can also be used to achieve C's `restrict` keyword simply by making its condition the conjunction of inequalities on the memory locations of the extremeties of the "arrays" in question.
 
 ## Compilation Library
 My L2 system provides a library called `l2compile.a` to enable the compilation of L2 source files. Below is a description of the functions this library exports; they can be invoked using any source language so long as [the calling convention](#invoke) outlined above is adhered to. In what follows, I invoke these functions is from within [the evaluator](#the-evaluator) using the command: `./bin/l2evaluate ./bin/i386.a ./bin/l2compile.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 reverse.l2 - characters.l2 strings.l2 closures.l2 let.l2 -`. In fact, this command is so convenient that I have packaged it in a script called [`l2evaluate-with-compile`](l2evaluate-with-compile) at the root of the repository.
