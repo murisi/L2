@@ -1,13 +1,13 @@
 enum expression_type {
 	function,
-	withc,
+	with,
 	invoke,
 	_if,
 	begin,
 	constant,
 	reference,
-	_continue,
-	makec,
+	jump,
+	continuation,
 	instruction
 };
 
@@ -43,7 +43,7 @@ struct invoke_expression {
 	list arguments; // void * = union expression *
 };
 
-struct continue_expression {
+struct jump_expression {
 	enum expression_type type;
 	union expression *parent;
 	union expression *return_value;
@@ -85,7 +85,7 @@ struct function_expression {
 	union expression *expression_return_value;
 };
 
-struct makec_expression {
+struct continuation_expression {
 	enum expression_type type;
 	union expression *parent;
 	union expression *return_value;
@@ -98,7 +98,7 @@ struct makec_expression {
 	bool escapes;
 };
 
-struct withc_expression {
+struct with_expression {
 	enum expression_type type;
 	union expression *parent;
 	union expression *return_value;
@@ -125,9 +125,9 @@ union expression {
 	struct base_expression base;
 	struct begin_expression begin;
 	struct function_expression function;
-	struct makec_expression makec;
-	struct withc_expression withc;
-	struct continue_expression _continue;
+	struct continuation_expression continuation;
+	struct with_expression with;
+	struct jump_expression jump;
 	struct invoke_expression invoke;
 	struct instruction_expression instruction;
 	struct if_expression _if;
@@ -256,17 +256,17 @@ void print_annotated_syntax_tree(union expression *s) {
 			}
 			printf("\b)");
 			break;
-		} case withc: {
+		} case with: {
 			printf("(with-continuation");
 			print_annotated_syntax_tree_annotator(s);
 			printf(" ");
-			print_annotated_syntax_tree(s->withc.reference);
+			print_annotated_syntax_tree(s->with.reference);
 			printf(" ");
-			print_annotated_syntax_tree(s->withc.expression);
+			print_annotated_syntax_tree(s->with.expression);
 			printf(")");
 			break;
-		} case invoke: case _continue: case instruction: {
-			printf("%c", s->base.type == invoke ? '[' : s->base.type == _continue ? '{' : '(');
+		} case invoke: case jump: case instruction: {
+			printf("%c", s->base.type == invoke ? '[' : s->base.type == jump ? '{' : '(');
 			print_annotated_syntax_tree_annotator(s);
 			if(s->base.type == instruction) {
 				printf("%s", s->instruction.reference->reference.name);
@@ -279,9 +279,9 @@ void print_annotated_syntax_tree(union expression *s) {
 				print_annotated_syntax_tree(t);
 				printf(" ");
 			}
-			printf("\b%c", s->base.type == invoke ? ']' : s->base.type == _continue ? '}' : ')');
+			printf("\b%c", s->base.type == invoke ? ']' : s->base.type == jump ? '}' : ')');
 			break;
-		} case function: case makec: {
+		} case function: case continuation: {
 			printf("(%s", s->base.type == function ? "function" : "make-continuation");
 			print_annotated_syntax_tree_annotator(s);
 			printf(" ");

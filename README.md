@@ -3,11 +3,11 @@ L2 is an attempt to find the smallest most distilled programming language equiva
 
 The approach taken to achieve this has been to make C's features more composable, more multipurpose, and, at least on one occasion, add a new feature so that a whole group of distinct features could be dropped. In particular, the most striking changes are that C's:
 1. irregular syntax is replaced by [S-expressions](#internal-representation); because simple syntax composes well with a non-trivial preprocessor (and [no, I have not merely transplanted Common Lisp's macros into C](#expression))
-2. loop constructs are replaced with what I could only describe as [a more structured variant of setjmp and longjmp without stack destruction](#with-continuation) (and [no, there is no performance overhead associated with this](#an-optimization))
+2. loop constructs are replaced with what I could only describe as [a more structured variant of setjmp and longjmp without stack destruction](#with) (and [no, there is no performance overhead associated with this](#an-optimization))
 
 There are [9 language primitives](#primitive-expressions) and for each one of them I describe their syntax, what exactly they do in English, the i386 assembly they translate into, and an example usage of them. Following this comes a brief description of [L2's internal representation and the 9 functions (loosely speaking) that manipulate it](#internal-representation). After that comes a description of how [a non-primitive L2 expression](#expression) is compiled. The above descriptions take about 8 pages and are essentially a complete description of L2.
 
-Afterwards, there is a [list of reductions](#reductions) that shows how some of C's constructs can be defined in terms of L2. Here, I have also demonstrated [closures](#closures) to hint at how more exotic things like coroutines and generators are possible using L2's [continuations](#continue). And, finally, this README ends with a description of [my L2 system's compilation library](#compilation-library), a binary interface for compiling L2 code.
+Afterwards, there is a [list of reductions](#reductions) that shows how some of C's constructs can be defined in terms of L2. Here, I have also demonstrated [closures](#closures) to hint at how more exotic things like coroutines and generators are possible using L2's [continuations](#jump). And, finally, this README ends with a description of [my L2 system's compilation library](#compilation-library), a binary interface for compiling L2 code.
 
 ### Contents
 | **[Getting Started](#getting-started)** | [Primitive Expressions](#primitive-expressions) | [Reductions](#reductions) |
@@ -18,9 +18,9 @@ Afterwards, there is a [list of reductions](#reductions) that shows how some of 
 | **[Expression](#expression)** | [If](#if) | [Characters](#characters) |
 | **[Compilation Library](#compilation-library)** | [Function](#function) | [Strings](#strings) |
 | |  [Invoke](#invoke) | [Conditional Compilation](#conditional-compilation) |
-| |  [With Continuation](#with-continuation) | [Variable Binding](#variable-binding) |
-| |  [Make Continuation](#make-continuation) | [Switch Expression](#switch-expression) |
-| |  [Continue](#continue) | [Closures](#closures) |
+| |  [With](#with) | [Variable Binding](#variable-binding) |
+| |  [Continuation](#continuation) | [Switch Expression](#switch-expression) |
+| |  [Jump](#jump) | [Closures](#closures) |
 | | | [Assume](#assume) |
 
 ## Getting Started
@@ -34,7 +34,7 @@ Afterwards, there is a [list of reductions](#reductions) that shows how some of 
 ```shell
 ./bin/l2evaluate libraries.a ... (- inputs.l2 ...) ... - inputs.l2 ...
 ```
-The initial environment, the one that is there before anything is evaluated, comprises 17 functions: `lst`, `lst?`, `fst`, `rst`, `sexpr`, `nil`, `nil?`, `-<character>-`, `<character>?`, `begin`, `b`, `if`, `function`, `invoke`, `with-continuation`, `make-continuation`, and `continue`. The former 9 are [defined later](#internal-representation). Each one of the latter 8 functions does nothing else but return an s-expression formed by prepending its function name to the list of s-expressions supplied to them. For example, the `b` function could have the following definition: `(function b (sexprs) [lst [lst [-b-] [nil]] [' sexprs]])`.
+The initial environment, the one that is there before anything is evaluated, comprises 17 functions: `lst`, `lst?`, `fst`, `rst`, `sexpr`, `nil`, `nil?`, `-<character>-`, `<character>?`, `begin`, `b`, `if`, `function`, `invoke`, `with`, `continuation`, and `jump`. The former 9 are [defined later](#internal-representation). Each one of the latter 8 functions does nothing else but return an s-expression formed by prepending its function name to the list of s-expressions supplied to them. For example, the `b` function could have the following definition: `(function b (sexprs) [lst [lst [-b-] [nil]] [' sexprs]])`.
 
 In this initial environment the L2 evaluator begins by essentially generating machine code for a function whose's behavior is the "concatenation" of the static libraries `libraries.a ...`, where static library here means the ordered "concatenation" of the object files (or more precisely, their code segments) within it. This generated code is then loaded into memory, and invoked. Afterwords, the memory reserved for the static libraries is maintained, and the libraries' exported functions are also made available for use throughout the remaining evaluations - we will say that the remaining evaluations happen in this augmented environment.
 
@@ -46,10 +46,9 @@ If the entire list of arguments ends with a hyphen, then a minus-prompt is displ
 ##### file1.l2
 ```racket
 (function foo (sexprs)
-	(with-continuation return
-		(begin
-			[putchar [+ (b 00000000000000000000000001100001) (b 00000000000000000000000000000001)]]
-			{return [lst [lst [-b-] [lst [-e-] [lst [-g-] [lst [-i-] [lst [-n-] [nil]]]]]] [nil]]})))
+	(with return (begin
+		[putchar [+ (b 00000000000000000000000001100001) (b 00000000000000000000000000000001)]]
+		{return [lst [lst [-b-] [lst [-e-] [lst [-g-] [lst [-i-] [lst [-n-] [nil]]]]]] [nil]]})))
 
 [putchar (b 00000000000000000000000001100001)]
 ```
@@ -133,16 +132,16 @@ ret
 ```
 The following invocation of it, `(invoke putchar (invoke - (b 00000000000000000000000001100011) (b 00000000000000000000000000000001)))`, prints the text "b" to standard output.
 
-### With Continuation
+### With
 ```racket
-(with-continuation continuation0 expression0)
+(with continuation0 expression0)
 ```
-Makes a continuation to the containing expression that is to be continued to with exactly one argument. Then `expression0` is evaluated in an environment where `continuation0` is a reference to the aforementioned continuation. The resulting value of this expression is unspecified if the evaluation of `expression0` completes. If the continuation `continuation0` is continued to, then this `with-continuation` expression evaluates to the resulting value of the single argument within the responsible continue expression.
+Makes a continuation to the containing expression that is to be `jump`ed to with exactly one argument. Then `expression0` is evaluated in an environment where `continuation0` is a reference to the aforementioned continuation. The resulting value of this expression is unspecified if the evaluation of `expression0` completes. If the continuation `continuation0` is `jump`ed to, then this `with` expression evaluates to the resulting value of the single argument within the responsible `jump` expression.
 
 5+1 words must be reserved in the current function's stack-frame plan. Call the reference to the first word of the reservation `continuation0`. This expression is implemented by first emitting instructions to store the program's state at `continuation0`, that is, instructions are emitted to `mov` `ebp`, the address of the instruction that should be executed after continuing (a label to be emitted later), `edi`, `esi`, and `ebx`, in that order, to the first 5 words at `continuation0`. After this, the instructions for `expression0` are emitted. Then the label for the first instruction of the continuation is emitted. And finally, an instruction is emitted to `mov` the resulting value of the continuation, the 6th word at `continuation0`, into the memory location designated by the surrounding expression.
 
 #### Examples
-Note that the expression `{continuation0 expression0}` continues to the continuation reference by `continuation0` with resulting value of evaluating `expression0` as its argument. With the note in mind, the expression `(begin [putchar (with-continuation ignore (begin {ignore (b 00000000000000000000000001001110)} [foo] [foo] [foo]))] [bar])` prints the text "nbar" to standard output.
+Note that the expression `{continuation0 expression0}` `jump`s to the continuation reference given by `continuation0` with resulting value of evaluating `expression0` as its argument. With the note in mind, the expression `(begin [putchar (with ignore (begin {ignore (b 00000000000000000000000001001110)} [foo] [foo] [foo]))] [bar])` prints the text "nbar" to standard output.
 
 The following assembly function `allocate` receives the number of bytes it is to allocate as its first argument, allocates that memory, and passes the initial address of this memory as the single argument to the continuation it receives as its second argument.
 ```assembly
@@ -158,34 +157,34 @@ andl $0xFFFFFFFC, %esp
 movl %esp, 20(%ecx)
 jmp *4(%ecx)
 ```
-The following usage of it, `(with-continuation dest [allocate (b 00000000000000000000000000000011) dest])`, evaluates to the address of the allocated memory. If allocate had just decreased `esp` and returned, it would have been invalid because L2 expects functions to preserve `esp`.
+The following usage of it, `(with dest [allocate (b 00000000000000000000000000000011) dest])`, evaluates to the address of the allocated memory. If allocate had just decreased `esp` and returned, it would have been invalid because L2 expects functions to preserve `esp`.
 
-### Make Continuation
+### Continuation
 ```racket
-(make-continuation continuation0 (reference1 reference2 ... referenceN) expression0)
+(continuation continuation0 (reference1 reference2 ... referenceN) expression0)
 ```
-Makes a continuation to be continued to with exactly `N` arguments. When the continuation is continued to, `expression0` is evaluated in an environment where `continuation0` is a reference to the continuation itself and `reference1`, `reference2`, up to `referenceN` are references to the resulting values of evaluating the corresponding arguments in the continue expression continuing to this function. Undefined behavior occurs if the evaluation of `expression0` completes - i.e. programmer must direct the control flow out of `continuation0` somewhere within `expression0`. The resulting value of this make-continuation expression is a reference to the continuation.
+Makes a continuation to be `jump`ed to with exactly `N` arguments. When the continuation is `jump`ed to, `expression0` is evaluated in an environment where `continuation0` is a reference to the continuation itself and `reference1`, `reference2`, up to `referenceN` are references to the resulting values of evaluating the corresponding arguments in the `jump` expression `jump`ing to this function. Undefined behavior occurs if the evaluation of `expression0` completes - i.e. programmer must direct the control flow out of `continuation0` somewhere within `expression0`. The resulting value of this `continuation` expression is a reference to the continuation.
 
-5+N words must be reserved in the current function's stack-frame plan. Call the reference to the first word of the reservation `continuation0`. This expression is implemented by first emitting an instruction to `mov` the reference `continuation0` into the memory location designated by the surrounding expression. Instructions are then emitted to store the program's state at `continuation0`, that is, instructions are emitted to `mov` `ebp`, the address of the instruction that should be executed after continuing (a label to be emitted later), `edi`, `esi`, and `ebx`, in that order, to the first 5 words at `continuation0`. Then an instruction is emitted to `jmp` to the end of all the instructions that are emitted for this make-continuation expression. Then the label for the first instruction of the continuation is emitted. After this the instructions for `expression0` are emitted.
+5+N words must be reserved in the current function's stack-frame plan. Call the reference to the first word of the reservation `continuation0`. This expression is implemented by first emitting an instruction to `mov` the reference `continuation0` into the memory location designated by the surrounding expression. Instructions are then emitted to store the program's state at `continuation0`, that is, instructions are emitted to `mov` `ebp`, the address of the instruction that should be executed after continuing (a label to be emitted later), `edi`, `esi`, and `ebx`, in that order, to the first 5 words at `continuation0`. Then an instruction is emitted to `jmp` to the end of all the instructions that are emitted for this `continuation` expression. Then the label for the first instruction of the continuation is emitted. After this the instructions for `expression0` are emitted.
 
-The expression `{(make-continuation forever (a b) (begin [putchar [' a]] [putchar [' b]] {forever [- [' a] (b 00000000000000000000000000000001)] [- [' b] (b 00000000000000000000000000000001)]})) (b 00000000000000000000000001011010) (b 00000000000000000000000001111010)}` prints the text "ZzYyXxWw"... to standard output.
+The expression `{(continuation forever (a b) (begin [putchar [' a]] [putchar [' b]] {forever [- [' a] (b 00000000000000000000000000000001)] [- [' b] (b 00000000000000000000000000000001)]})) (b 00000000000000000000000001011010) (b 00000000000000000000000001111010)}` prints the text "ZzYyXxWw"... to standard output.
 
-### Continue
+### Jump
 ```racket
-(continue continuation0 expression1 expression2 ... expressionN)
+(jump continuation0 expression1 expression2 ... expressionN)
 {continuation0 expression1 expression2 ... expressionN}
 ```
-Both the above expressions are equivalent. Evaluates `continuation0`, `expression1`, `expression2`, up to `expressionN` in an unspecified order and then continues to `continuation0`, a reference to a continuation, providing it with a local copies of `expression1` up to `expressionN` in order. The resulting value of this expression is unspecified.
+Both the above expressions are equivalent. Evaluates `continuation0`, `expression1`, `expression2`, up to `expressionN` in an unspecified order and then `jump`s to `continuation0`, a reference to a continuation, providing it with a local copies of `expression1` up to `expressionN` in order. The resulting value of this expression is unspecified.
 
 `N+1` words must be reserved in the current function's stack-frame plan. The expression is implemented by emitting the instructions for any of the subexpressions with the location of the resulting value fixed to the corresponding reserved word. The same is done with the remaining expressions repeatedly until the instructions for all the subexpressions have been emitted. Then an instruction to `mov` the first reserved word to 5 words from the beginning of the continuation is emitted, followed by an instruction to `mov` the second reserved word to an address immediately after that, and so on, ending with an instruction to `mov` the last reserved word into the last memory address of that area. The program's state, that is, `ebp`, the address of the instruction that should be executed after continuing, `edi`, `esi`, and `ebx`, in that order, are what is stored at the beginning of a continuation. Instructions to `mov` these values from the buffer into the appropriate registers and then set the program counter appropriately are, at last, emitted.
 
-The expression `(begin (with-continuation cutter (continue (make-continuation cuttee () (begin [bar] [bar] (continue cutter (b 00000000000000000000000000000000)) [bar] [bar] [bar])))) [foo])` prints the text "barbarfoo" to standard output.
+The expression `(begin (with cutter (jump (continuation cuttee () (begin [bar] [bar] (jump cutter (b 00000000000000000000000000000000)) [bar] [bar] [bar])))) [foo])` prints the text "barbarfoo" to standard output.
 
 #### An Optimization
-Looking at the examples above where the continuation reference does not escape, `(with-continuation reference0 expression0)` behaves a lot like the pseudo-assembly `expression0 reference0:` and `(make-continuation reference0 (...) expression0)` behaves a lot like `reference0: expression0`. To be more precise, when references to a particular continuation only occur as the `continuation0` subexpression of a continue statement, we know that the continuation is constrained to the function in which it is declared, and hence there is no need to store or restore `ebp`, `edi`, `esi`, and `ebx`. Continuations, then, are how efficient iteration is achieved in L2.
+Looking at the examples above where the continuation reference does not escape, `(with reference0 expression0)` behaves a lot like the pseudo-assembly `expression0 reference0:` and `(continuation reference0 (...) expression0)` behaves a lot like `reference0: expression0`. To be more precise, when references to a particular continuation only occur as the `continuation0` subexpression of a `jump` statement, we know that the continuation is constrained to the function in which it is declared, and hence there is no need to store or restore `ebp`, `edi`, `esi`, and `ebx`. Continuations, then, are how efficient iteration is achieved in L2.
 
 ## Internal Representation
-After substituting out the syntactic sugar used for the `invoke` and `continue` expressions. We find that all L2 programs are just compositions of the `<pre-s-expression>`s: `<symbol>` and `(<pre-s-expression> <pre-s-expression> ... <pre-s-expression>)`. If we now replace every symbol with a list of its characters so that for example `foo` becomes `(f o o)`, we now find that all L2 programs are now just compositions of the `<s-expression>`s `<character>` and `(<s-expression> <s-expression> ... <s-expression>)`. The following functions that manipulate these s-expressions are not part of the L2 language and hence the compiler does not give references to them special treatment during compilation. However, when compiled code is loaded into an L2 compiler, undefined references to these functions are to be dynamically resolved.
+After substituting out the syntactic sugar used for the `invoke` and `jump` expressions. We find that all L2 programs are just compositions of the `<pre-s-expression>`s: `<symbol>` and `(<pre-s-expression> <pre-s-expression> ... <pre-s-expression>)`. If we now replace every symbol with a list of its characters so that for example `foo` becomes `(f o o)`, we now find that all L2 programs are now just compositions of the `<s-expression>`s `<character>` and `(<s-expression> <s-expression> ... <s-expression>)`. The following functions that manipulate these s-expressions are not part of the L2 language and hence the compiler does not give references to them special treatment during compilation. However, when compiled code is loaded into an L2 compiler, undefined references to these functions are to be dynamically resolved.
 
 ### `[lst x y]`
 `x` must be a s-expression and `y` a list.
@@ -268,8 +267,8 @@ L2 has no built-in mechanism for commenting code written in it. The following co
 #### comments.l2
 ```racket
 (function ** (l)
-	(with-continuation return
-		{(make-continuation find (first last)
+	(with return
+		{(continuation find (first last)
 			(if [nil? [' last]]
 				{return [' first]}
 				{find [fst [' last]] [rst [' last]]})) [fst [' l]] [rst [' l]]}))
@@ -291,8 +290,8 @@ Integer literals prove to be quite tedious in L2 as can be seen from some of the
 ```racket
 (** Turns a 4-byte integer into base-2 s-expression representation of it.
 (function binary->base2sexpr (binary)
-	[lst [lst [-b-] [nil]] [lst (with-continuation return
-		{(make-continuation write (count in out)
+	[lst [lst [-b-] [nil]] [lst (with return
+		{(continuation write (count in out)
 			(if [' count]
 				{write [- [' count] (b 00000000000000000000000000000001)]
 					[>> [' in] (b 00000000000000000000000000000001)]
@@ -302,7 +301,7 @@ Integer literals prove to be quite tedious in L2 as can be seen from some of the
 (function d (l)
 	[binary->base2sexpr
 		(** Turns the base-10 s-expression input into a 4-byte integer.
-			(with-continuation return {(make-continuation read (in out)
+			(with return {(continuation read (in out)
 				(if [nil? [' in]]
 					{return [' out]}
 					{read [rst [' in]] [+ [* [' out] (b 00000000000000000000000000001010)]
@@ -479,22 +478,22 @@ The above exposition has purposefully avoided making strings because it is tedio
 #### reverse.l2
 ```racket
 (function reverse (l)
-	(with-continuation return
-		{(make-continuation _ (l reversed)
+	(with return
+		{(continuation _ (l reversed)
 			(if [nil? [' l]]
 				{return [' reversed]}
 				{_ [rst [' l]] [lst [fst [' l]] [' reversed]]})) [' l] [nil]}))
 ```
 #### strings.l2
 ```
-(function " (l) (with-continuation return
-	{(make-continuation add-word (str index instrs)
+(function " (l) (with return
+	{(continuation add-word (str index instrs)
 		(if [nil? [' str]]
-			{return (`(with-continuation return
+			{return (`(with return
 				[allocate (,[binary->base2sexpr [' index]])
-					(make-continuation _ (str) (,[lst (` begin) [reverse [lst (`{return [' str]}) [' instrs]]]]))]))}
+					(continuation _ (str) (,[lst (` begin) [reverse [lst (`{return [' str]}) [' instrs]]]]))]))}
 			
-			{(make-continuation add-char (word index instrs)
+			{(continuation add-char (word index instrs)
 					(if [nil? [' word]]
 						{add-word [rst [' str]] [+ [' index] (d 1)]
 							[lst (`[set-char [+ [' str] (,[binary->base2sexpr [' index]])]
@@ -527,12 +526,12 @@ Up till now, references to functions defined elsewhere have been the only things
 ```
 
 ### Variable Binding
-Variable binding is enabled by the `make-continuation` expression. `make-continuation` is special because, like `function`, it allows references to be bound. Unlike `function`, however, expressions within `make-continuation` can directly access its parent function's variables. The `let` binding function implements the following transformation:
+Variable binding is enabled by the `continuation` expression. `continuation` is special because, like `function`, it allows references to be bound. Unlike `function`, however, expressions within `continuation` can directly access its parent function's variables. The `let` binding function implements the following transformation:
 ```racket
 (let ((params args) ...) expr0)
 ->
-(with-continuation return
-	{(make-continuation templet0 (params ...)
+(with return
+	{(continuation templet0 (params ...)
 		{return expr0}) vals ...})
 ```
 It is implemented and used as follows:
@@ -540,15 +539,15 @@ It is implemented and used as follows:
 ```racket
 (** Returns a list with mapper applied to each element.
 (function map (l mapper)
-	(with-continuation return
-		{(make-continuation aux (in out)
+	(with return
+		{(continuation aux (in out)
 			(if [nil? [' in]]
 				{return [reverse [' out]]}
 				{aux [rst [' in]] [lst [[' mapper] [fst [' in]]] [' out]]})) [' l] [nil]})))
 
 (function let (l)
-	(`(with-continuation return
-		(,[llst (` continue) (`(make-continuation templet0
+	(`(with return
+		(,[llst (` jump) (`(continuation templet0
 			(,[map [fst [' l]] fst])
 			{return (,[frst [' l]])})) [map [fst [' l]] frst]]))))
 ```
@@ -588,8 +587,8 @@ It is implemented and used as follows:
 ```racket
 (function switch (l)
 	(`(let ((tempeq0 (,[fst [' l]])) (tempval0 (,[frst [' l]])))
-		(,(with-continuation return
-			{(make-continuation aux (remaining else-clause)
+		(,(with return
+			{(continuation aux (remaining else-clause)
 				(if [nil? [' remaining]]
 					{return [' else-clause]}
 					{aux [rst [' remaining]]
@@ -611,7 +610,7 @@ It is implemented and used as follows:
 ```
 
 ### Closures
-A restricted form of closures can be implemented in L2. The key to their implementation is to use the continue expression to "continue" out of the function that is supposed to provide the lexical environment. By doing this instead of merely returning from the environment function, the stack-pointer and thus the stack-frame of the environment are preserved. The following example implements a function that receives a single argument and "returns" (more accurately: continues) a continuation that adds this value to its own argument. But first, the following transformations are needed:
+A restricted form of closures can be implemented in L2. The key to their implementation is to `jump` out of the function that is supposed to provide the lexical environment. By doing this instead of merely returning from the environment function, the stack-pointer and thus the stack-frame of the environment are preserved. The following example implements a function that receives a single argument and "returns" (more accurately: jumps out) a continuation that adds this value to its own argument. But first, the following transformations are needed:
 ```racket
 (environment env0 (args ...) expr0)
 ->
@@ -620,16 +619,16 @@ A restricted form of closures can be implemented in L2. The key to their impleme
 
 (lambda (args ...) expr0)
 ->
-(make-continuation lambda0 (cont0 args ...)
+(continuation lambda0 (cont0 args ...)
 	{[' cont0] expr0})
 
 (; func0 args ...)
 ->
-(with-continuation return [func0 return args ...])
+(with return [func0 return args ...])
 
 (: cont0 args ...)
 ->
-(with-continuation return {cont0 return args ...})
+(with return {cont0 return args ...})
 ```
 These are implemented and used as follows:
 #### closures.l2
@@ -639,14 +638,14 @@ These are implemented and used as follows:
 		{[' cont0] (,[frrst [' l]])})))
 
 (function lambda (l)
-	(`(make-continuation lambda0 (,[lst (` cont0) [fst [' l]]])
+	(`(continuation lambda0 (,[lst (` cont0) [fst [' l]]])
 		{[' cont0] (,[frst [' l]])})))
 
 (function ; (l)
-	(`(with-continuation return (,[lllst (` invoke) [fst [' l]] (` return) [rst [' l]]]))))
+	(`(with return (,[lllst (` invoke) [fst [' l]] (` return) [rst [' l]]]))))
 
 (function : (l)
-	(`(with-continuation return (,[lllst (` continue) [fst [' l]] (` return) [rst [' l]]]))))
+	(`(with return (,[lllst (` jump) [fst [' l]] (` return) [rst [' l]]]))))
 ```
 #### test9.l2
 ```
@@ -669,16 +668,16 @@ There are far fewer subtle ways to trigger undefined behaviors in L2 than in oth
 ```racket
 (assume x y)
 ->
-(with-continuation return
-	{(make-continuation tempas0 ()
+(with return
+	{(continuation tempas0 ()
 		(if x {return y} (begin)))})
 ```
 This is implemented as follows:
 #### assume.l2
 ```racket
 (function assume (l)
-	(`(with-continuation return
-		{(make-continuation tempas0 ()
+	(`(with return
+		{(continuation tempas0 ()
 			(if (,[fst [' l]]) {return (,[frst [' l]])} (begin)))})))
 ```
 #### test10.l2
@@ -691,7 +690,7 @@ This is implemented as follows:
 
 [foo (" C) (" D)]
 ```
-In the function `foo`, if `[' x]` were equal to `[' y]`, then the else branch of the `assume`'s `if` expression would be taken. Since this branch does nothing, `make-continuation`'s body expression would finish evaluating. But this is the undefined behavior stated in [the first paragraph of the description of the `make-continuation` expression](#make-continuation). Therefore an L2 compiler does not have to worry about what happens in the case that `[' x]` equals `[' y]`. In light of this and the fact that the `if` condition is pure, the whole `assume` expression can be replaced with the first branch of `assume`'s `if`  expression. And more importantly, the the first branch of `assume`'s `if` expression can be optimized assuming that `[' x]` is not equal to `[' y]`. Therefore, a hypothetical optimizing compiler would also replace the last `[get-char [' x]]`, a load from memory, with `(char A)`, a constant.
+In the function `foo`, if `[' x]` were equal to `[' y]`, then the else branch of the `assume`'s `if` expression would be taken. Since this branch does nothing, `continuation`'s body expression would finish evaluating. But this is the undefined behavior stated in [the first paragraph of the description of the `continuation` expression](#continuation). Therefore an L2 compiler does not have to worry about what happens in the case that `[' x]` equals `[' y]`. In light of this and the fact that the `if` condition is pure, the whole `assume` expression can be replaced with the first branch of `assume`'s `if`  expression. And more importantly, the the first branch of `assume`'s `if` expression can be optimized assuming that `[' x]` is not equal to `[' y]`. Therefore, a hypothetical optimizing compiler would also replace the last `[get-char [' x]]`, a load from memory, with `(char A)`, a constant.
 
 #### shell
 ```shell

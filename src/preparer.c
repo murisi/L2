@@ -21,8 +21,8 @@ union expression *vfind_multiple_definitions(union expression *e) {
 				}
 			}
 			break;
-		} case makec: case function: {
-			list ref_with_params = lst(e->makec.reference, e->makec.parameters);
+		} case continuation: case function: {
+			list ref_with_params = lst(e->continuation.reference, e->continuation.parameters);
 			foreachlist(partial, t, ref_with_params) {
 				if(exists(reference_named, rst(*partial), t->reference.name)) {
 					longjmp(*vfind_multiple_definitions_handler, (int) make_multiple_definition(t->reference.name));
@@ -71,10 +71,10 @@ union expression *referent_of(union expression *reference) {
 					}
 				}
 				break;
-			} case function: case makec: case withc: {
+			} case function: case continuation: case with: {
 				if(!strcmp(t->function.reference->reference.name, reference->reference.name)) {
 					return t->function.reference;
-				} else if(t->base.type == function || t->base.type == makec) {
+				} else if(t->base.type == function || t->base.type == continuation) {
 					union expression *u;
 					foreach(u, t->function.parameters) {
 						if(!strcmp(u->reference.name, reference->reference.name)) {
@@ -89,8 +89,8 @@ union expression *referent_of(union expression *reference) {
 	return NULL;
 }
 
-bool is_continue_reference(union expression *s) {
-	return s->base.parent->base.type == _continue && s->base.parent->_continue.reference == s;
+bool is_jump_reference(union expression *s) {
+	return s->base.parent->base.type == jump && s->base.parent->jump.reference == s;
 }
 
 bool is_invoke_reference(union expression *s) {
@@ -98,7 +98,7 @@ bool is_invoke_reference(union expression *s) {
 }
 
 bool is_c_reference(union expression *s) {
-	return (s->base.parent->base.type == makec || s->base.parent->base.type == withc) && s->base.parent->makec.reference == s;
+	return (s->base.parent->base.type == continuation || s->base.parent->base.type == with) && s->base.parent->continuation.reference == s;
 }
 
 bool is_function_reference(union expression *s) {
@@ -121,16 +121,16 @@ union expression *vlink_references(union expression *s) {
 		s->reference.referent = referent_of(s);
 		if(s->reference.referent == NULL) {
 			s->reference.referent = prepend_parameter(s->reference.name, vlink_references_program);
-		} else if(is_continue_reference(s) && is_c_reference(s->reference.referent) &&
-			length(s->reference.parent->_continue.arguments) != length(target_expression(s)->makec.parameters)) {
+		} else if(is_jump_reference(s) && is_c_reference(s->reference.referent) &&
+			length(s->reference.parent->jump.arguments) != length(target_expression(s)->continuation.parameters)) {
 				longjmp(*vlink_references_handler, (int) make_param_count_mismatch(s->reference.parent, target_expression(s)));
 		} else if(is_invoke_reference(s) && is_function_reference(s->reference.referent) &&
 			length(s->reference.parent->invoke.arguments) != length(target_expression(s)->function.parameters)) {
 				longjmp(*vlink_references_handler, (int) make_param_count_mismatch(s->reference.parent, target_expression(s)));
 		}
-	} else if(s->base.type == makec && is_continue_reference(s) &&
-		length(s->makec.parent->_continue.arguments) != length(s->makec.parameters)) {
-			longjmp(*vlink_references_handler, (int) make_param_count_mismatch(s->makec.parent, s));
+	} else if(s->base.type == continuation && is_jump_reference(s) &&
+		length(s->continuation.parent->jump.arguments) != length(s->continuation.parameters)) {
+			longjmp(*vlink_references_handler, (int) make_param_count_mismatch(s->continuation.parent, s));
 	} else if(s->base.type == function && s->function.parent && s->function.parent->base.type == invoke &&
 		s->function.parent->invoke.reference == s && length(s->function.parent->invoke.arguments) != length(s->function.parameters)) {
 			longjmp(*vlink_references_handler, (int) make_param_count_mismatch(s->function.parent, s));
@@ -139,17 +139,17 @@ union expression *vlink_references(union expression *s) {
 }
 
 void vescape_analysis_aux(union expression *ref, union expression *target) {
-	if(is_continue_reference(ref)) {
-		ref->reference.parent->_continue.short_circuit = target;
+	if(is_jump_reference(ref)) {
+		ref->reference.parent->jump.short_circuit = target;
 	} else {
-		target->makec.escapes = true;
+		target->continuation.escapes = true;
 	}
 }
 
 union expression *vescape_analysis(union expression *s) {
 	if(s->base.type == reference && s->reference.referent != s && is_c_reference(s->reference.referent)) {
 		vescape_analysis_aux(s, target_expression(s));
-	} else if(s->base.type == makec) {
+	} else if(s->base.type == continuation) {
 		vescape_analysis_aux(s, s);
 
 	}
@@ -179,12 +179,12 @@ list vrename_definition_references_name_records;
 
 union expression *vrename_definition_references(union expression *s) {
 	switch(s->base.type) {
-		case function: case makec: case withc: {
+		case function: case continuation: case with: {
 			char *original_name = s->function.reference->reference.name;
 			s->function.reference->reference.name = generate_string();
 			prepend(make_name_record(s->function.reference, original_name), &vrename_definition_references_name_records);
 			
-			if(s->base.type == function || s->base.type == makec) {
+			if(s->base.type == function || s->base.type == continuation) {
 				union expression *t;
 				foreach(t, s->function.parameters) {
 					original_name = t->reference.name;
@@ -220,8 +220,8 @@ void visit_expressions(union expression **s) {
 			visit_expressions(&(*s)->_if.consequent);
 			visit_expressions(&(*s)->_if.alternate);
 			break;
-		} case function: case makec: case withc: {
-			if((*s)->base.type == function || (*s)->base.type == makec) {
+		} case function: case continuation: case with: {
+			if((*s)->base.type == function || (*s)->base.type == continuation) {
 				union expression **t;
 				foreach(t, address_list((*s)->function.parameters)) {
 					visit_expressions(t);
@@ -230,7 +230,7 @@ void visit_expressions(union expression **s) {
 			visit_expressions(&(*s)->function.reference);
 			visit_expressions(&(*s)->function.expression);
 			break;
-		} case _continue: case invoke: {
+		} case jump: case invoke: {
 			union expression **t;
 			foreach(t, lst(&(*s)->invoke.reference, address_list((*s)->invoke.arguments))) {
 				visit_expressions(t);
@@ -259,22 +259,22 @@ union expression *make_local(union expression *function) {
 // Renders the "parent" field meaningless
 union expression *use_return_value(union expression *n, union expression *ret_val) {
 	switch(n->base.type) {
-		case withc: {
-			set_fst(n->withc.parameter, generate_reference());
-		} case makec: {
-			n->makec.return_value = ret_val;
-			put(n, makec.expression, use_return_value(n->makec.expression, make_local(get_zeroth_function(n))));
+		case with: {
+			set_fst(n->with.parameter, generate_reference());
+		} case continuation: {
+			n->continuation.return_value = ret_val;
+			put(n, continuation.expression, use_return_value(n->continuation.expression, make_local(get_zeroth_function(n))));
 			return n;
 		} case function: {
 			n->function.return_value = ret_val;
 			n->function.expression_return_value = make_local(n);
 			put(n, function.expression, use_return_value(n->function.expression, n->function.expression_return_value));
 			return n;
-		} case invoke: case _continue: {
+		} case invoke: case jump: {
 			union expression *container = make_begin();
 			
-			if(n->base.type == _continue && n->_continue.short_circuit && n->_continue.reference->base.type == reference) {
-				n->_continue.reference->reference.return_value = NULL;
+			if(n->base.type == jump && n->jump.short_circuit && n->jump.reference->base.type == reference) {
+				n->jump.reference->reference.return_value = NULL;
 			} else {
 				union expression *ref_ret_val = make_local(get_zeroth_function(n));
 				emit(use_return_value(n->invoke.reference, ref_ret_val));

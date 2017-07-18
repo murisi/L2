@@ -40,16 +40,16 @@ union expression *vlayout_frames(union expression *n) {
 				t->reference.offset = n->function.parent ? make_constant(local_offset) : NULL;
 			}
 			break;
-		} case makec: case withc: {
-			if(n->makec.escapes) {
-				append(n->makec.reference, &get_zeroth_function(n)->function.locals);
+		} case continuation: case with: {
+			if(n->continuation.escapes) {
+				append(n->continuation.reference, &get_zeroth_function(n)->function.locals);
 				//Make space for the buffer
 				int i;
 				for(i = 1; i < (CONT_SIZE / WORD_SIZE); i++) {
 					append(generate_reference(), &get_zeroth_function(n)->function.locals);
 				}
 			}
-			append_list(&get_zeroth_function(n)->function.locals, n->makec.parameters);
+			append_list(&get_zeroth_function(n)->function.locals, n->continuation.parameters);
 			break;
 		}
 	}
@@ -139,24 +139,24 @@ union expression *vgenerate_references(union expression *n) {
 }
 
 union expression *cont_instr_ref(union expression *n) {
-	return n->makec.cont_instr_ref ? n->makec.cont_instr_ref : (n->makec.cont_instr_ref = generate_reference());
+	return n->continuation.cont_instr_ref ? n->continuation.cont_instr_ref : (n->continuation.cont_instr_ref = generate_reference());
 }
 
 union expression *make_continuation(union expression *n) {
 	union expression *container = make_begin();
-	emit(make_store(use(ebx), n->makec.reference, CONT_EBX, use(ecx)));
-	emit(make_store(use(esi), n->makec.reference, CONT_ESI, use(ecx)));
-	emit(make_store(use(edi), n->makec.reference, CONT_EDI, use(ecx)));
+	emit(make_store(use(ebx), n->continuation.reference, CONT_EBX, use(ecx)));
+	emit(make_store(use(esi), n->continuation.reference, CONT_ESI, use(ecx)));
+	emit(make_store(use(edi), n->continuation.reference, CONT_EDI, use(ecx)));
 	emit(make_load_address(cont_instr_ref(n), use(edx)));
-	emit(make_store(use(edx), n->makec.reference, CONT_CIR, use(ecx)));
-	emit(make_store(use(ebp), n->makec.reference, CONT_EBP, use(ecx)));
+	emit(make_store(use(edx), n->continuation.reference, CONT_CIR, use(ecx)));
+	emit(make_store(use(ebp), n->continuation.reference, CONT_EBP, use(ecx)));
 	return container;
 }
 
 union expression *move_arguments(union expression *n, int offset) {
 	union expression *container = make_begin();
 	union expression *t;
-	foreach(t, n->_continue.arguments) {
+	foreach(t, n->jump.arguments) {
 		emit(make_load(t, 0, use(edx), use(esi)));
 		emit(make_instr("(movl reg (mem disp base))", 3, use(edx), make_constant(offset), use(ecx)));
 		offset += WORD_SIZE;
@@ -167,11 +167,11 @@ union expression *move_arguments(union expression *n, int offset) {
 //Must be used after use_return_reference and init_i386_registers
 union expression *vgenerate_continuation_expressions(union expression *n) {
 	switch(n->base.type) {
-		case makec: {
+		case continuation: {
 			union expression *container = make_begin();
-			emit(make_load_address(n->makec.escapes ? n->makec.reference : cont_instr_ref(n), use(ecx)));
-			emit(make_store(use(ecx), n->makec.return_value, 0, use(edx)));
-			if(n->makec.escapes) {
+			emit(make_load_address(n->continuation.escapes ? n->continuation.reference : cont_instr_ref(n), use(ecx)));
+			emit(make_store(use(ecx), n->continuation.return_value, 0, use(edx)));
+			if(n->continuation.escapes) {
 				emit(make_continuation(n));
 			}
 			
@@ -179,29 +179,29 @@ union expression *vgenerate_continuation_expressions(union expression *n) {
 			union expression *after_reference = generate_reference();
 			emit(make_instr("(jmp rel)", 1, after_reference));
 			emit(make_instr("(label name)", 1, cont_instr_ref(n)));
-			emit(n->makec.expression);
+			emit(n->continuation.expression);
 			emit(make_instr("(label name)", 1, after_reference));
 			return container;
-		} case withc: {
+		} case with: {
 			union expression *container = make_begin();
-			if(n->withc.escapes) {
+			if(n->with.escapes) {
 				emit(make_continuation(n));
 			}
-			emit(n->withc.expression);
+			emit(n->with.expression);
 			emit(make_instr("(label name)", 1, cont_instr_ref(n)));
-			emit(make_load(fst(n->withc.parameter), 0, use(ecx), use(edx)));
-			emit(make_store(use(ecx), n->withc.return_value, 0, use(edx)));
+			emit(make_load(fst(n->with.parameter), 0, use(ecx), use(edx)));
+			emit(make_store(use(ecx), n->with.return_value, 0, use(edx)));
 			return container;
-		} case _continue: {
+		} case jump: {
 			union expression *container = make_begin();
-			if(n->_continue.short_circuit) {
-				if(length(n->_continue.short_circuit->makec.parameters) > 0) {
-					emit(make_load_address(fst(n->_continue.short_circuit->makec.parameters), use(ecx)));
+			if(n->jump.short_circuit) {
+				if(length(n->jump.short_circuit->continuation.parameters) > 0) {
+					emit(make_load_address(fst(n->jump.short_circuit->continuation.parameters), use(ecx)));
 					emit(move_arguments(n, 0));
 				}
-				emit(make_instr("(jmp rel)", 1, cont_instr_ref(n->_continue.short_circuit)));
+				emit(make_instr("(jmp rel)", 1, cont_instr_ref(n->jump.short_circuit)));
 			} else {
-				emit(make_load(n->_continue.reference, 0, use(ecx), use(edx)));
+				emit(make_load(n->jump.reference, 0, use(ecx), use(edx)));
 				emit(move_arguments(n, CONT_SIZE));
 				emit(make_instr("(movl (mem disp base) reg)", 3, make_constant(CONT_EBX), use(ecx), use(ebx)));
 				emit(make_instr("(movl (mem disp base) reg)", 3, make_constant(CONT_ESI), use(ecx), use(esi)));

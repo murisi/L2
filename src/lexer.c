@@ -88,7 +88,7 @@ list build_expr_list(FILE *l2file) {
 		return sexprs;
 	} else if(c == '{') {
 		list sexprs = nil();
-		append(build_symbol_sexpr("continue"), &sexprs);
+		append(build_symbol_sexpr("jump"), &sexprs);
 		
 		while((c = after_leading_space(l2file)) != '}') {
 			ungetc(c, l2file);

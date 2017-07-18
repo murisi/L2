@@ -1,11 +1,11 @@
-list with_continuation_primitive(list arg) { return lst(build_symbol_sexpr("with-continuation"), arg); }
+list with_primitive(list arg) { return lst(build_symbol_sexpr("with"), arg); }
 list begin_primitive(list arg) { return lst(build_symbol_sexpr("begin"), arg); }
 list if_primitive(list arg) { return lst(build_symbol_sexpr("if"), arg); }
 list function_primitive(list arg) { return lst(build_symbol_sexpr("function"), arg); }
-list make_continuation_primitive(list arg) { return lst(build_symbol_sexpr("make-continuation"), arg); }
+list continuation_primitive(list arg) { return lst(build_symbol_sexpr("continuation"), arg); }
 list b_primitive(list arg) { return lst(build_symbol_sexpr("b"), arg); }
 list invoke_primitive(list arg) { return lst(build_symbol_sexpr("invoke"), arg); }
-list continue_primitive(list arg) { return lst(build_symbol_sexpr("continue"), arg); }
+list jump_primitive(list arg) { return lst(build_symbol_sexpr("jump"), arg); }
 
 struct expansion {
 	union expression *function;
@@ -62,17 +62,17 @@ void build_syntax_tree(list d, union expression **s) {
 		char *str = to_string(d);
 		(*s)->reference.type = reference;
 		(*s)->reference.name = str;
-	} else if(!strcmp(to_string(fst(d)), "with-continuation")) {
+	} else if(!strcmp(to_string(fst(d)), "with")) {
 		if(length(d) != 3) {
 			longjmp(*build_syntax_tree_handler, (int) make_special_form(d, NULL));
 		} else if(!is_string(frst(d))) {
 			longjmp(*build_syntax_tree_handler, (int) make_special_form(d, frst(d)));
 		}
 	
-		(*s)->withc.type = withc;
-		build_syntax_tree_under(frst(d), &(*s)->withc.reference, *s);
-		build_syntax_tree_under(frrst(d), &(*s)->withc.expression, *s);
-		(*s)->withc.parameter = make_list(1, NULL);
+		(*s)->with.type = with;
+		build_syntax_tree_under(frst(d), &(*s)->with.reference, *s);
+		build_syntax_tree_under(frrst(d), &(*s)->with.expression, *s);
+		(*s)->with.parameter = make_list(1, NULL);
 	} else if(!strcmp(to_string(fst(d)), "begin")) {
 		(*s)->begin.type = begin;
 		(*s)->begin.expressions = nil();
@@ -91,7 +91,7 @@ void build_syntax_tree(list d, union expression **s) {
 		build_syntax_tree_under(frst(d), &(*s)->_if.condition, *s);
 		build_syntax_tree_under(frrst(d), &(*s)->_if.consequent, *s);
 		build_syntax_tree_under(frrrst(d), &(*s)->_if.alternate, *s);
-	} else if(!strcmp(to_string(fst(d)), "function") || !strcmp(to_string(fst(d)), "make-continuation")) {
+	} else if(!strcmp(to_string(fst(d)), "function") || !strcmp(to_string(fst(d)), "continuation")) {
 		if(length(d) != 4) {
 			longjmp(*build_syntax_tree_handler, (int) make_special_form(d, NULL));
 		} else if(!is_string(frst(d))) {
@@ -100,7 +100,7 @@ void build_syntax_tree(list d, union expression **s) {
 			longjmp(*build_syntax_tree_handler, (int) make_special_form(d, frrst(d)));
 		}
 		
-		(*s)->function.type = !strcmp(to_string(fst(d)), "function") ? function : makec;
+		(*s)->function.type = !strcmp(to_string(fst(d)), "function") ? function : continuation;
 		build_syntax_tree_under(frst(d), &(*s)->function.reference, *s);
 		
 		if((*s)->function.type == function) {
@@ -134,12 +134,12 @@ void build_syntax_tree(list d, union expression **s) {
 				longjmp(*build_syntax_tree_handler, (int) make_special_form(d, frst(d)));
 			}
 		}
-	} else if(!strcmp(to_string(fst(d)), "invoke") || !strcmp(to_string(fst(d)), "continue")) {
+	} else if(!strcmp(to_string(fst(d)), "invoke") || !strcmp(to_string(fst(d)), "jump")) {
 		if(length(d) == 1) {
 			longjmp(*build_syntax_tree_handler, (int) make_special_form(d, NULL));
 		}
 	
-		(*s)->invoke.type = !strcmp(to_string(fst(d)), "invoke") ? invoke : _continue;
+		(*s)->invoke.type = !strcmp(to_string(fst(d)), "invoke") ? invoke : jump;
 		build_syntax_tree_under(frst(d), &(*s)->invoke.reference, *s);
 	
 		s_expression v;
