@@ -167,12 +167,12 @@ bool strequal(void *a, void *b) {
 	return strcmp(a, b) == 0;
 }
 
-list generate_string_blacklist;
+list generate_string_blacklist = NULL;
 
 char *generate_string() {
 	static int next_id = 0;
 	char *attempt;
-	while(exists(strequal, generate_string_blacklist, attempt = cprintf("temp%u", next_id++)));
+	while(exists(strequal, &generate_string_blacklist, attempt = cprintf("temp%u", next_id++)));
 	return attempt;
 }
 

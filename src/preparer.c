@@ -15,7 +15,7 @@ union expression *vfind_multiple_definitions(union expression *e) {
 	switch(e->base.type) {
 		case begin: {
 			foreachlist(partial, t, e->begin.expressions) {
-				if(t->base.type == function && exists(function_named, rst(*partial), t->function.reference->reference.name)) {
+				if(t->base.type == function && exists(function_named, &(*partial)->rst, t->function.reference->reference.name)) {
 					longjmp(*vfind_multiple_definitions_handler,
 						(int) make_multiple_definition(t->function.reference->reference.name));
 				}
@@ -24,7 +24,7 @@ union expression *vfind_multiple_definitions(union expression *e) {
 		} case continuation: case function: {
 			list ref_with_params = lst(e->continuation.reference, e->continuation.parameters);
 			foreachlist(partial, t, ref_with_params) {
-				if(exists(reference_named, rst(*partial), t->reference.name)) {
+				if(exists(reference_named, &(*partial)->rst, t->reference.name)) {
 					longjmp(*vfind_multiple_definitions_handler, (int) make_multiple_definition(t->reference.name));
 				}
 			}

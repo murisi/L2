@@ -176,6 +176,20 @@ void merge_onto(list src, list *dest) {
 	}
 }
 
+void *_dlopen(char *library_path, jmp_buf *handler) {
+	void *handle = dlopen(library_path, RTLD_NOW | RTLD_GLOBAL | RTLD_DEEPBIND);
+	if(!handle) {
+		longjmp(*handler, (int) make_environment(cprintf("%s", dlerror())));
+	}
+	return handle;
+}
+
+void _dlclose(void *handle, jmp_buf *handler) {
+	if(dlclose(handle)) {
+		longjmp(*handler, (int) make_environment(cprintf("%s", dlerror())));
+	}
+}
+
 /*
  * Does the expansions in the expansions lists. For the purposes of efficiency,
  * the first expansion list is compiled and sent to the assembler together.
@@ -203,7 +217,10 @@ void expand_expressions(list expansion_lists) {
 			append(expander_container->function.reference->reference.name, &expander_container_names);
 		}
 		
-		void *handle = load(compile(expander_containers, true, build_syntax_tree_handler), build_syntax_tree_handler);
+		char *outfn = cprintf("%s", "./.libXXXXXX.so");
+		mkstemps(outfn, 3);
+		compile_expressions(outfn, expander_containers, build_syntax_tree_handler);
+		void *handle = _dlopen(outfn, build_syntax_tree_handler);
 		if(!handle) {
 			longjmp(*expand_expressions_handler, (int) make_environment(cprintf("%s", dlerror())));
 		}
@@ -219,7 +236,8 @@ void expand_expressions(list expansion_lists) {
 			build_syntax_tree_under(transformed, expansion->target, (*expansion->target)->base.parent);
 			merge_onto(build_syntax_tree_expansion_lists, &urgent_expansion_lists);
 		}
-		unload(handle, build_syntax_tree_handler);
+		_dlclose(handle, build_syntax_tree_handler);
+		remove(outfn);
 		
 		append_list(&urgent_expansion_lists, (*remaining_expansion_lists)->rst);
 		(*remaining_expansion_lists)->rst = urgent_expansion_lists;

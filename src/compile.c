@@ -23,6 +23,67 @@ typedef int bool;
 #include "preparer.c"
 #include "generator.c"
 
+list compile_library_names = NULL;
+
+void ensure_compile_library_names() {
+	if(compile_library_names == NULL) {
+		compile_library_names = nil();
+	}
+}
+
+void load(char *library_name, jmp_buf *handler) {
+	ensure_compile_library_names();
+	prepend(library_name, &compile_library_names);
+}
+
+void unload(char *library_name, jmp_buf *handler) {
+	ensure_compile_library_names();
+	list *libsublist = exists(strequal, &compile_library_names, library_name);
+	if(libsublist) {
+		*libsublist = (*libsublist)->rst;
+	} else {
+		longjmp(*handler, (int) make_missing_file(library_name));
+	}
+}
+
+/*
+ * Makes a new binary at the path outbin from the object file in the path
+ * given by the string in. This binary will both be a static library and
+ * an executable.
+ */
+
+void compile_object(char *outbin, char *in, jmp_buf *handler) {
+	char entryfn[] = ".entryXXXXXX.s";
+	FILE *entryfile = fdopen(mkstemps(entryfn, 2), "w+");
+	fputs(".section .init_array,\"aw\"\n" ".align 4\n" ".long main\n" ".text\n" ".comm argc,4,4\n" ".comm argv,4,4\n" ".globl main\n"
+		"main:\n" "pushl %esi\n" "pushl %edi\n" "pushl %ebx\n" "pushl %ebp\n" "movl %esp, %ebp\n" "movl 20(%ebp), %eax\n"
+		"movl %eax, argc\n" "movl 24(%ebp), %eax\n" "movl %eax, argv\n", entryfile);
+	fputs("jmp thunk_end\n" "get_pc_thunk:\n" "movl (%esp), %ebx\n" "ret\n" "thunk_end:\n" "call get_pc_thunk\n"
+		"addl $_GLOBAL_OFFSET_TABLE_, %ebx\n", entryfile);
+	fclose(entryfile);
+
+	char exitfn[] = ".exitXXXXXX.s";
+	FILE *exitfile = fdopen(mkstemps(exitfn, 2), "w+");
+	fputs("leave\n" "popl %ebx\n" "popl %edi\n" "popl %esi\n" "movl $0, %eax\n" "ret\n", exitfile);
+	fclose(exitfile);
+	
+	system(cprintf("gcc -m32 -g -o '%s.o' -c '%s'", entryfn, entryfn));
+	remove(entryfn);
+	system(cprintf("gcc -m32 -g -o '%s.o' -c '%s'", exitfn, exitfn));
+	remove(exitfn);
+	
+	char *library_string = "";
+	char *library_name;
+	foreach(library_name, compile_library_names) {
+		library_string = cprintf("\"%s\" %s", library_name, library_string);
+	}
+	
+	system(cprintf("gcc -m32 -pie -Wl,-E %s -o '%s' '%s.o' '%s' '%s.o' 2>&1 | grep -v \"type and size of dynamic symbol\" 1>&2",
+		library_string, outbin, entryfn, in, exitfn));
+	remove(cprintf("%s.o", entryfn));
+	remove(cprintf("%s.o", exitfn));
+}
+
 bool equals(void *a, void *b) {
 	return a == b;
 }
@@ -32,7 +93,14 @@ bool equals(void *a, void *b) {
 	visit_expressions(x); \
 }
 
-char *compile(list exprs, bool PIC, jmp_buf *handler) {
+/*
+ * Makes a new binary file at the path outbin from the list of primitive
+ * expressions, exprs. The resulting binary file executes the list from top to
+ * bottom and then makes all the top-level functions visible to the rest of the
+ * executable that it is embedded in.
+ */
+
+void compile_expressions(char *outbin, list exprs, jmp_buf *handler) {
 	union expression *container = make_begin(), *t;
 	list toplevel_function_references = nil();
 	{foreach(t, exprs) {
@@ -52,7 +120,6 @@ char *compile(list exprs, bool PIC, jmp_buf *handler) {
 	vlink_references_handler = handler;
 	visit_expressions_with(&program, vlink_references);
 	
-	generate_string_blacklist = nil();
 	visit_expressions_with(&program, vblacklist_references);
 	vrename_definition_references_name_records = nil();
 	visit_expressions_with(&program, vrename_definition_references);
@@ -61,7 +128,7 @@ char *compile(list exprs, bool PIC, jmp_buf *handler) {
 	visit_expressions_with(&program, vescape_analysis);
 	program = use_return_value(program, generate_reference());
 	
-	generator_PIC = PIC;
+	generator_PIC = true;
 	generator_init();
 	visit_expressions_with(&program, vlayout_frames);
 	visit_expressions_with(&program, vgenerate_references);
@@ -87,58 +154,15 @@ char *compile(list exprs, bool PIC, jmp_buf *handler) {
 	FILE *sympairsfile = fdopen(mkstemp(sympairsfn), "w+");
 	struct name_record *r;
 	foreach(r, vrename_definition_references_name_records) {
-		if(exists(equals, toplevel_function_references, r->reference) ||
-			exists(equals, root_function->function.parameters, r->reference)) {
+		if(exists(equals, &toplevel_function_references, r->reference) ||
+			exists(equals, &root_function->function.parameters, r->reference)) {
 				fprintf(sympairsfile, "%s %s\n", r->reference->reference.name, r->original_name);
 		}
 	}
 	fclose(sympairsfile);
 	system(cprintf("objcopy --redefine-syms='%s' '%s'", sympairsfn, ofilefn));
 	remove(sympairsfn);
-	
-	char *afn = cprintf("%s", ".libXXXXXX.a");
-	mkstemps(afn, 2);
-	remove(afn);
-	system(cprintf("ar -rcs %s %s\n", afn, ofilefn));
-	remove(ofilefn);
-	return afn;
-}
-
-/*
- * Copies the file of the path given by the string in, into the path given by the string
- * out and returns the out path.
- */
-
-char *copy(char *out, char *in, jmp_buf *handler) {
-	FILE *f = fopen(in, "r");
-	if(!f) {
-		longjmp(*handler, (int) make_missing_file(in));
-	}
-	system(cprintf("cp '%s' '%s'", in, out));
-	fclose(f);
-	return out;
-}
-
-/*
- * Returns the path of a newly made file that is the concatenation of the file of the path
- * in the string in2 to the file of the path in the string in1.
- */
-
-char *concatenate(char *in1, char *in2, jmp_buf *handler) {
-	FILE *f1 = fopen(in1, "r");
-	if(!f1) {
-		longjmp(*handler, (int) make_missing_file(in1));
-	}
-	FILE *f2 = fopen(in2, "r");
-	if(!f2) {
-		longjmp(*handler, (int) make_missing_file(in2));
-	}
-	char *outfn = cprintf("%s", ".catXXXXXX");
-	mkstemp(outfn);
-	system(cprintf("cat '%s' '%s' > '%s'", in1, in2, outfn));
-	fclose(f1);
-	fclose(f2);
-	return outfn;
+	compile_object(outbin, ofilefn, handler);
 }
 
 struct occurrences {
@@ -150,232 +174,27 @@ bool occurrences_for(void *o, void *ctx) {
 	return strequal(((struct occurrences *) o)->member, ctx);
 }
 
-#define MEMBER_BUFFER_SIZE 1024
-
-/*
- * Makes a new static library whose's ordered list of objects are the concatenation
- * of the ordered list of objects in the static library in2 onto the ordered list of
- * objects in the static library in1, and returns the path to the new static library.
- */
-
-char *sequence(char *in1, char *in2, jmp_buf *handler) {
-	FILE *in2file = fopen(in2, "r");
-	if(!in2file) {
-		longjmp(*handler, (int) make_missing_file(in2));
-	}
-	char *outfn = cprintf("%s", ".libXXXXXX.a");
-	mkstemps(outfn, 2);
-	copy(outfn, in1, handler);
-	
-	char *tempdir = cprintf("%s", ".objectsXXXXXX");
-	mkdtemp(tempdir);
-	chdir(tempdir);
-	
-	list member_counts = nil();
-	char member[MEMBER_BUFFER_SIZE];
-	FILE *f2 = popen(cprintf("ar -t '../%s'", in2), "r");
-	while(fgets(member, MEMBER_BUFFER_SIZE, f2)) {
-		member[strlen(member) - 1] = '\0';
-		struct occurrences *o = exists(occurrences_for, member_counts, member);
-		if(o) {
-			o->count++;
-		} else {
-			o = malloc(sizeof(struct occurrences));
-			o->member = cprintf("%s", member);
-			o->count = 1;
-			prepend(o, &member_counts);
-		}
-		system(cprintf("ar -xN %i '../%s' '%s'\n", o->count, in2, o->member));
-		system(cprintf("ar -q '../%s' '%s'", outfn, o->member));
-		remove(o->member);
-	}
-	fclose(f2);
-	chdir("../");
-	remove(tempdir);
-	fclose(in2file);
-	return outfn;
-}
-
-/*
- * Makes a new static library whose's ordered list of objects consists
- * of an object that jumps to the label by the name given in the string
- * skiplabel, followed by the ordered list of objects in static library
- * in, followed by an object comprising of a label by the name given in
- * the string skiplabel, and returns a path to this static library.
- */
-
-char *skip(char *in, char *skiplabel, jmp_buf *handler) {
-	char entryfn[] = ".entryXXXXXX.s";
-	FILE *entryfile = fdopen(mkstemps(entryfn, 2), "w+");
-	fprintf(entryfile, ".text\njmp %s\n", skiplabel);
-	fclose(entryfile);
-	
-	char exitfn[] = ".exitXXXXXX.s";
-	FILE *exitfile = fdopen(mkstemps(exitfn, 2), "w+");
-	fprintf(exitfile, ".global %s\n%s:\n", skiplabel, skiplabel);
-	fclose(exitfile);
-	
-	system(cprintf("gcc -m32 -g -o '%s.o' -c '%s'", entryfn, entryfn));
-	remove(entryfn);
-	system(cprintf("gcc -m32 -g -o '%s.o' -c '%s'", exitfn, exitfn));
-	remove(exitfn);
-	
-	char *outfn = cprintf("%s", ".libXXXXXX.a");
-	mkstemps(outfn, 2);
-	remove(outfn);
-	system(cprintf("ar -rcs '%s' '%s'", outfn, cprintf("%s.o", entryfn)));
-	remove(cprintf("%s.o", entryfn));
-	
-	char *f2fn = sequence(outfn, in, handler);
-	remove(outfn);
-	system(cprintf("ar -q '%s' '%s'", f2fn, cprintf("%s.o", exitfn)));
-	remove(cprintf("%s.o", exitfn));
-	return f2fn;
-}
-
-/*
- * Makes a new dynamic library from the static library in the path
- * given by the string in. When dynamic library is loaded using dlopen,
- * all the object files from the static library are executed sequentially.
- * Afterwords, all the functions from the static library are available
- * for calling, as is expected of a dynamic library. This function returns
- * the path to this newly made dynamic library.
- */
-
-char *dynamic(char *in, jmp_buf *handler) {
-	FILE *f = fopen(in, "r");
-	if(!f) {
-		longjmp(*handler, (int) make_missing_file(in));
-	}
-	
-	char *outfn = cprintf("%s", "./.libXXXXXX.so");
-	mkstemps(outfn, 3);
-	
-	char entryfn[] = ".entryXXXXXX.s";
-	FILE *entryfile = fdopen(mkstemps(entryfn, 2), "w+");
-	fputs(".section .init_array,\"aw\"\n" ".align 4\n" ".long main\n" ".text\n" "main:\n" "pushl %esi\n" "pushl %edi\n" "pushl %ebx\n"
-		"pushl %ebp\n" "movl %esp, %ebp\n", entryfile);
-	if(true) {
-		fputs("jmp thunk_end\n" "get_pc_thunk:\n" "movl (%esp), %ebx\n" "ret\n" "thunk_end:\n" "call get_pc_thunk\n"
-			"addl $_GLOBAL_OFFSET_TABLE_, %ebx\n", entryfile);
-	}
-	fclose(entryfile);
-
-	char exitfn[] = ".exitXXXXXX.s";
-	FILE *exitfile = fdopen(mkstemps(exitfn, 2), "w+");
-	fputs("leave\n" "popl %ebx\n" "popl %edi\n" "popl %esi\n" "movl $0, %eax\n" "ret\n", exitfile);
-	fclose(exitfile);
-	
-	system(cprintf("gcc -m32 -g -o '%s.o' -c '%s'", entryfn, entryfn));
-	remove(entryfn);
-	system(cprintf("gcc -m32 -g -o '%s.o' -c '%s'", exitfn, exitfn));
-	remove(exitfn);
-	system(cprintf("gcc -m32 -shared -L . -o '%s' -Wl,--whole-archive '%s.o' '%s' '%s.o' -Wl,--no-whole-archive", outfn,
-		entryfn, in, exitfn));
-	remove(cprintf("%s.o", entryfn));
-	remove(cprintf("%s.o", exitfn));
-	
-	fclose(f);
-	return outfn;
-}
-
-/*
- * Makes a new executable from the static library in the path given by
- * the string in. When the executable is executed, all the object files
- * from the static library are executed sequentially. This function returns
- * the path to this newly made dynamic library.
- */
-
-char *executable(char *in, jmp_buf *handler) {
-	FILE *f = fopen(in, "r");
-	if(!f) {
-		longjmp(*handler, (int) make_missing_file(in));
-	}
-	
-	char entryfn[] = ".entryXXXXXX.s";
-	FILE *entryfile = fdopen(mkstemps(entryfn, 2), "w+");
-	fputs(".text\n" ".comm argc,4,4\n" ".comm argv,4,4\n" ".globl main\n" "main:\n" "pushl %esi\n" "pushl %edi\n" "pushl %ebx\n"
-		"pushl %ebp\n" "movl %esp, %ebp\n" "movl 20(%ebp), %eax\n" "movl %eax, argc\n" "movl 24(%ebp), %eax\n" "movl %eax, argv\n",
-		entryfile);
-	if(true) {
-		fputs("jmp thunk_end\n" "get_pc_thunk:\n" "movl (%esp), %ebx\n" "ret\n" "thunk_end:\n" "call get_pc_thunk\n"
-			"addl $_GLOBAL_OFFSET_TABLE_, %ebx\n", entryfile);
-	}
-	fclose(entryfile);
-
-	char exitfn[] = ".exitXXXXXX.s";
-	FILE *exitfile = fdopen(mkstemps(exitfn, 2), "w+");
-	fputs("leave\n" "popl %ebx\n" "popl %edi\n" "popl %esi\n" "movl $0, %eax\n" "ret\n", exitfile);
-	fclose(exitfile);
-	
-	system(cprintf("gcc -m32 -g -o '%s.o' -c '%s'", entryfn, entryfn));
-	remove(entryfn);
-	system(cprintf("gcc -m32 -g -o '%s.o' -c '%s'", exitfn, exitfn));
-	remove(exitfn);
-	
-	char *outfn = cprintf("%s", ".exeXXXXXX");
-	mkstemp(outfn);
-	system(cprintf("gcc -m32 -L . -o '%s' -Wl,--whole-archive '%s.o' '%s' '%s.o' -Wl,--no-whole-archive", outfn, entryfn, in, exitfn));
-	remove(cprintf("%s.o", entryfn));
-	remove(cprintf("%s.o", exitfn));
-	
-	fclose(f);
-	return outfn;
-}
-
-/*
- * Returns the path to an empty static library.
- */
-
-char *nil_library() {
-	char *outfn = cprintf("%s", ".libXXXXXX.a");
-	mkstemps(outfn, 2);
-	remove(outfn);
-	system(cprintf("ar rcs '%s'", outfn));
-	return outfn;
-}
-
-/*
- * Returns the path to an empty L2 source file.
- */
-
-char *nil_source() {
-	char *outfn = cprintf("%s", ".XXXXXX.l2");
-	close(mkstemps(outfn, 3));
-	return outfn;
-}
-
-void *load(char *library_path, jmp_buf *handler) {
-	void *handle = dlopen(dynamic(library_path, handler), RTLD_NOW | RTLD_GLOBAL | RTLD_DEEPBIND);
-	if(!handle) {
-		longjmp(*handler, (int) make_environment(cprintf("%s", dlerror())));
-	}
-	return handle;
-}
-
-void unload(void *handle, jmp_buf *handler) {
-	if(dlclose(handle)) {
-		longjmp(*handler, (int) make_environment(cprintf("%s", dlerror())));
-	}
-}
-
 #include "parser.c"
 
 /*
- * Makes a new static library from the L2 file at the path inl2. The resulting
- * static library executes the L2 source file from top to bottom and then makes
- * all the top-level functions visible to the rest of the executable that it is
- * embedded in. This function returns the path to this newly made static library.
+ * Makes a new binary file at the path outbin from the L2 file at the path inl2.
+ * The resulting binary file executes the L2 source file from top to bottom and
+ * then makes all the top-level functions visible to the rest of the executable
+ * that it is embedded in.
  */
 
-char *library(char *inl2, jmp_buf *handler) {
+void compile(char *outbin, char *inl2, jmp_buf *handler) {
 	FILE *l2file = fopen(inl2, "r");
 	if(l2file == NULL) {
 		longjmp(*handler, (int) make_missing_file(inl2));
 	}
+	if(generate_string_blacklist == NULL) {
+		generate_string_blacklist = nil();
+	}
 	
 	list expressions = nil();
 	list expansion_lists = nil();
+	ensure_compile_library_names();
 	
 	int c;
 	while((c = after_leading_space(l2file)) != EOF) {
@@ -391,5 +210,5 @@ char *library(char *inl2, jmp_buf *handler) {
 	
 	expand_expressions_handler = handler;
 	expand_expressions(expansion_lists);
-	return compile(expressions, true, handler);
+	compile_expressions(outbin, expressions, handler);
 }

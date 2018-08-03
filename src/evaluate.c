@@ -40,14 +40,14 @@ char *prompt_expressions(jmp_buf *handler) {
 
 int main(int argc, char *argv[]) {
 	list shared_library_handles = nil();
-	volatile int processing_from, processing_to, i;
+	volatile int i;
 	
 	//Initialize the error handler
 	jmp_buf handler;
 	union evaluate_error *err;
 	if(err = (union evaluate_error *) setjmp(handler)) {
 		if(err->no.type != NO) {
-			printf("Error found between %s and %s inclusive: ", argv[processing_from], argv[processing_to - 1]);
+			printf("Error found in %s: ", argv[i]);
 		}
 		print_annotated_syntax_tree_annotator = &empty_annotator;
 		switch(err->no.type) {
@@ -95,20 +95,16 @@ int main(int argc, char *argv[]) {
 				return ARGUMENTS;
 			}
 		}
-		if(processing_from == argc && err->no.type != NO) {
-			i = argc - 1;
+		if(i == argc-1 && strcmp(argv[i], "+") && err->no.type != NO) {
 			goto prompt;
 		} else {
 			void *handle;
 			foreach(handle, shared_library_handles) {
-				unload(handle, NULL);
+				_dlclose(handle, NULL);
 			}
 			return err->no.type;
 		}
 	}
-	
-	processing_from = 1;
-	processing_to = argc;
 	
 	if(argc < 2) {
 		longjmp(handler, (int) make_arguments());
@@ -117,31 +113,24 @@ int main(int argc, char *argv[]) {
 	if(i == argc) {
 		longjmp(handler, (int) make_arguments());
 	}
-	char *init_library = nil_library();
+	
 	for(i = 1; i < argc && strcmp(argv[i], "-"); i++) {
-		init_library = sequence(init_library, argv[i], &handler);
+		load(argv[i], &handler);
 	}
-	prepend(load(init_library, &handler), &shared_library_handles);
 	
 	signal(SIGINT, int_handler);
-	prompt: while(i < argc) {
-		int j;
-		char *source = nil_source();
-		
-		for(j = ++i; (j == argc && i == argc) || (i < argc && strcmp(argv[i], "-")); i++) {
-			processing_from = i;
-			processing_to = i + 1;
-			if(j == argc) {
-				printf("\n");
-			}
-			source = concatenate(source, (j == argc) ? prompt_expressions(&handler) : argv[i], &handler);
+	i++;
+	prompt: for(; i < argc; i++) {
+		char *source = (i == argc-1 && !strcmp(argv[i], "+")) ? prompt_expressions(&handler) : argv[i];
+		char *library_name = cprintf("%s", "./.libXXXXXX.so");
+		mkstemps(library_name, 3);
+		compile(library_name, source, &handler);
+		load(library_name, &handler);
+		prepend(_dlopen(library_name, &handler), &shared_library_handles);
+		if(i == argc-1 && !strcmp(argv[i], "+")) {
+			printf("\n");
+			i--;
 		}
-		processing_from = j;
-		processing_to = i;
-		if(j == argc) i -= 2;
-		
-		prepend(load(library(source, &handler), &handler), &shared_library_handles);
 	}
-	printf("\n");
 	longjmp(handler, (int) make_no());
 }
