@@ -6,17 +6,13 @@ char longjmp_hack[sizeof(int) - sizeof(void *)];
 #include "ctype.h"
 #include "stdlib.h"
 #include "string.h"
-#include "stdarg.h"
 #include "limits.h"
 #include "stdlib.h"
 
 #include "unistd.h"
 #include "dlfcn.h"
 
-#define true (~((int) 0))
-#define false ((int) 0)
-typedef int bool;
-#include "list.c"
+#include "sexpr.c"
 #include "compile_errors.c"
 #include "lexer.c"
 #include "expressions.c"

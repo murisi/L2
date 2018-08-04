@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 mkdir -p bin
 
-gcc -m32 -g -c -o bin/l2compile_begin.o assets/l2compile_begin.s
+gcc -m32 -g -c -o bin/sexpr.o src/sexpr.c
+objcopy --redefine-syms=assets/l2_sym_pairs bin/sexpr.o
+gcc -m32 -shared -o bin/sexpr.so bin/sexpr.o
+rm bin/sexpr.o
+
 gcc -m32 -g -c -o bin/l2compile.o src/compile.c
-gcc -m32 -g -c -o bin/l2compile_end.o assets/l2compile_end.s
 objcopy --redefine-syms=assets/l2_sym_pairs bin/l2compile.o
-gcc -m32 -shared -o bin/l2compile.so bin/l2compile_begin.o bin/l2compile.o bin/l2compile_end.o
-rm bin/l2compile_begin.o
+gcc -m32 -shared -o bin/l2compile.so bin/l2compile.o
 rm bin/l2compile.o
-rm bin/l2compile_end.o
 
 gcc -m32 -g -c -o bin/l2evaluate.o src/evaluate.c
 objcopy --redefine-syms=assets/l2_sym_pairs bin/l2evaluate.o
