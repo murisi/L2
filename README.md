@@ -544,7 +544,7 @@ Up till now, references to functions defined elsewhere have been the only things
 ### Variable Binding
 Variable binding is enabled by the `continuation` expression. `continuation` is special because, like `function`, it allows references to be bound. Unlike `function`, however, expressions within `continuation` can directly access its parent function's variables. The `let` binding function implements the following transformation:
 ```racket
-(let ((params args) ...) expr0)
+(let (params args) ... expr0)
 ->
 (with return
 	{(continuation templet0 (params ...)
@@ -564,17 +564,16 @@ It is implemented and used as follows:
 (function let (l)
 	(`(with return
 		(,[llst (` jump) (`(continuation templet0
-			(,[map [fst [' l]] fst])
-			{return (,[frst [' l]])})) [map [fst [' l]] frst]]))))
+			(,[map [rst [reverse [' l]]] fst])
+			{return (,[fst [reverse [' l]]])})) [map [rst [reverse [' l]]] frst]]))))
 ```
 #### test7.l2
 ```
-(let ((x (d 12)))
-	(begin
-		(function what? () [printf (" x is %i) [' x]])
-		[what?]
-		[what?]
-		[what?]))
+(let (x (d 12)) (begin
+	(function what? () [printf (" x is %i) [' x]])
+	[what?]
+	[what?]
+	[what?]))
 ```
 Note in the above code that `what?` is only able to access `x` because `x` is defined outside of all functions and hence is statically allocated. Also note that L2 permits reference shadowing, so `let` expressions can be nested without worrying, for instance, about the impact of an inner `templet0` on an outer one.
 
@@ -588,7 +587,7 @@ Now we will implement a variant of the switch statement that is parameterized by
 ```racket
 (switch eq0 val0 (vals exprs) ... expr0)
 ->
-(let ((tempeq0 eq0) (tempval0 val0))
+(let (tempeq0 eq0) (tempval0 val0)
 	(if [[' tempeq0] [' tempval0] vals1]
 		exprs1
 		(if [[' tempeq0] [' tempval0] vals2]
@@ -602,7 +601,7 @@ It is implemented and used as follows:
 #### switch.l2
 ```racket
 (function switch (l)
-	(`(let ((tempeq0 (,[fst [' l]])) (tempval0 (,[frst [' l]])))
+	(`(let (tempeq0 (,[fst [' l]])) (tempval0 (,[frst [' l]]))
 		(,(with return
 			{(continuation aux (remaining else-clause)
 				(if [nil? [' remaining]]
@@ -668,7 +667,7 @@ These are implemented and used as follows:
 (environment adder (x)
 	(lambda (y) [+ [' x] [' y]]))
 
-(let ((add5 (; adder (d 5))) (add7 (; adder (d 7))))
+(let (add5 (; adder (d 5))) (add7 (; adder (d 7)))
 	(begin
 		[printf (" %i,) (: [' add5] (d 2))]
 		[printf (" %i,) (: [' add7] (d 3))]
