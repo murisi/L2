@@ -4,7 +4,14 @@
 
 #define INPUT_BUFFER_SIZE 1024
 
+volatile bool input_cancelled = false;
+
+void int_handler() {
+	input_cancelled = true;
+}
+
 char *prompt_expressions(jmp_buf *handler) {
+	prompt:
 	printf("\n- ");
 	fflush(stdout);
 	char str[INPUT_BUFFER_SIZE];
@@ -15,7 +22,12 @@ char *prompt_expressions(jmp_buf *handler) {
 	while(fgets(str, INPUT_BUFFER_SIZE, stdin)) {
 		input_started = true;
 		fputs(str, l2file);
-		if(str[strlen(str)-1] == '\n') {
+		if(input_cancelled) {
+			fclose(l2file);
+			remove(outfn);
+			input_cancelled = false;
+			goto prompt;
+		} else if(str[strlen(str)-1] == '\n') {
 			printf("+ ");
 			fflush(stdout);
 		} else if(feof(stdin)) {
@@ -93,7 +105,7 @@ int main(int argc, char *argv[]) {
 				return ARGUMENTS;
 			}
 		}
-		if(i == argc-1 && !strcmp(argv[i], "+") && err->no.type != NO) {
+		if(i == argc-1 && !strcmp(argv[i], "-") && err->no.type != NO) {
 			goto prompt;
 		} else {
 			void *name;
@@ -107,21 +119,23 @@ int main(int argc, char *argv[]) {
 	if(argc < 2) {
 		thelongjmp(handler, make_arguments());
 	}
-	for(i = 1; i < argc && strcmp(argv[i], "-"); i++);
+	for(i = 1; i < argc && strcmp(argv[i], "+"); i++);
 	if(i == argc) {
 		thelongjmp(handler, make_arguments());
 	}
-	for(i = 1; i < argc && strcmp(argv[i], "-"); i++) {
+	for(i = 1; i < argc && strcmp(argv[i], "+"); i++) {
 		load(argv[i], &handler);
 	}
+	signal(SIGINT, int_handler);
 	
 	for(i++; i < argc;) prompt: {
-		char *source = (i == argc-1 && !strcmp(argv[i], "+")) ? prompt_expressions(&handler) : argv[i++];
+		char *source = !strcmp(argv[i], "-") ? prompt_expressions(&handler) : argv[i];
 		char *library_name = cprintf("%s", "./.libXXXXXX.so");
 		mkstemps(library_name, 3);
 		compile(library_name, source, &handler);
 		load(library_name, &handler);
 		prepend(library_name, &library_names);
+		if(i != argc-1 || strcmp(argv[i], "-")) i++;
 	}
 	thelongjmp(handler, make_no());
 }
