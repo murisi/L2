@@ -7,18 +7,6 @@ int after_leading_space(FILE *l2file) {
 	return c;
 }
 
-s_expression build_symbol_sexpr(char *str) {
-	list sexprs = calloc(1, sizeof(struct _list_));
-	
-	for(; *str; str++) {
-		s_expression _character = malloc(sizeof(struct _s_expression_));
-		_character->type = character;
-		_character->character = *str;
-		append(_character, &sexprs);
-	}
-	return sexpr(sexprs);
-}
-
 jmp_buf *build_expr_list_handler;
 
 list build_expr_list(FILE *l2file) {

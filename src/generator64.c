@@ -569,3 +569,5 @@ void compile_expressions(char *outbin, list exprs, jmp_buf *handler) {
 	compile_object(outbin, ofilefn, handler);
 	remove(ofilefn);
 }
+
+#undef WORD_SIZE

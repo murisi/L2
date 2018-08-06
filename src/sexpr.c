@@ -57,3 +57,24 @@ char_sexpr(backslash, '\\'); char_sexpr(caret, '^'); char_sexpr(underscore, '_')
 an_sexpr(b); an_sexpr(c); an_sexpr(d); an_sexpr(e); an_sexpr(f); an_sexpr(g); an_sexpr(h); an_sexpr(i); an_sexpr(j); an_sexpr(k);
 an_sexpr(l); an_sexpr(m); an_sexpr(n); an_sexpr(o); an_sexpr(p); an_sexpr(q); an_sexpr(r); an_sexpr(s); an_sexpr(t); an_sexpr(u);
 an_sexpr(v); an_sexpr(w); an_sexpr(x); an_sexpr(y); an_sexpr(z); char_sexpr(vertical_bar, '|'); char_sexpr(tilde, '~');
+
+s_expression build_symbol_sexpr(char *str) {
+	list sexprs = calloc(1, sizeof(struct _list_));
+	
+	for(; *str; str++) {
+		s_expression _character = malloc(sizeof(struct _s_expression_));
+		_character->type = character;
+		_character->character = *str;
+		append(_character, &sexprs);
+	}
+	return sexpr(sexprs);
+}
+
+list with_primitive(list arg) { return lst(build_symbol_sexpr("with"), arg); }
+list begin_primitive(list arg) { return lst(build_symbol_sexpr("begin"), arg); }
+list if_primitive(list arg) { return lst(build_symbol_sexpr("if"), arg); }
+list function_primitive(list arg) { return lst(build_symbol_sexpr("function"), arg); }
+list continuation_primitive(list arg) { return lst(build_symbol_sexpr("continuation"), arg); }
+list b_primitive(list arg) { return lst(build_symbol_sexpr("b"), arg); }
+list invoke_primitive(list arg) { return lst(build_symbol_sexpr("invoke"), arg); }
+list jump_primitive(list arg) { return lst(build_symbol_sexpr("jump"), arg); }

@@ -5,8 +5,6 @@
 #include "string.h"
 #include "limits.h"
 #include "stdlib.h"
-
-#include "unistd.h"
 #include "dlfcn.h"
 
 //Essentially longjmp and setjmp with a pointer argument
@@ -73,7 +71,12 @@ bool equals(void *a, void *b) {
 	visit_expressions(x); \
 }
 
-#include "generator64.c"
+#if __x86_64__
+	#include "generator64.c"
+#endif
+#if __i386__
+	#include "generator32.c"
+#endif
 
 struct occurrences {
 	char *member;

@@ -1,12 +1,3 @@
-list with_primitive(list arg) { return lst(build_symbol_sexpr("with"), arg); }
-list begin_primitive(list arg) { return lst(build_symbol_sexpr("begin"), arg); }
-list if_primitive(list arg) { return lst(build_symbol_sexpr("if"), arg); }
-list function_primitive(list arg) { return lst(build_symbol_sexpr("function"), arg); }
-list continuation_primitive(list arg) { return lst(build_symbol_sexpr("continuation"), arg); }
-list b_primitive(list arg) { return lst(build_symbol_sexpr("b"), arg); }
-list invoke_primitive(list arg) { return lst(build_symbol_sexpr("invoke"), arg); }
-list jump_primitive(list arg) { return lst(build_symbol_sexpr("jump"), arg); }
-
 struct expansion {
 	union expression *function;
 	list argument;
@@ -40,6 +31,13 @@ list *list_at(int index, list *l) {
 	}
 	return (list *) &(*l)->fst;
 }
+
+#if __x86_64__
+	#define WORD_SIZE 64
+#endif
+#if __i386__
+	#define WORD_SIZE 32
+#endif
 
 /*
  * Builds a syntax tree at s from the list of s-expressions d. Expansion
@@ -120,7 +118,7 @@ void build_syntax_tree(list d, union expression **s) {
 		char *str;
 		if(length(d) != 2) {
 			thelongjmp(*build_syntax_tree_handler, make_special_form(d, NULL));
-		} else if(!is_string(frst(d)) || strlen(str = to_string(frst(d))) != 32) {
+		} else if(!is_string(frst(d)) || strlen(str = to_string(frst(d))) != WORD_SIZE) {
 			thelongjmp(*build_syntax_tree_handler, make_special_form(d, frst(d)));
 		}
 	
@@ -157,6 +155,8 @@ void build_syntax_tree(list d, union expression **s) {
 		prepend(e, list_at(expansion_depth, &build_syntax_tree_expansion_lists));
 	}
 }
+
+#undef WORD_SIZE
 
 /*
  * Argument src is a list of lists and dest is a pointer to a list of lists. The

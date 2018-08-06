@@ -28,7 +28,7 @@ Afterwards, there is a [list of reductions](#examplesreductions) that shows how 
 ```shell
 ./buildl2
 ```
-**This implementation of L2 needs a Linux distribution running on the i386 (or AMD64 with libc6-dev-i386 installed) architecture with the GNU C compiler installed to run successfully.** To build the system, simply run the `buildl2` script at the root of the repository. The build should be fast - there are only about 2200 lines of C code to compile. This will create a directory called `bin` containing the files `l2evaluate`, `l2compile.so`, `sexpr.so`, and `i386.so`. `l2evaluate` is an evaluator of L2 code: it reads in L2 code, compiles it, then executes it. `l2compile.a` is the library that the evaluator uses to compile L2 code. `i386.a` is a library of instruction wrappers to provide i386 functionality (ADD, SUB, MOV, ...) not exposed by the L2 language.
+**This implementation of L2 needs a Linux distribution running on the i386 or x86-64 architecture with the GNU C compiler and musl libc installed to run successfully.** To build the system, simply run the `buildl2` script at the root of the repository. The build should be fast - there are only about 2200 lines of C code to compile. This will create a directory called `bin` containing the files `l2evaluate`, `l2compile.so`, `sexpr.so`, and `i386.so` or `x86_64.so`. `l2evaluate` is an evaluator of L2 code: it reads in L2 code, compiles it, then executes it. `l2compile.so` is the library that contains the compiler (the evaluator uses it to compile L2 code). `i386.so` or `x86_64.so`, depdending on which is compiled, is a library of instruction wrappers to provide i386/x86-64 functionality (ADD, SUB, MOV, ...) not exposed by the L2 language. What follows is written assuming that you are on a x86-64 machine.
 
 ### The Evaluator
 ```shell
@@ -55,9 +55,9 @@ If a minus sign is supplied as one of the source files, then a minus-prompt is d
 (foo this text does not matter)
 [putchar (b 00000000000000000000000001100100)]
 ```
-Running `./bin/l2evaluate "./bin/amd64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + file1.l2 file2.l2` should cause the text "abd" to be printed to standard output. The "a" comes from the last expression of file1.l2. It was printed after the compilation of file1.l2, when it was being loaded into the compiler. Why? Because L2 libraries are executed from top to bottom when they are loaded. The "b" comes from within the function in file1.l2. It was executed when the expression `(foo this text does not matter)` in file2.l2 was being compiled. Why? Because the `foo` causes the compiler to invoke a function called `foo` in the environment. The s-expression `(this text does not matter)` is the argument to the function `foo`, but the function `foo` ignores it and returns the s-expression `(begin)`. Hence `(begin)` replaces `(foo this text does not matter)` in `file2.l2`. Now `file2.l2` is entirely made up of primitive expressions which are compiled in the way specified below. Finally the text "d" is printed. Why? Because file2.l2's last expression is the only one that is side-effectual, does not get replaced during compilation, and (therefore) gets loaded into memory.
+Running `./bin/l2evaluate "./bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + file1.l2 file2.l2` should cause the text "abd" to be printed to standard output. The "a" comes from the last expression of file1.l2. It was printed after the compilation of file1.l2, when it was being loaded into the compiler. Why? Because L2 libraries are executed from top to bottom when they are loaded. The "b" comes from within the function in file1.l2. It was executed when the expression `(foo this text does not matter)` in file2.l2 was being compiled. Why? Because the `foo` causes the compiler to invoke a function called `foo` in the environment. The s-expression `(this text does not matter)` is the argument to the function `foo`, but the function `foo` ignores it and returns the s-expression `(begin)`. Hence `(begin)` replaces `(foo this text does not matter)` in `file2.l2`. Now `file2.l2` is entirely made up of primitive expressions which are compiled in the way specified below. Finally the text "d" is printed. Why? Because file2.l2's last expression is the only one that is side-effectual, does not get replaced during compilation, and (therefore) gets loaded into memory.
 
-Running `./bin/l2evaluate "./bin/amd64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + file1.l2 -` should cause the evaluator to print "a" to standard output for the same reason as above. Now you should be in a minus-prompt. Pasting in the contents of `file2.l2`, then pressing Enter followed by Ctrl-D should now cause the evaluator to print the text "bd" for the same reasons as above.
+Running `./bin/l2evaluate "./bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + file1.l2 -` should cause the evaluator to print "a" to standard output for the same reason as above. Now you should be in a minus-prompt. Pasting in the contents of `file2.l2`, then pressing Enter followed by Ctrl-D should now cause the evaluator to print the text "bd" for the same reasons as above.
 
 ## Primitive Expressions
 ### Begin
@@ -293,13 +293,13 @@ L2 has no built-in mechanism for commenting code written in it. The following co
 ```
 #### shell
 ```shell
-./bin/l2evaluate "bin/amd64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" - abbreviations.l2 comments.l2 test1.l2
+./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 test1.l2
 ```
 
 ### Numbers
-Integer literals prove to be quite tedious in L2 as can be seen from some of the examples in the primitive expressions section. The following function, `d`, implements decimal arithmetic by reading in an s-expression in base 10 and writing out the equivalent s-expression in base 2:
+Integer literals prove to be quite tedious in L2 as can be seen from some of the examples in the primitive expressions section. The following function, `d`, implements decimal arithmetic for i386 by reading in an s-expression in base 10 and writing out the equivalent s-expression in base 2:
 
-#### numbers.l2
+#### numbers32.l2
 ```racket
 (** Turns a 4-byte integer into base-2 s-expression representation of it.
 (function binary->base2sexpr (binary)
@@ -329,13 +329,15 @@ Integer literals prove to be quite tedious in L2 as can be seen from some of the
 						(if [1? [fst [' in]]] (b 00000000000000000000000000000001)
 							(b 00000000000000000000000000000000))))))))))]})) [fst [' l]] (b 00000000000000000000000000000000)}))])
 ```
+#### numbers64.l2
+Implementation is the same as that of `numbers64.l2` except that it has bit strings of length 64 instead.
 #### test2.l2
 ```racket
 [putchar (d 65)]
 ```
 #### shell
 ```shell
-./bin/l2evaluate "bin/amd64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" - abbreviations.l2 comments.l2 numbers.l2 test2.l2
+./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 numbers64.l2 test2.l2
 ```
 
 ### Backquoting
@@ -379,7 +381,7 @@ The `foo` example in the internal representation section shows how tedious writi
 ```
 #### shell
 ```shell
-./bin/l2evaluate "bin/amd64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" - abbreviations.l2 comments.l2 numbers.l2 backquote.l2 anotherfunction.l2 test3.l2
+./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 numbers.l2 backquote.l2 anotherfunction.l2 test3.l2
 ```
 
 ### Characters
@@ -482,7 +484,7 @@ With `d` implemented, a somewhat more readable implementation of characters is p
 ```
 #### shell
 ```shell
-./bin/l2evaluate "bin/amd64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" - abbreviations.l2 comments.l2 numbers.l2 backquote.l2 characters.l2 test4.l2
+./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 numbers.l2 backquote.l2 characters.l2 test4.l2
 ```
 
 ### Strings
@@ -522,7 +524,7 @@ The above exposition has purposefully avoided making strings because it is tedio
 ```
 #### shell
 ```shell
-./bin/l2evaluate "bin/amd64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" - abbreviations.l2 comments.l2 numbers.l2 backquote.l2 characters.l2 reverse.l2 strings.l2 test5.l2
+./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 numbers.l2 backquote.l2 characters.l2 reverse.l2 strings.l2 test5.l2
 ```
 
 ### Conditional Compilation
@@ -535,7 +537,7 @@ Up till now, references to functions defined elsewhere have been the only things
 ```
 #### shell
 ```shell
-./bin/l2evaluate "bin/amd64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" - abbreviations.l2 comments.l2 numbers.l2 backquote.l2 reverse.l2 characters.l2 strings.l2 test6.l2
+./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 numbers.l2 backquote.l2 reverse.l2 characters.l2 strings.l2 test6.l2
 ```
 
 ### Variable Binding
@@ -577,7 +579,7 @@ Note in the above code that `what?` is only able to access `x` because `x` is de
 
 #### shell
 ```shell
-./bin/l2evaluate "bin/amd64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" - abbreviations.l2 comments.l2 numbers.l2 backquote.l2 characters.l2 strings.l2 let.l2 test7.l2
+./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 numbers.l2 backquote.l2 characters.l2 strings.l2 let.l2 test7.l2
 ```
 
 ### Switch Expression
@@ -619,7 +621,7 @@ It is implemented and used as follows:
 ```
 #### shell
 ```shell
-./bin/l2evaluate "bin/amd64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" - abbreviations.l2 comments.l2 numbers.l2 backquote.l2 reverse.l2 switch.l2 characters.l2 strings.l2 let.l2 test8.l2
+./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 numbers.l2 backquote.l2 reverse.l2 switch.l2 characters.l2 strings.l2 let.l2 test8.l2
 ```
 
 ### Closures
@@ -673,11 +675,11 @@ These are implemented and used as follows:
 ```
 #### shell
 ```shell
-./bin/l2evaluate "bin/amd64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" - abbreviations.l2 comments.l2 numbers.l2 backquote.l2 reverse.l2 characters.l2 strings.l2 closures.l2 let.l2 test9.l2
+./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 numbers.l2 backquote.l2 reverse.l2 characters.l2 strings.l2 closures.l2 let.l2 test9.l2
 ```
 
 ### Assume
-There are far fewer subtle ways to trigger undefined behaviors in L2 than in other unsafe languages because L2 does not have dereferencing, arithmetic operators, types, or other such functionality built in; the programmer has to implement this functionality themselves in [assembly routines callable from L2](assets/amd64.s). This shift in responsibility means that any L2 compiler is freed up to treat invocations of undefined behaviors in L2 code as intentional. The following usage of undefined behavior within the function `assume` is inspired by [Regehr](https://blog.regehr.org/archives/1096). The function `assume`, which compiles `y` assuming that the condition `x` holds, implements the following transformation.
+There are far fewer subtle ways to trigger undefined behaviors in L2 than in other unsafe languages because L2 does not have dereferencing, arithmetic operators, types, or other such functionality built in; the programmer has to implement this functionality themselves in [assembly routines callable from L2](assets/x86_64.s). This shift in responsibility means that any L2 compiler is freed up to treat invocations of undefined behaviors in L2 code as intentional. The following usage of undefined behavior within the function `assume` is inspired by [Regehr](https://blog.regehr.org/archives/1096). The function `assume`, which compiles `y` assuming that the condition `x` holds, implements the following transformation.
 ```racket
 (assume x y)
 ->
@@ -707,12 +709,12 @@ In the function `foo`, if `[' x]` were equal to `[' y]`, then the else branch of
 
 #### shell
 ```shell
-./bin/l2evaluate "bin/amd64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" - abbreviations.l2 comments.l2 numbers.l2 backquote.l2 reverse.l2 characters.l2 strings.l2 assume.l2 test10.l2
+./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 numbers.l2 backquote.l2 reverse.l2 characters.l2 strings.l2 assume.l2 test10.l2
 ```
 Note that the `assume` expression can also be used to achieve C's `restrict` keyword simply by making its condition the conjunction of inequalities on the memory locations of the extremeties of the "arrays" in question.
 
 ## Compilation Library
-L2 provides a library to enable the compilation of L2 source files into binaries. In this implementation of L2, the compilation library is called `l2compile.so`. Below is a description of the functions this library exports; they can be invoked using any source language so long as [the calling convention](#invoke) outlined above is adhered to. In what follows, I invoke these functions from within [the evaluator](#the-evaluator) using the command: `./bin/l2evaluate "./bin/amd64.so" "./bin/l2compile.so" "/lib/x86_64-linux-musl/libc.so" - abbreviations.l2 comments.l2 numbers.l2 backquote.l2 reverse.l2 characters.l2 strings.l2 closures.l2 let.l2 +`. In fact, this command is so convenient that I have packaged it in a script called [`l2evaluate-with-compile`](l2evaluate-with-compile) at the root of the repository.
+L2 provides a library to enable the compilation of L2 source files into binaries. In this implementation of L2, the compilation library is called `l2compile.so`. Below is a description of the functions this library exports; they can be invoked using any source language so long as [the calling convention](#invoke) outlined above is adhered to.
 
 ### `[load x]`
 `x` must be the path to a shared library.
@@ -729,12 +731,11 @@ Compiles the source file `x` into an executable library that is placed at `y`. T
 
 Unloads the shared library at path `x`.
 
-#### Example
-
-Entering the following code into `l2evaluate-with-compile` and then pressing Ctrl-D should compile `abbreviations.l2` into `abbr.so`, `comments.l2` into `comm.so`, `numbers.l2` into `num.so`, `backquote.l2` into `bq.so`, `reverse.l2` into `rev.so`, `characters.l2` into `char.so`, `strings.l2` into `str.so`, `closures.l2` into `clo.so`, `let.l2` into `let.so`, and `test9.l2` into `test9.so`.
+#### Example Usage
+Run [the evaluator](#the-evaluator) using the command: `./bin/l2evaluate "./bin/x86_64.so" "./bin/l2compile.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 numbers.l2 backquote.l2 reverse.l2 characters.l2 strings.l2 closures.l2 let.l2 -` and enter the following code:
 
 ```
-[load (" ./bin/amd64.so)]
+[load (" ./bin/x86_64.so)]
 [load (" /lib/x86_64-linux-musl/libc.so)]
 [load (" ./bin/sexpr.so)]
 [compile (" abbr.so) (" abbreviations.l2)]
@@ -767,9 +768,11 @@ Entering the following code into `l2evaluate-with-compile` and then pressing Ctr
 [unload (" ./abbr.so)]
 [unload (" ./bin/sexpr.so)]
 [unload (" /lib/x86_64-linux-musl/libc.so)]
-[unload (" ./bin/amd64.so)]
+[unload (" ./bin/x86_64.so)]
 [exit (d 0)]
 ```
-To execute `test9.so`, simply enter `./test9.so` into shell. This should yield the same output as `./bin/l2evaluate "bin/amd64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" - abbreviations.l2 comments.l2 numbers.l2 backquote.l2 reverse.l2 characters.l2 strings.l2 closures.l2 let.l2 test9.l2`.
+Pressing Ctrl-D should compile `abbreviations.l2` into `abbr.so`, `comments.l2` into `comm.so`, `numbers.l2` into `num.so`, `backquote.l2` into `bq.so`, `reverse.l2` into `rev.so`, `characters.l2` into `char.so`, `strings.l2` into `str.so`, `closures.l2` into `clo.so`, `let.l2` into `let.so`, and `test9.l2` into `test9.so`.
+ 
+To execute `test9.so`, simply enter `./test9.so` into shell. Doing this should yield the same output as `./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 numbers.l2 backquote.l2 reverse.l2 characters.l2 strings.l2 closures.l2 let.l2 test9.l2`. This should also illuminate how `l2evaluate` works.
 
 Note that one reason why `libc` is loaded in the above code is because `./bin/sexpr.so` depends upon it. Another reason is because `test9.l2` uses `printf`. Also note how each l2 file is loaded immediately after its compilation. In the case of `comments.l2`, `./comm.so` is loaded as soon as it's created to allow `numbers.l2`, which uses comments, to be compiled successfully.
