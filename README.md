@@ -28,19 +28,15 @@ Afterwards, there is a [list of reductions](#examplesreductions) that shows how 
 ```shell
 ./buildl2
 ```
-**My L2 system needs a Linux distribution running on the i386 (or AMD64 with libc6-dev-i386 installed) architecture with the GNU C compiler installed to run successfully.** To build the system, simply run the `buildl2` script at the root of the repository. The build should be fast - there are only about 2300 lines of C code to compile. This will create a directory called `bin` containing the files `l2evaluate`, `l2compile.a`, and `i386.a`. `l2evaluate` is an evaluator of L2 code: it reads in L2 code, compiles it, then executes it. `l2compile.a` is the library that the evaluator uses to compile L2 code. `i386.a` is a library of instruction wrappers to provide i386 functionality (ADD, SUB, MOV, ...) not exposed by the L2 language.
+**This implementation of L2 needs a Linux distribution running on the i386 (or AMD64 with libc6-dev-i386 installed) architecture with the GNU C compiler installed to run successfully.** To build the system, simply run the `buildl2` script at the root of the repository. The build should be fast - there are only about 2200 lines of C code to compile. This will create a directory called `bin` containing the files `l2evaluate`, `l2compile.so`, `sexpr.so`, and `i386.so`. `l2evaluate` is an evaluator of L2 code: it reads in L2 code, compiles it, then executes it. `l2compile.a` is the library that the evaluator uses to compile L2 code. `i386.a` is a library of instruction wrappers to provide i386 functionality (ADD, SUB, MOV, ...) not exposed by the L2 language.
 
 ### The Evaluator
 ```shell
-./bin/l2evaluate libraries.a ... (- inputs.l2 ...) ... - inputs.l2 ...
+./bin/l2evaluate libraries.so ... + inputs.l2 ...
 ```
-The initial environment, the one that is there before anything is evaluated, comprises 17 functions: `lst`, `lst?`, `fst`, `rst`, `sexpr`, `nil`, `nil?`, `-<character>-`, `<character>?`, `begin`, `b`, `if`, `function`, `invoke`, `with`, `continuation`, and `jump`. The former 9 are [defined later](#internal-representation). Each one of the latter 8 functions does nothing else but return an s-expression formed by prepending its function name to the list of s-expressions supplied to them. For example, the `b` function could have the following definition: `(function b (sexprs) [lst [lst [-b-] [nil]] [' sexprs]])`.
+In this initial environment the L2 evaluator begins by loading the shared libraries `libraries.so ...` into memory. Then the evaluator iterates through each L2 source file after the plus sign. Each of the files read should be of the form `expression1 expression2 ... expressionN`. For each file, it compiles each [expression](#expression) and emits the corresponding machine code in order. This object code is then linked against the heretofore loaded libraries to produce a shared library. This shared library is then loaded into memory.
 
-In this initial environment the L2 evaluator begins by essentially generating machine code for a function whose's behavior is the "concatenation" of the static libraries `libraries.a ...`, where static library here means the ordered "concatenation" of the object files (or more precisely, their code segments) within it. This generated code is then loaded into memory, and invoked. Afterwords, the memory reserved for the static libraries is maintained, and the libraries' exported functions are also made available for use throughout the remaining evaluations - we will say that the remaining evaluations happen in this augmented environment.
-
-For each hyphen argument, the compiler reads the following `inputs.l2 ...` until either the next hyphen argument is found or the command line arguments are finished. Each of the files read should be of the form `expression1 expression2 ... expressionN`. As the evaluator goes through the files in order, it compiles each [expression](#expression) in the current environment and emits the corresponding machine code in the same order as the expressions of the concatenated file. The amalgamated object code is then loaded into memory and executed. The evalutaion of the next set of L2 files happens in this further augmented environment.
-
-If the entire list of arguments ends with a hyphen, then a minus-prompt is displayed. You are expected to enter valid L2 source code. Each time you press Enter, a plus-prompt is printed to elicit you to add to the source code so far read. Pressing Ctrl-D on an empty line tells the evaluator to compile in the environment all the code entered since the last minus prompt, execute it, and augment the environment. The evaluator then returns to minus-prompt state. If Ctrl-C, then Enter is typed in a minus-prompt, the evaluator exits. If this is done instead in a plus-prompt, heretofore uncompiled code is discarded, and the evaluator returns to minus-prompt state.
+If a minus sign is supplied as one of the source files, then a minus-prompt is displayed. You are expected to enter valid L2 source code. Each time you press Enter, a plus-prompt is printed to elicit you to add to the source code so far read. Pressing Ctrl-D on an empty line tells the evaluator to compile in the environment all the code entered since the last minus prompt and load it into the environment. If Ctrl-C then Enter is typed in a plus-prompt, heretofore uncompiled code is discarded, and the evaluator returns to minus-prompt state. Once this cycle is finished, the evaluator then returns to moves onto the next L2 source file.
 
 #### Example
 ##### file1.l2
@@ -59,9 +55,9 @@ If the entire list of arguments ends with a hyphen, then a minus-prompt is displ
 (foo this text does not matter)
 [putchar (b 00000000000000000000000001100100)]
 ```
-Running `./bin/l2evaluate bin/i386.a - file1.l2 - file2.l2` should cause the text "abd" to be printed to standard output. The "a" comes from the last expression of file1.l2. It was printed after the compilation of file1.l2, when it was being loaded into the compiler. Why? Because L2 libraries are executed from top to bottom when they are dynamically loaded (and also when they are statically linked). The "b" comes from within the function in file1.l2. It was executed when the expression `(foo this text does not matter)` in file2.l2 was being compiled. Why? Because the `foo` causes the compiler to invoke a function called `foo` in the environment. The s-expression `(this text does not matter)` is the argument to the function `foo`, but the function `foo` ignores it and returns the s-expression `(begin)`. Hence `(begin)` replaces `(foo this text does not matter)` in `file2.l2`. Now `file2.l2` is entirely made up of primitive expressions which are compiled in the way specified below. Finally the text "d" is printed. Why? Because file2.l2's last expression is the only one that is side-effectual, does not get replaced during compilation, and (therefore) gets loaded into memory.
+Running `./bin/l2evaluate "./bin/amd64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + file1.l2 file2.l2` should cause the text "abd" to be printed to standard output. The "a" comes from the last expression of file1.l2. It was printed after the compilation of file1.l2, when it was being loaded into the compiler. Why? Because L2 libraries are executed from top to bottom when they are loaded. The "b" comes from within the function in file1.l2. It was executed when the expression `(foo this text does not matter)` in file2.l2 was being compiled. Why? Because the `foo` causes the compiler to invoke a function called `foo` in the environment. The s-expression `(this text does not matter)` is the argument to the function `foo`, but the function `foo` ignores it and returns the s-expression `(begin)`. Hence `(begin)` replaces `(foo this text does not matter)` in `file2.l2`. Now `file2.l2` is entirely made up of primitive expressions which are compiled in the way specified below. Finally the text "d" is printed. Why? Because file2.l2's last expression is the only one that is side-effectual, does not get replaced during compilation, and (therefore) gets loaded into memory.
 
-Running `./bin/l2evaluate bin/i386.a - file1.l2 -` should cause the evaluator to print "a" to standard output for the same reason as above. Now you should be in a minus-prompt. Pasting in the contents of `file2.l2`, then pressing Enter followed by Ctrl-D should now cause the evaluator to print the text "bd" for the same reasons as above.
+Running `./bin/l2evaluate "./bin/amd64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + file1.l2 -` should cause the evaluator to print "a" to standard output for the same reason as above. Now you should be in a minus-prompt. Pasting in the contents of `file2.l2`, then pressing Enter followed by Ctrl-D should now cause the evaluator to print the text "bd" for the same reasons as above.
 
 ## Primitive Expressions
 ### Begin
@@ -184,7 +180,7 @@ The expression `(begin (with cutter (jump (continuation cuttee () (begin [bar] [
 Looking at the examples above where the continuation reference does not escape, `(with reference0 expression0)` behaves a lot like the pseudo-assembly `expression0 reference0:` and `(continuation reference0 (...) expression0)` behaves a lot like `reference0: expression0`. To be more precise, when references to a particular continuation only occur as the `continuation0` subexpression of a `jump` statement, we know that the continuation is constrained to the function in which it is declared, and hence there is no need to store or restore `ebp`, `edi`, `esi`, and `ebx`. Continuations, then, are how efficient iteration is achieved in L2.
 
 ## Internal Representation
-After substituting out the syntactic sugar used for the `invoke` and `jump` expressions. We find that all L2 programs are just compositions of the `<pre-s-expression>`s: `<symbol>` and `(<pre-s-expression> <pre-s-expression> ... <pre-s-expression>)`. If we now replace every symbol with a list of its characters so that for example `foo` becomes `(f o o)`, we now find that all L2 programs are now just compositions of the `<s-expression>`s `<character>` and `(<s-expression> <s-expression> ... <s-expression>)`. The following functions that manipulate these s-expressions are not part of the L2 language and hence the compiler does not give references to them special treatment during compilation. However, when compiled code is loaded into an L2 compiler, undefined references to these functions are to be dynamically resolved.
+After substituting out the syntactic sugar used for the `invoke` and `jump` expressions. We find that all L2 programs are just compositions of the `<pre-s-expression>`s: `<symbol>` and `(<pre-s-expression> <pre-s-expression> ... <pre-s-expression>)`. If we now replace every symbol with a list of its characters so that for example `foo` becomes `(f o o)`, we now find that all L2 programs are now just compositions of the `<s-expression>`s `<symbol>` and `(<s-expression> <s-expression> ... <s-expression>)`. The following functions that manipulate these s-expressions are not part of the L2 language and hence the compiler does not give references to them special treatment during compilation. However, when compiled code is loaded into an L2 compiler, undefined references to these functions are to be dynamically resolved.
 
 ### `[lst x y]`
 `x` must be a s-expression and `y` a list.
@@ -236,7 +232,24 @@ The expression `[lst [-f-] [lst [-o-] [lst [-o-] [nil]]]]` evaluates to the s-ex
 Evaluates to the complement of zero if `x` is the character <character>. Otherwise evaluates to zero.
 
 Say the s-expression `(foo (bar bar) foo foo)` is stored at `x`. Then `[m? [' x]]` evaluates to `(b 00000000000000000000000000000000)`.
+### `[begin x]`
+`x` must be a list of s-expressions.
 
+Evaluates to an s-expression formed by prepending the s-expression `begin` to `x`. The `begin` function could have the following definition: `(function b (sexprs) [lst [lst [-b-] [lst [-e-] [lst [-g-] [lst [-i-] [lst [-n-] [nil]]]]]] [' sexprs]])`.
+### `[b x]`
+This function is analogous to `begin`.
+### `[if x]`
+This function is analogous to `begin`.
+### `[function x]`
+This function is analogous to `begin`.
+### `[invoke x]`
+This function is analogous to `begin`.
+### `[with x]`
+This function is analogous to `begin`.
+### `[continuation x]`
+This function is analogous to `begin`.
+### `[jump x]`
+This function is analogous to `begin`.
 ## Expression
 ```racket
 (function0 expression1 ... expressionN)
@@ -280,7 +293,7 @@ L2 has no built-in mechanism for commenting code written in it. The following co
 ```
 #### shell
 ```shell
-./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - test1.l2
+./bin/l2evaluate "bin/i386.so" "./bin/sexpr.so" "-lc" - abbreviations.l2 comments.l2 test1.l2
 ```
 
 ### Numbers
@@ -322,7 +335,7 @@ Integer literals prove to be quite tedious in L2 as can be seen from some of the
 ```
 #### shell
 ```shell
-./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - test2.l2
+./bin/l2evaluate "bin/i386.so" "./bin/sexpr.so" "-lc" - abbreviations.l2 comments.l2 numbers.l2 test2.l2
 ```
 
 ### Backquoting
@@ -366,7 +379,7 @@ The `foo` example in the internal representation section shows how tedious writi
 ```
 #### shell
 ```shell
-./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 - anotherfunction.l2 - test3.l2
+./bin/l2evaluate "bin/i386.so" "./bin/sexpr.so" "-lc" - abbreviations.l2 comments.l2 numbers.l2 backquote.l2 anotherfunction.l2 test3.l2
 ```
 
 ### Characters
@@ -469,7 +482,7 @@ With `d` implemented, a somewhat more readable implementation of characters is p
 ```
 #### shell
 ```shell
-./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 - characters.l2 - test4.l2
+./bin/l2evaluate "bin/i386.so" "./bin/sexpr.so" "-lc" - abbreviations.l2 comments.l2 numbers.l2 backquote.l2 characters.l2 test4.l2
 ```
 
 ### Strings
@@ -509,7 +522,7 @@ The above exposition has purposefully avoided making strings because it is tedio
 ```
 #### shell
 ```shell
-./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 - characters.l2 reverse.l2 strings.l2 - test5.l2
+./bin/l2evaluate "bin/i386.so" "./bin/sexpr.so" "-lc" - abbreviations.l2 comments.l2 numbers.l2 backquote.l2 characters.l2 reverse.l2 strings.l2 test5.l2
 ```
 
 ### Conditional Compilation
@@ -522,7 +535,7 @@ Up till now, references to functions defined elsewhere have been the only things
 ```
 #### shell
 ```shell
-./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 reverse.l2 - characters.l2 strings.l2 - test6.l2
+./bin/l2evaluate "bin/i386.so" "./bin/sexpr.so" "-lc" - abbreviations.l2 comments.l2 numbers.l2 backquote.l2 reverse.l2 characters.l2 strings.l2 test6.l2
 ```
 
 ### Variable Binding
@@ -564,7 +577,7 @@ Note in the above code that `what?` is only able to access `x` because `x` is de
 
 #### shell
 ```shell
-./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 - characters.l2 strings.l2 let.l2 - test7.l2
+./bin/l2evaluate "bin/i386.so" "./bin/sexpr.so" "-lc" - abbreviations.l2 comments.l2 numbers.l2 backquote.l2 characters.l2 strings.l2 let.l2 test7.l2
 ```
 
 ### Switch Expression
@@ -606,7 +619,7 @@ It is implemented and used as follows:
 ```
 #### shell
 ```shell
-./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 reverse.l2 - switch.l2 characters.l2 strings.l2 let.l2 - test8.l2
+./bin/l2evaluate "bin/i386.so" "./bin/sexpr.so" "-lc" - abbreviations.l2 comments.l2 numbers.l2 backquote.l2 reverse.l2 switch.l2 characters.l2 strings.l2 let.l2 test8.l2
 ```
 
 ### Closures
@@ -660,7 +673,7 @@ These are implemented and used as follows:
 ```
 #### shell
 ```shell
-./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 reverse.l2 - characters.l2 strings.l2 closures.l2 let.l2 - test9.l2
+./bin/l2evaluate "bin/i386.so" "./bin/sexpr.so" "-lc" - abbreviations.l2 comments.l2 numbers.l2 backquote.l2 reverse.l2 characters.l2 strings.l2 closures.l2 let.l2 test9.l2
 ```
 
 ### Assume
@@ -694,88 +707,69 @@ In the function `foo`, if `[' x]` were equal to `[' y]`, then the else branch of
 
 #### shell
 ```shell
-./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 reverse.l2 - characters.l2 strings.l2 assume.l2 - test10.l2
+./bin/l2evaluate "bin/i386.so" "./bin/sexpr.so" "-lc" - abbreviations.l2 comments.l2 numbers.l2 backquote.l2 reverse.l2 characters.l2 strings.l2 assume.l2 test10.l2
 ```
 Note that the `assume` expression can also be used to achieve C's `restrict` keyword simply by making its condition the conjunction of inequalities on the memory locations of the extremeties of the "arrays" in question.
 
 ## Compilation Library
-My L2 system provides a library called `l2compile.a` to enable the compilation of L2 source files. Below is a description of the functions this library exports; they can be invoked using any source language so long as [the calling convention](#invoke) outlined above is adhered to. In what follows, I invoke these functions is from within [the evaluator](#the-evaluator) using the command: `./bin/l2evaluate ./bin/i386.a ./bin/l2compile.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 reverse.l2 - characters.l2 strings.l2 closures.l2 let.l2 -`. In fact, this command is so convenient that I have packaged it in a script called [`l2evaluate-with-compile`](l2evaluate-with-compile) at the root of the repository.
-
-### `[library x]`
-`x` must be the path of an L2 source file.
-
-Evaluates to the path of a static library produced from compiling the source file `x`.
-
-Typing `[puts [library (" test9.l2)]]`, pressing Enter, then pressing Ctrl-D prints ".libvORuaz.a".
-
-### `[sequence x y]`
-`x` and `y` must be paths to static libraries.
-
-Evaluates to the path of a static library whose's ordered sequence of object files is the concatenation of those of `x` and those of `y`.
-
-Typing `[puts [sequence (" bin/i386.a) [library (" test9.l2)]]]`, pressing Enter, then pressing Ctrl-D prints ".libnApfuA.a".
-
-### `[executable x]`
-`x` must be the path to a static library.
-
-Evaluates to the path of an executable whose's behavior is the "concatenation" of the ordered object files in `x`.
-
-Typing `[puts [executable [sequence (" bin/i386.a) [library (" test9.l2)]]]]`, pressing Enter, then Ctrl-D prints ".exe6u1i1s". Running this executable should give the same output as in [the section above](#test9.l2).
-
-### `[copy x y]`
-`x` must be a path to a non-existing file. `y` must be a path to an existing file.
-
-Copies the file at path `y` to the path `x`. Invokation evaluates to `x`.
-
-Typing `[puts [copy (" test9) [executable [sequence (" bin/i386.a) [library (" test9.l2)]]]]]`, pressing Enter, then Ctrl-D prints "test9". Running this executable should give the same output as above.
-
-### `[nil-library]`
-Evaluates to the path of an empty static library.
-
-This function plays the role of "zero" in the arithmetic of static libraries.
-
-Typing `[puts [executable [nil-library]]]`, pressing Enter, then Ctrl-D prints ".exeOj671O". Running this executable should do nothing.
-
-### `[skip x y]`
-`x` must be a path to a static library. `y` must be a symbol not occuring in the static library `x`.
-
-Evaluates to the path of a static library whose's first object file comprises a jump to `y`, whose's following object files are those of `x` in order, and whose's last object file comprises the label `y`.
-
-This function is useful for jumping over static libraries produced by C compilers. Otherwise L2's top-down mode of execution would cause C function definitions to be executed upon encounter rather than only on invocation.
-
-Typing `[puts [executable [skip [sequence (" bin/i386.a) [library (" test9.l2)]] (" skipper)]]]`, pressing Enter, then Ctrl-D prints ".exeBokO5Q". Running this executable should do nothing.
-
-### `[concatenate x y]`
-`x` and `y` must be paths to L2 source files.
-
-Evaluates to the path of an L2 source file produced by concatenating the source files `x` and `y`.
-
-Typing `[puts [concatenate (" abbreviations.l2) (" comments.l2)]]`, pressing Enter, then pressing Ctrl-D prints ".catnX1RiH".
-
-### `[nil-source]`
-Evaluates to the path of an empty source file.
-
-This function plays the role of "zero" in the arithmetic of source files.
-
-Typing `[puts [executable [library [nil-source]]]]`, pressing Enter, then Ctrl-D prints ".exelbIIhj". Running this executable should do nothing.
+L2 provides a library to enable the compilation of L2 source files into binaries. In this implementation of L2, the compilation library is called `l2compile.so`. Below is a description of the functions this library exports; they can be invoked using any source language so long as [the calling convention](#invoke) outlined above is adhered to. In what follows, I invoke these functions from within [the evaluator](#the-evaluator) using the command: `./bin/l2evaluate "./bin/i386.so" "./bin/l2compile.so" "-lc" "-ldl" - abbreviations.l2 comments.l2 numbers.l2 backquote.l2 reverse.l2 characters.l2 strings.l2 closures.l2 let.l2 +`. In fact, this command is so convenient that I have packaged it in a script called [`l2evaluate-with-compile`](l2evaluate-with-compile) at the root of the repository.
 
 ### `[load x]`
-`x` must be the path to a static library.
+`x` must be the path to a shared library.
 
-Augments the current environment with the static library `x`. Evaluates to a handle to the loaded library.
+Loads the shared library at path `x`.
 
-Typing `[load [library (" file1.l2)]]`, pressing Enter, then Ctrl-D should print "a". Entering `(foo this text does not matter)`, pressing Enter, then Ctrl-D should print "b".
+### `[compile y x]`
+`y` must be a path and `x` must be the path of an L2 source file.
+
+Compiles the source file `x` into an executable library that is placed at `y`. The loaded libraries are what the source file's macros are linked against and they are also what the final executable library is linked against. The binary produced by this function is a shared library that exports its top-level functions. The binary produced is also an executable that can be directly executed.
 
 ### `[unload x]`
-`x` should be the handle to a loaded library.
+`x` must be a path to a currently loaded shared library.
 
-Removes from the current environment the loaded library to which `x` refers. Evaluates to an unspecified value.
+Unloads the shared library at path `x`.
 
-In an environment where `load` has not yet ben used, type `[unload [load [library (" file1.l2)]]]`, press Enter, then Ctrl-D. Entering `(foo this text does not matter)`, pressing Enter, then Ctrl-D should produce an error.
+#### Example
 
-### `[dynamic x]`
-`x` must be the path of a static library.
+Entering the following code into `l2evaluate-with-compile` and then pressing Ctrl-D should compile `abbreviations.l2` into `abbr.so`, `comments.l2` into `comm.so`, `numbers.l2` into `num.so`, `backquote.l2` into `bq.so`, `reverse.l2` into `rev.so`, `characters.l2` into `char.so`, `strings.l2` into `str.so`, `closures.l2` into `clo.so`, `let.l2` into `let.so`, and `test9.l2` into `test9.so`.
 
-Evaluates to the path of a dynamic library that executes `x` on loading and that exports all the functions of `x`.
+```
+[load (" ./bin/i386.so)]
+[load (" -lc)]
+[load (" ./bin/sexpr.so)]
+[compile (" abbr.so) (" abbreviations.l2)]
+[load (" ./abbr.so)]
+[compile (" comm.so) (" comments.l2)]
+[load (" ./comm.so)]
+[compile (" num.so) (" numbers.l2)]
+[load (" ./num.so)]
+[compile (" bq.so) (" backquote.l2)]
+[load (" ./bq.so)]
+[compile (" rev.so) (" reverse.l2)]
+[load (" ./rev.so)]
+[compile (" char.so) (" characters.l2)]
+[load (" ./char.so)]
+[compile (" str.so) (" strings.l2)]
+[load (" ./str.so)]
+[compile (" clo.so) (" closures.l2)]
+[load (" ./clo.so)]
+[compile (" let.so) (" let.l2)]
+[load (" ./let.so)]
+[compile (" test9.so) (" test9.l2)]
+[unload (" ./let.so)]
+[unload (" ./clo.so)]
+[unload (" ./str.so)]
+[unload (" ./char.so)]
+[unload (" ./rev.so)]
+[unload (" ./bq.so)]
+[unload (" ./num.so)]
+[unload (" ./comm.so)]
+[unload (" ./abbr.so)]
+[unload (" ./bin/sexpr.so)]
+[unload (" -lc)]
+[unload (" ./bin/i386.so)]
+[exit (d 0)]
+```
+To execute `test9.so`, simply enter `./test9.so` into shell. This should yield the same output as `./bin/l2evaluate "bin/i386.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" - abbreviations.l2 comments.l2 numbers.l2 backquote.l2 reverse.l2 characters.l2 strings.l2 closures.l2 let.l2 test9.l2`.
 
-Typing `[puts [dynamic [library (" comments.l2)]]]`, pressing Enter, then pressing Ctrl-D prints "./.libLDsGsm.so". The output of `objdump -T ./.libLDsGsm.so` should show that `**` is an exported symbol.
+Note that one reason why `libc` is loaded in the above code is because `./bin/sexpr.so` depends upon it. Another reason is because `test9.l2` uses `printf`. Also note how each l2 file is loaded immediately after its compilation. In the case of `comments.l2`, `./comm.so` is loaded as soon as it's created to allow `numbers.l2`, which uses comments, to be compiled successfully.
