@@ -16,8 +16,8 @@ union expression *vfind_multiple_definitions(union expression *e) {
 		case begin: {
 			foreachlist(partial, t, e->begin.expressions) {
 				if(t->base.type == function && exists(function_named, &(*partial)->rst, t->function.reference->reference.name)) {
-					longjmp(*vfind_multiple_definitions_handler,
-						(int) make_multiple_definition(t->function.reference->reference.name));
+					thelongjmp(*vfind_multiple_definitions_handler,
+						make_multiple_definition(t->function.reference->reference.name));
 				}
 			}
 			break;
@@ -25,7 +25,7 @@ union expression *vfind_multiple_definitions(union expression *e) {
 			list ref_with_params = lst(e->continuation.reference, e->continuation.parameters);
 			foreachlist(partial, t, ref_with_params) {
 				if(exists(reference_named, &(*partial)->rst, t->reference.name)) {
-					longjmp(*vfind_multiple_definitions_handler, (int) make_multiple_definition(t->reference.name));
+					thelongjmp(*vfind_multiple_definitions_handler, make_multiple_definition(t->reference.name));
 				}
 			}
 			break;
@@ -123,17 +123,17 @@ union expression *vlink_references(union expression *s) {
 			s->reference.referent = prepend_parameter(s->reference.name, vlink_references_program);
 		} else if(is_jump_reference(s) && is_c_reference(s->reference.referent) &&
 			length(s->reference.parent->jump.arguments) != length(target_expression(s)->continuation.parameters)) {
-				longjmp(*vlink_references_handler, (int) make_param_count_mismatch(s->reference.parent, target_expression(s)));
+				thelongjmp(*vlink_references_handler, make_param_count_mismatch(s->reference.parent, target_expression(s)));
 		} else if(is_invoke_reference(s) && is_function_reference(s->reference.referent) &&
 			length(s->reference.parent->invoke.arguments) != length(target_expression(s)->function.parameters)) {
-				longjmp(*vlink_references_handler, (int) make_param_count_mismatch(s->reference.parent, target_expression(s)));
+				thelongjmp(*vlink_references_handler, make_param_count_mismatch(s->reference.parent, target_expression(s)));
 		}
 	} else if(s->base.type == continuation && is_jump_reference(s) &&
 		length(s->continuation.parent->jump.arguments) != length(s->continuation.parameters)) {
-			longjmp(*vlink_references_handler, (int) make_param_count_mismatch(s->continuation.parent, s));
+			thelongjmp(*vlink_references_handler, make_param_count_mismatch(s->continuation.parent, s));
 	} else if(s->base.type == function && s->function.parent && s->function.parent->base.type == invoke &&
 		s->function.parent->invoke.reference == s && length(s->function.parent->invoke.arguments) != length(s->function.parameters)) {
-			longjmp(*vlink_references_handler, (int) make_param_count_mismatch(s->function.parent, s));
+			thelongjmp(*vlink_references_handler, make_param_count_mismatch(s->function.parent, s));
 	}
 	return s;
 }

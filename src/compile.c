@@ -1,6 +1,3 @@
-//To ensure pointers can be passed through longjmp
-char longjmp_hack[sizeof(int) - sizeof(void *)];
-
 #include "setjmp.h"
 #include "stdio.h"
 #include "ctype.h"
@@ -12,72 +9,59 @@ char longjmp_hack[sizeof(int) - sizeof(void *)];
 #include "unistd.h"
 #include "dlfcn.h"
 
+//Essentially longjmp and setjmp with a pointer argument
+void *jmp_value = NULL;
+#define thelongjmp(env, val) (jmp_value = val, longjmp(env, 1))
+#define thesetjmp(env) (jmp_value = NULL, setjmp(env), jmp_value)
+
 #include "sexpr.c"
 #include "compile_errors.c"
 #include "lexer.c"
 #include "expressions.c"
 #include "preparer.c"
-#include "generator.c"
 
-list compile_library_names = NULL;
+list compile_libraries = NULL;
 
-void ensure_compile_library_names() {
-	if(compile_library_names == NULL) {
-		compile_library_names = nil();
+void ensure_compile_libraries() {
+	if(compile_libraries == NULL) {
+		compile_libraries = nil();
 	}
 }
 
-void load(char *library_name, jmp_buf *handler) {
-	ensure_compile_library_names();
-	prepend(library_name, &compile_library_names);
+struct library {
+	char *path;
+	void *handle;
+};
+
+void *load(char *library_path, jmp_buf *handler) {
+	ensure_compile_libraries();
+	void *handle = dlopen(library_path, RTLD_NOW | RTLD_GLOBAL);
+	if(!handle) {
+		thelongjmp(*handler, make_environment(cprintf("%s", dlerror())));
+	}
+	struct library *lib = malloc(sizeof(struct library));
+	lib->path = cprintf("%s", library_path);
+	lib->handle = handle;
+	prepend(lib, &compile_libraries);
+	return handle;
 }
 
-void unload(char *library_name, jmp_buf *handler) {
-	ensure_compile_library_names();
-	list *libsublist = exists(strequal, &compile_library_names, library_name);
+bool libpathequal(void *lib, void *path) {
+	return strequal(((struct library *) lib)->path, path);
+}
+
+void unload(char *library_path, jmp_buf *handler) {
+	ensure_compile_libraries();
+	list *libsublist = exists(libpathequal, &compile_libraries, library_path);
 	if(libsublist) {
+		if(dlclose(((struct library *) (*libsublist)->fst)->handle)) {
+			thelongjmp(*handler, make_environment(cprintf("%s", dlerror())));
+		}
+		free((*libsublist)->fst);
 		*libsublist = (*libsublist)->rst;
 	} else {
-		longjmp(*handler, (int) make_missing_file(library_name));
+		thelongjmp(*handler, make_missing_file(library_path));
 	}
-}
-
-/*
- * Makes a new binary at the path outbin from the object file in the path
- * given by the string in. This binary will both be a static library and
- * an executable.
- */
-
-void compile_object(char *outbin, char *in, jmp_buf *handler) {
-	char entryfn[] = ".entryXXXXXX.s";
-	FILE *entryfile = fdopen(mkstemps(entryfn, 2), "w+");
-	fputs(".section .init_array,\"aw\"\n" ".align 4\n" ".long privmain\n" ".text\n" ".comm argc,4,4\n" ".comm argv,4,4\n"
-		".globl main\n" "main:\n" "ret\n" "privmain:\n" "pushl %esi\n" "pushl %edi\n" "pushl %ebx\n" "pushl %ebp\n"
-		"movl %esp, %ebp\n" "movl 20(%ebp), %eax\n" "movl %eax, argc\n" "movl 24(%ebp), %eax\n" "movl %eax, argv\n"
-		"jmp thunk_end\n" "get_pc_thunk:\n" "movl (%esp), %ebx\n" "ret\n" "thunk_end:\n" "call get_pc_thunk\n"
-		"addl $_GLOBAL_OFFSET_TABLE_, %ebx\n", entryfile);
-	fclose(entryfile);
-
-	char exitfn[] = ".exitXXXXXX.s";
-	FILE *exitfile = fdopen(mkstemps(exitfn, 2), "w+");
-	fputs("leave\n" "popl %ebx\n" "popl %edi\n" "popl %esi\n" "movl $0, %eax\n" "ret\n", exitfile);
-	fclose(exitfile);
-	
-	system(cprintf("gcc -m32 -g -o '%s.o' -c '%s'", entryfn, entryfn));
-	remove(entryfn);
-	system(cprintf("gcc -m32 -g -o '%s.o' -c '%s'", exitfn, exitfn));
-	remove(exitfn);
-	
-	char *library_string = "";
-	char *library_name;
-	foreach(library_name, compile_library_names) {
-		library_string = cprintf("\"%s\" %s", library_name, library_string);
-	}
-	
-	system(cprintf("gcc -m32 -pie -Wl,-E %s -o '%s' '%s.o' '%s' '%s.o' 2>&1 | grep -v \"type and size of dynamic symbol\" 1>&2",
-		library_string, outbin, entryfn, in, exitfn));
-	remove(cprintf("%s.o", entryfn));
-	remove(cprintf("%s.o", exitfn));
 }
 
 bool equals(void *a, void *b) {
@@ -89,77 +73,7 @@ bool equals(void *a, void *b) {
 	visit_expressions(x); \
 }
 
-/*
- * Makes a new binary file at the path outbin from the list of primitive
- * expressions, exprs. The resulting binary file executes the list from top to
- * bottom and then makes all the top-level functions visible to the rest of the
- * executable that it is embedded in.
- */
-
-void compile_expressions(char *outbin, list exprs, jmp_buf *handler) {
-	union expression *container = make_begin(), *t;
-	list toplevel_function_references = nil();
-	{foreach(t, exprs) {
-		t->base.parent = container;
-		if(t->base.type == function) {
-			append(t->function.reference, &toplevel_function_references);
-		}
-	}}
-	container->begin.expressions = exprs;
-	union expression *root_function = make_function("()"), *program = root_function;
-	put(program, function.expression, container);
-	
-	vfind_multiple_definitions_handler = handler;
-	visit_expressions_with(&program, vfind_multiple_definitions);
-
-	vlink_references_program = program; //Static argument to following function
-	vlink_references_handler = handler;
-	visit_expressions_with(&program, vlink_references);
-	
-	visit_expressions_with(&program, vblacklist_references);
-	vrename_definition_references_name_records = nil();
-	visit_expressions_with(&program, vrename_definition_references);
-	visit_expressions_with(&program, vrename_usage_references);
-	
-	visit_expressions_with(&program, vescape_analysis);
-	program = use_return_value(program, generate_reference());
-	
-	generator_PIC = true;
-	generator_init();
-	visit_expressions_with(&program, vlayout_frames);
-	visit_expressions_with(&program, vgenerate_references);
-	visit_expressions_with(&program, vgenerate_continuation_expressions);
-	visit_expressions_with(&program, vgenerate_constants);
-	visit_expressions_with(&program, vgenerate_ifs);
-	visit_expressions_with(&program, vgenerate_function_expressions);
-	program = generate_toplevel(program, toplevel_function_references);
-	visit_expressions_with(&program, vmerge_begins);
-	
-	char sfilefn[] = ".s_fileXXXXXX.s";
-	FILE *sfile = fdopen(mkstemps(sfilefn, 2), "w+");
-	print_assembly(program->begin.expressions, sfile);
-	fflush(sfile);
-	
-	char *ofilefn = cprintf("%s", ".o_fileXXXXXX.o");
-	int odes = mkstemps(ofilefn, 2);
-	system(cprintf("gcc -m32 -g -c -o '%s' '%s'", ofilefn, sfilefn));
-	remove(sfilefn);
-	fclose(sfile);
-	
-	char sympairsfn[] = ".sym_pairsXXXXXX";
-	FILE *sympairsfile = fdopen(mkstemp(sympairsfn), "w+");
-	struct name_record *r;
-	foreach(r, vrename_definition_references_name_records) {
-		if(exists(equals, &toplevel_function_references, r->reference) ||
-			exists(equals, &root_function->function.parameters, r->reference)) {
-				fprintf(sympairsfile, "%s %s\n", r->reference->reference.name, r->original_name);
-		}
-	}
-	fclose(sympairsfile);
-	system(cprintf("objcopy --redefine-syms='%s' '%s'", sympairsfn, ofilefn));
-	remove(sympairsfn);
-	compile_object(outbin, ofilefn, handler);
-}
+#include "generator64.c"
 
 struct occurrences {
 	char *member;
@@ -182,7 +96,7 @@ bool occurrences_for(void *o, void *ctx) {
 void compile(char *outbin, char *inl2, jmp_buf *handler) {
 	FILE *l2file = fopen(inl2, "r");
 	if(l2file == NULL) {
-		longjmp(*handler, (int) make_missing_file(inl2));
+		thelongjmp(*handler, make_missing_file(inl2));
 	}
 	if(generate_string_blacklist == NULL) {
 		generate_string_blacklist = nil();
@@ -190,7 +104,7 @@ void compile(char *outbin, char *inl2, jmp_buf *handler) {
 	
 	list expressions = nil();
 	list expansion_lists = nil();
-	ensure_compile_library_names();
+	ensure_compile_libraries();
 	
 	int c;
 	while((c = after_leading_space(l2file)) != EOF) {

@@ -2,50 +2,48 @@
 #include "compile.c"
 #include "evaluate_errors.c"
 
-volatile bool input_cancelled = false;
-
-void int_handler() {
-	input_cancelled = true;
-}
-
 #define INPUT_BUFFER_SIZE 1024
 
 char *prompt_expressions(jmp_buf *handler) {
-	prompt: printf("- ");
+	printf("\n- ");
+	fflush(stdout);
 	char str[INPUT_BUFFER_SIZE];
 	char *outfn = cprintf("%s", ".XXXXXX.l2");
 	FILE *l2file = fdopen(mkstemps(outfn, 3), "w+");
-	bool input_started = false;
+	bool input_started;
 	
 	while(fgets(str, INPUT_BUFFER_SIZE, stdin)) {
-		if(input_cancelled) {
-			fclose(l2file);
-			if(input_started) {
-				input_cancelled = false;
-				goto prompt;
-			} else {
-				longjmp(*handler, (int) make_no());
-			}
-		} else if(strlen(str) + 1 == INPUT_BUFFER_SIZE) {
-			fclose(l2file);
-			longjmp(*handler, (int) make_unexpected_character(str[INPUT_BUFFER_SIZE - 1], INPUT_BUFFER_SIZE));
-		}
 		input_started = true;
 		fputs(str, l2file);
-		printf("+ ");
+		if(str[strlen(str)-1] == '\n') {
+			printf("+ ");
+			fflush(stdout);
+		} else if(feof(stdin)) {
+			fclose(l2file);
+			clearerr(stdin);
+			printf("\n");
+			return outfn;
+		}
 	}
-	fflush(l2file);
-	return outfn;
+	if(!input_started) {
+		fclose(l2file);
+		thelongjmp(*handler, make_no());
+	} else {
+		fclose(l2file);
+		clearerr(stdin);
+		printf("\b\b");
+		return outfn;
+	}
 }
 
 int main(int argc, char *argv[]) {
-	list shared_library_handles = nil();
+	list library_names = nil();
 	volatile int i;
 	
 	//Initialize the error handler
 	jmp_buf handler;
 	union evaluate_error *err;
-	if(err = (union evaluate_error *) setjmp(handler)) {
+	if(err = (union evaluate_error *) thesetjmp(handler)) {
 		if(err->no.type != NO) {
 			printf("Error found in %s: ", argv[i]);
 		}
@@ -95,42 +93,35 @@ int main(int argc, char *argv[]) {
 				return ARGUMENTS;
 			}
 		}
-		if(i == argc-1 && strcmp(argv[i], "+") && err->no.type != NO) {
+		if(i == argc-1 && !strcmp(argv[i], "+") && err->no.type != NO) {
 			goto prompt;
 		} else {
-			void *handle;
-			foreach(handle, shared_library_handles) {
-				_dlclose(handle, NULL);
+			void *name;
+			foreach(name, library_names) {
+				unload(name, NULL);
 			}
 			return err->no.type;
 		}
 	}
 	
 	if(argc < 2) {
-		longjmp(handler, (int) make_arguments());
+		thelongjmp(handler, make_arguments());
 	}
 	for(i = 1; i < argc && strcmp(argv[i], "-"); i++);
 	if(i == argc) {
-		longjmp(handler, (int) make_arguments());
+		thelongjmp(handler, make_arguments());
 	}
-	
 	for(i = 1; i < argc && strcmp(argv[i], "-"); i++) {
 		load(argv[i], &handler);
 	}
 	
-	signal(SIGINT, int_handler);
-	i++;
-	prompt: for(; i < argc; i++) {
-		char *source = (i == argc-1 && !strcmp(argv[i], "+")) ? prompt_expressions(&handler) : argv[i];
+	for(i++; i < argc;) prompt: {
+		char *source = (i == argc-1 && !strcmp(argv[i], "+")) ? prompt_expressions(&handler) : argv[i++];
 		char *library_name = cprintf("%s", "./.libXXXXXX.so");
 		mkstemps(library_name, 3);
 		compile(library_name, source, &handler);
 		load(library_name, &handler);
-		prepend(_dlopen(library_name, &handler), &shared_library_handles);
-		if(i == argc-1 && !strcmp(argv[i], "+")) {
-			printf("\n");
-			i--;
-		}
+		prepend(library_name, &library_names);
 	}
-	longjmp(handler, (int) make_no());
+	thelongjmp(handler, make_no());
 }

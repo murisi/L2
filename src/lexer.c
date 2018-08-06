@@ -25,7 +25,7 @@ list build_expr_list(FILE *l2file) {
 	int c = getc(l2file);
 	
 	if(c == EOF || isspace(c) || c == ')' || c == '}' || c == ']') {
-		longjmp(*build_expr_list_handler, (int) make_unexpected_character(c, ftell(l2file)));
+		thelongjmp(*build_expr_list_handler, make_unexpected_character(c, ftell(l2file)));
 	} else if(c == '(') {
 		list sexprs = nil();
 		

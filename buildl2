@@ -1,22 +1,24 @@
 #!/usr/bin/env bash
 mkdir -p bin
 
-gcc -m32 -g -c -o bin/sexpr.o src/sexpr.c
+musl-gcc -fPIC -g -c -o bin/sexpr.o src/sexpr.c
 objcopy --redefine-syms=assets/l2_sym_pairs bin/sexpr.o
-gcc -m32 -shared -o bin/sexpr.so bin/sexpr.o
+musl-gcc -m64 -shared -o bin/sexpr.so bin/sexpr.o
 rm bin/sexpr.o
 
-gcc -m32 -g -c -o bin/l2compile.o src/compile.c
+musl-gcc -fPIC -g -c -o bin/l2compile.o src/compile.c
 objcopy --redefine-syms=assets/l2_sym_pairs bin/l2compile.o
-gcc -m32 -shared -o bin/l2compile.so bin/l2compile.o
+musl-gcc -m64 -shared -o bin/l2compile.so bin/l2compile.o
 rm bin/l2compile.o
 
-gcc -m32 -g -c -o bin/l2evaluate.o src/evaluate.c
+musl-gcc -g -c -o bin/l2evaluate.o src/evaluate.c
 objcopy --redefine-syms=assets/l2_sym_pairs bin/l2evaluate.o
-gcc -m32 -g -Wl,--export-dynamic -o bin/l2evaluate bin/l2evaluate.o -ldl
+musl-gcc -m64 -g -o bin/l2evaluate bin/l2evaluate.o -ldl
 rm bin/l2evaluate.o
 
-gcc -m32 -g -c -o bin/i386.o assets/i386.s
-objcopy --redefine-syms=assets/i386_sym_pairs bin/i386.o
-gcc -m32 -shared -o bin/i386.so bin/i386.o
-rm bin/i386.o
+musl-gcc -g -c -o bin/amd64.o assets/amd64.s
+objcopy --redefine-syms=assets/arch_sym_pairs bin/amd64.o
+musl-gcc -m64 -shared -o bin/amd64.so bin/amd64.o
+rm bin/amd64.o
+
+cp assets/libfn bin/libfn

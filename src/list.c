@@ -22,6 +22,10 @@ list rrst(list l) {
 	return l->rst->rst;
 }
 
+list rrrrrrst(list l) {
+	return l->rst->rst->rst->rst->rst->rst;
+}
+
 void *fst(list l) {
 	return l->fst;
 }
@@ -36,6 +40,14 @@ void *frrst(list l) {
 
 void *frrrst(list l) {
 	return l->rst->rst->rst->fst;
+}
+
+void *frrrrst(list l) {
+	return l->rst->rst->rst->rst->fst;
+}
+
+void *frrrrrst(list l) {
+	return l->rst->rst->rst->rst->rst->fst;
 }
 
 void set_fst(list l, void *data) {

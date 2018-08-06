@@ -1,7 +1,14 @@
 bool generator_PIC;
 union expression *ebp, *esp, *esi, *edi, *ebx, *ecx, *edx, *eax, *dx, *dl, *cx, *cl;
 
-void generator_init() {
+/*
+ * Initializes the generator. If PIC is true, then generator will produce
+ * position independent 32-bit code. Otherwise it will generate 32-bit
+ * position dependent code. This function must be called before anything
+ * else from this file is invoked.
+ */
+void generator_init(bool PIC) {
+	generator_PIC = PIC;
 	ebp = make_reference("ebp");
 	esp = make_reference("esp");
 	esi = make_reference("esi");
@@ -410,4 +417,116 @@ void print_assembly(list generated_expressions, FILE *out) {
 		}
 		fprintf(out, "\n");
 	}
+}
+
+/*
+ * Makes a new binary at the path outbin from the object file in the path
+ * given by the string in. This binary will both be a static library and
+ * an executable.
+ */
+
+void compile_object(char *outbin, char *in, jmp_buf *handler) {
+	char entryfn[] = ".entryXXXXXX.s";
+	FILE *entryfile = fdopen(mkstemps(entryfn, 2), "w+");
+	fputs(".section .init_array,\"aw\"\n" ".align 4\n" ".long privmain\n" ".text\n" ".comm argc,4,4\n" ".comm argv,4,4\n"
+		".globl main\n" "main:\n" "ret\n" "privmain:\n" "pushl %esi\n" "pushl %edi\n" "pushl %ebx\n" "pushl %ebp\n"
+		"movl %esp, %ebp\n" "movl 20(%ebp), %eax\n" "movl %eax, argc\n" "movl 24(%ebp), %eax\n" "movl %eax, argv\n", entry_file);
+	if(generator_PIC) {
+		fputs("jmp thunk_end\n" "get_pc_thunk:\n" "movl (%esp), %ebx\n" "ret\n" "thunk_end:\n" "call get_pc_thunk\n"
+			"addl $_GLOBAL_OFFSET_TABLE_, %ebx\n", entryfile);
+	}
+	
+	fclose(entryfile);
+
+	char exitfn[] = ".exitXXXXXX.s";
+	FILE *exitfile = fdopen(mkstemps(exitfn, 2), "w+");
+	fputs("leave\n" "popl %ebx\n" "popl %edi\n" "popl %esi\n" "movl $0, %eax\n" "ret\n", exitfile);
+	fclose(exitfile);
+	
+	system(cprintf("musl-gcc -m32 -g -o '%s.o' -c '%s'", entryfn, entryfn));
+	remove(entryfn);
+	system(cprintf("musl-gcc -m32 -g -o '%s.o' -c '%s'", exitfn, exitfn));
+	remove(exitfn);
+	
+	char *library_path_string = "";
+	struct library *lib;
+	foreach(lib, compile_libraries) {
+		library_path_string = cprintf("%s \"%s\"", library_path_string, lib->path);
+	}
+	system(cprintf("musl-gcc -m32 -pie -Wl,-E -o '%s' '%s.o' '%s' '%s.o' %s 2>&1 | grep -v \"type and size of dynamic symbol\" 1>&2",
+		outbin, entryfn, in, exitfn, library_path_string));
+	remove(cprintf("%s.o", entryfn));
+	remove(cprintf("%s.o", exitfn));
+}
+
+/*
+ * Makes a new binary file at the path outbin from the list of primitive
+ * expressions, exprs. The resulting binary file executes the list from top to
+ * bottom and then makes all the top-level functions visible to the rest of the
+ * executable that it is embedded in.
+ */
+
+void compile_expressions(char *outbin, list exprs, jmp_buf *handler) {
+	union expression *container = make_begin(), *t;
+	list toplevel_function_references = nil();
+	{foreach(t, exprs) {
+		t->base.parent = container;
+		if(t->base.type == function) {
+			append(t->function.reference, &toplevel_function_references);
+		}
+	}}
+	container->begin.expressions = exprs;
+	union expression *root_function = make_function("()"), *program = root_function;
+	put(program, function.expression, container);
+	
+	vfind_multiple_definitions_handler = handler;
+	visit_expressions_with(&program, vfind_multiple_definitions);
+
+	vlink_references_program = program; //Static argument to following function
+	vlink_references_handler = handler;
+	visit_expressions_with(&program, vlink_references);
+	
+	visit_expressions_with(&program, vblacklist_references);
+	vrename_definition_references_name_records = nil();
+	visit_expressions_with(&program, vrename_definition_references);
+	visit_expressions_with(&program, vrename_usage_references);
+	
+	visit_expressions_with(&program, vescape_analysis);
+	program = use_return_value(program, generate_reference());
+	
+	generator_init(true);
+	visit_expressions_with(&program, vlayout_frames);
+	visit_expressions_with(&program, vgenerate_references);
+	visit_expressions_with(&program, vgenerate_continuation_expressions);
+	visit_expressions_with(&program, vgenerate_constants);
+	visit_expressions_with(&program, vgenerate_ifs);
+	visit_expressions_with(&program, vgenerate_function_expressions);
+	program = generate_toplevel(program, toplevel_function_references);
+	visit_expressions_with(&program, vmerge_begins);
+	
+	char sfilefn[] = ".s_fileXXXXXX.s";
+	FILE *sfile = fdopen(mkstemps(sfilefn, 2), "w+");
+	print_assembly(program->begin.expressions, sfile);
+	fflush(sfile);
+	
+	char *ofilefn = cprintf("%s", ".o_fileXXXXXX.o");
+	int odes = mkstemps(ofilefn, 2);
+	system(cprintf("musl-gcc -m32 -g -c -o '%s' '%s'", ofilefn, sfilefn));
+	remove(sfilefn);
+	fclose(sfile);
+	
+	char sympairsfn[] = ".sym_pairsXXXXXX";
+	FILE *sympairsfile = fdopen(mkstemp(sympairsfn), "w+");
+	struct name_record *r;
+	foreach(r, vrename_definition_references_name_records) {
+		if(exists(equals, &toplevel_function_references, r->reference) ||
+			exists(equals, &root_function->function.parameters, r->reference)) {
+				fprintf(sympairsfile, "%s %s\n", r->reference->reference.name, r->original_name);
+		}
+	}
+	fclose(sympairsfile);
+	system(cprintf("objcopy --redefine-syms='%s' '%s'", sympairsfn, ofilefn));
+	remove(sympairsfn);
+	compile_object(outbin, ofilefn, handler);
+	remove(ofilefn);
 }

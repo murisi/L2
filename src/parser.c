@@ -64,9 +64,9 @@ void build_syntax_tree(list d, union expression **s) {
 		(*s)->reference.name = str;
 	} else if(!strcmp(to_string(fst(d)), "with")) {
 		if(length(d) != 3) {
-			longjmp(*build_syntax_tree_handler, (int) make_special_form(d, NULL));
+			thelongjmp(*build_syntax_tree_handler, make_special_form(d, NULL));
 		} else if(!is_string(frst(d))) {
-			longjmp(*build_syntax_tree_handler, (int) make_special_form(d, frst(d)));
+			thelongjmp(*build_syntax_tree_handler, make_special_form(d, frst(d)));
 		}
 	
 		(*s)->with.type = with;
@@ -84,7 +84,7 @@ void build_syntax_tree(list d, union expression **s) {
 		}
 	} else if(!strcmp(to_string(fst(d)), "if")) {
 		if(length(d) != 4) {
-			longjmp(*build_syntax_tree_handler, (int) make_special_form(d, NULL));
+			thelongjmp(*build_syntax_tree_handler, make_special_form(d, NULL));
 		}
 	
 		(*s)->_if.type = _if;
@@ -93,11 +93,11 @@ void build_syntax_tree(list d, union expression **s) {
 		build_syntax_tree_under(frrrst(d), &(*s)->_if.alternate, *s);
 	} else if(!strcmp(to_string(fst(d)), "function") || !strcmp(to_string(fst(d)), "continuation")) {
 		if(length(d) != 4) {
-			longjmp(*build_syntax_tree_handler, (int) make_special_form(d, NULL));
+			thelongjmp(*build_syntax_tree_handler, make_special_form(d, NULL));
 		} else if(!is_string(frst(d))) {
-			longjmp(*build_syntax_tree_handler, (int) make_special_form(d, frst(d)));
+			thelongjmp(*build_syntax_tree_handler, make_special_form(d, frst(d)));
 		} else if(!is_nil(frrst(d)) && is_string(frrst(d))) {
-			longjmp(*build_syntax_tree_handler, (int) make_special_form(d, frrst(d)));
+			thelongjmp(*build_syntax_tree_handler, make_special_form(d, frrst(d)));
 		}
 		
 		(*s)->function.type = !strcmp(to_string(fst(d)), "function") ? function : continuation;
@@ -110,7 +110,7 @@ void build_syntax_tree(list d, union expression **s) {
 		s_expression v;
 		foreach(v, frrst(d)) {
 			if(!is_string((list) v)) {
-				longjmp(*build_syntax_tree_handler, (int) make_special_form(d, (list) v));
+				thelongjmp(*build_syntax_tree_handler, make_special_form(d, (list) v));
 			}
 			build_syntax_tree_under((list) v, append(NULL, &(*s)->function.parameters), *s);
 		}
@@ -119,9 +119,9 @@ void build_syntax_tree(list d, union expression **s) {
 	} else if(!strcmp(to_string(fst(d)), "b")) {
 		char *str;
 		if(length(d) != 2) {
-			longjmp(*build_syntax_tree_handler, (int) make_special_form(d, NULL));
+			thelongjmp(*build_syntax_tree_handler, make_special_form(d, NULL));
 		} else if(!is_string(frst(d)) || strlen(str = to_string(frst(d))) != 32) {
-			longjmp(*build_syntax_tree_handler, (int) make_special_form(d, frst(d)));
+			thelongjmp(*build_syntax_tree_handler, make_special_form(d, frst(d)));
 		}
 	
 		(*s)->constant.type = constant;
@@ -131,12 +131,12 @@ void build_syntax_tree(list d, union expression **s) {
 			if(str[strlen(str) - i - 1] == '1') {
 				(*s)->constant.value |= (1 << i);
 			} else if(str[strlen(str) - i - 1] != '0') {
-				longjmp(*build_syntax_tree_handler, (int) make_special_form(d, frst(d)));
+				thelongjmp(*build_syntax_tree_handler, make_special_form(d, frst(d)));
 			}
 		}
 	} else if(!strcmp(to_string(fst(d)), "invoke") || !strcmp(to_string(fst(d)), "jump")) {
 		if(length(d) == 1) {
-			longjmp(*build_syntax_tree_handler, (int) make_special_form(d, NULL));
+			thelongjmp(*build_syntax_tree_handler, make_special_form(d, NULL));
 		}
 	
 		(*s)->invoke.type = !strcmp(to_string(fst(d)), "invoke") ? invoke : jump;
@@ -176,20 +176,6 @@ void merge_onto(list src, list *dest) {
 	}
 }
 
-void *_dlopen(char *library_path, jmp_buf *handler) {
-	void *handle = dlopen(library_path, RTLD_NOW | RTLD_GLOBAL | RTLD_DEEPBIND);
-	if(!handle) {
-		longjmp(*handler, (int) make_environment(cprintf("%s", dlerror())));
-	}
-	return handle;
-}
-
-void _dlclose(void *handle, jmp_buf *handler) {
-	if(dlclose(handle)) {
-		longjmp(*handler, (int) make_environment(cprintf("%s", dlerror())));
-	}
-}
-
 /*
  * Does the expansions in the expansions lists. For the purposes of efficiency,
  * the first expansion list is compiled and sent to the assembler together.
@@ -220,10 +206,7 @@ void expand_expressions(list expansion_lists) {
 		char *outfn = cprintf("%s", "./.libXXXXXX.so");
 		mkstemps(outfn, 3);
 		compile_expressions(outfn, expander_containers, build_syntax_tree_handler);
-		void *handle = _dlopen(outfn, build_syntax_tree_handler);
-		if(!handle) {
-			longjmp(*expand_expressions_handler, (int) make_environment(cprintf("%s", dlerror())));
-		}
+		void *handle = load(outfn, build_syntax_tree_handler);
 		
 		char *expander_container_name;
 		foreachzipped(expansion, expander_container_name, expansions, expander_container_names) {
@@ -236,7 +219,7 @@ void expand_expressions(list expansion_lists) {
 			build_syntax_tree_under(transformed, expansion->target, (*expansion->target)->base.parent);
 			merge_onto(build_syntax_tree_expansion_lists, &urgent_expansion_lists);
 		}
-		_dlclose(handle, build_syntax_tree_handler);
+		unload(outfn, build_syntax_tree_handler);
 		remove(outfn);
 		
 		append_list(&urgent_expansion_lists, (*remaining_expansion_lists)->rst);
