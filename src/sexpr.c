@@ -30,12 +30,20 @@ s_expression sexpr(list l) {
 	return d;
 }
 
+bool sexpr_equals(s_expression a, s_expression b) {
+	if(a->type != b->type) {
+		return false;
+	} else if(a->type == character) {
+		return a->character == b->character ? true : false;
+	} else if(is_nil((list) a) || is_nil((list) b)) {
+		return is_nil((list) a) & is_nil((list) b);
+	} else {
+		return sexpr_equals(fst((list) a), fst((list) b)) &&
+			sexpr_equals((s_expression) rst((list) a), (s_expression) rst((list) b));
+	}
+}
+
 #define char_sexpr(str, ch) \
-\
-bool is_ ## str(s_expression s) { \
-	return (s->type == character && s->character == ch) ? true : false; \
-} \
-\
 s_expression _ ## str ## _() { \
 	s_expression sexpr = calloc(1, sizeof(struct _s_expression_)); \
 	sexpr->type = character; \

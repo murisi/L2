@@ -1,15 +1,15 @@
 (function " (l) (with return
 	{(continuation add-word (str index instrs)
-		(if [nil? $str]
+		(if [sexpr= $str [nil]]
 			{return (`(with return
 				[allocate (,[binary->base2sexpr $index])
 					(continuation _ (str) (,[lst (` begin) [reverse [lst (`{return $str}) $instrs]]]))]))}
 			
 			{(continuation add-char (word index instrs)
-					(if [nil? $word]
+					(if [sexpr= $word [nil]]
 						{add-word [rst $str] [+ $index &1]
 							[lst (`[set-char [+ $str (,[binary->base2sexpr $index])]
-								(,(if [nil? [rst $str]] (` &0) (` &32)))]) $instrs]}
+								(,(if [sexpr= [rst $str] [nil]] (` &0) (` &32)))]) $instrs]}
 						{add-char [rst $word] [+ $index &1]
 							[lst (`[set-char [+ $str (,[binary->base2sexpr $index])] (char (,[lst [fst $word] [nil]]))]) $instrs]}))
 				[fst $str] $index $instrs})) $l &0 [nil]}))
