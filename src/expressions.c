@@ -8,7 +8,8 @@ enum expression_type {
 	reference,
 	jump,
 	continuation,
-	instruction
+	instruction,
+	non_primitive
 };
 
 struct base_expression {
@@ -121,6 +122,15 @@ struct reference_expression {
 	union expression *offset;
 };
 
+struct np_expression {
+	enum expression_type type;
+	union expression *parent;
+	union expression *return_value;
+	
+	union expression *function;
+	list argument;
+};
+
 union expression {
 	struct base_expression base;
 	struct begin_expression begin;
@@ -133,6 +143,7 @@ union expression {
 	struct if_expression _if;
 	struct constant_expression constant;
 	struct reference_expression reference;
+	struct np_expression non_primitive;
 };
 
 union expression *make_constant(int value) {
@@ -315,6 +326,14 @@ void print_annotated_syntax_tree(union expression *s) {
 			printf("(b");
 			print_annotated_syntax_tree_annotator(s);
 			printf(" %d)", s->constant.value);
+			break;
+		} case non_primitive: {
+			printf("(");
+			print_annotated_syntax_tree_annotator(s);
+			print_annotated_syntax_tree(s->non_primitive.function);
+			printf(" ");
+			print_expr_list(s->non_primitive.argument);
+			printf(")");
 			break;
 		}
 	}

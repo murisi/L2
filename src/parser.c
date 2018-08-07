@@ -1,9 +1,3 @@
-struct expansion {
-	union expression *function;
-	list argument;
-	union expression **target;
-};
-
 #define build_syntax_tree_under(x, y, z) { \
 	union expression *_build_syntax_tree_under_u = z; \
 	union expression **_build_syntax_tree_under_v = y; \
@@ -146,13 +140,12 @@ void build_syntax_tree(list d, union expression **s) {
 			build_syntax_tree_under((list) v, append(NULL, &(*s)->invoke.arguments), *s);
 		}
 	} else {
-		struct expansion *e = malloc(sizeof(struct expansion));
-		e->argument = rst(d);
-		e->target = s;
+		(*s)->non_primitive.type = non_primitive;
+		(*s)->non_primitive.argument = rst(d);
 		expansion_depth--;
-		build_syntax_tree_under(fst(d), &e->function, *s);
+		build_syntax_tree_under(fst(d), &(*s)->non_primitive.function, *s);
 		expansion_depth++;
-		prepend(e, list_at(expansion_depth, &build_syntax_tree_expansion_lists));
+		prepend(s, list_at(expansion_depth, &build_syntax_tree_expansion_lists));
 	}
 }
 
@@ -193,12 +186,12 @@ void expand_expressions(list expansion_lists) {
 	foreachlist(remaining_expansion_lists, expansions, expansion_lists) {
 		list urgent_expansion_lists = nil();
 		
-		struct expansion *expansion;
+		union expression **expansion;
 		list expander_containers = nil();
 		list expander_container_names = nil();
 		foreach(expansion, expansions) {
 			union expression *expander_container = make_function("");
-			put(expander_container, function.expression, expansion->function);
+			put(expander_container, function.expression, (*expansion)->non_primitive.function);
 			append(expander_container, &expander_containers);
 			append(expander_container->function.reference->reference.name, &expander_container_names);
 		}
@@ -212,11 +205,11 @@ void expand_expressions(list expansion_lists) {
 		foreachzipped(expansion, expander_container_name, expansions, expander_container_names) {
 			list (*(*macro_container)())(list) = dlsym(handle, expander_container_name);
 			list (*macro)(list) = macro_container();
-			list transformed = macro(expansion->argument);
+			list transformed = macro((*expansion)->non_primitive.argument);
 			
 			build_syntax_tree_handler = expand_expressions_handler;
 			build_syntax_tree_expansion_lists = nil();
-			build_syntax_tree_under(transformed, expansion->target, (*expansion->target)->base.parent);
+			build_syntax_tree_under(transformed, expansion, (*expansion)->non_primitive.parent);
 			merge_onto(build_syntax_tree_expansion_lists, &urgent_expansion_lists);
 		}
 		unload(outfn, build_syntax_tree_handler);
