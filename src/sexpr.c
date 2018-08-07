@@ -6,49 +6,44 @@
 typedef int bool;
 #include "list.c"
 
-enum s_expression_type {
-	_list,
-	character
-};
-
-struct _s_expression_ {
-	struct _list_ _list; //void * = s_expression 
-	enum s_expression_type type;
+struct character {
+	void *list_flag;
 	char character;
 };
 
-typedef struct _s_expression_* s_expression;
+union sexpr {
+	void *list_flag;
+	struct _list_ _list;
+	struct character character;
+};
 
-bool is_lst(s_expression s) {
-	return s->type == _list ? true : false;
+bool is_lst(union sexpr *s) {
+	return s->list_flag ? true : false;
 }
 
-s_expression sexpr(list l) {
-	s_expression d = malloc(sizeof(struct _s_expression_));
-	d->type = _list;
-	d->_list = *l;
-	return d;
-}
-
-bool sexpr_equals(s_expression a, s_expression b) {
-	if(a->type != b->type) {
+bool sexpr_equals(union sexpr *a, union sexpr *b) {
+	if(!a->list_flag != !b->list_flag) {
 		return false;
-	} else if(a->type == character) {
-		return a->character == b->character ? true : false;
+	} else if(!a->list_flag) {
+		return a->character.character == b->character.character ? true : false;
 	} else if(is_nil((list) a) || is_nil((list) b)) {
 		return is_nil((list) a) & is_nil((list) b);
 	} else {
 		return sexpr_equals(fst((list) a), fst((list) b)) &&
-			sexpr_equals((s_expression) rst((list) a), (s_expression) rst((list) b));
+			sexpr_equals((union sexpr *) rst((list) a), (union sexpr *) rst((list) b));
 	}
 }
 
+union sexpr *build_character_sexpr(char d) {
+	union sexpr *c = malloc(sizeof(union sexpr));
+	c->character.list_flag = NULL;
+	c->character.character = d;
+	return c;
+}
+
 #define char_sexpr(str, ch) \
-s_expression _ ## str ## _() { \
-	s_expression sexpr = calloc(1, sizeof(struct _s_expression_)); \
-	sexpr->type = character; \
-	sexpr->character = ch; \
-	return sexpr; \
+union sexpr * _ ## str ## _() { \
+	return build_character_sexpr(ch); \
 }
 
 #define an_sexpr(ch) char_sexpr(ch, #ch [0])
@@ -66,16 +61,12 @@ an_sexpr(b); an_sexpr(c); an_sexpr(d); an_sexpr(e); an_sexpr(f); an_sexpr(g); an
 an_sexpr(l); an_sexpr(m); an_sexpr(n); an_sexpr(o); an_sexpr(p); an_sexpr(q); an_sexpr(r); an_sexpr(s); an_sexpr(t); an_sexpr(u);
 an_sexpr(v); an_sexpr(w); an_sexpr(x); an_sexpr(y); an_sexpr(z); char_sexpr(vertical_bar, '|'); char_sexpr(tilde, '~');
 
-s_expression build_symbol_sexpr(char *str) {
-	list sexprs = calloc(1, sizeof(struct _list_));
-	
+list build_symbol_sexpr(char *str) {
+	list sexprs = nil();
 	for(; *str; str++) {
-		s_expression _character = malloc(sizeof(struct _s_expression_));
-		_character->type = character;
-		_character->character = *str;
-		append(_character, &sexprs);
+		append(build_character_sexpr(*str), &sexprs);
 	}
-	return sexpr(sexprs);
+	return sexprs;
 }
 
 list with_primitive(list arg) { return lst(build_symbol_sexpr("with"), arg); }

@@ -70,9 +70,9 @@ void build_syntax_tree(list d, union expression **s) {
 		(*s)->begin.expressions = nil();
 	
 		list t = rst(d);
-		s_expression v;
+		list v;
 		foreach(v, t) {
-			build_syntax_tree_under((list) v, append(NULL, &(*s)->begin.expressions), *s);
+			build_syntax_tree_under(v, append(NULL, &(*s)->begin.expressions), *s);
 		}
 	} else if(!strcmp(to_string(fst(d)), "if")) {
 		if(length(d) != 4) {
@@ -99,9 +99,9 @@ void build_syntax_tree(list d, union expression **s) {
 			(*s)->function.locals = nil();
 		}
 		(*s)->function.parameters = nil();
-		s_expression v;
+		list v;
 		foreach(v, frrst(d)) {
-			if(!is_string((list) v)) {
+			if(!is_string(v)) {
 				thelongjmp(*build_syntax_tree_handler, make_special_form(d, (list) v));
 			}
 			build_syntax_tree_under((list) v, append(NULL, &(*s)->function.parameters), *s);
@@ -134,10 +134,10 @@ void build_syntax_tree(list d, union expression **s) {
 		(*s)->invoke.type = !strcmp(to_string(fst(d)), "invoke") ? invoke : jump;
 		build_syntax_tree_under(frst(d), &(*s)->invoke.reference, *s);
 	
-		s_expression v;
+		list v;
 		(*s)->invoke.arguments = nil();
 		foreach(v, rrst(d)) {
-			build_syntax_tree_under((list) v, append(NULL, &(*s)->invoke.arguments), *s);
+			build_syntax_tree_under(v, append(NULL, &(*s)->invoke.arguments), *s);
 		}
 	} else {
 		(*s)->non_primitive.type = non_primitive;

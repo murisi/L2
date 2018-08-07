@@ -5,7 +5,8 @@ struct _list_ {
 typedef struct _list_* list;
 
 list nil() {
-	list s = calloc(1, sizeof(struct _list_));
+	list s = malloc(sizeof(struct _list_));
+	s->fst = s;
 	s->rst = NULL;
 	return s;
 }

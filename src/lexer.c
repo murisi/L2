@@ -19,7 +19,7 @@ list build_expr_list(FILE *l2file) {
 		
 		while((c = after_leading_space(l2file)) != ')') {
 			ungetc(c, l2file);
-			append(sexpr(build_expr_list(l2file)), &sexprs);
+			append(build_expr_list(l2file), &sexprs);
 		}
 		return sexprs;
 	} else if(c == '{') {
@@ -28,7 +28,7 @@ list build_expr_list(FILE *l2file) {
 		
 		while((c = after_leading_space(l2file)) != '}') {
 			ungetc(c, l2file);
-			append(sexpr(build_expr_list(l2file)), &sexprs);
+			append(build_expr_list(l2file), &sexprs);
 		}
 		return sexprs;
 	} else if(c == '[') {
@@ -37,41 +37,37 @@ list build_expr_list(FILE *l2file) {
 		
 		while((c = after_leading_space(l2file)) != ']') {
 			ungetc(c, l2file);
-			append(sexpr(build_expr_list(l2file)), &sexprs);
+			append(build_expr_list(l2file), &sexprs);
 		}
 		return sexprs;
 	} else if(c == '$') {
 		char d = getc(l2file);
 		if(d == EOF || isspace(d) || d == ')' || d == '}' || d == ']' || d == '(' || d == '{' || d =='[') {
 			ungetc(d, l2file);
-			return (list) build_symbol_sexpr("$");
+			return build_symbol_sexpr("$");
 		} else {
 			ungetc(d, l2file);
 			list sexprs = nil();
 			append(build_symbol_sexpr("$"), &sexprs);
-			append(sexpr(build_expr_list(l2file)), &sexprs);
+			append(build_expr_list(l2file), &sexprs);
 			return sexprs;
 		}
 	} else if(c == '&') {
 		char d = getc(l2file);
 		if(d == EOF || isspace(d) || d == ')' || d == '}' || d == ']' || d == '(' || d == '{' || d =='[') {
 			ungetc(d, l2file);
-			return (list) build_symbol_sexpr("&");
+			return build_symbol_sexpr("&");
 		} else {
 			ungetc(d, l2file);
 			list sexprs = nil();
 			append(build_symbol_sexpr("&"), &sexprs);
-			append(sexpr(build_expr_list(l2file)), &sexprs);
+			append(build_expr_list(l2file), &sexprs);
 			return sexprs;
 		}
 	} else {
 		list l = nil();
 		do {
-			s_expression _character = malloc(sizeof(struct _s_expression_));
-			_character->type = character;
-			_character->character = c;
-			append(_character, &l);
-			
+			append(build_character_sexpr(c), &l);
 			c = getc(l2file);
 		} while(c != EOF && !isspace(c) && c != '(' && c != ')' && c != '{' && c != '}' && c != '[' && c != ']');
 		
@@ -81,32 +77,22 @@ list build_expr_list(FILE *l2file) {
 }
 
 bool is_string(list d) {
-	s_expression t;
+	union sexpr *t;
 	foreach(t, d) {
-		if(t->type != character) {
+		if(is_lst(t)) {
 			return false;
 		}
 	}
 	return true;
 }
 
-int string_length(list d) {
-	s_expression t;
-	int length = 0;
-	
-	foreach(t, d) {
-		length++;
-	}
-	return length;
-}
-
 char *to_string(list d) {
-	char *str = calloc(string_length(d) + 1, sizeof(char));
+	char *str = calloc(length(d) + 1, sizeof(char));
 	int i = 0;
 	
-	s_expression t;
+	union sexpr *t;
 	foreach(t, d) {
-		str[i++] = t->character;
+		str[i++] = t->character.character;
 	}
 	str[i] = '\0';
 	return str;
@@ -118,11 +104,11 @@ void print_expr_list(list d) {
 		printf(")");
 		return;
 	} else {
-		s_expression _fst = fst(d);
-		if(_fst->type == character) {
-			printf("%c", _fst->character);
-		} else {
+		union sexpr *_fst = fst(d);
+		if(is_lst(_fst)) {
 			print_expr_list((list) _fst);
+		} else {
+			printf("%c", _fst->character);
 		}
 		printf(" . ");
 		print_expr_list(rst(d));
