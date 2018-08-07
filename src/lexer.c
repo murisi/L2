@@ -40,6 +40,30 @@ list build_expr_list(FILE *l2file) {
 			append(sexpr(build_expr_list(l2file)), &sexprs);
 		}
 		return sexprs;
+	} else if(c == '$') {
+		char d = getc(l2file);
+		if(d == EOF || isspace(d) || d == ')' || d == '}' || d == ']' || d == '(' || d == '{' || d =='[') {
+			ungetc(d, l2file);
+			return (list) build_symbol_sexpr("$");
+		} else {
+			ungetc(d, l2file);
+			list sexprs = nil();
+			append(build_symbol_sexpr("$"), &sexprs);
+			append(sexpr(build_expr_list(l2file)), &sexprs);
+			return sexprs;
+		}
+	} else if(c == '&') {
+		char d = getc(l2file);
+		if(d == EOF || isspace(d) || d == ')' || d == '}' || d == ']' || d == '(' || d == '{' || d =='[') {
+			ungetc(d, l2file);
+			return (list) build_symbol_sexpr("&");
+		} else {
+			ungetc(d, l2file);
+			list sexprs = nil();
+			append(build_symbol_sexpr("&"), &sexprs);
+			append(sexpr(build_expr_list(l2file)), &sexprs);
+			return sexprs;
+		}
 	} else {
 		list l = nil();
 		do {

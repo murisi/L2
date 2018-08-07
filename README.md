@@ -72,9 +72,9 @@ Say the expression `[foo]` prints the text "foo" to standard output and the expr
 
 ### Binary
 ```racket
-(b b31b30...b0)
+(b b63b62...b0)
 ```
-The resulting value is the 32 bit number specified in binary inside the brackets. Specifying less than or more than 32 bits is an error. Useful for implementing character and string literals, and numbers in other bases.
+The resulting value is the 64 bit number specified in binary inside the brackets. Specifying less than or more than 64 bits is an error. Useful for implementing character and string literals, and numbers in other bases.
 
 This expression is implemented by emitting an instruction to `mov` an immediate value into a memory location designated by the surrounding expression.
 
