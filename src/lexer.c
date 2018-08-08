@@ -7,6 +7,21 @@ int after_leading_space(FILE *l2file) {
 	return c;
 }
 
+list build_expr_list(FILE *l2file);
+
+list build_sigil(char *sigil, FILE *l2file) {
+	char d = getc(l2file);
+	ungetc(d, l2file);
+	if(d == EOF || isspace(d) || d == ')' || d == '}' || d == ']' || d == '(' || d == '{' || d =='[') {
+		return build_symbol_sexpr(sigil);
+	} else {
+		list sexprs = nil();
+		append(build_symbol_sexpr(sigil), &sexprs);
+		append(build_expr_list(l2file), &sexprs);
+		return sexprs;
+	}
+}
+
 jmp_buf *build_expr_list_handler;
 
 list build_expr_list(FILE *l2file) {
@@ -41,29 +56,13 @@ list build_expr_list(FILE *l2file) {
 		}
 		return sexprs;
 	} else if(c == '$') {
-		char d = getc(l2file);
-		if(d == EOF || isspace(d) || d == ')' || d == '}' || d == ']' || d == '(' || d == '{' || d =='[') {
-			ungetc(d, l2file);
-			return build_symbol_sexpr("$");
-		} else {
-			ungetc(d, l2file);
-			list sexprs = nil();
-			append(build_symbol_sexpr("$"), &sexprs);
-			append(build_expr_list(l2file), &sexprs);
-			return sexprs;
-		}
+		return build_sigil("$", l2file);
 	} else if(c == '&') {
-		char d = getc(l2file);
-		if(d == EOF || isspace(d) || d == ')' || d == '}' || d == ']' || d == '(' || d == '{' || d =='[') {
-			ungetc(d, l2file);
-			return build_symbol_sexpr("&");
-		} else {
-			ungetc(d, l2file);
-			list sexprs = nil();
-			append(build_symbol_sexpr("&"), &sexprs);
-			append(build_expr_list(l2file), &sexprs);
-			return sexprs;
-		}
+		return build_sigil("&", l2file);
+	} else if(c == ',') {
+		return build_sigil(",", l2file);
+	} else if(c == '`') {
+		return build_sigil("`", l2file);
 	} else {
 		list l = nil();
 		do {

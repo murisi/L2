@@ -29,7 +29,7 @@ bool sexpr_equals(union sexpr *a, union sexpr *b) {
 	} else if(is_nil((list) a) || is_nil((list) b)) {
 		return is_nil((list) a) & is_nil((list) b);
 	} else {
-		return sexpr_equals(fst((list) a), fst((list) b)) &&
+		return sexpr_equals(fst((list) a), fst((list) b)) &
 			sexpr_equals((union sexpr *) rst((list) a), (union sexpr *) rst((list) b));
 	}
 }
