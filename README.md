@@ -88,7 +88,7 @@ The resulting value is the address in memory to which this reference refers.
 
 This expression is implemented by the emission of an instruction to `lea` of some data into a memory location designated by the surrounding expression.
 
-Say the expression `[' x]` evaluates to the value at the reference `x` and the expression `[set x y]` puts the value `y` into the reference `x`. Then `(begin [set x (b 00000000000000000000000001100001)] [putchar [' x]])` prints the text "a" to standard output.
+Say the expression `[get x]` evaluates to the value at the reference `x` and the expression `[set x y]` puts the value `y` into the reference `x`. Then `(begin [set x (b 00000000000000000000000001100001)] [putchar [get x]])` prints the text "a" to standard output.
 
 ### If
 ```racket
@@ -108,7 +108,7 @@ Makes a function to be invoked with exactly `N` arguments. When the function is 
 
 This expression is implemented by first emitting an instruction to `mov` the address `function0` (a label to be emitted later) into the memory location designated by the surrounding expression. Then an instruction is emitted to `jmp` to the end of all the instructions that are emitted for this function. Then the label named `function0` is emitted. Then instructions to `push` each callee-saved register onto the stack are emitted. Then an instruction to push the frame-pointer onto the stack is emitted. Then an instruction to move the value of the stack-pointer into the frame-pointer is emitted. Then an instruction to `sub` from the stack-pointer the amount of words reserved on this function's stack-frame is emitted. After this the instructions for `expression0` are emitted with the location of the resulting value fixed to a word within the stack-pointer's drop. After this an instruction is emitted to `mov` the word from this location into the register `eax`. And finally, instructions are emitted to `leave` the current function's stack-frame, `pop` the callee-save registers, and `ret` to the address of the caller.
 
-The expression `[putchar [(function my- (a b) [- [' b] [' a]]) (b 00000000000000000000000000000001) (b 00000000000000000000000001100011)]]` prints the text "b" to standard output.
+The expression `[putchar [(function my- (a b) [- [get b] [get a]]) (b 00000000000000000000000000000001) (b 00000000000000000000000001100011)]]` prints the text "b" to standard output.
 
 ### Invoke
 ```racket
@@ -163,7 +163,7 @@ Makes a continuation to be `jump`ed to with exactly `N` arguments. When the cont
 
 5+N words must be reserved in the current function's stack-frame plan. Call the reference to the first word of the reservation `continuation0`. This expression is implemented by first emitting an instruction to `mov` the reference `continuation0` into the memory location designated by the surrounding expression. Instructions are then emitted to store the program's state at `continuation0`, that is, instructions are emitted to `mov` `ebp`, the address of the instruction that should be executed after continuing (a label to be emitted later), `edi`, `esi`, and `ebx`, in that order, to the first 5 words at `continuation0`. Then an instruction is emitted to `jmp` to the end of all the instructions that are emitted for this `continuation` expression. Then the label for the first instruction of the continuation is emitted. After this the instructions for `expression0` are emitted.
 
-The expression `{(continuation forever (a b) (begin [putchar [' a]] [putchar [' b]] {forever [- [' a] (b 00000000000000000000000000000001)] [- [' b] (b 00000000000000000000000000000001)]})) (b 00000000000000000000000001011010) (b 00000000000000000000000001111010)}` prints the text "ZzYyXxWw"... to standard output.
+The expression `{(continuation forever (a b) (begin [putchar [get a]] [putchar [get b]] {forever [- [get a] (b 00000000000000000000000000000001)] [- [get b] (b 00000000000000000000000000000001)]})) (b 00000000000000000000000001011010) (b 00000000000000000000000001111010)}` prints the text "ZzYyXxWw"... to standard output.
 
 ### Jump
 ```racket
@@ -179,63 +179,63 @@ The expression `(begin (with cutter (jump (continuation cuttee () (begin [bar] [
 #### An Optimization
 Looking at the examples above where the continuation reference does not escape, `(with reference0 expression0)` behaves a lot like the pseudo-assembly `expression0 reference0:` and `(continuation reference0 (...) expression0)` behaves a lot like `reference0: expression0`. To be more precise, when references to a particular continuation only occur as the `continuation0` subexpression of a `jump` statement, we know that the continuation is constrained to the function in which it is declared, and hence there is no need to store or restore `ebp`, `edi`, `esi`, and `ebx`. Continuations, then, are how efficient iteration is achieved in L2.
 
+## Syntactic Sugar
+### `$a1...aN`
+In what follows, it is assumed that `$a1...aN` is not part of a larger string. If `$a1...aN` is simply a `$`, then it remains unchanged. Otherwise at least a character follows the `$`; in this case `$a1...aN` turns into `($ a1...aN)`.
+
+For example, the expression `$$hello$bye` turns into `($ $hello$bye)` which turns into `($ ($ hello$bye))`
+### `&a1...aN`
+An analogous transformation to the one for `$a1...aN` happens.
+### `,a1...aN`
+An analogous transformation to the one for `$a1...aN` happens.
+### `` `a1...aN``
+An analogous transformation to the one for `$a1...aN` happens.
+
 ## Internal Representation
-After substituting out the syntactic sugar used for the `invoke` and `jump` expressions. We find that all L2 programs are just compositions of the `<pre-s-expression>`s: `<symbol>` and `(<pre-s-expression> <pre-s-expression> ... <pre-s-expression>)`. If we now replace every symbol with a list of its characters so that for example `foo` becomes `(f o o)`, we now find that all L2 programs are now just compositions of the `<s-expression>`s `<symbol>` and `(<s-expression> <s-expression> ... <s-expression>)`. The following functions that manipulate these s-expressions are not part of the L2 language and hence the compiler does not give references to them special treatment during compilation. However, when compiled code is loaded into an L2 compiler, undefined references to these functions are to be dynamically resolved.
+After substituting out the syntactic sugar defined in the [invoke](#invoke), [jump](#jump), and [syntactic sugar](#syntactic-sugar) sections, we find that all L2 programs are just compositions of the `<pre-s-expression>`s: `<symbol>` and `(<pre-s-expression> <pre-s-expression> ... <pre-s-expression>)`. If we now replace every symbol with a list of its characters so that for example `foo` becomes `(f o o)`, we now find that all L2 programs are now just compositions of the `<s-expression>`s `<symbol>` and `(<s-expression> <s-expression> ... <s-expression>)`. The following functions that manipulate these s-expressions are not part of the L2 language and hence the compiler does not give references to them special treatment during compilation. However, when compiled code is loaded into an L2 compiler, undefined references to these functions are to be dynamically resolved.
 
 ### `[lst x y]`
 `x` must be a s-expression and `y` a list.
 
 Makes a list where `x` is first and `y` is the rest.
 
-Say the s-expression `foo` is stored at `a` and the list `(bar)` is stored at `b`. Then `[lst [' a] [' b]]` is the s-expression `(foo bar)`.
+Say the s-expression `foo` is stored at `a` and the list `(bar)` is stored at `b`. Then `[lst [get a] [get b]]` is the s-expression `(foo bar)`.
 ### `[lst? x]`
 `x` must be a s-expression.
 
 Evaluates to the complement of zero if `x` is also list. Otherwise evaluates to zero.
 
-Say the s-expression `foo` is stored at `a`. Then `[lst? [' a]]` evaluates to `(b 11111111111111111111111111111111)`.
+Say the s-expression `foo` is stored at `a`. Then `[lst? [get a]]` evaluates to `(b 11111111111111111111111111111111)`.
 ### `[fst x]`
 `x` must be a list.
 
 Evaluates to a s-expression that is the first of `x`.
 
-Say the list `foo` is stored at `a`. Then `[fst [' a]]` is the s-expression `a`. This `a` is not a list but is a character.
+Say the list `foo` is stored at `a`. Then `[fst [get a]]` is the s-expression `f`. This `f` is not a list but is a character.
 ### `[rst x]`
 `x` must be a list`.
 
 Evaluates to a list that is the rest of `x`.
 
-Say the list `foo` is stored at `a`. Then `[rst [' a]]` is the s-expression `oo`.
-### `[sexpr x]`
-`x` must be a list.
-
-Evaluates to an s-expression wrapper of `x`.
-
-Say the s-expression `foo` is stored at `a` and `(bar)` is stored at `b`. Then `[lst [sexpr [rst [' a]]] [' b]]` is the s-expression `(oo bar)`. Note that without the `sexpr` invocation, the preconditions of `lst` would be violated.
+Say the list `foo` is stored at `a`. Then `[rst [get a]]` is the s-expression `oo`.
 ### `[nil]`
 Evaluates to the empty list.
 
-Say the s-expression `foo` is stored at `a`. Then `[lst [' a] [nil]]` is the s-expression `(foo)`.
-### `[nil? x]`
-`x` must be a list.
-
-Evaluates to the complement of zero if `x` is the empty list. Otherwise evaluates to zero.
-
-Say the s-expression `((foo bar bar bar))` is stored at `x`. Then `[nil? [rst [' x]]]` evaluates to `(b 11111111111111111111111111111111)`.
+Say the s-expression `foo` is stored at `a`. Then `[lst [get a] [nil]]` is the s-expression `(foo)`.
 ### `[-<character>-]`
 Evaluates to the character `<character>`.
 
 The expression `[lst [-f-] [lst [-o-] [lst [-o-] [nil]]]]` evaluates to the s-expression `foo`.
-### `[<character>? x]`
-`x` must be a s-expression.
+### `[sexpr= x y]`
+`x` and `y` must be s-expressions.
 
-Evaluates to the complement of zero if `x` is the character <character>. Otherwise evaluates to zero.
+Evaluates to the complement of zero if `x` is the same s-expression as `y`, otherwise it evaluates to zero.
 
-Say the s-expression `(foo (bar bar) foo foo)` is stored at `x`. Then `[m? [' x]]` evaluates to `(b 00000000000000000000000000000000)`.
+Say the s-expression `(foo (bar bar) foo foo)` is stored at both `x` and `y`. Then `[sexpr= [get x] [get y]]` evaluates to `(b 1111111111111111111111111111111111111111111111111111111111111111)`.
 ### `[begin x]`
 `x` must be a list of s-expressions.
 
-Evaluates to an s-expression formed by prepending the s-expression `begin` to `x`. The `begin` function could have the following definition: `(function b (sexprs) [lst [lst [-b-] [lst [-e-] [lst [-g-] [lst [-i-] [lst [-n-] [nil]]]]]] [' sexprs]])`.
+Evaluates to an s-expression formed by prepending the s-expression `begin` to `x`. The `begin` function could have the following definition: `(function b (sexprs) [lst [lst [-b-] [lst [-e-] [lst [-g-] [lst [-i-] [lst [-n-] [nil]]]]]] [get sexprs]])`.
 ### `[b x]`
 This function is analogous to `begin`.
 ### `[if x]`
@@ -256,23 +256,23 @@ This function is analogous to `begin`.
 ```
 If the above expression is not a [primitive expression](#primitive-expressions), then `function0` is evaluated in the environment. The resulting value of this evaluation is then invoked with the (unevaluated) list of [s-expressions](#internal-representation) `(expression1 expression2 ... expressionN)` as its only argument. The list of s-expressions returned by this function then replaces the entire list of s-expressions `(function0 expression1 ... expressionN)`. If the result of this replacement is still a non-primitive expression, then the above process is repeated. When this process terminates, the appropriate assembly code for the resulting primitive expression is emitted.
 
-The expression `((function comment (sexprs) [fst [' sexprs]]) [foo] This comment is ignored. No, seriously.)` is replaced by `[foo]`, which in turn compiles into assembly similar to what is generated for other invoke expressions.
+The expression `((function comment (sexprs) [fst [get sexprs]]) [foo] This comment is ignored. No, seriously.)` is replaced by `[foo]`, which in turn compiles into assembly similar to what is generated for other invoke expressions.
 
 ## Examples/Reductions
 In the extensive list processing that follows in this section, the following functions prove to be convenient abbreviations:
 #### abbreviations.l2
 ```racket
-(function frst (l) [fst [rst [' l]]])
-(function rfst (l) [rst [fst [' l]]])
-(function frfst (l) [fst [rfst [' l]]])
-(function frrst (l) [fst [rst [rst [' l]]]])
-(function frrrst (l) [fst [rst [rst [rst [' l]]]]])
-(function ffst (l) [fst [fst [' l]]])
-(function llst (a b c) [lst [' a] [lst [' b] [' c]]])
-(function lllst (a b c d) [lst [' a] [llst [' b] [' c] [' d]]])
-(function llllst (a b c d e) [lst [' a] [lllst [' b] [' c] [' d] [' e]]])
-(function lllllst (a b c d e f) [lst [' a] [llllst [' b] [' c] [' d] [' e] [' f]]])
-(function llllllst (a b c d e f g) [lst [' a] [lllllst [' b] [' c] [' d] [' e] [' f] [' g]]])
+(function frst (l) [fst [rst [get l]]])
+(function rfst (l) [rst [fst [get l]]])
+(function frfst (l) [fst [rfst [get l]]])
+(function frrst (l) [fst [rst [rst [get l]]]])
+(function frrrst (l) [fst [rst [rst [rst [get l]]]]])
+(function ffst (l) [fst [fst [get l]]])
+(function llst (a b c) [lst [get a] [lst [get b] [get c]]])
+(function lllst (a b c d) [lst [get a] [llst [get b] [get c] [get d]]])
+(function llllst (a b c d e) [lst [get a] [lllst [get b] [get c] [get d] [get e]]])
+(function lllllst (a b c d e f) [lst [get a] [llllst [get b] [get c] [get d] [get e] [get f]]])
+(function llllllst (a b c d e f g) [lst [get a] [lllllst [get b] [get c] [get d] [get e] [get f] [get g]]])
 ```
 
 ### Commenting
@@ -283,9 +283,9 @@ L2 has no built-in mechanism for commenting code written in it. The following co
 (function ** (l)
 	(with return
 		{(continuation find (first last)
-			(if [nil? [' last]]
-				{return [' first]}
-				{find [fst [' last]] [rst [' last]]})) [fst [' l]] [rst [' l]]}))
+			(if [sexpr= [get last] [nil]]
+				{return [get first]}
+				{find [fst [get last]] [rst [get last]]})) [fst [get l]] [rst [get l]]}))
 ```
 
 #### test1.l2
@@ -295,6 +295,26 @@ L2 has no built-in mechanism for commenting code written in it. The following co
 #### shell
 ```shell
 ./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 test1.l2
+```
+
+### Dereferencing
+So far, we have been writing `[get x]` in order to get the value at the address `x`. Given the frequency with which dereferencing happens, writing `[get x]` all the time can greatly increase the amount of code required to get a task done. The following function `$` implements an abbreviation for dereferencing.
+
+#### dereference.l2
+```racket
+(function $ (var)
+	[llst [llllllst [-i-][-n-][-v-][-o-][-k-][-e-][nil]]
+		[lllst [-g-][-e-][-t-][nil]]
+			[get var]])
+```
+#### test11.l2
+```racket
+(** The next thing is tokenized as ($ ($ test)), which is then preprocessed into [get ($ test)] which is then processed into [get [get test]]: $$test)
+```
+See the section [syntactic sugar](#syntactic-sugar) for an explanation.
+#### shell
+```shell
+./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 dereference.l2 test11.l2
 ```
 
 ### Numbers
