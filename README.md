@@ -206,32 +206,20 @@ Say the list `foo` is stored at `a`. Then `[fst [' a]]` is the s-expression `a`.
 Evaluates to a list that is the rest of `x`.
 
 Say the list `foo` is stored at `a`. Then `[rst [' a]]` is the s-expression `oo`.
-### `[sexpr x]`
-`x` must be a list.
-
-Evaluates to an s-expression wrapper of `x`.
-
-Say the s-expression `foo` is stored at `a` and `(bar)` is stored at `b`. Then `[lst [sexpr [rst [' a]]] [' b]]` is the s-expression `(oo bar)`. Note that without the `sexpr` invocation, the preconditions of `lst` would be violated.
 ### `[nil]`
 Evaluates to the empty list.
 
 Say the s-expression `foo` is stored at `a`. Then `[lst [' a] [nil]]` is the s-expression `(foo)`.
-### `[nil? x]`
-`x` must be a list.
-
-Evaluates to the complement of zero if `x` is the empty list. Otherwise evaluates to zero.
-
-Say the s-expression `((foo bar bar bar))` is stored at `x`. Then `[nil? [rst [' x]]]` evaluates to `(b 11111111111111111111111111111111)`.
 ### `[-<character>-]`
 Evaluates to the character `<character>`.
 
 The expression `[lst [-f-] [lst [-o-] [lst [-o-] [nil]]]]` evaluates to the s-expression `foo`.
-### `[<character>? x]`
-`x` must be a s-expression.
+### `[sexpr= x y]`
+`x` and `y` must be s-expressions.
 
-Evaluates to the complement of zero if `x` is the character <character>. Otherwise evaluates to zero.
+Evaluates to the complement of zero if `x` is the same s-expression as `y`, otherwise it evaluates to zero.
 
-Say the s-expression `(foo (bar bar) foo foo)` is stored at `x`. Then `[m? [' x]]` evaluates to `(b 00000000000000000000000000000000)`.
+Say the s-expression `(foo (bar bar) foo foo)` is stored at both `x` and `y`. Then `[sexpr= [' x] [' y]]` evaluates to `(b 1111111111111111111111111111111111111111111111111111111111111111)`.
 ### `[begin x]`
 `x` must be a list of s-expressions.
 
