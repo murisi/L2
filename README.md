@@ -13,14 +13,15 @@ Afterwards, there is a [list of reductions](#examplesreductions) that shows how 
 | **[Getting Started](#getting-started)** | [Primitive Expressions](#primitive-expressions) | [Examples/Reductions](#examplesreductions) |
 |:--- |:--- |:--- |
 | [Building L2](#building-l2) | [Begin](#begin) | [Commenting](#commenting) |
-| [The Evaluator](#the-evaluator) | [Binary](#binary) | [Numbers](#numbers) |
-| **[Syntactic Sugar](#syntactic-sugar)** | [Reference](#reference) | [Backquoting](#backquoting) |
-| **[Internal Representation](#internal-representation)** | [If](#if) | [Characters](#characters) |
-| **[Expression](#expression)** | [Function](#function) | [Strings](#strings) |
-| **[Compilation Library](#compilation-library)** |  [Invoke](#invoke) | [Conditional Compilation](#conditional-compilation) |
-| |  [With](#with) | [Variable Binding](#variable-binding) |
-| |  [Continuation](#continuation) | [Switch Expression](#switch-expression) |
-| |  [Jump](#jump) | [Closures](#closures) |
+| [The Evaluator](#the-evaluator) | [Binary](#binary) | [Dereferencing](#dereferencing) |
+| **[Syntactic Sugar](#syntactic-sugar)** | [Reference](#reference) | [Numbers](#numbers) |
+| **[Internal Representation](#internal-representation)** | [If](#if) | [Backquoting](#backquoting) |
+| **[Expression](#expression)** | [Function](#function) | [Variable Binding](#variable-binding) |
+| **[Compilation Library](#compilation-library)** |  [Invoke](#invoke) | [Switch Expression](#switch-expression) |
+| |  [With](#with) | [Characters](#characters) |
+| |  [Continuation](#continuation) | [Strings](#strings) |
+| |  [Jump](#jump) | [Conditional Compilation](#conditional-compilation) |
+| | | [Closures](#closures) |
 | | | [Assume](#assume) |
 
 ## Getting Started
@@ -307,15 +308,23 @@ So far, we have been writing `[get x]` in order to get the value at the address 
 		[lllst [-g-][-e-][-t-][nil]]
 			[get var]])
 ```
-#### test11.l2
+#### test2.l2
 ```racket
-(** The next thing is tokenized as ($ ($ test)), which is then preprocessed into [get ($ test)] which is then processed into [get [get test]]: $$test)
+[set a (b 0...01000001)]
+[set c a]
+[putchar $$c]
 ```
-See the section [syntactic sugar](#syntactic-sugar) for an explanation.
+##### or equivalently
+```racket
+[set a (b 0...01000001)]
+[set c a]
+[putchar (get (get c))]
+```
 #### shell
 ```shell
-./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 dereference.l2 test11.l2
+./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 dereference.l2 test2.l2
 ```
+Note that in the above code that `a` and `c` have global scope. This is because at the location of their usage, they are not bound by any `function`, `continuation`, or `with` expression.
 
 ### Numbers
 Integer literals prove to be quite tedious in L2 as can be seen from some of the examples in the primitive expressions section. The following function, `&`, implements decimal arithmetic for i386 by reading in an s-expression in base 10 and writing out the equivalent s-expression in base 2:
@@ -350,7 +359,7 @@ Integer literals prove to be quite tedious in L2 as can be seen from some of the
 						(if [sexpr= [-1-] [fst $in]] (b 0...01)
 							(b 0...0))))))))))]})) [fst $l] (b 0...0)}))])
 ```
-#### test2.l2
+#### test3.l2
 ```racket
 [putchar (& 65)]
 ```
@@ -360,7 +369,7 @@ Integer literals prove to be quite tedious in L2 as can be seen from some of the
 ```
 #### shell
 ```shell
-./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 numbers64.l2 test2.l2
+./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 test3.l2
 ```
 
 ### Backquoting
@@ -396,14 +405,14 @@ The `foo` example in the internal representation section shows how tedious writi
 (function make-A-function (l)
 	(`(function A () [putchar &65])))
 ```
-#### test3.l2
+#### test4.l2
 ```racket
 (make-A-function)
 [A]
 ```
 #### shell
 ```shell
-./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 numbers.l2 backquote.l2 anotherfunction.l2 test3.l2
+./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 anotherfunction.l2 test4.l2
 ```
 
 ### Variable Binding
@@ -439,7 +448,7 @@ It is implemented and used as follows:
 			(,[map [rst [reverse $l]] fst])
 			{return (,[fst [reverse $l]])})) [map [rst [reverse $l]] frst]]))))
 ```
-#### test7.l2
+#### test5.l2
 ```
 (let (x &12) (begin
 	(function what? () [printf (" x is %i) $x])
@@ -451,7 +460,7 @@ Note in the above code that `what?` is only able to access `x` because `x` is de
 
 #### shell
 ```shell
-./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 numbers.l2 backquote.l2 let.l2 test7.l2
+./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 test5.l2
 ```
 
 ### Switch Expression
@@ -483,7 +492,7 @@ It is implemented and used as follows:
 							(,[frfst $remaining]) ,$else-clause))}))
 				[rst [reverse [rrst $l]]] [fst [reverse $l]]})))))
 ```
-#### test8.l2
+#### test6.l2
 ```
 (switch = &10
 	(&20 [printf (" d is 20!)])
@@ -493,7 +502,7 @@ It is implemented and used as follows:
 ```
 #### shell
 ```shell
-./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 numbers.l2 backquote.l2 let.l2 switch.l2 test8.l2
+./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 switch.l2 test6.l2
 ```
 
 ### Characters
@@ -591,13 +600,13 @@ With `&` implemented, a somewhat more readable implementation of characters is p
 		([-~-] (` &126))
 		(` &0)))
 ```
-#### test4.l2
+#### test7.l2
 ```racket
 [putchar (char A)]
 ```
 #### shell
 ```shell
-./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 numbers.l2 backquote.l2 let.l2 switch.l2 characters.l2 test4.l2
+./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 switch.l2 characters.l2 test7.l2
 ```
 
 ### Strings
@@ -627,18 +636,18 @@ The above exposition has purposefully avoided making strings because it is tedio
 									(,[char [lst [lst [fst $word] [nil]] [nil]]])]) $instrs]})))
 				[fst $str] $index $instrs})) $l &0 [nil]}))
 ```
-#### test5.l2
+#### test8.l2
 ```
 [printf (" This is how the quote macro is used. (& 10) Now we are on a new line because 10 is a line feed.)]
 ```
 #### shell
 ```shell
-./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 numbers64.l2 backquote.l2 let.l2 switch.l2 characters.l2 strings.l2 test5.l2
+./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 switch.l2 characters.l2 strings.l2 test8.l2
 ```
 
 ### Conditional Compilation
 Up till now, references to functions defined elsewhere have been the only things used as the first subexpression of an expression. Sometimes, however, the clarity of the whole expression can be improved by inlining the function. The following code proves this in the context of conditional compilation.
-#### test6.l2
+#### test9.l2
 ```
 ((if [> &10 &20] fst frst)
 	[printf (" I am not compiled!)]
@@ -646,7 +655,7 @@ Up till now, references to functions defined elsewhere have been the only things
 ```
 #### shell
 ```shell
-./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 numbers64.l2 backquote.l2 let.l2 switch.l2 characters.l2 strings.l2 test6.l2
+./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 switch.l2 characters.l2 strings.l2 test9.l2
 ```
 
 ### Closures
@@ -687,7 +696,7 @@ These are implemented and used as follows:
 (function : (l)
 	(`(with return (,[lllst `jump [fst $l] `return [rst $l]]))))
 ```
-#### test9.l2
+#### test10.l2
 ```
 (environment adder (x)
 	(lambda (y) [+ $x $y]))
@@ -700,7 +709,7 @@ These are implemented and used as follows:
 ```
 #### shell
 ```shell
-./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 numbers.l2 backquote.l2 let.l2 switch.l2 characters.l2 strings.l2 closures.l2 test9.l2
+./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 switch.l2 characters.l2 strings.l2 closures.l2 test10.l2
 ```
 
 ### Assume
@@ -720,7 +729,7 @@ This is implemented as follows:
 		{(continuation tempas0 ()
 			(if (,[fst $l]) {return (,[frst $l])} (begin)))})))
 ```
-#### test10.l2
+#### test11.l2
 ```
 (function foo (x y)
 	(assume [not [= $x $y]] (begin
@@ -734,7 +743,7 @@ In the function `foo`, if `$x` were equal to `$y`, then the else branch of the `
 
 #### shell
 ```shell
-./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 numbers.l2 backquote.l2 let.l2 switch.l2 characters.l2 strings.l2 assume.l2 test10.l2
+./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 switch.l2 characters.l2 strings.l2 assume.l2 test11.l2
 ```
 Note that the `assume` expression can also be used to achieve C's `restrict` keyword simply by making its condition the conjunction of inequalities on the memory locations of the extremeties of the "arrays" in question.
 
@@ -757,7 +766,7 @@ Compiles the source file `x` into an executable library that is placed at `y`. T
 Unloads the shared library at path `x`.
 
 #### Example Usage
-Run [the evaluator](#the-evaluator) using the command: `./bin/l2evaluate "./bin/x86_64.so" "./bin/l2compile.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 numbers.l2 backquote.l2 reverse.l2 characters.l2 strings.l2 closures.l2 let.l2 -` and enter the following code:
+Run [the evaluator](#the-evaluator) using the command: `./bin/l2evaluate "./bin/x86_64.so" "./bin/l2compile.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 switch.l2 characters.l2 strings.l2 -` and enter the following code:
 
 ```
 [load (" ./bin/x86_64.so)]
@@ -767,37 +776,40 @@ Run [the evaluator](#the-evaluator) using the command: `./bin/l2evaluate "./bin/
 [load (" ./abbr.so)]
 [compile (" comm.so) (" comments.l2)]
 [load (" ./comm.so)]
-[compile (" num.so) (" numbers.l2)]
+[compile (" deref.so) (" dereference.l2)]
+[load (" ./deref.so)]
+[compile (" num.so) (" numbers64.l2)]
 [load (" ./num.so)]
 [compile (" bq.so) (" backquote.l2)]
 [load (" ./bq.so)]
-[compile (" rev.so) (" reverse.l2)]
-[load (" ./rev.so)]
+[compile (" let.so) (" let.l2)]
+[load (" ./let.so)]
+[compile (" switch.so) (" switch.l2)]
+[load (" ./switch.so)]
 [compile (" char.so) (" characters.l2)]
 [load (" ./char.so)]
 [compile (" str.so) (" strings.l2)]
 [load (" ./str.so)]
 [compile (" clo.so) (" closures.l2)]
 [load (" ./clo.so)]
-[compile (" let.so) (" let.l2)]
-[load (" ./let.so)]
-[compile (" test9.so) (" test9.l2)]
-[unload (" ./let.so)]
+[compile (" test10.so) (" test10.l2)]
 [unload (" ./clo.so)]
 [unload (" ./str.so)]
 [unload (" ./char.so)]
-[unload (" ./rev.so)]
+[unload (" ./switch.so)]
+[unload (" ./let.so)]
 [unload (" ./bq.so)]
 [unload (" ./num.so)]
+[unload (" ./deref.so)]
 [unload (" ./comm.so)]
 [unload (" ./abbr.so)]
 [unload (" ./bin/sexpr.so)]
 [unload (" /lib/x86_64-linux-musl/libc.so)]
 [unload (" ./bin/x86_64.so)]
-[exit (d 0)]
+[exit &0]
 ```
-Pressing Ctrl-D should compile `abbreviations.l2` into `abbr.so`, `comments.l2` into `comm.so`, `numbers.l2` into `num.so`, `backquote.l2` into `bq.so`, `reverse.l2` into `rev.so`, `characters.l2` into `char.so`, `strings.l2` into `str.so`, `closures.l2` into `clo.so`, `let.l2` into `let.so`, and `test9.l2` into `test9.so`.
+Pressing Ctrl-D should compile `abbreviations.l2` into `abbr.so`, `comments.l2` into `comm.so`, `dereference.l2` into `deref.so`, `numbers64.l2` into `num.so`, `backquote.l2` into `bq.so`, `switch.l2` into `switch.so`, `characters.l2` into `char.so`, `strings.l2` into `str.so`, `closures.l2` into `clo.so`, `let.l2` into `let.so`, and `test10.l2` into `test10.so`.
  
-To execute `test9.so`, simply enter `./test9.so` into shell. Doing this should yield the same output as `./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 numbers.l2 backquote.l2 reverse.l2 characters.l2 strings.l2 closures.l2 let.l2 test9.l2`. This should also illuminate how `l2evaluate` works.
+To execute `test10.so`, simply enter `./test10.so` into shell. Doing this should yield the same output as `./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 switch.l2 characters.l2 strings.l2 closures.l2 test10.l2`. This should also illuminate how `l2evaluate` works.
 
-Note that one reason why `libc` is loaded in the above code is because `./bin/sexpr.so` depends upon it. Another reason is because `test9.l2` uses `printf`. Also note how each l2 file is loaded immediately after its compilation. In the case of `comments.l2`, `./comm.so` is loaded as soon as it's created to allow `numbers.l2`, which uses comments, to be compiled successfully.
+Note that one reason why `libc` is loaded in the above code is because `./bin/sexpr.so` depends upon it. Another reason is because `test10.l2` uses `printf`. Also note how each l2 file is loaded immediately after its compilation. In the case of `comments.l2`, `./comm.so` is loaded as soon as it's created to allow `numbers64.l2`, which uses comments, to be compiled successfully.
