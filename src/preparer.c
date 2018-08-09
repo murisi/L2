@@ -1,10 +1,10 @@
 bool function_named(void *expr_void, void *ctx) {
 	union expression *expr = expr_void;
-	return expr->base.type == function && strequal(ctx, expr->function.reference->reference.name);
+	return expr->base.type == function && strequal(ctx, expr->function.reference->reference.source_name);
 }
 
 bool reference_named(void *expr_void, void *ctx) {
-	return strequal(ctx, ((union expression *) expr_void)->reference.name);
+	return strequal(ctx, ((union expression *) expr_void)->reference.source_name);
 }
 
 jmp_buf *vfind_multiple_definitions_handler;
@@ -15,17 +15,17 @@ union expression *vfind_multiple_definitions(union expression *e) {
 	switch(e->base.type) {
 		case begin: {
 			foreachlist(partial, t, e->begin.expressions) {
-				if(t->base.type == function && exists(function_named, &(*partial)->rst, t->function.reference->reference.name)) {
+				if(t->base.type == function && exists(function_named, &(*partial)->rst, t->function.reference->reference.source_name)) {
 					thelongjmp(*vfind_multiple_definitions_handler,
-						make_multiple_definition(t->function.reference->reference.name));
+						make_multiple_definition(t->function.reference->reference.source_name));
 				}
 			}
 			break;
 		} case continuation: case function: {
 			list ref_with_params = lst(e->continuation.reference, e->continuation.parameters);
 			foreachlist(partial, t, ref_with_params) {
-				if(exists(reference_named, &(*partial)->rst, t->reference.name)) {
-					thelongjmp(*vfind_multiple_definitions_handler, make_multiple_definition(t->reference.name));
+				if(exists(reference_named, &(*partial)->rst, t->reference.source_name)) {
+					thelongjmp(*vfind_multiple_definitions_handler, make_multiple_definition(t->reference.source_name));
 				}
 			}
 			break;
@@ -54,7 +54,7 @@ union expression *get_zeroth_static(union expression *e) {
 
 union expression *vblacklist_references(union expression *s) {
 	if(s->base.type == reference) {
-		prepend(s->reference.name, &generate_string_blacklist);
+		prepend(s->reference.source_name, &generate_string_blacklist);
 	}
 	return s;
 }
@@ -66,18 +66,18 @@ union expression *referent_of(union expression *reference) {
 			case begin: {
 				union expression *u;
 				foreach(u, t->begin.expressions) {
-					if(u->base.type == function && !strcmp(u->function.reference->reference.name, reference->reference.name)) {
+					if(u->base.type == function && !strcmp(u->function.reference->reference.source_name, reference->reference.source_name)) {
 						return u->function.reference;
 					}
 				}
 				break;
 			} case function: case continuation: case with: {
-				if(!strcmp(t->function.reference->reference.name, reference->reference.name)) {
+				if(!strcmp(t->function.reference->reference.source_name, reference->reference.source_name)) {
 					return t->function.reference;
 				} else if(t->base.type == function || t->base.type == continuation) {
 					union expression *u;
 					foreach(u, t->function.parameters) {
-						if(!strcmp(u->reference.name, reference->reference.name)) {
+						if(!strcmp(u->reference.source_name, reference->reference.source_name)) {
 							return u;
 						}
 					}
@@ -120,7 +120,8 @@ union expression *vlink_references(union expression *s) {
 	if(s->base.type == reference) {
 		s->reference.referent = referent_of(s);
 		if(s->reference.referent == NULL) {
-			s->reference.referent = prepend_parameter(s->reference.name, vlink_references_program);
+			s->reference.referent = prepend_parameter("", vlink_references_program);
+			s->reference.referent->reference.source_name = s->reference.source_name;
 		} else if(is_jump_reference(s) && is_c_reference(s->reference.referent) &&
 			length(s->reference.parent->jump.arguments) != length(target_expression(s)->continuation.parameters)) {
 				thelongjmp(*vlink_references_handler, make_param_count_mismatch(s->reference.parent, target_expression(s)));
@@ -156,18 +157,6 @@ union expression *vescape_analysis(union expression *s) {
 	return s;
 }
 
-struct name_record {
-	union expression *reference;
-	char *original_name;
-};
-
-struct name_record *make_name_record(union expression *reference, char *original_name) {
-	struct name_record *r = malloc(sizeof(struct name_record));
-	r->reference = reference;
-	r->original_name = original_name;
-	return r;
-}
-
 /*
  * Following function renames definitions to newly generated names in order to avoid
  * name collisions in the code generation process. Its "return-by-reference" parameter
@@ -175,21 +164,15 @@ struct name_record *make_name_record(union expression *reference, char *original
  * function's invokation.
  */
 
-list vrename_definition_references_name_records;
-
 union expression *vrename_definition_references(union expression *s) {
 	switch(s->base.type) {
 		case function: case continuation: case with: {
-			char *original_name = s->function.reference->reference.name;
 			s->function.reference->reference.name = generate_string();
-			prepend(make_name_record(s->function.reference, original_name), &vrename_definition_references_name_records);
 			
 			if(s->base.type == function || s->base.type == continuation) {
 				union expression *t;
 				foreach(t, s->function.parameters) {
-					original_name = t->reference.name;
 					t->reference.name = generate_string();
-					prepend(make_name_record(t, original_name), &vrename_definition_references_name_records);
 				}
 			}
 			break;

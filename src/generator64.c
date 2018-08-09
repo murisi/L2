@@ -247,16 +247,6 @@ union expression *vgenerate_constants(union expression *n) {
 	}
 }
 
-char *original_name(char *name) {
-	struct name_record *r;
-	foreach(r, vrename_definition_references_name_records) {
-		if(!strcmp(r->reference->reference.name, name)) {
-			return r->original_name;
-		}
-	}
-	return NULL;
-}
-
 union expression *generate_toplevel(union expression *n, list toplevel_function_references) {
 	union expression *container = make_begin();
 	emit(make_instr("(bss)", 0));
@@ -270,7 +260,7 @@ union expression *generate_toplevel(union expression *n, list toplevel_function_
 		bool symbol_defined = false;
 		struct library *l;
 		foreach(l, compile_libraries) {
-			if(dlsym(l->handle, original_name(t->reference.name))) {
+			if(dlsym(l->handle, t->reference.source_name)) {
 				symbol_defined = true;
 			}
 		}
@@ -540,6 +530,7 @@ void compile_expressions(char *outbin, list exprs, jmp_buf *handler) {
 	}}
 	container->begin.expressions = exprs;
 	union expression *root_function = make_function("()"), *program = root_function;
+	root_function->function.reference->reference.source_name = "()";
 	put(program, function.expression, container);
 	
 	vfind_multiple_definitions_handler = handler;
@@ -550,7 +541,6 @@ void compile_expressions(char *outbin, list exprs, jmp_buf *handler) {
 	visit_expressions_with(&program, vlink_references);
 	
 	visit_expressions_with(&program, vblacklist_references);
-	vrename_definition_references_name_records = nil();
 	visit_expressions_with(&program, vrename_definition_references);
 	visit_expressions_with(&program, vrename_usage_references);
 	
@@ -580,12 +570,12 @@ void compile_expressions(char *outbin, list exprs, jmp_buf *handler) {
 	
 	char sympairsfn[] = ".sym_pairsXXXXXX";
 	FILE *sympairsfile = fdopen(mkstemp(sympairsfn), "w+");
-	struct name_record *r;
-	foreach(r, vrename_definition_references_name_records) {
-		if(exists(equals, &toplevel_function_references, r->reference) ||
-			exists(equals, &root_function->function.parameters, r->reference)) {
-				fprintf(sympairsfile, "%s %s\n", r->reference->reference.name, r->original_name);
-		}
+	union expression *r;
+	{foreach(r, toplevel_function_references) {
+		fprintf(sympairsfile, "%s %s\n", r->reference.name, r->reference.source_name);
+	}}
+	foreach(r, root_function->function.parameters) {
+		fprintf(sympairsfile, "%s %s\n", r->reference.name, r->reference.source_name);
 	}
 	fclose(sympairsfile);
 	system(cprintf("objcopy --redefine-syms='%s' '%s'", sympairsfn, ofilefn));

@@ -53,7 +53,7 @@ void build_syntax_tree(list d, union expression **s) {
 	if(is_string(d)) {
 		char *str = to_string(d);
 		(*s)->reference.type = reference;
-		(*s)->reference.name = str;
+		(*s)->reference.source_name = str;
 	} else if(!strcmp(to_string(fst(d)), "with")) {
 		if(length(d) != 3) {
 			thelongjmp(*build_syntax_tree_handler, make_special_form(d, NULL));
@@ -191,9 +191,10 @@ void expand_expressions(list expansion_lists) {
 		list expander_container_names = nil();
 		foreach(expansion, expansions) {
 			union expression *expander_container = make_function("");
+			expander_container->function.reference->reference.source_name = generate_string();
 			put(expander_container, function.expression, (*expansion)->non_primitive.function);
 			append(expander_container, &expander_containers);
-			append(expander_container->function.reference->reference.name, &expander_container_names);
+			append(expander_container->function.reference->reference.source_name, &expander_container_names);
 		}
 		
 		char *outfn = cprintf("%s", "./.libXXXXXX.so");
