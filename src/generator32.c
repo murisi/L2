@@ -245,6 +245,20 @@ union expression *generate_toplevel(union expression *n, list toplevel_function_
 		emit(make_instr("(label name)", 1, t));
 		emit(make_instr("(skip expr expr)", 2, make_constant(WORD_SIZE), make_constant(0)));
 	}}
+	{foreach(t, n->function.parameters) {
+		bool symbol_defined = false;
+		struct library *l;
+		foreach(l, compile_libraries) {
+			if(dlsym(l->handle, original_name(t->reference.name))) {
+				symbol_defined = true;
+			}
+		}
+		if(!symbol_defined) {
+			emit(make_instr("(global sym)", 1, t));
+			emit(make_instr("(label name)", 1, t));
+			emit(make_instr("(skip expr expr)", 2, make_constant(WORD_SIZE), make_constant(0)));
+		}
+	}}
 	emit(make_instr("(text)", 0));
 	foreach(t, toplevel_function_references) {
 		emit(make_instr("(global sym)", 1, t));
