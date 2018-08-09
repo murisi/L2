@@ -318,7 +318,7 @@ See the section [syntactic sugar](#syntactic-sugar) for an explanation.
 ```
 
 ### Numbers
-Integer literals prove to be quite tedious in L2 as can be seen from some of the examples in the primitive expressions section. The following function, `d`, implements decimal arithmetic for i386 by reading in an s-expression in base 10 and writing out the equivalent s-expression in base 2:
+Integer literals prove to be quite tedious in L2 as can be seen from some of the examples in the primitive expressions section. The following function, `&`, implements decimal arithmetic for i386 by reading in an s-expression in base 10 and writing out the equivalent s-expression in base 2:
 
 #### numbers32.l2
 ```racket
@@ -326,35 +326,39 @@ Integer literals prove to be quite tedious in L2 as can be seen from some of the
 (function binary->base2sexpr (binary)
 	[lst [lst [-b-] [nil]] [lst (with return
 		{(continuation write (count in out)
-			(if [' count]
-				{write [- [' count] (b 00000000000000000000000000000001)]
-					[>> [' in] (b 00000000000000000000000000000001)]
-					[lst (if [and [' in] (b 00000000000000000000000000000001)] [-1-] [-0-]) [' out]]}
-				{return [' out]})) (b 00000000000000000000000000100000) [' binary] [nil]}) [nil]]]))
+			(if $count
+				{write [- $count (b 00000000000000000000000000000001)]
+					[>> $in (b 00000000000000000000000000000001)]
+					[lst (if [and $in (b 00000000000000000000000000000001)] [-1-] [-0-]) $out]}
+				{return $out})) (b 00000000000000000000000000100000) $binary [nil]}) [nil]]]))
 
-(function d (l)
+(function & (l)
 	[binary->base2sexpr
 		(** Turns the base-10 s-expression input into a 4-byte integer.
 			(with return {(continuation read (in out)
-				(if [nil? [' in]]
-					{return [' out]}
-					{read [rst [' in]] [+ [* [' out] (b 00000000000000000000000000001010)]
-						(if [9? [fst [' in]]] (b 00000000000000000000000000001001)
-						(if [8? [fst [' in]]] (b 00000000000000000000000000001000)
-						(if [7? [fst [' in]]] (b 00000000000000000000000000000111)
-						(if [6? [fst [' in]]] (b 00000000000000000000000000000110)
-						(if [5? [fst [' in]]] (b 00000000000000000000000000000101)
-						(if [4? [fst [' in]]] (b 00000000000000000000000000000100)
-						(if [3? [fst [' in]]] (b 00000000000000000000000000000011)
-						(if [2? [fst [' in]]] (b 00000000000000000000000000000010)
-						(if [1? [fst [' in]]] (b 00000000000000000000000000000001)
-							(b 00000000000000000000000000000000))))))))))]})) [fst [' l]] (b 00000000000000000000000000000000)}))])
+				(if [nil? $in]
+					{return $out}
+					{read [rst $in] [+ [* $out (b 00000000000000000000000000001010)]
+						(if [sexpr= [-9-] [fst $in]] (b 00000000000000000000000000001001)
+						(if [sexpr= [-8-] [fst $in]] (b 00000000000000000000000000001000)
+						(if [sexpr= [-7-] [fst $in]] (b 00000000000000000000000000000111)
+						(if [sexpr= [-6-] [fst $in]] (b 00000000000000000000000000000110)
+						(if [sexpr= [-5-] [fst $in]] (b 00000000000000000000000000000101)
+						(if [sexpr= [-4-] [fst $in]] (b 00000000000000000000000000000100)
+						(if [sexpr= [-3-] [fst $in]] (b 00000000000000000000000000000011)
+						(if [sexpr= [-2-] [fst $in]] (b 00000000000000000000000000000010)
+						(if [sexpr= [-1-] [fst $in]] (b 00000000000000000000000000000001)
+							(b 00000000000000000000000000000000))))))))))]})) [fst $l] (b 00000000000000000000000000000000)}))])
 ```
 #### numbers64.l2
 Implementation is the same as that of `numbers64.l2` except that it has bit strings of length 64 instead.
 #### test2.l2
 ```racket
-[putchar (d 65)]
+[putchar (& 65)]
+```
+##### or equivalently
+```racket
+[putchar &65]
 ```
 #### shell
 ```shell
@@ -368,32 +372,31 @@ The `foo` example in the internal representation section shows how tedious writi
 ```racket
 (function ` (l)
 	[(function aux (s)
-		(if [nil? [' s]]
-			[lst [sexpr [llllllst [-i-][-n-][-v-][-o-][-k-][-e-][nil]]]
-				[lst [sexpr [lllst [-n-][-i-][-l-][nil]]] [nil]]]
+		(if [sexpr= $s [nil]]
+			[lst [llllllst [-i-][-n-][-v-][-o-][-k-][-e-][nil]]
+				[lst [lllst [-n-][-i-][-l-][nil]] [nil]]]
 		
-		(if (if [lst? [' s]] (if [not [nil? [' s]]] (if [lst? [fst [' s]]] (if [not [nil? [fst [' s]]]]
-			(if [,? [ffst [' s]]] [nil? [rfst [' s]]] (d 0)) (d 0)) (d 0)) (d 0)) (d 0))
-					[frst [' s]]
+		(if (if [lst? $s] (if [not [sexpr= $s [nil]]] (if [lst? [fst $s]] (if [not [sexpr= [fst $s] [nil]]]
+			(if [sexpr= [ffst $s] [-,-]] [sexpr= [rfst $s] [nil]] &0) &0) &0) &0) &0)
+					[frst $s]
 		
-		[lst [sexpr [llllllst [-i-][-n-][-v-][-o-][-k-][-e-][nil]]]
-			[lst [sexpr [lllst [-l-][-s-][-t-][nil]]]
-				[lst (if [lst? [fst [' s]]]
-					[sexpr [aux [fst [' s]]]]
-					[sexpr [lst
-						[sexpr [llllllst [-i-][-n-][-v-][-o-][-k-][-e-][nil]]]
-							[lst [sexpr [lst [---] [lst [fst [' s]] [lst [---] [nil]]]]] [nil]]]])
-						[lst [sexpr [aux [rst [' s]]]] [nil]]]]]))) [fst [' l]]])
+		[lst [llllllst [-i-][-n-][-v-][-o-][-k-][-e-][nil]]
+			[lst [lllst [-l-][-s-][-t-][nil]]
+				[lst (if [lst? [fst $s]]
+					[aux [fst $s]]
+					[lst [llllllst [-i-][-n-][-v-][-o-][-k-][-e-][nil]]
+						[lst [lst [---] [lst [fst $s] [lst [---] [nil]]]] [nil]]])
+					[lst [aux [rst $s]] [nil]]]]]))) [fst $l]])
 ```
 #### anotherfunction.l2:
 ```racket
 (function make-A-function (l)
-	(` (function A (,[nil]) [putchar (d 65)])))
+	(` (function A (,[nil]) [putchar &65])))
 ```
 ##### or equivalently
 ```racket
 (function make-A-function (l)
-	(`(function A () [putchar (d 65)])))
+	(`(function A () [putchar &65])))
 ```
 #### test3.l2
 ```racket
@@ -403,162 +406,6 @@ The `foo` example in the internal representation section shows how tedious writi
 #### shell
 ```shell
 ./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 numbers.l2 backquote.l2 anotherfunction.l2 test3.l2
-```
-
-### Characters
-With `d` implemented, a somewhat more readable implementation of characters is possible. The `char` function takes a singleton list containing character s-expression and returns its ascii encoding using the `d` expression. Its implementation and use follows:
-
-#### characters.l2
-```
-(function char (l) [(function aux (c)
-		(if [!? [' c]] (`(d 33))
-		(if ["? [' c]] (`(d 34))
-		(if [$? [' c]] (`(d 36))
-		(if [%? [' c]] (`(d 37))
-		(if [&? [' c]] (`(d 38))
-		(if ['? [' c]] (`(d 39))
-		(if [*? [' c]] (`(d 42))
-		(if [+? [' c]] (`(d 43))
-		(if [,? [' c]] (`(d 44))
-		(if [-? [' c]] (`(d 45))
-		(if [.? [' c]] (`(d 46))
-		(if [/? [' c]] (`(d 47))
-		(if [0? [' c]] (`(d 48))
-		(if [1? [' c]] (`(d 49))
-		(if [2? [' c]] (`(d 50))
-		(if [3? [' c]] (`(d 51))
-		(if [4? [' c]] (`(d 52))
-		(if [5? [' c]] (`(d 53))
-		(if [6? [' c]] (`(d 54))
-		(if [7? [' c]] (`(d 55))
-		(if [8? [' c]] (`(d 56))
-		(if [9? [' c]] (`(d 57))
-		(if [:? [' c]] (`(d 58))
-		(if [;? [' c]] (`(d 59))
-		(if [<? [' c]] (`(d 60))
-		(if [=? [' c]] (`(d 61))
-		(if [>? [' c]] (`(d 62))
-		(if [?? [' c]] (`(d 63))
-		(if [A? [' c]] (`(d 65))
-		(if [B? [' c]] (`(d 66))
-		(if [C? [' c]] (`(d 67))
-		(if [D? [' c]] (`(d 68))
-		(if [E? [' c]] (`(d 69))
-		(if [F? [' c]] (`(d 70))
-		(if [G? [' c]] (`(d 71))
-		(if [H? [' c]] (`(d 72))
-		(if [I? [' c]] (`(d 73))
-		(if [J? [' c]] (`(d 74))
-		(if [K? [' c]] (`(d 75))
-		(if [L? [' c]] (`(d 76))
-		(if [M? [' c]] (`(d 77))
-		(if [N? [' c]] (`(d 78))
-		(if [O? [' c]] (`(d 79))
-		(if [P? [' c]] (`(d 80))
-		(if [Q? [' c]] (`(d 81))
-		(if [R? [' c]] (`(d 82))
-		(if [S? [' c]] (`(d 83))
-		(if [T? [' c]] (`(d 84))
-		(if [U? [' c]] (`(d 85))
-		(if [V? [' c]] (`(d 86))
-		(if [W? [' c]] (`(d 87))
-		(if [X? [' c]] (`(d 88))
-		(if [Y? [' c]] (`(d 89))
-		(if [Z? [' c]] (`(d 90))
-		(if [\? [' c]] (`(d 92))
-		(if [^? [' c]] (`(d 94))
-		(if [_? [' c]] (`(d 95))
-		(if [`? [' c]] (`(d 96))
-		(if [a? [' c]] (`(d 97))
-		(if [b? [' c]] (`(d 98))
-		(if [c? [' c]] (`(d 99))
-		(if [d? [' c]] (`(d 100))
-		(if [e? [' c]] (`(d 101))
-		(if [f? [' c]] (`(d 102))
-		(if [g? [' c]] (`(d 103))
-		(if [h? [' c]] (`(d 104))
-		(if [i? [' c]] (`(d 105))
-		(if [j? [' c]] (`(d 106))
-		(if [k? [' c]] (`(d 107))
-		(if [l? [' c]] (`(d 108))
-		(if [m? [' c]] (`(d 109))
-		(if [n? [' c]] (`(d 110))
-		(if [o? [' c]] (`(d 111))
-		(if [p? [' c]] (`(d 112))
-		(if [q? [' c]] (`(d 113))
-		(if [r? [' c]] (`(d 114))
-		(if [s? [' c]] (`(d 115))
-		(if [t? [' c]] (`(d 116))
-		(if [u? [' c]] (`(d 117))
-		(if [v? [' c]] (`(d 118))
-		(if [w? [' c]] (`(d 119))
-		(if [x? [' c]] (`(d 120))
-		(if [y? [' c]] (`(d 121))
-		(if [z? [' c]] (`(d 122))
-		(if [|? [' c]] (`(d 124))
-		(if [~? [' c]] (`(d 126)) (`(d 0)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
-	[ffst [' l]]])
-```
-#### test4.l2
-```racket
-[putchar (char A)]
-```
-#### shell
-```shell
-./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 numbers.l2 backquote.l2 characters.l2 test4.l2
-```
-
-### Strings
-The above exposition has purposefully avoided making strings because it is tedious to do using only binary and reference arithmetic. The quote function takes a list of lists of character s-expressions and returns the sequence of operations required to write its ascii encoding into memory. These "operations" are essentially decreasing the stack-pointer, putting the characters into that memory, and returning the address of that memory. Because the stack-frame of a function is destroyed upon its return, strings implemented in this way should not be returned. Quote is implemented below along with its helper function called `reverse` that reverses lists:
-
-#### reverse.l2
-```racket
-(function reverse (l)
-	(with return
-		{(continuation _ (l reversed)
-			(if [nil? [' l]]
-				{return [' reversed]}
-				{_ [rst [' l]] [lst [fst [' l]] [' reversed]]})) [' l] [nil]}))
-```
-#### strings.l2
-```
-(function " (l) (with return
-	{(continuation add-word (str index instrs)
-		(if [nil? [' str]]
-			{return (`(with return
-				[allocate (,[binary->base2sexpr [' index]])
-					(continuation _ (str) (,[lst (` begin) [reverse [lst (`{return [' str]}) [' instrs]]]]))]))}
-			
-			{(continuation add-char (word index instrs)
-					(if [nil? [' word]]
-						{add-word [rst [' str]] [+ [' index] (d 1)]
-							[lst (`[set-char [+ [' str] (,[binary->base2sexpr [' index]])]
-								(,(if [nil? [rst [' str]]] (`(d 0)) (`(d 32))))]) [' instrs]]}
-						{add-char [rst [' word]] [+ [' index] (d 1)]
-							[lst (`[set-char [+ [' str] (,[binary->base2sexpr [' index]])] (char (,[lst [fst [' word]] [nil]]))])
-								[' instrs]]}))
-				[fst [' str]] [' index] [' instrs]})) [' l] (d 0) [nil]}))
-```
-#### test5.l2
-```
-[printf (" This is how the quote macro is used. Now printing number in speechmarks "%i") (d 123)]
-```
-#### shell
-```shell
-./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 numbers.l2 backquote.l2 characters.l2 reverse.l2 strings.l2 test5.l2
-```
-
-### Conditional Compilation
-Up till now, references to functions defined elsewhere have been the only things used as the first subexpression of an expression. Sometimes, however, the clarity of the whole expression can be improved by inlining the function. The following code proves this in the context of conditional compilation.
-#### test6.l2
-```
-((if [> (d 10) (d 20)] fst frst)
-	[printf (" I am not compiled!)]
-	[printf (" I am the one compiled!)])
-```
-#### shell
-```shell
-./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 numbers.l2 backquote.l2 reverse.l2 characters.l2 strings.l2 test6.l2
 ```
 
 ### Variable Binding
@@ -573,24 +420,31 @@ Variable binding is enabled by the `continuation` expression. `continuation` is 
 It is implemented and used as follows:
 #### let.l2
 ```racket
+(function reverse (l)
+	(with return
+		{(continuation _ (l reversed)
+			(if [sexpr= $l [nil]]
+				{return $reversed}
+				{_ [rst $l] [lst [fst $l] $reversed]})) $l [nil]}))
+
 (** Returns a list with mapper applied to each element.
 (function map (l mapper)
 	(with return
 		{(continuation aux (in out)
-			(if [nil? [' in]]
-				{return [reverse [' out]]}
-				{aux [rst [' in]] [lst [[' mapper] [fst [' in]]] [' out]]})) [' l] [nil]})))
+			(if [sexpr= $in [nil]]
+				{return [reverse $out]}
+				{aux [rst $in] [lst [$mapper [fst $in]] $out]})) $l [nil]})))
 
 (function let (l)
 	(`(with return
-		(,[llst (` jump) (`(continuation templet0
-			(,[map [rst [reverse [' l]]] fst])
-			{return (,[fst [reverse [' l]]])})) [map [rst [reverse [' l]]] frst]]))))
+		(,[llst `jump (`(continuation templet0
+			(,[map [rst [reverse $l]] fst])
+			{return (,[fst [reverse $l]])})) [map [rst [reverse $l]] frst]]))))
 ```
 #### test7.l2
 ```
-(let (x (d 12)) (begin
-	(function what? () [printf (" x is %i) [' x]])
+(let (x &12) (begin
+	(function what? () [printf (" x is %i) $x])
 	[what?]
 	[what?]
 	[what?]))
@@ -599,7 +453,7 @@ Note in the above code that `what?` is only able to access `x` because `x` is de
 
 #### shell
 ```shell
-./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 numbers.l2 backquote.l2 characters.l2 strings.l2 let.l2 test7.l2
+./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 numbers.l2 backquote.l2 let.l2 test7.l2
 ```
 
 ### Switch Expression
@@ -621,27 +475,180 @@ It is implemented and used as follows:
 #### switch.l2
 ```racket
 (function switch (l)
-	(`(let (tempeq0 (,[fst [' l]])) (tempval0 (,[frst [' l]]))
+	(`(let (tempeq0 (,[fst $l])) (tempval0 (,[frst $l]))
 		(,(with return
 			{(continuation aux (remaining else-clause)
-				(if [nil? [' remaining]]
-					{return [' else-clause]}
-					{aux [rst [' remaining]]
-						(`(if (,[llllst (` invoke) (` [' tempeq0]) (` [' tempval0]) [ffst [' remaining]] [nil]])
-							(,[frfst [' remaining]]) (,[' else-clause])))}))
-				[rst [reverse [rrst [' l]]]] [fst [reverse [' l]]]})))))
+				(if [sexpr= $remaining [nil]]
+					{return $else-clause}
+					{aux [rst $remaining]
+						(`(if (,[llllst `invoke `$tempeq0 `$tempval0 [ffst $remaining] [nil]])
+							(,[frfst $remaining]) ,$else-clause))}))
+				[rst [reverse [rrst $l]]] [fst [reverse $l]]})))))
 ```
 #### test8.l2
 ```
-(switch = (d 10)
-	((d 20) [printf (" d is 20!)])
-	((d 10) [printf (" d is 10!)])
-	((d 30) [printf (" d is 30!)])
+(switch = &10
+	(&20 [printf (" d is 20!)])
+	(&10 [printf (" d is 10!)])
+	(&30 [printf (" d is 30!)])
 	[printf (" s is something else.)])
 ```
 #### shell
 ```shell
-./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 numbers.l2 backquote.l2 reverse.l2 switch.l2 characters.l2 strings.l2 let.l2 test8.l2
+./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 numbers.l2 backquote.l2 let.l2 switch.l2 test8.l2
+```
+
+### Characters
+With `&` implemented, a somewhat more readable implementation of characters is possible. The `char` function takes a singleton list containing character s-expression and returns its ascii encoding using the `d` expression. Its implementation and use follows:
+
+#### characters.l2
+```
+(function char (l)
+	(switch sexpr= [ffst $l]
+		([-!-] (` &33))
+		([-"-] (` &34))
+		([-$-] (` &36))
+		([-%-] (` &37))
+		([-&-] (` &38))
+		([-'-] (` &39))
+		([-*-] (` &42))
+		([-+-] (` &43))
+		([-,-] (` &44))
+		([---] (` &45))
+		([-.-] (` &46))
+		([-/-] (` &47))
+		([-0-] (` &48))
+		([-1-] (` &49))
+		([-2-] (` &50))
+		([-3-] (` &51))
+		([-4-] (` &52))
+		([-5-] (` &53))
+		([-6-] (` &54))
+		([-7-] (` &55))
+		([-8-] (` &56))
+		([-9-] (` &57))
+		([-:-] (` &58))
+		([-;-] (` &59))
+		([-<-] (` &60))
+		([-=-] (` &61))
+		([->-] (` &62))
+		([-?-] (` &63))
+		([-A-] (` &65))
+		([-B-] (` &66))
+		([-C-] (` &67))
+		([-D-] (` &68))
+		([-E-] (` &69))
+		([-F-] (` &70))
+		([-G-] (` &71))
+		([-H-] (` &72))
+		([-I-] (` &73))
+		([-J-] (` &74))
+		([-K-] (` &75))
+		([-L-] (` &76))
+		([-M-] (` &77))
+		([-N-] (` &78))
+		([-O-] (` &79))
+		([-P-] (` &80))
+		([-Q-] (` &81))
+		([-R-] (` &82))
+		([-S-] (` &83))
+		([-T-] (` &84))
+		([-U-] (` &85))
+		([-V-] (` &86))
+		([-W-] (` &87))
+		([-X-] (` &88))
+		([-Y-] (` &89))
+		([-Z-] (` &90))
+		([-\-] (` &92))
+		([-^-] (` &94))
+		([-_-] (` &95))
+		([-`-] (` &96))
+		([-a-] (` &97))
+		([-b-] (` &98))
+		([-c-] (` &99))
+		([-d-] (` &100))
+		([-e-] (` &101))
+		([-f-] (` &102))
+		([-g-] (` &103))
+		([-h-] (` &104))
+		([-i-] (` &105))
+		([-j-] (` &106))
+		([-k-] (` &107))
+		([-l-] (` &108))
+		([-m-] (` &109))
+		([-n-] (` &110))
+		([-o-] (` &111))
+		([-p-] (` &112))
+		([-q-] (` &113))
+		([-r-] (` &114))
+		([-s-] (` &115))
+		([-t-] (` &116))
+		([-u-] (` &117))
+		([-v-] (` &118))
+		([-w-] (` &119))
+		([-x-] (` &120))
+		([-y-] (` &121))
+		([-z-] (` &122))
+		([-|-] (` &124))
+		([-~-] (` &126))
+		(` &0)))
+```
+#### test4.l2
+```racket
+[putchar (char A)]
+```
+#### shell
+```shell
+./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 numbers.l2 backquote.l2 let.l2 switch.l2 characters.l2 test4.l2
+```
+
+### Strings
+The above exposition has purposefully avoided making strings because it is tedious to do using only binary and reference arithmetic. The quote function takes a list of lists of character s-expressions and returns the sequence of operations required to write its ascii encoding into memory. (An extension to this rule occurs when instead of a list of characters, an s-expression that is a list of lists is encountered. In this case the value of the s-expression is taken as the character to be inserted.) These "operations" are essentially decreasing the stack-pointer, putting the characters into that memory, and returning the address of that memory. Because the stack-frame of a function is destroyed upon its return, strings implemented in this way should not be returned. Quote is implemented below:
+
+#### strings.l2
+```
+(function " (l) (with return
+	{(continuation add-word (str index instrs)
+		(if [sexpr= $str [nil]]
+			{return (`(with return
+				[allocate (,[binary->base2sexpr $index])
+					(continuation _ (str) (,[lst (` begin) [reverse [llst
+						(`{return $str})
+						(`[set-char [+ $str (,[binary->base2sexpr [- $index &1]])] &0])
+						$instrs]]]))]))}
+			
+			{(continuation add-char (word index instrs)
+					(if [sexpr= $word [nil]]
+						{add-word [rst $str] [+ $index &1]
+							[lst (`[set-char [+ $str (,[binary->base2sexpr $index])] &32]) $instrs]}
+						(if [lst? [fst $word]]
+							{add-char [nil] [+ $index &1]
+								[lst (`[set-char [+ $str (,[binary->base2sexpr $index])] ,$word]) $instrs]}
+							{add-char [rst $word] [+ $index &1]
+								[lst (`[set-char [+ $str (,[binary->base2sexpr $index])]
+									(,[char [lst [lst [fst $word] [nil]] [nil]]])]) $instrs]})))
+				[fst $str] $index $instrs})) $l &0 [nil]}))
+```
+#### test5.l2
+```
+[printf (" This is how the quote macro is used. (& 10) Now we are on a new line because 10 is a line feed.)]
+```
+#### shell
+```shell
+./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 numbers64.l2 backquote.l2 let.l2 switch.l2 characters.l2 strings.l2 test5.l2
+```
+
+### Conditional Compilation
+Up till now, references to functions defined elsewhere have been the only things used as the first subexpression of an expression. Sometimes, however, the clarity of the whole expression can be improved by inlining the function. The following code proves this in the context of conditional compilation.
+#### test6.l2
+```
+((if [> &10 &20] fst frst)
+	[printf (" I am not compiled!)]
+	[printf (" I am the one compiled!)])
+```
+#### shell
+```shell
+./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 numbers64.l2 backquote.l2 let.l2 switch.l2 characters.l2 strings.l2 test6.l2
 ```
 
 ### Closures
@@ -650,12 +657,12 @@ A restricted form of closures can be implemented in L2. The key to their impleme
 (environment env0 (args ...) expr0)
 ->
 (function env0 (cont0 args ...)
-	{[' cont0] expr0})
+	{$cont0 expr0})
 
 (lambda (args ...) expr0)
 ->
 (continuation lambda0 (cont0 args ...)
-	{[' cont0] expr0})
+	{$cont0 expr0})
 
 (; func0 args ...)
 ->
@@ -669,33 +676,33 @@ These are implemented and used as follows:
 #### closures.l2
 ```racket
 (function environment (l)
-	(`(function (,[fst [' l]]) (,[lst (` cont0) [frst [' l]]])
-		{[' cont0] (,[frrst [' l]])})))
+	(`(function (,[fst $l]) (,[lst `cont0 [frst $l]])
+		{$cont0 (,[frrst $l])})))
 
 (function lambda (l)
-	(`(continuation lambda0 (,[lst (` cont0) [fst [' l]]])
-		{[' cont0] (,[frst [' l]])})))
+	(`(continuation lambda0 (,[lst `cont0 [fst $l]])
+		{$cont0 (,[frst $l])})))
 
 (function ; (l)
-	(`(with return (,[lllst (` invoke) [fst [' l]] (` return) [rst [' l]]]))))
+	(`(with return (,[lllst `invoke [fst $l] `return [rst $l]]))))
 
 (function : (l)
-	(`(with return (,[lllst (` jump) [fst [' l]] (` return) [rst [' l]]]))))
+	(`(with return (,[lllst `jump [fst $l] `return [rst $l]]))))
 ```
 #### test9.l2
 ```
 (environment adder (x)
-	(lambda (y) [+ [' x] [' y]]))
+	(lambda (y) [+ $x $y]))
 
-(let (add5 (; adder (d 5))) (add7 (; adder (d 7)))
+(let (add5 (; adder &5)) (add7 (; adder &7))
 	(begin
-		[printf (" %i,) (: [' add5] (d 2))]
-		[printf (" %i,) (: [' add7] (d 3))]
-		[printf (" %i,) (: [' add5] (d 1))]))
+		[printf (" %i,) (: $add5 &2)]
+		[printf (" %i,) (: $add7 &3)]
+		[printf (" %i,) (: $add5 &1)]))
 ```
 #### shell
 ```shell
-./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 numbers.l2 backquote.l2 reverse.l2 characters.l2 strings.l2 closures.l2 let.l2 test9.l2
+./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 numbers.l2 backquote.l2 let.l2 switch.l2 characters.l2 strings.l2 closures.l2 test9.l2
 ```
 
 ### Assume
@@ -713,23 +720,23 @@ This is implemented as follows:
 (function assume (l)
 	(`(with return
 		{(continuation tempas0 ()
-			(if (,[fst [' l]]) {return (,[frst [' l]])} (begin)))})))
+			(if (,[fst $l]) {return (,[frst $l])} (begin)))})))
 ```
 #### test10.l2
 ```
 (function foo (x y)
-	(assume [not [= [' x] [' y]]] (begin
-		[set-char [' x] (char A)]
-		[set-char [' y] (char B)]
-		[printf (" %c) [get-char [' x]]])))
+	(assume [not [= $x $y]] (begin
+		[set-char $x (char A)]
+		[set-char $y (char B)]
+		[printf (" %c) [get-char $x]])))
 
 [foo (" C) (" D)]
 ```
-In the function `foo`, if `[' x]` were equal to `[' y]`, then the else branch of the `assume`'s `if` expression would be taken. Since this branch does nothing, `continuation`'s body expression would finish evaluating. But this is the undefined behavior stated in [the first paragraph of the description of the `continuation` expression](#continuation). Therefore an L2 compiler does not have to worry about what happens in the case that `[' x]` equals `[' y]`. In light of this and the fact that the `if` condition is pure, the whole `assume` expression can be replaced with the first branch of `assume`'s `if`  expression. And more importantly, the the first branch of `assume`'s `if` expression can be optimized assuming that `[' x]` is not equal to `[' y]`. Therefore, a hypothetical optimizing compiler would also replace the last `[get-char [' x]]`, a load from memory, with `(char A)`, a constant.
+In the function `foo`, if `$x` were equal to `$y`, then the else branch of the `assume`'s `if` expression would be taken. Since this branch does nothing, `continuation`'s body expression would finish evaluating. But this is the undefined behavior stated in [the first paragraph of the description of the `continuation` expression](#continuation). Therefore an L2 compiler does not have to worry about what happens in the case that `$x` equals `$y`. In light of this and the fact that the `if` condition is pure, the whole `assume` expression can be replaced with the first branch of `assume`'s `if`  expression. And more importantly, the the first branch of `assume`'s `if` expression can be optimized assuming that `$x` is not equal to `$y`. Therefore, a hypothetical optimizing compiler would also replace the last `[get-char $x]`, a load from memory, with `(char A)`, a constant.
 
 #### shell
 ```shell
-./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 numbers.l2 backquote.l2 reverse.l2 characters.l2 strings.l2 assume.l2 test10.l2
+./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 numbers.l2 backquote.l2 let.l2 switch.l2 characters.l2 strings.l2 assume.l2 test10.l2
 ```
 Note that the `assume` expression can also be used to achieve C's `restrict` keyword simply by making its condition the conjunction of inequalities on the memory locations of the extremeties of the "arrays" in question.
 
