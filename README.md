@@ -5,7 +5,7 @@ The approach taken to achieve this has been to make C's features more composable
 1. irregular syntax is replaced by [S-expressions](#internal-representation); because simple syntax composes well with a non-trivial preprocessor (and [no, I have not merely transplanted Common Lisp's macros into C](#expression))
 2. loop constructs are replaced with what I could only describe as [a more structured variant of setjmp and longjmp without stack destruction](#with) (and [no, there is no performance overhead associated with this](#an-optimization))
 
-There are [9 language primitives](#primitive-expressions) and for each one of them I describe their syntax, what exactly they do in English, the i386 assembly they translate into, and an example usage of them. Following this comes a brief description of [L2's internal representation and the 9 functions (loosely speaking) that manipulate it](#internal-representation). After that comes a description of how [a non-primitive L2 expression](#expression) is compiled. The above descriptions take about 8 pages and are essentially a complete description of L2.
+There are [9 language primitives](#primitive-expressions) and for each one of them I describe their syntax, what exactly they do in English, the i386 assembly they translate into, and an example usage of them. Following this comes a listing of L2's syntactic sugar. Following this comes a brief description of [L2's internal representation and the 7 functions (loosely speaking) that manipulate it](#internal-representation). After that comes a description of how [a non-primitive L2 expression](#expression) is compiled. The above descriptions take about 8 pages and are essentially a complete description of L2.
 
 Afterwards, there is a [list of reductions](#examplesreductions) that shows how some of C's constructs can be defined in terms of L2. Here, I have also demonstrated [closures](#closures) to hint at how more exotic things like coroutines and generators are possible using L2's [continuations](#jump). And, finally, this [README](l2.pdf) ends with a description of [my L2 system's compilation library](#compilation-library), a binary interface for compiling L2 code.
 
@@ -43,17 +43,17 @@ If a minus sign is supplied as one of the source files, then a minus-prompt is d
 ```racket
 (function foo (sexprs)
 	(with return (begin
-		[putchar [+ (b 00000000000000000000000001100001) (b 00000000000000000000000000000001)]]
+		[putchar [+ (b 0...01100001) (b 0...01)]]
 		{return [lst [lst [-b-] [lst [-e-] [lst [-g-] [lst [-i-] [lst [-n-] [nil]]]]]] [nil]]})))
 
-[putchar (b 00000000000000000000000001100001)]
+[putchar (b 0...01100001)]
 ```
 ##### file2.l2
 ```racket
 (function bar ()
-	[putchar (b 00000000000000000000000001100011)])
+	[putchar (b 0...01100011)])
 (foo this text does not matter)
-[putchar (b 00000000000000000000000001100100)]
+[putchar (b 0...01100100)]
 ```
 Running `./bin/l2evaluate "./bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + file1.l2 file2.l2` should cause the text "abd" to be printed to standard output. The "a" comes from the last expression of file1.l2. It was printed after the compilation of file1.l2, when it was being loaded into the compiler. Why? Because L2 libraries are executed from top to bottom when they are loaded. The "b" comes from within the function in file1.l2. It was executed when the expression `(foo this text does not matter)` in file2.l2 was being compiled. Why? Because the `foo` causes the compiler to invoke a function called `foo` in the environment. The s-expression `(this text does not matter)` is the argument to the function `foo`, but the function `foo` ignores it and returns the s-expression `(begin)`. Hence `(begin)` replaces `(foo this text does not matter)` in `file2.l2`. Now `file2.l2` is entirely made up of primitive expressions which are compiled in the way specified below. Finally the text "d" is printed. Why? Because file2.l2's last expression is the only one that is side-effectual, does not get replaced during compilation, and (therefore) gets loaded into memory.
 
@@ -78,7 +78,7 @@ The resulting value is the 64 bit number specified in binary inside the brackets
 
 This expression is implemented by emitting an instruction to `mov` an immediate value into a memory location designated by the surrounding expression.
 
-Say the expression `[putchar x]` prints the character `x`. Then `[putchar (b 00000000000000000000000001100001)]` prints the text "a" to standard output.
+Say the expression `[putchar x]` prints the character `x`. Then `[putchar (b 0...01100001)]` prints the text "a" to standard output.
 
 ### Reference
 ```racket
@@ -88,7 +88,7 @@ The resulting value is the address in memory to which this reference refers.
 
 This expression is implemented by the emission of an instruction to `lea` of some data into a memory location designated by the surrounding expression.
 
-Say the expression `[get x]` evaluates to the value at the reference `x` and the expression `[set x y]` puts the value `y` into the reference `x`. Then `(begin [set x (b 00000000000000000000000001100001)] [putchar [get x]])` prints the text "a" to standard output.
+Say the expression `[get x]` evaluates to the value at the reference `x` and the expression `[set x y]` puts the value `y` into the reference `x`. Then `(begin [set x (b 0...01100001)] [putchar [get x]])` prints the text "a" to standard output.
 
 ### If
 ```racket
@@ -98,7 +98,7 @@ If `expression0` is non-zero, then only `expression1` is evaluated and its resul
 
 This expression is implemented by first emitting an instruction to `or` `expression0` with itself. Then an instruction to `je` to `expression2`'s label is emitted. Then the instructions for `expression1` are emitted with the location of the resulting value fixed to the same memory address designated for the resulting value of the `if` expression. Then an instruction is emitted to `jmp` to the end of all the instructions that are emitted for this `if` expression. Then the label for `expression2` is emitted. Then the instructions for `expression2` are emitted with the location of the resulting value fixed to the same memory address designated for the resulting value of the `if` expression.
 
-The expression `[putchar (if (b 00000000000000000000000000000000) (b 00000000000000000000000001100001) (b 00000000000000000000000001100010))]` prints the text "b" to standard output.
+The expression `[putchar (if (b 0...0) (b 0...01100001) (b 0...01100010))]` prints the text "b" to standard output.
 
 ### Function
 ```racket
@@ -108,7 +108,7 @@ Makes a function to be invoked with exactly `N` arguments. When the function is 
 
 This expression is implemented by first emitting an instruction to `mov` the address `function0` (a label to be emitted later) into the memory location designated by the surrounding expression. Then an instruction is emitted to `jmp` to the end of all the instructions that are emitted for this function. Then the label named `function0` is emitted. Then instructions to `push` each callee-saved register onto the stack are emitted. Then an instruction to push the frame-pointer onto the stack is emitted. Then an instruction to move the value of the stack-pointer into the frame-pointer is emitted. Then an instruction to `sub` from the stack-pointer the amount of words reserved on this function's stack-frame is emitted. After this the instructions for `expression0` are emitted with the location of the resulting value fixed to a word within the stack-pointer's drop. After this an instruction is emitted to `mov` the word from this location into the register `eax`. And finally, instructions are emitted to `leave` the current function's stack-frame, `pop` the callee-save registers, and `ret` to the address of the caller.
 
-The expression `[putchar [(function my- (a b) [- [get b] [get a]]) (b 00000000000000000000000000000001) (b 00000000000000000000000001100011)]]` prints the text "b" to standard output.
+The expression `[putchar [(function my- (a b) [- [get b] [get a]]) (b 0...01) (b 0...01100011)]]` prints the text "b" to standard output.
 
 ### Invoke
 ```racket
@@ -126,7 +126,7 @@ movl 4(%esp), %eax
 subl 8(%esp), %eax
 ret
 ```
-The following invocation of it, `(invoke putchar (invoke - (b 00000000000000000000000001100011) (b 00000000000000000000000000000001)))`, prints the text "b" to standard output.
+The following invocation of it, `(invoke putchar (invoke - (b 0...01100011) (b 0...01)))`, prints the text "b" to standard output.
 
 ### With
 ```racket
@@ -137,7 +137,7 @@ Makes a continuation to the containing expression that is to be `jump`ed to with
 5+1 words must be reserved in the current function's stack-frame plan. Call the reference to the first word of the reservation `continuation0`. This expression is implemented by first emitting instructions to store the program's state at `continuation0`, that is, instructions are emitted to `mov` `ebp`, the address of the instruction that should be executed after continuing (a label to be emitted later), `edi`, `esi`, and `ebx`, in that order, to the first 5 words at `continuation0`. After this, the instructions for `expression0` are emitted. Then the label for the first instruction of the continuation is emitted. And finally, an instruction is emitted to `mov` the resulting value of the continuation, the 6th word at `continuation0`, into the memory location designated by the surrounding expression.
 
 #### Examples
-Note that the expression `{continuation0 expression0}` `jump`s to the continuation reference given by `continuation0` with resulting value of evaluating `expression0` as its argument. With the note in mind, the expression `(begin [putchar (with ignore (begin {ignore (b 00000000000000000000000001001110)} [foo] [foo] [foo]))] [bar])` prints the text "nbar" to standard output.
+Note that the expression `{continuation0 expression0}` `jump`s to the continuation reference given by `continuation0` with resulting value of evaluating `expression0` as its argument. With the note in mind, the expression `(begin [putchar (with ignore (begin {ignore (b 0...01001110)} [foo] [foo] [foo]))] [bar])` prints the text "nbar" to standard output.
 
 The following assembly function `allocate` receives the number of bytes it is to allocate as its first argument, allocates that memory, and passes the initial address of this memory as the single argument to the continuation it receives as its second argument.
 ```assembly
@@ -153,7 +153,7 @@ andl $0xFFFFFFFC, %esp
 movl %esp, 20(%ecx)
 jmp *4(%ecx)
 ```
-The following usage of it, `(with dest [allocate (b 00000000000000000000000000000011) dest])`, evaluates to the address of the allocated memory. If allocate had just decreased `esp` and returned, it would have been invalid because L2 expects functions to preserve `esp`.
+The following usage of it, `(with dest [allocate (b 0...011) dest])`, evaluates to the address of the allocated memory. If allocate had just decreased `esp` and returned, it would have been invalid because L2 expects functions to preserve `esp`.
 
 ### Continuation
 ```racket
@@ -163,7 +163,7 @@ Makes a continuation to be `jump`ed to with exactly `N` arguments. When the cont
 
 5+N words must be reserved in the current function's stack-frame plan. Call the reference to the first word of the reservation `continuation0`. This expression is implemented by first emitting an instruction to `mov` the reference `continuation0` into the memory location designated by the surrounding expression. Instructions are then emitted to store the program's state at `continuation0`, that is, instructions are emitted to `mov` `ebp`, the address of the instruction that should be executed after continuing (a label to be emitted later), `edi`, `esi`, and `ebx`, in that order, to the first 5 words at `continuation0`. Then an instruction is emitted to `jmp` to the end of all the instructions that are emitted for this `continuation` expression. Then the label for the first instruction of the continuation is emitted. After this the instructions for `expression0` are emitted.
 
-The expression `{(continuation forever (a b) (begin [putchar [get a]] [putchar [get b]] {forever [- [get a] (b 00000000000000000000000000000001)] [- [get b] (b 00000000000000000000000000000001)]})) (b 00000000000000000000000001011010) (b 00000000000000000000000001111010)}` prints the text "ZzYyXxWw"... to standard output.
+The expression `{(continuation forever (a b) (begin [putchar [get a]] [putchar [get b]] {forever [- [get a] (b 0...01)] [- [get b] (b 0...01)]})) (b 0...01011010) (b 0...01111010)}` prints the text "ZzYyXxWw"... to standard output.
 
 ### Jump
 ```racket
@@ -174,7 +174,7 @@ Both the above expressions are equivalent. Evaluates `continuation0`, `expressio
 
 `N+1` words must be reserved in the current function's stack-frame plan. The expression is implemented by emitting the instructions for any of the subexpressions with the location of the resulting value fixed to the corresponding reserved word. The same is done with the remaining expressions repeatedly until the instructions for all the subexpressions have been emitted. Then an instruction to `mov` the first reserved word to 5 words from the beginning of the continuation is emitted, followed by an instruction to `mov` the second reserved word to an address immediately after that, and so on, ending with an instruction to `mov` the last reserved word into the last memory address of that area. The program's state, that is, `ebp`, the address of the instruction that should be executed after continuing, `edi`, `esi`, and `ebx`, in that order, are what is stored at the beginning of a continuation. Instructions to `mov` these values from the buffer into the appropriate registers and then set the program counter appropriately are, at last, emitted.
 
-The expression `(begin (with cutter (jump (continuation cuttee () (begin [bar] [bar] (jump cutter (b 00000000000000000000000000000000)) [bar] [bar] [bar])))) [foo])` prints the text "barbarfoo" to standard output.
+The expression `(begin (with cutter (jump (continuation cuttee () (begin [bar] [bar] (jump cutter (b 0...0)) [bar] [bar] [bar])))) [foo])` prints the text "barbarfoo" to standard output.
 
 #### An Optimization
 Looking at the examples above where the continuation reference does not escape, `(with reference0 expression0)` behaves a lot like the pseudo-assembly `expression0 reference0:` and `(continuation reference0 (...) expression0)` behaves a lot like `reference0: expression0`. To be more precise, when references to a particular continuation only occur as the `continuation0` subexpression of a `jump` statement, we know that the continuation is constrained to the function in which it is declared, and hence there is no need to store or restore `ebp`, `edi`, `esi`, and `ebx`. Continuations, then, are how efficient iteration is achieved in L2.
@@ -205,7 +205,7 @@ Say the s-expression `foo` is stored at `a` and the list `(bar)` is stored at `b
 
 Evaluates to the complement of zero if `x` is also list. Otherwise evaluates to zero.
 
-Say the s-expression `foo` is stored at `a`. Then `[lst? [get a]]` evaluates to `(b 11111111111111111111111111111111)`.
+Say the s-expression `foo` is stored at `a`. Then `[lst? [get a]]` evaluates to `(b 1...1)`.
 ### `[fst x]`
 `x` must be a list.
 
@@ -231,7 +231,7 @@ The expression `[lst [-f-] [lst [-o-] [lst [-o-] [nil]]]]` evaluates to the s-ex
 
 Evaluates to the complement of zero if `x` is the same s-expression as `y`, otherwise it evaluates to zero.
 
-Say the s-expression `(foo (bar bar) foo foo)` is stored at both `x` and `y`. Then `[sexpr= [get x] [get y]]` evaluates to `(b 1111111111111111111111111111111111111111111111111111111111111111)`.
+Say the s-expression `(foo (bar bar) foo foo)` is stored at both `x` and `y`. Then `[sexpr= [get x] [get y]]` evaluates to `(b 1...1)`.
 ### `[begin x]`
 `x` must be a list of s-expressions.
 
@@ -320,17 +320,17 @@ See the section [syntactic sugar](#syntactic-sugar) for an explanation.
 ### Numbers
 Integer literals prove to be quite tedious in L2 as can be seen from some of the examples in the primitive expressions section. The following function, `&`, implements decimal arithmetic for i386 by reading in an s-expression in base 10 and writing out the equivalent s-expression in base 2:
 
-#### numbers32.l2
+#### numbers64.l2
 ```racket
 (** Turns a 4-byte integer into base-2 s-expression representation of it.
 (function binary->base2sexpr (binary)
 	[lst [lst [-b-] [nil]] [lst (with return
 		{(continuation write (count in out)
 			(if $count
-				{write [- $count (b 00000000000000000000000000000001)]
-					[>> $in (b 00000000000000000000000000000001)]
-					[lst (if [and $in (b 00000000000000000000000000000001)] [-1-] [-0-]) $out]}
-				{return $out})) (b 00000000000000000000000000100000) $binary [nil]}) [nil]]]))
+				{write [- $count (b 0...01)]
+					[>> $in (b 0...01)]
+					[lst (if [and $in (b 0...01)] [-1-] [-0-]) $out]}
+				{return $out})) (b 0...01000000) $binary [nil]}) [nil]]]))
 
 (function & (l)
 	[binary->base2sexpr
@@ -338,20 +338,18 @@ Integer literals prove to be quite tedious in L2 as can be seen from some of the
 			(with return {(continuation read (in out)
 				(if [nil? $in]
 					{return $out}
-					{read [rst $in] [+ [* $out (b 00000000000000000000000000001010)]
-						(if [sexpr= [-9-] [fst $in]] (b 00000000000000000000000000001001)
-						(if [sexpr= [-8-] [fst $in]] (b 00000000000000000000000000001000)
-						(if [sexpr= [-7-] [fst $in]] (b 00000000000000000000000000000111)
-						(if [sexpr= [-6-] [fst $in]] (b 00000000000000000000000000000110)
-						(if [sexpr= [-5-] [fst $in]] (b 00000000000000000000000000000101)
-						(if [sexpr= [-4-] [fst $in]] (b 00000000000000000000000000000100)
-						(if [sexpr= [-3-] [fst $in]] (b 00000000000000000000000000000011)
-						(if [sexpr= [-2-] [fst $in]] (b 00000000000000000000000000000010)
-						(if [sexpr= [-1-] [fst $in]] (b 00000000000000000000000000000001)
-							(b 00000000000000000000000000000000))))))))))]})) [fst $l] (b 00000000000000000000000000000000)}))])
+					{read [rst $in] [+ [* $out (b 0...01010)]
+						(if [sexpr= [-9-] [fst $in]] (b 0...01001)
+						(if [sexpr= [-8-] [fst $in]] (b 0...01000)
+						(if [sexpr= [-7-] [fst $in]] (b 0...0111)
+						(if [sexpr= [-6-] [fst $in]] (b 0...0110)
+						(if [sexpr= [-5-] [fst $in]] (b 0...0101)
+						(if [sexpr= [-4-] [fst $in]] (b 0...0100)
+						(if [sexpr= [-3-] [fst $in]] (b 0...011)
+						(if [sexpr= [-2-] [fst $in]] (b 0...010)
+						(if [sexpr= [-1-] [fst $in]] (b 0...01)
+							(b 0...0))))))))))]})) [fst $l] (b 0...0)}))])
 ```
-#### numbers64.l2
-Implementation is the same as that of `numbers64.l2` except that it has bit strings of length 64 instead.
 #### test2.l2
 ```racket
 [putchar (& 65)]
