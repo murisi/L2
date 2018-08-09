@@ -54,6 +54,7 @@ void build_syntax_tree(list d, union expression **s) {
 		char *str = to_string(d);
 		(*s)->reference.type = reference;
 		(*s)->reference.source_name = str;
+		prepend(str, &generate_string_blacklist);
 	} else if(!strcmp(to_string(fst(d)), "with")) {
 		if(length(d) != 3) {
 			thelongjmp(*build_syntax_tree_handler, make_special_form(d, NULL));
@@ -190,7 +191,7 @@ void expand_expressions(list expansion_lists) {
 		list expander_containers = nil();
 		list expander_container_names = nil();
 		foreach(expansion, expansions) {
-			union expression *expander_container = make_function("");
+			union expression *expander_container = make_function();
 			expander_container->function.reference->reference.source_name = generate_string();
 			put(expander_container, function.expression, (*expansion)->non_primitive.function);
 			append(expander_container, &expander_containers);

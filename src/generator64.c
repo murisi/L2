@@ -529,8 +529,8 @@ void compile_expressions(char *outbin, list exprs, jmp_buf *handler) {
 		}
 	}}
 	container->begin.expressions = exprs;
-	union expression *root_function = make_function("()"), *program = root_function;
-	root_function->function.reference->reference.source_name = "()";
+	union expression *root_function = make_function(), *program = root_function;
+	root_function->function.reference->reference.source_name = generate_string();
 	put(program, function.expression, container);
 	
 	vfind_multiple_definitions_handler = handler;
@@ -540,7 +540,6 @@ void compile_expressions(char *outbin, list exprs, jmp_buf *handler) {
 	vlink_references_handler = handler;
 	visit_expressions_with(&program, vlink_references);
 	
-	visit_expressions_with(&program, vblacklist_references);
 	visit_expressions_with(&program, vrename_definition_references);
 	visit_expressions_with(&program, vrename_usage_references);
 	

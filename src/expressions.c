@@ -201,10 +201,10 @@ union expression *make_begin() {
 	return beg;
 }
 
-union expression *make_function(char *name) {
+union expression *make_function() {
 	union expression *func = calloc(1, sizeof(union expression));
 	func->function.type = function;
-	func->function.reference = strlen(name) > 0 ? make_reference(name) : generate_reference();
+	func->function.reference = generate_reference();
 	func->function.reference->reference.parent = func;
 	func->function.parameters = nil();
 	func->function.locals = nil();

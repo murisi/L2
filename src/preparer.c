@@ -52,13 +52,6 @@ union expression *get_zeroth_static(union expression *e) {
 	return static_expr;
 }
 
-union expression *vblacklist_references(union expression *s) {
-	if(s->base.type == reference) {
-		prepend(s->reference.source_name, &generate_string_blacklist);
-	}
-	return s;
-}
-
 union expression *referent_of(union expression *reference) {
 	union expression *t;
 	for(t = reference; t != NULL; t = (t->base.type == function ? get_zeroth_static(t->base.parent) : t->base.parent)) {
