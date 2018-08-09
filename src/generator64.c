@@ -485,10 +485,8 @@ void print_assembly(list generated_expressions, FILE *out) {
 void compile_object(char *outbin, char *in, jmp_buf *handler) {
 	char entryfn[] = ".entryXXXXXX.s";
 	FILE *entryfile = fdopen(mkstemps(entryfn, 2), "w+");
-	fputs(".section .init_array,\"aw\"\n" ".align 8\n" ".quad privmain\n" ".text\n" ".comm argc,8,8\n" ".comm argv,8,8\n"
-		".globl main\n" "main:\n" "ret\n" "privmain:\n" "pushq %r12\n" "pushq %r13\n" "pushq %r14\n" "pushq %r15\n" "pushq %rbx\n"
-		"pushq %rbp\n" "movq %rsp, %rbp\n" "movq %rdi, argc@GOTPCREL(%rip)\n" "movq %rsi, argv@GOTPCREL(%rip)\n", entryfile);
-	
+	fputs(".section .init_array,\"aw\"\n" ".align 8\n" ".quad privmain\n" ".text\n" ".globl main\n" "main:\n" "ret\n" "privmain:\n"
+		"pushq %r12\n" "pushq %r13\n" "pushq %r14\n" "pushq %r15\n" "pushq %rbx\n" "pushq %rbp\n" "movq %rsp, %rbp\n", entryfile);
 	fclose(entryfile);
 
 	char exitfn[] = ".exitXXXXXX.s";

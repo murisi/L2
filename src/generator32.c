@@ -442,9 +442,8 @@ void print_assembly(list generated_expressions, FILE *out) {
 void compile_object(char *outbin, char *in, jmp_buf *handler) {
 	char entryfn[] = ".entryXXXXXX.s";
 	FILE *entryfile = fdopen(mkstemps(entryfn, 2), "w+");
-	fputs(".section .init_array,\"aw\"\n" ".align 4\n" ".long privmain\n" ".text\n" ".comm argc,4,4\n" ".comm argv,4,4\n"
-		".globl main\n" "main:\n" "ret\n" "privmain:\n" "pushl %esi\n" "pushl %edi\n" "pushl %ebx\n" "pushl %ebp\n"
-		"movl %esp, %ebp\n" "movl 20(%ebp), %eax\n" "movl %eax, argc\n" "movl 24(%ebp), %eax\n" "movl %eax, argv\n", entry_file);
+	fputs(".section .init_array,\"aw\"\n" ".align 4\n" ".long privmain\n" ".text\n" ".globl main\n" "main:\n" "ret\n" "privmain:\n"
+		"pushl %esi\n" "pushl %edi\n" "pushl %ebx\n" "pushl %ebp\n" "movl %esp, %ebp\n", entry_file);
 	if(generator_PIC) {
 		fputs("jmp thunk_end\n" "get_pc_thunk:\n" "movl (%esp), %ebx\n" "ret\n" "thunk_end:\n" "call get_pc_thunk\n"
 			"addl $_GLOBAL_OFFSET_TABLE_, %ebx\n", entryfile);
