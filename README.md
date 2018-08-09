@@ -14,10 +14,10 @@ Afterwards, there is a [list of reductions](#examplesreductions) that shows how 
 |:--- |:--- |:--- |
 | [Building L2](#building-l2) | [Begin](#begin) | [Commenting](#commenting) |
 | [The Evaluator](#the-evaluator) | [Binary](#binary) | [Numbers](#numbers) |
-| **[Internal Representation](#internal-representation)** | [Reference](#reference) | [Backquoting](#backquoting) |
-| **[Expression](#expression)** | [If](#if) | [Characters](#characters) |
-| **[Compilation Library](#compilation-library)** | [Function](#function) | [Strings](#strings) |
-| |  [Invoke](#invoke) | [Conditional Compilation](#conditional-compilation) |
+| **[Syntactic Sugar](#syntactic-sugar)** | [Reference](#reference) | [Backquoting](#backquoting) |
+| **[Internal Representation](#internal-representation)** | [If](#if) | [Characters](#characters) |
+| **[Expression](#expression)** | [Function](#function) | [Strings](#strings) |
+| **[Compilation Library](#compilation-library)** |  [Invoke](#invoke) | [Conditional Compilation](#conditional-compilation) |
 | |  [With](#with) | [Variable Binding](#variable-binding) |
 | |  [Continuation](#continuation) | [Switch Expression](#switch-expression) |
 | |  [Jump](#jump) | [Closures](#closures) |
@@ -192,7 +192,7 @@ An analogous transformation to the one for `$a1...aN` happens.
 An analogous transformation to the one for `$a1...aN` happens.
 
 ## Internal Representation
-After substituting out the syntactic sugar defined in the [invoke](#invoke), [jump](#jump), and [syntactic sugar](#syntactic-sugar) sections, we find that all L2 programs are just compositions of the `<pre-s-expression>`s: `<symbol>` and `(<pre-s-expression> <pre-s-expression> ... <pre-s-expression>)`. If we now replace every symbol with a list of its characters so that for example `foo` becomes `(f o o)`, we now find that all L2 programs are now just compositions of the `<s-expression>`s `<symbol>` and `(<s-expression> <s-expression> ... <s-expression>)`. The following functions that manipulate these s-expressions are not part of the L2 language and hence the compiler does not give references to them special treatment during compilation. However, when compiled code is loaded into an L2 compiler, undefined references to these functions are to be dynamically resolved.
+After substituting out the syntactic sugar defined in the [invoke](#invoke), [jump](#jump), and [syntactic sugar](#syntactic-sugar) sections, we find that all L2 programs are just compositions of the `<pre-s-expression>`s: `<symbol>` and `(<pre-s-expression> <pre-s-expression> ... <pre-s-expression>)`. If we now replace every symbol with a list of its characters so that for example `foo` becomes `(f o o)`, we now find that all L2 programs are now just compositions of the `<s-expression>`s `<character>` and `(<s-expression> <s-expression> ... <s-expression>)`. The following functions that manipulate these s-expressions are not part of the L2 language and hence the compiler does not give references to them special treatment during compilation. However, when compiled code is loaded into an L2 compiler, undefined references to these functions are to be dynamically resolved.
 
 ### `[lst x y]`
 `x` must be a s-expression and `y` a list.
