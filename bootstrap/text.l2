@@ -102,7 +102,19 @@
 					(if [sexpr= $word [nil]]
 						{add-word [rst $str] [+ $index &1]
 							[lst (`[set-char [+ $str (,[binary->base2sexpr $index])] &32]) $instrs]}
-						{add-char [rst $word] [+ $index &1]
-							[lst (`[set-char [+ $str (,[binary->base2sexpr $index])]
-								(,[char [lst [lst [fst $word] [nil]] [nil]]])]) $instrs]}))
+						(if [lst? [fst $word]]
+							{add-word [rst $str] [+ $index &1]
+								[lst (`[set-char [+ $str (,[binary->base2sexpr $index])] ,$word]) $instrs]}
+							{add-char [rst $word] [+ $index &1]
+								[lst (`[set-char [+ $str (,[binary->base2sexpr $index])]
+									(,[char [lst [lst [fst $word] [nil]] [nil]]])]) $instrs]})))
 				[fst $str] $index $instrs})) $l &0 [nil]}))
+
+(function nul () &0)
+(function bel () &7)
+(function bs () &8)
+(function ht () &9)
+(function lf () &10)
+(function cr () &13)
+(function vt () &11)
+(function ff () &12)
