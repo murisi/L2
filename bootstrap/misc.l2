@@ -33,3 +33,25 @@
 (function while (l)
 	(`(with return {(continuation aux (val)
 		(if (,[fst $l]) {aux (,[frst $l])} {return $val})) (begin)})))
+
+(function do-while (l)
+	(`(with return {(continuation aux (val)
+		(if (,[frst $l]) {aux (,[fst $l])} {return $val})) (,[fst $l])})))
+
+(function bytes () &1)
+
+(function words () &8)
+
+(function array (l)
+	(`(with return [allocate [* (,[fst $l]) [words]] return])))
+
+(function at (l)
+	(if [sexpr= [rst $l] [nil]]
+		[fst $l]
+		[at [lst (`[+ ($(,[fst $l])) [* (,[frfrst $l]) (,[ffrst $l])]]) [rrst $l]]]))
+
+(function for (l)
+	(`(with return {(continuation aux ((,[ffst $l]))
+		(if [= ($(,[ffst $l])) (,[frrfst $l])]
+			{return (begin)}
+			(begin (,[frst $l]) {aux [+ ($(,[ffst $l])) &1]}))) (,[frfst $l])})))
