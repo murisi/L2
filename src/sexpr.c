@@ -74,6 +74,6 @@ list begin_primitive(list arg) { return lst(build_symbol_sexpr("begin"), arg); }
 list if_primitive(list arg) { return lst(build_symbol_sexpr("if"), arg); }
 list function_primitive(list arg) { return lst(build_symbol_sexpr("function"), arg); }
 list continuation_primitive(list arg) { return lst(build_symbol_sexpr("continuation"), arg); }
-list b_primitive(list arg) { return lst(build_symbol_sexpr("b"), arg); }
+list literal_primitive(list arg) { return lst(build_symbol_sexpr("literal"), arg); }
 list invoke_primitive(list arg) { return lst(build_symbol_sexpr("invoke"), arg); }
 list jump_primitive(list arg) { return lst(build_symbol_sexpr("jump"), arg); }

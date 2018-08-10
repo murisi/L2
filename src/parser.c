@@ -109,7 +109,7 @@ void build_syntax_tree(list d, union expression **s) {
 		}
 	
 		build_syntax_tree_under(frrrst(d), &(*s)->function.expression, *s);
-	} else if(!strcmp(to_string(fst(d)), "b")) {
+	} else if(!strcmp(to_string(fst(d)), "literal")) {
 		char *str;
 		if(length(d) != 2) {
 			thelongjmp(*build_syntax_tree_handler, make_special_form(d, NULL));
@@ -117,12 +117,12 @@ void build_syntax_tree(list d, union expression **s) {
 			thelongjmp(*build_syntax_tree_handler, make_special_form(d, frst(d)));
 		}
 	
-		(*s)->constant.type = constant;
-		(*s)->constant.value = 0;
+		(*s)->literal.type = literal;
+		(*s)->literal.value = 0;
 		int i;
 		for(i = 0; i < strlen(str); i++) {
 			if(str[strlen(str) - i - 1] == '1') {
-				(*s)->constant.value |= (1 << i);
+				(*s)->literal.value |= (1 << i);
 			} else if(str[strlen(str) - i - 1] != '0') {
 				thelongjmp(*build_syntax_tree_handler, make_special_form(d, frst(d)));
 			}

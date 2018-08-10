@@ -4,7 +4,7 @@ enum expression_type {
 	invoke,
 	_if,
 	begin,
-	constant,
+	literal,
 	reference,
 	jump,
 	continuation,
@@ -65,7 +65,7 @@ struct if_expression {
 	union expression *alternate;
 };
 
-struct constant_expression {
+struct literal_expression {
 	enum expression_type type;
 	union expression *parent;
 	union expression *return_value;
@@ -142,15 +142,15 @@ union expression {
 	struct invoke_expression invoke;
 	struct instruction_expression instruction;
 	struct if_expression _if;
-	struct constant_expression constant;
+	struct literal_expression literal;
 	struct reference_expression reference;
 	struct np_expression non_primitive;
 };
 
-union expression *make_constant(int value) {
+union expression *make_literal(int value) {
 	union expression *t = calloc(1, sizeof(union expression));
-	t->constant.type = constant;
-	t->constant.value = value;
+	t->literal.type = literal;
+	t->literal.value = value;
 	return t;
 }
 
@@ -323,10 +323,10 @@ void print_annotated_syntax_tree(union expression *s) {
 			printf("%s", s->reference.name);
 			print_annotated_syntax_tree_annotator(s);
 			break;
-		} case constant: {
+		} case literal: {
 			printf("(b");
 			print_annotated_syntax_tree_annotator(s);
-			printf(" %d)", s->constant.value);
+			printf(" %d)", s->literal.value);
 			break;
 		} case non_primitive: {
 			printf("(");
@@ -355,10 +355,10 @@ void frame_layout_annotator(union expression *s) {
 		printf("< ");
 		union expression *t;
 		{foreach(t, s->function.locals) {
-			printf("%s:%d ", t->reference.name, t->reference.offset->constant.value);
+			printf("%s:%d ", t->reference.name, t->reference.offset->literal.value);
 		}}
 		foreach(t, s->function.parameters) {
-			printf("%s:%d ", t->reference.name, t->reference.offset->constant.value);
+			printf("%s:%d ", t->reference.name, t->reference.offset->literal.value);
 		}
 		printf(">");
 	}

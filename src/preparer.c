@@ -287,8 +287,8 @@ union expression *use_return_value(union expression *n, union expression *ret_va
 		} case reference: {
 			n->reference.return_value = ret_val;
 			return n;
-		} case constant: {
-			n->constant.return_value = ret_val;
+		} case literal: {
+			n->literal.return_value = ret_val;
 			return n;
 		}
 	}

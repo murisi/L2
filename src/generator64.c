@@ -45,13 +45,13 @@ union expression *vlayout_frames(union expression *n) {
 			int parameter_offset = 7*WORD_SIZE;
 			union expression *t;
 			{foreach(t, n->function.parameters) {
-				t->reference.offset = n->function.parent ? make_constant(parameter_offset) : NULL;
+				t->reference.offset = n->function.parent ? make_literal(parameter_offset) : NULL;
 				parameter_offset += WORD_SIZE;
 			}}
 			int local_offset = 0;
 			foreach(t, reverse(n->function.locals)) {
 				local_offset -= WORD_SIZE;
-				t->reference.offset = n->function.parent ? make_constant(local_offset) : NULL;
+				t->reference.offset = n->function.parent ? make_literal(local_offset) : NULL;
 			}
 			break;
 		} case continuation: case with: {
@@ -71,7 +71,7 @@ union expression *vlayout_frames(union expression *n) {
 }
 
 union expression *make_offset(union expression *a, int b) {
-	return make_instr("+", 2, a, make_constant(b));
+	return make_instr("+", 2, a, make_literal(b));
 }
 
 union expression *make_suffixed(union expression *ref, char *suffix) {
@@ -85,7 +85,7 @@ union expression *make_load(union expression *ref, int offset, union expression 
 			dest_reg));
 	} else if(generator_PIC) {
 		emit(make_instr("(movq (mem disp base) reg)", 3, make_suffixed(ref, "@GOTPCREL"), use(rip), scratch_reg));
-		emit(make_instr("(movq (mem disp base) reg)", 3, make_constant(offset), scratch_reg, dest_reg));
+		emit(make_instr("(movq (mem disp base) reg)", 3, make_literal(offset), scratch_reg, dest_reg));
 	} else {
 		emit(make_instr("(movq (mem disp) reg)", 2, make_offset(ref, offset), dest_reg));
 	}
@@ -99,7 +99,7 @@ union expression *make_store(union expression *src_reg, union expression *ref, i
 			use(rbp)));
 	} else if(generator_PIC) {
 		emit(make_instr("(movq (mem disp base) reg)", 3, make_suffixed(ref, "@GOTPCREL"), use(rip), scratch_reg));
-		emit(make_instr("(movq reg (mem disp base))", 3, src_reg, make_constant(offset), scratch_reg));
+		emit(make_instr("(movq reg (mem disp base))", 3, src_reg, make_literal(offset), scratch_reg));
 	} else {
 		emit(make_instr("(movq reg (mem disp))", 2, src_reg, make_offset(ref, offset)));
 	}
@@ -174,7 +174,7 @@ union expression *move_arguments(union expression *n, int offset) {
 	union expression *t;
 	foreach(t, n->jump.arguments) {
 		emit(make_load(t, 0, use(r10), use(r13)));
-		emit(make_instr("(movq reg (mem disp base))", 3, use(r10), make_constant(offset), use(r11)));
+		emit(make_instr("(movq reg (mem disp base))", 3, use(r10), make_literal(offset), use(r11)));
 		offset += WORD_SIZE;
 	}
 	return container;
@@ -219,13 +219,13 @@ union expression *vgenerate_continuation_expressions(union expression *n) {
 			} else {
 				emit(make_load(n->jump.reference, 0, use(r11), use(r10)));
 				emit(move_arguments(n, CONT_SIZE));
-				emit(make_instr("(movq (mem disp base) reg)", 3, make_constant(CONT_RBX), use(r11), use(rbx)));
-				emit(make_instr("(movq (mem disp base) reg)", 3, make_constant(CONT_R12), use(r11), use(r12)));
-				emit(make_instr("(movq (mem disp base) reg)", 3, make_constant(CONT_R13), use(r11), use(r13)));
-				emit(make_instr("(movq (mem disp base) reg)", 3, make_constant(CONT_R14), use(r11), use(r14)));
-				emit(make_instr("(movq (mem disp base) reg)", 3, make_constant(CONT_R15), use(r11), use(r15)));
-				emit(make_instr("(movq (mem disp base) reg)", 3, make_constant(CONT_CIR), use(r11), use(r10)));
-				emit(make_instr("(movq (mem disp base) reg)", 3, make_constant(CONT_RBP), use(r11), use(rbp)));
+				emit(make_instr("(movq (mem disp base) reg)", 3, make_literal(CONT_RBX), use(r11), use(rbx)));
+				emit(make_instr("(movq (mem disp base) reg)", 3, make_literal(CONT_R12), use(r11), use(r12)));
+				emit(make_instr("(movq (mem disp base) reg)", 3, make_literal(CONT_R13), use(r11), use(r13)));
+				emit(make_instr("(movq (mem disp base) reg)", 3, make_literal(CONT_R14), use(r11), use(r14)));
+				emit(make_instr("(movq (mem disp base) reg)", 3, make_literal(CONT_R15), use(r11), use(r15)));
+				emit(make_instr("(movq (mem disp base) reg)", 3, make_literal(CONT_CIR), use(r11), use(r10)));
+				emit(make_instr("(movq (mem disp base) reg)", 3, make_literal(CONT_RBP), use(r11), use(rbp)));
 				emit(make_instr("(jmp reg)", 1, use(r10)));
 			}
 			return container;
@@ -236,11 +236,11 @@ union expression *vgenerate_continuation_expressions(union expression *n) {
 }
 
 //Must be used after use_return_reference and init_i386_registers
-union expression *vgenerate_constants(union expression *n) {
-	if(n->base.type == constant && n->constant.return_value) {
+union expression *vgenerate_literals(union expression *n) {
+	if(n->base.type == literal && n->literal.return_value) {
 		union expression *container = make_begin();
-		emit(make_instr("(movq imm reg)", 2, make_constant(n->constant.value), use(r11)));
-		emit(make_store(use(r11), n->constant.return_value, 0, use(r13)));
+		emit(make_instr("(movq imm reg)", 2, make_literal(n->literal.value), use(r11)));
+		emit(make_store(use(r11), n->literal.return_value, 0, use(r13)));
 		return container;
 	} else {
 		return n;
@@ -250,11 +250,11 @@ union expression *vgenerate_constants(union expression *n) {
 union expression *generate_toplevel(union expression *n, list toplevel_function_references) {
 	union expression *container = make_begin();
 	emit(make_instr("(bss)", 0));
-	emit(make_instr("(align expr expr)", 2, make_constant(WORD_SIZE), make_constant(0)));
+	emit(make_instr("(align expr expr)", 2, make_literal(WORD_SIZE), make_literal(0)));
 	union expression *t;
 	{foreach(t, n->function.locals) {
 		emit(make_instr("(label name)", 1, t));
-		emit(make_instr("(skip expr expr)", 2, make_constant(WORD_SIZE), make_constant(0)));
+		emit(make_instr("(skip expr expr)", 2, make_literal(WORD_SIZE), make_literal(0)));
 	}}
 	{foreach(t, n->function.parameters) {
 		bool symbol_defined = false;
@@ -267,7 +267,7 @@ union expression *generate_toplevel(union expression *n, list toplevel_function_
 		if(!symbol_defined) {
 			emit(make_instr("(global sym)", 1, t));
 			emit(make_instr("(label name)", 1, t));
-			emit(make_instr("(skip expr expr)", 2, make_constant(WORD_SIZE), make_constant(0)));
+			emit(make_instr("(skip expr expr)", 2, make_literal(WORD_SIZE), make_literal(0)));
 		}
 	}}
 	emit(make_instr("(text)", 0));
@@ -280,7 +280,7 @@ union expression *generate_toplevel(union expression *n, list toplevel_function_
 
 int get_current_offset(union expression *function) {
 	if(length(function->function.locals) > 0) {
-		return ((union expression *) fst(function->function.locals))->reference.offset->constant.value;
+		return ((union expression *) fst(function->function.locals))->reference.offset->literal.value;
 	} else {
 		return 0;
 	}
@@ -317,7 +317,7 @@ union expression *vgenerate_function_expressions(union expression *n) {
 		
 		emit(make_instr("(pushq reg)", 1, use(rbp)));
 		emit(make_instr("(movq reg reg)", 2, use(rsp), use(rbp)));
-		emit(make_instr("(subq imm reg)", 2, make_constant(-get_current_offset(n)), use(rsp)));
+		emit(make_instr("(subq imm reg)", 2, make_literal(-get_current_offset(n)), use(rsp)));
 		
 		//Execute the function body
 		emit(n->function.expression);
@@ -334,7 +334,7 @@ union expression *vgenerate_function_expressions(union expression *n) {
 		emit(make_instr("(popq reg)", 1, use(r12)));
 		
 		emit(make_instr("(popq reg)", 1, use(r11)));
-		emit(make_instr("(addq imm reg)", 2, make_constant(6*WORD_SIZE), use(rsp)));
+		emit(make_instr("(addq imm reg)", 2, make_literal(6*WORD_SIZE), use(rsp)));
 		emit(make_instr("(pushq reg)", 1, use(r11)));
 		emit(make_instr("(ret)", 0));
 		emit(make_instr("(label name)", 1, after_reference));
@@ -368,14 +368,14 @@ union expression *vgenerate_function_expressions(union expression *n) {
 		if(length(n->invoke.arguments) > 0) {
 			emit(make_load(fst(n->invoke.arguments), 0, use(rdi), use(r10)));
 		}
-		emit(make_instr("(movq imm reg)", 2, make_constant(0), use(rax)));
+		emit(make_instr("(movq imm reg)", 2, make_literal(0), use(rax)));
 		
 		emit(make_load(n->invoke.reference, 0, use(r11), use(r10)));
 		emit(make_instr("(call reg)", 1, use(r11)));
 		
 		emit(make_store(use(rax), n->invoke.return_value, 0, use(r10)));
 		if(length(n->invoke.arguments) > 6) {
-			emit(make_instr("(addq imm reg)", 2, make_constant(WORD_SIZE * (length(n->invoke.arguments) - 6)), use(rsp)));
+			emit(make_instr("(addq imm reg)", 2, make_literal(WORD_SIZE * (length(n->invoke.arguments) - 6)), use(rsp)));
 		}
 		return container;
 	} else {
@@ -387,8 +387,8 @@ char *expr_to_string(union expression *n) {
 	switch(n->base.type) {
 		case reference: {
 			return n->reference.name;
-		} case constant: {
-			return cprintf("%d", n->constant.value);
+		} case literal: {
+			return cprintf("%d", n->literal.value);
 		} case instruction: {
 			char *str = cprintf("(%s", expr_to_string(fst(n->instruction.arguments)));
 			union expression *t;
@@ -548,7 +548,7 @@ void compile_expressions(char *outbin, list exprs, jmp_buf *handler) {
 	visit_expressions_with(&program, vlayout_frames);
 	visit_expressions_with(&program, vgenerate_references);
 	visit_expressions_with(&program, vgenerate_continuation_expressions);
-	visit_expressions_with(&program, vgenerate_constants);
+	visit_expressions_with(&program, vgenerate_literals);
 	visit_expressions_with(&program, vgenerate_ifs);
 	visit_expressions_with(&program, vgenerate_function_expressions);
 	program = generate_toplevel(program, toplevel_function_references);

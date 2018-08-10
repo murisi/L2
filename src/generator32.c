@@ -38,13 +38,13 @@ union expression *vlayout_frames(union expression *n) {
 			int parameter_offset = 20;
 			union expression *t;
 			{foreach(t, n->function.parameters) {
-				t->reference.offset = n->function.parent ? make_constant(parameter_offset) : NULL;
+				t->reference.offset = n->function.parent ? make_literal(parameter_offset) : NULL;
 				parameter_offset += WORD_SIZE;
 			}}
 			int local_offset = 0;
 			foreach(t, reverse(n->function.locals)) {
 				local_offset -= WORD_SIZE;
-				t->reference.offset = n->function.parent ? make_constant(local_offset) : NULL;
+				t->reference.offset = n->function.parent ? make_literal(local_offset) : NULL;
 			}
 			break;
 		} case continuation: case with: {
@@ -64,7 +64,7 @@ union expression *vlayout_frames(union expression *n) {
 }
 
 union expression *make_offset(union expression *a, int b) {
-	return make_instr("+", 2, a, make_constant(b));
+	return make_instr("+", 2, a, make_literal(b));
 }
 
 union expression *make_suffixed(union expression *ref, char *suffix) {
@@ -78,7 +78,7 @@ union expression *make_load(union expression *ref, int offset, union expression 
 			dest_reg));
 	} else if(generator_PIC) {
 		emit(make_instr("(movl (mem disp base) reg)", 3, make_suffixed(ref, "@GOT"), use(ebx), scratch_reg));
-		emit(make_instr("(movl (mem disp base) reg)", 3, make_constant(offset), scratch_reg, dest_reg));
+		emit(make_instr("(movl (mem disp base) reg)", 3, make_literal(offset), scratch_reg, dest_reg));
 	} else {
 		emit(make_instr("(movl (mem disp) reg)", 2, make_offset(ref, offset), dest_reg));
 	}
@@ -92,7 +92,7 @@ union expression *make_store(union expression *src_reg, union expression *ref, i
 			use(ebp)));
 	} else if(generator_PIC) {
 		emit(make_instr("(movl (mem disp base) reg)", 3, make_suffixed(ref, "@GOT"), use(ebx), scratch_reg));
-		emit(make_instr("(movl reg (mem disp base))", 3, src_reg, make_constant(offset), scratch_reg));
+		emit(make_instr("(movl reg (mem disp base))", 3, src_reg, make_literal(offset), scratch_reg));
 	} else {
 		emit(make_instr("(movl reg (mem disp))", 2, src_reg, make_offset(ref, offset)));
 	}
@@ -165,7 +165,7 @@ union expression *move_arguments(union expression *n, int offset) {
 	union expression *t;
 	foreach(t, n->jump.arguments) {
 		emit(make_load(t, 0, use(edx), use(esi)));
-		emit(make_instr("(movl reg (mem disp base))", 3, use(edx), make_constant(offset), use(ecx)));
+		emit(make_instr("(movl reg (mem disp base))", 3, use(edx), make_literal(offset), use(ecx)));
 		offset += WORD_SIZE;
 	}
 	return container;
@@ -210,11 +210,11 @@ union expression *vgenerate_continuation_expressions(union expression *n) {
 			} else {
 				emit(make_load(n->jump.reference, 0, use(ecx), use(edx)));
 				emit(move_arguments(n, CONT_SIZE));
-				emit(make_instr("(movl (mem disp base) reg)", 3, make_constant(CONT_EBX), use(ecx), use(ebx)));
-				emit(make_instr("(movl (mem disp base) reg)", 3, make_constant(CONT_ESI), use(ecx), use(esi)));
-				emit(make_instr("(movl (mem disp base) reg)", 3, make_constant(CONT_EDI), use(ecx), use(edi)));
-				emit(make_instr("(movl (mem disp base) reg)", 3, make_constant(CONT_CIR), use(ecx), use(edx)));
-				emit(make_instr("(movl (mem disp base) reg)", 3, make_constant(CONT_EBP), use(ecx), use(ebp)));
+				emit(make_instr("(movl (mem disp base) reg)", 3, make_literal(CONT_EBX), use(ecx), use(ebx)));
+				emit(make_instr("(movl (mem disp base) reg)", 3, make_literal(CONT_ESI), use(ecx), use(esi)));
+				emit(make_instr("(movl (mem disp base) reg)", 3, make_literal(CONT_EDI), use(ecx), use(edi)));
+				emit(make_instr("(movl (mem disp base) reg)", 3, make_literal(CONT_CIR), use(ecx), use(edx)));
+				emit(make_instr("(movl (mem disp base) reg)", 3, make_literal(CONT_EBP), use(ecx), use(ebp)));
 				emit(make_instr("(jmp reg)", 1, use(edx)));
 			}
 			return container;
@@ -225,11 +225,11 @@ union expression *vgenerate_continuation_expressions(union expression *n) {
 }
 
 //Must be used after use_return_reference and init_i386_registers
-union expression *vgenerate_constants(union expression *n) {
-	if(n->base.type == constant && n->constant.return_value) {
+union expression *vgenerate_literals(union expression *n) {
+	if(n->base.type == literal && n->literal.return_value) {
 		union expression *container = make_begin();
-		emit(make_instr("(movl imm reg)", 2, make_constant(n->constant.value), use(ecx)));
-		emit(make_store(use(ecx), n->constant.return_value, 0, use(esi)));
+		emit(make_instr("(movl imm reg)", 2, make_literal(n->literal.value), use(ecx)));
+		emit(make_store(use(ecx), n->literal.return_value, 0, use(esi)));
 		return container;
 	} else {
 		return n;
@@ -239,11 +239,11 @@ union expression *vgenerate_constants(union expression *n) {
 union expression *generate_toplevel(union expression *n, list toplevel_function_references) {
 	union expression *container = make_begin();
 	emit(make_instr("(bss)", 0));
-	emit(make_instr("(align expr expr)", 2, make_constant(WORD_SIZE), make_constant(0)));
+	emit(make_instr("(align expr expr)", 2, make_literal(WORD_SIZE), make_literal(0)));
 	union expression *t;
 	{foreach(t, n->function.locals) {
 		emit(make_instr("(label name)", 1, t));
-		emit(make_instr("(skip expr expr)", 2, make_constant(WORD_SIZE), make_constant(0)));
+		emit(make_instr("(skip expr expr)", 2, make_literal(WORD_SIZE), make_literal(0)));
 	}}
 	{foreach(t, n->function.parameters) {
 		bool symbol_defined = false;
@@ -256,7 +256,7 @@ union expression *generate_toplevel(union expression *n, list toplevel_function_
 		if(!symbol_defined) {
 			emit(make_instr("(global sym)", 1, t));
 			emit(make_instr("(label name)", 1, t));
-			emit(make_instr("(skip expr expr)", 2, make_constant(WORD_SIZE), make_constant(0)));
+			emit(make_instr("(skip expr expr)", 2, make_literal(WORD_SIZE), make_literal(0)));
 		}
 	}}
 	emit(make_instr("(text)", 0));
@@ -269,7 +269,7 @@ union expression *generate_toplevel(union expression *n, list toplevel_function_
 
 int get_current_offset(union expression *function) {
 	if(length(function->function.locals) > 0) {
-		return ((union expression *) fst(function->function.locals))->reference.offset->constant.value;
+		return ((union expression *) fst(function->function.locals))->reference.offset->literal.value;
 	} else {
 		return 0;
 	}
@@ -293,7 +293,7 @@ union expression *vgenerate_function_expressions(union expression *n) {
 		
 		emit(make_instr("(pushl reg)", 1, use(ebp)));
 		emit(make_instr("(movl reg reg)", 2, use(esp), use(ebp)));
-		emit(make_instr("(subl imm reg)", 2, make_constant(-get_current_offset(n)), use(esp)));
+		emit(make_instr("(subl imm reg)", 2, make_literal(-get_current_offset(n)), use(esp)));
 		
 		if(generator_PIC) {
 			emit(make_instr("(call rel)", 1, make_reference("get_pc_thunk")));
@@ -329,7 +329,7 @@ union expression *vgenerate_function_expressions(union expression *n) {
 		emit(make_instr("(call reg)", 1, use(ecx)));
 		
 		emit(make_store(use(eax), n->invoke.return_value, 0, use(edx)));
-		emit(make_instr("(addl imm reg)", 2, make_constant(WORD_SIZE * length(n->invoke.arguments)), use(esp)));
+		emit(make_instr("(addl imm reg)", 2, make_literal(WORD_SIZE * length(n->invoke.arguments)), use(esp)));
 		return container;
 	} else {
 		return n;
@@ -340,8 +340,8 @@ char *expr_to_string(union expression *n) {
 	switch(n->base.type) {
 		case reference: {
 			return n->reference.name;
-		} case constant: {
-			return cprintf("%d", n->constant.value);
+		} case literal: {
+			return cprintf("%d", n->literal.value);
 		} case instruction: {
 			char *str = cprintf("(%s", expr_to_string(fst(n->instruction.arguments)));
 			union expression *t;
@@ -510,7 +510,7 @@ void compile_expressions(char *outbin, list exprs, jmp_buf *handler) {
 	visit_expressions_with(&program, vlayout_frames);
 	visit_expressions_with(&program, vgenerate_references);
 	visit_expressions_with(&program, vgenerate_continuation_expressions);
-	visit_expressions_with(&program, vgenerate_constants);
+	visit_expressions_with(&program, vgenerate_literals);
 	visit_expressions_with(&program, vgenerate_ifs);
 	visit_expressions_with(&program, vgenerate_function_expressions);
 	program = generate_toplevel(program, toplevel_function_references);
