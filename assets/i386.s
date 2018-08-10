@@ -1,8 +1,10 @@
 .text
+.global bytes
+.global words
 .global get
-.global getchar
+.global getb
 .global set
-.global setchar
+.global setb
 .global add
 .global subtract
 .global multiply
@@ -20,12 +22,20 @@
 
 jmp l2rt_end
 
+bytes:
+movl $1, %eax
+ret
+
+words:
+movl $4, %eax
+ret
+
 get:
 movl 4(%esp), %eax
 movl 0(%eax), %eax
 ret
 
-getchar:
+getb:
 movl 4(%esp), %ecx
 xorl %eax, %eax
 movb 0(%ecx), %al
@@ -37,7 +47,7 @@ movl 8(%esp), %edx
 movl %edx, 0(%ecx)
 ret
 
-setchar:
+setb:
 movl 4(%esp), %ecx
 movb 8(%esp), %dl
 movb %dl, 0(%ecx)

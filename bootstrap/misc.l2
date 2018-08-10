@@ -38,17 +38,19 @@
 	(`(with return {(continuation aux (val)
 		(if (,[frst $l]) {aux (,[fst $l])} {return $val})) (,[fst $l])})))
 
-(function bytes () &1)
-
-(function words () &8)
-
 (function array (l)
-	(`(with return [allocate [* (,[fst $l]) [words]] return])))
+	(if [sexpr= [rrst $l] [nil]]
+		(`(with return [allocate [* (,[fst $l]) (,[frst $l])] return]))
+		(`(with return [allocate [* (,[fst $l]) [words]]
+			(continuation cont (arg)
+				(begin
+				(for (i &0 (,[fst $l])) [set (loc $arg $i [words]) (,[array [rst $l]])])
+				{return $arg}))]))))
 
-(function at (l)
-	(if [sexpr= [rst $l] [nil]]
-		[fst $l]
-		[at [lst (`[+ ($(,[fst $l])) [* (,[frfrst $l]) (,[ffrst $l])]]) [rrst $l]]]))
+(function loc (l)
+	(if [sexpr= [rrrst $l] [nil]]
+		(`[+ (,[fst $l]) [* (,[frst $l]) (,[frrst $l])]])
+		[loc [lst (`($[+ (,[fst $l]) [* (,[frst $l]) [words]]])) [rrst $l]]]))
 
 (function for (l)
 	(`(with return {(continuation aux ((,[ffst $l]))
