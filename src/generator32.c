@@ -443,7 +443,7 @@ void compile_object(char *outbin, char *in, jmp_buf *handler) {
 	char entryfn[] = ".entryXXXXXX.s";
 	FILE *entryfile = fdopen(mkstemps(entryfn, 2), "w+");
 	fputs(".section .init_array,\"aw\"\n" ".align 4\n" ".long privmain\n" ".text\n" ".globl main\n" "main:\n" "ret\n" "privmain:\n"
-		"pushl %esi\n" "pushl %edi\n" "pushl %ebx\n" "pushl %ebp\n" "movl %esp, %ebp\n", entry_file);
+		"pushl %esi\n" "pushl %edi\n" "pushl %ebx\n" "pushl %ebp\n" "movl %esp, %ebp\n", entryfile);
 	if(generator_PIC) {
 		fputs("jmp thunk_end\n" "get_pc_thunk:\n" "movl (%esp), %ebx\n" "ret\n" "thunk_end:\n" "call get_pc_thunk\n"
 			"addl $_GLOBAL_OFFSET_TABLE_, %ebx\n", entryfile);
@@ -541,6 +541,58 @@ void compile_expressions(char *outbin, list exprs, jmp_buf *handler) {
 	remove(sympairsfn);
 	compile_object(outbin, ofilefn, handler);
 	remove(ofilefn);
+}
+
+#define NM_BUFFER_SIZE 80
+
+/*
+ * Produces a shared library with functions that have exactly the same name as
+ * those in the shared library at library_path. The difference though is that
+ * these functions call the function void *compiler_resolve_symbol(char *) with
+ * their own name as the argument, and when compiler_resolve_symbol returns a
+ * function pointer, these functions forward control to it.
+ */
+char *generate_intercept(char *library_path, void *(*resolver)(char *), jmp_buf *handler) {
+	FILE *libraryfile = fopen(library_path, "r");
+	if(libraryfile == NULL) {
+		thelongjmp(*handler, make_missing_file(library_path));
+	}
+	char interceptsfn[] = ".interceptXXXXXX.s";
+	FILE *interceptfile = fdopen(mkstemps(interceptsfn, 2), "w+");
+	fprintf(interceptfile, ".text\n" "get_pc_thunk:\n" "movl (%%esp), %%ecx\n" "ret\n");
+	char sympairsfn[] = ".sympairsXXXXXX";
+	FILE *sympairsfile = fdopen(mkstemp(sympairsfn), "w+");
+	FILE *nm = popen(cprintf("nm -D -P %s", library_path), "r");
+	char buffer[NM_BUFFER_SIZE];
+	int i;
+	for(i = 0; fgets(buffer, NM_BUFFER_SIZE, nm); i++) {
+		int j;
+		for(j = 0; buffer[j] != ' '; j++);
+		buffer[j] = '\0';
+		fprintf(interceptfile, "funcname%i:\n" ".byte ", i);
+		for(j = 0; buffer[j]; j++) {
+			fprintf(interceptfile, "%#04x,", buffer[j]);
+		}
+		fprintf(interceptfile, "0x00\n" ".global thefunc%i\n" "thefunc%i:\n" "call get_pc_thunk\n"
+			"addl $_GLOBAL_OFFSET_TABLE_, %%ecx\n" "leal funcname%i@GOTOFF(%%ecx), %%ecx\n" "pushl %%ecx\n"
+			"movl $%010p, %%ecx\n" "call *%%ecx\n" "popl %%edx\n" "jmp *%%eax\n\n", i, i, i, resolver);
+		
+		fprintf(sympairsfile, "thefunc%i %s\n", i, buffer);
+	}
+	pclose(nm);
+	fclose(sympairsfile);
+	fclose(interceptfile);
+	
+	char interceptofn[] = ".interceptXXXXXX.o";
+	mkstemps(interceptofn, 2);
+	system(cprintf("musl-gcc -m32 -g -fPIC -c -o '%s' '%s'", interceptofn, interceptsfn));
+	remove(interceptsfn);
+	system(cprintf("objcopy --redefine-syms='%s' '%s'", sympairsfn, interceptofn));
+	remove(sympairsfn);
+	char *interceptsofn = cprintf("./.interceptXXXXXX.so");
+	mkstemps(interceptsofn, 3);
+	system(cprintf("musl-gcc -m32 -nostdlib -shared -o '%s' '%s'", interceptsofn, interceptofn));
+	return interceptsofn;
 }
 
 #undef WORD_SIZE
