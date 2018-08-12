@@ -590,7 +590,7 @@ void compile_expressions(char *outbin, list exprs, jmp_buf *handler) {
  * their own name as the argument, and when compiler_resolve_symbol returns a
  * function pointer, these functions forward control to it.
  */
-char *generate_intercept(char *library_path, jmp_buf *handler) {
+char *generate_intercept(char *library_path, void *(*resolver)(char *), jmp_buf *handler) {
 	FILE *libraryfile = fopen(library_path, "r");
 	if(libraryfile == NULL) {
 		thelongjmp(*handler, make_missing_file(library_path));
@@ -613,8 +613,8 @@ char *generate_intercept(char *library_path, jmp_buf *handler) {
 		}
 		fprintf(interceptfile, "0x00\n" ".global thefunc%i\n" "thefunc%i:\n" "pushq %%rax\n" "pushq %%rcx\n" "pushq %%rdx\n"
 			"pushq %%rsi\n" "pushq %%r8\n" "pushq %%r9\n" "pushq %%r10\n" "pushq %%rdi\n" "leaq funcname%i(%%rip), %%rdi\n"
-			"call compiler_resolve_symbol@PLT\n" "movq %%rax, %%r11\n" "popq %%rdi\n" "popq %%r10\n" "popq %%r9\n"
-			"popq %%r8\n" "popq %%rsi\n" "popq %%rdx\n" "popq %%rcx\n" "popq %%rax\n" "jmp *%%r11\n\n", i, i, i);
+			"movq $%010p, %%r11\n" "call *%%r11\n" "movq %%rax, %%r11\n" "popq %%rdi\n" "popq %%r10\n" "popq %%r9\n"
+			"popq %%r8\n" "popq %%rsi\n" "popq %%rdx\n" "popq %%rcx\n" "popq %%rax\n" "jmp *%%r11\n\n", i, i, i, resolver);
 		
 		fprintf(sympairsfile, "thefunc%i %s\n", i, buffer);
 	}

@@ -66,7 +66,7 @@ void *load(char *library_path, jmp_buf *handler) {
 	ensure_compile_libraries();
 	// By loading the intercept before the actual library, we gain control over
 	// how symbols are to be resolved.
-	void *intercepthandle = dlopen(generate_intercept(library_path, handler), RTLD_NOW | RTLD_GLOBAL);
+	void *intercepthandle = dlopen(generate_intercept(library_path, compiler_resolve_symbol, handler), RTLD_NOW | RTLD_GLOBAL);
 	void *handle = dlopen(library_path, RTLD_NOW | RTLD_LOCAL);
 	if(!handle) {
 		thelongjmp(*handler, make_environment(cprintf("%s", dlerror())));
