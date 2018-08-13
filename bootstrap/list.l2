@@ -1,0 +1,71 @@
+(function null () &0)
+
+(function false () &0)
+
+(function true () [not &0])
+
+(function list-structs () [+ [words] [words]])
+
+(function car (l) $l)
+
+(function cdr (l) [+ $l [words]])
+
+(function cddr (l) [cdr ($[cdr $l])])
+
+(function cdddr (l) [cdr ($[cddr $l])])
+
+(function cddddr (l) [cdr ($[cdddr $l])])
+
+(function cdddddr (l) [cdr ($[cddddr $l])])
+
+(function cddddddr (l) [cdr ($[cdddddr $l])])
+
+(function cadr (l) [car ($[cdr $l])])
+
+(function caddr (l) [car ($[cddr $l])])
+
+(function cadddr (l) [car ($[cdddr $l])])
+
+(function caddddr (l) [car ($[cddddr $l])])
+
+(function cadddddr (l) [car ($[cdddddr $l])])
+
+(function nil () (with return
+	(let (l [malloc [list-structs]]) (begin
+		[set [car $l] $l]
+		[set [cdr $l] [null]]
+		{return $l}))))
+
+(function nil? (l)
+	(if [= ($[cdr $l]) [null]] [true] [false]))
+
+(function append (data l) (with return (begin
+	(while [not [nil? $$l]] [set l [cdr $$l]])
+	[set $l [malloc [list-structs]]]
+	[set [car $$l] $data]
+	[set [cdr $$l] [nil]]
+	{return [car $$l]})))
+
+(function cons (data rest) (with return
+	(let (l [malloc [list-structs]]) (begin
+		[set [car $l] $data]
+		[set [cdr $l] $rest]
+		{return $l}))))
+
+(function append-list (fst-ref snd) (begin
+	(while [not nil? $$fst-ref]
+		[set fst-ref [cdr $$fst-ref]])
+	[set $fst-ref $snd]))
+
+(function prepend (data l-ref)
+	(let (ret [malloc [list-structs]]) (begin
+		[set [car $ret] $data]
+		[set [cdr $ret] $$l-ref]
+		[set $l-ref $ret])))
+
+(function length (l) (with return
+	(let (size &0) (begin
+		(while [not [nil? $l]] (begin
+			[set l ($[cdr $l])]
+			[set size [+ &1 $size]]))
+		{return $size}))))

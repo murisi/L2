@@ -98,14 +98,11 @@ void append_list(list *fst, list snd) {
 	*fst = snd;
 }
 
-////////////////////////////////////////////////////Should return address of data within list
-
-void *prepend(void *data, list *l) {
+void prepend(void *data, list *l) {
 	list ret = malloc(sizeof(struct _list_));
 	ret->fst = data;
 	ret->rst = *l;
 	*l = ret;
-	return data;
 }
 
 list address_list(list l) {
