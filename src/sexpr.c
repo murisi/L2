@@ -1,9 +1,16 @@
 #include "stdlib.h"
 #include "stdarg.h"
+#include "stdint.h"
 
-#define true (~((int) 0))
-#define false ((int) 0)
-typedef int bool;
+#if __x86_64__
+	typedef int64_t bool;
+#endif
+#if __i386__
+	typedef int32_t bool;
+#endif
+
+#define true (~((bool) 0))
+#define false ((bool) 0)
 #include "list.c"
 
 struct character {
