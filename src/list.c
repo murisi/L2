@@ -107,7 +107,6 @@ void prepend(void *data, list *l) {
 
 list address_list(list l) {
 	list mapped = nil();
-	void **d;
 	for(; !is_nil(l); l = l->rst) {
 		append(&l->fst, &mapped);
 	}
