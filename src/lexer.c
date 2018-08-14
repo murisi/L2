@@ -99,7 +99,7 @@ void print_expr_list(list d) {
 		if(is_lst(_fst)) {
 			print_expr_list((list) _fst);
 		} else {
-			printf("%c", _fst->character);
+			printf("%c", _fst->character.character);
 		}
 		printf(" . ");
 		print_expr_list(rst(d));
