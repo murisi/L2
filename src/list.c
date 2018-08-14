@@ -71,7 +71,7 @@ void set_frst(list l, void *data) {
 		_foreach_s = _foreach_s->rst, _foreach_t = _foreach_t->rst)
 
 #define foreachlist(w, t, u) \
-	w = &(u); \
+	w = u; \
 	for(; !is_nil(*w) ? (t = (*w)->fst, true) : false; w = &((*w)->rst))
 
 void *append(void *data, list *l) {
@@ -145,7 +145,7 @@ list reverse(list l) {
 list *exists(bool (*pred)(void *, void *), list *l, void *ctx) {
 	void *d;
 	list *s;
-	foreachlist(s, d, *l) {
+	foreachlist(s, d, l) {
 		if(pred(d, ctx)) {
 			return s;
 		}

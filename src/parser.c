@@ -182,7 +182,7 @@ void merge_onto(list src, list *dest) {
 
 jmp_buf *expand_expressions_handler;
 
-void expand_expressions(list expansion_lists) {
+void expand_expressions(list *expansion_lists) {
 	list expansions, *remaining_expansion_lists;
 	foreachlist(remaining_expansion_lists, expansions, expansion_lists) {
 		list urgent_expansion_lists = nil();

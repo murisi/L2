@@ -144,6 +144,6 @@ void compile(char *outbin, char *inl2, jmp_buf *handler) {
 	fclose(l2file);
 	
 	expand_expressions_handler = handler;
-	expand_expressions(expansion_lists);
+	expand_expressions(&expansion_lists);
 	compile_expressions(outbin, expressions, handler);
 }

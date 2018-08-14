@@ -14,7 +14,7 @@ union expression *vfind_multiple_definitions(union expression *e) {
 	list *partial;
 	switch(e->base.type) {
 		case begin: {
-			foreachlist(partial, t, e->begin.expressions) {
+			foreachlist(partial, t, &e->begin.expressions) {
 				if(t->base.type == function && exists(function_named, &(*partial)->rst, t->function.reference->reference.source_name)) {
 					thelongjmp(*vfind_multiple_definitions_handler,
 						make_multiple_definition(t->function.reference->reference.source_name));
@@ -23,7 +23,7 @@ union expression *vfind_multiple_definitions(union expression *e) {
 			break;
 		} case continuation: case function: {
 			list ref_with_params = lst(e->continuation.reference, e->continuation.parameters);
-			foreachlist(partial, t, ref_with_params) {
+			foreachlist(partial, t, &ref_with_params) {
 				if(exists(reference_named, &(*partial)->rst, t->reference.source_name)) {
 					thelongjmp(*vfind_multiple_definitions_handler, make_multiple_definition(t->reference.source_name));
 				}
@@ -299,7 +299,7 @@ union expression *vmerge_begins(union expression *n) {
 		union expression *t;
 		list *l;
 		
-		foreachlist(l, t, n->begin.expressions) {
+		foreachlist(l, t, &n->begin.expressions) {
 			repeat:
 			if(t->base.type == begin) {
 				append_list(&t->begin.expressions, rst(*l));
