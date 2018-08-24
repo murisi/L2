@@ -65,6 +65,8 @@ int main(int argc, char *argv[]) {
 	env[0] = make_symbol(NULL, NULL);
 	compile(library_name, argv[1], &env[0], &handler);
 	Library *lib = load_library(fopen(library_name, "r"), (void *) 0x0UL, (void *) ~0x0UL);
+	//mutate_symbol(lib, make_symbol("putchar", putchar));
+	run_library(lib);
 	fclose(unload_library(lib));
 	return 0;
 }
