@@ -5,7 +5,7 @@
 #include "string.h"
 #include "limits.h"
 #include "stdlib.h"
-#include "dlfcn.h"
+#include "library.c"
 
 //Essentially longjmp and setjmp with a pointer argument
 void *jmp_value = NULL;

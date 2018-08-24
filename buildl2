@@ -1,29 +1,29 @@
 #!/usr/bin/env bash
 mkdir -p bin
 
-musl-gcc -fPIC -g -c -o bin/sexpr.o src/sexpr.c
+musl-gcc --static -g -c -o bin/sexpr.o src/sexpr.c
 objcopy --redefine-syms=assets/l2_sym_pairs bin/sexpr.o
-musl-gcc -shared -o bin/sexpr.so bin/sexpr.o
+ar rcs bin/sexpr.a bin/sexpr.o
 rm bin/sexpr.o
 
-musl-gcc -fPIC -g -c -o bin/l2compile.o src/compile.c
+musl-gcc --static -g -c -Idynamize/src -o bin/l2compile.o src/compile.c
 objcopy --redefine-syms=assets/l2_sym_pairs bin/l2compile.o
-musl-gcc -shared -o bin/l2compile.so bin/l2compile.o
+ar rcs bin/l2compile.a bin/l2compile.o
 rm bin/l2compile.o
 
-musl-gcc -g -c -o bin/l2evaluate.o src/evaluate.c
+musl-gcc --static -g -c -Idynamize/src -o bin/l2evaluate.o src/evaluate.c
 objcopy --redefine-syms=assets/l2_sym_pairs bin/l2evaluate.o
-musl-gcc -g -o bin/l2evaluate bin/l2evaluate.o -ldl
+musl-gcc -g -o bin/l2evaluate bin/l2evaluate.o
 rm bin/l2evaluate.o
 
 if [ $(uname -m) == 'x86_64' ]; then
-	musl-gcc -g -c -o bin/x86_64.o assets/x86_64.s
+	musl-gcc --static -g -c -o bin/x86_64.o assets/x86_64.s
 	objcopy --redefine-syms=assets/arch_sym_pairs bin/x86_64.o
-	musl-gcc -shared -o bin/x86_64.so bin/x86_64.o
+	ar rcs bin/x86_64.a bin/x86_64.o
 	rm bin/x86_64.o
 else
-	musl-gcc -g -c -o bin/i386.o assets/i386.s
+	musl-gcc --static -g -c -o bin/i386.o assets/i386.s
 	objcopy --redefine-syms=assets/arch_sym_pairs bin/i386.o
-	musl-gcc -shared -o bin/i386.so bin/i386.o
+	ar rcs bin/i386.a bin/i386.o
 	rm bin/i386.o
 fi
