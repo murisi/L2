@@ -63,8 +63,9 @@ int main(int argc, char *argv[]) {
 	remove(library_name);
 	Symbol env = make_symbol(NULL, NULL);
 	compile(library_name, argv[1], &env, &handler);
+	
 	Library *lib = load_library(library_name, (void *) 0x0UL, (void *) ~0x0UL);
-	mutate_symbol(lib, make_symbol("putchar", putchar));
+	//mutate_symbol(lib, make_symbol("putchar", putchar));
 	mutate_symbol(lib, make_symbol("compile-l2", compile));
 	mutate_symbol(lib, make_symbol("load-library", load_library));
 	mutate_symbol(lib, make_symbol("mutable-symbols", mutable_symbols));
@@ -74,7 +75,20 @@ int main(int argc, char *argv[]) {
 	mutate_symbol(lib, make_symbol("mutate-symbol", mutate_symbol));
 	mutate_symbol(lib, make_symbol("run-library", run_library));
 	mutate_symbol(lib, make_symbol("unload-library", unload_library));
+	
+	Library *arch_lib = load_library("bin/arch.a",
+		sat_sub(lib->segs, 0x0000000000FFFFFFUL),
+		sat_add(lib->segs, 0x0000000000FFFFFFUL));
+	int alisc = immutable_symbol_count(arch_lib);
+	Symbol alis[alisc];
+	immutable_symbols(arch_lib, alis);
+	int j;
+	for(j = 0; j < alisc; j++) {
+		mutate_symbol(lib, alis[j]);
+	}
+	
 	run_library(lib);
+	unload_library(arch_lib);
 	unload_library(lib);
 	remove(library_name);
 	return 0;
