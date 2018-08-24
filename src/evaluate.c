@@ -60,6 +60,7 @@ int main(int argc, char *argv[]) {
 	
 	char *library_name = cprintf("%s", "./.libXXXXXX.a");
 	mkstemps(library_name, 2);
+	remove(library_name);
 	Symbol env[1];
 	env[0] = make_symbol(NULL, NULL);
 	compile(library_name, argv[1], &env[0], &handler);
