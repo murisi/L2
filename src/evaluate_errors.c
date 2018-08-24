@@ -1,16 +1,10 @@
-#define NO 0
 #define ARGUMENTS 7
-
-struct no_error {
-	int type;
-};
 
 struct arguments_error {
 	int type;
 };
 
 union evaluate_error {
-	struct no_error no;
 	struct missing_file_error missing_file;
 	struct arguments_error arguments;
 	struct param_count_mismatch_error param_count_mismatch;
@@ -19,12 +13,6 @@ union evaluate_error {
 	struct multiple_definition_error multiple_definition;
 	struct environment_error environment;
 };
-
-struct no_error *make_no() {
-	struct no_error *err = malloc(sizeof(struct no_error));
-	err->type = NO;
-	return err;
-}
 
 struct arguments_error *make_arguments() {
 	struct arguments_error *err = malloc(sizeof(struct arguments_error));
