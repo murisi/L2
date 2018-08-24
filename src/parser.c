@@ -27,10 +27,10 @@ list *list_at(int index, list *l) {
 }
 
 #if __x86_64__
-	#define WORD_SIZE 64
+	#define WORD_HEX_LEN 16
 #endif
 #if __i386__
-	#define WORD_SIZE 32
+	#define WORD_HEX_LEN 8
 #endif
 
 /*
@@ -113,17 +113,46 @@ void build_syntax_tree(list d, union expression **s) {
 		char *str;
 		if(length(d) != 2) {
 			thelongjmp(*build_syntax_tree_handler, make_special_form(d, NULL));
-		} else if(!is_string(frst(d)) || strlen(str = to_string(frst(d))) != WORD_SIZE) {
+		} else if(!is_string(frst(d)) || strlen(str = to_string(frst(d))) != WORD_HEX_LEN) {
 			thelongjmp(*build_syntax_tree_handler, make_special_form(d, frst(d)));
 		}
 	
 		(*s)->literal.type = literal;
 		(*s)->literal.value = 0;
-		int i;
+		unsigned long int i;
 		for(i = 0; i < strlen(str); i++) {
-			if(str[strlen(str) - i - 1] == '1') {
-				(*s)->literal.value |= (1 << i);
-			} else if(str[strlen(str) - i - 1] != '0') {
+			(*s)->literal.value <<= 4;
+			if(str[i] == 'F') {
+				(*s)->literal.value += 0xF;
+			} else if(str[i] == 'E') {
+				(*s)->literal.value += 0xE;
+			} else if(str[i] == 'D') {
+				(*s)->literal.value += 0xD;
+			} else if(str[i] == 'C') {
+				(*s)->literal.value += 0xC;
+			} else if(str[i] == 'B') {
+				(*s)->literal.value += 0xB;
+			} else if(str[i] == 'A') {
+				(*s)->literal.value += 0xA;
+			} else if(str[i] == '9') {
+				(*s)->literal.value += 0x9;
+			} else if(str[i] == '8') {
+				(*s)->literal.value += 0x8;
+			} else if(str[i] == '7') {
+				(*s)->literal.value += 0x7;
+			} else if(str[i] == '6') {
+				(*s)->literal.value += 0x6;
+			} else if(str[i] == '5') {
+				(*s)->literal.value += 0x5;
+			} else if(str[i] == '4') {
+				(*s)->literal.value += 0x4;
+			} else if(str[i] == '3') {
+				(*s)->literal.value += 0x3;
+			} else if(str[i] == '2') {
+				(*s)->literal.value += 0x2;
+			} else if(str[i] == '1') {
+				(*s)->literal.value += 0x1;
+			} else if(str[i] != '0') {
 				thelongjmp(*build_syntax_tree_handler, make_special_form(d, frst(d)));
 			}
 		}
@@ -150,7 +179,7 @@ void build_syntax_tree(list d, union expression **s) {
 	}
 }
 
-#undef WORD_SIZE
+#undef WORD_HEX_LEN
 
 /*
  * Argument src is a list of lists and dest is a pointer to a list of lists. The
@@ -232,7 +261,7 @@ void expand_expressions(list *expansion_lists, Symbol *env) {
 		char *outfn = cprintf("%s", "./.libXXXXXX.a");
 		mkstemps(outfn, 2);
 		compile_expressions(outfn, expander_containers, build_syntax_tree_handler);
-		Library *handle = load_library(fopen(outfn, "r"), (void *) 0x0UL, (void *) ~0x0UL);
+		Library *handle = load_library(outfn, (void *) 0x0UL, (void *) ~0x0UL);
 		for(; env->name && env->address; env++) {
 			mutate_symbol(handle, *env);
 		}
@@ -248,7 +277,7 @@ void expand_expressions(list *expansion_lists, Symbol *env) {
 			build_syntax_tree_under(transformed, expansion, (*expansion)->non_primitive.parent);
 			merge_onto(build_syntax_tree_expansion_lists, &urgent_expansion_lists);
 		}
-		fclose(unload_library(handle));
+		unload_library(handle);
 		remove(outfn);
 		
 		append_list(&urgent_expansion_lists, (*remaining_expansion_lists)->rst);

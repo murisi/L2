@@ -63,7 +63,8 @@ int main(int argc, char *argv[]) {
 	remove(library_name);
 	Symbol env = make_symbol(NULL, NULL);
 	compile(library_name, argv[1], &env, &handler);
-	Library *lib = load_library(fopen(library_name, "r"), (void *) 0x0UL, (void *) ~0x0UL);
+	Library *lib = load_library(library_name, (void *) 0x0UL, (void *) ~0x0UL);
+	mutate_symbol(lib, make_symbol("putchar", putchar));
 	mutate_symbol(lib, make_symbol("compile-l2", compile));
 	mutate_symbol(lib, make_symbol("load-library", load_library));
 	mutate_symbol(lib, make_symbol("mutable-symbols", mutable_symbols));
@@ -74,6 +75,7 @@ int main(int argc, char *argv[]) {
 	mutate_symbol(lib, make_symbol("run-library", run_library));
 	mutate_symbol(lib, make_symbol("unload-library", unload_library));
 	run_library(lib);
-	fclose(unload_library(lib));
+	unload_library(lib);
+	remove(library_name);
 	return 0;
 }

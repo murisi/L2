@@ -1,6 +1,4 @@
 .text
-.global words
-.global bytes
 .global get
 .global getb
 .global set
@@ -21,14 +19,6 @@
 .global allocate
 
 jmp l2rt_end
-
-words:
-movq $8, %rax
-ret
-
-bytes:
-movq $1, %rax
-ret
 
 get:
 movq 0(%rdi), %rax
