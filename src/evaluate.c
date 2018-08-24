@@ -60,7 +60,10 @@ int main(int argc, char *argv[]) {
 	
 	char *library_name = cprintf("%s", "./.libXXXXXX.a");
 	mkstemps(library_name, 2);
-	compile(library_name, argv[1], &handler);
-	load(library_name, &handler);
+	Symbol env[1];
+	env[0] = make_symbol(NULL, NULL);
+	compile(library_name, argv[1], &env[0], &handler);
+	Library *lib = load_library(fopen(library_name, "r"), (void *) 0x0UL, (void *) ~0x0UL);
+	fclose(unload_library(lib));
 	return 0;
 }

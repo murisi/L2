@@ -171,6 +171,37 @@ void merge_onto(list src, list *dest) {
 }
 
 /*
+ * Gets the address of the symbol with name name in the library lib.
+ */
+void *get_symbol(Library *lib, char *name) {
+	int i, isc = immutable_symbol_count(lib);
+	Symbol is[isc];
+	immutable_symbols(lib, is);
+	for(i = 0; i < isc; i++) {
+		if(!strcmp(is[i].name, name)) {
+			return is[i].address;
+		}
+	}
+}
+
+/*
+ * Saturated subtraction: clamps to 0 if result of subtraction would have been less than it.
+ */
+void *sat_sub(void *ptr, uintptr_t b) {
+	void *ans = ptr - b;
+	uintptr_t z = 0;
+	return ans > ptr ? ((void *) z) : ans;
+}
+
+/*
+ * Saturated addition: clamps to ~0 if result of subtraction would have been more than it.
+ */
+void *sat_add(void *ptr, uintptr_t b) {
+	void *ans = ptr + b;
+	return ans < ptr ? ((void *) -1) : ans;
+}
+
+/*
  * Does the expansions in the expansions lists. For the purposes of efficiency,
  * the first expansion list is compiled and sent to the assembler together.
  * With the expanders compiled, the expansions are done, and the resulting list
@@ -182,7 +213,7 @@ void merge_onto(list src, list *dest) {
 
 jmp_buf *expand_expressions_handler;
 
-void expand_expressions(list *expansion_lists) {
+void expand_expressions(list *expansion_lists, Symbol *env) {
 	list expansions, *remaining_expansion_lists;
 	foreachlist(remaining_expansion_lists, expansions, expansion_lists) {
 		list urgent_expansion_lists = nil();
@@ -198,14 +229,17 @@ void expand_expressions(list *expansion_lists) {
 			append(expander_container->function.reference->reference.source_name, &expander_container_names);
 		}
 		
-		char *outfn = cprintf("%s", "./.libXXXXXX.so");
-		mkstemps(outfn, 3);
+		char *outfn = cprintf("%s", "./.libXXXXXX.a");
+		mkstemps(outfn, 2);
 		compile_expressions(outfn, expander_containers, build_syntax_tree_handler);
-		void *handle = load(outfn, build_syntax_tree_handler);
+		Library *handle = load_library(fopen(outfn, "r"), (void *) 0x0UL, (void *) ~0x0UL);
+		for(; env->name && env->address; env++) {
+			mutate_symbol(handle, *env);
+		}
 		
 		char *expander_container_name;
 		foreachzipped(expansion, expander_container_name, expansions, expander_container_names) {
-			list (*(*macro_container)())(list) = dlsym(handle, expander_container_name);
+			list (*(*macro_container)())(list) = get_symbol(handle, expander_container_name);
 			list (*macro)(list) = macro_container();
 			list transformed = macro((*expansion)->non_primitive.argument);
 			
@@ -214,7 +248,7 @@ void expand_expressions(list *expansion_lists) {
 			build_syntax_tree_under(transformed, expansion, (*expansion)->non_primitive.parent);
 			merge_onto(build_syntax_tree_expansion_lists, &urgent_expansion_lists);
 		}
-		unload(outfn, build_syntax_tree_handler);
+		fclose(unload_library(handle));
 		remove(outfn);
 		
 		append_list(&urgent_expansion_lists, (*remaining_expansion_lists)->rst);

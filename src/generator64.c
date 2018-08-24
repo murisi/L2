@@ -256,25 +256,25 @@ union expression *generate_toplevel(union expression *n, list toplevel_function_
 		emit(make_instr("(label name)", 1, t));
 		emit(make_instr("(skip expr expr)", 2, make_literal(WORD_SIZE), make_literal(0)));
 	}}
-	{foreach(t, n->function.parameters) {
-		bool symbol_defined = false;
-		struct library *l;
-		foreach(l, compile_libraries) {
-			if(dlsym(l->handle, t->reference.source_name)) {
-				symbol_defined = true;
-			}
-		}
-		if(!symbol_defined) {
-			emit(make_instr("(global sym)", 1, t));
-			emit(make_instr("(label name)", 1, t));
-			emit(make_instr("(skip expr expr)", 2, make_literal(WORD_SIZE), make_literal(0)));
-		}
-	}}
 	emit(make_instr("(text)", 0));
 	foreach(t, toplevel_function_references) {
 		emit(make_instr("(global sym)", 1, t));
 	}
+	emit(make_instr("(pushq reg)", 1, use(r12)));
+	emit(make_instr("(pushq reg)", 1, use(r13)));
+	emit(make_instr("(pushq reg)", 1, use(r14)));
+	emit(make_instr("(pushq reg)", 1, use(r15)));
+	emit(make_instr("(pushq reg)", 1, use(rbx)));
+	emit(make_instr("(pushq reg)", 1, use(rbp)));
+	emit(make_instr("(movq reg reg)", 2, use(rsp), use(rbp)));
 	emit(n->function.expression);
+	emit(make_instr("(leave)", 0));
+	emit(make_instr("(popq reg)", 1, use(rbx)));
+	emit(make_instr("(popq reg)", 1, use(r15)));
+	emit(make_instr("(popq reg)", 1, use(r14)));
+	emit(make_instr("(popq reg)", 1, use(r13)));
+	emit(make_instr("(popq reg)", 1, use(r12)));
+	emit(make_instr("(ret)", 0));
 	return container;
 }
 
@@ -482,34 +482,6 @@ void print_assembly(list generated_expressions, FILE *out) {
  * an executable.
  */
 
-void compile_object(char *outbin, char *in, jmp_buf *handler) {
-	char entryfn[] = ".entryXXXXXX.s";
-	FILE *entryfile = fdopen(mkstemps(entryfn, 2), "w+");
-	fputs(".section .init_array,\"aw\"\n" ".align 8\n" ".quad privmain\n" ".text\n" ".globl main\n" "main:\n" "ret\n" "privmain:\n"
-		"pushq %r12\n" "pushq %r13\n" "pushq %r14\n" "pushq %r15\n" "pushq %rbx\n" "pushq %rbp\n" "movq %rsp, %rbp\n", entryfile);
-	fclose(entryfile);
-
-	char exitfn[] = ".exitXXXXXX.s";
-	FILE *exitfile = fdopen(mkstemps(exitfn, 2), "w+");
-	fputs("leave\n" "popq %rbx\n" "popq %r15\n" "popq %r14\n" "popq %r13\n" "popq %r12\n" "movq $0, %rax\n" "ret\n", exitfile);
-	fclose(exitfile);
-	
-	system(cprintf("musl-gcc -m64 -g -o '%s.o' -c '%s'", entryfn, entryfn));
-	remove(entryfn);
-	system(cprintf("musl-gcc -m64 -g -o '%s.o' -c '%s'", exitfn, exitfn));
-	remove(exitfn);
-	
-	char *library_path_string = "";
-	struct library *lib;
-	foreach(lib, compile_libraries) {
-		library_path_string = cprintf("%s \"%s\"", library_path_string, lib->path);
-	}
-	system(cprintf("musl-gcc -m64 -pie -Wl,-E -o '%s' '%s.o' '%s' '%s.o' %s 2>&1 | grep -v \"type and size of dynamic symbol\" 1>&2",
-		outbin, entryfn, in, exitfn, library_path_string));
-	remove(cprintf("%s.o", entryfn));
-	remove(cprintf("%s.o", exitfn));
-}
-
 /*
  * Makes a new binary file at the path outbin from the list of primitive
  * expressions, exprs. The resulting binary file executes the list from top to
@@ -544,7 +516,7 @@ void compile_expressions(char *outbin, list exprs, jmp_buf *handler) {
 	visit_expressions_with(&program, vescape_analysis);
 	program = use_return_value(program, generate_reference());
 	
-	generator_init(true);
+	generator_init(false);
 	visit_expressions_with(&program, vlayout_frames);
 	visit_expressions_with(&program, vgenerate_references);
 	visit_expressions_with(&program, vgenerate_continuation_expressions);
@@ -577,7 +549,7 @@ void compile_expressions(char *outbin, list exprs, jmp_buf *handler) {
 	fclose(sympairsfile);
 	system(cprintf("objcopy --redefine-syms='%s' '%s'", sympairsfn, ofilefn));
 	remove(sympairsfn);
-	compile_object(outbin, ofilefn, handler);
+	system(cprintf("ar rcs '%s' '%s'", outbin, ofilefn));
 	remove(ofilefn);
 }
 
