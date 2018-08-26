@@ -1,6 +1,34 @@
 bool generator_PIC;
 union expression *rbp, *rsp, *r12, *r13, *r14, *r15, *rip, *r11, *r10, *rax, *r9, *r8, *rdi, *rsi, *rdx, *rcx, *rbx;
 
+#define LEAQ_OF_MDB_INTO_REG 0
+#define MOVQ_FROM_REG_INTO_MDB 1
+#define JMP_REL 2
+#define MOVQ_MDB_TO_REG 3
+#define PUSHQ_REG 4
+#define MOVQ_REG_TO_REG 5
+#define SUBQ_IMM_FROM_REG 6
+#define ADDQ_IMM_TO_REG 7
+#define POPQ_REG 8
+#define LEAVE 9
+#define RET 10
+#define CALL_REL 11
+#define JMP_TO_REG 12
+#define JE_REL 13
+#define ORQ_REG_TO_REG 14
+#define MOVQ_IMM_TO_REG 15
+#define MOVQ_MD_TO_REG 16
+#define CALL_REG 17
+#define MOVQ_REG_TO_MD 18
+#define LEAQ_OF_MD_INTO_REG 19
+#define LABEL 20
+#define GLOBAL 21
+#define SKIP_EXPR_EXPR 22
+#define ALIGN_EXPR_EXPR 23
+#define BSS 24
+#define TEXT 25
+#define ADD 26
+
 /*
  * Initializes the generator. If PIC is true, then generator will produce
  * position independent 64-bit code. Otherwise it will generate 64-bit
@@ -71,7 +99,7 @@ union expression *vlayout_frames(union expression *n) {
 }
 
 union expression *make_offset(union expression *a, int b) {
-	return make_instr("+", 2, a, make_literal(b));
+	return make_instr(ADD, 2, a, make_literal(b));
 }
 
 union expression *make_suffixed(union expression *ref, char *suffix) {
@@ -81,13 +109,13 @@ union expression *make_suffixed(union expression *ref, char *suffix) {
 union expression *make_load(union expression *ref, int offset, union expression *dest_reg, union expression *scratch_reg) {
 	union expression *container = make_begin();
 	if(ref->reference.referent->reference.offset) {
-		emit(make_instr("(movq (mem disp base) reg)", 3, make_offset(ref->reference.referent->reference.offset, offset), use(rbp),
+		emit(make_instr(MOVQ_MDB_TO_REG, 3, make_offset(ref->reference.referent->reference.offset, offset), use(rbp),
 			dest_reg));
 	} else if(generator_PIC) {
-		emit(make_instr("(movq (mem disp base) reg)", 3, make_suffixed(ref, "@GOTPCREL"), use(rip), scratch_reg));
-		emit(make_instr("(movq (mem disp base) reg)", 3, make_literal(offset), scratch_reg, dest_reg));
+		emit(make_instr(MOVQ_MDB_TO_REG, 3, make_suffixed(ref, "@GOTPCREL"), use(rip), scratch_reg));
+		emit(make_instr(MOVQ_MDB_TO_REG, 3, make_literal(offset), scratch_reg, dest_reg));
 	} else {
-		emit(make_instr("(movq (mem disp) reg)", 2, make_offset(ref, offset), dest_reg));
+		emit(make_instr(MOVQ_MD_TO_REG, 2, make_offset(ref, offset), dest_reg));
 	}
 	return container;
 }
@@ -95,13 +123,13 @@ union expression *make_load(union expression *ref, int offset, union expression 
 union expression *make_store(union expression *src_reg, union expression *ref, int offset, union expression *scratch_reg) {
 	union expression *container = make_begin();
 	if(ref->reference.referent->reference.offset) {
-		emit(make_instr("(movq reg (mem disp base))", 3, src_reg, make_offset(ref->reference.referent->reference.offset, offset),
+		emit(make_instr(MOVQ_FROM_REG_INTO_MDB, 3, src_reg, make_offset(ref->reference.referent->reference.offset, offset),
 			use(rbp)));
 	} else if(generator_PIC) {
-		emit(make_instr("(movq (mem disp base) reg)", 3, make_suffixed(ref, "@GOTPCREL"), use(rip), scratch_reg));
-		emit(make_instr("(movq reg (mem disp base))", 3, src_reg, make_literal(offset), scratch_reg));
+		emit(make_instr(MOVQ_MDB_TO_REG, 3, make_suffixed(ref, "@GOTPCREL"), use(rip), scratch_reg));
+		emit(make_instr(MOVQ_FROM_REG_INTO_MDB, 3, src_reg, make_literal(offset), scratch_reg));
 	} else {
-		emit(make_instr("(movq reg (mem disp))", 2, src_reg, make_offset(ref, offset)));
+		emit(make_instr(MOVQ_REG_TO_MD, 2, src_reg, make_offset(ref, offset)));
 	}
 	return container;
 }
@@ -112,16 +140,16 @@ union expression *vgenerate_ifs(union expression *n) {
 		union expression *container = make_begin();
 		
 		emit(make_load(n->_if.condition, 0, use(r10), use(r13)));
-		emit(make_instr("(orq reg reg)", 2, use(r10), use(r10)));
+		emit(make_instr(ORQ_REG_TO_REG, 2, use(r10), use(r10)));
 		
 		union expression *alternate_label = generate_reference();
-		emit(make_instr("(je rel)", 1, alternate_label));
+		emit(make_instr(JE_REL, 1, alternate_label));
 		emit(n->_if.consequent);
 		union expression *end_label = generate_reference();
-		emit(make_instr("(jmp rel)", 1, end_label));
-		emit(make_instr("(label name)", 1, alternate_label));
+		emit(make_instr(JMP_REL, 1, end_label));
+		emit(make_instr(LABEL, 1, alternate_label));
 		emit(n->_if.alternate);
-		emit(make_instr("(label name)", 1, end_label));
+		emit(make_instr(LABEL, 1, end_label));
 		return container;
 	} else {
 		return n;
@@ -131,11 +159,11 @@ union expression *vgenerate_ifs(union expression *n) {
 union expression *make_load_address(union expression *ref, union expression *dest_reg) {
 	union expression *container = make_begin();
 	if(ref->reference.referent->reference.offset) {
-		emit(make_instr("(leaq (mem disp base) reg)", 3, ref->reference.referent->reference.offset, use(rbp), dest_reg));
+		emit(make_instr(LEAQ_OF_MDB_INTO_REG, 3, ref->reference.referent->reference.offset, use(rbp), dest_reg));
 	} else if(generator_PIC) {
-		emit(make_instr("(movq (mem disp base) reg)", 3, make_suffixed(ref, "@GOTPCREL"), use(rip), dest_reg));
+		emit(make_instr(MOVQ_MDB_TO_REG, 3, make_suffixed(ref, "@GOTPCREL"), use(rip), dest_reg));
 	} else {
-		emit(make_instr("(leaq (mem disp) reg)", 2, ref, dest_reg));
+		emit(make_instr(LEAQ_OF_MD_INTO_REG, 2, ref, dest_reg));
 	}
 	return container;
 }
@@ -174,7 +202,7 @@ union expression *move_arguments(union expression *n, int offset) {
 	union expression *t;
 	foreach(t, n->jump.arguments) {
 		emit(make_load(t, 0, use(r10), use(r13)));
-		emit(make_instr("(movq reg (mem disp base))", 3, use(r10), make_literal(offset), use(r11)));
+		emit(make_instr(MOVQ_FROM_REG_INTO_MDB, 3, use(r10), make_literal(offset), use(r11)));
 		offset += WORD_SIZE;
 	}
 	return container;
@@ -193,10 +221,10 @@ union expression *vgenerate_continuation_expressions(union expression *n) {
 			
 			//Skip the actual instructions of the continuation
 			union expression *after_reference = generate_reference();
-			emit(make_instr("(jmp rel)", 1, after_reference));
-			emit(make_instr("(label name)", 1, cont_instr_ref(n)));
+			emit(make_instr(JMP_REL, 1, after_reference));
+			emit(make_instr(LABEL, 1, cont_instr_ref(n)));
 			emit(n->continuation.expression);
-			emit(make_instr("(label name)", 1, after_reference));
+			emit(make_instr(LABEL, 1, after_reference));
 			return container;
 		} case with: {
 			union expression *container = make_begin();
@@ -204,7 +232,7 @@ union expression *vgenerate_continuation_expressions(union expression *n) {
 				emit(make_continuation(n));
 			}
 			emit(n->with.expression);
-			emit(make_instr("(label name)", 1, cont_instr_ref(n)));
+			emit(make_instr(LABEL, 1, cont_instr_ref(n)));
 			emit(make_load(fst(n->with.parameter), 0, use(r11), use(r10)));
 			emit(make_store(use(r11), n->with.return_value, 0, use(r10)));
 			return container;
@@ -215,18 +243,18 @@ union expression *vgenerate_continuation_expressions(union expression *n) {
 					emit(make_load_address(fst(n->jump.short_circuit->continuation.parameters), use(r11)));
 					emit(move_arguments(n, 0));
 				}
-				emit(make_instr("(jmp rel)", 1, cont_instr_ref(n->jump.short_circuit)));
+				emit(make_instr(JMP_REL, 1, cont_instr_ref(n->jump.short_circuit)));
 			} else {
 				emit(make_load(n->jump.reference, 0, use(r11), use(r10)));
 				emit(move_arguments(n, CONT_SIZE));
-				emit(make_instr("(movq (mem disp base) reg)", 3, make_literal(CONT_RBX), use(r11), use(rbx)));
-				emit(make_instr("(movq (mem disp base) reg)", 3, make_literal(CONT_R12), use(r11), use(r12)));
-				emit(make_instr("(movq (mem disp base) reg)", 3, make_literal(CONT_R13), use(r11), use(r13)));
-				emit(make_instr("(movq (mem disp base) reg)", 3, make_literal(CONT_R14), use(r11), use(r14)));
-				emit(make_instr("(movq (mem disp base) reg)", 3, make_literal(CONT_R15), use(r11), use(r15)));
-				emit(make_instr("(movq (mem disp base) reg)", 3, make_literal(CONT_CIR), use(r11), use(r10)));
-				emit(make_instr("(movq (mem disp base) reg)", 3, make_literal(CONT_RBP), use(r11), use(rbp)));
-				emit(make_instr("(jmp reg)", 1, use(r10)));
+				emit(make_instr(MOVQ_MDB_TO_REG, 3, make_literal(CONT_RBX), use(r11), use(rbx)));
+				emit(make_instr(MOVQ_MDB_TO_REG, 3, make_literal(CONT_R12), use(r11), use(r12)));
+				emit(make_instr(MOVQ_MDB_TO_REG, 3, make_literal(CONT_R13), use(r11), use(r13)));
+				emit(make_instr(MOVQ_MDB_TO_REG, 3, make_literal(CONT_R14), use(r11), use(r14)));
+				emit(make_instr(MOVQ_MDB_TO_REG, 3, make_literal(CONT_R15), use(r11), use(r15)));
+				emit(make_instr(MOVQ_MDB_TO_REG, 3, make_literal(CONT_CIR), use(r11), use(r10)));
+				emit(make_instr(MOVQ_MDB_TO_REG, 3, make_literal(CONT_RBP), use(r11), use(rbp)));
+				emit(make_instr(JMP_TO_REG, 1, use(r10)));
 			}
 			return container;
 		} default: {
@@ -239,7 +267,7 @@ union expression *vgenerate_continuation_expressions(union expression *n) {
 union expression *vgenerate_literals(union expression *n) {
 	if(n->base.type == literal && n->literal.return_value) {
 		union expression *container = make_begin();
-		emit(make_instr("(movq imm reg)", 2, make_literal(n->literal.value), use(r11)));
+		emit(make_instr(MOVQ_IMM_TO_REG, 2, make_literal(n->literal.value), use(r11)));
 		emit(make_store(use(r11), n->literal.return_value, 0, use(r13)));
 		return container;
 	} else {
@@ -249,32 +277,32 @@ union expression *vgenerate_literals(union expression *n) {
 
 union expression *generate_toplevel(union expression *n, list toplevel_function_references) {
 	union expression *container = make_begin();
-	emit(make_instr("(bss)", 0));
-	emit(make_instr("(align expr expr)", 2, make_literal(WORD_SIZE), make_literal(0)));
+	emit(make_instr(BSS, 0));
+	emit(make_instr(ALIGN_EXPR_EXPR, 2, make_literal(WORD_SIZE), make_literal(0)));
 	union expression *t;
 	{foreach(t, n->function.locals) {
-		emit(make_instr("(label name)", 1, t));
-		emit(make_instr("(skip expr expr)", 2, make_literal(WORD_SIZE), make_literal(0)));
+		emit(make_instr(LABEL, 1, t));
+		emit(make_instr(SKIP_EXPR_EXPR, 2, make_literal(WORD_SIZE), make_literal(0)));
 	}}
-	emit(make_instr("(text)", 0));
+	emit(make_instr(TEXT, 0));
 	foreach(t, toplevel_function_references) {
-		emit(make_instr("(global sym)", 1, t));
+		emit(make_instr(GLOBAL, 1, t));
 	}
-	emit(make_instr("(pushq reg)", 1, use(r12)));
-	emit(make_instr("(pushq reg)", 1, use(r13)));
-	emit(make_instr("(pushq reg)", 1, use(r14)));
-	emit(make_instr("(pushq reg)", 1, use(r15)));
-	emit(make_instr("(pushq reg)", 1, use(rbx)));
-	emit(make_instr("(pushq reg)", 1, use(rbp)));
-	emit(make_instr("(movq reg reg)", 2, use(rsp), use(rbp)));
+	emit(make_instr(PUSHQ_REG, 1, use(r12)));
+	emit(make_instr(PUSHQ_REG, 1, use(r13)));
+	emit(make_instr(PUSHQ_REG, 1, use(r14)));
+	emit(make_instr(PUSHQ_REG, 1, use(r15)));
+	emit(make_instr(PUSHQ_REG, 1, use(rbx)));
+	emit(make_instr(PUSHQ_REG, 1, use(rbp)));
+	emit(make_instr(MOVQ_REG_TO_REG, 2, use(rsp), use(rbp)));
 	emit(n->function.expression);
-	emit(make_instr("(leave)", 0));
-	emit(make_instr("(popq reg)", 1, use(rbx)));
-	emit(make_instr("(popq reg)", 1, use(r15)));
-	emit(make_instr("(popq reg)", 1, use(r14)));
-	emit(make_instr("(popq reg)", 1, use(r13)));
-	emit(make_instr("(popq reg)", 1, use(r12)));
-	emit(make_instr("(ret)", 0));
+	emit(make_instr(LEAVE, 0));
+	emit(make_instr(POPQ_REG, 1, use(rbx)));
+	emit(make_instr(POPQ_REG, 1, use(r15)));
+	emit(make_instr(POPQ_REG, 1, use(r14)));
+	emit(make_instr(POPQ_REG, 1, use(r13)));
+	emit(make_instr(POPQ_REG, 1, use(r12)));
+	emit(make_instr(RET, 0));
 	return container;
 }
 
@@ -295,29 +323,29 @@ union expression *vgenerate_function_expressions(union expression *n) {
 		
 		union expression *after_reference = generate_reference();
 		
-		emit(make_instr("(jmp rel)", 1, after_reference));
-		emit(make_instr("(label name)", 1, n->function.reference));
+		emit(make_instr(JMP_REL, 1, after_reference));
+		emit(make_instr(LABEL, 1, n->function.reference));
 		
 		//Insert first 6 parameters onto stack
-		emit(make_instr("(popq reg)", 1, use(r11)));
-		emit(make_instr("(pushq reg)", 1, use(r9)));
-		emit(make_instr("(pushq reg)", 1, use(r8)));
-		emit(make_instr("(pushq reg)", 1, use(rcx)));
-		emit(make_instr("(pushq reg)", 1, use(rdx)));
-		emit(make_instr("(pushq reg)", 1, use(rsi)));
-		emit(make_instr("(pushq reg)", 1, use(rdi)));
-		emit(make_instr("(pushq reg)", 1, use(r11)));
+		emit(make_instr(POPQ_REG, 1, use(r11)));
+		emit(make_instr(PUSHQ_REG, 1, use(r9)));
+		emit(make_instr(PUSHQ_REG, 1, use(r8)));
+		emit(make_instr(PUSHQ_REG, 1, use(rcx)));
+		emit(make_instr(PUSHQ_REG, 1, use(rdx)));
+		emit(make_instr(PUSHQ_REG, 1, use(rsi)));
+		emit(make_instr(PUSHQ_REG, 1, use(rdi)));
+		emit(make_instr(PUSHQ_REG, 1, use(r11)));
 		
 		//Save callee-saved registers
-		emit(make_instr("(pushq reg)", 1, use(r12)));
-		emit(make_instr("(pushq reg)", 1, use(r13)));
-		emit(make_instr("(pushq reg)", 1, use(r14)));
-		emit(make_instr("(pushq reg)", 1, use(r15)));
-		emit(make_instr("(pushq reg)", 1, use(rbx)));
+		emit(make_instr(PUSHQ_REG, 1, use(r12)));
+		emit(make_instr(PUSHQ_REG, 1, use(r13)));
+		emit(make_instr(PUSHQ_REG, 1, use(r14)));
+		emit(make_instr(PUSHQ_REG, 1, use(r15)));
+		emit(make_instr(PUSHQ_REG, 1, use(rbx)));
 		
-		emit(make_instr("(pushq reg)", 1, use(rbp)));
-		emit(make_instr("(movq reg reg)", 2, use(rsp), use(rbp)));
-		emit(make_instr("(subq imm reg)", 2, make_literal(-get_current_offset(n)), use(rsp)));
+		emit(make_instr(PUSHQ_REG, 1, use(rbp)));
+		emit(make_instr(MOVQ_REG_TO_REG, 2, use(rsp), use(rbp)));
+		emit(make_instr(SUBQ_IMM_FROM_REG, 2, make_literal(-get_current_offset(n)), use(rsp)));
 		
 		//Execute the function body
 		emit(n->function.expression);
@@ -325,19 +353,19 @@ union expression *vgenerate_function_expressions(union expression *n) {
 		//Place the return value
 		emit(make_load(n->function.expression_return_value, 0, use(rax), use(r13)));
 		
-		emit(make_instr("(leave)", 0));
+		emit(make_instr(LEAVE, 0));
 		//Restore callee-saved registers
-		emit(make_instr("(popq reg)", 1, use(rbx)));
-		emit(make_instr("(popq reg)", 1, use(r15)));
-		emit(make_instr("(popq reg)", 1, use(r14)));
-		emit(make_instr("(popq reg)", 1, use(r13)));
-		emit(make_instr("(popq reg)", 1, use(r12)));
+		emit(make_instr(POPQ_REG, 1, use(rbx)));
+		emit(make_instr(POPQ_REG, 1, use(r15)));
+		emit(make_instr(POPQ_REG, 1, use(r14)));
+		emit(make_instr(POPQ_REG, 1, use(r13)));
+		emit(make_instr(POPQ_REG, 1, use(r12)));
 		
-		emit(make_instr("(popq reg)", 1, use(r11)));
-		emit(make_instr("(addq imm reg)", 2, make_literal(6*WORD_SIZE), use(rsp)));
-		emit(make_instr("(pushq reg)", 1, use(r11)));
-		emit(make_instr("(ret)", 0));
-		emit(make_instr("(label name)", 1, after_reference));
+		emit(make_instr(POPQ_REG, 1, use(r11)));
+		emit(make_instr(ADDQ_IMM_TO_REG, 2, make_literal(6*WORD_SIZE), use(rsp)));
+		emit(make_instr(PUSHQ_REG, 1, use(r11)));
+		emit(make_instr(RET, 0));
+		emit(make_instr(LABEL, 1, after_reference));
 		return container;
 	} else if(n->base.type == invoke) {
 		union expression *container = make_begin();
@@ -347,7 +375,7 @@ union expression *vgenerate_function_expressions(union expression *n) {
 			union expression *t;
 			foreach(t, reverse(rrrrrrst(n->invoke.arguments))) {
 				emit(make_load(t, 0, use(r11), use(r10)));
-				emit(make_instr("(pushq reg)", 1, use(r11)));
+				emit(make_instr(PUSHQ_REG, 1, use(r11)));
 			}
 		}
 		if(length(n->invoke.arguments) > 5) {
@@ -368,14 +396,14 @@ union expression *vgenerate_function_expressions(union expression *n) {
 		if(length(n->invoke.arguments) > 0) {
 			emit(make_load(fst(n->invoke.arguments), 0, use(rdi), use(r10)));
 		}
-		emit(make_instr("(movq imm reg)", 2, make_literal(0), use(rax)));
+		emit(make_instr(MOVQ_IMM_TO_REG, 2, make_literal(0), use(rax)));
 		
 		emit(make_load(n->invoke.reference, 0, use(r11), use(r10)));
-		emit(make_instr("(call reg)", 1, use(r11)));
+		emit(make_instr(CALL_REG, 1, use(r11)));
 		
 		emit(make_store(use(rax), n->invoke.return_value, 0, use(r10)));
 		if(length(n->invoke.arguments) > 6) {
-			emit(make_instr("(addq imm reg)", 2, make_literal(WORD_SIZE * (length(n->invoke.arguments) - 6)), use(rsp)));
+			emit(make_instr(ADDQ_IMM_TO_REG, 2, make_literal(WORD_SIZE * (length(n->invoke.arguments) - 6)), use(rsp)));
 		}
 		return container;
 	} else {
@@ -390,12 +418,11 @@ char *expr_to_string(union expression *n) {
 		} case literal: {
 			return cprintf("%lu", n->literal.value);
 		} case instruction: {
-			char *str = cprintf("(%s", expr_to_string(fst(n->instruction.arguments)));
-			union expression *t;
-			foreach(t, rst(n->instruction.arguments)) {
-				str = cprintf("%s%s%s", str, n->instruction.reference->reference.name, expr_to_string(t));
+			switch(n->instruction.opcode) {
+				case ADD:
+					return cprintf("(%s+%s)", expr_to_string(fst(n->invoke.arguments)),
+						expr_to_string(frst(n->invoke.arguments)));
 			}
-			return cprintf("%s)", str);
 		}
 	}
 }
@@ -416,61 +443,88 @@ void print_assembly(list generated_expressions, FILE *out) {
 	fputs(".text\n", out);
 	union expression *n;
 	foreach(n, generated_expressions) {
-		char *id = n->invoke.reference->reference.name;
-		if(!strcmp(id, "(label name)")) {
-			fprintf(out, "%s:", fst_string(n));
-		} else if(!strcmp(id, "(leaq (mem disp base) reg)")) {
-			fprintf(out, "leaq %s(%%%s), %%%s", fst_string(n), frst_string(n), frrst_string(n));
-		} else if(!strcmp(id, "(movq reg (mem disp base))")) {
-			fprintf(out, "movq %%%s, %s(%%%s)", fst_string(n), frst_string(n), frrst_string(n));
-		} else if(!strcmp(id, "(jmp rel)")) {
-			fprintf(out, "jmp %s", fst_string(n));
-		} else if(!strcmp(id, "(movq (mem disp base) reg)")) {
-			fprintf(out, "movq %s(%%%s), %%%s", fst_string(n), frst_string(n), frrst_string(n));
-		} else if(!strcmp(id, "(pushq reg)")) {
-			fprintf(out, "pushq %%%s", fst_string(n));
-		} else if(!strcmp(id, "(movq reg reg)")) {
-			fprintf(out, "movq %%%s, %%%s", fst_string(n), frst_string(n));
-		} else if(!strcmp(id, "(subq imm reg)")) {
-			fprintf(out, "subq $%s, %%%s", fst_string(n), frst_string(n));
-		} else if(!strcmp(id, "(addq imm reg)")) {
-			fprintf(out, "addq $%s, %%%s", fst_string(n), frst_string(n));
-		} else if(!strcmp(id, "(popq reg)")) {
-			fprintf(out, "popq %%%s", fst_string(n));
-		} else if(!strcmp(id, "(leave)")) {
-			fprintf(out, "leave");
-		} else if(!strcmp(id, "(ret)")) {
-			fprintf(out, "ret");
-		} else if(!strcmp(id, "(call rel)")) {
-			fprintf(out, "call %s", fst_string(n));
-		} else if(!strcmp(id, "(jmp reg)")) {
-			fprintf(out, "jmp *%%%s", fst_string(n));
-		} else if(!strcmp(id, "(je rel)")) {
-			fprintf(out, "je %s", fst_string(n));
-		} else if(!strcmp(id, "(jmp rel)")) {
-			fprintf(out, "jmp %s", fst_string(n));
-		} else if(!strcmp(id, "(orq reg reg)")) {
-			fprintf(out, "orq %%%s, %%%s", fst_string(n), frst_string(n));
-		} else if(!strcmp(id, "(movq imm reg)")) {
-			fprintf(out, "movq $%s, %%%s", fst_string(n), frst_string(n));
-		} else if(!strcmp(id, "(global sym)")) {
-			fprintf(out, ".global %s", fst_string(n));
-		} else if(!strcmp(id, "(movq (mem disp) reg)")) {
-			fprintf(out, "movq %s, %%%s", fst_string(n), frst_string(n));
-		} else if(!strcmp(id, "(movq reg (mem disp))")) {
-			fprintf(out, "movq %%%s, %s", fst_string(n), frst_string(n));
-		} else if(!strcmp(id, "(leaq (mem disp) reg)")) {
-			fprintf(out, "leaq %s, %%%s", fst_string(n), frst_string(n));
-		} else if(!strcmp(id, "(call reg)")) {
-			fprintf(out, "call *%%%s", fst_string(n));
-		} else if(!strcmp(id, "(skip expr expr)")) {
-			fprintf(out, ".skip %s, %s", fst_string(n), frst_string(n));
-		} else if(!strcmp(id, "(align expr expr)")) {
-			fprintf(out, ".align %s, %s", fst_string(n), frst_string(n));
-		} else if(!strcmp(id, "(bss)")) {
-			fprintf(out, ".bss");
-		} else if(!strcmp(id, "(text)")) {
-			fprintf(out, ".text");
+		switch(n->instruction.opcode) {
+			case LABEL:
+				fprintf(out, "%s:", fst_string(n));
+				break;
+			case LEAQ_OF_MDB_INTO_REG:
+				fprintf(out, "leaq %s(%%%s), %%%s", fst_string(n), frst_string(n), frrst_string(n));
+				break;
+			case MOVQ_FROM_REG_INTO_MDB:
+				fprintf(out, "movq %%%s, %s(%%%s)", fst_string(n), frst_string(n), frrst_string(n));
+				break;
+			case JMP_REL:
+				fprintf(out, "jmp %s", fst_string(n));
+				break;
+			case MOVQ_MDB_TO_REG:
+				fprintf(out, "movq %s(%%%s), %%%s", fst_string(n), frst_string(n), frrst_string(n));
+				break;
+			case PUSHQ_REG:
+				fprintf(out, "pushq %%%s", fst_string(n));
+				break;
+			case MOVQ_REG_TO_REG:
+				fprintf(out, "movq %%%s, %%%s", fst_string(n), frst_string(n));
+				break;
+			case SUBQ_IMM_FROM_REG:
+				fprintf(out, "subq $%s, %%%s", fst_string(n), frst_string(n));
+				break;
+			case ADDQ_IMM_TO_REG:
+				fprintf(out, "addq $%s, %%%s", fst_string(n), frst_string(n));
+				break;
+			case POPQ_REG:
+				fprintf(out, "popq %%%s", fst_string(n));
+				break;
+			case LEAVE:
+				fprintf(out, "leave");
+				break;
+			case RET:
+				fprintf(out, "ret");
+				break;
+			case CALL_REL:
+				fprintf(out, "call %s", fst_string(n));
+				break;
+			case JMP_TO_REG:
+				fprintf(out, "jmp *%%%s", fst_string(n));
+				break;
+			case JE_REL:
+				fprintf(out, "je %s", fst_string(n));
+				break;
+			case ORQ_REG_TO_REG:
+				fprintf(out, "orq %%%s, %%%s", fst_string(n), frst_string(n));
+				break;
+			case MOVQ_IMM_TO_REG:
+				fprintf(out, "movq $%s, %%%s", fst_string(n), frst_string(n));
+				break;
+			case GLOBAL:
+				fprintf(out, ".global %s", fst_string(n));
+				break;
+			case MOVQ_MD_TO_REG:
+				fprintf(out, "movq %s, %%%s", fst_string(n), frst_string(n));
+				break;
+			case MOVQ_REG_TO_MD:
+				fprintf(out, "movq %%%s, %s", fst_string(n), frst_string(n));
+				break;
+			case LEAQ_OF_MD_INTO_REG:
+				fprintf(out, "leaq %s, %%%s", fst_string(n), frst_string(n));
+				break;
+			case CALL_REG:
+				fprintf(out, "call *%%%s", fst_string(n));
+				break;
+			case SKIP_EXPR_EXPR:
+				fprintf(out, ".skip %s, %s", fst_string(n), frst_string(n));
+				break;
+			case ALIGN_EXPR_EXPR:
+				fprintf(out, ".align %s, %s", fst_string(n), frst_string(n));
+				break;
+			case BSS:
+				fprintf(out, ".bss");
+				break;
+			case TEXT:
+				fprintf(out, ".text");
+				break;
+			default:
+				printf("What is happening?\n\n");
+				break;
 		}
 		fprintf(out, "\n");
 	}

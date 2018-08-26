@@ -31,7 +31,7 @@ struct instruction_expression {
 	union expression *parent;
 	union expression *return_value;
 	
-	union expression *reference;
+	int opcode;
 	list arguments; // void * = union expression *
 };
 
@@ -233,10 +233,10 @@ union expression *prepend_parameter(char *name, union expression *function) {
 	return v;
 }
 
-union expression *make_instr(char *opcode, int arg_count, ...) {
+union expression *make_instr(int opcode, int arg_count, ...) {
 	union expression *u = calloc(1, sizeof(union expression));
 	u->instruction.type = instruction;
-	u->instruction.reference = make_reference(opcode);
+	u->instruction.opcode = opcode;
 	u->instruction.arguments = nil();
 	
 	va_list valist;
@@ -277,14 +277,10 @@ void print_annotated_syntax_tree(union expression *s) {
 			print_annotated_syntax_tree(s->with.expression);
 			printf(")");
 			break;
-		} case invoke: case jump: case instruction: {
+		} case invoke: case jump: {
 			printf("%c", s->base.type == invoke ? '[' : s->base.type == jump ? '{' : '(');
 			print_annotated_syntax_tree_annotator(s);
-			if(s->base.type == instruction) {
-				printf("%s", s->instruction.reference->reference.name);
-			} else {
-				print_annotated_syntax_tree(s->invoke.reference);
-			}
+			print_annotated_syntax_tree(s->invoke.reference);
 			printf(" ");
 			union expression *t;
 			foreach(t, s->invoke.arguments) {
