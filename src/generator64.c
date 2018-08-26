@@ -388,7 +388,7 @@ char *expr_to_string(union expression *n) {
 		case reference: {
 			return n->reference.name;
 		} case literal: {
-			return cprintf("%d", n->literal.value);
+			return cprintf("%lu", n->literal.value);
 		} case instruction: {
 			char *str = cprintf("(%s", expr_to_string(fst(n->instruction.arguments)));
 			union expression *t;

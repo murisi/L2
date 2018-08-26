@@ -1,68 +1,83 @@
-int after_leading_space(FILE *l2file) {
-	int c;
+int after_leading_space(int l2file, int *pos, char *c) {
 	do {
-		c = getc(l2file);
-	} while(isspace(c));
-	
-	return c;
+		int rd = myread(l2file, c, 1);
+		(*pos) += rd;
+		if(!rd) return 0;
+	} while(isspace(*c));
+	(*pos)--;
+	return 1;
 }
 
-list build_expr_list(FILE *l2file);
+list build_expr_list(int l2file, int *pos);
 
-list build_sigil(char *sigil, FILE *l2file) {
-	char d = getc(l2file);
-	ungetc(d, l2file);
-	if(d == EOF || isspace(d) || d == ')' || d == '}' || d == ']' || d == '(' || d == '{' || d =='[') {
+list build_sigil(char *sigil, int l2file, int *pos) {
+	char d;
+	int rd = myread(l2file, &d, 1);
+	if(rd) {
+		myseek(l2file, -1, SEEK_CUR);
+	}
+	if(rd == 0 || isspace(d) || d == ')' || d == '}' || d == ']' || d == '(' || d == '{' || d =='[') {
 		return build_symbol_sexpr(sigil);
 	} else {
 		list sexprs = nil();
 		append(build_symbol_sexpr(sigil), &sexprs);
-		append(build_expr_list(l2file), &sexprs);
+		append(build_expr_list(l2file, pos), &sexprs);
 		return sexprs;
 	}
 }
 
-list build_list(char *primitive, char delimiter, FILE *l2file) {
+list build_list(char *primitive, char delimiter, int l2file, int *pos) {
 	char c;
 	list sexprs = nil();
 	append(build_symbol_sexpr(primitive), &sexprs);
 	
-	while((c = after_leading_space(l2file)) != delimiter) {
-		ungetc(c, l2file);
-		append(build_expr_list(l2file), &sexprs);
+	while(1) {
+		int rd = after_leading_space(l2file, pos, &c);
+		if(rd && c == delimiter) {
+			(*pos) ++;
+			break;
+		} else if(rd) {
+			myseek(l2file, -1, SEEK_CUR);
+			(*pos)--;
+		}
+		append(build_expr_list(l2file, pos), &sexprs);
 	}
 	return sexprs;
 }
 
 jmp_buf *build_expr_list_handler;
 
-list build_expr_list(FILE *l2file) {
-	int c = getc(l2file);
+list build_expr_list(int l2file, int *pos) {
+	char c;
+	int rd = myread(l2file, &c, 1);
+	(*pos) += rd;
 	
-	if(c == EOF || isspace(c) || c == ')' || c == '}' || c == ']') {
-		thelongjmp(*build_expr_list_handler, make_unexpected_character(c, ftell(l2file)));
+	if(rd == 0 || isspace(c) || c == ')' || c == '}' || c == ']') {
+		thelongjmp(*build_expr_list_handler, make_unexpected_character(c, *pos));
 	} else if(c == '(') {
-		return rst(build_list("()", ')', l2file));
+		return rst(build_list("()", ')', l2file, pos));
 	} else if(c == '{') {
-		return build_list("jump", '}', l2file);
+		return build_list("jump", '}', l2file, pos);
 	} else if(c == '[') {
-		return build_list("invoke", ']', l2file);
+		return build_list("invoke", ']', l2file, pos);
 	} else if(c == '$') {
-		return build_sigil("$", l2file);
+		return build_sigil("$", l2file, pos);
 	} else if(c == '&') {
-		return build_sigil("&", l2file);
+		return build_sigil("&", l2file, pos);
 	} else if(c == ',') {
-		return build_sigil(",", l2file);
+		return build_sigil(",", l2file, pos);
 	} else if(c == '`') {
-		return build_sigil("`", l2file);
+		return build_sigil("`", l2file, pos);
 	} else {
 		list l = nil();
 		do {
 			append(build_character_sexpr(c), &l);
-			c = getc(l2file);
-		} while(c != EOF && !isspace(c) && c != '(' && c != ')' && c != '{' && c != '}' && c != '[' && c != ']');
+			rd = myread(l2file, &c, 1);
+			(*pos) += rd;
+		} while(rd && !isspace(c) && c != '(' && c != ')' && c != '{' && c != '}' && c != '[' && c != ']');
 		
-		ungetc(c, l2file);
+		myseek(l2file, -1, SEEK_CUR);
+		(*pos)--;
 		return l;
 	}
 }

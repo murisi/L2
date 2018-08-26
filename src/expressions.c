@@ -70,7 +70,7 @@ struct literal_expression {
 	union expression *parent;
 	union expression *return_value;
 	
-	int value;
+	long int value;
 };
 
 struct function_expression {
@@ -147,7 +147,7 @@ union expression {
 	struct np_expression non_primitive;
 };
 
-union expression *make_literal(int value) {
+union expression *make_literal(long int value) {
 	union expression *t = calloc(1, sizeof(union expression));
 	t->literal.type = literal;
 	t->literal.value = value;

@@ -12,6 +12,7 @@ void *jmp_value = NULL;
 #define thelongjmp(env, val) (jmp_value = val, longjmp(env, 1))
 #define thesetjmp(env) (jmp_value = NULL, setjmp(env), jmp_value)
 
+#include "x86_64_linux_interface.c"
 #include "sexpr.c"
 #include "compile_errors.c"
 #include "lexer.c"
@@ -53,10 +54,11 @@ bool occurrences_for(void *o, void *ctx) {
  */
 
 void compile(char *outbin, char *inl2, Symbol *env, jmp_buf *handler) {
-	FILE *l2file = fopen(inl2, "r");
-	if(l2file == NULL) {
+	int l2file = myopen(inl2);
+	/*if(l2file == NULL) {
 		thelongjmp(*handler, make_missing_file(inl2));
-	}
+	}*/
+	myseek(l2file, 0, SEEK_SET);
 	if(generate_string_blacklist == NULL) {
 		generate_string_blacklist = nil();
 	}
@@ -64,17 +66,17 @@ void compile(char *outbin, char *inl2, Symbol *env, jmp_buf *handler) {
 	list expressions = nil();
 	list expansion_lists = nil();
 	
-	int c;
-	while((c = after_leading_space(l2file)) != EOF) {
-		ungetc(c, l2file);
+	char c; int pos = 0;
+	while(after_leading_space(l2file, &pos, &c)) {
+		myseek(l2file, -1, SEEK_CUR);
 		build_expr_list_handler = handler;
-		list sexpr = build_expr_list(l2file);
+		list sexpr = build_expr_list(l2file, &pos);
 		build_syntax_tree_handler = handler;
 		build_syntax_tree_expansion_lists = nil();
 		build_syntax_tree(sexpr, append(NULL, &expressions));
 		merge_onto(build_syntax_tree_expansion_lists, &expansion_lists);
 	}
-	fclose(l2file);
+	myclose(l2file);
 	
 	expand_expressions_handler = handler;
 	expand_expressions(&expansion_lists, env);

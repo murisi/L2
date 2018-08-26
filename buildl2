@@ -6,14 +6,16 @@ objcopy --redefine-syms=assets/l2_sym_pairs bin/sexpr.o
 ar rcs bin/sexpr.a bin/sexpr.o
 rm bin/sexpr.o
 
+musl-gcc --static -g -c -o bin/x86_64_linux_interface.o src/x86_64_linux_interface.s
+
 musl-gcc --static -g -c -Idynamize/src -o bin/l2compile.o src/compile.c
 objcopy --redefine-syms=assets/l2_sym_pairs bin/l2compile.o
-ar rcs bin/l2compile.a bin/l2compile.o
+ar rcs bin/l2compile.a bin/l2compile.o bin/x86_linux_interface.o
 rm bin/l2compile.o
 
 musl-gcc --static -g -c -Idynamize/src -o bin/l2evaluate.o src/evaluate.c
 objcopy --redefine-syms=assets/l2_sym_pairs bin/l2evaluate.o
-musl-gcc -g -o bin/l2evaluate bin/l2evaluate.o
+musl-gcc -g -o bin/l2evaluate bin/l2evaluate.o bin/x86_linux_interface.o
 rm bin/l2evaluate.o
 
 if [ $(uname -m) == 'x86_64' ]; then

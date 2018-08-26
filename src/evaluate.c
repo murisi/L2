@@ -2,51 +2,77 @@
 #include "compile.c"
 #include "evaluate_errors.c"
 
+Library *eval_load_library(list name, void *low_mem, void *upper_mem) {
+	return load_library(fopen(to_string(name), "r"), low_mem, upper_mem);
+}
+
+list eval_mutable_symbols(Library *lib) {
+	int msc = mutable_symbol_count(lib);
+	Symbol ms_arr[msc];
+	mutable_symbols(lib, ms_arr);
+	int i;
+	list ms_lst = nil();
+	for(i = msc-1; i >= 0; i--) {
+		prepend(lst(build_symbol_sexpr(ms_arr[i].name), lst(ms_arr[i].address, nil())), &ms_lst);
+	}
+	return ms_lst;
+}
+
 int main(int argc, char *argv[]) {
 	volatile int i;
-	
 	//Initialize the error handler
 	jmp_buf handler;
 	union evaluate_error *err;
 	if(err = (union evaluate_error *) thesetjmp(handler)) {
-		printf("Error found in %s: ", argv[i]);
+		mywrite_str(STDOUT, "Error found in ");
+		mywrite_str(STDOUT, argv[i]);
+		mywrite_str(STDOUT, ": ");
 		print_annotated_syntax_tree_annotator = &empty_annotator;
 		switch(err->arguments.type) {
 			case PARAM_COUNT_MISMATCH: {
-				printf("The number of arguments in ");
+				mywrite_str(STDOUT, "The number of arguments in ");
 				print_annotated_syntax_tree(err->param_count_mismatch.src_expression);
-				printf(" does not match the number of parameters in ");
+				mywrite_str(STDOUT, " does not match the number of parameters in ");
 				print_annotated_syntax_tree(err->param_count_mismatch.dest_expression);
-				printf(".\n");
+				mywrite_str(STDOUT, ".\n");
 				break;
 			} case SPECIAL_FORM: {
 				if(err->special_form.subexpression_list) {
-					printf("The subexpression ");
+					mywrite_str(STDOUT, "The subexpression ");
 					print_expr_list(err->special_form.subexpression_list);
-					printf(" does not satisfy the requirements of the expression ");
+					mywrite_str(STDOUT, " does not satisfy the requirements of the expression ");
 					print_expr_list(err->special_form.expression_list);
-					printf(".\n");
+					mywrite_str(STDOUT, ".\n");
 				} else {
-					printf("The expression ");
+					mywrite_str(STDOUT, "The expression ");
 					print_expr_list(err->special_form.expression_list);
-					printf(" has an incorrect number of subexpressions.\n");
+					mywrite_str(STDOUT, " has an incorrect number of subexpressions.\n");
 				}
 				break;
 			} case UNEXPECTED_CHARACTER: {
-				printf("Unexpectedly read %c at %ld.\n", err->unexpected_character.character, err->unexpected_character.position);
+				mywrite_str(STDOUT, "Unexpectedly read ");
+				mywrite_char(STDOUT, err->unexpected_character.character);
+				mywrite_str(STDOUT, " at ");
+				mywrite_uint(STDOUT, err->unexpected_character.position);
+				mywrite_str(STDOUT, ".\n");
 				break;
 			} case MULTIPLE_DEFINITION: {
-				printf("The definition of %s erroneously occured multiple times.\n", err->multiple_definition.reference_value);
+				mywrite_str(STDOUT, "The definition of ");
+				mywrite_str(STDOUT, err->multiple_definition.reference_value);
+				mywrite_str(STDOUT, " erroneously occured multiple times.\n");
 				break;
 			} case ENVIRONMENT: {
-				printf("The following occured when trying to use an environment: %s\n", err->environment.error_string);
+				mywrite_str(STDOUT, "The following occured when trying to use an environment: ");
+				mywrite_str(STDOUT, err->environment.error_string);
+				mywrite_str(STDOUT, "\n");
 				break;
 			} case MISSING_FILE: {
-				printf("There is no file at the path %s.\n", err->missing_file.path);
+				mywrite_str(STDOUT, "There is no file at the path ");
+				mywrite_str(STDOUT, err->missing_file.path);
+				mywrite_str(STDOUT, ".\n");
 				return MISSING_FILE;
 			} case ARGUMENTS: {
-				printf("Bad command line arguments.\n"
-					"Usage: l2compile inputs.l2\n"
+				mywrite_str(STDOUT, "Bad command line arguments.\nUsage: l2compile inputs.l2\n"
 					"Outcome: Compiles inputs.l2 and runs it.\n");
 				return ARGUMENTS;
 			}
@@ -64,19 +90,17 @@ int main(int argc, char *argv[]) {
 	Symbol env = make_symbol(NULL, NULL);
 	compile(library_name, argv[1], &env, &handler);
 	
-	Library *lib = load_library(library_name, (void *) 0x0UL, (void *) ~0x0UL);
-	//mutate_symbol(lib, make_symbol("putchar", putchar));
+	Library *lib = load_library(fopen(library_name, "r"), (void *) 0x0UL, (void *) ~0x0UL);
+	mutate_symbol(lib, make_symbol("putchar", putchar));
 	mutate_symbol(lib, make_symbol("compile-l2", compile));
-	mutate_symbol(lib, make_symbol("load-library", load_library));
-	mutate_symbol(lib, make_symbol("mutable-symbols", mutable_symbols));
-	mutate_symbol(lib, make_symbol("mutable-symbol-count", mutable_symbol_count));
-	mutate_symbol(lib, make_symbol("immutable-symbols", immutable_symbols));
-	mutate_symbol(lib, make_symbol("immutable-symbol-count", immutable_symbol_count));
+	mutate_symbol(lib, make_symbol("load-library", eval_load_library));
+	mutate_symbol(lib, make_symbol("mutable-symbols", eval_mutable_symbols));
+	//mutate_symbol(lib, make_symbol("immutable-symbols", eval_immutable_symbols));
 	mutate_symbol(lib, make_symbol("mutate-symbol", mutate_symbol));
 	mutate_symbol(lib, make_symbol("run-library", run_library));
 	mutate_symbol(lib, make_symbol("unload-library", unload_library));
 	
-	Library *arch_lib = load_library("bin/arch.a",
+	Library *arch_lib = load_library(fopen("../bin/arch.a", "r"),
 		sat_sub(lib->segs, 0x0000000000FFFFFFUL),
 		sat_add(lib->segs, 0x0000000000FFFFFFUL));
 	int alisc = immutable_symbol_count(arch_lib);
@@ -88,8 +112,8 @@ int main(int argc, char *argv[]) {
 	}
 	
 	run_library(lib);
-	unload_library(arch_lib);
-	unload_library(lib);
+	fclose(unload_library(arch_lib));
+	fclose(unload_library(lib));
 	remove(library_name);
 	return 0;
 }

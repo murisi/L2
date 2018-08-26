@@ -261,7 +261,7 @@ void expand_expressions(list *expansion_lists, Symbol *env) {
 		char *outfn = cprintf("%s", "./.libXXXXXX.a");
 		mkstemps(outfn, 2);
 		compile_expressions(outfn, expander_containers, build_syntax_tree_handler);
-		Library *handle = load_library(outfn, (void *) 0x0UL, (void *) ~0x0UL);
+		Library *handle = load_library(fopen(outfn, "r"), (void *) 0x0UL, (void *) ~0x0UL);
 		for(; env->name && env->address; env++) {
 			mutate_symbol(handle, *env);
 		}
@@ -277,7 +277,7 @@ void expand_expressions(list *expansion_lists, Symbol *env) {
 			build_syntax_tree_under(transformed, expansion, (*expansion)->non_primitive.parent);
 			merge_onto(build_syntax_tree_expansion_lists, &urgent_expansion_lists);
 		}
-		unload_library(handle);
+		fclose(unload_library(handle));
 		remove(outfn);
 		
 		append_list(&urgent_expansion_lists, (*remaining_expansion_lists)->rst);
