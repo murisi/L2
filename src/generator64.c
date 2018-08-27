@@ -1,5 +1,4 @@
 bool generator_PIC;
-union expression *rbp, *rsp, *r12, *r13, *r14, *r15, *rip, *r11, *r10, *rax, *r9, *r8, *rdi, *rsi, *rdx, *rcx, *rbx;
 
 #define LEAQ_OF_MDB_INTO_REG 0
 #define MOVQ_FROM_REG_INTO_MDB 1
@@ -29,6 +28,24 @@ union expression *rbp, *rsp, *r12, *r13, *r14, *r15, *rip, *r11, *r10, *rax, *r9
 #define TEXT 25
 #define ADD 26
 
+#define RBP 27
+#define RSP 28
+#define R12 29
+#define R13 30
+#define R14 31
+#define R15 32
+#define RIP 33
+#define R11 34
+#define R10 35
+#define RAX 36
+#define R9 37
+#define R8 38
+#define RDI 39
+#define RSI 40
+#define RDX 41
+#define RCX 42
+#define RBX 43
+
 /*
  * Initializes the generator. If PIC is true, then generator will produce
  * position independent 64-bit code. Otherwise it will generate 64-bit
@@ -37,23 +54,6 @@ union expression *rbp, *rsp, *r12, *r13, *r14, *r15, *rip, *r11, *r10, *rax, *r9
  */
 void generator_init(bool PIC) {
 	generator_PIC = PIC;
-	rbp = make_reference("rbp");
-	rsp = make_reference("rsp");
-	rip = make_reference("rip");
-	rdi = make_reference("rdi");
-	rsi = make_reference("rsi");
-	rdx = make_reference("rdx");
-	rcx = make_reference("rcx");
-	r8 = make_reference("r8");
-	r9 = make_reference("r9");
-	r10 = make_reference("r10");
-	r11 = make_reference("r11");
-	r12 = make_reference("r12");
-	r13 = make_reference("r13");
-	r14 = make_reference("r14");
-	r15 = make_reference("r15");
-	rax = make_reference("rax");
-	rbx = make_reference("rbx");
 }
 
 #define WORD_SIZE 8
@@ -109,10 +109,10 @@ union expression *make_suffixed(union expression *ref, char *suffix) {
 union expression *make_load(union expression *ref, int offset, union expression *dest_reg, union expression *scratch_reg) {
 	union expression *container = make_begin();
 	if(ref->reference.referent->reference.offset) {
-		emit(make_instr(MOVQ_MDB_TO_REG, 3, make_offset(ref->reference.referent->reference.offset, offset), use(rbp),
+		emit(make_instr(MOVQ_MDB_TO_REG, 3, make_offset(ref->reference.referent->reference.offset, offset), use(RBP),
 			dest_reg));
 	} else if(generator_PIC) {
-		emit(make_instr(MOVQ_MDB_TO_REG, 3, make_suffixed(ref, "@GOTPCREL"), use(rip), scratch_reg));
+		emit(make_instr(MOVQ_MDB_TO_REG, 3, make_suffixed(ref, "@GOTPCREL"), use(RIP), scratch_reg));
 		emit(make_instr(MOVQ_MDB_TO_REG, 3, make_literal(offset), scratch_reg, dest_reg));
 	} else {
 		emit(make_instr(MOVQ_MD_TO_REG, 2, make_offset(ref, offset), dest_reg));
@@ -124,9 +124,9 @@ union expression *make_store(union expression *src_reg, union expression *ref, i
 	union expression *container = make_begin();
 	if(ref->reference.referent->reference.offset) {
 		emit(make_instr(MOVQ_FROM_REG_INTO_MDB, 3, src_reg, make_offset(ref->reference.referent->reference.offset, offset),
-			use(rbp)));
+			use(RBP)));
 	} else if(generator_PIC) {
-		emit(make_instr(MOVQ_MDB_TO_REG, 3, make_suffixed(ref, "@GOTPCREL"), use(rip), scratch_reg));
+		emit(make_instr(MOVQ_MDB_TO_REG, 3, make_suffixed(ref, "@GOTPCREL"), use(RIP), scratch_reg));
 		emit(make_instr(MOVQ_FROM_REG_INTO_MDB, 3, src_reg, make_literal(offset), scratch_reg));
 	} else {
 		emit(make_instr(MOVQ_REG_TO_MD, 2, src_reg, make_offset(ref, offset)));
@@ -139,8 +139,8 @@ union expression *vgenerate_ifs(union expression *n) {
 	if(n->base.type == _if) {
 		union expression *container = make_begin();
 		
-		emit(make_load(n->_if.condition, 0, use(r10), use(r13)));
-		emit(make_instr(ORQ_REG_TO_REG, 2, use(r10), use(r10)));
+		emit(make_load(n->_if.condition, 0, use(R10), use(R13)));
+		emit(make_instr(ORQ_REG_TO_REG, 2, use(R10), use(R10)));
 		
 		union expression *alternate_label = generate_reference();
 		emit(make_instr(JE_REL, 1, alternate_label));
@@ -159,9 +159,9 @@ union expression *vgenerate_ifs(union expression *n) {
 union expression *make_load_address(union expression *ref, union expression *dest_reg) {
 	union expression *container = make_begin();
 	if(ref->reference.referent->reference.offset) {
-		emit(make_instr(LEAQ_OF_MDB_INTO_REG, 3, ref->reference.referent->reference.offset, use(rbp), dest_reg));
+		emit(make_instr(LEAQ_OF_MDB_INTO_REG, 3, ref->reference.referent->reference.offset, use(RBP), dest_reg));
 	} else if(generator_PIC) {
-		emit(make_instr(MOVQ_MDB_TO_REG, 3, make_suffixed(ref, "@GOTPCREL"), use(rip), dest_reg));
+		emit(make_instr(MOVQ_MDB_TO_REG, 3, make_suffixed(ref, "@GOTPCREL"), use(RIP), dest_reg));
 	} else {
 		emit(make_instr(LEAQ_OF_MD_INTO_REG, 2, ref, dest_reg));
 	}
@@ -172,8 +172,8 @@ union expression *make_load_address(union expression *ref, union expression *des
 union expression *vgenerate_references(union expression *n) {
 	if(n->base.type == reference && n->reference.return_value) {
 		union expression *container = make_begin();
-		emit(make_load_address(n, use(r11)));
-		emit(make_store(use(r11), n->base.return_value, 0, use(r10)));
+		emit(make_load_address(n, use(R11)));
+		emit(make_store(use(R11), n->base.return_value, 0, use(R10)));
 		return container;
 	} else {
 		return n;
@@ -186,14 +186,14 @@ union expression *cont_instr_ref(union expression *n) {
 
 union expression *make_continuation(union expression *n) {
 	union expression *container = make_begin();
-	emit(make_store(use(rbx), n->continuation.reference, CONT_RBX, use(r11)));
-	emit(make_store(use(r12), n->continuation.reference, CONT_R12, use(r11)));
-	emit(make_store(use(r13), n->continuation.reference, CONT_R13, use(r11)));
-	emit(make_store(use(r14), n->continuation.reference, CONT_R14, use(r11)));
-	emit(make_store(use(r15), n->continuation.reference, CONT_R15, use(r11)));
-	emit(make_load_address(cont_instr_ref(n), use(r10)));
-	emit(make_store(use(r10), n->continuation.reference, CONT_CIR, use(r11)));
-	emit(make_store(use(rbp), n->continuation.reference, CONT_RBP, use(r11)));
+	emit(make_store(use(RBX), n->continuation.reference, CONT_RBX, use(R11)));
+	emit(make_store(use(R12), n->continuation.reference, CONT_R12, use(R11)));
+	emit(make_store(use(R13), n->continuation.reference, CONT_R13, use(R11)));
+	emit(make_store(use(R14), n->continuation.reference, CONT_R14, use(R11)));
+	emit(make_store(use(R15), n->continuation.reference, CONT_R15, use(R11)));
+	emit(make_load_address(cont_instr_ref(n), use(R10)));
+	emit(make_store(use(R10), n->continuation.reference, CONT_CIR, use(R11)));
+	emit(make_store(use(RBP), n->continuation.reference, CONT_RBP, use(R11)));
 	return container;
 }
 
@@ -201,8 +201,8 @@ union expression *move_arguments(union expression *n, int offset) {
 	union expression *container = make_begin();
 	union expression *t;
 	foreach(t, n->jump.arguments) {
-		emit(make_load(t, 0, use(r10), use(r13)));
-		emit(make_instr(MOVQ_FROM_REG_INTO_MDB, 3, use(r10), make_literal(offset), use(r11)));
+		emit(make_load(t, 0, use(R10), use(R13)));
+		emit(make_instr(MOVQ_FROM_REG_INTO_MDB, 3, use(R10), make_literal(offset), use(R11)));
 		offset += WORD_SIZE;
 	}
 	return container;
@@ -213,8 +213,8 @@ union expression *vgenerate_continuation_expressions(union expression *n) {
 	switch(n->base.type) {
 		case continuation: {
 			union expression *container = make_begin();
-			emit(make_load_address(n->continuation.escapes ? n->continuation.reference : cont_instr_ref(n), use(r11)));
-			emit(make_store(use(r11), n->continuation.return_value, 0, use(r10)));
+			emit(make_load_address(n->continuation.escapes ? n->continuation.reference : cont_instr_ref(n), use(R11)));
+			emit(make_store(use(R11), n->continuation.return_value, 0, use(R10)));
 			if(n->continuation.escapes) {
 				emit(make_continuation(n));
 			}
@@ -233,28 +233,28 @@ union expression *vgenerate_continuation_expressions(union expression *n) {
 			}
 			emit(n->with.expression);
 			emit(make_instr(LABEL, 1, cont_instr_ref(n)));
-			emit(make_load(fst(n->with.parameter), 0, use(r11), use(r10)));
-			emit(make_store(use(r11), n->with.return_value, 0, use(r10)));
+			emit(make_load(fst(n->with.parameter), 0, use(R11), use(R10)));
+			emit(make_store(use(R11), n->with.return_value, 0, use(R10)));
 			return container;
 		} case jump: {
 			union expression *container = make_begin();
 			if(n->jump.short_circuit) {
 				if(length(n->jump.short_circuit->continuation.parameters) > 0) {
-					emit(make_load_address(fst(n->jump.short_circuit->continuation.parameters), use(r11)));
+					emit(make_load_address(fst(n->jump.short_circuit->continuation.parameters), use(R11)));
 					emit(move_arguments(n, 0));
 				}
 				emit(make_instr(JMP_REL, 1, cont_instr_ref(n->jump.short_circuit)));
 			} else {
-				emit(make_load(n->jump.reference, 0, use(r11), use(r10)));
+				emit(make_load(n->jump.reference, 0, use(R11), use(R10)));
 				emit(move_arguments(n, CONT_SIZE));
-				emit(make_instr(MOVQ_MDB_TO_REG, 3, make_literal(CONT_RBX), use(r11), use(rbx)));
-				emit(make_instr(MOVQ_MDB_TO_REG, 3, make_literal(CONT_R12), use(r11), use(r12)));
-				emit(make_instr(MOVQ_MDB_TO_REG, 3, make_literal(CONT_R13), use(r11), use(r13)));
-				emit(make_instr(MOVQ_MDB_TO_REG, 3, make_literal(CONT_R14), use(r11), use(r14)));
-				emit(make_instr(MOVQ_MDB_TO_REG, 3, make_literal(CONT_R15), use(r11), use(r15)));
-				emit(make_instr(MOVQ_MDB_TO_REG, 3, make_literal(CONT_CIR), use(r11), use(r10)));
-				emit(make_instr(MOVQ_MDB_TO_REG, 3, make_literal(CONT_RBP), use(r11), use(rbp)));
-				emit(make_instr(JMP_TO_REG, 1, use(r10)));
+				emit(make_instr(MOVQ_MDB_TO_REG, 3, make_literal(CONT_RBX), use(R11), use(RBX)));
+				emit(make_instr(MOVQ_MDB_TO_REG, 3, make_literal(CONT_R12), use(R11), use(R12)));
+				emit(make_instr(MOVQ_MDB_TO_REG, 3, make_literal(CONT_R13), use(R11), use(R13)));
+				emit(make_instr(MOVQ_MDB_TO_REG, 3, make_literal(CONT_R14), use(R11), use(R14)));
+				emit(make_instr(MOVQ_MDB_TO_REG, 3, make_literal(CONT_R15), use(R11), use(R15)));
+				emit(make_instr(MOVQ_MDB_TO_REG, 3, make_literal(CONT_CIR), use(R11), use(R10)));
+				emit(make_instr(MOVQ_MDB_TO_REG, 3, make_literal(CONT_RBP), use(R11), use(RBP)));
+				emit(make_instr(JMP_TO_REG, 1, use(R10)));
 			}
 			return container;
 		} default: {
@@ -267,8 +267,8 @@ union expression *vgenerate_continuation_expressions(union expression *n) {
 union expression *vgenerate_literals(union expression *n) {
 	if(n->base.type == literal && n->literal.return_value) {
 		union expression *container = make_begin();
-		emit(make_instr(MOVQ_IMM_TO_REG, 2, make_literal(n->literal.value), use(r11)));
-		emit(make_store(use(r11), n->literal.return_value, 0, use(r13)));
+		emit(make_instr(MOVQ_IMM_TO_REG, 2, make_literal(n->literal.value), use(R11)));
+		emit(make_store(use(R11), n->literal.return_value, 0, use(R13)));
 		return container;
 	} else {
 		return n;
@@ -288,20 +288,20 @@ union expression *generate_toplevel(union expression *n, list toplevel_function_
 	foreach(t, toplevel_function_references) {
 		emit(make_instr(GLOBAL, 1, t));
 	}
-	emit(make_instr(PUSHQ_REG, 1, use(r12)));
-	emit(make_instr(PUSHQ_REG, 1, use(r13)));
-	emit(make_instr(PUSHQ_REG, 1, use(r14)));
-	emit(make_instr(PUSHQ_REG, 1, use(r15)));
-	emit(make_instr(PUSHQ_REG, 1, use(rbx)));
-	emit(make_instr(PUSHQ_REG, 1, use(rbp)));
-	emit(make_instr(MOVQ_REG_TO_REG, 2, use(rsp), use(rbp)));
+	emit(make_instr(PUSHQ_REG, 1, use(R12)));
+	emit(make_instr(PUSHQ_REG, 1, use(R13)));
+	emit(make_instr(PUSHQ_REG, 1, use(R14)));
+	emit(make_instr(PUSHQ_REG, 1, use(R15)));
+	emit(make_instr(PUSHQ_REG, 1, use(RBX)));
+	emit(make_instr(PUSHQ_REG, 1, use(RBP)));
+	emit(make_instr(MOVQ_REG_TO_REG, 2, use(RSP), use(RBP)));
 	emit(n->function.expression);
 	emit(make_instr(LEAVE, 0));
-	emit(make_instr(POPQ_REG, 1, use(rbx)));
-	emit(make_instr(POPQ_REG, 1, use(r15)));
-	emit(make_instr(POPQ_REG, 1, use(r14)));
-	emit(make_instr(POPQ_REG, 1, use(r13)));
-	emit(make_instr(POPQ_REG, 1, use(r12)));
+	emit(make_instr(POPQ_REG, 1, use(RBX)));
+	emit(make_instr(POPQ_REG, 1, use(R15)));
+	emit(make_instr(POPQ_REG, 1, use(R14)));
+	emit(make_instr(POPQ_REG, 1, use(R13)));
+	emit(make_instr(POPQ_REG, 1, use(R12)));
 	emit(make_instr(RET, 0));
 	return container;
 }
@@ -318,8 +318,8 @@ int get_current_offset(union expression *function) {
 union expression *vgenerate_function_expressions(union expression *n) {
 	if(n->base.type == function && n->function.parent) {
 		union expression *container = make_begin();
-		emit(make_load_address(n->function.reference, use(r11)));
-		emit(make_store(use(r11), n->function.return_value, 0, use(r10)));
+		emit(make_load_address(n->function.reference, use(R11)));
+		emit(make_store(use(R11), n->function.return_value, 0, use(R10)));
 		
 		union expression *after_reference = generate_reference();
 		
@@ -327,43 +327,43 @@ union expression *vgenerate_function_expressions(union expression *n) {
 		emit(make_instr(LABEL, 1, n->function.reference));
 		
 		//Insert first 6 parameters onto stack
-		emit(make_instr(POPQ_REG, 1, use(r11)));
-		emit(make_instr(PUSHQ_REG, 1, use(r9)));
-		emit(make_instr(PUSHQ_REG, 1, use(r8)));
-		emit(make_instr(PUSHQ_REG, 1, use(rcx)));
-		emit(make_instr(PUSHQ_REG, 1, use(rdx)));
-		emit(make_instr(PUSHQ_REG, 1, use(rsi)));
-		emit(make_instr(PUSHQ_REG, 1, use(rdi)));
-		emit(make_instr(PUSHQ_REG, 1, use(r11)));
+		emit(make_instr(POPQ_REG, 1, use(R11)));
+		emit(make_instr(PUSHQ_REG, 1, use(R9)));
+		emit(make_instr(PUSHQ_REG, 1, use(R8)));
+		emit(make_instr(PUSHQ_REG, 1, use(RCX)));
+		emit(make_instr(PUSHQ_REG, 1, use(RDX)));
+		emit(make_instr(PUSHQ_REG, 1, use(RSI)));
+		emit(make_instr(PUSHQ_REG, 1, use(RDI)));
+		emit(make_instr(PUSHQ_REG, 1, use(R11)));
 		
 		//Save callee-saved registers
-		emit(make_instr(PUSHQ_REG, 1, use(r12)));
-		emit(make_instr(PUSHQ_REG, 1, use(r13)));
-		emit(make_instr(PUSHQ_REG, 1, use(r14)));
-		emit(make_instr(PUSHQ_REG, 1, use(r15)));
-		emit(make_instr(PUSHQ_REG, 1, use(rbx)));
+		emit(make_instr(PUSHQ_REG, 1, use(R12)));
+		emit(make_instr(PUSHQ_REG, 1, use(R13)));
+		emit(make_instr(PUSHQ_REG, 1, use(R14)));
+		emit(make_instr(PUSHQ_REG, 1, use(R15)));
+		emit(make_instr(PUSHQ_REG, 1, use(RBX)));
 		
-		emit(make_instr(PUSHQ_REG, 1, use(rbp)));
-		emit(make_instr(MOVQ_REG_TO_REG, 2, use(rsp), use(rbp)));
-		emit(make_instr(SUBQ_IMM_FROM_REG, 2, make_literal(-get_current_offset(n)), use(rsp)));
+		emit(make_instr(PUSHQ_REG, 1, use(RBP)));
+		emit(make_instr(MOVQ_REG_TO_REG, 2, use(RSP), use(RBP)));
+		emit(make_instr(SUBQ_IMM_FROM_REG, 2, make_literal(-get_current_offset(n)), use(RSP)));
 		
 		//Execute the function body
 		emit(n->function.expression);
 		
 		//Place the return value
-		emit(make_load(n->function.expression_return_value, 0, use(rax), use(r13)));
+		emit(make_load(n->function.expression_return_value, 0, use(RAX), use(R13)));
 		
 		emit(make_instr(LEAVE, 0));
 		//Restore callee-saved registers
-		emit(make_instr(POPQ_REG, 1, use(rbx)));
-		emit(make_instr(POPQ_REG, 1, use(r15)));
-		emit(make_instr(POPQ_REG, 1, use(r14)));
-		emit(make_instr(POPQ_REG, 1, use(r13)));
-		emit(make_instr(POPQ_REG, 1, use(r12)));
+		emit(make_instr(POPQ_REG, 1, use(RBX)));
+		emit(make_instr(POPQ_REG, 1, use(R15)));
+		emit(make_instr(POPQ_REG, 1, use(R14)));
+		emit(make_instr(POPQ_REG, 1, use(R13)));
+		emit(make_instr(POPQ_REG, 1, use(R12)));
 		
-		emit(make_instr(POPQ_REG, 1, use(r11)));
-		emit(make_instr(ADDQ_IMM_TO_REG, 2, make_literal(6*WORD_SIZE), use(rsp)));
-		emit(make_instr(PUSHQ_REG, 1, use(r11)));
+		emit(make_instr(POPQ_REG, 1, use(R11)));
+		emit(make_instr(ADDQ_IMM_TO_REG, 2, make_literal(6*WORD_SIZE), use(RSP)));
+		emit(make_instr(PUSHQ_REG, 1, use(R11)));
 		emit(make_instr(RET, 0));
 		emit(make_instr(LABEL, 1, after_reference));
 		return container;
@@ -374,36 +374,36 @@ union expression *vgenerate_function_expressions(union expression *n) {
 		if(length(n->invoke.arguments) > 6) {
 			union expression *t;
 			foreach(t, reverse(rrrrrrst(n->invoke.arguments))) {
-				emit(make_load(t, 0, use(r11), use(r10)));
-				emit(make_instr(PUSHQ_REG, 1, use(r11)));
+				emit(make_load(t, 0, use(R11), use(R10)));
+				emit(make_instr(PUSHQ_REG, 1, use(R11)));
 			}
 		}
 		if(length(n->invoke.arguments) > 5) {
-			emit(make_load(frrrrrst(n->invoke.arguments), 0, use(r9), use(r10)));
+			emit(make_load(frrrrrst(n->invoke.arguments), 0, use(R9), use(R10)));
 		}
 		if(length(n->invoke.arguments) > 4) {
-			emit(make_load(frrrrst(n->invoke.arguments), 0, use(r8), use(r10)));
+			emit(make_load(frrrrst(n->invoke.arguments), 0, use(R8), use(R10)));
 		}
 		if(length(n->invoke.arguments) > 3) {
-			emit(make_load(frrrst(n->invoke.arguments), 0, use(rcx), use(r10)));
+			emit(make_load(frrrst(n->invoke.arguments), 0, use(RCX), use(R10)));
 		}
 		if(length(n->invoke.arguments) > 2) {
-			emit(make_load(frrst(n->invoke.arguments), 0, use(rdx), use(r10)));
+			emit(make_load(frrst(n->invoke.arguments), 0, use(RDX), use(R10)));
 		}
 		if(length(n->invoke.arguments) > 1) {
-			emit(make_load(frst(n->invoke.arguments), 0, use(rsi), use(r10)));
+			emit(make_load(frst(n->invoke.arguments), 0, use(RSI), use(R10)));
 		}
 		if(length(n->invoke.arguments) > 0) {
-			emit(make_load(fst(n->invoke.arguments), 0, use(rdi), use(r10)));
+			emit(make_load(fst(n->invoke.arguments), 0, use(RDI), use(R10)));
 		}
-		emit(make_instr(MOVQ_IMM_TO_REG, 2, make_literal(0), use(rax)));
+		emit(make_instr(MOVQ_IMM_TO_REG, 2, make_literal(0), use(RAX)));
 		
-		emit(make_load(n->invoke.reference, 0, use(r11), use(r10)));
-		emit(make_instr(CALL_REG, 1, use(r11)));
+		emit(make_load(n->invoke.reference, 0, use(R11), use(R10)));
+		emit(make_instr(CALL_REG, 1, use(R11)));
 		
-		emit(make_store(use(rax), n->invoke.return_value, 0, use(r10)));
+		emit(make_store(use(RAX), n->invoke.return_value, 0, use(R10)));
 		if(length(n->invoke.arguments) > 6) {
-			emit(make_instr(ADDQ_IMM_TO_REG, 2, make_literal(WORD_SIZE * (length(n->invoke.arguments) - 6)), use(rsp)));
+			emit(make_instr(ADDQ_IMM_TO_REG, 2, make_literal(WORD_SIZE * (length(n->invoke.arguments) - 6)), use(RSP)));
 		}
 		return container;
 	} else {
@@ -419,9 +419,25 @@ char *expr_to_string(union expression *n) {
 			return cprintf("%lu", n->literal.value);
 		} case instruction: {
 			switch(n->instruction.opcode) {
-				case ADD:
-					return cprintf("(%s+%s)", expr_to_string(fst(n->invoke.arguments)),
-						expr_to_string(frst(n->invoke.arguments)));
+				case ADD: return cprintf("(%s+%s)", expr_to_string(fst(n->invoke.arguments)),
+					expr_to_string(frst(n->invoke.arguments)));
+				case RBP: return "%rbp";
+				case RSP: return "%rsp";
+				case R12: return "%r12";
+				case R13: return "%r13";
+				case R14: return "%r14";
+				case R15: return "%r15";
+				case RIP: return "%rip";
+				case R11: return "%r11";
+				case R10: return "%r10";
+				case RAX: return "%rax";
+				case R9: return "%r9";
+				case R8: return "%r8";
+				case RDI: return "%rdi";
+				case RSI: return "%rsi";
+				case RDX: return "%rdx";
+				case RCX: return "%rcx";
+				case RBX: return "%rbx";
 			}
 		}
 	}
@@ -448,31 +464,31 @@ void print_assembly(list generated_expressions, FILE *out) {
 				fprintf(out, "%s:", fst_string(n));
 				break;
 			case LEAQ_OF_MDB_INTO_REG:
-				fprintf(out, "leaq %s(%%%s), %%%s", fst_string(n), frst_string(n), frrst_string(n));
+				fprintf(out, "leaq %s(%s), %s", fst_string(n), frst_string(n), frrst_string(n));
 				break;
 			case MOVQ_FROM_REG_INTO_MDB:
-				fprintf(out, "movq %%%s, %s(%%%s)", fst_string(n), frst_string(n), frrst_string(n));
+				fprintf(out, "movq %s, %s(%s)", fst_string(n), frst_string(n), frrst_string(n));
 				break;
 			case JMP_REL:
 				fprintf(out, "jmp %s", fst_string(n));
 				break;
 			case MOVQ_MDB_TO_REG:
-				fprintf(out, "movq %s(%%%s), %%%s", fst_string(n), frst_string(n), frrst_string(n));
+				fprintf(out, "movq %s(%s), %s", fst_string(n), frst_string(n), frrst_string(n));
 				break;
 			case PUSHQ_REG:
-				fprintf(out, "pushq %%%s", fst_string(n));
+				fprintf(out, "pushq %s", fst_string(n));
 				break;
 			case MOVQ_REG_TO_REG:
-				fprintf(out, "movq %%%s, %%%s", fst_string(n), frst_string(n));
+				fprintf(out, "movq %s, %s", fst_string(n), frst_string(n));
 				break;
 			case SUBQ_IMM_FROM_REG:
-				fprintf(out, "subq $%s, %%%s", fst_string(n), frst_string(n));
+				fprintf(out, "subq $%s, %s", fst_string(n), frst_string(n));
 				break;
 			case ADDQ_IMM_TO_REG:
-				fprintf(out, "addq $%s, %%%s", fst_string(n), frst_string(n));
+				fprintf(out, "addq $%s, %s", fst_string(n), frst_string(n));
 				break;
 			case POPQ_REG:
-				fprintf(out, "popq %%%s", fst_string(n));
+				fprintf(out, "popq %s", fst_string(n));
 				break;
 			case LEAVE:
 				fprintf(out, "leave");
@@ -484,31 +500,31 @@ void print_assembly(list generated_expressions, FILE *out) {
 				fprintf(out, "call %s", fst_string(n));
 				break;
 			case JMP_TO_REG:
-				fprintf(out, "jmp *%%%s", fst_string(n));
+				fprintf(out, "jmp *%s", fst_string(n));
 				break;
 			case JE_REL:
 				fprintf(out, "je %s", fst_string(n));
 				break;
 			case ORQ_REG_TO_REG:
-				fprintf(out, "orq %%%s, %%%s", fst_string(n), frst_string(n));
+				fprintf(out, "orq %s, %s", fst_string(n), frst_string(n));
 				break;
 			case MOVQ_IMM_TO_REG:
-				fprintf(out, "movq $%s, %%%s", fst_string(n), frst_string(n));
+				fprintf(out, "movq $%s, %s", fst_string(n), frst_string(n));
 				break;
 			case GLOBAL:
 				fprintf(out, ".global %s", fst_string(n));
 				break;
 			case MOVQ_MD_TO_REG:
-				fprintf(out, "movq %s, %%%s", fst_string(n), frst_string(n));
+				fprintf(out, "movq %s, %s", fst_string(n), frst_string(n));
 				break;
 			case MOVQ_REG_TO_MD:
-				fprintf(out, "movq %%%s, %s", fst_string(n), frst_string(n));
+				fprintf(out, "movq %s, %s", fst_string(n), frst_string(n));
 				break;
 			case LEAQ_OF_MD_INTO_REG:
-				fprintf(out, "leaq %s, %%%s", fst_string(n), frst_string(n));
+				fprintf(out, "leaq %s, %s", fst_string(n), frst_string(n));
 				break;
 			case CALL_REG:
-				fprintf(out, "call *%%%s", fst_string(n));
+				fprintf(out, "call *%s", fst_string(n));
 				break;
 			case SKIP_EXPR_EXPR:
 				fprintf(out, ".skip %s, %s", fst_string(n), frst_string(n));

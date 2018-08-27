@@ -219,10 +219,12 @@ union expression *make_function() {
 	_set_val->base.parent = _set_expr; \
 }
 
-union expression *use(union expression *rt) {
-	union expression *r = make_reference(rt->reference.name);
-	r->reference.referent = rt;
-	return r;
+union expression *use(int opcode) {
+	union expression *u = calloc(1, sizeof(union expression));
+	u->instruction.type = instruction;
+	u->instruction.opcode = opcode;
+	u->instruction.arguments = nil();
+	return u;
 }
 
 union expression *prepend_parameter(char *name, union expression *function) {
