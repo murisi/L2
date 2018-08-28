@@ -34,10 +34,7 @@ bool generator_PIC;
 #define JE_REL 30
 #define ORQ_REG_TO_REG 31
 #define MOVQ_IMM_TO_REG 32
-#define MOVQ_MD_TO_REG 33
 #define CALL_REG 34
-#define MOVQ_REG_TO_MD 35
-#define LEAQ_OF_MD_INTO_REG 36
 #define LABEL 37
 #define GLOBAL 38
 #define SKIP_EXPR_EXPR 39
@@ -111,7 +108,8 @@ union expression *make_load(union expression *ref, int offset, union expression 
 		emit(make_instr(MOVQ_MDB_TO_REG, 3, make_suffixed(ref, "@GOTPCREL"), use(RIP), scratch_reg));
 		emit(make_instr(MOVQ_MDB_TO_REG, 3, make_literal(offset), scratch_reg, dest_reg));
 	} else {
-		emit(make_instr(MOVQ_MD_TO_REG, 2, make_instr(ADD, 2, ref, make_literal(offset)), dest_reg));
+		emit(make_instr(MOVQ_IMM_TO_REG, 2, make_instr(ADD, 2, ref, make_literal(offset)), scratch_reg));
+		emit(make_instr(MOVQ_MDB_TO_REG, 3, make_literal(0), scratch_reg, dest_reg));
 	}
 	return container;
 }
@@ -119,13 +117,14 @@ union expression *make_load(union expression *ref, int offset, union expression 
 union expression *make_store(union expression *src_reg, union expression *ref, int offset, union expression *scratch_reg) {
 	union expression *container = make_begin();
 	if(ref->reference.referent->reference.offset) {
-		emit(make_instr(MOVQ_FROM_REG_INTO_MDB, 3, src_reg, make_literal(ref->reference.referent->reference.offset->literal.value + offset),
-			use(RBP)));
+		emit(make_instr(MOVQ_FROM_REG_INTO_MDB, 3,
+			src_reg, make_literal(ref->reference.referent->reference.offset->literal.value + offset), use(RBP)));
 	} else if(generator_PIC) {
 		emit(make_instr(MOVQ_MDB_TO_REG, 3, make_suffixed(ref, "@GOTPCREL"), use(RIP), scratch_reg));
 		emit(make_instr(MOVQ_FROM_REG_INTO_MDB, 3, src_reg, make_literal(offset), scratch_reg));
 	} else {
-		emit(make_instr(MOVQ_REG_TO_MD, 2, src_reg, make_instr(ADD, 2, ref, make_literal(offset))));
+		emit(make_instr(MOVQ_IMM_TO_REG, 2, make_instr(ADD, 2, ref, make_literal(offset)), scratch_reg));
+		emit(make_instr(MOVQ_FROM_REG_INTO_MDB, 3, src_reg, make_literal(0), scratch_reg));
 	}
 	return container;
 }
@@ -159,7 +158,7 @@ union expression *make_load_address(union expression *ref, union expression *des
 	} else if(generator_PIC) {
 		emit(make_instr(MOVQ_MDB_TO_REG, 3, make_suffixed(ref, "@GOTPCREL"), use(RIP), dest_reg));
 	} else {
-		emit(make_instr(LEAQ_OF_MD_INTO_REG, 2, ref, dest_reg));
+		emit(make_instr(MOVQ_IMM_TO_REG, 2, ref, dest_reg));
 	}
 	return container;
 }
@@ -508,15 +507,6 @@ void print_assembly(list generated_expressions, FILE *out) {
 				break;
 			case GLOBAL:
 				fprintf(out, ".global %s", fst_string(n));
-				break;
-			case MOVQ_MD_TO_REG:
-				fprintf(out, "movq %s, %s", fst_string(n), frst_string(n));
-				break;
-			case MOVQ_REG_TO_MD:
-				fprintf(out, "movq %s, %s", fst_string(n), frst_string(n));
-				break;
-			case LEAQ_OF_MD_INTO_REG:
-				fprintf(out, "leaq %s, %s", fst_string(n), frst_string(n));
 				break;
 			case CALL_REG:
 				fprintf(out, "call *%s", fst_string(n));
