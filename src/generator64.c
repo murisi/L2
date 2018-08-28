@@ -1,50 +1,50 @@
 bool generator_PIC;
 
-#define LEAQ_OF_MDB_INTO_REG 0
-#define MOVQ_FROM_REG_INTO_MDB 1
-#define JMP_REL 2
-#define MOVQ_MDB_TO_REG 3
-#define PUSHQ_REG 4
-#define MOVQ_REG_TO_REG 5
-#define SUBQ_IMM_FROM_REG 6
-#define ADDQ_IMM_TO_REG 7
-#define POPQ_REG 8
-#define LEAVE 9
-#define RET 10
-#define CALL_REL 11
-#define JMP_TO_REG 12
-#define JE_REL 13
-#define ORQ_REG_TO_REG 14
-#define MOVQ_IMM_TO_REG 15
-#define MOVQ_MD_TO_REG 16
-#define CALL_REG 17
-#define MOVQ_REG_TO_MD 18
-#define LEAQ_OF_MD_INTO_REG 19
-#define LABEL 20
-#define GLOBAL 21
-#define SKIP_EXPR_EXPR 22
-#define ALIGN_EXPR_EXPR 23
-#define BSS 24
-#define TEXT 25
-#define ADD 26
+#define RAX 0
+#define RCX 1
+#define RDX 2
+#define RBX 3
+#define RSP 4
+#define RBP 5
+#define RSI 6
+#define RDI 7
+#define R8 8
+#define R9 9
+#define R10 10
+#define R11 11
+#define R12 12
+#define R13 13
+#define R14 14
+#define R15 15
+#define RIP 16
 
-#define RBP 27
-#define RSP 28
-#define R12 29
-#define R13 30
-#define R14 31
-#define R15 32
-#define RIP 33
-#define R11 34
-#define R10 35
-#define RAX 36
-#define R9 37
-#define R8 38
-#define RDI 39
-#define RSI 40
-#define RDX 41
-#define RCX 42
-#define RBX 43
+#define LEAQ_OF_MDB_INTO_REG 17
+#define MOVQ_FROM_REG_INTO_MDB 18
+#define JMP_REL 19
+#define MOVQ_MDB_TO_REG 20
+#define PUSHQ_REG 21
+#define MOVQ_REG_TO_REG 22
+#define SUBQ_IMM_FROM_REG 23
+#define ADDQ_IMM_TO_REG 24
+#define POPQ_REG 25
+#define LEAVE 26
+#define RET 27
+#define CALL_REL 28
+#define JMP_TO_REG 29
+#define JE_REL 30
+#define ORQ_REG_TO_REG 31
+#define MOVQ_IMM_TO_REG 32
+#define MOVQ_MD_TO_REG 33
+#define CALL_REG 34
+#define MOVQ_REG_TO_MD 35
+#define LEAQ_OF_MD_INTO_REG 36
+#define LABEL 37
+#define GLOBAL 38
+#define SKIP_EXPR_EXPR 39
+#define ALIGN_EXPR_EXPR 40
+#define BSS 41
+#define TEXT 42
+#define ADD 43
 
 /*
  * Initializes the generator. If PIC is true, then generator will produce
@@ -98,10 +98,6 @@ union expression *vlayout_frames(union expression *n) {
 	return n;
 }
 
-union expression *make_offset(union expression *a, int b) {
-	return make_instr(ADD, 2, a, make_literal(b));
-}
-
 union expression *make_suffixed(union expression *ref, char *suffix) {
 	return make_reference(cprintf("%s%s", ref->reference.name, suffix));
 }
@@ -109,13 +105,13 @@ union expression *make_suffixed(union expression *ref, char *suffix) {
 union expression *make_load(union expression *ref, int offset, union expression *dest_reg, union expression *scratch_reg) {
 	union expression *container = make_begin();
 	if(ref->reference.referent->reference.offset) {
-		emit(make_instr(MOVQ_MDB_TO_REG, 3, make_offset(ref->reference.referent->reference.offset, offset), use(RBP),
+		emit(make_instr(MOVQ_MDB_TO_REG, 3, make_literal(ref->reference.referent->reference.offset->literal.value + offset), use(RBP),
 			dest_reg));
 	} else if(generator_PIC) {
 		emit(make_instr(MOVQ_MDB_TO_REG, 3, make_suffixed(ref, "@GOTPCREL"), use(RIP), scratch_reg));
 		emit(make_instr(MOVQ_MDB_TO_REG, 3, make_literal(offset), scratch_reg, dest_reg));
 	} else {
-		emit(make_instr(MOVQ_MD_TO_REG, 2, make_offset(ref, offset), dest_reg));
+		emit(make_instr(MOVQ_MD_TO_REG, 2, make_instr(ADD, 2, ref, make_literal(offset)), dest_reg));
 	}
 	return container;
 }
@@ -123,13 +119,13 @@ union expression *make_load(union expression *ref, int offset, union expression 
 union expression *make_store(union expression *src_reg, union expression *ref, int offset, union expression *scratch_reg) {
 	union expression *container = make_begin();
 	if(ref->reference.referent->reference.offset) {
-		emit(make_instr(MOVQ_FROM_REG_INTO_MDB, 3, src_reg, make_offset(ref->reference.referent->reference.offset, offset),
+		emit(make_instr(MOVQ_FROM_REG_INTO_MDB, 3, src_reg, make_literal(ref->reference.referent->reference.offset->literal.value + offset),
 			use(RBP)));
 	} else if(generator_PIC) {
 		emit(make_instr(MOVQ_MDB_TO_REG, 3, make_suffixed(ref, "@GOTPCREL"), use(RIP), scratch_reg));
 		emit(make_instr(MOVQ_FROM_REG_INTO_MDB, 3, src_reg, make_literal(offset), scratch_reg));
 	} else {
-		emit(make_instr(MOVQ_REG_TO_MD, 2, src_reg, make_offset(ref, offset)));
+		emit(make_instr(MOVQ_REG_TO_MD, 2, src_reg, make_instr(ADD, 2, ref, make_literal(offset))));
 	}
 	return container;
 }
@@ -416,7 +412,7 @@ char *expr_to_string(union expression *n) {
 		case reference: {
 			return n->reference.name;
 		} case literal: {
-			return cprintf("%lu", n->literal.value);
+			return cprintf("%ld", n->literal.value);
 		} case instruction: {
 			switch(n->instruction.opcode) {
 				case ADD: return cprintf("(%s+%s)", expr_to_string(fst(n->invoke.arguments)),
@@ -456,7 +452,6 @@ char *frrst_string(union expression *n) {
 }
 
 void print_assembly(list generated_expressions, FILE *out) {
-	fputs(".text\n", out);
 	union expression *n;
 	foreach(n, generated_expressions) {
 		switch(n->instruction.opcode) {
@@ -538,9 +533,6 @@ void print_assembly(list generated_expressions, FILE *out) {
 			case TEXT:
 				fprintf(out, ".text");
 				break;
-			default:
-				printf("What is happening?\n\n");
-				break;
 		}
 		fprintf(out, "\n");
 	}
@@ -551,6 +543,8 @@ void print_assembly(list generated_expressions, FILE *out) {
  * given by the string in. This binary will both be a static library and
  * an executable.
  */
+
+#include "x86_64_assembler.c"
 
 /*
  * Makes a new binary file at the path outbin from the list of primitive
@@ -599,6 +593,7 @@ void compile_expressions(char *outbin, list exprs, jmp_buf *handler) {
 	char sfilefn[] = ".s_fileXXXXXX.s";
 	FILE *sfile = fdopen(mkstemps(sfilefn, 2), "w+");
 	print_assembly(program->begin.expressions, sfile);
+	assemble(program->begin.expressions, sfile);
 	fflush(sfile);
 	
 	char *ofilefn = cprintf("%s", ".o_fileXXXXXX.o");
