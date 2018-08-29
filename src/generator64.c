@@ -1,5 +1,3 @@
-bool generator_PIC;
-
 #define RAX 0
 #define RCX 1
 #define RDX 2
@@ -42,16 +40,6 @@ bool generator_PIC;
 #define BSS 41
 #define TEXT 42
 #define ADD 43
-
-/*
- * Initializes the generator. If PIC is true, then generator will produce
- * position independent 64-bit code. Otherwise it will generate 64-bit
- * position dependent code. This function must be called before anything
- * else from this file is invoked.
- */
-void generator_init(bool PIC) {
-	generator_PIC = PIC;
-}
 
 #define WORD_SIZE 8
 #define CONT_SIZE (7*WORD_SIZE)
@@ -104,9 +92,6 @@ union expression *make_load(union expression *ref, int offset, union expression 
 	if(ref->reference.referent->reference.offset) {
 		emit(make_instr(MOVQ_MDB_TO_REG, 3, make_literal(ref->reference.referent->reference.offset->literal.value + offset), use(RBP),
 			dest_reg));
-	} else if(generator_PIC) {
-		emit(make_instr(MOVQ_MDB_TO_REG, 3, make_suffixed(ref, "@GOTPCREL"), use(RIP), scratch_reg));
-		emit(make_instr(MOVQ_MDB_TO_REG, 3, make_literal(offset), scratch_reg, dest_reg));
 	} else {
 		emit(make_instr(MOVQ_IMM_TO_REG, 2, make_instr(ADD, 2, ref, make_literal(offset)), scratch_reg));
 		emit(make_instr(MOVQ_MDB_TO_REG, 3, make_literal(0), scratch_reg, dest_reg));
@@ -119,9 +104,6 @@ union expression *make_store(union expression *src_reg, union expression *ref, i
 	if(ref->reference.referent->reference.offset) {
 		emit(make_instr(MOVQ_FROM_REG_INTO_MDB, 3,
 			src_reg, make_literal(ref->reference.referent->reference.offset->literal.value + offset), use(RBP)));
-	} else if(generator_PIC) {
-		emit(make_instr(MOVQ_MDB_TO_REG, 3, make_suffixed(ref, "@GOTPCREL"), use(RIP), scratch_reg));
-		emit(make_instr(MOVQ_FROM_REG_INTO_MDB, 3, src_reg, make_literal(offset), scratch_reg));
 	} else {
 		emit(make_instr(MOVQ_IMM_TO_REG, 2, make_instr(ADD, 2, ref, make_literal(offset)), scratch_reg));
 		emit(make_instr(MOVQ_FROM_REG_INTO_MDB, 3, src_reg, make_literal(0), scratch_reg));
@@ -155,8 +137,6 @@ union expression *make_load_address(union expression *ref, union expression *des
 	union expression *container = make_begin();
 	if(ref->reference.referent->reference.offset) {
 		emit(make_instr(LEAQ_OF_MDB_INTO_REG, 3, ref->reference.referent->reference.offset, use(RBP), dest_reg));
-	} else if(generator_PIC) {
-		emit(make_instr(MOVQ_MDB_TO_REG, 3, make_suffixed(ref, "@GOTPCREL"), use(RIP), dest_reg));
 	} else {
 		emit(make_instr(MOVQ_IMM_TO_REG, 2, ref, dest_reg));
 	}
@@ -570,7 +550,6 @@ void compile_expressions(char *outbin, list exprs, jmp_buf *handler) {
 	visit_expressions_with(&program, vescape_analysis);
 	program = use_return_value(program, generate_reference());
 	
-	generator_init(false);
 	visit_expressions_with(&program, vlayout_frames);
 	visit_expressions_with(&program, vgenerate_references);
 	visit_expressions_with(&program, vgenerate_continuation_expressions);

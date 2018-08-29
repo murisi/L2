@@ -19,19 +19,13 @@ void mem_write(char *mem, int *idx, void *bytes, int cnt) {
 
 //static value
 
-void write_mr_rm_instr(char *bin, int *pos, char opcode, int reg, int rm, bool m, union expression *disp_expr) {
+void write_mr_rm_instr(char *bin, int *pos, char opcode, int reg, int rm, bool m) {
 	char mod = m ? 2 : 3;
 	char modrm = (mod << MOD) | ((reg & 0x7) << REG) | ((rm & 0x7) << RM);
 	int has_SIB = m && (rm == RSP || rm == R12);
 	char SIB;
 	if(has_SIB) {
 		SIB = (4 << INDEX) | ((rm & 0x7) << BASE) | (0 << SS);
-	}
-	uint32_t disp;
-	if(m) {
-		if(disp_expr->base.type == literal) {
-			disp = disp_expr->literal.value;
-		}
 	}
 	char REX = 4 << 4;
 	REX |= (1 << REX_W);
@@ -48,9 +42,14 @@ void write_mr_rm_instr(char *bin, int *pos, char opcode, int reg, int rm, bool m
 	if(has_SIB) {
 		mem_write(bin, pos, &SIB, 1);
 	}
-	if(m) {
-		mem_write(bin, pos, (char *) &disp, 4);
+}
+
+void write_displacement(char *bin, int *pos, union expression *disp_expr) {
+	uint32_t disp;
+	if(disp_expr->base.type == literal) {
+		disp = disp_expr->literal.value;
 	}
+	mem_write(bin, pos, (char *) &disp, 4);
 }
 
 void write_o_instr(char *bin, int *pos, unsigned char opcode, int reg) {
@@ -81,14 +80,16 @@ void assemble(list generated_expressions, FILE *out) {
 				unsigned char opcode = 0x8D;
 				int reg = ((union expression *) frrst(n->invoke.arguments))->instruction.opcode; //Dest
 				int rm = ((union expression *) frst(n->invoke.arguments))->instruction.opcode; //Src
-				write_mr_rm_instr(bin, &pos, opcode, reg, rm, true, (union expression *) fst(n->invoke.arguments));
+				write_mr_rm_instr(bin, &pos, opcode, reg, rm, true);
+				write_displacement(bin, &pos, fst(n->invoke.arguments));
 				break;
 			} case MOVQ_FROM_REG_INTO_MDB: {
 				printf("movq %s, %s(%s)\n", fst_string(n), frst_string(n), frrst_string(n));
 				unsigned char opcode = 0x89;
 				int reg = ((union expression *) fst(n->invoke.arguments))->instruction.opcode; //Src
 				int rm = ((union expression *) frrst(n->invoke.arguments))->instruction.opcode; //Dest
-				write_mr_rm_instr(bin, &pos, opcode, reg, rm, true, (union expression *) frst(n->invoke.arguments));
+				write_mr_rm_instr(bin, &pos, opcode, reg, rm, true);
+				write_displacement(bin, &pos, frst(n->invoke.arguments));
 				break;
 			} case JMP_REL:
 				//fprintf(out, "jmp %s", fst_string(n));
@@ -98,7 +99,8 @@ void assemble(list generated_expressions, FILE *out) {
 				unsigned char opcode = 0x8B;
 				int reg = ((union expression *) frrst(n->invoke.arguments))->instruction.opcode; //Dest
 				int rm = ((union expression *) frst(n->invoke.arguments))->instruction.opcode; //Src
-				write_mr_rm_instr(bin, &pos, opcode, reg, rm, true, (union expression *) fst(n->invoke.arguments));
+				write_mr_rm_instr(bin, &pos, opcode, reg, rm, true);
+				write_displacement(bin, &pos, fst(n->invoke.arguments));
 				break;
 			case PUSHQ_REG: {
 				printf("pushq %s\n", fst_string(n));
@@ -111,15 +113,25 @@ void assemble(list generated_expressions, FILE *out) {
 				unsigned char opcode = 0x8B;
 				int reg = ((union expression *) frst(n->invoke.arguments))->instruction.opcode; //Dest
 				int rm = ((union expression *) fst(n->invoke.arguments))->instruction.opcode; //Src
-				write_mr_rm_instr(bin, &pos, opcode, reg, rm, false, NULL);
+				write_mr_rm_instr(bin, &pos, opcode, reg, rm, false);
 				break;
-			} case SUBQ_IMM_FROM_REG:
-				//fprintf(out, "subq $%s, %s", fst_string(n), frst_string(n));
+			} case SUBQ_IMM_FROM_REG: {
+				printf("subq $%s, %s\n", fst_string(n), frst_string(n));
+				unsigned char opcode = 0x81;
+				unsigned char reg = 5;
+				int rm = ((union expression *) frst(n->invoke.arguments))->instruction.opcode; //Dest
+				write_mr_rm_instr(bin, &pos, opcode, reg, rm, false);
+				mem_write(bin, &pos, &((union expression *) fst(n->invoke.arguments))->literal.value, 4);
 				break;
-			case ADDQ_IMM_TO_REG:
-				//fprintf(out, "addq $%s, %s", fst_string(n), frst_string(n));
+			} case ADDQ_IMM_TO_REG: {
+				printf("addq $%s, %s\n", fst_string(n), frst_string(n));
+				unsigned char opcode = 0x81;
+				unsigned char reg = 0;
+				int rm = ((union expression *) frst(n->invoke.arguments))->instruction.opcode; //Dest
+				write_mr_rm_instr(bin, &pos, opcode, reg, rm, false);
+				mem_write(bin, &pos, &((union expression *) fst(n->invoke.arguments))->literal.value, 4);
 				break;
-			case POPQ_REG: {
+			} case POPQ_REG: {
 				printf("popq %s\n", fst_string(n));
 				unsigned char opcode = 0x58;
 				int reg = ((union expression *) fst(n->invoke.arguments))->instruction.opcode; //Dest
@@ -149,7 +161,7 @@ void assemble(list generated_expressions, FILE *out) {
 				char opcode = 0x0B;
 				int reg = ((union expression *) frst(n->invoke.arguments))->instruction.opcode; //Dest
 				int rm = ((union expression *) fst(n->invoke.arguments))->instruction.opcode; //Src
-				write_mr_rm_instr(bin, &pos, opcode, reg, rm, false, NULL);
+				write_mr_rm_instr(bin, &pos, opcode, reg, rm, false);
 				break;
 			} case MOVQ_IMM_TO_REG: {
 				printf("movq $%s, %s\n", fst_string(n), frst_string(n));
