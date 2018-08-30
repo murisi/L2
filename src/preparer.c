@@ -7,17 +7,16 @@ bool reference_named(void *expr_void, void *ctx) {
 	return strequal(ctx, ((union expression *) expr_void)->reference.source_name);
 }
 
-jmp_buf *vfind_multiple_definitions_handler;
-
-union expression *vfind_multiple_definitions(union expression *e) {
+union expression *vfind_multiple_definitions(union expression *e, void *ctx) {
+	jmp_buf *handler = ctx;
 	union expression *t;
 	list *partial;
 	switch(e->base.type) {
 		case begin: {
 			foreachlist(partial, t, &e->begin.expressions) {
-				if(t->base.type == function && exists(function_named, &(*partial)->rst, t->function.reference->reference.source_name)) {
-					thelongjmp(*vfind_multiple_definitions_handler,
-						make_multiple_definition(t->function.reference->reference.source_name));
+				if(t->base.type == function &&
+					exists(function_named, &(*partial)->rst, t->function.reference->reference.source_name)) {
+						thelongjmp(*handler, make_multiple_definition(t->function.reference->reference.source_name));
 				}
 			}
 			break;
@@ -25,7 +24,7 @@ union expression *vfind_multiple_definitions(union expression *e) {
 			list ref_with_params = lst(e->continuation.reference, e->continuation.parameters);
 			foreachlist(partial, t, &ref_with_params) {
 				if(exists(reference_named, &(*partial)->rst, t->reference.source_name)) {
-					thelongjmp(*vfind_multiple_definitions_handler, make_multiple_definition(t->reference.source_name));
+					thelongjmp(*handler, make_multiple_definition(t->reference.source_name));
 				}
 			}
 			break;
@@ -102,32 +101,31 @@ union expression *target_expression(union expression *s) {
 	return s->reference.referent->reference.parent;
 }
 
-/*
- * Parameter to link_references. It is not modified by link_references. It is not an
- * argument to avoid it being passed recursively.
- */
-union expression *vlink_references_program;
-jmp_buf *vlink_references_handler;
+union expression *root_function_of(union expression *s) {
+	for(; s->base.parent; s = s->base.parent);
+	return s;
+}
 
-union expression *vlink_references(union expression *s) {
+union expression *vlink_references(union expression *s, void *ctx) {
+	jmp_buf *handler = ctx;
 	if(s->base.type == reference) {
 		s->reference.referent = referent_of(s);
 		if(s->reference.referent == NULL) {
-			s->reference.referent = prepend_parameter("", vlink_references_program);
+			s->reference.referent = prepend_parameter("", root_function_of(s));
 			s->reference.referent->reference.source_name = s->reference.source_name;
 		} else if(is_jump_reference(s) && is_c_reference(s->reference.referent) &&
 			length(s->reference.parent->jump.arguments) != length(target_expression(s)->continuation.parameters)) {
-				thelongjmp(*vlink_references_handler, make_param_count_mismatch(s->reference.parent, target_expression(s)));
+				thelongjmp(*handler, make_param_count_mismatch(s->reference.parent, target_expression(s)));
 		} else if(is_invoke_reference(s) && is_function_reference(s->reference.referent) &&
 			length(s->reference.parent->invoke.arguments) != length(target_expression(s)->function.parameters)) {
-				thelongjmp(*vlink_references_handler, make_param_count_mismatch(s->reference.parent, target_expression(s)));
+				thelongjmp(*handler, make_param_count_mismatch(s->reference.parent, target_expression(s)));
 		}
 	} else if(s->base.type == continuation && is_jump_reference(s) &&
 		length(s->continuation.parent->jump.arguments) != length(s->continuation.parameters)) {
-			thelongjmp(*vlink_references_handler, make_param_count_mismatch(s->continuation.parent, s));
+			thelongjmp(*handler, make_param_count_mismatch(s->continuation.parent, s));
 	} else if(s->base.type == function && s->function.parent && s->function.parent->base.type == invoke &&
 		s->function.parent->invoke.reference == s && length(s->function.parent->invoke.arguments) != length(s->function.parameters)) {
-			thelongjmp(*vlink_references_handler, make_param_count_mismatch(s->function.parent, s));
+			thelongjmp(*handler, make_param_count_mismatch(s->function.parent, s));
 	}
 	return s;
 }
@@ -140,7 +138,7 @@ void vescape_analysis_aux(union expression *ref, union expression *target) {
 	}
 }
 
-union expression *vescape_analysis(union expression *s) {
+union expression *vescape_analysis(union expression *s, void *ctx) {
 	if(s->base.type == reference && s->reference.referent != s && is_c_reference(s->reference.referent)) {
 		vescape_analysis_aux(s, target_expression(s));
 	} else if(s->base.type == continuation) {
@@ -150,14 +148,7 @@ union expression *vescape_analysis(union expression *s) {
 	return s;
 }
 
-/*
- * Following function renames definitions to newly generated names in order to avoid
- * name collisions in the code generation process. Its "return-by-reference" parameter
- * vrename_definition_references_renames must be initialized before the following
- * function's invokation.
- */
-
-union expression *vrename_definition_references(union expression *s) {
+union expression *vrename_definition_references(union expression *s, void *ctx) {
 	switch(s->base.type) {
 		case function: case continuation: case with: {
 			s->function.reference->reference.name = generate_string();
@@ -174,48 +165,46 @@ union expression *vrename_definition_references(union expression *s) {
 	return s;
 }
 
-union expression *vrename_usage_references(union expression *s) {
+union expression *vrename_usage_references(union expression *s, void *ctx) {
 	if(s->base.type == reference) {
 		s->reference.name = s->reference.referent->reference.name;
 	}
 	return s;
 }
 
-union expression *(*visit_expressions_visitor)(union expression *);
-
-void visit_expressions(union expression **s) {
+void visit_expressions(union expression *(*visitor)(union expression *, void *), union expression **s, void *ctx) {
 	switch((*s)->base.type) {
 		case begin: {
 			union expression **t;
 			foreach(t, address_list((*s)->begin.expressions)) {
-				visit_expressions(t);
+				visit_expressions(visitor, t, ctx);
 			}
 			break;
 		} case _if: {
-			visit_expressions(&(*s)->_if.condition);
-			visit_expressions(&(*s)->_if.consequent);
-			visit_expressions(&(*s)->_if.alternate);
+			visit_expressions(visitor, &(*s)->_if.condition, ctx);
+			visit_expressions(visitor, &(*s)->_if.consequent, ctx);
+			visit_expressions(visitor, &(*s)->_if.alternate, ctx);
 			break;
 		} case function: case continuation: case with: {
 			if((*s)->base.type == function || (*s)->base.type == continuation) {
 				union expression **t;
 				foreach(t, address_list((*s)->function.parameters)) {
-					visit_expressions(t);
+					visit_expressions(visitor, t, ctx);
 				}
 			}
-			visit_expressions(&(*s)->function.reference);
-			visit_expressions(&(*s)->function.expression);
+			visit_expressions(visitor, &(*s)->function.reference, ctx);
+			visit_expressions(visitor, &(*s)->function.expression, ctx);
 			break;
 		} case jump: case invoke: {
 			union expression **t;
 			foreach(t, lst(&(*s)->invoke.reference, address_list((*s)->invoke.arguments))) {
-				visit_expressions(t);
+				visit_expressions(visitor, t, ctx);
 			}
 			break;
 		}
 	}
 	union expression *parent = (*s)->base.parent;
-	*s = (*visit_expressions_visitor)(*s);
+	*s = (*visitor)(*s, ctx);
 	(*s)->base.parent = parent;
 }
 
@@ -294,7 +283,7 @@ union expression *use_return_value(union expression *n, union expression *ret_va
 	}
 }
 
-union expression *vmerge_begins(union expression *n) {
+union expression *vmerge_begins(union expression *n, void *ctx) {
 	if(n->base.type == begin) {
 		union expression *t;
 		list *l;
@@ -312,6 +301,45 @@ union expression *vmerge_begins(union expression *n) {
 				}
 			}
 		}
+	}
+	return n;
+}
+
+union expression *(*visit_assembly_visitor)(union expression *, void *);
+
+void visit_assembly(union expression **s, void *ctx) {
+	switch((*s)->base.type) {
+		case begin: {
+			union expression **t;
+			foreach(t, address_list((*s)->begin.expressions)) {
+				visit_assembly(t, ctx);
+			}
+			break;
+		} case instruction: {
+			union expression **t;
+			foreach(t, address_list((*s)->instruction.arguments)) {
+				visit_assembly(t, ctx);
+			}
+			break;
+		}
+	}
+	union expression *parent = (*s)->base.parent;
+	*s = (*visit_assembly_visitor)(*s, ctx);
+	(*s)->base.parent = parent;
+}
+
+union expression *vmeasure_references(union expression *n, void *ctx) {
+	if(n->base.type == reference) {
+		(*((int *) ctx)) += strlen(n->reference.name) + 1;
+	}
+	return n;
+}
+
+union expression *vuse_string_table(union expression *n, void *ctx) {
+	if(n->base.type == reference) {
+		strcpy(*((char **) ctx), n->reference.name);
+		n->reference.name = *((char **) ctx);
+		(*((char **) ctx)) += strlen(n->reference.name) + 1;
 	}
 	return n;
 }

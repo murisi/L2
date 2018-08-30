@@ -26,7 +26,7 @@ int myopen(char *path) {
 	return csyscall(SYS_OPEN, path, O_RDWR | O_CREAT, S_IRWXU | S_IRWXG | S_IRWXO);
 }
 
-void mywrite(int fd, char *d, int len) {
+void mywrite(int fd, void *d, int len) {
 	csyscall(SYS_WRITE, fd, d, len);
 }
 
@@ -66,7 +66,7 @@ void mywrite_int(int fd, int i) {
 	}
 }
 
-int myread(int fd, char *buf, int cnt) {
+int myread(int fd, void *buf, int cnt) {
 	return csyscall(SYS_READ, fd, buf, cnt);
 }
 

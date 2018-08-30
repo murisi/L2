@@ -51,7 +51,7 @@
 #define CONT_CIR (1*WORD_SIZE)
 #define CONT_RBP (0*WORD_SIZE)
 
-union expression *vlayout_frames(union expression *n) {
+union expression *vlayout_frames(union expression *n, void *ctx) {
 	switch(n->base.type) {
 		case function: {
 			//Offset of parameters relative to frame pointer is 6 callee saves + return address 
@@ -83,10 +83,6 @@ union expression *vlayout_frames(union expression *n) {
 	return n;
 }
 
-union expression *make_suffixed(union expression *ref, char *suffix) {
-	return make_reference(cprintf("%s%s", ref->reference.name, suffix));
-}
-
 union expression *make_load(union expression *ref, int offset, union expression *dest_reg, union expression *scratch_reg) {
 	union expression *container = make_begin();
 	if(ref->reference.referent->reference.offset) {
@@ -112,7 +108,7 @@ union expression *make_store(union expression *src_reg, union expression *ref, i
 }
 
 //Must be used after use_return_reference and init_i386_registers
-union expression *vgenerate_ifs(union expression *n) {
+union expression *vgenerate_ifs(union expression *n, void *ctx) {
 	if(n->base.type == _if) {
 		union expression *container = make_begin();
 		
@@ -144,7 +140,7 @@ union expression *make_load_address(union expression *ref, union expression *des
 }
 
 //Must be used after use_return_reference and init_i386_registers and generate_continuation_expressions
-union expression *vgenerate_references(union expression *n) {
+union expression *vgenerate_references(union expression *n, void *ctx) {
 	if(n->base.type == reference && n->reference.return_value) {
 		union expression *container = make_begin();
 		emit(make_load_address(n, use(R11)));
@@ -183,8 +179,8 @@ union expression *move_arguments(union expression *n, int offset) {
 	return container;
 }
 
-//Must be used after use_return_reference and init_i386_registers
-union expression *vgenerate_continuation_expressions(union expression *n) {
+//Must be used after use_return_reference
+union expression *vgenerate_continuation_expressions(union expression *n, void *ctx) {
 	switch(n->base.type) {
 		case continuation: {
 			union expression *container = make_begin();
@@ -239,7 +235,7 @@ union expression *vgenerate_continuation_expressions(union expression *n) {
 }
 
 //Must be used after use_return_reference and init_i386_registers
-union expression *vgenerate_literals(union expression *n) {
+union expression *vgenerate_literals(union expression *n, void *ctx) {
 	if(n->base.type == literal && n->literal.return_value) {
 		union expression *container = make_begin();
 		emit(make_instr(MOVQ_IMM_TO_REG, 2, make_literal(n->literal.value), use(R11)));
@@ -290,7 +286,7 @@ int get_current_offset(union expression *function) {
 }
 
 //Must be used after all local references have been made, i.e. after make_continuations
-union expression *vgenerate_function_expressions(union expression *n) {
+union expression *vgenerate_function_expressions(union expression *n, void *ctx) {
 	if(n->base.type == function && n->function.parent) {
 		union expression *container = make_begin();
 		emit(make_load_address(n->function.reference, use(R11)));
@@ -537,33 +533,30 @@ void compile_expressions(char *outbin, list exprs, jmp_buf *handler) {
 	root_function->function.reference->reference.source_name = generate_string();
 	put(program, function.expression, container);
 	
-	vfind_multiple_definitions_handler = handler;
-	visit_expressions_with(&program, vfind_multiple_definitions);
-
-	vlink_references_program = program; //Static argument to following function
-	vlink_references_handler = handler;
-	visit_expressions_with(&program, vlink_references);
-	
-	visit_expressions_with(&program, vrename_definition_references);
-	visit_expressions_with(&program, vrename_usage_references);
-	
-	visit_expressions_with(&program, vescape_analysis);
+	visit_expressions(vfind_multiple_definitions, &program, handler);
+	visit_expressions(vlink_references, &program, handler);
+	visit_expressions(vrename_definition_references, &program, NULL);
+	visit_expressions(vrename_usage_references, &program, NULL);
+	visit_expressions(vescape_analysis, &program, NULL);
 	program = use_return_value(program, generate_reference());
 	
-	visit_expressions_with(&program, vlayout_frames);
-	visit_expressions_with(&program, vgenerate_references);
-	visit_expressions_with(&program, vgenerate_continuation_expressions);
-	visit_expressions_with(&program, vgenerate_literals);
-	visit_expressions_with(&program, vgenerate_ifs);
-	visit_expressions_with(&program, vgenerate_function_expressions);
+	visit_expressions(vlayout_frames, &program, NULL);
+	visit_expressions(vgenerate_references, &program, NULL);
+	visit_expressions(vgenerate_continuation_expressions, &program, NULL);
+	visit_expressions(vgenerate_literals, &program, NULL);
+	visit_expressions(vgenerate_ifs, &program, NULL);
+	visit_expressions(vgenerate_function_expressions, &program, NULL);
 	program = generate_toplevel(program, toplevel_function_references);
-	visit_expressions_with(&program, vmerge_begins);
+	visit_expressions(vmerge_begins, &program, NULL);
 	
 	char sfilefn[] = ".s_fileXXXXXX.s";
 	FILE *sfile = fdopen(mkstemps(sfilefn, 2), "w+");
 	print_assembly(program->begin.expressions, sfile);
-	assemble(program->begin.expressions, sfile);
 	fflush(sfile);
+	
+	int fd = myopen("mytest.o");
+	write_elf(program, fd);
+	myclose(fd);
 	
 	char *ofilefn = cprintf("%s", ".o_fileXXXXXX.o");
 	int odes = mkstemps(ofilefn, 2);

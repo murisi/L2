@@ -19,11 +19,6 @@ void *jmp_value = NULL;
 #include "expressions.c"
 #include "preparer.c"
 
-#define visit_expressions_with(x, y) { \
-	visit_expressions_visitor = y; \
-	visit_expressions(x); \
-}
-
 #if __x86_64__
 	#include "generator64.c"
 #endif
