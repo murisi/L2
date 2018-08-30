@@ -30,15 +30,6 @@ bool equals(void *a, void *b) {
 	return a == b;
 }
 
-struct occurrences {
-	char *member;
-	int count;
-};
-
-bool occurrences_for(void *o, void *ctx) {
-	return strequal(((struct occurrences *) o)->member, ctx);
-}
-
 #include "parser.c"
 
 /*

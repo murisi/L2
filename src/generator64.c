@@ -139,7 +139,7 @@ union expression *make_load_address(union expression *ref, union expression *des
 	return container;
 }
 
-//Must be used after use_return_reference and init_i386_registers and generate_continuation_expressions
+//Must be used after use_return_reference and generate_continuation_expressions
 union expression *vgenerate_references(union expression *n, void *ctx) {
 	if(n->base.type == reference && n->reference.return_value) {
 		union expression *container = make_begin();
@@ -539,13 +539,14 @@ void compile_expressions(char *outbin, list exprs, jmp_buf *handler) {
 	visit_expressions(vrename_usage_references, &program, NULL);
 	visit_expressions(vescape_analysis, &program, NULL);
 	program = use_return_value(program, generate_reference());
-	
 	visit_expressions(vlayout_frames, &program, NULL);
 	visit_expressions(vgenerate_references, &program, NULL);
 	visit_expressions(vgenerate_continuation_expressions, &program, NULL);
 	visit_expressions(vgenerate_literals, &program, NULL);
 	visit_expressions(vgenerate_ifs, &program, NULL);
 	visit_expressions(vgenerate_function_expressions, &program, NULL);
+	list locals = program->function.locals;
+	list globals = program->function.parameters;
 	program = generate_toplevel(program, toplevel_function_references);
 	visit_expressions(vmerge_begins, &program, NULL);
 	
@@ -555,7 +556,7 @@ void compile_expressions(char *outbin, list exprs, jmp_buf *handler) {
 	fflush(sfile);
 	
 	int fd = myopen("mytest.o");
-	write_elf(program, fd);
+	write_elf(program->begin.expressions, locals, globals, fd);
 	myclose(fd);
 	
 	char *ofilefn = cprintf("%s", ".o_fileXXXXXX.o");

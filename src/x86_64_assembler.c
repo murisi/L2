@@ -9,6 +9,7 @@
 #define REX_X 1
 #define REX_B 0
 #define MAX_INSTR_LEN 15
+#define MAX_INSTR_FIELDS 2
 #define ALIGNMENT 8
 
 void mem_write(char *mem, int *idx, void *bytes, int cnt) {
@@ -47,12 +48,19 @@ void write_mr_rm_instr(char *bin, int *pos, char opcode, int reg, int rm, bool m
 	}
 }
 
-void write_displacement(char *bin, int *pos, union expression *disp_expr) {
-	uint32_t disp;
+void write_static_value(char *bin, int *pos, union expression *disp_expr, int bytes, Elf64_Sym *symtab, Elf64_Rela **relas) {
+	uint64_t disp = 0;
 	if(disp_expr->base.type == literal) {
 		disp = disp_expr->literal.value;
+	} else if(disp_expr->base.type == reference) {
+		(*relas)->r_offset = *pos;
+		(*relas)->r_info = ELF64_R_INFO((Elf64_Sym *) disp_expr->reference.referent->reference.context - symtab, R_X86_64_64);
+		(*relas)->r_addend = 0;printf("Here again\n");
+		(*relas)++;
+	} else if(disp_expr->base.type == instruction && disp_expr->instruction.opcode == ADD) {
+		printf("Bingo\n\n");
 	}
-	mem_write(bin, pos, (char *) &disp, 4);
+	mem_write(bin, pos, (char *) &disp, bytes);
 }
 
 void write_o_instr(char *bin, int *pos, unsigned char opcode, int reg) {
@@ -82,20 +90,15 @@ int count_labels(list generated_expressions) {
 	return label_count;
 }
 
-void assemble(list generated_expressions, char *strtab, unsigned char *bin, int *pos, Elf64_Sym *symtab) {
+void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sym *symtab, Elf64_Rela **relas) {
 	*pos = 0;
 	union expression *n;
 	foreach(n, generated_expressions) {printf("%x ", *pos);
 		switch(n->instruction.opcode) {
 			case LABEL:
 				printf("%s:\n", fst_string(n));
-				symtab->st_name = fst_string(n)-strtab;
-				symtab->st_value = *pos;
-				symtab->st_size = 0;
-				symtab->st_info = ELF64_ST_INFO(STB_LOCAL, STT_NOTYPE);
-				symtab->st_other = 0;
-				symtab->st_shndx = 2;
-				symtab++;
+				Elf64_Sym *sym = ((union expression *) fst(n->instruction.arguments))->reference.context;
+				sym->st_value = *pos;
 				break;
 			case LEAQ_OF_MDB_INTO_REG: {
 				printf("leaq %s(%s), %s\n", fst_string(n), frst_string(n), frrst_string(n));
@@ -103,7 +106,7 @@ void assemble(list generated_expressions, char *strtab, unsigned char *bin, int 
 				int reg = ((union expression *) frrst(n->invoke.arguments))->instruction.opcode; //Dest
 				int rm = ((union expression *) frst(n->invoke.arguments))->instruction.opcode; //Src
 				write_mr_rm_instr(bin, pos, opcode, reg, rm, true, true);
-				write_displacement(bin, pos, fst(n->invoke.arguments));
+				write_static_value(bin, pos, fst(n->invoke.arguments), 4, symtab, relas);
 				break;
 			} case MOVQ_FROM_REG_INTO_MDB: {
 				printf("movq %s, %s(%s)\n", fst_string(n), frst_string(n), frrst_string(n));
@@ -111,7 +114,7 @@ void assemble(list generated_expressions, char *strtab, unsigned char *bin, int 
 				int reg = ((union expression *) fst(n->invoke.arguments))->instruction.opcode; //Src
 				int rm = ((union expression *) frrst(n->invoke.arguments))->instruction.opcode; //Dest
 				write_mr_rm_instr(bin, pos, opcode, reg, rm, true, true);
-				write_displacement(bin, pos, frst(n->invoke.arguments));
+				write_static_value(bin, pos, frst(n->invoke.arguments), 4, symtab, relas);
 				break;
 			} case JMP_REL:
 				//printf("jmp %s\n", fst_string(n));
@@ -124,7 +127,7 @@ void assemble(list generated_expressions, char *strtab, unsigned char *bin, int 
 				int reg = ((union expression *) frrst(n->invoke.arguments))->instruction.opcode; //Dest
 				int rm = ((union expression *) frst(n->invoke.arguments))->instruction.opcode; //Src
 				write_mr_rm_instr(bin, pos, opcode, reg, rm, true, true);
-				write_displacement(bin, pos, fst(n->invoke.arguments));
+				write_static_value(bin, pos, fst(n->invoke.arguments), 4, symtab, relas);
 				break;
 			case PUSHQ_REG: {
 				printf("pushq %s\n", fst_string(n));
@@ -198,10 +201,6 @@ void assemble(list generated_expressions, char *strtab, unsigned char *bin, int 
 				int reg = ((union expression *) frst(n->invoke.arguments))->instruction.opcode; //Dest
 				unsigned char rd = (0x7 & reg);
 				unsigned char opcoderd = opcode + rd;
-				uint64_t imm = 0;
-				if(imm_expr->base.type == literal) {
-					imm = imm_expr->literal.value;
-				}
 				unsigned char REX = 4 << 4;
 				REX |= (1 << REX_W);
 				REX |= (0 << REX_R);
@@ -211,7 +210,7 @@ void assemble(list generated_expressions, char *strtab, unsigned char *bin, int 
 				}
 				mem_write(bin, pos, &REX, 1);
 				mem_write(bin, pos, &opcoderd, 1);
-				mem_write(bin, pos, &imm, 8);
+				write_static_value(bin, pos, imm_expr, 8, symtab, relas);
 				break;
 			} case CALL_REG: {
 				printf("call *%s\n", fst_string(n));
@@ -229,7 +228,7 @@ int round_size(int x, int nearest) {
 	return x + (nearest - (x % nearest));
 }
 
-void write_elf(union expression *program, int outfd) {
+void write_elf(list generated_expressions, list locals, list globals, int outfd) {
 	Elf64_Ehdr ehdr;
 	ehdr.e_ident[EI_MAG0] = ELFMAG0;
 	ehdr.e_ident[EI_MAG1] = ELFMAG1;
@@ -254,31 +253,87 @@ void write_elf(union expression *program, int outfd) {
 	ehdr.e_phentsize = sizeof(Elf64_Phdr);
 	ehdr.e_phnum = 0;
 	ehdr.e_shentsize = sizeof(Elf64_Shdr);
-	ehdr.e_shnum = 5; //
+	ehdr.e_shnum = 6; //
 	ehdr.e_shstrndx = 1;
 	mywrite(outfd, &ehdr, sizeof(Elf64_Ehdr));
 	
-	int total_references_len = 0;
-	visit_assembly_visitor = vmeasure_references;
-	visit_assembly(&program, &total_references_len);
-	char strtab[round_size(1 + total_references_len, ALIGNMENT)];
-	strtab[0] = '\0';
-	char *strtabptr = strtab + 1;
-	visit_assembly_visitor = vuse_string_table;
-	visit_assembly(&program, &strtabptr);
-	
-	Elf64_Sym syms[count_labels(program->begin.expressions)+1];
+	int strtab_len = 1, sym_count = 1;
+	union expression *e;
+	{foreach(e, locals) {
+		strtab_len += strlen(e->reference.name) + 1;
+		sym_count++;
+	}}
+	{foreach(e, globals) {
+		strtab_len += strlen(e->reference.name) + 1;
+		sym_count++;
+	}}
+	{foreach(e, generated_expressions) {
+		if(e->instruction.opcode == LABEL) {
+			strtab_len += strlen(((union expression *) fst(e->instruction.arguments))->reference.name) + 1;
+			sym_count++;
+		}
+	}}
+	Elf64_Sym syms[sym_count];
+	Elf64_Sym *sym_ptr = syms;
 	//Mandatory undefined symbol
-	syms[0].st_name = 0;
-	syms[0].st_value = 0;
-	syms[0].st_size = 0;
-	syms[0].st_info = 0;
-	syms[0].st_other = 0;
-	syms[0].st_shndx = SHN_UNDEF;
+	sym_ptr->st_name = 0;
+	sym_ptr->st_value = 0;
+	sym_ptr->st_size = 0;
+	sym_ptr->st_info = 0;
+	sym_ptr->st_other = 0;
+	sym_ptr->st_shndx = SHN_UNDEF;
+	sym_ptr++;
+	
+	char strtab[round_size(strtab_len, ALIGNMENT)];
+	char *strtabptr = strtab;
+	*(strtabptr++) = '\0';
+	
+	{foreach(e, locals) {
+		strcpy(strtabptr, e->reference.name);
+		sym_ptr->st_name = strtabptr - strtab;
+		sym_ptr->st_value = 0;
+		sym_ptr->st_size = 0;
+		sym_ptr->st_info = ELF64_ST_INFO(STB_LOCAL, STT_NOTYPE);
+		sym_ptr->st_other = 0;
+		sym_ptr->st_shndx = 2;
+		e->reference.context = sym_ptr;
+		sym_ptr++;
+		strtabptr += strlen(e->reference.name) + 1;
+	}}
+	{foreach(e, globals) {
+		strcpy(strtabptr, e->reference.name);
+		sym_ptr->st_name = strtabptr - strtab;
+		sym_ptr->st_value = 0;
+		sym_ptr->st_size = 0;
+		sym_ptr->st_info = ELF64_ST_INFO(STB_GLOBAL, STT_NOTYPE);
+		sym_ptr->st_other = 0;
+		sym_ptr->st_shndx = 2;
+		e->reference.context = sym_ptr;
+		sym_ptr++;
+		strtabptr += strlen(e->reference.name) + 1;
+	}}
+	{foreach(e, generated_expressions) {
+		if(e->instruction.opcode == LABEL) {
+			union expression *ref = (union expression *) fst(e->instruction.arguments);
+			strcpy(strtabptr, ref->reference.name);
+			sym_ptr->st_name = strtabptr - strtab;
+			sym_ptr->st_value = 0;
+			sym_ptr->st_size = 0;
+			sym_ptr->st_info = ELF64_ST_INFO(STB_LOCAL, STT_NOTYPE);
+			sym_ptr->st_other = 0;
+			sym_ptr->st_shndx = 2;
+			ref->reference.context = sym_ptr;
+			sym_ptr++;
+			strtabptr += strlen(ref->reference.name) + 1;
+		}
+	}}
 	
 	int text_len;
-	unsigned char text[round_size(MAX_INSTR_LEN * length(program->begin.expressions), ALIGNMENT)];
-	assemble(program->begin.expressions, strtab, text, &text_len, syms+1);
+	unsigned char text[round_size(MAX_INSTR_LEN * length(generated_expressions), ALIGNMENT)];
+	Elf64_Rela relas[MAX_INSTR_FIELDS * length(generated_expressions)];
+	Elf64_Rela *rela_ptr = relas;
+	assemble(generated_expressions, text, &text_len, syms, &rela_ptr);
+	printf("!: %p\n", rela_ptr - relas);
 	
 	//Mandatory undefined section
 	Elf64_Shdr undef_shdr;
@@ -294,7 +349,7 @@ void write_elf(union expression *program, int outfd) {
 	undef_shdr.sh_entsize = 0;
 	mywrite(outfd, &undef_shdr, sizeof(Elf64_Shdr));
 	
-	char shstrtab[] = "\0.shstrtab\0.text\0.strtab\0.symtab";
+	char shstrtab[] = "\0.shstrtab\0.text\0.strtab\0.symtab\0.rela.text";
 	char shstrtab_padded[round_size(sizeof(shstrtab), ALIGNMENT)];
 	memcpy(shstrtab_padded, shstrtab, sizeof(shstrtab));
 	
@@ -303,7 +358,7 @@ void write_elf(union expression *program, int outfd) {
 	shstrtab_shdr.sh_type = SHT_STRTAB;
 	shstrtab_shdr.sh_flags = 0;
 	shstrtab_shdr.sh_addr = 0;
-	shstrtab_shdr.sh_offset = sizeof(Elf64_Ehdr) + 5*sizeof(Elf64_Shdr);
+	shstrtab_shdr.sh_offset = sizeof(Elf64_Ehdr) + 6*sizeof(Elf64_Shdr);
 	shstrtab_shdr.sh_size = sizeof(shstrtab);
 	shstrtab_shdr.sh_link = SHN_UNDEF;
 	shstrtab_shdr.sh_info = 0;
@@ -316,7 +371,7 @@ void write_elf(union expression *program, int outfd) {
 	text_shdr.sh_type = SHT_PROGBITS;
 	text_shdr.sh_flags = SHF_ALLOC | SHF_EXECINSTR;
 	text_shdr.sh_addr = 0;
-	text_shdr.sh_offset = sizeof(Elf64_Ehdr) + 5*sizeof(Elf64_Shdr) + sizeof(shstrtab_padded);
+	text_shdr.sh_offset = sizeof(Elf64_Ehdr) + 6*sizeof(Elf64_Shdr) + sizeof(shstrtab_padded);
 	text_shdr.sh_size = text_len;
 	text_shdr.sh_link = SHN_UNDEF;
 	text_shdr.sh_info = 0;
@@ -329,8 +384,8 @@ void write_elf(union expression *program, int outfd) {
 	strtab_shdr.sh_type = SHT_STRTAB;
 	strtab_shdr.sh_flags = 0;
 	strtab_shdr.sh_addr = 0;
-	strtab_shdr.sh_offset = sizeof(Elf64_Ehdr) + 5*sizeof(Elf64_Shdr) + sizeof(shstrtab_padded) + sizeof(text);
-	strtab_shdr.sh_size = 1 + total_references_len;
+	strtab_shdr.sh_offset = sizeof(Elf64_Ehdr) + 6*sizeof(Elf64_Shdr) + sizeof(shstrtab_padded) + sizeof(text);
+	strtab_shdr.sh_size = strtab_len;
 	strtab_shdr.sh_link = SHN_UNDEF;
 	strtab_shdr.sh_info = 0;
 	strtab_shdr.sh_addralign = 0;
@@ -342,16 +397,30 @@ void write_elf(union expression *program, int outfd) {
 	symtab_shdr.sh_type = SHT_SYMTAB;
 	symtab_shdr.sh_flags = 0;
 	symtab_shdr.sh_addr = 0;
-	symtab_shdr.sh_offset = sizeof(Elf64_Ehdr) + 5*sizeof(Elf64_Shdr) + sizeof(shstrtab_padded) + sizeof(text) + sizeof(strtab);
+	symtab_shdr.sh_offset = sizeof(Elf64_Ehdr) + 6*sizeof(Elf64_Shdr) + sizeof(shstrtab_padded) + sizeof(text) + sizeof(strtab);
 	symtab_shdr.sh_size = sizeof(syms);
 	symtab_shdr.sh_link = 3;
-	symtab_shdr.sh_info = count_labels(program->begin.expressions) + 1; //
+	symtab_shdr.sh_info = count_labels(generated_expressions) + 1; //
 	symtab_shdr.sh_addralign = 0;
 	symtab_shdr.sh_entsize = sizeof(Elf64_Sym);
 	mywrite(outfd, &symtab_shdr, sizeof(Elf64_Shdr));
+	
+	Elf64_Shdr rela_shdr;
+	rela_shdr.sh_name = 1 + strlen(".shstrtab") + 1 + strlen(".text") + 1 + strlen(".strtab") + 1 + strlen(".symtab") + 1;
+	rela_shdr.sh_type = SHT_RELA;
+	rela_shdr.sh_flags = 0;
+	rela_shdr.sh_addr = 0;
+	rela_shdr.sh_offset = sizeof(Elf64_Ehdr) + 6*sizeof(Elf64_Shdr) + sizeof(shstrtab_padded) + sizeof(text) + sizeof(strtab) + sizeof(syms);
+	rela_shdr.sh_size = (rela_ptr - relas) * sizeof(Elf64_Rela);
+	rela_shdr.sh_link = 4;
+	rela_shdr.sh_info = 2;
+	rela_shdr.sh_addralign = 0;
+	rela_shdr.sh_entsize = sizeof(Elf64_Rela);
+	mywrite(outfd, &rela_shdr, sizeof(Elf64_Shdr));
 	
 	mywrite(outfd, shstrtab_padded, sizeof(shstrtab_padded));
 	mywrite(outfd, text, sizeof(text));
 	mywrite(outfd, strtab, sizeof(strtab));
 	mywrite(outfd, syms, sizeof(syms));
+	mywrite(outfd, relas, (rela_ptr - relas) * sizeof(Elf64_Rela));
 }

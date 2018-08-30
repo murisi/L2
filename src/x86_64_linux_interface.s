@@ -1,11 +1,11 @@
-.globl csyscall
+.globl mysyscall
 .text
 /*
  * Do syscall with the syscall number being provided by the first argument to
  * this function and its six arguments being provided by arguments 2 to 7 of
  * this function.
  */
-csyscall:
+mysyscall:
 	movq %rdi, %rax
 	movq %rsi, %rdi
 	movq %rdx, %rsi

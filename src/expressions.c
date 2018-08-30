@@ -121,6 +121,7 @@ struct reference_expression {
 	char *source_name;
 	union expression *referent;
 	union expression *offset;
+	void *context;
 };
 
 struct np_expression {

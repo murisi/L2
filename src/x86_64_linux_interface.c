@@ -23,11 +23,11 @@ int mystrlen(char *str) {
 }
 
 int myopen(char *path) {
-	return csyscall(SYS_OPEN, path, O_RDWR | O_CREAT, S_IRWXU | S_IRWXG | S_IRWXO);
+	return mysyscall(SYS_OPEN, path, O_RDWR | O_CREAT, S_IRWXU | S_IRWXG | S_IRWXO);
 }
 
 void mywrite(int fd, void *d, int len) {
-	csyscall(SYS_WRITE, fd, d, len);
+	mysyscall(SYS_WRITE, fd, d, len);
 }
 
 void mywrite_str(int fd, char *str) {
@@ -67,13 +67,13 @@ void mywrite_int(int fd, int i) {
 }
 
 int myread(int fd, void *buf, int cnt) {
-	return csyscall(SYS_READ, fd, buf, cnt);
+	return mysyscall(SYS_READ, fd, buf, cnt);
 }
 
 void myseek(int fd, long int offset, int whence) {
-	csyscall(SYS_LSEEK, fd, offset, whence);
+	mysyscall(SYS_LSEEK, fd, offset, whence);
 }
 
 void myclose(int fd) {
-	csyscall(SYS_CLOSE, fd);
+	mysyscall(SYS_CLOSE, fd);
 }
