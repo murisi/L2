@@ -201,32 +201,15 @@ void merge_onto(list src, list *dest) {
 /*
  * Gets the address of the symbol with name name in the library lib.
  */
-void *get_symbol(Library *lib, char *name) {
-	int i, isc = immutable_symbol_count(lib);
+void *get_symbol(Object *obj, char *name) {
+	int i, isc = immutable_symbol_count(obj);
 	Symbol is[isc];
-	immutable_symbols(lib, is);
+	immutable_symbols(obj, is);
 	for(i = 0; i < isc; i++) {
 		if(!strcmp(is[i].name, name)) {
 			return is[i].address;
 		}
 	}
-}
-
-/*
- * Saturated subtraction: clamps to 0 if result of subtraction would have been less than it.
- */
-void *sat_sub(void *ptr, uintptr_t b) {
-	void *ans = ptr - b;
-	uintptr_t z = 0;
-	return ans > ptr ? ((void *) z) : ans;
-}
-
-/*
- * Saturated addition: clamps to ~0 if result of subtraction would have been more than it.
- */
-void *sat_add(void *ptr, uintptr_t b) {
-	void *ans = ptr + b;
-	return ans < ptr ? ((void *) -1) : ans;
 }
 
 /*
@@ -256,10 +239,10 @@ void expand_expressions(list *expansion_lists, Symbol *env) {
 			append(expander_container->function.reference->reference.name, &expander_container_names);
 		}
 		
-		char *outfn = cprintf("%s", "./.libXXXXXX.a");
+		char *outfn = cprintf("%s", "./.libXXXXXX.o");
 		mkstemps(outfn, 2);
 		compile_expressions(outfn, expander_containers, build_syntax_tree_handler);
-		Library *handle = load_library(fopen(outfn, "r"), (void *) 0x0UL, (void *) ~0x0UL);
+		Object *handle = load(fopen(outfn, "r"));
 		for(; env->name && env->address; env++) {
 			mutate_symbol(handle, *env);
 		}
@@ -275,7 +258,7 @@ void expand_expressions(list *expansion_lists, Symbol *env) {
 			build_syntax_tree_under(transformed, expansion, (*expansion)->non_primitive.parent);
 			merge_onto(build_syntax_tree_expansion_lists, &urgent_expansion_lists);
 		}
-		fclose(unload_library(handle));
+		fclose(unload(handle));
 		remove(outfn);
 		
 		append_list(&urgent_expansion_lists, (*remaining_expansion_lists)->rst);

@@ -525,14 +525,9 @@ void compile_expressions(char *outbin, list exprs, jmp_buf *handler) {
 	unsigned char elf[max_elf_size(program->begin.expressions, locals, globals)];
 	write_elf(program->begin.expressions, locals, globals, elf, &elf_size);
 	
-	char ofilefn[] = ".o_fileXXXXXX.o";
-	int odes = mkstemps(ofilefn, 2);
-	int fd = myopen(ofilefn);
+	int fd = myopen(outbin);
 	mywrite(fd, elf, elf_size);
 	myclose(fd);
-	
-	system(cprintf("ar rcs '%s' '%s'", outbin, ofilefn));
-	remove(ofilefn);
 }
 
 #undef WORD_SIZE

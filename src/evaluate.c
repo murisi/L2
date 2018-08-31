@@ -2,7 +2,7 @@
 #include "compile.c"
 #include "evaluate_errors.c"
 
-Library *eval_load_library(list name, void *low_mem, void *upper_mem) {
+/*Library *eval_load_library(list name, void *low_mem, void *upper_mem) {
 	return load_library(fopen(to_string(name), "r"), low_mem, upper_mem);
 }
 
@@ -16,7 +16,7 @@ list eval_mutable_symbols(Library *lib) {
 		prepend(lst(build_symbol_sexpr(ms_arr[i].name), lst(ms_arr[i].address, nil())), &ms_lst);
 	}
 	return ms_lst;
-}
+}*/
 
 int main(int argc, char *argv[]) {
 	volatile int i;
@@ -84,36 +84,24 @@ int main(int argc, char *argv[]) {
 		thelongjmp(handler, make_arguments());
 	}
 	
-	char *library_name = cprintf("%s", "./.libXXXXXX.a");
-	mkstemps(library_name, 2);
-	remove(library_name);
+	char obj_name[] = "./.libXXXXXX.o";
+	mkstemps(obj_name, 2);
+	remove(obj_name);
 	Symbol env = make_symbol(NULL, NULL);
-	compile(library_name, argv[1], &env, &handler);
+	compile(obj_name, argv[1], &env, &handler);
 	
-	Library *lib = load_library(fopen(library_name, "r"), (void *) 0x0UL, (void *) ~0x0UL);
-	mutate_symbol(lib, make_symbol("putchar", putchar));
-	mutate_symbol(lib, make_symbol("compile-l2", compile));
-	mutate_symbol(lib, make_symbol("load-library", eval_load_library));
-	mutate_symbol(lib, make_symbol("mutable-symbols", eval_mutable_symbols));
-	//mutate_symbol(lib, make_symbol("immutable-symbols", eval_immutable_symbols));
-	mutate_symbol(lib, make_symbol("mutate-symbol", mutate_symbol));
-	mutate_symbol(lib, make_symbol("run-library", run_library));
-	mutate_symbol(lib, make_symbol("unload-library", unload_library));
+	Object *obj = load(fopen(obj_name, "r"));
+	mutate_symbol(obj, make_symbol("putchar", putchar));
+	//mutate_symbol(obj, make_symbol("compile-l2", compile));
+	//mutate_symbol(obj, make_symbol("load-library", eval_load_library));
+	//mutate_symbol(obj, make_symbol("mutable-symbols", eval_mutable_symbols));
+	//mutate_symbol(obj, make_symbol("immutable-symbols", eval_immutable_symbols));
+	//mutate_symbol(obj, make_symbol("mutate-symbol", mutate_symbol));
+	//mutate_symbol(obj, make_symbol("run-library", run_library));
+	//mutate_symbol(obj, make_symbol("unload-library", unload_library));
 	
-	Library *arch_lib = load_library(fopen("../bin/arch.a", "r"),
-		sat_sub(lib->segs, 0x0000000000FFFFFFUL),
-		sat_add(lib->segs, 0x0000000000FFFFFFUL));
-	int alisc = immutable_symbol_count(arch_lib);
-	Symbol alis[alisc];
-	immutable_symbols(arch_lib, alis);
-	int j;
-	for(j = 0; j < alisc; j++) {
-		mutate_symbol(lib, alis[j]);
-	}
-	
-	run_library(lib);
-	fclose(unload_library(arch_lib));
-	fclose(unload_library(lib));
-	remove(library_name);
+	start(obj)();
+	fclose(unload(obj));
+	remove(obj_name);
 	return 0;
 }
