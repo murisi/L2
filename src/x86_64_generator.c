@@ -524,11 +524,6 @@ void compile_expressions(char *outbin, list exprs, jmp_buf *handler) {
 	program = generate_toplevel(program, toplevel_function_references);
 	visit_expressions(vmerge_begins, &program, NULL);
 	
-	char sfilefn[] = ".s_fileXXXXXX.s";
-	FILE *sfile = fdopen(mkstemps(sfilefn, 2), "w+");
-	print_assembly(program->begin.expressions, sfile);
-	fflush(sfile);
-	
 	char *ofilefn = cprintf("%s", ".o_fileXXXXXX.o");
 	int odes = mkstemps(ofilefn, 2);
 	int fd = myopen(ofilefn);
