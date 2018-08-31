@@ -1,3 +1,5 @@
+#define WORD_SIZE 8
+
 #include "setjmp.h"
 #include "stdio.h"
 #include "ctype.h"
@@ -21,13 +23,58 @@ void *jmp_value = NULL;
 
 #if __x86_64__
 	#include "x86_64_generator.c"
+	#include "x86_64_assembler.c"
 #endif
 #if __i386__
-	#include "i386_generator32.c"
+	#include "i386_generator.c"
 #endif
 
 bool equals(void *a, void *b) {
 	return a == b;
+}
+
+/*
+ * Makes a new binary file at the path outbin from the list of primitive
+ * expressions, exprs. The resulting binary file executes the list from top to
+ * bottom and then makes all the top-level functions visible to the rest of the
+ * executable that it is embedded in.
+ */
+
+void compile_expressions(char *outbin, list exprs, jmp_buf *handler) {
+	union expression *container = make_begin(), *t;
+	list toplevel_function_references = nil();
+	{foreach(t, exprs) {
+		t->base.parent = container;
+		if(t->base.type == function) {
+			append(t->function.reference, &toplevel_function_references);
+		}
+	}}
+	container->begin.expressions = exprs;
+	union expression *root_function = make_function(), *program = root_function;
+	put(program, function.expression, container);
+	
+	visit_expressions(vfind_multiple_definitions, &program, handler);
+	visit_expressions(vlink_references, &program, handler);
+	visit_expressions(vescape_analysis, &program, NULL);
+	program = use_return_value(program, make_reference());
+	visit_expressions(vlayout_frames, &program, NULL);
+	visit_expressions(vgenerate_references, &program, NULL);
+	visit_expressions(vgenerate_continuation_expressions, &program, NULL);
+	visit_expressions(vgenerate_literals, &program, NULL);
+	visit_expressions(vgenerate_ifs, &program, NULL);
+	visit_expressions(vgenerate_function_expressions, &program, NULL);
+	list locals = program->function.locals;
+	list globals = program->function.parameters;
+	program = generate_toplevel(program, toplevel_function_references);
+	visit_expressions(vmerge_begins, &program, NULL);
+	
+	int elf_size = 0;
+	unsigned char elf[max_elf_size(program->begin.expressions, locals, globals)];
+	write_elf(program->begin.expressions, locals, globals, elf, &elf_size);
+	
+	int fd = myopen(outbin);
+	mywrite(fd, elf, elf_size);
+	myclose(fd);
 }
 
 #include "parser.c"
@@ -65,3 +112,5 @@ void compile(char *outbin, char *inl2, Symbol *env, jmp_buf *handler) {
 	expand_expressions(&expansion_lists, env);
 	compile_expressions(outbin, expressions, handler);
 }
+
+#undef WORD_SIZE

@@ -37,7 +37,6 @@
 #define STVAL_ADD_OFF_TO_REF 43
 #define STVAL_SUB_RIP_FROM_REF 44
 
-#define WORD_SIZE 8
 #define CONT_SIZE (7*WORD_SIZE)
 #define CONT_R15 (6*WORD_SIZE)
 #define CONT_R12 (5*WORD_SIZE)
@@ -477,57 +476,3 @@ void print_assembly(list generated_expressions, FILE *out) {
 		fprintf(out, "\n");
 	}
 }
-
-/*
- * Makes a new binary at the path outbin from the object file in the path
- * given by the string in. This binary will both be a static library and
- * an executable.
- */
-
-#include "x86_64_assembler.c"
-
-/*
- * Makes a new binary file at the path outbin from the list of primitive
- * expressions, exprs. The resulting binary file executes the list from top to
- * bottom and then makes all the top-level functions visible to the rest of the
- * executable that it is embedded in.
- */
-
-void compile_expressions(char *outbin, list exprs, jmp_buf *handler) {
-	union expression *container = make_begin(), *t;
-	list toplevel_function_references = nil();
-	{foreach(t, exprs) {
-		t->base.parent = container;
-		if(t->base.type == function) {
-			append(t->function.reference, &toplevel_function_references);
-		}
-	}}
-	container->begin.expressions = exprs;
-	union expression *root_function = make_function(), *program = root_function;
-	put(program, function.expression, container);
-	
-	visit_expressions(vfind_multiple_definitions, &program, handler);
-	visit_expressions(vlink_references, &program, handler);
-	visit_expressions(vescape_analysis, &program, NULL);
-	program = use_return_value(program, make_reference());
-	visit_expressions(vlayout_frames, &program, NULL);
-	visit_expressions(vgenerate_references, &program, NULL);
-	visit_expressions(vgenerate_continuation_expressions, &program, NULL);
-	visit_expressions(vgenerate_literals, &program, NULL);
-	visit_expressions(vgenerate_ifs, &program, NULL);
-	visit_expressions(vgenerate_function_expressions, &program, NULL);
-	list locals = program->function.locals;
-	list globals = program->function.parameters;
-	program = generate_toplevel(program, toplevel_function_references);
-	visit_expressions(vmerge_begins, &program, NULL);
-	
-	int elf_size = 0;
-	unsigned char elf[max_elf_size(program->begin.expressions, locals, globals)];
-	write_elf(program->begin.expressions, locals, globals, elf, &elf_size);
-	
-	int fd = myopen(outbin);
-	mywrite(fd, elf, elf_size);
-	myclose(fd);
-}
-
-#undef WORD_SIZE
