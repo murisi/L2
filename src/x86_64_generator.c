@@ -32,7 +32,8 @@
 #define ORQ_REG_TO_REG 31
 #define MOVQ_IMM_TO_REG 32
 #define CALL_REG 34
-#define LABEL 37
+#define GLOBAL_LABEL 36
+#define LOCAL_LABEL 37
 #define GLOBAL 38
 #define SKIP_EXPR_EXPR 39
 #define ALIGN_EXPR_EXPR 40
@@ -120,9 +121,9 @@ union expression *vgenerate_ifs(union expression *n, void *ctx) {
 		emit(n->_if.consequent);
 		union expression *end_label = generate_reference();
 		emit(make_instr(JMP_REL, 1, make_instr(STVAL_SUB_RIP_FROM_REF, 1, end_label)));
-		emit(make_instr(LABEL, 1, alternate_label));
+		emit(make_instr(LOCAL_LABEL, 1, alternate_label));
 		emit(n->_if.alternate);
-		emit(make_instr(LABEL, 1, end_label));
+		emit(make_instr(LOCAL_LABEL, 1, end_label));
 		return container;
 	} else {
 		return n;
@@ -193,9 +194,9 @@ union expression *vgenerate_continuation_expressions(union expression *n, void *
 			//Skip the actual instructions of the continuation
 			union expression *after_reference = generate_reference();
 			emit(make_instr(JMP_REL, 1, make_instr(STVAL_SUB_RIP_FROM_REF, 1, after_reference)));
-			emit(make_instr(LABEL, 1, cont_instr_ref(n)));
+			emit(make_instr(LOCAL_LABEL, 1, cont_instr_ref(n)));
 			emit(n->continuation.expression);
-			emit(make_instr(LABEL, 1, after_reference));
+			emit(make_instr(LOCAL_LABEL, 1, after_reference));
 			return container;
 		} case with: {
 			union expression *container = make_begin();
@@ -203,7 +204,7 @@ union expression *vgenerate_continuation_expressions(union expression *n, void *
 				emit(make_continuation(n));
 			}
 			emit(n->with.expression);
-			emit(make_instr(LABEL, 1, cont_instr_ref(n)));
+			emit(make_instr(LOCAL_LABEL, 1, cont_instr_ref(n)));
 			emit(make_load(fst(n->with.parameter), 0, use(R11), use(R10)));
 			emit(make_store(use(R11), n->with.return_value, 0, use(R10)));
 			return container;
@@ -252,13 +253,10 @@ union expression *generate_toplevel(union expression *n, list toplevel_function_
 	emit(make_instr(ALIGN_EXPR_EXPR, 2, make_literal(WORD_SIZE), make_literal(0)));
 	union expression *t;
 	{foreach(t, n->function.locals) {
-		emit(make_instr(LABEL, 1, t));
+		emit(make_instr(LOCAL_LABEL, 1, t));
 		emit(make_instr(SKIP_EXPR_EXPR, 2, make_literal(WORD_SIZE), make_literal(0)));
 	}}
 	emit(make_instr(TEXT, 0));
-	foreach(t, toplevel_function_references) {
-		emit(make_instr(GLOBAL, 1, t));
-	}
 	emit(make_instr(PUSHQ_REG, 1, use(R12)));
 	emit(make_instr(PUSHQ_REG, 1, use(R13)));
 	emit(make_instr(PUSHQ_REG, 1, use(R14)));
@@ -295,7 +293,11 @@ union expression *vgenerate_function_expressions(union expression *n, void *ctx)
 		union expression *after_reference = generate_reference();
 		
 		emit(make_instr(JMP_REL, 1, make_instr(STVAL_SUB_RIP_FROM_REF, 1, after_reference)));
-		emit(make_instr(LABEL, 1, n->function.reference));
+		if(root_function_of(n) == n->function.parent->begin.parent) {
+			emit(make_instr(GLOBAL_LABEL, 1, n->function.reference));
+		} else {
+			emit(make_instr(LOCAL_LABEL, 1, n->function.reference));
+		}
 		
 		//Insert first 6 parameters onto stack
 		emit(make_instr(POPQ_REG, 1, use(R11)));
@@ -336,7 +338,7 @@ union expression *vgenerate_function_expressions(union expression *n, void *ctx)
 		emit(make_instr(ADDQ_IMM_TO_REG, 2, make_literal(6*WORD_SIZE), use(RSP)));
 		emit(make_instr(PUSHQ_REG, 1, use(R11)));
 		emit(make_instr(RET, 0));
-		emit(make_instr(LABEL, 1, after_reference));
+		emit(make_instr(LOCAL_LABEL, 1, after_reference));
 		return container;
 	} else if(n->base.type == invoke) {
 		union expression *container = make_begin();
@@ -430,8 +432,11 @@ void print_assembly(list generated_expressions, FILE *out) {
 	union expression *n;
 	foreach(n, generated_expressions) {
 		switch(n->instruction.opcode) {
-			case LABEL:
+			case LOCAL_LABEL:
 				fprintf(out, "%s:", fst_string(n));
+				break;
+			case GLOBAL_LABEL:
+				fprintf(out, ".global %s\n%s:", fst_string(n), fst_string(n));
 				break;
 			case LEAQ_OF_MDB_INTO_REG:
 				fprintf(out, "leaq %s(%s), %s", fst_string(n), frst_string(n), frrst_string(n));

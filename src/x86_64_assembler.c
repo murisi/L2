@@ -86,7 +86,7 @@ void write_o_instr(char *bin, int *pos, unsigned char opcode, int reg) {
 	mem_write(bin, pos, &opcoderd, 1);
 }
 
-int count_labels(list generated_expressions) {
+/*int count_labels(list generated_expressions) {
 	int label_count = 0;
 	union expression *n;
 	foreach(n, generated_expressions) {
@@ -97,14 +97,14 @@ int count_labels(list generated_expressions) {
 		}
 	}
 	return label_count;
-}
+}*/
 
 void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sym *symtab, Elf64_Rela **relas) {
 	*pos = 0;
 	union expression *n;
 	foreach(n, generated_expressions) {printf("%x ", *pos);
 		switch(n->instruction.opcode) {
-			case LABEL:
+			case LOCAL_LABEL: case GLOBAL_LABEL:
 				printf("%s:\n", fst_string(n));
 				Elf64_Sym *sym = ((union expression *) fst(n->instruction.arguments))->reference.context;
 				sym->st_value = *pos;
@@ -191,7 +191,7 @@ void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sy
 				int rm = ((union expression *) fst(n->invoke.arguments))->instruction.opcode;
 				write_mr_rm_instr(bin, pos, opcode, reg, rm, false, false);
 				break;
-			} case JE_REL:
+			} case JE_REL: {
 				printf("je %s\n", fst_string(fst(n->instruction.arguments)));
 				unsigned char opcode1 = 0x0F;
 				unsigned char opcode2 = 0x84;
@@ -199,7 +199,7 @@ void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sy
 				mem_write(bin, pos, &opcode2, 1);
 				write_static_value(bin, pos, fst(n->invoke.arguments), 4, symtab, relas);
 				break;
-			case ORQ_REG_TO_REG: {
+			} case ORQ_REG_TO_REG: {
 				printf("orq %s, %s\n", fst_string(n), frst_string(n));
 				char opcode = 0x0B;
 				int reg = ((union expression *) frst(n->invoke.arguments))->instruction.opcode; //Dest
@@ -280,7 +280,7 @@ void write_elf(list generated_expressions, list locals, list globals, int outfd)
 		sym_count++;
 	}}
 	{foreach(e, generated_expressions) {
-		if(e->instruction.opcode == LABEL) {
+		if(e->instruction.opcode == LOCAL_LABEL || e->instruction.opcode == GLOBAL_LABEL) {
 			strtab_len += strlen(((union expression *) fst(e->instruction.arguments))->reference.name) + 1;
 			sym_count++;
 		}
@@ -312,6 +312,22 @@ void write_elf(list generated_expressions, list locals, list globals, int outfd)
 		sym_ptr++;
 		strtabptr += strlen(e->reference.name) + 1;
 	}}
+	{foreach(e, generated_expressions) {
+		if(e->instruction.opcode == LOCAL_LABEL) {
+			union expression *ref = (union expression *) fst(e->instruction.arguments);
+			strcpy(strtabptr, ref->reference.name);
+			sym_ptr->st_name = strtabptr - strtab;
+			sym_ptr->st_value = 0;
+			sym_ptr->st_size = 0;
+			sym_ptr->st_info = ELF64_ST_INFO(STB_LOCAL, STT_NOTYPE);
+			sym_ptr->st_other = 0;
+			sym_ptr->st_shndx = 2;
+			ref->reference.context = sym_ptr;
+			sym_ptr++;
+			strtabptr += strlen(ref->reference.name) + 1;
+		}
+	}}
+	int local_symbol_count = sym_ptr - syms;
 	{foreach(e, globals) {
 		strcpy(strtabptr, e->reference.name);
 		sym_ptr->st_name = strtabptr - strtab;
@@ -325,13 +341,13 @@ void write_elf(list generated_expressions, list locals, list globals, int outfd)
 		strtabptr += strlen(e->reference.name) + 1;
 	}}
 	{foreach(e, generated_expressions) {
-		if(e->instruction.opcode == LABEL) {
+		if(e->instruction.opcode == GLOBAL_LABEL) {
 			union expression *ref = (union expression *) fst(e->instruction.arguments);
 			strcpy(strtabptr, ref->reference.name);
 			sym_ptr->st_name = strtabptr - strtab;
 			sym_ptr->st_value = 0;
 			sym_ptr->st_size = 0;
-			sym_ptr->st_info = ELF64_ST_INFO(STB_LOCAL, STT_NOTYPE);
+			sym_ptr->st_info = ELF64_ST_INFO(STB_GLOBAL, STT_NOTYPE);
 			sym_ptr->st_other = 0;
 			sym_ptr->st_shndx = 2;
 			ref->reference.context = sym_ptr;
@@ -412,7 +428,7 @@ void write_elf(list generated_expressions, list locals, list globals, int outfd)
 	symtab_shdr.sh_offset = sizeof(Elf64_Ehdr) + 7*sizeof(Elf64_Shdr) + sizeof(shstrtab_padded) + sizeof(text) + sizeof(strtab);
 	symtab_shdr.sh_size = sizeof(syms);
 	symtab_shdr.sh_link = 3;
-	symtab_shdr.sh_info = count_labels(generated_expressions) + 1; //
+	symtab_shdr.sh_info = local_symbol_count;
 	symtab_shdr.sh_addralign = 0;
 	symtab_shdr.sh_entsize = sizeof(Elf64_Sym);
 	mywrite(outfd, &symtab_shdr, sizeof(Elf64_Shdr));
