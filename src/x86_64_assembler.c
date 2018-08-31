@@ -361,7 +361,6 @@ void write_elf(list generated_expressions, list locals, list globals, int outfd)
 	Elf64_Rela relas[MAX_INSTR_FIELDS * length(generated_expressions)];
 	Elf64_Rela *rela_ptr = relas;
 	assemble(generated_expressions, text, &text_len, syms, &rela_ptr);
-	printf("!: %p\n", rela_ptr - relas);
 	
 	//Mandatory undefined section
 	Elf64_Shdr undef_shdr;

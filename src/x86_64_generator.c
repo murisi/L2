@@ -34,11 +34,6 @@
 #define CALL_REG 34
 #define GLOBAL_LABEL 36
 #define LOCAL_LABEL 37
-#define GLOBAL 38
-#define SKIP_EXPR_EXPR 39
-#define ALIGN_EXPR_EXPR 40
-#define BSS 41
-#define TEXT 42
 #define STVAL_ADD_OFF_TO_REF 43
 #define STVAL_SUB_RIP_FROM_REF 44
 
@@ -249,14 +244,6 @@ union expression *vgenerate_literals(union expression *n, void *ctx) {
 
 union expression *generate_toplevel(union expression *n, list toplevel_function_references) {
 	union expression *container = make_begin();
-	emit(make_instr(BSS, 0));
-	emit(make_instr(ALIGN_EXPR_EXPR, 2, make_literal(WORD_SIZE), make_literal(0)));
-	union expression *t;
-	{foreach(t, n->function.locals) {
-		emit(make_instr(LOCAL_LABEL, 1, t));
-		emit(make_instr(SKIP_EXPR_EXPR, 2, make_literal(WORD_SIZE), make_literal(0)));
-	}}
-	emit(make_instr(TEXT, 0));
 	emit(make_instr(PUSHQ_REG, 1, use(R12)));
 	emit(make_instr(PUSHQ_REG, 1, use(R13)));
 	emit(make_instr(PUSHQ_REG, 1, use(R14)));
@@ -483,23 +470,8 @@ void print_assembly(list generated_expressions, FILE *out) {
 			case MOVQ_IMM_TO_REG:
 				fprintf(out, "movq $%s, %s", fst_string(n), frst_string(n));
 				break;
-			case GLOBAL:
-				fprintf(out, ".global %s", fst_string(n));
-				break;
 			case CALL_REG:
 				fprintf(out, "call *%s", fst_string(n));
-				break;
-			case SKIP_EXPR_EXPR:
-				fprintf(out, ".skip %s, %s", fst_string(n), frst_string(n));
-				break;
-			case ALIGN_EXPR_EXPR:
-				fprintf(out, ".align %s, %s", fst_string(n), frst_string(n));
-				break;
-			case BSS:
-				fprintf(out, ".bss");
-				break;
-			case TEXT:
-				fprintf(out, ".text");
 				break;
 		}
 		fprintf(out, "\n");
@@ -557,15 +529,11 @@ void compile_expressions(char *outbin, list exprs, jmp_buf *handler) {
 	print_assembly(program->begin.expressions, sfile);
 	fflush(sfile);
 	
-	int fd = myopen("mytest.o");
-	write_elf(program->begin.expressions, locals, globals, fd);
-	myclose(fd);
-	
 	char *ofilefn = cprintf("%s", ".o_fileXXXXXX.o");
 	int odes = mkstemps(ofilefn, 2);
-	system(cprintf("musl-gcc -m64 -g -c -o '%s' '%s'", ofilefn, sfilefn));
-	remove(sfilefn);
-	fclose(sfile);
+	int fd = myopen(ofilefn);
+	write_elf(program->begin.expressions, locals, globals, fd);
+	myclose(fd);
 	
 	char sympairsfn[] = ".sym_pairsXXXXXX";
 	FILE *sympairsfile = fdopen(mkstemp(sympairsfn), "w+");
