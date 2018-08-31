@@ -89,15 +89,13 @@ void write_o_instr(char *bin, int *pos, unsigned char opcode, int reg) {
 void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sym *symtab, Elf64_Rela **relas) {
 	*pos = 0;
 	union expression *n;
-	foreach(n, generated_expressions) {printf("%x ", *pos);
+	foreach(n, generated_expressions) {
 		switch(n->instruction.opcode) {
-			case LOCAL_LABEL: case GLOBAL_LABEL:
-				printf("%s:\n", fst_string(n));
+			case LOCAL_LABEL: case GLOBAL_LABEL: {
 				Elf64_Sym *sym = ((union expression *) fst(n->instruction.arguments))->reference.context;
 				sym->st_value = *pos;
 				break;
-			case LEAQ_OF_MDB_INTO_REG: {
-				printf("leaq %s(%s), %s\n", fst_string(n), frst_string(n), frrst_string(n));
+			} case LEAQ_OF_MDB_INTO_REG: {
 				unsigned char opcode = 0x8D;
 				int reg = ((union expression *) frrst(n->invoke.arguments))->instruction.opcode; //Dest
 				int rm = ((union expression *) frst(n->invoke.arguments))->instruction.opcode; //Src
@@ -105,7 +103,6 @@ void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sy
 				write_static_value(bin, pos, fst(n->invoke.arguments), 4, symtab, relas);
 				break;
 			} case MOVQ_FROM_REG_INTO_MDB: {
-				printf("movq %s, %s(%s)\n", fst_string(n), frst_string(n), frrst_string(n));
 				unsigned char opcode = 0x89;
 				int reg = ((union expression *) fst(n->invoke.arguments))->instruction.opcode; //Src
 				int rm = ((union expression *) frrst(n->invoke.arguments))->instruction.opcode; //Dest
@@ -113,13 +110,11 @@ void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sy
 				write_static_value(bin, pos, frst(n->invoke.arguments), 4, symtab, relas);
 				break;
 			} case JMP_REL: {
-				printf("jmp %s\n", fst_string(fst(n->instruction.arguments)));
 				unsigned char opcode = 0xE9;
 				mem_write(bin, pos, &opcode, 1);
 				write_static_value(bin, pos, fst(n->invoke.arguments), 4, symtab, relas);
 				break;
 			} case MOVQ_MDB_TO_REG: {
-				printf("movq %s(%s), %s\n", fst_string(n), frst_string(n), frrst_string(n));
 				unsigned char opcode = 0x8B;
 				int reg = ((union expression *) frrst(n->invoke.arguments))->instruction.opcode; //Dest
 				int rm = ((union expression *) frst(n->invoke.arguments))->instruction.opcode; //Src
@@ -127,20 +122,17 @@ void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sy
 				write_static_value(bin, pos, fst(n->invoke.arguments), 4, symtab, relas);
 				break;
 			} case PUSHQ_REG: {
-				printf("pushq %s\n", fst_string(n));
 				unsigned char opcode = 0x50;
 				int reg = ((union expression *) fst(n->invoke.arguments))->instruction.opcode; //Dest
 				write_o_instr(bin, pos, opcode, reg);
 				break;
 			} case MOVQ_REG_TO_REG: {
-				printf("movq %s, %s\n", fst_string(n), frst_string(n));
 				unsigned char opcode = 0x8B;
 				int reg = ((union expression *) frst(n->invoke.arguments))->instruction.opcode; //Dest
 				int rm = ((union expression *) fst(n->invoke.arguments))->instruction.opcode; //Src
 				write_mr_rm_instr(bin, pos, opcode, reg, rm, false, true);
 				break;
 			} case SUBQ_IMM_FROM_REG: {
-				printf("subq $%s, %s\n", fst_string(n), frst_string(n));
 				unsigned char opcode = 0x81;
 				unsigned char reg = 5;
 				int rm = ((union expression *) frst(n->invoke.arguments))->instruction.opcode; //Dest
@@ -148,7 +140,6 @@ void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sy
 				mem_write(bin, pos, &((union expression *) fst(n->invoke.arguments))->literal.value, 4);
 				break;
 			} case ADDQ_IMM_TO_REG: {
-				printf("addq $%s, %s\n", fst_string(n), frst_string(n));
 				unsigned char opcode = 0x81;
 				unsigned char reg = 0;
 				int rm = ((union expression *) frst(n->invoke.arguments))->instruction.opcode; //Dest
@@ -156,30 +147,25 @@ void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sy
 				mem_write(bin, pos, &((union expression *) fst(n->invoke.arguments))->literal.value, 4);
 				break;
 			} case POPQ_REG: {
-				printf("popq %s\n", fst_string(n));
 				unsigned char opcode = 0x58;
 				int reg = ((union expression *) fst(n->invoke.arguments))->instruction.opcode; //Dest
 				write_o_instr(bin, pos, opcode, reg);
 				break;
 			} case LEAVE: {
-				printf("leave\n");
 				unsigned char opcode = 0xC9;
 				mem_write(bin, pos, &opcode, 1);
 				break;
 			} case RET: {
-				printf("ret\n");
 				unsigned char opcode = 0xC3;
 				mem_write(bin, pos, &opcode, 1);
 				break;
 			} case JMP_TO_REG: {
-				printf("jmp *%s\n", fst_string(n));
 				unsigned char opcode = 0xFF;
 				unsigned char reg = 4;
 				int rm = ((union expression *) fst(n->invoke.arguments))->instruction.opcode;
 				write_mr_rm_instr(bin, pos, opcode, reg, rm, false, false);
 				break;
 			} case JE_REL: {
-				printf("je %s\n", fst_string(fst(n->instruction.arguments)));
 				unsigned char opcode1 = 0x0F;
 				unsigned char opcode2 = 0x84;
 				mem_write(bin, pos, &opcode1, 1);
@@ -187,14 +173,12 @@ void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sy
 				write_static_value(bin, pos, fst(n->invoke.arguments), 4, symtab, relas);
 				break;
 			} case ORQ_REG_TO_REG: {
-				printf("orq %s, %s\n", fst_string(n), frst_string(n));
 				char opcode = 0x0B;
 				int reg = ((union expression *) frst(n->invoke.arguments))->instruction.opcode; //Dest
 				int rm = ((union expression *) fst(n->invoke.arguments))->instruction.opcode; //Src
 				write_mr_rm_instr(bin, pos, opcode, reg, rm, false, true);
 				break;
 			} case MOVQ_IMM_TO_REG: {
-				printf("movq $%s, %s\n", fst_string(n), frst_string(n));
 				unsigned char opcode = 0xB8;
 				union expression *imm_expr = ((union expression *) fst(n->invoke.arguments));
 				int reg = ((union expression *) frst(n->invoke.arguments))->instruction.opcode; //Dest
@@ -212,7 +196,6 @@ void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sy
 				write_static_value(bin, pos, imm_expr, 8, symtab, relas);
 				break;
 			} case CALL_REG: {
-				printf("call *%s\n", fst_string(n));
 				unsigned char opcode = 0xFF;
 				unsigned char reg = 2;
 				int rm = ((union expression *) fst(n->invoke.arguments))->instruction.opcode;

@@ -27,10 +27,10 @@ list *list_at(int index, list *l) {
 }
 
 #if __x86_64__
-	#define WORD_HEX_LEN 16
+	#define WORD_BIN_LEN 64
 #endif
 #if __i386__
-	#define WORD_HEX_LEN 8
+	#define WORD_BIN_LEN 32
 #endif
 
 /*
@@ -112,7 +112,7 @@ void build_syntax_tree(list d, union expression **s) {
 		char *str;
 		if(length(d) != 2) {
 			thelongjmp(*build_syntax_tree_handler, make_special_form(d, NULL));
-		} else if(!is_string(frst(d)) || strlen(str = to_string(frst(d))) != WORD_HEX_LEN) {
+		} else if(!is_string(frst(d)) || strlen(str = to_string(frst(d))) != WORD_BIN_LEN) {
 			thelongjmp(*build_syntax_tree_handler, make_special_form(d, frst(d)));
 		}
 	
@@ -120,37 +120,9 @@ void build_syntax_tree(list d, union expression **s) {
 		(*s)->literal.value = 0;
 		unsigned long int i;
 		for(i = 0; i < strlen(str); i++) {
-			(*s)->literal.value <<= 4;
-			if(str[i] == 'F') {
-				(*s)->literal.value += 0xF;
-			} else if(str[i] == 'E') {
-				(*s)->literal.value += 0xE;
-			} else if(str[i] == 'D') {
-				(*s)->literal.value += 0xD;
-			} else if(str[i] == 'C') {
-				(*s)->literal.value += 0xC;
-			} else if(str[i] == 'B') {
-				(*s)->literal.value += 0xB;
-			} else if(str[i] == 'A') {
-				(*s)->literal.value += 0xA;
-			} else if(str[i] == '9') {
-				(*s)->literal.value += 0x9;
-			} else if(str[i] == '8') {
-				(*s)->literal.value += 0x8;
-			} else if(str[i] == '7') {
-				(*s)->literal.value += 0x7;
-			} else if(str[i] == '6') {
-				(*s)->literal.value += 0x6;
-			} else if(str[i] == '5') {
-				(*s)->literal.value += 0x5;
-			} else if(str[i] == '4') {
-				(*s)->literal.value += 0x4;
-			} else if(str[i] == '3') {
-				(*s)->literal.value += 0x3;
-			} else if(str[i] == '2') {
-				(*s)->literal.value += 0x2;
-			} else if(str[i] == '1') {
-				(*s)->literal.value += 0x1;
+			(*s)->literal.value <<= 1;
+			if(str[i] == '1') {
+				(*s)->literal.value += 1;
 			} else if(str[i] != '0') {
 				thelongjmp(*build_syntax_tree_handler, make_special_form(d, frst(d)));
 			}
@@ -178,7 +150,7 @@ void build_syntax_tree(list d, union expression **s) {
 	}
 }
 
-#undef WORD_HEX_LEN
+#undef WORD_BIN_LEN
 
 /*
  * Argument src is a list of lists and dest is a pointer to a list of lists. The
