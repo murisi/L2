@@ -148,30 +148,6 @@ union expression *vescape_analysis(union expression *s, void *ctx) {
 	return s;
 }
 
-union expression *vrename_definition_references(union expression *s, void *ctx) {
-	switch(s->base.type) {
-		case function: case continuation: case with: {
-			s->function.reference->reference.name = generate_string();
-			
-			if(s->base.type == function || s->base.type == continuation) {
-				union expression *t;
-				foreach(t, s->function.parameters) {
-					t->reference.name = generate_string();
-				}
-			}
-			break;
-		}
-	}
-	return s;
-}
-
-union expression *vrename_usage_references(union expression *s, void *ctx) {
-	if(s->base.type == reference) {
-		s->reference.name = s->reference.referent->reference.name;
-	}
-	return s;
-}
-
 void visit_expressions(union expression *(*visitor)(union expression *, void *), union expression **s, void *ctx) {
 	switch((*s)->base.type) {
 		case begin: {

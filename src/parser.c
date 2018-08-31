@@ -54,7 +54,6 @@ void build_syntax_tree(list d, union expression **s) {
 		char *str = to_string(d);
 		(*s)->reference.type = reference;
 		(*s)->reference.name = str;
-		prepend(str, &generate_string_blacklist);
 	} else if(!strcmp(to_string(fst(d)), "with")) {
 		if(length(d) != 3) {
 			thelongjmp(*build_syntax_tree_handler, make_special_form(d, NULL));

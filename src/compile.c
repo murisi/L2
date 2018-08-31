@@ -45,9 +45,6 @@ void compile(char *outbin, char *inl2, Symbol *env, jmp_buf *handler) {
 		thelongjmp(*handler, make_missing_file(inl2));
 	}*/
 	myseek(l2file, 0, SEEK_SET);
-	if(generate_string_blacklist == NULL) {
-		generate_string_blacklist = nil();
-	}
 	
 	list expressions = nil();
 	list expansion_lists = nil();
