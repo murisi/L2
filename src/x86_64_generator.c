@@ -521,10 +521,14 @@ void compile_expressions(char *outbin, list exprs, jmp_buf *handler) {
 	program = generate_toplevel(program, toplevel_function_references);
 	visit_expressions(vmerge_begins, &program, NULL);
 	
-	char *ofilefn = cprintf("%s", ".o_fileXXXXXX.o");
+	int elf_size = 0;
+	unsigned char elf[max_elf_size(program->begin.expressions, locals, globals)];
+	write_elf(program->begin.expressions, locals, globals, elf, &elf_size);
+	
+	char ofilefn[] = ".o_fileXXXXXX.o";
 	int odes = mkstemps(ofilefn, 2);
 	int fd = myopen(ofilefn);
-	write_elf(program->begin.expressions, locals, globals, fd);
+	mywrite(fd, elf, elf_size);
 	myclose(fd);
 	
 	system(cprintf("ar rcs '%s' '%s'", outbin, ofilefn));

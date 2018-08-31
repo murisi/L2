@@ -86,19 +86,6 @@ void write_o_instr(char *bin, int *pos, unsigned char opcode, int reg) {
 	mem_write(bin, pos, &opcoderd, 1);
 }
 
-/*int count_labels(list generated_expressions) {
-	int label_count = 0;
-	union expression *n;
-	foreach(n, generated_expressions) {
-		switch(n->instruction.opcode) {
-			case LABEL:
-				label_count++;
-				break;
-		}
-	}
-	return label_count;
-}*/
-
 void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sym *symtab, Elf64_Rela **relas) {
 	*pos = 0;
 	union expression *n;
@@ -240,7 +227,59 @@ int round_size(int x, int nearest) {
 	return x + (nearest - (x % nearest));
 }
 
-void write_elf(list generated_expressions, list locals, list globals, int outfd) {
+int measure_strtab(list generated_expressions, list locals, list globals) {
+	union expression *e;
+	int strtab_len = 1;
+	{foreach(e, locals) {
+		strtab_len += strlen(e->reference.name) + 1;
+	}}
+	{foreach(e, globals) {
+		strtab_len += strlen(e->reference.name) + 1;
+	}}
+	{foreach(e, generated_expressions) {
+		if(e->instruction.opcode == LOCAL_LABEL || e->instruction.opcode == GLOBAL_LABEL) {
+			strtab_len += strlen(((union expression *) fst(e->instruction.arguments))->reference.name) + 1;
+		}
+	}}
+	return strtab_len;
+}
+
+int measure_symtab(list generated_expressions, list locals, list globals) {
+	int sym_count = 1;
+	union expression *e;
+	{foreach(e, locals) {
+		sym_count++;
+	}}
+	{foreach(e, globals) {
+		sym_count++;
+	}}
+	{foreach(e, generated_expressions) {
+		if(e->instruction.opcode == LOCAL_LABEL || e->instruction.opcode == GLOBAL_LABEL) {
+			sym_count++;
+		}
+	}}
+	return sym_count;
+}
+
+int strvlen(char *strv) {
+	int i;
+	for(i = 1; strv[i - 1] || strv[i]; i++);
+	return i;
+}
+
+#define SHSTRTAB "\0.shstrtab\0.text\0.strtab\0.symtab\0.bss\0.rela.text\0"
+
+#define SH_COUNT 7
+
+int max_elf_size(list generated_expressions, list locals, list globals) {
+	return sizeof(Elf64_Ehdr) + (sizeof(Elf64_Shdr) * SH_COUNT) + round_size(strvlen(SHSTRTAB), ALIGNMENT) +
+		round_size(MAX_INSTR_LEN * length(generated_expressions), ALIGNMENT) +
+		round_size(measure_strtab(generated_expressions, locals, globals), ALIGNMENT) +
+		(sizeof(Elf64_Sym) * measure_symtab(generated_expressions, locals, globals)) +
+		(sizeof(Elf64_Rela) * MAX_INSTR_FIELDS * length(generated_expressions));
+}
+
+void write_elf(list generated_expressions, list locals, list globals, unsigned char *bin, int *pos) {
 	Elf64_Ehdr ehdr;
 	ehdr.e_ident[EI_MAG0] = ELFMAG0;
 	ehdr.e_ident[EI_MAG1] = ELFMAG1;
@@ -265,26 +304,13 @@ void write_elf(list generated_expressions, list locals, list globals, int outfd)
 	ehdr.e_phentsize = sizeof(Elf64_Phdr);
 	ehdr.e_phnum = 0;
 	ehdr.e_shentsize = sizeof(Elf64_Shdr);
-	ehdr.e_shnum = 7; //
+	ehdr.e_shnum = SH_COUNT;
 	ehdr.e_shstrndx = 1;
-	mywrite(outfd, &ehdr, sizeof(Elf64_Ehdr));
+	mem_write(bin, pos, &ehdr, sizeof(Elf64_Ehdr));
 	
-	int strtab_len = 1, sym_count = 1;
-	union expression *e;
-	{foreach(e, locals) {
-		strtab_len += strlen(e->reference.name) + 1;
-		sym_count++;
-	}}
-	{foreach(e, globals) {
-		strtab_len += strlen(e->reference.name) + 1;
-		sym_count++;
-	}}
-	{foreach(e, generated_expressions) {
-		if(e->instruction.opcode == LOCAL_LABEL || e->instruction.opcode == GLOBAL_LABEL) {
-			strtab_len += strlen(((union expression *) fst(e->instruction.arguments))->reference.name) + 1;
-			sym_count++;
-		}
-	}}
+	int strtab_len = measure_strtab(generated_expressions, locals, globals),
+		sym_count = measure_symtab(generated_expressions, locals, globals);
+	
 	Elf64_Sym syms[sym_count];
 	Elf64_Sym *sym_ptr = syms;
 	//Mandatory undefined symbol
@@ -300,6 +326,7 @@ void write_elf(list generated_expressions, list locals, list globals, int outfd)
 	char *strtabptr = strtab;
 	*(strtabptr++) = '\0';
 	
+	union expression *e;
 	{foreach(e, locals) {
 		strcpy(strtabptr, e->reference.name);
 		sym_ptr->st_name = strtabptr - strtab;
@@ -374,93 +401,92 @@ void write_elf(list generated_expressions, list locals, list globals, int outfd)
 	undef_shdr.sh_info = 0;
 	undef_shdr.sh_addralign = 0;
 	undef_shdr.sh_entsize = 0;
-	mywrite(outfd, &undef_shdr, sizeof(Elf64_Shdr));
+	mem_write(bin, pos, &undef_shdr, sizeof(Elf64_Shdr));
 	
-	char shstrtab[] = "\0.shstrtab\0.text\0.strtab\0.symtab\0.bss\0.rela.text";
-	char shstrtab_padded[round_size(sizeof(shstrtab), ALIGNMENT)];
-	memcpy(shstrtab_padded, shstrtab, sizeof(shstrtab));
+	char shstrtab_padded[round_size(strvlen(SHSTRTAB), ALIGNMENT)];
+	memcpy(shstrtab_padded, SHSTRTAB, strvlen(SHSTRTAB));
 	
 	Elf64_Shdr shstrtab_shdr;
 	shstrtab_shdr.sh_name = 1;
 	shstrtab_shdr.sh_type = SHT_STRTAB;
 	shstrtab_shdr.sh_flags = 0;
 	shstrtab_shdr.sh_addr = 0;
-	shstrtab_shdr.sh_offset = sizeof(Elf64_Ehdr) + 7*sizeof(Elf64_Shdr);
-	shstrtab_shdr.sh_size = sizeof(shstrtab);
+	shstrtab_shdr.sh_offset = sizeof(Elf64_Ehdr) + SH_COUNT*sizeof(Elf64_Shdr);
+	shstrtab_shdr.sh_size = strvlen(SHSTRTAB);
 	shstrtab_shdr.sh_link = SHN_UNDEF;
 	shstrtab_shdr.sh_info = 0;
 	shstrtab_shdr.sh_addralign = 0;
 	shstrtab_shdr.sh_entsize = 0;
-	mywrite(outfd, &shstrtab_shdr, sizeof(Elf64_Shdr));
+	mem_write(bin, pos, &shstrtab_shdr, sizeof(Elf64_Shdr));
 	
 	Elf64_Shdr text_shdr;
-	text_shdr.sh_name = 1 + strlen(".shstrtab") + 1;
+	text_shdr.sh_name = shstrtab_shdr.sh_name + strlen(".shstrtab") + 1;
 	text_shdr.sh_type = SHT_PROGBITS;
 	text_shdr.sh_flags = SHF_ALLOC | SHF_EXECINSTR;
 	text_shdr.sh_addr = 0;
-	text_shdr.sh_offset = sizeof(Elf64_Ehdr) + 7*sizeof(Elf64_Shdr) + sizeof(shstrtab_padded);
+	text_shdr.sh_offset = shstrtab_shdr.sh_offset + sizeof(shstrtab_padded);
 	text_shdr.sh_size = text_len;
 	text_shdr.sh_link = SHN_UNDEF;
 	text_shdr.sh_info = 0;
 	text_shdr.sh_addralign = 1;
 	text_shdr.sh_entsize = 0;
-	mywrite(outfd, &text_shdr, sizeof(Elf64_Shdr));
+	mem_write(bin, pos, &text_shdr, sizeof(Elf64_Shdr));
 	
 	Elf64_Shdr strtab_shdr;
-	strtab_shdr.sh_name = 1 + strlen(".shstrtab") + 1 + strlen(".text") + 1;
+	strtab_shdr.sh_name = text_shdr.sh_name + strlen(".text") + 1;
 	strtab_shdr.sh_type = SHT_STRTAB;
 	strtab_shdr.sh_flags = 0;
 	strtab_shdr.sh_addr = 0;
-	strtab_shdr.sh_offset = sizeof(Elf64_Ehdr) + 7*sizeof(Elf64_Shdr) + sizeof(shstrtab_padded) + sizeof(text);
+	strtab_shdr.sh_offset = text_shdr.sh_offset + sizeof(text);
 	strtab_shdr.sh_size = strtab_len;
 	strtab_shdr.sh_link = SHN_UNDEF;
 	strtab_shdr.sh_info = 0;
 	strtab_shdr.sh_addralign = 0;
 	strtab_shdr.sh_entsize = 0;
-	mywrite(outfd, &strtab_shdr, sizeof(Elf64_Shdr));
+	mem_write(bin, pos, &strtab_shdr, sizeof(Elf64_Shdr));
 	
 	Elf64_Shdr symtab_shdr;
-	symtab_shdr.sh_name = 1 + strlen(".shstrtab") + 1 + strlen(".text") + 1 + strlen(".strtab") + 1;
+	symtab_shdr.sh_name = strtab_shdr.sh_name + strlen(".strtab") + 1;
 	symtab_shdr.sh_type = SHT_SYMTAB;
 	symtab_shdr.sh_flags = 0;
 	symtab_shdr.sh_addr = 0;
-	symtab_shdr.sh_offset = sizeof(Elf64_Ehdr) + 7*sizeof(Elf64_Shdr) + sizeof(shstrtab_padded) + sizeof(text) + sizeof(strtab);
+	symtab_shdr.sh_offset = strtab_shdr.sh_offset + sizeof(strtab);
 	symtab_shdr.sh_size = sizeof(syms);
 	symtab_shdr.sh_link = 3;
 	symtab_shdr.sh_info = local_symbol_count;
 	symtab_shdr.sh_addralign = 0;
 	symtab_shdr.sh_entsize = sizeof(Elf64_Sym);
-	mywrite(outfd, &symtab_shdr, sizeof(Elf64_Shdr));
+	mem_write(bin, pos, &symtab_shdr, sizeof(Elf64_Shdr));
 	
 	Elf64_Shdr bss_shdr;
-	bss_shdr.sh_name = 1 + strlen(".shstrtab") + 1 + strlen(".text") + 1 + strlen(".strtab") + 1 + strlen(".symtab") + 1;
+	bss_shdr.sh_name = symtab_shdr.sh_name + strlen(".symtab") + 1;
 	bss_shdr.sh_type = SHT_NOBITS;
 	bss_shdr.sh_flags = SHF_WRITE | SHF_ALLOC;
 	bss_shdr.sh_addr = 0;
-	bss_shdr.sh_offset = sizeof(Elf64_Ehdr) + 7*sizeof(Elf64_Shdr) + sizeof(shstrtab_padded) + sizeof(text) + sizeof(strtab) + sizeof(syms);
+	bss_shdr.sh_offset = symtab_shdr.sh_offset + sizeof(syms);
 	bss_shdr.sh_size = length(locals) * WORD_SIZE;
 	bss_shdr.sh_link = SHN_UNDEF;
 	bss_shdr.sh_info = 0;
 	bss_shdr.sh_addralign = WORD_SIZE;
 	bss_shdr.sh_entsize = 0;
-	mywrite(outfd, &bss_shdr, sizeof(Elf64_Shdr));
+	mem_write(bin, pos, &bss_shdr, sizeof(Elf64_Shdr));
 	
 	Elf64_Shdr rela_shdr;
-	rela_shdr.sh_name = 1 + strlen(".shstrtab") + 1 + strlen(".text") + 1 + strlen(".strtab") + 1 + strlen(".symtab") + 1 + strlen(".bss") + 1;
+	rela_shdr.sh_name = bss_shdr.sh_name + strlen(".bss") + 1;
 	rela_shdr.sh_type = SHT_RELA;
 	rela_shdr.sh_flags = 0;
 	rela_shdr.sh_addr = 0;
-	rela_shdr.sh_offset = sizeof(Elf64_Ehdr) + 7*sizeof(Elf64_Shdr) + sizeof(shstrtab_padded) + sizeof(text) + sizeof(strtab) + sizeof(syms);
+	rela_shdr.sh_offset = bss_shdr.sh_offset;
 	rela_shdr.sh_size = (rela_ptr - relas) * sizeof(Elf64_Rela);
 	rela_shdr.sh_link = 4;
 	rela_shdr.sh_info = 2;
 	rela_shdr.sh_addralign = 0;
 	rela_shdr.sh_entsize = sizeof(Elf64_Rela);
-	mywrite(outfd, &rela_shdr, sizeof(Elf64_Shdr));
+	mem_write(bin, pos, &rela_shdr, sizeof(Elf64_Shdr));
 	
-	mywrite(outfd, shstrtab_padded, sizeof(shstrtab_padded));
-	mywrite(outfd, text, sizeof(text));
-	mywrite(outfd, strtab, sizeof(strtab));
-	mywrite(outfd, syms, sizeof(syms));
-	mywrite(outfd, relas, (rela_ptr - relas) * sizeof(Elf64_Rela));
+	mem_write(bin, pos, shstrtab_padded, sizeof(shstrtab_padded));
+	mem_write(bin, pos, text, sizeof(text));
+	mem_write(bin, pos, strtab, sizeof(strtab));
+	mem_write(bin, pos, syms, sizeof(syms));
+	mem_write(bin, pos, relas, (rela_ptr - relas) * sizeof(Elf64_Rela));
 }
