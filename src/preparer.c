@@ -111,7 +111,7 @@ union expression *vlink_references(union expression *s, void *ctx) {
 	if(s->base.type == reference) {
 		s->reference.referent = referent_of(s);
 		if(s->reference.referent == NULL) {
-			s->reference.referent = prepend_parameter("", root_function_of(s));
+			s->reference.referent = prepend_parameter(root_function_of(s));
 			s->reference.referent->reference.name = s->reference.name;
 		} else if(is_jump_reference(s) && is_c_reference(s->reference.referent) &&
 			length(s->reference.parent->jump.arguments) != length(target_expression(s)->continuation.parameters)) {
@@ -191,7 +191,7 @@ void visit_expressions(union expression *(*visitor)(union expression *, void *),
 }
 
 union expression *make_local(union expression *function) {
-	union expression *r = generate_reference();
+	union expression *r = make_reference();
 	r->reference.parent = function;
 	prepend(r, &function->function.locals);
 	return r;
@@ -201,7 +201,7 @@ union expression *make_local(union expression *function) {
 union expression *use_return_value(union expression *n, union expression *ret_val) {
 	switch(n->base.type) {
 		case with: {
-			set_fst(n->with.parameter, generate_reference());
+			set_fst(n->with.parameter, make_reference());
 		} case continuation: {
 			n->continuation.return_value = ret_val;
 			put(n, continuation.expression, use_return_value(n->continuation.expression, make_local(get_zeroth_function(n))));

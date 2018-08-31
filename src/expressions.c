@@ -154,10 +154,10 @@ union expression *make_literal(long int value) {
 	return t;
 }
 
-union expression *make_reference(char *name) {
+union expression *make_reference() {
 	union expression *ref = calloc(1, sizeof(union expression));
 	ref->reference.type = reference;
-	ref->reference.name = name;
+	ref->reference.name = "";
 	ref->reference.referent = ref;
 	return ref;
 }
@@ -179,10 +179,6 @@ bool strequal(void *a, void *b) {
 	return strcmp(a, b) == 0;
 }
 
-union expression *generate_reference() {
-	return make_reference("");
-}
-
 union expression *make_begin() {
 	union expression *beg = calloc(1, sizeof(union expression));
 	beg->begin.type = begin;
@@ -193,7 +189,7 @@ union expression *make_begin() {
 union expression *make_function() {
 	union expression *func = calloc(1, sizeof(union expression));
 	func->function.type = function;
-	func->function.reference = generate_reference();
+	func->function.reference = make_reference();
 	func->function.reference->reference.parent = func;
 	func->function.parameters = nil();
 	func->function.locals = nil();
@@ -216,8 +212,8 @@ union expression *use(int opcode) {
 	return u;
 }
 
-union expression *prepend_parameter(char *name, union expression *function) {
-	union expression *v = make_reference(name);
+union expression *prepend_parameter(union expression *function) {
+	union expression *v = make_reference();
 	v->reference.parent = function;
 	v->reference.referent = v;
 	prepend(v, &(function->function.parameters));

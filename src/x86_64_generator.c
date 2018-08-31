@@ -69,7 +69,7 @@ union expression *vlayout_frames(union expression *n, void *ctx) {
 				//Make space for the buffer
 				int i;
 				for(i = 1; i < (CONT_SIZE / WORD_SIZE); i++) {
-					append(generate_reference(), &get_zeroth_function(n)->function.locals);
+					append(make_reference(), &get_zeroth_function(n)->function.locals);
 				}
 			}
 			append_list(&get_zeroth_function(n)->function.locals, n->continuation.parameters);
@@ -111,10 +111,10 @@ union expression *vgenerate_ifs(union expression *n, void *ctx) {
 		emit(make_load(n->_if.condition, 0, use(R10), use(R13)));
 		emit(make_instr(ORQ_REG_TO_REG, 2, use(R10), use(R10)));
 		
-		union expression *alternate_label = generate_reference();
+		union expression *alternate_label = make_reference();
 		emit(make_instr(JE_REL, 1, make_instr(STVAL_SUB_RIP_FROM_REF, 1, alternate_label)));
 		emit(n->_if.consequent);
-		union expression *end_label = generate_reference();
+		union expression *end_label = make_reference();
 		emit(make_instr(JMP_REL, 1, make_instr(STVAL_SUB_RIP_FROM_REF, 1, end_label)));
 		emit(make_instr(LOCAL_LABEL, 1, alternate_label));
 		emit(n->_if.alternate);
@@ -148,7 +148,7 @@ union expression *vgenerate_references(union expression *n, void *ctx) {
 }
 
 union expression *cont_instr_ref(union expression *n) {
-	return n->continuation.cont_instr_ref ? n->continuation.cont_instr_ref : (n->continuation.cont_instr_ref = generate_reference());
+	return n->continuation.cont_instr_ref ? n->continuation.cont_instr_ref : (n->continuation.cont_instr_ref = make_reference());
 }
 
 union expression *make_continuation(union expression *n) {
@@ -187,7 +187,7 @@ union expression *vgenerate_continuation_expressions(union expression *n, void *
 			}
 			
 			//Skip the actual instructions of the continuation
-			union expression *after_reference = generate_reference();
+			union expression *after_reference = make_reference();
 			emit(make_instr(JMP_REL, 1, make_instr(STVAL_SUB_RIP_FROM_REF, 1, after_reference)));
 			emit(make_instr(LOCAL_LABEL, 1, cont_instr_ref(n)));
 			emit(n->continuation.expression);
@@ -277,7 +277,7 @@ union expression *vgenerate_function_expressions(union expression *n, void *ctx)
 		emit(make_load_address(n->function.reference, use(R11)));
 		emit(make_store(use(R11), n->function.return_value, 0, use(R10)));
 		
-		union expression *after_reference = generate_reference();
+		union expression *after_reference = make_reference();
 		
 		emit(make_instr(JMP_REL, 1, make_instr(STVAL_SUB_RIP_FROM_REF, 1, after_reference)));
 		if(root_function_of(n) == n->function.parent->begin.parent) {
@@ -509,7 +509,7 @@ void compile_expressions(char *outbin, list exprs, jmp_buf *handler) {
 	visit_expressions(vfind_multiple_definitions, &program, handler);
 	visit_expressions(vlink_references, &program, handler);
 	visit_expressions(vescape_analysis, &program, NULL);
-	program = use_return_value(program, generate_reference());
+	program = use_return_value(program, make_reference());
 	visit_expressions(vlayout_frames, &program, NULL);
 	visit_expressions(vgenerate_references, &program, NULL);
 	visit_expressions(vgenerate_continuation_expressions, &program, NULL);
