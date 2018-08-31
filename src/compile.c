@@ -7,7 +7,6 @@
 #include "string.h"
 #include "limits.h"
 #include "stdlib.h"
-#include "x86_64_object.c"
 
 //Essentially longjmp and setjmp with a pointer argument
 void *jmp_value = NULL;
@@ -20,14 +19,9 @@ void *jmp_value = NULL;
 #include "lexer.c"
 #include "expressions.c"
 #include "preparer.c"
-
-#if __x86_64__
-	#include "x86_64_generator.c"
-	#include "x86_64_assembler.c"
-#endif
-#if __i386__
-	#include "i386_generator.c"
-#endif
+#include "x86_64_generator.c"
+#include "x86_64_object.c"
+#include "x86_64_assembler.c"
 
 bool equals(void *a, void *b) {
 	return a == b;
