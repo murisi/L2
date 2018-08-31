@@ -27,7 +27,6 @@
 #define POPQ_REG 25
 #define LEAVE 26
 #define RET 27
-#define CALL_REL 28
 #define JMP_TO_REG 29
 #define JE_REL 30
 #define ORQ_REG_TO_REG 31
@@ -39,7 +38,8 @@
 #define ALIGN_EXPR_EXPR 40
 #define BSS 41
 #define TEXT 42
-#define ADD 43
+#define STVAL_ADD_OFF_TO_REF 43
+#define STVAL_SUB_RIP_FROM_REF 44
 
 #define WORD_SIZE 8
 #define CONT_SIZE (7*WORD_SIZE)
@@ -89,7 +89,7 @@ union expression *make_load(union expression *ref, int offset, union expression 
 		emit(make_instr(MOVQ_MDB_TO_REG, 3, make_literal(ref->reference.referent->reference.offset->literal.value + offset), use(RBP),
 			dest_reg));
 	} else {
-		emit(make_instr(MOVQ_IMM_TO_REG, 2, make_instr(ADD, 2, ref, make_literal(offset)), scratch_reg));
+		emit(make_instr(MOVQ_IMM_TO_REG, 2, make_instr(STVAL_ADD_OFF_TO_REF, 2, ref, make_literal(offset)), scratch_reg));
 		emit(make_instr(MOVQ_MDB_TO_REG, 3, make_literal(0), scratch_reg, dest_reg));
 	}
 	return container;
@@ -101,7 +101,7 @@ union expression *make_store(union expression *src_reg, union expression *ref, i
 		emit(make_instr(MOVQ_FROM_REG_INTO_MDB, 3,
 			src_reg, make_literal(ref->reference.referent->reference.offset->literal.value + offset), use(RBP)));
 	} else {
-		emit(make_instr(MOVQ_IMM_TO_REG, 2, make_instr(ADD, 2, ref, make_literal(offset)), scratch_reg));
+		emit(make_instr(MOVQ_IMM_TO_REG, 2, make_instr(STVAL_ADD_OFF_TO_REF, 2, ref, make_literal(offset)), scratch_reg));
 		emit(make_instr(MOVQ_FROM_REG_INTO_MDB, 3, src_reg, make_literal(0), scratch_reg));
 	}
 	return container;
@@ -116,10 +116,10 @@ union expression *vgenerate_ifs(union expression *n, void *ctx) {
 		emit(make_instr(ORQ_REG_TO_REG, 2, use(R10), use(R10)));
 		
 		union expression *alternate_label = generate_reference();
-		emit(make_instr(JE_REL, 1, alternate_label));
+		emit(make_instr(JE_REL, 1, make_instr(STVAL_SUB_RIP_FROM_REF, 1, alternate_label)));
 		emit(n->_if.consequent);
 		union expression *end_label = generate_reference();
-		emit(make_instr(JMP_REL, 1, end_label));
+		emit(make_instr(JMP_REL, 1, make_instr(STVAL_SUB_RIP_FROM_REF, 1, end_label)));
 		emit(make_instr(LABEL, 1, alternate_label));
 		emit(n->_if.alternate);
 		emit(make_instr(LABEL, 1, end_label));
@@ -192,7 +192,7 @@ union expression *vgenerate_continuation_expressions(union expression *n, void *
 			
 			//Skip the actual instructions of the continuation
 			union expression *after_reference = generate_reference();
-			emit(make_instr(JMP_REL, 1, after_reference));
+			emit(make_instr(JMP_REL, 1, make_instr(STVAL_SUB_RIP_FROM_REF, 1, after_reference)));
 			emit(make_instr(LABEL, 1, cont_instr_ref(n)));
 			emit(n->continuation.expression);
 			emit(make_instr(LABEL, 1, after_reference));
@@ -214,7 +214,7 @@ union expression *vgenerate_continuation_expressions(union expression *n, void *
 					emit(make_load_address(fst(n->jump.short_circuit->continuation.parameters), use(R11)));
 					emit(move_arguments(n, 0));
 				}
-				emit(make_instr(JMP_REL, 1, cont_instr_ref(n->jump.short_circuit)));
+				emit(make_instr(JMP_REL, 1, make_instr(STVAL_SUB_RIP_FROM_REF, 1, cont_instr_ref(n->jump.short_circuit))));
 			} else {
 				emit(make_load(n->jump.reference, 0, use(R11), use(R10)));
 				emit(move_arguments(n, CONT_SIZE));
@@ -294,7 +294,7 @@ union expression *vgenerate_function_expressions(union expression *n, void *ctx)
 		
 		union expression *after_reference = generate_reference();
 		
-		emit(make_instr(JMP_REL, 1, after_reference));
+		emit(make_instr(JMP_REL, 1, make_instr(STVAL_SUB_RIP_FROM_REF, 1, after_reference)));
 		emit(make_instr(LABEL, 1, n->function.reference));
 		
 		//Insert first 6 parameters onto stack
@@ -390,7 +390,7 @@ char *expr_to_string(union expression *n) {
 			return cprintf("%ld", n->literal.value);
 		} case instruction: {
 			switch(n->instruction.opcode) {
-				case ADD: return cprintf("(%s+%s)", expr_to_string(fst(n->invoke.arguments)),
+				case STVAL_ADD_OFF_TO_REF: return cprintf("(%s+%s)", expr_to_string(fst(n->invoke.arguments)),
 					expr_to_string(frst(n->invoke.arguments)));
 				case RBP: return "%rbp";
 				case RSP: return "%rsp";
@@ -440,7 +440,7 @@ void print_assembly(list generated_expressions, FILE *out) {
 				fprintf(out, "movq %s, %s(%s)", fst_string(n), frst_string(n), frrst_string(n));
 				break;
 			case JMP_REL:
-				fprintf(out, "jmp %s", fst_string(n));
+				fprintf(out, "jmp %s", fst_string(fst(n->instruction.arguments)));
 				break;
 			case MOVQ_MDB_TO_REG:
 				fprintf(out, "movq %s(%s), %s", fst_string(n), frst_string(n), frrst_string(n));
@@ -466,14 +466,11 @@ void print_assembly(list generated_expressions, FILE *out) {
 			case RET:
 				fprintf(out, "ret");
 				break;
-			case CALL_REL:
-				fprintf(out, "call %s", fst_string(n));
-				break;
 			case JMP_TO_REG:
 				fprintf(out, "jmp *%s", fst_string(n));
 				break;
 			case JE_REL:
-				fprintf(out, "je %s", fst_string(n));
+				fprintf(out, "je %s", fst_string(fst(n->instruction.arguments)));
 				break;
 			case ORQ_REG_TO_REG:
 				fprintf(out, "orq %s, %s", fst_string(n), frst_string(n));

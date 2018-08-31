@@ -20,10 +20,10 @@ void *jmp_value = NULL;
 #include "preparer.c"
 
 #if __x86_64__
-	#include "generator64.c"
+	#include "x86_64_generator.c"
 #endif
 #if __i386__
-	#include "generator32.c"
+	#include "i386_generator32.c"
 #endif
 
 bool equals(void *a, void *b) {

@@ -19,8 +19,6 @@ void mem_write(char *mem, int *idx, void *bytes, int cnt) {
 	}
 }
 
-//static value
-
 void write_mr_rm_instr(char *bin, int *pos, char opcode, int reg, int rm, bool m, bool rexw) {
 	char mod = m ? 2 : 3;
 	char modrm = (mod << MOD) | ((reg & 0x7) << REG) | ((rm & 0x7) << RM);
@@ -48,24 +46,30 @@ void write_mr_rm_instr(char *bin, int *pos, char opcode, int reg, int rm, bool m
 	}
 }
 
-void write_static_value(char *bin, int *pos, union expression *disp_expr, int bytes, Elf64_Sym *symtab, Elf64_Rela **relas) {
-	uint64_t disp = 0;
-	if(disp_expr->base.type == literal) {
-		disp = disp_expr->literal.value;
-	} else if(disp_expr->base.type == reference && bytes == 8) {
+void write_static_value(char *bin, int *pos, union expression *expr, int bytes, Elf64_Sym *symtab, Elf64_Rela **relas) {
+	uint64_t val = 0;
+	if(expr->base.type == literal) {
+		val = expr->literal.value;
+	} else if(expr->base.type == reference && bytes == 8) {
 		(*relas)->r_offset = *pos;
-		(*relas)->r_info = ELF64_R_INFO((Elf64_Sym *) disp_expr->reference.referent->reference.context - symtab, R_X86_64_64);
+		(*relas)->r_info = ELF64_R_INFO((Elf64_Sym *) expr->reference.referent->reference.context - symtab, R_X86_64_64);
 		(*relas)->r_addend = 0;
 		(*relas)++;
-	} else if(disp_expr->base.type == instruction && disp_expr->instruction.opcode == ADD && bytes == 8) {
-		union expression *ref = fst(disp_expr->instruction.arguments);
-		union expression *offset = frst(disp_expr->instruction.arguments);
+	} else if(expr->base.type == instruction && expr->instruction.opcode == STVAL_ADD_OFF_TO_REF && bytes == 8) {
+		union expression *ref = fst(expr->instruction.arguments);
+		union expression *offset = frst(expr->instruction.arguments);
 		(*relas)->r_offset = *pos;
 		(*relas)->r_info = ELF64_R_INFO((Elf64_Sym *) ref->reference.referent->reference.context - symtab, R_X86_64_64);
 		(*relas)->r_addend = offset->literal.value;
 		(*relas)++;
+	} else if(expr->base.type == instruction && expr->instruction.opcode == STVAL_SUB_RIP_FROM_REF && bytes == 4) {
+		union expression *ref = fst(expr->instruction.arguments);
+		(*relas)->r_offset = *pos;
+		(*relas)->r_info = ELF64_R_INFO((Elf64_Sym *) ref->reference.referent->reference.context - symtab, R_X86_64_PC32);
+		(*relas)->r_addend = -bytes;
+		(*relas)++;
 	}
-	mem_write(bin, pos, (char *) &disp, bytes);
+	mem_write(bin, pos, (char *) &val, bytes);
 }
 
 void write_o_instr(char *bin, int *pos, unsigned char opcode, int reg) {
@@ -121,12 +125,13 @@ void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sy
 				write_mr_rm_instr(bin, pos, opcode, reg, rm, true, true);
 				write_static_value(bin, pos, frst(n->invoke.arguments), 4, symtab, relas);
 				break;
-			} case JMP_REL:
-				//printf("jmp %s\n", fst_string(n));
-				//unsigned char opcode = 0xE9;
-				//mem_write(bin, pos, &opcode, 1);
+			} case JMP_REL: {
+				printf("jmp %s\n", fst_string(fst(n->instruction.arguments)));
+				unsigned char opcode = 0xE9;
+				mem_write(bin, pos, &opcode, 1);
+				write_static_value(bin, pos, fst(n->invoke.arguments), 4, symtab, relas);
 				break;
-			case MOVQ_MDB_TO_REG:
+			} case MOVQ_MDB_TO_REG: {
 				printf("movq %s(%s), %s\n", fst_string(n), frst_string(n), frrst_string(n));
 				unsigned char opcode = 0x8B;
 				int reg = ((union expression *) frrst(n->invoke.arguments))->instruction.opcode; //Dest
@@ -134,7 +139,7 @@ void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sy
 				write_mr_rm_instr(bin, pos, opcode, reg, rm, true, true);
 				write_static_value(bin, pos, fst(n->invoke.arguments), 4, symtab, relas);
 				break;
-			case PUSHQ_REG: {
+			} case PUSHQ_REG: {
 				printf("pushq %s\n", fst_string(n));
 				unsigned char opcode = 0x50;
 				int reg = ((union expression *) fst(n->invoke.arguments))->instruction.opcode; //Dest
@@ -179,10 +184,7 @@ void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sy
 				unsigned char opcode = 0xC3;
 				mem_write(bin, pos, &opcode, 1);
 				break;
-			} case CALL_REL:
-				//fprintf(out, "call %s", fst_string(n));
-				break;
-			case JMP_TO_REG: {
+			} case JMP_TO_REG: {
 				printf("jmp *%s\n", fst_string(n));
 				unsigned char opcode = 0xFF;
 				unsigned char reg = 4;
@@ -190,7 +192,12 @@ void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sy
 				write_mr_rm_instr(bin, pos, opcode, reg, rm, false, false);
 				break;
 			} case JE_REL:
-				//fprintf(out, "je %s", fst_string(n));
+				printf("je %s\n", fst_string(fst(n->instruction.arguments)));
+				unsigned char opcode1 = 0x0F;
+				unsigned char opcode2 = 0x84;
+				mem_write(bin, pos, &opcode1, 1);
+				mem_write(bin, pos, &opcode2, 1);
+				write_static_value(bin, pos, fst(n->invoke.arguments), 4, symtab, relas);
 				break;
 			case ORQ_REG_TO_REG: {
 				printf("orq %s, %s\n", fst_string(n), frst_string(n));
