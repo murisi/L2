@@ -241,7 +241,7 @@ union expression *vgenerate_literals(union expression *n, void *ctx) {
 	}
 }
 
-union expression *generate_toplevel(union expression *n, list toplevel_function_references) {
+union expression *generate_toplevel(union expression *n) {
 	union expression *container = make_begin();
 	emit(make_instr(PUSHQ_REG, 1, use(R12)));
 	emit(make_instr(PUSHQ_REG, 1, use(R13)));
@@ -380,6 +380,7 @@ char *expr_to_string(union expression *n) {
 			switch(n->instruction.opcode) {
 				case STVAL_ADD_OFF_TO_REF: return cprintf("(%s+%s)", expr_to_string(fst(n->invoke.arguments)),
 					expr_to_string(frst(n->invoke.arguments)));
+				case STVAL_SUB_RIP_FROM_REF: return cprintf("(%s-%%rip)", expr_to_string(fst(n->invoke.arguments)));
 				case RBP: return "%rbp";
 				case RSP: return "%rsp";
 				case R12: return "%r12";

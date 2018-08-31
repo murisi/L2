@@ -42,12 +42,8 @@ bool equals(void *a, void *b) {
 
 void compile_expressions(char *outbin, list exprs, jmp_buf *handler) {
 	union expression *container = make_begin(), *t;
-	list toplevel_function_references = nil();
 	{foreach(t, exprs) {
 		t->base.parent = container;
-		if(t->base.type == function) {
-			append(t->function.reference, &toplevel_function_references);
-		}
 	}}
 	container->begin.expressions = exprs;
 	union expression *root_function = make_function(), *program = root_function;
@@ -65,7 +61,7 @@ void compile_expressions(char *outbin, list exprs, jmp_buf *handler) {
 	visit_expressions(vgenerate_function_expressions, &program, NULL);
 	list locals = program->function.locals;
 	list globals = program->function.parameters;
-	program = generate_toplevel(program, toplevel_function_references);
+	program = generate_toplevel(program);
 	visit_expressions(vmerge_begins, &program, NULL);
 	
 	int elf_size = 0;
