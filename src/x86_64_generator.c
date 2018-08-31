@@ -504,13 +504,10 @@ void compile_expressions(char *outbin, list exprs, jmp_buf *handler) {
 	}}
 	container->begin.expressions = exprs;
 	union expression *root_function = make_function(), *program = root_function;
-	root_function->function.reference->reference.source_name = generate_string();
 	put(program, function.expression, container);
 	
 	visit_expressions(vfind_multiple_definitions, &program, handler);
 	visit_expressions(vlink_references, &program, handler);
-	visit_expressions(vrename_definition_references, &program, NULL);
-	visit_expressions(vrename_usage_references, &program, NULL);
 	visit_expressions(vescape_analysis, &program, NULL);
 	program = use_return_value(program, generate_reference());
 	visit_expressions(vlayout_frames, &program, NULL);
@@ -530,18 +527,6 @@ void compile_expressions(char *outbin, list exprs, jmp_buf *handler) {
 	write_elf(program->begin.expressions, locals, globals, fd);
 	myclose(fd);
 	
-	char sympairsfn[] = ".sym_pairsXXXXXX";
-	FILE *sympairsfile = fdopen(mkstemp(sympairsfn), "w+");
-	union expression *r;
-	{foreach(r, toplevel_function_references) {
-		fprintf(sympairsfile, "%s %s\n", r->reference.name, r->reference.source_name);
-	}}
-	foreach(r, root_function->function.parameters) {
-		fprintf(sympairsfile, "%s %s\n", r->reference.name, r->reference.source_name);
-	}
-	fclose(sympairsfile);
-	system(cprintf("objcopy --redefine-syms='%s' '%s'", sympairsfn, ofilefn));
-	remove(sympairsfn);
 	system(cprintf("ar rcs '%s' '%s'", outbin, ofilefn));
 	remove(ofilefn);
 }

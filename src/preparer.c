@@ -1,10 +1,10 @@
 bool function_named(void *expr_void, void *ctx) {
 	union expression *expr = expr_void;
-	return expr->base.type == function && strequal(ctx, expr->function.reference->reference.source_name);
+	return expr->base.type == function && strequal(ctx, expr->function.reference->reference.name);
 }
 
 bool reference_named(void *expr_void, void *ctx) {
-	return strequal(ctx, ((union expression *) expr_void)->reference.source_name);
+	return strequal(ctx, ((union expression *) expr_void)->reference.name);
 }
 
 union expression *vfind_multiple_definitions(union expression *e, void *ctx) {
@@ -15,16 +15,16 @@ union expression *vfind_multiple_definitions(union expression *e, void *ctx) {
 		case begin: {
 			foreachlist(partial, t, &e->begin.expressions) {
 				if(t->base.type == function &&
-					exists(function_named, &(*partial)->rst, t->function.reference->reference.source_name)) {
-						thelongjmp(*handler, make_multiple_definition(t->function.reference->reference.source_name));
+					exists(function_named, &(*partial)->rst, t->function.reference->reference.name)) {
+						thelongjmp(*handler, make_multiple_definition(t->function.reference->reference.name));
 				}
 			}
 			break;
 		} case continuation: case function: {
 			list ref_with_params = lst(e->continuation.reference, e->continuation.parameters);
 			foreachlist(partial, t, &ref_with_params) {
-				if(exists(reference_named, &(*partial)->rst, t->reference.source_name)) {
-					thelongjmp(*handler, make_multiple_definition(t->reference.source_name));
+				if(exists(reference_named, &(*partial)->rst, t->reference.name)) {
+					thelongjmp(*handler, make_multiple_definition(t->reference.name));
 				}
 			}
 			break;
@@ -58,18 +58,18 @@ union expression *referent_of(union expression *reference) {
 			case begin: {
 				union expression *u;
 				foreach(u, t->begin.expressions) {
-					if(u->base.type == function && !strcmp(u->function.reference->reference.source_name, reference->reference.source_name)) {
+					if(u->base.type == function && !strcmp(u->function.reference->reference.name, reference->reference.name)) {
 						return u->function.reference;
 					}
 				}
 				break;
 			} case function: case continuation: case with: {
-				if(!strcmp(t->function.reference->reference.source_name, reference->reference.source_name)) {
+				if(!strcmp(t->function.reference->reference.name, reference->reference.name)) {
 					return t->function.reference;
 				} else if(t->base.type == function || t->base.type == continuation) {
 					union expression *u;
 					foreach(u, t->function.parameters) {
-						if(!strcmp(u->reference.source_name, reference->reference.source_name)) {
+						if(!strcmp(u->reference.name, reference->reference.name)) {
 							return u;
 						}
 					}
@@ -112,7 +112,7 @@ union expression *vlink_references(union expression *s, void *ctx) {
 		s->reference.referent = referent_of(s);
 		if(s->reference.referent == NULL) {
 			s->reference.referent = prepend_parameter("", root_function_of(s));
-			s->reference.referent->reference.source_name = s->reference.source_name;
+			s->reference.referent->reference.name = s->reference.name;
 		} else if(is_jump_reference(s) && is_c_reference(s->reference.referent) &&
 			length(s->reference.parent->jump.arguments) != length(target_expression(s)->continuation.parameters)) {
 				thelongjmp(*handler, make_param_count_mismatch(s->reference.parent, target_expression(s)));

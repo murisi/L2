@@ -118,7 +118,6 @@ struct reference_expression {
 	union expression *return_value;
 	
 	char *name;
-	char *source_name;
 	union expression *referent;
 	union expression *offset;
 	void *context;
