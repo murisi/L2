@@ -206,10 +206,6 @@ void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sy
 	}
 }
 
-int round_size(int x, int nearest) {
-	return x + (nearest - (x % nearest));
-}
-
 int measure_strtab(list generated_expressions, list locals, list globals) {
 	union expression *e;
 	int strtab_len = 1;

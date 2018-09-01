@@ -81,7 +81,6 @@ int main(int argc, char *argv[]) {
 		thelongjmp(handler, make_arguments());
 	}
 	
-	
 	Symbol env = make_symbol(NULL, NULL);
 	
 	unsigned char buf[mysize(argv[1])];
