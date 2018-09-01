@@ -267,12 +267,12 @@ union expression *vmerge_begins(union expression *n, void *ctx) {
 		foreachlist(l, t, &n->begin.expressions) {
 			repeat:
 			if(t->base.type == begin) {
-				append_list(&t->begin.expressions, rst(*l));
+				append_list(&t->begin.expressions, (*l)->rst);
 				*l = t->begin.expressions;
 				if(is_nil(t->begin.expressions)) {
 					break;
 				} else {
-					t = fst(*l);
+					t = (*l)->fst;
 					goto repeat;
 				}
 			}

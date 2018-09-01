@@ -199,14 +199,14 @@ union expression *vgenerate_continuation_expressions(union expression *n, void *
 			}
 			emit(n->with.expression);
 			emit(make_instr(LOCAL_LABEL, 1, cont_instr_ref(n)));
-			emit(make_load(fst(n->with.parameter), 0, use(R11), use(R10)));
+			emit(make_load(n->with.parameter->fst, 0, use(R11), use(R10)));
 			emit(make_store(use(R11), n->with.return_value, 0, use(R10)));
 			return container;
 		} case jump: {
 			union expression *container = make_begin();
 			if(n->jump.short_circuit) {
 				if(length(n->jump.short_circuit->continuation.parameters) > 0) {
-					emit(make_load_address(fst(n->jump.short_circuit->continuation.parameters), use(R11)));
+					emit(make_load_address(n->jump.short_circuit->continuation.parameters->fst, use(R11)));
 					emit(move_arguments(n, 0));
 				}
 				emit(make_instr(JMP_REL, 1, make_instr(STVAL_SUB_RIP_FROM_REF, 1, cont_instr_ref(n->jump.short_circuit))));
@@ -263,7 +263,7 @@ union expression *generate_toplevel(union expression *n) {
 
 int get_current_offset(union expression *function) {
 	if(length(function->function.locals) > 0) {
-		return ((union expression *) fst(function->function.locals))->reference.offset->literal.value;
+		return ((union expression *) function->function.locals->fst)->reference.offset->literal.value;
 	} else {
 		return 0;
 	}
@@ -332,7 +332,7 @@ union expression *vgenerate_function_expressions(union expression *n, void *ctx)
 		//Push arguments onto stack
 		if(length(n->invoke.arguments) > 6) {
 			union expression *t;
-			foreach(t, reverse(rrrrrrst(n->invoke.arguments))) {
+			foreach(t, reverse(n->invoke.arguments->rrrrrrst)) {
 				emit(make_load(t, 0, use(R11), use(R10)));
 				emit(make_instr(PUSHQ_REG, 1, use(R11)));
 			}
@@ -347,13 +347,13 @@ union expression *vgenerate_function_expressions(union expression *n, void *ctx)
 			emit(make_load(frrrst(n->invoke.arguments), 0, use(RCX), use(R10)));
 		}
 		if(length(n->invoke.arguments) > 2) {
-			emit(make_load(frrst(n->invoke.arguments), 0, use(RDX), use(R10)));
+			emit(make_load(n->invoke.arguments->frrst, 0, use(RDX), use(R10)));
 		}
 		if(length(n->invoke.arguments) > 1) {
-			emit(make_load(frst(n->invoke.arguments), 0, use(RSI), use(R10)));
+			emit(make_load(n->invoke.arguments->frst, 0, use(RSI), use(R10)));
 		}
 		if(length(n->invoke.arguments) > 0) {
-			emit(make_load(fst(n->invoke.arguments), 0, use(RDI), use(R10)));
+			emit(make_load(n->invoke.arguments->fst, 0, use(RDI), use(R10)));
 		}
 		emit(make_instr(MOVQ_IMM_TO_REG, 2, make_literal(0), use(RAX)));
 		

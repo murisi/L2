@@ -48,7 +48,7 @@ list build_expr_list(char *l2src, int l2src_sz, int *pos) {
 	}
 	(*pos)++;
 	if(c == '(') {
-		return rst(build_list("()", ')', l2src, l2src_sz, pos));
+		return build_list("()", ')', l2src, l2src_sz, pos)->rst;
 	} else if(c == '{') {
 		return build_list("jump", '}', l2src, l2src_sz, pos);
 	} else if(c == '[') {
@@ -101,14 +101,14 @@ void print_expr_list(list d) {
 		printf(")");
 		return;
 	} else {
-		union sexpr *_fst = fst(d);
+		union sexpr *_fst = d->fst;
 		if(is_lst(_fst)) {
 			print_expr_list((list) _fst);
 		} else {
 			printf("%c", _fst->character.character);
 		}
 		printf(" . ");
-		print_expr_list(rst(d));
+		print_expr_list(d->rst);
 		printf(")");
 	}	
 }

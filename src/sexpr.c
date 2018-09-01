@@ -1,11 +1,3 @@
-#include "stdlib.h"
-#include "stdarg.h"
-#include "stdint.h"
-typedef int64_t bool;
-#define true (~((bool) 0))
-#define false ((bool) 0)
-#include "list.c"
-
 struct character {
 	void *list_flag;
 	char character;
@@ -29,8 +21,8 @@ bool sexpr_equals(union sexpr *a, union sexpr *b) {
 	} else if(is_nil((list) a) || is_nil((list) b)) {
 		return is_nil((list) a) & is_nil((list) b);
 	} else {
-		return sexpr_equals(fst((list) a), fst((list) b)) &
-			sexpr_equals((union sexpr *) rst((list) a), (union sexpr *) rst((list) b));
+		return sexpr_equals(((list) a)->fst, ((list) b)->fst) &
+			sexpr_equals((union sexpr *) ((list) a)->rst, (union sexpr *) ((list) b)->rst);
 	}
 }
 

@@ -14,6 +14,13 @@ void *jmp_value = NULL;
 #define thesetjmp(env) (jmp_value = NULL, setjmp(env), jmp_value)
 
 #include "x86_64_linux_interface.c"
+#include "stdlib.h"
+#include "stdarg.h"
+#include "stdint.h"
+typedef int64_t bool;
+#define true (~((bool) 0))
+#define false ((bool) 0)
+#include "list.c"
 #include "sexpr.c"
 #include "compile_errors.c"
 #include "lexer.c"

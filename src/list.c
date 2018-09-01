@@ -4,6 +4,11 @@ struct _list_ {
 };
 typedef struct _list_* list;
 
+#define frst rst->fst
+#define rrst rst->rst
+#define frrst rst->rst->fst
+#define rrrrrrst rst->rst->rst->rst->rst->rst
+
 list nil() {
 	list s = malloc(sizeof(struct _list_));
 	s->fst = s;
@@ -13,30 +18,6 @@ list nil() {
 
 bool is_nil(list s) {
 	return s->rst == NULL ? true : false;
-}
-
-list rst(list l) {
-	return l->rst;
-}
-
-list rrst(list l) {
-	return l->rst->rst;
-}
-
-list rrrrrrst(list l) {
-	return l->rst->rst->rst->rst->rst->rst;
-}
-
-void *fst(list l) {
-	return l->fst;
-}
-
-void *frst(list l) {
-	return l->rst->fst;
-}
-
-void *frrst(list l) {
-	return l->rst->rst->fst;
 }
 
 void *frrrst(list l) {
@@ -115,7 +96,7 @@ list address_list(list l) {
 
 int length(list l) {
 	int size;
-	for(size = 0; !is_nil(l); l = rst(l), size++);
+	for(size = 0; !is_nil(l); l = l->rst, size++);
 	return size;
 }
 
