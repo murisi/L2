@@ -88,10 +88,11 @@ int main(int argc, char *argv[]) {
 	myread(fd, buf, sizeof(buf));
 	myclose(fd);
 	
+	region objreg = create_region(0);
 	unsigned char *raw_obj;
 	int obj_size;
-	compile(&raw_obj, &obj_size, buf, sizeof(buf), &env, &handler);
-	Object *obj = load(raw_obj, obj_size);
+	compile(&raw_obj, &obj_size, buf, sizeof(buf), &env, objreg, &handler);
+	Object *obj = load(raw_obj, obj_size, objreg);
 	mutate_symbol(obj, make_symbol("putchar", putchar));
 	//mutate_symbol(obj, make_symbol("compile-l2", compile));
 	//mutate_symbol(obj, make_symbol("load-library", eval_load_library));
@@ -102,6 +103,6 @@ int main(int argc, char *argv[]) {
 	//mutate_symbol(obj, make_symbol("unload-library", unload_library));
 	
 	start(obj)();
-	unload(obj);
+	destroy_region(objreg);
 	return 0;
 }

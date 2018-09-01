@@ -258,9 +258,9 @@ int max_elf_size(list generated_expressions, list locals, list globals) {
 		(sizeof(Elf64_Rela) * MAX_INSTR_FIELDS * length(generated_expressions));
 }
 
-void write_elf(list generated_expressions, list locals, list globals, unsigned char **bin, int *pos) {
+void write_elf(list generated_expressions, list locals, list globals, unsigned char **bin, int *pos, region elfreg) {
 	*pos = 0;
-	*bin = malloc(max_elf_size(generated_expressions, locals, globals));
+	*bin = region_malloc(elfreg, max_elf_size(generated_expressions, locals, globals));
 	
 	Elf64_Ehdr ehdr;
 	ehdr.e_ident[EI_MAG0] = ELFMAG0;

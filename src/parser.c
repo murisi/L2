@@ -1,7 +1,7 @@
-#define build_syntax_tree_under(x, y, z) { \
+#define build_syntax_tree_under(x, y, z, r) { \
 	union expression *_build_syntax_tree_under_u = z; \
 	union expression **_build_syntax_tree_under_v = y; \
-	build_syntax_tree(x, _build_syntax_tree_under_v); \
+	build_syntax_tree(x, _build_syntax_tree_under_v, r); \
 	(*_build_syntax_tree_under_v)->base.parent = _build_syntax_tree_under_u; \
 }
 
@@ -41,9 +41,9 @@ list *list_at(int index, list *l) {
 jmp_buf *build_syntax_tree_handler;
 list build_syntax_tree_expansion_lists;
 
-void build_syntax_tree(list d, union expression **s) {
+void build_syntax_tree(list d, union expression **s, region reg) {
 	static int expansion_depth = -1;
-	*s = calloc(1, sizeof(union expression));
+	*s = region_malloc(reg, sizeof(union expression));
 	
 	if(is_string(d)) {
 		char *str = to_string(d);
@@ -57,8 +57,8 @@ void build_syntax_tree(list d, union expression **s) {
 		}
 	
 		(*s)->with.type = with;
-		build_syntax_tree_under(d->frst, &(*s)->with.reference, *s);
-		build_syntax_tree_under(d->frrst, &(*s)->with.expression, *s);
+		build_syntax_tree_under(d->frst, &(*s)->with.reference, *s, reg);
+		build_syntax_tree_under(d->frrst, &(*s)->with.expression, *s, reg);
 		(*s)->with.parameter = make_list(1, NULL);
 	} else if(!strcmp(to_string(d->fst), "begin")) {
 		(*s)->begin.type = begin;
@@ -67,7 +67,7 @@ void build_syntax_tree(list d, union expression **s) {
 		list t = d->rst;
 		list v;
 		foreach(v, t) {
-			build_syntax_tree_under(v, append(NULL, &(*s)->begin.expressions), *s);
+			build_syntax_tree_under(v, append(NULL, &(*s)->begin.expressions), *s, reg);
 		}
 	} else if(!strcmp(to_string(d->fst), "if")) {
 		if(length(d) != 4) {
@@ -75,9 +75,9 @@ void build_syntax_tree(list d, union expression **s) {
 		}
 	
 		(*s)->_if.type = _if;
-		build_syntax_tree_under(d->frst, &(*s)->_if.condition, *s);
-		build_syntax_tree_under(d->frrst, &(*s)->_if.consequent, *s);
-		build_syntax_tree_under(d->frrrst, &(*s)->_if.alternate, *s);
+		build_syntax_tree_under(d->frst, &(*s)->_if.condition, *s, reg);
+		build_syntax_tree_under(d->frrst, &(*s)->_if.consequent, *s, reg);
+		build_syntax_tree_under(d->frrrst, &(*s)->_if.alternate, *s, reg);
 	} else if(!strcmp(to_string(d->fst), "function") || !strcmp(to_string(d->fst), "continuation")) {
 		if(length(d) != 4) {
 			thelongjmp(*build_syntax_tree_handler, make_special_form(d, NULL));
@@ -88,7 +88,7 @@ void build_syntax_tree(list d, union expression **s) {
 		}
 		
 		(*s)->function.type = !strcmp(to_string(d->fst), "function") ? function : continuation;
-		build_syntax_tree_under(d->frst, &(*s)->function.reference, *s);
+		build_syntax_tree_under(d->frst, &(*s)->function.reference, *s, reg);
 		
 		if((*s)->function.type == function) {
 			(*s)->function.locals = nil();
@@ -99,10 +99,10 @@ void build_syntax_tree(list d, union expression **s) {
 			if(!is_string(v)) {
 				thelongjmp(*build_syntax_tree_handler, make_special_form(d, (list) v));
 			}
-			build_syntax_tree_under((list) v, append(NULL, &(*s)->function.parameters), *s);
+			build_syntax_tree_under((list) v, append(NULL, &(*s)->function.parameters), *s, reg);
 		}
 	
-		build_syntax_tree_under(d->frrrst, &(*s)->function.expression, *s);
+		build_syntax_tree_under(d->frrrst, &(*s)->function.expression, *s, reg);
 	} else if(!strcmp(to_string(d->fst), "literal")) {
 		char *str;
 		if(length(d) != 2) {
@@ -128,18 +128,18 @@ void build_syntax_tree(list d, union expression **s) {
 		}
 	
 		(*s)->invoke.type = !strcmp(to_string(d->fst), "invoke") ? invoke : jump;
-		build_syntax_tree_under(d->frst, &(*s)->invoke.reference, *s);
+		build_syntax_tree_under(d->frst, &(*s)->invoke.reference, *s, reg);
 	
 		list v;
 		(*s)->invoke.arguments = nil();
 		foreach(v, d->rrst) {
-			build_syntax_tree_under(v, append(NULL, &(*s)->invoke.arguments), *s);
+			build_syntax_tree_under(v, append(NULL, &(*s)->invoke.arguments), *s, reg);
 		}
 	} else {
 		(*s)->non_primitive.type = non_primitive;
 		(*s)->non_primitive.argument = d->rst;
 		expansion_depth--;
-		build_syntax_tree_under(d->fst, &(*s)->non_primitive.function, *s);
+		build_syntax_tree_under(d->fst, &(*s)->non_primitive.function, *s, reg);
 		expansion_depth++;
 		prepend(s, list_at(expansion_depth, &build_syntax_tree_expansion_lists));
 	}
@@ -191,7 +191,7 @@ void *get_symbol(Object *obj, char *name) {
 
 jmp_buf *expand_expressions_handler;
 
-void expand_expressions(list *expansion_lists, Symbol *env) {
+void expand_expressions(list *expansion_lists, Symbol *env, region exprreg) {
 	list expansions, *remaining_expansion_lists;
 	foreachlist(remaining_expansion_lists, expansions, expansion_lists) {
 		list urgent_expansion_lists = nil();
@@ -206,10 +206,11 @@ void expand_expressions(list *expansion_lists, Symbol *env) {
 			append(expander_container->function.reference->reference.name, &expander_container_names);
 		}
 		
+		region objreg = create_region(0);
 		unsigned char *raw_obj;
 		int obj_sz;
-		compile_expressions(&raw_obj, &obj_sz, expander_containers, build_syntax_tree_handler);
-		Object *handle = load(raw_obj, obj_sz);
+		compile_expressions(&raw_obj, &obj_sz, expander_containers, objreg, build_syntax_tree_handler);
+		Object *handle = load(raw_obj, obj_sz, objreg);
 		for(; env->name && env->address; env++) {
 			mutate_symbol(handle, *env);
 		}
@@ -222,10 +223,10 @@ void expand_expressions(list *expansion_lists, Symbol *env) {
 			
 			build_syntax_tree_handler = expand_expressions_handler;
 			build_syntax_tree_expansion_lists = nil();
-			build_syntax_tree_under(transformed, expansion, (*expansion)->non_primitive.parent);
+			build_syntax_tree_under(transformed, expansion, (*expansion)->non_primitive.parent, exprreg);
 			merge_onto(build_syntax_tree_expansion_lists, &urgent_expansion_lists);
 		}
-		unload(handle);
+		destroy_region(objreg);
 		
 		append_list(&urgent_expansion_lists, (*remaining_expansion_lists)->rst);
 		(*remaining_expansion_lists)->rst = urgent_expansion_lists;

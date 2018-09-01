@@ -6,7 +6,6 @@
 #include "stdlib.h"
 #include "string.h"
 #include "limits.h"
-#include "stdlib.h"
 
 //Essentially longjmp and setjmp with a pointer argument
 void *jmp_value = NULL;
@@ -41,7 +40,7 @@ bool equals(void *a, void *b) {
  * executable that it is embedded in.
  */
 
-void compile_expressions(unsigned char **objdest, int *objdest_sz, list exprs, jmp_buf *handler) {
+void compile_expressions(unsigned char **objdest, int *objdest_sz, list exprs, region elfreg, jmp_buf *handler) {
 	union expression *container = make_begin(), *t;
 	{foreach(t, exprs) {
 		t->base.parent = container;
@@ -64,7 +63,7 @@ void compile_expressions(unsigned char **objdest, int *objdest_sz, list exprs, j
 	list globals = program->function.parameters;
 	program = generate_toplevel(program);
 	visit_expressions(vmerge_begins, &program, NULL);
-	write_elf(program->begin.expressions, locals, globals, objdest, objdest_sz);
+	write_elf(program->begin.expressions, locals, globals, objdest, objdest_sz, elfreg);
 }
 
 #include "parser.c"
@@ -76,12 +75,10 @@ void compile_expressions(unsigned char **objdest, int *objdest_sz, list exprs, j
  * that it is embedded in.
  */
 
-void compile(unsigned char **objdest, int *objdest_sz, char *l2src, int l2src_sz, Symbol *env, jmp_buf *handler) {
-	/*if(l2file == NULL) {
-		thelongjmp(*handler, make_missing_file(inl2));
-	}*/
+void compile(unsigned char **objdest, int *objdest_sz, char *l2src, int l2src_sz, Symbol *env, region objreg, jmp_buf *handler) {
 	list expressions = nil();
 	list expansion_lists = nil();
+	region syntax_tree_region = create_region(0);
 	
 	int pos = 0;
 	while(after_leading_space(l2src, l2src_sz, &pos)) {
@@ -89,13 +86,14 @@ void compile(unsigned char **objdest, int *objdest_sz, char *l2src, int l2src_sz
 		list sexpr = build_expr_list(l2src, l2src_sz, &pos);
 		build_syntax_tree_handler = handler;
 		build_syntax_tree_expansion_lists = nil();
-		build_syntax_tree(sexpr, append(NULL, &expressions));
+		build_syntax_tree(sexpr, append(NULL, &expressions), syntax_tree_region);
 		merge_onto(build_syntax_tree_expansion_lists, &expansion_lists);
 	}
 	
 	expand_expressions_handler = handler;
-	expand_expressions(&expansion_lists, env);
-	compile_expressions(objdest, objdest_sz, expressions, handler);
+	expand_expressions(&expansion_lists, env, syntax_tree_region);
+	compile_expressions(objdest, objdest_sz, expressions, objreg, handler);
+	destroy_region(syntax_tree_region);
 }
 
 #undef WORD_SIZE

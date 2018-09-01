@@ -84,19 +84,19 @@ void do_relocations(Object *obj, Elf64_Sym *sym) {
  * Store the relocation addends because we may want to do several relocations on
  * the object files.
  */
-void store_addends(Object *obj) {
+void store_addends(Object *obj, region reg) {
 	int sec;
 	for(sec = 0; sec < obj->ehdr->e_shnum; sec++) {
 		if(obj->shdrs[sec].sh_type == SHT_RELA) {
 			int relanum = obj->shdrs[sec].sh_size / obj->shdrs[sec].sh_entsize;
-			obj->addends[sec] = calloc(relanum, sizeof(Elf64_Sxword));
+			obj->addends[sec] = region_malloc(reg, relanum * sizeof(Elf64_Sxword));
 			int rela;
 			for(rela = 0; rela < relanum; rela++) {
 				obj->addends[sec][rela] = obj->relas[sec][rela].r_addend;
 			}
 		} else if(obj->shdrs[sec].sh_type == SHT_REL) {
 			int relnum = obj->shdrs[sec].sh_size / obj->shdrs[sec].sh_entsize;
-			obj->addends[sec] = calloc(relnum, sizeof(Elf64_Sxword));
+			obj->addends[sec] = region_malloc(reg, relnum * sizeof(Elf64_Sxword));
 			int rel;
 			for(rel = 0; rel < relnum; rel++) {
 				switch(ELF64_R_TYPE(obj->relas[sec][rel].r_info)) {
@@ -163,39 +163,39 @@ void offsets_to_addresses(Object *obj) {
  * at address mem and require the amount of memory stated by
  * object_required_memory. Returns a handle to manipulate the loaded object.
  */
-Object *read_object(unsigned char *objsrc, int objsrc_sz) {
-	Object *obj = malloc(sizeof(Object));
-	obj->ehdr = malloc(sizeof(Elf64_Ehdr));
+Object *read_object(unsigned char *objsrc, int objsrc_sz, region reg) {
+	Object *obj = region_malloc(reg, sizeof(Object));
+	obj->ehdr = region_malloc(reg, sizeof(Elf64_Ehdr));
 	memcpy(obj->ehdr, objsrc, sizeof(Elf64_Ehdr));
 	assert(obj->ehdr->e_ident[EI_MAG0] == ELFMAG0 && obj->ehdr->e_ident[EI_MAG1] == ELFMAG1 &&
 		obj->ehdr->e_ident[EI_MAG2] == ELFMAG2 && obj->ehdr->e_ident[EI_MAG3] == ELFMAG3);
 	assert(obj->ehdr->e_ident[EI_CLASS] == ELFCLASS64);
 	assert(obj->ehdr->e_ident[EI_DATA] == ELFDATA2LSB);
 	
-	obj->shdrs = calloc(obj->ehdr->e_shnum, sizeof(Elf64_Shdr));
-	obj->syms = calloc(obj->ehdr->e_shnum, sizeof(Elf64_Sym *));
-	obj->relas = calloc(obj->ehdr->e_shnum, sizeof(Elf64_Rela *));
-	obj->addends = calloc(obj->ehdr->e_shnum, sizeof(Elf64_Sxword *));
-	obj->segs = calloc(obj->ehdr->e_shnum, sizeof(void *));
+	obj->shdrs = region_malloc(reg, obj->ehdr->e_shnum * sizeof(Elf64_Shdr));
+	obj->syms = region_malloc(reg, obj->ehdr->e_shnum * sizeof(Elf64_Sym *));
+	obj->relas = region_malloc(reg, obj->ehdr->e_shnum * sizeof(Elf64_Rela *));
+	obj->addends = region_malloc(reg, obj->ehdr->e_shnum * sizeof(Elf64_Sxword *));
+	obj->segs = region_malloc(reg, obj->ehdr->e_shnum * sizeof(void *));
 	
 	int sec;
 	for(sec = 0; sec < obj->ehdr->e_shnum; sec++) {
 		memcpy(&obj->shdrs[sec], objsrc + obj->ehdr->e_shoff + (obj->ehdr->e_shentsize * sec), sizeof(Elf64_Shdr));
-		obj->segs[sec] = malloc(obj->shdrs[sec].sh_size);
+		obj->segs[sec] = region_malloc(reg, obj->shdrs[sec].sh_size);
 		if(obj->shdrs[sec].sh_type != SHT_NOBITS) {
 			memcpy(obj->segs[sec], objsrc + obj->shdrs[sec].sh_offset, obj->shdrs[sec].sh_size);
 		}
 		
 		if(obj->shdrs[sec].sh_type == SHT_SYMTAB) {
 			int symnum = obj->shdrs[sec].sh_size / obj->shdrs[sec].sh_entsize;
-			obj->syms[sec] = calloc(symnum, sizeof(Elf64_Sym));
+			obj->syms[sec] = region_malloc(reg, symnum * sizeof(Elf64_Sym));
 			int sym;
 			for(sym = 0; sym < symnum; sym++) {
 				memcpy(&obj->syms[sec][sym], obj->segs[sec] + (obj->shdrs[sec].sh_entsize * sym), sizeof(Elf64_Sym));
 			}
 		} else if(obj->shdrs[sec].sh_type == SHT_RELA || obj->shdrs[sec].sh_type == SHT_REL) {
 			int relanum = obj->shdrs[sec].sh_size / obj->shdrs[sec].sh_entsize;
-			obj->relas[sec] = calloc(relanum, sizeof(Elf64_Rela));
+			obj->relas[sec] = region_malloc(reg, relanum * sizeof(Elf64_Rela));
 			int rela;
 			for(rela = 0; rela < relanum; rela++) {
 				memcpy(&obj->relas[sec][rela], obj->segs[sec] + (obj->shdrs[sec].sh_entsize * rela),
@@ -215,10 +215,10 @@ Object *read_object(unsigned char *objsrc, int objsrc_sz) {
  * object code now has a concrete address in memory. Returns a handle to
  * manipulate the loaded object.
  */
-Object *load(unsigned char *objsrc, int objsrc_sz) {
-	Object *obj = read_object(objsrc, objsrc_sz);
+Object *load(unsigned char *objsrc, int objsrc_sz, region reg) {
+	Object *obj = read_object(objsrc, objsrc_sz, reg);
 	offsets_to_addresses(obj);
-	store_addends(obj);
+	store_addends(obj, reg);
 	int sec;
 	for(sec = 0; sec < obj->ehdr->e_shnum; sec++) {
 		if(obj->shdrs[sec].sh_type == SHT_SYMTAB) {
@@ -348,29 +348,4 @@ void (*start(Object *obj))() {
 			}
 		}
 	}
-}
-
-/*
- * Unloads the entire object obj from memory. In particular, symbol names and
- * addresses exported by the above functions are rendered invalid. Returns the
- * file associated with this object. It is the client's responsibility to
- * close it.
- */
-void unload(Object *obj) {
-	int sec;
-	for(sec = 0; sec < obj->ehdr->e_shnum; sec++) {
-		if(obj->shdrs[sec].sh_type == SHT_RELA || obj->shdrs[sec].sh_type == SHT_REL) {
-			free(obj->addends[sec]);
-			free(obj->relas[sec]);
-		} else if(obj->shdrs[sec].sh_type == SHT_SYMTAB) {
-			free(obj->syms[sec]);
-		}
-		free(obj->segs[sec]);
-	}
-	free(obj->segs);
-	free(obj->addends);
-	free(obj->relas);
-	free(obj->syms);
-	free(obj->shdrs);
-	free(obj);
 }
