@@ -206,10 +206,10 @@ void expand_expressions(list *expansion_lists, Symbol *env) {
 			append(expander_container->function.reference->reference.name, &expander_container_names);
 		}
 		
-		char *outfn = cprintf("%s", "./.libXXXXXX.o");
-		mkstemps(outfn, 2);
-		compile_expressions(outfn, expander_containers, build_syntax_tree_handler);
-		Object *handle = load(fopen(outfn, "r"));
+		unsigned char *raw_obj;
+		int obj_sz;
+		compile_expressions(&raw_obj, &obj_sz, expander_containers, build_syntax_tree_handler);
+		Object *handle = load(raw_obj, obj_sz);
 		for(; env->name && env->address; env++) {
 			mutate_symbol(handle, *env);
 		}
@@ -225,8 +225,7 @@ void expand_expressions(list *expansion_lists, Symbol *env) {
 			build_syntax_tree_under(transformed, expansion, (*expansion)->non_primitive.parent);
 			merge_onto(build_syntax_tree_expansion_lists, &urgent_expansion_lists);
 		}
-		fclose(unload(handle));
-		remove(outfn);
+		unload(handle);
 		
 		append_list(&urgent_expansion_lists, (*remaining_expansion_lists)->rst);
 		(*remaining_expansion_lists)->rst = urgent_expansion_lists;

@@ -34,7 +34,7 @@ bool equals(void *a, void *b) {
  * executable that it is embedded in.
  */
 
-void compile_expressions(char *outbin, list exprs, jmp_buf *handler) {
+void compile_expressions(unsigned char **objdest, int *objdest_sz, list exprs, jmp_buf *handler) {
 	union expression *container = make_begin(), *t;
 	{foreach(t, exprs) {
 		t->base.parent = container;
@@ -57,14 +57,7 @@ void compile_expressions(char *outbin, list exprs, jmp_buf *handler) {
 	list globals = program->function.parameters;
 	program = generate_toplevel(program);
 	visit_expressions(vmerge_begins, &program, NULL);
-	
-	int elf_size = 0;
-	unsigned char elf[max_elf_size(program->begin.expressions, locals, globals)];
-	write_elf(program->begin.expressions, locals, globals, elf, &elf_size);
-	
-	int fd = myopen(outbin);
-	mywrite(fd, elf, elf_size);
-	myclose(fd);
+	write_elf(program->begin.expressions, locals, globals, objdest, objdest_sz);
 }
 
 #include "parser.c"
@@ -76,7 +69,7 @@ void compile_expressions(char *outbin, list exprs, jmp_buf *handler) {
  * that it is embedded in.
  */
 
-void compile(char *outbin, char *l2src, int l2src_sz, Symbol *env, jmp_buf *handler) {
+void compile(unsigned char **objdest, int *objdest_sz, char *l2src, int l2src_sz, Symbol *env, jmp_buf *handler) {
 	/*if(l2file == NULL) {
 		thelongjmp(*handler, make_missing_file(inl2));
 	}*/
@@ -95,7 +88,7 @@ void compile(char *outbin, char *l2src, int l2src_sz, Symbol *env, jmp_buf *hand
 	
 	expand_expressions_handler = handler;
 	expand_expressions(&expansion_lists, env);
-	compile_expressions(outbin, expressions, handler);
+	compile_expressions(objdest, objdest_sz, expressions, handler);
 }
 
 #undef WORD_SIZE

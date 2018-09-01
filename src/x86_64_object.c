@@ -15,7 +15,6 @@
  * global offset table or the procedure linkage table.
  */
 typedef struct {
-	FILE *obj_file;
 	Elf64_Ehdr *ehdr;
 	Elf64_Shdr *shdrs;
 	Elf64_Sym **syms;
@@ -164,12 +163,10 @@ void offsets_to_addresses(Object *obj) {
  * at address mem and require the amount of memory stated by
  * object_required_memory. Returns a handle to manipulate the loaded object.
  */
-Object *read_object(FILE *obj_file) {
+Object *read_object(unsigned char *objsrc, int objsrc_sz) {
 	Object *obj = malloc(sizeof(Object));
-	obj->obj_file = obj_file;
 	obj->ehdr = malloc(sizeof(Elf64_Ehdr));
-	fseek(obj_file, 0, SEEK_SET);
-	fread(obj->ehdr, sizeof(Elf64_Ehdr), 1, obj_file);
+	memcpy(obj->ehdr, objsrc, sizeof(Elf64_Ehdr));
 	assert(obj->ehdr->e_ident[EI_MAG0] == ELFMAG0 && obj->ehdr->e_ident[EI_MAG1] == ELFMAG1 &&
 		obj->ehdr->e_ident[EI_MAG2] == ELFMAG2 && obj->ehdr->e_ident[EI_MAG3] == ELFMAG3);
 	assert(obj->ehdr->e_ident[EI_CLASS] == ELFCLASS64);
@@ -183,14 +180,10 @@ Object *read_object(FILE *obj_file) {
 	
 	int sec;
 	for(sec = 0; sec < obj->ehdr->e_shnum; sec++) {
-		fseek(obj_file, obj->ehdr->e_shoff + (obj->ehdr->e_shentsize * sec), SEEK_SET);
-		fread(&obj->shdrs[sec], sizeof(Elf64_Shdr), 1, obj_file);
-		
+		memcpy(&obj->shdrs[sec], objsrc + obj->ehdr->e_shoff + (obj->ehdr->e_shentsize * sec), sizeof(Elf64_Shdr));
 		obj->segs[sec] = malloc(obj->shdrs[sec].sh_size);
-		
-		fseek(obj_file, obj->shdrs[sec].sh_offset, SEEK_SET);
 		if(obj->shdrs[sec].sh_type != SHT_NOBITS) {
-			fread(obj->segs[sec], obj->shdrs[sec].sh_size, 1, obj_file);
+			memcpy(obj->segs[sec], objsrc + obj->shdrs[sec].sh_offset, obj->shdrs[sec].sh_size);
 		}
 		
 		if(obj->shdrs[sec].sh_type == SHT_SYMTAB) {
@@ -222,8 +215,8 @@ Object *read_object(FILE *obj_file) {
  * object code now has a concrete address in memory. Returns a handle to
  * manipulate the loaded object.
  */
-Object *load(FILE *obj_file) {
-	Object *obj = read_object(obj_file);
+Object *load(unsigned char *objsrc, int objsrc_sz) {
+	Object *obj = read_object(objsrc, objsrc_sz);
 	offsets_to_addresses(obj);
 	store_addends(obj);
 	int sec;
@@ -363,7 +356,7 @@ void (*start(Object *obj))() {
  * file associated with this object. It is the client's responsibility to
  * close it.
  */
-FILE *unload(Object *obj) {
+void unload(Object *obj) {
 	int sec;
 	for(sec = 0; sec < obj->ehdr->e_shnum; sec++) {
 		if(obj->shdrs[sec].sh_type == SHT_RELA || obj->shdrs[sec].sh_type == SHT_REL) {
@@ -379,7 +372,5 @@ FILE *unload(Object *obj) {
 	free(obj->relas);
 	free(obj->syms);
 	free(obj->shdrs);
-	FILE *f = obj->obj_file;
 	free(obj);
-	return f;
 }

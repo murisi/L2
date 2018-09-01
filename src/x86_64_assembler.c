@@ -262,7 +262,10 @@ int max_elf_size(list generated_expressions, list locals, list globals) {
 		(sizeof(Elf64_Rela) * MAX_INSTR_FIELDS * length(generated_expressions));
 }
 
-void write_elf(list generated_expressions, list locals, list globals, unsigned char *bin, int *pos) {
+void write_elf(list generated_expressions, list locals, list globals, unsigned char **bin, int *pos) {
+	*pos = 0;
+	*bin = malloc(max_elf_size(generated_expressions, locals, globals));
+	
 	Elf64_Ehdr ehdr;
 	ehdr.e_ident[EI_MAG0] = ELFMAG0;
 	ehdr.e_ident[EI_MAG1] = ELFMAG1;
@@ -289,7 +292,7 @@ void write_elf(list generated_expressions, list locals, list globals, unsigned c
 	ehdr.e_shentsize = sizeof(Elf64_Shdr);
 	ehdr.e_shnum = SH_COUNT;
 	ehdr.e_shstrndx = 1;
-	mem_write(bin, pos, &ehdr, sizeof(Elf64_Ehdr));
+	mem_write(*bin, pos, &ehdr, sizeof(Elf64_Ehdr));
 	
 	int strtab_len = measure_strtab(generated_expressions, locals, globals),
 		sym_count = measure_symtab(generated_expressions, locals, globals);
@@ -384,7 +387,7 @@ void write_elf(list generated_expressions, list locals, list globals, unsigned c
 	undef_shdr.sh_info = 0;
 	undef_shdr.sh_addralign = 0;
 	undef_shdr.sh_entsize = 0;
-	mem_write(bin, pos, &undef_shdr, sizeof(Elf64_Shdr));
+	mem_write(*bin, pos, &undef_shdr, sizeof(Elf64_Shdr));
 	
 	char shstrtab_padded[round_size(strvlen(SHSTRTAB), ALIGNMENT)];
 	memcpy(shstrtab_padded, SHSTRTAB, strvlen(SHSTRTAB));
@@ -400,7 +403,7 @@ void write_elf(list generated_expressions, list locals, list globals, unsigned c
 	shstrtab_shdr.sh_info = 0;
 	shstrtab_shdr.sh_addralign = 0;
 	shstrtab_shdr.sh_entsize = 0;
-	mem_write(bin, pos, &shstrtab_shdr, sizeof(Elf64_Shdr));
+	mem_write(*bin, pos, &shstrtab_shdr, sizeof(Elf64_Shdr));
 	
 	Elf64_Shdr text_shdr;
 	text_shdr.sh_name = shstrtab_shdr.sh_name + strlen(".shstrtab") + 1;
@@ -413,7 +416,7 @@ void write_elf(list generated_expressions, list locals, list globals, unsigned c
 	text_shdr.sh_info = 0;
 	text_shdr.sh_addralign = 1;
 	text_shdr.sh_entsize = 0;
-	mem_write(bin, pos, &text_shdr, sizeof(Elf64_Shdr));
+	mem_write(*bin, pos, &text_shdr, sizeof(Elf64_Shdr));
 	
 	Elf64_Shdr strtab_shdr;
 	strtab_shdr.sh_name = text_shdr.sh_name + strlen(".text") + 1;
@@ -426,7 +429,7 @@ void write_elf(list generated_expressions, list locals, list globals, unsigned c
 	strtab_shdr.sh_info = 0;
 	strtab_shdr.sh_addralign = 0;
 	strtab_shdr.sh_entsize = 0;
-	mem_write(bin, pos, &strtab_shdr, sizeof(Elf64_Shdr));
+	mem_write(*bin, pos, &strtab_shdr, sizeof(Elf64_Shdr));
 	
 	Elf64_Shdr symtab_shdr;
 	symtab_shdr.sh_name = strtab_shdr.sh_name + strlen(".strtab") + 1;
@@ -439,7 +442,7 @@ void write_elf(list generated_expressions, list locals, list globals, unsigned c
 	symtab_shdr.sh_info = local_symbol_count;
 	symtab_shdr.sh_addralign = 0;
 	symtab_shdr.sh_entsize = sizeof(Elf64_Sym);
-	mem_write(bin, pos, &symtab_shdr, sizeof(Elf64_Shdr));
+	mem_write(*bin, pos, &symtab_shdr, sizeof(Elf64_Shdr));
 	
 	Elf64_Shdr bss_shdr;
 	bss_shdr.sh_name = symtab_shdr.sh_name + strlen(".symtab") + 1;
@@ -452,7 +455,7 @@ void write_elf(list generated_expressions, list locals, list globals, unsigned c
 	bss_shdr.sh_info = 0;
 	bss_shdr.sh_addralign = WORD_SIZE;
 	bss_shdr.sh_entsize = 0;
-	mem_write(bin, pos, &bss_shdr, sizeof(Elf64_Shdr));
+	mem_write(*bin, pos, &bss_shdr, sizeof(Elf64_Shdr));
 	
 	Elf64_Shdr rela_shdr;
 	rela_shdr.sh_name = bss_shdr.sh_name + strlen(".bss") + 1;
@@ -465,11 +468,11 @@ void write_elf(list generated_expressions, list locals, list globals, unsigned c
 	rela_shdr.sh_info = 2;
 	rela_shdr.sh_addralign = 0;
 	rela_shdr.sh_entsize = sizeof(Elf64_Rela);
-	mem_write(bin, pos, &rela_shdr, sizeof(Elf64_Shdr));
+	mem_write(*bin, pos, &rela_shdr, sizeof(Elf64_Shdr));
 	
-	mem_write(bin, pos, shstrtab_padded, sizeof(shstrtab_padded));
-	mem_write(bin, pos, text, sizeof(text));
-	mem_write(bin, pos, strtab, sizeof(strtab));
-	mem_write(bin, pos, syms, sizeof(syms));
-	mem_write(bin, pos, relas, (rela_ptr - relas) * sizeof(Elf64_Rela));
+	mem_write(*bin, pos, shstrtab_padded, sizeof(shstrtab_padded));
+	mem_write(*bin, pos, text, sizeof(text));
+	mem_write(*bin, pos, strtab, sizeof(strtab));
+	mem_write(*bin, pos, syms, sizeof(syms));
+	mem_write(*bin, pos, relas, (rela_ptr - relas) * sizeof(Elf64_Rela));
 }

@@ -81,18 +81,18 @@ int main(int argc, char *argv[]) {
 		thelongjmp(handler, make_arguments());
 	}
 	
-	char obj_name[] = "./.libXXXXXX.o";
-	mkstemps(obj_name, 2);
-	remove(obj_name);
+	
 	Symbol env = make_symbol(NULL, NULL);
 	
 	unsigned char buf[mysize(argv[1])];
 	int fd = myopen(argv[1]);
 	myread(fd, buf, sizeof(buf));
 	myclose(fd);
-	compile(obj_name, buf, sizeof(buf), &env, &handler);
 	
-	Object *obj = load(fopen(obj_name, "r"));
+	unsigned char *raw_obj;
+	int obj_size;
+	compile(&raw_obj, &obj_size, buf, sizeof(buf), &env, &handler);
+	Object *obj = load(raw_obj, obj_size);
 	mutate_symbol(obj, make_symbol("putchar", putchar));
 	//mutate_symbol(obj, make_symbol("compile-l2", compile));
 	//mutate_symbol(obj, make_symbol("load-library", eval_load_library));
@@ -103,7 +103,6 @@ int main(int argc, char *argv[]) {
 	//mutate_symbol(obj, make_symbol("unload-library", unload_library));
 	
 	start(obj)();
-	fclose(unload(obj));
-	remove(obj_name);
+	unload(obj);
 	return 0;
 }
