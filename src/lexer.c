@@ -1,82 +1,73 @@
-int after_leading_space(int l2file, int *pos, char *c) {
-	do {
-		int rd = myread(l2file, c, 1);
-		(*pos) += rd;
-		if(!rd) return 0;
-	} while(isspace(*c));
-	(*pos)--;
-	return 1;
+int after_leading_space(char *l2src, int l2src_sz, int *pos) {
+	for(; *pos < l2src_sz && isspace(l2src[*pos]); (*pos)++);
+	return l2src_sz - *pos;
 }
 
-list build_expr_list(int l2file, int *pos);
+list build_expr_list(char *l2src, int l2src_sz, int *pos);
 
-list build_sigil(char *sigil, int l2file, int *pos) {
-	char d;
-	int rd = myread(l2file, &d, 1);
-	if(rd) {
-		myseek(l2file, -1, SEEK_CUR);
+list build_sigil(char *sigil, char *l2src, int l2src_sz, int *pos) {
+	if(l2src_sz == *pos) {
+		return build_symbol_sexpr(sigil);
 	}
-	if(rd == 0 || isspace(d) || d == ')' || d == '}' || d == ']' || d == '(' || d == '{' || d =='[') {
+	char d = l2src[*pos];
+	if(isspace(d) || d == ')' || d == '}' || d == ']' || d == '(' || d == '{' || d =='[') {
 		return build_symbol_sexpr(sigil);
 	} else {
 		list sexprs = nil();
 		append(build_symbol_sexpr(sigil), &sexprs);
-		append(build_expr_list(l2file, pos), &sexprs);
+		append(build_expr_list(l2src, l2src_sz, pos), &sexprs);
 		return sexprs;
 	}
 }
 
-list build_list(char *primitive, char delimiter, int l2file, int *pos) {
+list build_list(char *primitive, char delimiter, char *l2src, int l2src_sz, int *pos) {
 	char c;
 	list sexprs = nil();
 	append(build_symbol_sexpr(primitive), &sexprs);
 	
 	while(1) {
-		int rd = after_leading_space(l2file, pos, &c);
-		if(rd && c == delimiter) {
+		int rem = after_leading_space(l2src, l2src_sz, pos);
+		if(rem && l2src[*pos] == delimiter) {
 			(*pos) ++;
 			break;
-		} else if(rd) {
-			myseek(l2file, -1, SEEK_CUR);
-			(*pos)--;
 		}
-		append(build_expr_list(l2file, pos), &sexprs);
+		append(build_expr_list(l2src, l2src_sz, pos), &sexprs);
 	}
 	return sexprs;
 }
 
 jmp_buf *build_expr_list_handler;
 
-list build_expr_list(int l2file, int *pos) {
-	char c;
-	int rd = myread(l2file, &c, 1);
-	(*pos) += rd;
-	
-	if(rd == 0 || isspace(c) || c == ')' || c == '}' || c == ']') {
+list build_expr_list(char *l2src, int l2src_sz, int *pos) {
+	if(l2src_sz == *pos) {
+		thelongjmp(*build_expr_list_handler, make_unexpected_character(0, *pos));
+	}
+	char c = l2src[*pos];
+	if(isspace(c) || c == ')' || c == '}' || c == ']') {
 		thelongjmp(*build_expr_list_handler, make_unexpected_character(c, *pos));
-	} else if(c == '(') {
-		return rst(build_list("()", ')', l2file, pos));
+	}
+	(*pos)++;
+	if(c == '(') {
+		return rst(build_list("()", ')', l2src, l2src_sz, pos));
 	} else if(c == '{') {
-		return build_list("jump", '}', l2file, pos);
+		return build_list("jump", '}', l2src, l2src_sz, pos);
 	} else if(c == '[') {
-		return build_list("invoke", ']', l2file, pos);
+		return build_list("invoke", ']', l2src, l2src_sz, pos);
 	} else if(c == '$') {
-		return build_sigil("$", l2file, pos);
+		return build_sigil("$", l2src, l2src_sz, pos);
 	} else if(c == '&') {
-		return build_sigil("&", l2file, pos);
+		return build_sigil("&", l2src, l2src_sz, pos);
 	} else if(c == ',') {
-		return build_sigil(",", l2file, pos);
+		return build_sigil(",", l2src, l2src_sz, pos);
 	} else if(c == '`') {
-		return build_sigil("`", l2file, pos);
+		return build_sigil("`", l2src, l2src_sz, pos);
 	} else {
 		list l = nil();
 		do {
 			append(build_character_sexpr(c), &l);
-			rd = myread(l2file, &c, 1);
-			(*pos) += rd;
-		} while(rd && !isspace(c) && c != '(' && c != ')' && c != '{' && c != '}' && c != '[' && c != ']');
-		
-		myseek(l2file, -1, SEEK_CUR);
+			if(*pos == l2src_sz) break;
+			c = l2src[(*pos)++];
+		} while(!isspace(c) && c != '(' && c != ')' && c != '{' && c != '}' && c != '[' && c != ']');
 		(*pos)--;
 		return l;
 	}

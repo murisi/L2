@@ -76,27 +76,22 @@ void compile_expressions(char *outbin, list exprs, jmp_buf *handler) {
  * that it is embedded in.
  */
 
-void compile(char *outbin, char *inl2, Symbol *env, jmp_buf *handler) {
-	int l2file = myopen(inl2);
+void compile(char *outbin, char *l2src, int l2src_sz, Symbol *env, jmp_buf *handler) {
 	/*if(l2file == NULL) {
 		thelongjmp(*handler, make_missing_file(inl2));
 	}*/
-	myseek(l2file, 0, SEEK_SET);
-	
 	list expressions = nil();
 	list expansion_lists = nil();
 	
-	char c; int pos = 0;
-	while(after_leading_space(l2file, &pos, &c)) {
-		myseek(l2file, -1, SEEK_CUR);
+	int pos = 0;
+	while(after_leading_space(l2src, l2src_sz, &pos)) {
 		build_expr_list_handler = handler;
-		list sexpr = build_expr_list(l2file, &pos);
+		list sexpr = build_expr_list(l2src, l2src_sz, &pos);
 		build_syntax_tree_handler = handler;
 		build_syntax_tree_expansion_lists = nil();
 		build_syntax_tree(sexpr, append(NULL, &expressions));
 		merge_onto(build_syntax_tree_expansion_lists, &expansion_lists);
 	}
-	myclose(l2file);
 	
 	expand_expressions_handler = handler;
 	expand_expressions(&expansion_lists, env);

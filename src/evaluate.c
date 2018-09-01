@@ -19,14 +19,11 @@ list eval_mutable_symbols(Library *lib) {
 }*/
 
 int main(int argc, char *argv[]) {
-	volatile int i;
 	//Initialize the error handler
 	jmp_buf handler;
 	union evaluate_error *err;
 	if(err = (union evaluate_error *) thesetjmp(handler)) {
-		mywrite_str(STDOUT, "Error found in ");
-		mywrite_str(STDOUT, argv[i]);
-		mywrite_str(STDOUT, ": ");
+		mywrite_str(STDOUT, "Error found: ");
 		print_annotated_syntax_tree_annotator = &empty_annotator;
 		switch(err->arguments.type) {
 			case PARAM_COUNT_MISMATCH: {
@@ -88,7 +85,12 @@ int main(int argc, char *argv[]) {
 	mkstemps(obj_name, 2);
 	remove(obj_name);
 	Symbol env = make_symbol(NULL, NULL);
-	compile(obj_name, argv[1], &env, &handler);
+	
+	unsigned char buf[mysize(argv[1])];
+	int fd = myopen(argv[1]);
+	myread(fd, buf, sizeof(buf));
+	myclose(fd);
+	compile(obj_name, buf, sizeof(buf), &env, &handler);
 	
 	Object *obj = load(fopen(obj_name, "r"));
 	mutate_symbol(obj, make_symbol("putchar", putchar));

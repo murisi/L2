@@ -1,14 +1,7 @@
 #include "stdlib.h"
 #include "stdarg.h"
 #include "stdint.h"
-
-#if __x86_64__
-	typedef int64_t bool;
-#endif
-#if __i386__
-	typedef int32_t bool;
-#endif
-
+typedef int64_t bool;
 #define true (~((bool) 0))
 #define false ((bool) 0)
 #include "list.c"

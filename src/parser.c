@@ -26,12 +26,7 @@ list *list_at(int index, list *l) {
 	return (list *) &(*l)->fst;
 }
 
-#if __x86_64__
-	#define WORD_BIN_LEN 64
-#endif
-#if __i386__
-	#define WORD_BIN_LEN 32
-#endif
+#define WORD_BIN_LEN 64
 
 /*
  * Builds a syntax tree at s from the list of s-expressions d. Expansion

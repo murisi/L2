@@ -77,3 +77,14 @@ void myseek(int fd, long int offset, int whence) {
 void myclose(int fd) {
 	mysyscall(SYS_CLOSE, fd);
 }
+
+int mysize(char *path) {
+	unsigned char buf[1024];
+	int file_size = 0, bytes_read;
+	int fd = myopen(path);
+	while(bytes_read = myread(fd, buf, sizeof(buf))) {
+		file_size += bytes_read;
+	}
+	myclose(fd);
+	return file_size;
+}
