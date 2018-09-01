@@ -338,13 +338,13 @@ union expression *vgenerate_function_expressions(union expression *n, void *ctx)
 			}
 		}
 		if(length(n->invoke.arguments) > 5) {
-			emit(make_load(frrrrrst(n->invoke.arguments), 0, use(R9), use(R10)));
+			emit(make_load(n->invoke.arguments->frrrrrst, 0, use(R9), use(R10)));
 		}
 		if(length(n->invoke.arguments) > 4) {
-			emit(make_load(frrrrst(n->invoke.arguments), 0, use(R8), use(R10)));
+			emit(make_load(n->invoke.arguments->frrrrst, 0, use(R8), use(R10)));
 		}
 		if(length(n->invoke.arguments) > 3) {
-			emit(make_load(frrrst(n->invoke.arguments), 0, use(RCX), use(R10)));
+			emit(make_load(n->invoke.arguments->frrrst, 0, use(RCX), use(R10)));
 		}
 		if(length(n->invoke.arguments) > 2) {
 			emit(make_load(n->invoke.arguments->frrst, 0, use(RDX), use(R10)));

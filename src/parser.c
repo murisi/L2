@@ -77,7 +77,7 @@ void build_syntax_tree(list d, union expression **s) {
 		(*s)->_if.type = _if;
 		build_syntax_tree_under(d->frst, &(*s)->_if.condition, *s);
 		build_syntax_tree_under(d->frrst, &(*s)->_if.consequent, *s);
-		build_syntax_tree_under(frrrst(d), &(*s)->_if.alternate, *s);
+		build_syntax_tree_under(d->frrrst, &(*s)->_if.alternate, *s);
 	} else if(!strcmp(to_string(d->fst), "function") || !strcmp(to_string(d->fst), "continuation")) {
 		if(length(d) != 4) {
 			thelongjmp(*build_syntax_tree_handler, make_special_form(d, NULL));
@@ -102,7 +102,7 @@ void build_syntax_tree(list d, union expression **s) {
 			build_syntax_tree_under((list) v, append(NULL, &(*s)->function.parameters), *s);
 		}
 	
-		build_syntax_tree_under(frrrst(d), &(*s)->function.expression, *s);
+		build_syntax_tree_under(d->frrrst, &(*s)->function.expression, *s);
 	} else if(!strcmp(to_string(d->fst), "literal")) {
 		char *str;
 		if(length(d) != 2) {

@@ -7,6 +7,9 @@ typedef struct _list_* list;
 #define frst rst->fst
 #define rrst rst->rst
 #define frrst rst->rst->fst
+#define frrrst rst->rst->rst->fst
+#define frrrrst rst->rst->rst->rst->fst
+#define frrrrrst rst->rst->rst->rst->rst->fst
 #define rrrrrrst rst->rst->rst->rst->rst->rst
 
 list nil() {
@@ -18,26 +21,6 @@ list nil() {
 
 bool is_nil(list s) {
 	return s->rst == NULL ? true : false;
-}
-
-void *frrrst(list l) {
-	return l->rst->rst->rst->fst;
-}
-
-void *frrrrst(list l) {
-	return l->rst->rst->rst->rst->fst;
-}
-
-void *frrrrrst(list l) {
-	return l->rst->rst->rst->rst->rst->fst;
-}
-
-void set_fst(list l, void *data) {
-	l->fst = data;
-}
-
-void set_frst(list l, void *data) {
-	l->rst->fst = data;
 }
 
 #define foreach(t, u) \

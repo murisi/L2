@@ -201,7 +201,7 @@ union expression *make_local(union expression *function) {
 union expression *use_return_value(union expression *n, union expression *ret_val) {
 	switch(n->base.type) {
 		case with: {
-			set_fst(n->with.parameter, make_reference());
+			n->with.parameter->fst = make_reference();
 		} case continuation: {
 			n->continuation.return_value = ret_val;
 			put(n, continuation.expression, use_return_value(n->continuation.expression, make_local(get_zeroth_function(n))));
