@@ -212,7 +212,7 @@ void expand_expressions(list *expansion_lists, Symbol *env, region exprreg) {
 		compile_expressions(&raw_obj, &obj_sz, expander_containers, objreg, build_syntax_tree_handler);
 		Object *handle = load(raw_obj, obj_sz, objreg);
 		for(; env->name && env->address; env++) {
-			mutate_symbol(handle, *env);
+			mutate_symbols(handle, env, 1);
 		}
 		
 		char *expander_container_name;

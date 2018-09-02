@@ -247,19 +247,22 @@ typedef struct {
  * Goes through the loaded object obj and modifies all occurences of symbols
  * with the same name as update to point to the same address as update.
  */
-void mutate_symbol(Object *obj, Symbol update) {
-	int sec;
-	for(sec = 0; sec < obj->ehdr->e_shnum; sec++) {
-		if(obj->shdrs[sec].sh_type == SHT_SYMTAB) {
-			int symnum = obj->shdrs[sec].sh_size / obj->shdrs[sec].sh_entsize;
-			int sym;
-			for(sym = 1; sym < symnum; sym++) {
-				if(!strcmp(name_of(obj, &obj->shdrs[sec], &obj->syms[sec][sym]), update.name) &&
-					(obj->syms[sec][sym].st_shndx == SHN_UNDEF || obj->syms[sec][sym].st_shndx == SHN_COMMON) &&
-					(ELF64_ST_BIND(obj->syms[sec][sym].st_info) == STB_GLOBAL ||
-					ELF64_ST_BIND(obj->syms[sec][sym].st_info) == STB_WEAK)) {
-						obj->syms[sec][sym].st_value = (Elf64_Addr) update.address;
-						do_relocations(obj, &obj->syms[sec][sym]);
+void mutate_symbols(Object *obj, Symbol updates[], int update_count) {
+	int update;
+	for(update = 0; update < update_count; update++) {
+		int sec;
+		for(sec = 0; sec < obj->ehdr->e_shnum; sec++) {
+			if(obj->shdrs[sec].sh_type == SHT_SYMTAB) {
+				int symnum = obj->shdrs[sec].sh_size / obj->shdrs[sec].sh_entsize;
+				int sym;
+				for(sym = 1; sym < symnum; sym++) {
+					if(!strcmp(name_of(obj, &obj->shdrs[sec], &obj->syms[sec][sym]), updates[update].name) &&
+						(obj->syms[sec][sym].st_shndx == SHN_UNDEF || obj->syms[sec][sym].st_shndx == SHN_COMMON) &&
+						(ELF64_ST_BIND(obj->syms[sec][sym].st_info) == STB_GLOBAL ||
+						ELF64_ST_BIND(obj->syms[sec][sym].st_info) == STB_WEAK)) {
+							obj->syms[sec][sym].st_value = (Elf64_Addr) updates[update].address;
+							do_relocations(obj, &obj->syms[sec][sym]);
+					}
 				}
 			}
 		}

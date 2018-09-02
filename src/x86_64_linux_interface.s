@@ -29,6 +29,7 @@ mysetjmp:
 	movq %r12, 40(%rdi)
 	movq %r15, 48(%rdi)
 	movq %rsp, 56(%rdi)
+	ret
 
 mylongjmp:
 	movq 0(%rdi), %rbp
@@ -40,11 +41,11 @@ mylongjmp:
 	movq 56(%rdi), %rsp
 	jmp *8(%rdi)
 	
- _start:
- 	movq 0(%rsp), %rdi
- 	leaq 8(%rsp), %rsi
- 	andq $-16,%rsp
- 	call main
- 	movq %rax, %rdi
- 	mov $60, %rax
- 	syscall
+_start:
+	movq 0(%rsp), %rdi
+	leaq 8(%rsp), %rsi
+	andq $-16,%rsp
+	call main
+	movq %rax, %rdi
+	mov $60, %rax
+	syscall
