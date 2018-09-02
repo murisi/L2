@@ -1,19 +1,10 @@
 #define WORD_SIZE 8
 
-#include "setjmp.h"
 #include "stdio.h"
 #include "ctype.h"
-#include "stdlib.h"
 #include "string.h"
-#include "limits.h"
-
-//Essentially longjmp and setjmp with a pointer argument
-void *jmp_value = NULL;
-#define thelongjmp(env, val) (jmp_value = val, longjmp(env, 1))
-#define thesetjmp(env) (jmp_value = NULL, setjmp(env), jmp_value)
 
 #include "x86_64_linux_interface.c"
-#include "stdlib.h"
 #include "stdarg.h"
 #include "stdint.h"
 typedef int64_t bool;
@@ -40,7 +31,7 @@ bool equals(void *a, void *b) {
  * executable that it is embedded in.
  */
 
-void compile_expressions(unsigned char **objdest, int *objdest_sz, list exprs, region elfreg, jmp_buf *handler) {
+void compile_expressions(unsigned char **objdest, int *objdest_sz, list exprs, region elfreg, myjmp_buf *handler) {
 	region manreg = create_region(0);
 	union expression *container = make_begin(manreg), *t;
 	{foreach(t, exprs) {
@@ -77,7 +68,7 @@ void compile_expressions(unsigned char **objdest, int *objdest_sz, list exprs, r
  * that it is embedded in.
  */
 
-void compile(unsigned char **objdest, int *objdest_sz, char *l2src, int l2src_sz, Symbol *env, region objreg, jmp_buf *handler) {
+void compile(unsigned char **objdest, int *objdest_sz, char *l2src, int l2src_sz, Symbol *env, region objreg, myjmp_buf *handler) {
 	region syntax_tree_region = create_region(0);
 	list expressions = nil(syntax_tree_region);
 	list expansion_lists = nil(syntax_tree_region);

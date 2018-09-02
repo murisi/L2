@@ -16,6 +16,7 @@
 #define PROT_NONE 0x0
 #define MAP_PRIVATE 0x02
 #define MAP_ANONYMOUS 0x20
+#define PAGE_SIZE 4096
 
 #define STDIN 0
 #define STDOUT 1
@@ -136,3 +137,16 @@ void destroy_region(region reg) {
 		reg = next_reg;
 	} while(reg);
 }
+
+typedef struct {
+	void *rbp;
+	void *cir;
+	void *rsi;
+	void *r14;
+	void *r13;
+	void *rbx;
+	void *r12;
+	void *r15;
+	void *rsp;
+	void *ctx; //For data that you want to transfer through jumps
+} myjmp_buf;

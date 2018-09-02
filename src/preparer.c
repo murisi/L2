@@ -8,7 +8,7 @@ bool reference_named(void *expr_void, void *ctx) {
 }
 
 union expression *vfind_multiple_definitions(union expression *e, void *ctx) {
-	jmp_buf *handler = ctx;
+	myjmp_buf *handler = ctx;
 	union expression *t;
 	list *partial;
 	switch(e->base.type) {
@@ -16,7 +16,7 @@ union expression *vfind_multiple_definitions(union expression *e, void *ctx) {
 			foreachlist(partial, t, &e->begin.expressions) {
 				if(t->base.type == function &&
 					exists(function_named, &(*partial)->rst, t->function.reference->reference.name)) {
-						thelongjmp(*handler, make_multiple_definition(t->function.reference->reference.name));
+						throw_multiple_definition(t->function.reference->reference.name, handler);
 				}
 			}
 			break;
@@ -25,7 +25,7 @@ union expression *vfind_multiple_definitions(union expression *e, void *ctx) {
 			list ref_with_params = lst(e->continuation.reference, e->continuation.parameters, tempreg);
 			foreachlist(partial, t, &ref_with_params) {
 				if(exists(reference_named, &(*partial)->rst, t->reference.name)) {
-					thelongjmp(*handler, make_multiple_definition(t->reference.name));
+					throw_multiple_definition(t->reference.name, handler);
 				}
 			}
 			destroy_region(tempreg);
@@ -109,7 +109,7 @@ union expression *root_function_of(union expression *s) {
 }
 
 union expression *vlink_references(union expression *s, void *ctx) {
-	jmp_buf *handler = ((void **) ctx)[0];
+	myjmp_buf *handler = ((void **) ctx)[0];
 	region *r = ((void **) ctx)[1];
 	if(s->base.type == reference) {
 		s->reference.referent = referent_of(s);
@@ -118,17 +118,17 @@ union expression *vlink_references(union expression *s, void *ctx) {
 			s->reference.referent->reference.name = s->reference.name;
 		} else if(is_jump_reference(s) && is_c_reference(s->reference.referent) &&
 			length(s->reference.parent->jump.arguments) != length(target_expression(s)->continuation.parameters)) {
-				thelongjmp(*handler, make_param_count_mismatch(s->reference.parent, target_expression(s)));
+				throw_param_count_mismatch(s->reference.parent, target_expression(s), handler);
 		} else if(is_invoke_reference(s) && is_function_reference(s->reference.referent) &&
 			length(s->reference.parent->invoke.arguments) != length(target_expression(s)->function.parameters)) {
-				thelongjmp(*handler, make_param_count_mismatch(s->reference.parent, target_expression(s)));
+				throw_param_count_mismatch(s->reference.parent, target_expression(s), handler);
 		}
 	} else if(s->base.type == continuation && is_jump_reference(s) &&
 		length(s->continuation.parent->jump.arguments) != length(s->continuation.parameters)) {
-			thelongjmp(*handler, make_param_count_mismatch(s->continuation.parent, s));
+			throw_param_count_mismatch(s->continuation.parent, s, handler);
 	} else if(s->base.type == function && s->function.parent && s->function.parent->base.type == invoke &&
 		s->function.parent->invoke.reference == s && length(s->function.parent->invoke.arguments) != length(s->function.parameters)) {
-			thelongjmp(*handler, make_param_count_mismatch(s->function.parent, s));
+			throw_param_count_mismatch(s->function.parent, s, handler);
 	}
 	return s;
 }

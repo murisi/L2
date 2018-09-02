@@ -38,7 +38,7 @@ list *list_at(int index, list *l, region reg) {
  * happen second, and so on.
  */
 
-jmp_buf *build_syntax_tree_handler;
+myjmp_buf *build_syntax_tree_handler;
 list build_syntax_tree_expansion_lists;
 
 void build_syntax_tree(list d, union expression **s, region reg) {
@@ -46,21 +46,21 @@ void build_syntax_tree(list d, union expression **s, region reg) {
 	*s = region_malloc(reg, sizeof(union expression));
 	
 	if(is_string(d)) {
-		char *str = to_string(d);
+		char *str = to_string(d, reg);
 		(*s)->reference.type = reference;
 		(*s)->reference.name = str;
-	} else if(!strcmp(to_string(d->fst), "with")) {
+	} else if(!strcmp(to_string(d->fst, reg), "with")) {
 		if(length(d) != 3) {
-			thelongjmp(*build_syntax_tree_handler, make_special_form(d, NULL));
+			throw_special_form(d, NULL, build_syntax_tree_handler);
 		} else if(!is_string(d->frst)) {
-			thelongjmp(*build_syntax_tree_handler, make_special_form(d, d->frst));
+			throw_special_form(d, d->frst, build_syntax_tree_handler);
 		}
 	
 		(*s)->with.type = with;
 		build_syntax_tree_under(d->frst, &(*s)->with.reference, *s, reg);
 		build_syntax_tree_under(d->frrst, &(*s)->with.expression, *s, reg);
 		(*s)->with.parameter = make_list(reg, 1, NULL);
-	} else if(!strcmp(to_string(d->fst), "begin")) {
+	} else if(!strcmp(to_string(d->fst, reg), "begin")) {
 		(*s)->begin.type = begin;
 		(*s)->begin.expressions = nil(reg);
 	
@@ -69,25 +69,25 @@ void build_syntax_tree(list d, union expression **s, region reg) {
 		foreach(v, t) {
 			build_syntax_tree_under(v, append(NULL, &(*s)->begin.expressions, reg), *s, reg);
 		}
-	} else if(!strcmp(to_string(d->fst), "if")) {
+	} else if(!strcmp(to_string(d->fst, reg), "if")) {
 		if(length(d) != 4) {
-			thelongjmp(*build_syntax_tree_handler, make_special_form(d, NULL));
+			throw_special_form(d, NULL, build_syntax_tree_handler);
 		}
 	
 		(*s)->_if.type = _if;
 		build_syntax_tree_under(d->frst, &(*s)->_if.condition, *s, reg);
 		build_syntax_tree_under(d->frrst, &(*s)->_if.consequent, *s, reg);
 		build_syntax_tree_under(d->frrrst, &(*s)->_if.alternate, *s, reg);
-	} else if(!strcmp(to_string(d->fst), "function") || !strcmp(to_string(d->fst), "continuation")) {
+	} else if(!strcmp(to_string(d->fst, reg), "function") || !strcmp(to_string(d->fst, reg), "continuation")) {
 		if(length(d) != 4) {
-			thelongjmp(*build_syntax_tree_handler, make_special_form(d, NULL));
+			throw_special_form(d, NULL, build_syntax_tree_handler);
 		} else if(!is_string(d->frst)) {
-			thelongjmp(*build_syntax_tree_handler, make_special_form(d, d->frst));
+			throw_special_form(d, d->frst, build_syntax_tree_handler);
 		} else if(!is_nil(d->frrst) && is_string(d->frrst)) {
-			thelongjmp(*build_syntax_tree_handler, make_special_form(d, d->frrst));
+			throw_special_form(d, d->frrst, build_syntax_tree_handler);
 		}
 		
-		(*s)->function.type = !strcmp(to_string(d->fst), "function") ? function : continuation;
+		(*s)->function.type = !strcmp(to_string(d->fst, reg), "function") ? function : continuation;
 		build_syntax_tree_under(d->frst, &(*s)->function.reference, *s, reg);
 		
 		if((*s)->function.type == function) {
@@ -97,18 +97,18 @@ void build_syntax_tree(list d, union expression **s, region reg) {
 		list v;
 		foreach(v, d->frrst) {
 			if(!is_string(v)) {
-				thelongjmp(*build_syntax_tree_handler, make_special_form(d, (list) v));
+				throw_special_form(d, (list) v, build_syntax_tree_handler);
 			}
 			build_syntax_tree_under((list) v, append(NULL, &(*s)->function.parameters, reg), *s, reg);
 		}
 	
 		build_syntax_tree_under(d->frrrst, &(*s)->function.expression, *s, reg);
-	} else if(!strcmp(to_string(d->fst), "literal")) {
+	} else if(!strcmp(to_string(d->fst, reg), "literal")) {
 		char *str;
 		if(length(d) != 2) {
-			thelongjmp(*build_syntax_tree_handler, make_special_form(d, NULL));
-		} else if(!is_string(d->frst) || strlen(str = to_string(d->frst)) != WORD_BIN_LEN) {
-			thelongjmp(*build_syntax_tree_handler, make_special_form(d, d->frst));
+			throw_special_form(d, NULL, build_syntax_tree_handler);
+		} else if(!is_string(d->frst) || strlen(str = to_string(d->frst, reg)) != WORD_BIN_LEN) {
+			throw_special_form(d, d->frst, build_syntax_tree_handler);
 		}
 	
 		(*s)->literal.type = literal;
@@ -119,15 +119,15 @@ void build_syntax_tree(list d, union expression **s, region reg) {
 			if(str[i] == '1') {
 				(*s)->literal.value += 1;
 			} else if(str[i] != '0') {
-				thelongjmp(*build_syntax_tree_handler, make_special_form(d, d->frst));
+				throw_special_form(d, d->frst, build_syntax_tree_handler);
 			}
 		}
-	} else if(!strcmp(to_string(d->fst), "invoke") || !strcmp(to_string(d->fst), "jump")) {
+	} else if(!strcmp(to_string(d->fst, reg), "invoke") || !strcmp(to_string(d->fst, reg), "jump")) {
 		if(length(d) == 1) {
-			thelongjmp(*build_syntax_tree_handler, make_special_form(d, NULL));
+			throw_special_form(d, NULL, build_syntax_tree_handler);
 		}
 	
-		(*s)->invoke.type = !strcmp(to_string(d->fst), "invoke") ? invoke : jump;
+		(*s)->invoke.type = !strcmp(to_string(d->fst, reg), "invoke") ? invoke : jump;
 		build_syntax_tree_under(d->frst, &(*s)->invoke.reference, *s, reg);
 	
 		list v;
@@ -189,7 +189,7 @@ void *get_symbol(Object *obj, char *name) {
  * list and so on.
  */
 
-jmp_buf *expand_expressions_handler;
+myjmp_buf *expand_expressions_handler;
 
 void expand_expressions(list *expansion_lists, Symbol *env, region exprreg) {
 	list expansions, *remaining_expansion_lists;

@@ -14,8 +14,9 @@ union evaluate_error {
 	struct environment_error environment;
 };
 
-struct arguments_error *make_arguments() {
-	struct arguments_error *err = malloc(sizeof(struct arguments_error));
+void throw_arguments(myjmp_buf *jb) {
+	struct arguments_error *err = region_malloc(jb->ctx, sizeof(struct arguments_error));
 	err->type = ARGUMENTS;
-	return err;
+	jb->ctx = err;
+	mylongjmp(jb);
 }

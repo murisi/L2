@@ -51,9 +51,11 @@ list eval_mutable_symbols(Library *lib) {
 
 int main(int argc, char *argv[]) {
 	//Initialize the error handler
-	jmp_buf handler;
-	union evaluate_error *err;
-	if(err = (union evaluate_error *) thesetjmp(handler)) {
+	myjmp_buf handler;
+	handler.ctx = evaluate_region = create_region(0);;
+	mysetjmp(&handler);
+	if(handler.ctx != evaluate_region) {
+		union evaluate_error *err = (union evaluate_error *) handler.ctx;
 		mywrite_str(STDOUT, "Error found: ");
 		print_annotated_syntax_tree_annotator = &empty_annotator;
 		switch(err->arguments.type) {
@@ -109,7 +111,7 @@ int main(int argc, char *argv[]) {
 	}
 	
 	if(argc != 2) {
-		thelongjmp(handler, make_arguments());
+		throw_arguments(&handler);
 	}
 	
 	Symbol env = make_symbol(NULL, NULL);
@@ -119,7 +121,6 @@ int main(int argc, char *argv[]) {
 	myread(fd, buf, sizeof(buf));
 	myclose(fd);
 	
-	evaluate_region = create_region(0);
 	unsigned char *raw_obj;
 	int obj_size;
 	compile(&raw_obj, &obj_size, buf, sizeof(buf), &env, evaluate_region, &handler);

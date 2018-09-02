@@ -36,15 +36,15 @@ list build_list(char *primitive, char delimiter, char *l2src, int l2src_sz, int 
 	return sexprs;
 }
 
-jmp_buf *build_expr_list_handler;
+myjmp_buf *build_expr_list_handler;
 
 list build_expr_list(char *l2src, int l2src_sz, int *pos, region r) {
 	if(l2src_sz == *pos) {
-		thelongjmp(*build_expr_list_handler, make_unexpected_character(0, *pos));
+		throw_unexpected_character(0, *pos, build_expr_list_handler);
 	}
 	char c = l2src[*pos];
 	if(isspace(c) || c == ')' || c == '}' || c == ']') {
-		thelongjmp(*build_expr_list_handler, make_unexpected_character(c, *pos));
+		throw_unexpected_character(c, *pos, build_expr_list_handler);
 	}
 	(*pos)++;
 	if(c == '(') {
@@ -83,8 +83,8 @@ bool is_string(list d) {
 	return true;
 }
 
-char *to_string(list d) {
-	char *str = calloc(length(d) + 1, sizeof(char));
+char *to_string(list d, region r) {
+	char *str = region_malloc(r, (length(d) + 1) * sizeof(char));
 	int i = 0;
 	
 	union sexpr *t;
