@@ -236,110 +236,75 @@ union expression *make_instr3(int opcode, union expression *arg1, union expressi
 	return u;
 }
 
-//Required static argument to following function
-void (*print_annotated_syntax_tree_annotator)(union expression *);
-
-void print_annotated_syntax_tree(union expression *s) {
+void print_syntax_tree(union expression *s) {
 	switch(s->base.type) {
 		case begin: {
-			printf("(begin");
-			print_annotated_syntax_tree_annotator(s);
-			printf(" ");
+			mywrite_str(STDOUT, "(begin ");
 			union expression *t;
 			foreach(t, s->begin.expressions) {
-				print_annotated_syntax_tree(t);
-				printf(" ");
+				print_syntax_tree(t);
+				mywrite_str(STDOUT, " ");
 			}
-			printf("\b)");
+			mywrite_str(STDOUT, "\b)");
 			break;
 		} case with: {
-			printf("(with-continuation");
-			print_annotated_syntax_tree_annotator(s);
-			printf(" ");
-			print_annotated_syntax_tree(s->with.reference);
-			printf(" ");
-			print_annotated_syntax_tree(s->with.expression);
-			printf(")");
+			mywrite_str(STDOUT, "(with-continuation ");
+			print_syntax_tree(s->with.reference);
+			mywrite_str(STDOUT, " ");
+			print_syntax_tree(s->with.expression);
+			mywrite_str(STDOUT, ")");
 			break;
 		} case invoke: case jump: {
-			printf("%c", s->base.type == invoke ? '[' : s->base.type == jump ? '{' : '(');
-			print_annotated_syntax_tree_annotator(s);
-			print_annotated_syntax_tree(s->invoke.reference);
-			printf(" ");
+			mywrite_char(STDOUT, s->base.type == invoke ? '[' : s->base.type == jump ? '{' : '(');
+			print_syntax_tree(s->invoke.reference);
+			mywrite_str(STDOUT, " ");
 			union expression *t;
 			foreach(t, s->invoke.arguments) {
-				print_annotated_syntax_tree(t);
-				printf(" ");
+				print_syntax_tree(t);
+				mywrite_str(STDOUT, " ");
 			}
-			printf("\b%c", s->base.type == invoke ? ']' : s->base.type == jump ? '}' : ')');
+			mywrite_str(STDOUT, "\b");
+			mywrite_char(STDOUT, s->base.type == invoke ? ']' : s->base.type == jump ? '}' : ')');
 			break;
 		} case function: case continuation: {
-			printf("(%s", s->base.type == function ? "function" : "make-continuation");
-			print_annotated_syntax_tree_annotator(s);
-			printf(" ");
-			print_annotated_syntax_tree(s->function.reference);
-			printf(" ( ");
+			mywrite_str(STDOUT, "(");
+			mywrite_str(STDOUT, s->base.type == function ? "function" : "make-continuation");
+			mywrite_str(STDOUT, " ");
+			print_syntax_tree(s->function.reference);
+			mywrite_str(STDOUT, " ( ");
 			union expression *t;
 			foreach(t, s->function.parameters) {
-				print_annotated_syntax_tree(t);
-				printf(" ");
+				print_syntax_tree(t);
+				mywrite_str(STDOUT, " ");
 			}
-			printf(") ");
-			print_annotated_syntax_tree(s->function.expression);
-			printf(")");
+			mywrite_str(STDOUT, ") ");
+			print_syntax_tree(s->function.expression);
+			mywrite_str(STDOUT, ")");
 			break;
 		} case _if: {
-			printf("(if");
-			print_annotated_syntax_tree_annotator(s);
-			printf(" ");
-			print_annotated_syntax_tree(s->_if.condition);
-			printf(" ");
-			print_annotated_syntax_tree(s->_if.consequent);
-			printf(" ");
-			print_annotated_syntax_tree(s->_if.alternate);
-			printf(")");
+			mywrite_str(STDOUT, "(if ");
+			print_syntax_tree(s->_if.condition);
+			mywrite_str(STDOUT, " ");
+			print_syntax_tree(s->_if.consequent);
+			mywrite_str(STDOUT, " ");
+			print_syntax_tree(s->_if.alternate);
+			mywrite_str(STDOUT, ")");
 			break;
 		} case reference: {
-			printf("%s", s->reference.name);
-			print_annotated_syntax_tree_annotator(s);
+			mywrite_str(STDOUT, s->reference.name);
 			break;
 		} case literal: {
-			printf("(b");
-			print_annotated_syntax_tree_annotator(s);
-			printf(" %d)", s->literal.value);
+			mywrite_str(STDOUT, "(b ");
+			mywrite_int(STDOUT, s->literal.value);
+			mywrite_str(STDOUT, ")");
 			break;
 		} case non_primitive: {
-			printf("(");
-			print_annotated_syntax_tree_annotator(s);
-			print_annotated_syntax_tree(s->non_primitive.function);
-			printf(" ");
+			mywrite_str(STDOUT, "(");
+			print_syntax_tree(s->non_primitive.function);
+			mywrite_str(STDOUT, " ");
 			print_expr_list(s->non_primitive.argument);
-			printf(")");
+			mywrite_str(STDOUT, ")");
 			break;
 		}
-	}
-}
-
-void empty_annotator(union expression *s) {}
-
-void return_value_reference_annotator(union expression *s) {
-	if(s->base.return_value) {
-		printf("<");
-		print_annotated_syntax_tree(s->base.return_value);
-		printf(">");
-	}
-}
-
-void frame_layout_annotator(union expression *s) {
-	if(s->base.type == function && s->base.parent) {
-		printf("< ");
-		union expression *t;
-		{foreach(t, s->function.locals) {
-			printf("%s:%d ", t->reference.name, t->reference.offset->literal.value);
-		}}
-		foreach(t, s->function.parameters) {
-			printf("%s:%d ", t->reference.name, t->reference.offset->literal.value);
-		}
-		printf(">");
 	}
 }

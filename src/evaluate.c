@@ -1,4 +1,3 @@
-#include "signal.h"
 #include "compile.c"
 #include "evaluate_errors.c"
 
@@ -57,13 +56,12 @@ int main(int argc, char *argv[]) {
 	if(handler.ctx != evaluate_region) {
 		union evaluate_error *err = (union evaluate_error *) handler.ctx;
 		mywrite_str(STDOUT, "Error found: ");
-		print_annotated_syntax_tree_annotator = &empty_annotator;
 		switch(err->arguments.type) {
 			case PARAM_COUNT_MISMATCH: {
 				mywrite_str(STDOUT, "The number of arguments in ");
-				print_annotated_syntax_tree(err->param_count_mismatch.src_expression);
+				print_syntax_tree(err->param_count_mismatch.src_expression);
 				mywrite_str(STDOUT, " does not match the number of parameters in ");
-				print_annotated_syntax_tree(err->param_count_mismatch.dest_expression);
+				print_syntax_tree(err->param_count_mismatch.dest_expression);
 				mywrite_str(STDOUT, ".\n");
 				break;
 			} case SPECIAL_FORM: {

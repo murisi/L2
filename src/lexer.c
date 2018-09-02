@@ -96,19 +96,19 @@ char *to_string(list d, region r) {
 }
 
 void print_expr_list(list d) {
-	printf("(");
+	mywrite_str(STDOUT, "(");
 	if(is_nil(d)) {
-		printf(")");
+		mywrite_str(STDOUT, ")");
 		return;
 	} else {
 		union sexpr *_fst = d->fst;
 		if(is_lst(_fst)) {
 			print_expr_list((list) _fst);
 		} else {
-			printf("%c", _fst->character.character);
+			mywrite_char(STDOUT, _fst->character.character);
 		}
-		printf(" . ");
+		mywrite_str(STDOUT, " . ");
 		print_expr_list(d->rst);
-		printf(")");
+		mywrite_str(STDOUT, ")");
 	}	
 }
