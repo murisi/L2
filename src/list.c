@@ -83,19 +83,6 @@ int length(list l) {
 	return size;
 }
 
-list make_list(region reg, int len, ...) {
-	list lst = nil(reg), *t = &lst;
-	va_list vlist;
-	va_start(vlist, len);
-	
-	int i;
-	for(i = 0; i < len; i++) {
-		append(va_arg(vlist, void *), t, reg);
-		t = &((*t)->rst);
-	}
-	return lst;
-}
-
 list reverse(list l, region reg) {
 	list ret = nil(reg);
 	void *data;

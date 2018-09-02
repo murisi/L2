@@ -207,22 +207,32 @@ union expression *prepend_parameter(union expression *function, region reg) {
 	return v;
 }
 
-union expression *make_instr(region reg, int opcode, int arg_count, ...) {
+union expression *make_instr0(int opcode, region reg) {
 	union expression *u = region_malloc(reg, sizeof(union expression));
 	u->instruction.type = instruction;
 	u->instruction.opcode = opcode;
 	u->instruction.arguments = nil(reg);
-	
-	va_list valist;
-	va_start(valist, arg_count);
-	int i;
-	
-	for(i = 0; i < arg_count; i++) {
-		union expression *arg = va_arg(valist, union expression *);
-		arg->base.parent = u;
-		append(arg, &u->instruction.arguments, reg);
-	}
-	va_end(valist);
+	return u;
+}
+
+union expression *make_instr1(int opcode, union expression *arg1, region reg) {
+	union expression *u = make_instr0(opcode, reg);
+	u->instruction.arguments = lst(arg1, u->instruction.arguments, reg);
+	arg1->base.parent = u;
+	return u;
+}
+
+union expression *make_instr2(int opcode, union expression *arg1, union expression *arg2, region reg) {
+	union expression *u = make_instr1(opcode, arg2, reg);
+	u->instruction.arguments = lst(arg1, u->instruction.arguments, reg);
+	arg1->base.parent = u;
+	return u;
+}
+
+union expression *make_instr3(int opcode, union expression *arg1, union expression *arg2, union expression *arg3, region reg) {
+	union expression *u = make_instr2(opcode, arg2, arg3, reg);
+	u->instruction.arguments = lst(arg1, u->instruction.arguments, reg);
+	arg1->base.parent = u;
 	return u;
 }
 

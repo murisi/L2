@@ -59,7 +59,7 @@ void build_syntax_tree(list d, union expression **s, region reg) {
 		(*s)->with.type = with;
 		build_syntax_tree_under(d->frst, &(*s)->with.reference, *s, reg);
 		build_syntax_tree_under(d->frrst, &(*s)->with.expression, *s, reg);
-		(*s)->with.parameter = make_list(reg, 1, NULL);
+		(*s)->with.parameter = lst(NULL, nil(reg), reg);
 	} else if(!strcmp(to_string(d->fst, reg), "begin")) {
 		(*s)->begin.type = begin;
 		(*s)->begin.expressions = nil(reg);

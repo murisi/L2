@@ -5,7 +5,6 @@
 #include "string.h"
 
 #include "x86_64_linux_interface.c"
-#include "stdarg.h"
 typedef unsigned long int bool;
 #define true (~0UL)
 #define false (0UL)
