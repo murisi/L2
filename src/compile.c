@@ -6,10 +6,9 @@
 
 #include "x86_64_linux_interface.c"
 #include "stdarg.h"
-#include "stdint.h"
-typedef int64_t bool;
-#define true (~((bool) 0))
-#define false ((bool) 0)
+typedef unsigned long int bool;
+#define true (~0UL)
+#define false (0UL)
 #include "list.c"
 #include "sexpr.c"
 #include "compile_errors.c"
