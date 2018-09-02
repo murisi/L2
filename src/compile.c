@@ -1,5 +1,5 @@
 #define WORD_SIZE 8
-#define NULL 0
+#define NULL 0UL
 
 #include "x86_64_linux_interface.c"
 typedef unsigned long int bool;

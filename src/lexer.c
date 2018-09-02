@@ -65,7 +65,7 @@ list build_expr_list(char *l2src, int l2src_sz, int *pos, region r) {
 		list l = nil(r);
 		do {
 			append(build_character_sexpr(c, r), &l, r);
-			if(*pos == l2src_sz) break;
+			if(*pos == l2src_sz) return l;
 			c = l2src[(*pos)++];
 		} while(!isspace(c) && c != '(' && c != ')' && c != '{' && c != '}' && c != '[' && c != ']');
 		(*pos)--;

@@ -98,11 +98,11 @@ int main(int argc, char *argv[]) {
 				mywrite_str(STDOUT, "There is no file at the path ");
 				mywrite_str(STDOUT, err->missing_file.path);
 				mywrite_str(STDOUT, ".\n");
-				return MISSING_FILE;
+				break;
 			} case ARGUMENTS: {
 				mywrite_str(STDOUT, "Bad command line arguments.\nUsage: l2compile inputs.l2\n"
 					"Outcome: Compiles inputs.l2 and runs it.\n");
-				return ARGUMENTS;
+				break;
 			}
 		}
 		return err->arguments.type;
@@ -123,7 +123,7 @@ int main(int argc, char *argv[]) {
 	int obj_size;
 	compile(&raw_obj, &obj_size, buf, sizeof(buf), &env, evaluate_region, &handler);
 	Object *obj = load(raw_obj, obj_size, evaluate_region);
-	mutate_symbol(obj, make_symbol("putchar", putchar));
+	mutate_symbol(obj, make_symbol("mywrite_char", mywrite_char));
 	//mutate_symbol(obj, make_symbol("compile-l2", compile));
 	//mutate_symbol(obj, make_symbol("load-library", eval_load_library));
 	//mutate_symbol(obj, make_symbol("mutable-symbols", eval_mutable_symbols));

@@ -23,10 +23,37 @@
 
 long int mysyscall(long int syscall_num, ...);
 
-int mystrlen(char *str) {
-	int i;
+unsigned long strlen(const char *str) {
+	unsigned long i;
 	for(i = 0; str[i]; i++);
 	return i;
+}
+
+char *strcpy(char *dest, const char *src) {
+	unsigned long i;
+	for(i = 0; src[i]; i++) {
+		dest[i] = src[i];
+	}
+	dest[i] = '\0';
+	return dest;
+}
+
+int strcmp(const char *s1, const char *s2) {
+	unsigned long i;
+	for(i = 0; s1[i] && s2[i] && (s1[i] == s2[i]); i++);
+	return s1[i] - s2[i];
+}
+
+void *memcpy(void *dest, const void *src, unsigned long n) {
+	unsigned long i;
+	for(i = 0; i < n; i++) {
+		((unsigned char *) dest)[i] = ((const unsigned char *) src)[i];
+	}
+	return dest;
+}
+
+int isspace(int c) {
+	return c == ' ' || c == '\f' || c == '\n' || c == '\r' || c == '\t' || c == '\v';
 }
 
 int myopen(char *path) {
@@ -38,7 +65,7 @@ void mywrite(int fd, void *d, int len) {
 }
 
 void mywrite_str(int fd, char *str) {
-	mywrite(fd, str, mystrlen(str));
+	mywrite(fd, str, strlen(str));
 }
 
 void mywrite_char(int fd, char ch) {

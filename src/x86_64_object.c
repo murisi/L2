@@ -71,7 +71,7 @@ void do_relocations(Object *obj, Elf64_Sym *sym) {
 							memcpy(location, (temp = sym->st_size + obj->addends[sec][rela], &temp), 8);
 							break;
 						default:
-							assert(0);
+							//assert(0);
 							break;
 					}
 				}
@@ -114,7 +114,7 @@ void store_addends(Object *obj, region reg) {
 						obj->addends[sec][rel] = *((Elf64_Xword *) obj->relas[sec][rel].r_offset);
 						break;
 					default:
-						assert(0);
+						//assert(0);
 						break;
 				}
 			}
@@ -167,10 +167,10 @@ Object *read_object(unsigned char *objsrc, int objsrc_sz, region reg) {
 	Object *obj = region_malloc(reg, sizeof(Object));
 	obj->ehdr = region_malloc(reg, sizeof(Elf64_Ehdr));
 	memcpy(obj->ehdr, objsrc, sizeof(Elf64_Ehdr));
-	assert(obj->ehdr->e_ident[EI_MAG0] == ELFMAG0 && obj->ehdr->e_ident[EI_MAG1] == ELFMAG1 &&
-		obj->ehdr->e_ident[EI_MAG2] == ELFMAG2 && obj->ehdr->e_ident[EI_MAG3] == ELFMAG3);
-	assert(obj->ehdr->e_ident[EI_CLASS] == ELFCLASS64);
-	assert(obj->ehdr->e_ident[EI_DATA] == ELFDATA2LSB);
+	//assert(obj->ehdr->e_ident[EI_MAG0] == ELFMAG0 && obj->ehdr->e_ident[EI_MAG1] == ELFMAG1 &&
+	//	obj->ehdr->e_ident[EI_MAG2] == ELFMAG2 && obj->ehdr->e_ident[EI_MAG3] == ELFMAG3);
+	//assert(obj->ehdr->e_ident[EI_CLASS] == ELFCLASS64);
+	//assert(obj->ehdr->e_ident[EI_DATA] == ELFDATA2LSB);
 	
 	obj->shdrs = region_malloc(reg, obj->ehdr->e_shnum * sizeof(Elf64_Shdr));
 	obj->syms = region_malloc(reg, obj->ehdr->e_shnum * sizeof(Elf64_Sym *));

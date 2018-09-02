@@ -1,6 +1,7 @@
 .globl mysyscall
 .globl mysetjmp
 .globl mylongjmp
+.globl _start
 .text
 /*
  * Do syscall with the syscall number being provided by the first argument to
@@ -38,3 +39,12 @@ mylongjmp:
 	movq 48(%rdi), %r15
 	movq 56(%rdi), %rsp
 	jmp *8(%rdi)
+	
+ _start:
+ 	movq 0(%rsp), %rdi
+ 	leaq 8(%rsp), %rsi
+ 	andq $-16,%rsp
+ 	call main
+ 	movq %rax, %rdi
+ 	mov $60, %rax
+ 	syscall
