@@ -166,20 +166,6 @@ void merge_onto(list src, list *dest) {
 }
 
 /*
- * Gets the address of the symbol with name name in the library lib.
- */
-void *get_symbol(Object *obj, char *name) {
-	int i, isc = immutable_symbol_count(obj);
-	Symbol is[isc];
-	immutable_symbols(obj, is);
-	for(i = 0; i < isc; i++) {
-		if(!strcmp(is[i].name, name)) {
-			return is[i].address;
-		}
-	}
-}
-
-/*
  * Does the expansions in the expansions lists. For the purposes of efficiency,
  * the first expansion list is compiled and sent to the assembler together.
  * With the expanders compiled, the expansions are done, and the resulting list
@@ -195,31 +181,30 @@ void expand_expressions(list *expansion_lists, list env, region exprreg) {
 	list expansions, *remaining_expansion_lists;
 	foreachlist(remaining_expansion_lists, expansions, expansion_lists) {
 		list urgent_expansion_lists = nil(exprreg);
-		
+		region objreg = create_region(0);
+		list expander_containers_refs = nil(objreg);
 		union expression **expansion;
-		list expander_containers = nil(exprreg);
-		list expander_container_names = nil(exprreg);
+		list setup_expander_container_refs = nil(objreg);
+		
 		{foreach(expansion, expansions) {
 			union expression *expander_container = make_function(exprreg);
 			put(expander_container, function.expression, (*expansion)->non_primitive.function);
-			append(expander_container, &expander_containers, exprreg);
-			append(expander_container->function.reference->reference.name, &expander_container_names, exprreg);
+			append(make_invoke3(make_literal((unsigned long) &append, objreg), expander_container,
+				make_literal((unsigned long) &expander_containers_refs, objreg),
+				make_literal((unsigned long) &objreg, objreg), objreg), &setup_expander_container_refs, objreg);
 		}}
 		
-		region objreg = create_region(0);
-		unsigned char *raw_obj;
-		int obj_sz;
-		compile_expressions(&raw_obj, &obj_sz, expander_containers, objreg, build_syntax_tree_handler);
+		unsigned char *raw_obj; int obj_sz;
+		compile_expressions(&raw_obj, &obj_sz, setup_expander_container_refs, objreg, build_syntax_tree_handler);
 		Object *handle = load(raw_obj, obj_sz, objreg);
 		Symbol *sym;
 		{foreach(sym, env) {
 			mutate_symbols(handle, sym, 1);
 		}}
-		
-		char *expander_container_name;
-		foreachzipped(expansion, expander_container_name, expansions, expander_container_names) {
-			list (*(*macro_container)())(list) = get_symbol(handle, expander_container_name);
-			list (*macro)(list) = macro_container();
+		start(handle)(); //Populate expander_containers_refs using the just compiled L2 code
+		list (*(*expander_container_ref)())(list);
+		foreachzipped(expansion, expander_container_ref, expansions, expander_containers_refs) {
+			list (*macro)(list) = expander_container_ref();
 			list transformed = macro((*expansion)->non_primitive.argument);
 			
 			build_syntax_tree_handler = expand_expressions_handler;

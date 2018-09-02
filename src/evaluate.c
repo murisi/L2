@@ -1,8 +1,10 @@
 #include "compile.c"
 #include "evaluate_errors.c"
 
+myjmp_buf evaluate_handler;
 region evaluate_region;
-list bss;
+
+//The following functions form the interface provided to loaded L2 files
 
 #define char_sexpr(str, ch) \
 union sexpr * _ ## str ## _() { \
@@ -25,23 +27,25 @@ an_sexpr(i); an_sexpr(j); an_sexpr(k); an_sexpr(l); an_sexpr(m); an_sexpr(n); an
 an_sexpr(s); an_sexpr(t); an_sexpr(u); an_sexpr(v); an_sexpr(w); an_sexpr(x); an_sexpr(y); an_sexpr(z); char_sexpr(vertical_bar, '|');
 char_sexpr(tilde, '~');
 
-/*list with_primitive(list arg) { return lst(build_symbol_sexpr("with", evaluate_region), arg, evaluate_region); }
-list begin_primitive(list arg) { return lst(build_symbol_sexpr("begin", evaluate_region), arg, evaluate_region); }
-list if_primitive(list arg) { return lst(build_symbol_sexpr("if", evaluate_region), arg, evaluate_region); }
-list function_primitive(list arg) { return lst(build_symbol_sexpr("function", evaluate_region), arg, evaluate_region); }
-list continuation_primitive(list arg) { return lst(build_symbol_sexpr("continuation", evaluate_region), arg, evaluate_region); }
-list literal_primitive(list arg) { return lst(build_symbol_sexpr("literal", evaluate_region), arg, evaluate_region); }
-list invoke_primitive(list arg) { return lst(build_symbol_sexpr("invoke", evaluate_region), arg, evaluate_region); }
-list jump_primitive(list arg) { return lst(build_symbol_sexpr("jump", evaluate_region), arg, evaluate_region); }*/
-
 list _compile_(list dst, list src, list env) {
 	char *src_str = to_string(src, evaluate_region);
 	unsigned char buf[mysize(src_str)];
 	int fd = myopen(src_str);
 	myread(fd, buf, sizeof(buf));
 	myclose(fd);
+	list env_symbols = nil(evaluate_region);
+	list symbol;
+	foreach(symbol, env) {
+		Symbol *sym = region_malloc(evaluate_region, sizeof(Symbol));
+		sym->name = to_string(symbol->fst, evaluate_region);
+		sym->address = symbol->frst;
+		prepend(sym, &env_symbols, evaluate_region);
+	}
 	unsigned char *raw_obj; int obj_size;
-	compile(&raw_obj, &obj_size, buf, sizeof(buf), env, evaluate_region, NULL);
+	compile(&raw_obj, &obj_size, buf, sizeof(buf), env_symbols, evaluate_region, &evaluate_handler);
+	int outfd = myopen(to_string(dst, evaluate_region));
+	mywrite(outfd, raw_obj, obj_size);
+	myclose(outfd);
 }
 
 list _bootstrap_symbols_();
@@ -84,7 +88,6 @@ list _immutable_symbols_(Object *obj) {
 
 Object *_mutate_symbols_(Object *obj, list updates) {
 	int sc = length(updates);
-	Symbol symbols[sc];
 	list symbol;
 	foreach(symbol, updates) {
 		mutate_symbols(obj, (Symbol []) {make_symbol(to_string(symbol->fst, evaluate_region), symbol->frst)}, 1);
@@ -106,6 +109,14 @@ list _lst_(void *data, list l) {
 
 list _nil_() {
 	return nil(evaluate_region);
+}
+
+void *_get_(void *ref) {
+	return *((void **) ref);
+}
+
+void _set_(void *dest, void *src) {
+	*((void **) dest) = src;
 }
 
 //These symbols are enough for any L2 code to bootstrap
@@ -205,6 +216,8 @@ Symbol bootstrap_symbols[] = {
 	{.name = "nil?", .address = is_nil},
 	{.name = "nil", .address = _nil_},
 	{.name = "char=", .address = char_equals},
+	{.name = "get", .address = _get_},
+	{.name = "set", .address = _set_},
 	{.name = "compile", .address = _compile_},
 	{.name = "load", .address = _load_},
 	{.name = "mutable-symbols", .address = _mutable_symbols_},
@@ -226,11 +239,10 @@ list _bootstrap_symbols_() {
 
 int main(int argc, char *argv[]) {
 	//Initialize the error handler
-	myjmp_buf handler;
-	handler.ctx = evaluate_region = create_region(0);
-	mysetjmp(&handler);
-	if(handler.ctx != evaluate_region) {
-		union evaluate_error *err = (union evaluate_error *) handler.ctx;
+	evaluate_handler.ctx = evaluate_region = create_region(0);
+	mysetjmp(&evaluate_handler);
+	if(evaluate_handler.ctx != evaluate_region) {
+		union evaluate_error *err = (union evaluate_error *) evaluate_handler.ctx;
 		mywrite_str(STDOUT, "Error found: ");
 		switch(err->arguments.type) {
 			case PARAM_COUNT_MISMATCH: {
@@ -285,7 +297,7 @@ int main(int argc, char *argv[]) {
 	}
 	
 	if(argc != 2) {
-		throw_arguments(&handler);
+		throw_arguments(&evaluate_handler);
 	}
 	
 	list env = nil(evaluate_region);
@@ -294,7 +306,7 @@ int main(int argc, char *argv[]) {
 	myread(fd, buf, sizeof(buf));
 	myclose(fd);
 	unsigned char *raw_obj; int obj_size;
-	compile(&raw_obj, &obj_size, buf, sizeof(buf), env, evaluate_region, &handler);
+	compile(&raw_obj, &obj_size, buf, sizeof(buf), env, evaluate_region, &evaluate_handler);
 	Object *obj = load(raw_obj, obj_size, evaluate_region);
 	mutate_symbols(obj, bootstrap_symbols, sizeof(bootstrap_symbols) / sizeof(Symbol));
 	start(obj)();

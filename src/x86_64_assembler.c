@@ -210,14 +210,21 @@ int measure_strtab(list generated_expressions, list locals, list globals) {
 	union expression *e;
 	int strtab_len = 1;
 	{foreach(e, locals) {
-		strtab_len += strlen(e->reference.name) + 1;
+		if(e->reference.name) {
+			strtab_len += strlen(e->reference.name) + 1;
+		}
 	}}
 	{foreach(e, globals) {
-		strtab_len += strlen(e->reference.name) + 1;
+		if(e->reference.name) {
+			strtab_len += strlen(e->reference.name) + 1;
+		}
 	}}
 	{foreach(e, generated_expressions) {
 		if(e->instruction.opcode == LOCAL_LABEL || e->instruction.opcode == GLOBAL_LABEL) {
-			strtab_len += strlen(((union expression *) e->instruction.arguments->fst)->reference.name) + 1;
+			char *label_str = ((union expression *) e->instruction.arguments->fst)->reference.name;
+			if(label_str) {
+				strtab_len += strlen(label_str) + 1;
+			}
 		}
 	}}
 	return strtab_len;
@@ -310,8 +317,13 @@ void write_elf(list generated_expressions, list locals, list globals, unsigned c
 	
 	union expression *e;
 	{foreach(e, locals) {
-		strcpy(strtabptr, e->reference.name);
-		sym_ptr->st_name = strtabptr - strtab;
+		if(e->reference.name) {
+			strcpy(strtabptr, e->reference.name);
+			sym_ptr->st_name = strtabptr - strtab;
+			strtabptr += strlen(e->reference.name) + 1;
+		} else {
+			sym_ptr->st_name = 0;
+		}
 		sym_ptr->st_value = (sym_ptr - syms - 1) * WORD_SIZE;
 		sym_ptr->st_size = 0;
 		sym_ptr->st_info = ELF64_ST_INFO(STB_LOCAL, STT_NOTYPE);
@@ -319,13 +331,17 @@ void write_elf(list generated_expressions, list locals, list globals, unsigned c
 		sym_ptr->st_shndx = 5;
 		e->reference.context = sym_ptr;
 		sym_ptr++;
-		strtabptr += strlen(e->reference.name) + 1;
 	}}
 	{foreach(e, generated_expressions) {
 		if(e->instruction.opcode == LOCAL_LABEL) {
 			union expression *ref = (union expression *) e->instruction.arguments->fst;
-			strcpy(strtabptr, ref->reference.name);
-			sym_ptr->st_name = strtabptr - strtab;
+			if(ref->reference.name) {
+				strcpy(strtabptr, ref->reference.name);
+				sym_ptr->st_name = strtabptr - strtab;
+				strtabptr += strlen(ref->reference.name) + 1;
+			} else {
+				sym_ptr->st_name = 0;
+			}
 			sym_ptr->st_value = 0;
 			sym_ptr->st_size = 0;
 			sym_ptr->st_info = ELF64_ST_INFO(STB_LOCAL, STT_NOTYPE);
@@ -333,13 +349,17 @@ void write_elf(list generated_expressions, list locals, list globals, unsigned c
 			sym_ptr->st_shndx = 2;
 			ref->reference.context = sym_ptr;
 			sym_ptr++;
-			strtabptr += strlen(ref->reference.name) + 1;
 		}
 	}}
 	int local_symbol_count = sym_ptr - syms;
 	{foreach(e, globals) {
-		strcpy(strtabptr, e->reference.name);
-		sym_ptr->st_name = strtabptr - strtab;
+		if(e->reference.name) {
+			strcpy(strtabptr, e->reference.name);
+			sym_ptr->st_name = strtabptr - strtab;
+			strtabptr += strlen(e->reference.name) + 1;
+		} else {
+			sym_ptr->st_name = 0;
+		}
 		sym_ptr->st_value = 0;
 		sym_ptr->st_size = 0;
 		sym_ptr->st_info = ELF64_ST_INFO(STB_GLOBAL, STT_NOTYPE);
@@ -347,13 +367,17 @@ void write_elf(list generated_expressions, list locals, list globals, unsigned c
 		sym_ptr->st_shndx = SHN_UNDEF;
 		e->reference.context = sym_ptr;
 		sym_ptr++;
-		strtabptr += strlen(e->reference.name) + 1;
 	}}
 	{foreach(e, generated_expressions) {
 		if(e->instruction.opcode == GLOBAL_LABEL) {
 			union expression *ref = (union expression *) e->instruction.arguments->fst;
-			strcpy(strtabptr, ref->reference.name);
-			sym_ptr->st_name = strtabptr - strtab;
+			if(ref->reference.name) {
+				strcpy(strtabptr, ref->reference.name);
+				sym_ptr->st_name = strtabptr - strtab;
+				strtabptr += strlen(ref->reference.name) + 1;
+			} else {
+				sym_ptr->st_name = 0;
+			}
 			sym_ptr->st_value = 0;
 			sym_ptr->st_size = 0;
 			sym_ptr->st_info = ELF64_ST_INFO(STB_GLOBAL, STT_NOTYPE);
@@ -361,7 +385,6 @@ void write_elf(list generated_expressions, list locals, list globals, unsigned c
 			sym_ptr->st_shndx = 2;
 			ref->reference.context = sym_ptr;
 			sym_ptr++;
-			strtabptr += strlen(ref->reference.name) + 1;
 		}
 	}}
 	

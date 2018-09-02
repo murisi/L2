@@ -1,10 +1,11 @@
 bool function_named(void *expr_void, void *ctx) {
 	union expression *expr = expr_void;
-	return expr->base.type == function && strequal(ctx, expr->function.reference->reference.name);
+	return expr->base.type == function && expr->function.reference->reference.name &&
+		strequal(ctx, expr->function.reference->reference.name);
 }
 
 bool reference_named(void *expr_void, void *ctx) {
-	return strequal(ctx, ((union expression *) expr_void)->reference.name);
+	return ((union expression *) expr_void)->reference.name && strequal(ctx, ((union expression *) expr_void)->reference.name);
 }
 
 union expression *vfind_multiple_definitions(union expression *e, void *ctx) {
@@ -14,7 +15,7 @@ union expression *vfind_multiple_definitions(union expression *e, void *ctx) {
 	switch(e->base.type) {
 		case begin: {
 			foreachlist(partial, t, &e->begin.expressions) {
-				if(t->base.type == function &&
+				if(t->base.type == function && t->function.reference->reference.name &&
 					exists(function_named, &(*partial)->rst, t->function.reference->reference.name)) {
 						throw_multiple_definition(t->function.reference->reference.name, handler);
 				}
@@ -24,7 +25,7 @@ union expression *vfind_multiple_definitions(union expression *e, void *ctx) {
 			region tempreg = create_region(0);
 			list ref_with_params = lst(e->continuation.reference, e->continuation.parameters, tempreg);
 			foreachlist(partial, t, &ref_with_params) {
-				if(exists(reference_named, &(*partial)->rst, t->reference.name)) {
+				if(t->reference.name && exists(reference_named, &(*partial)->rst, t->reference.name)) {
 					throw_multiple_definition(t->reference.name, handler);
 				}
 			}
@@ -53,6 +54,10 @@ union expression *get_zeroth_static(union expression *e) {
 	return static_expr;
 }
 
+bool reference_equals(union expression *a, union expression *b) {
+	return a == b || (a->reference.name && b->reference.name && !strcmp(a->reference.name, b->reference.name));
+}
+
 union expression *referent_of(union expression *reference) {
 	union expression *t;
 	for(t = reference; t != NULL; t = (t->base.type == function ? get_zeroth_static(t->base.parent) : t->base.parent)) {
@@ -60,18 +65,18 @@ union expression *referent_of(union expression *reference) {
 			case begin: {
 				union expression *u;
 				foreach(u, t->begin.expressions) {
-					if(u->base.type == function && !strcmp(u->function.reference->reference.name, reference->reference.name)) {
+					if(u->base.type == function && reference_equals(u->function.reference, reference)) {
 						return u->function.reference;
 					}
 				}
 				break;
 			} case function: case continuation: case with: {
-				if(!strcmp(t->function.reference->reference.name, reference->reference.name)) {
+				if(reference_equals(t->function.reference, reference)) {
 					return t->function.reference;
 				} else if(t->base.type == function || t->base.type == continuation) {
 					union expression *u;
 					foreach(u, t->function.parameters) {
-						if(!strcmp(u->reference.name, reference->reference.name)) {
+						if(reference_equals(u, reference)) {
 							return u;
 						}
 					}

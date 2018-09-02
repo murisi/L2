@@ -157,7 +157,7 @@ union expression *make_literal(long int value, region reg) {
 union expression *make_reference(region reg) {
 	union expression *ref = region_malloc(reg, sizeof(union expression));
 	ref->reference.type = reference;
-	ref->reference.name = "";
+	ref->reference.name = NULL;
 	ref->reference.referent = ref;
 	return ref;
 }
@@ -232,6 +232,36 @@ union expression *make_instr2(int opcode, union expression *arg1, union expressi
 union expression *make_instr3(int opcode, union expression *arg1, union expression *arg2, union expression *arg3, region reg) {
 	union expression *u = make_instr2(opcode, arg2, arg3, reg);
 	u->instruction.arguments = lst(arg1, u->instruction.arguments, reg);
+	arg1->base.parent = u;
+	return u;
+}
+
+union expression *make_invoke0(union expression *ref, region reg) {
+	union expression *u = region_malloc(reg, sizeof(union expression));
+	u->invoke.type = invoke;
+	u->invoke.reference = ref;
+	ref->base.parent = u;
+	u->invoke.arguments = nil(reg);
+	return u;
+}
+
+union expression *make_invoke1(union expression *ref, union expression *arg1, region reg) {
+	union expression *u = make_invoke0(ref, reg);
+	u->invoke.arguments = lst(arg1, u->invoke.arguments, reg);
+	arg1->base.parent = u;
+	return u;
+}
+
+union expression *make_invoke2(union expression *ref, union expression *arg1, union expression *arg2, region reg) {
+	union expression *u = make_invoke1(ref, arg2, reg);
+	u->invoke.arguments = lst(arg1, u->invoke.arguments, reg);
+	arg1->base.parent = u;
+	return u;
+}
+
+union expression *make_invoke3(union expression *ref, union expression *arg1, union expression *arg2, union expression *arg3, region reg) {
+	union expression *u = make_invoke2(ref, arg2, arg3, reg);
+	u->invoke.arguments = lst(arg1, u->invoke.arguments, reg);
 	arg1->base.parent = u;
 	return u;
 }
