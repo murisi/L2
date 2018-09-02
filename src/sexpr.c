@@ -13,17 +13,8 @@ bool is_lst(union sexpr *s) {
 	return s->list_flag ? true : false;
 }
 
-bool sexpr_equals(union sexpr *a, union sexpr *b) {
-	if(!a->list_flag != !b->list_flag) {
-		return false;
-	} else if(!a->list_flag) {
-		return a->character.character == b->character.character ? true : false;
-	} else if(is_nil((list) a) || is_nil((list) b)) {
-		return is_nil((list) a) & is_nil((list) b);
-	} else {
-		return sexpr_equals(((list) a)->fst, ((list) b)->fst) &
-			sexpr_equals((union sexpr *) ((list) a)->rst, (union sexpr *) ((list) b)->rst);
-	}
+bool char_equals(struct character *a, struct character *b) {
+	return a->character == b->character ? true : false;
 }
 
 union sexpr *build_character_sexpr(char d, region r) {

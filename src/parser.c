@@ -191,7 +191,7 @@ void *get_symbol(Object *obj, char *name) {
 
 myjmp_buf *expand_expressions_handler;
 
-void expand_expressions(list *expansion_lists, Symbol *env, region exprreg) {
+void expand_expressions(list *expansion_lists, list env, region exprreg) {
 	list expansions, *remaining_expansion_lists;
 	foreachlist(remaining_expansion_lists, expansions, expansion_lists) {
 		list urgent_expansion_lists = nil(exprreg);
@@ -199,21 +199,22 @@ void expand_expressions(list *expansion_lists, Symbol *env, region exprreg) {
 		union expression **expansion;
 		list expander_containers = nil(exprreg);
 		list expander_container_names = nil(exprreg);
-		foreach(expansion, expansions) {
+		{foreach(expansion, expansions) {
 			union expression *expander_container = make_function(exprreg);
 			put(expander_container, function.expression, (*expansion)->non_primitive.function);
 			append(expander_container, &expander_containers, exprreg);
 			append(expander_container->function.reference->reference.name, &expander_container_names, exprreg);
-		}
+		}}
 		
 		region objreg = create_region(0);
 		unsigned char *raw_obj;
 		int obj_sz;
 		compile_expressions(&raw_obj, &obj_sz, expander_containers, objreg, build_syntax_tree_handler);
 		Object *handle = load(raw_obj, obj_sz, objreg);
-		for(; env->name && env->address; env++) {
-			mutate_symbols(handle, env, 1);
-		}
+		Symbol *sym;
+		{foreach(sym, env) {
+			mutate_symbols(handle, sym, 1);
+		}}
 		
 		char *expander_container_name;
 		foreachzipped(expansion, expander_container_name, expansions, expander_container_names) {

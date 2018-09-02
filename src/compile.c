@@ -63,7 +63,7 @@ void compile_expressions(unsigned char **objdest, int *objdest_sz, list exprs, r
  * that it is embedded in.
  */
 
-void compile(unsigned char **objdest, int *objdest_sz, char *l2src, int l2src_sz, Symbol *env, region objreg, myjmp_buf *handler) {
+void compile(unsigned char **objdest, int *objdest_sz, char *l2src, int l2src_sz, list env, region objreg, myjmp_buf *handler) {
 	region syntax_tree_region = create_region(0);
 	list expressions = nil(syntax_tree_region);
 	list expansion_lists = nil(syntax_tree_region);

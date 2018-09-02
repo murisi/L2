@@ -34,9 +34,17 @@ list literal_primitive(list arg) { return lst(build_symbol_sexpr("literal", eval
 list invoke_primitive(list arg) { return lst(build_symbol_sexpr("invoke", evaluate_region), arg, evaluate_region); }
 list jump_primitive(list arg) { return lst(build_symbol_sexpr("jump", evaluate_region), arg, evaluate_region); }*/
 
-list _bootstrap_symbols_() {
-	return bss;
+list _compile_(list dst, list src, list env) {
+	char *src_str = to_string(src, evaluate_region);
+	unsigned char buf[mysize(src_str)];
+	int fd = myopen(src_str);
+	myread(fd, buf, sizeof(buf));
+	myclose(fd);
+	unsigned char *raw_obj; int obj_size;
+	compile(&raw_obj, &obj_size, buf, sizeof(buf), env, evaluate_region, NULL);
 }
+
+list _bootstrap_symbols_();
 
 Object *_load_(list name) {
 	char *name_str = to_string(name, evaluate_region);
@@ -82,6 +90,138 @@ Object *_mutate_symbols_(Object *obj, list updates) {
 		mutate_symbols(obj, (Symbol []) {make_symbol(to_string(symbol->fst, evaluate_region), symbol->frst)}, 1);
 	}
 	return obj;
+}
+
+void *_fst_(list l) {
+	return l->fst;
+}
+
+list _rst_(list l) {
+	return l->rst;
+}
+
+list _lst_(void *data, list l) {
+	return lst(data, l, evaluate_region);
+}
+
+list _nil_() {
+	return nil(evaluate_region);
+}
+
+//These symbols are enough for any L2 code to bootstrap
+Symbol bootstrap_symbols[] = {
+	{.name = "-!-", .address = _exclamation_mark_},
+	{.name = "-\"-", .address = _double_quotation_},
+	{.name = "-#-", .address = _number_sign_},
+	{.name = "-$-", .address = _dollar_sign_},
+	{.name = "-%-", .address = _percent_},
+	{.name = "-&-", .address = _ampersand_},
+	{.name = "-'-", .address = _apostrophe_},
+	{.name = "-*-", .address = _asterisk_},
+	{.name = "-+-", .address = _plus_sign_},
+	{.name = "-,-", .address = _comma_},
+	{.name = "---", .address = _hyphen_},
+	{.name = "-.-", .address = _period_},
+	{.name = "-/-", .address = _slash_},
+	{.name = "-0-", .address = _0_},
+	{.name = "-1-", .address = _1_},
+	{.name = "-2-", .address = _2_},
+	{.name = "-3-", .address = _3_},
+	{.name = "-4-", .address = _4_},
+	{.name = "-5-", .address = _5_},
+	{.name = "-6-", .address = _6_},
+	{.name = "-7-", .address = _7_},
+	{.name = "-8-", .address = _8_},
+	{.name = "-9-", .address = _9_},
+	{.name = "-:-", .address = _colon_},
+	{.name = "-;-", .address = _semicolon_},
+	{.name = "-<-", .address = _less_than_sign_},
+	{.name = "-=-", .address = _equal_sign_},
+	{.name = "->-", .address = _greater_than_sign_},
+	{.name = "-?-", .address = _question_mark_},
+	{.name = "-@-", .address = _at_sign_},
+	{.name = "-A-", .address = _A_},
+	{.name = "-B-", .address = _B_},
+	{.name = "-C-", .address = _C_},
+	{.name = "-D-", .address = _D_},
+	{.name = "-E-", .address = _E_},
+	{.name = "-F-", .address = _F_},
+	{.name = "-G-", .address = _G_},
+	{.name = "-H-", .address = _H_},
+	{.name = "-I-", .address = _I_},
+	{.name = "-J-", .address = _J_},
+	{.name = "-K-", .address = _K_},
+	{.name = "-L-", .address = _L_},
+	{.name = "-M-", .address = _M_},
+	{.name = "-N-", .address = _N_},
+	{.name = "-O-", .address = _O_},
+	{.name = "-P-", .address = _P_},
+	{.name = "-Q-", .address = _Q_},
+	{.name = "-R-", .address = _R_},
+	{.name = "-S-", .address = _S_},
+	{.name = "-T-", .address = _T_},
+	{.name = "-U-", .address = _U_},
+	{.name = "-V-", .address = _V_},
+	{.name = "-W-", .address = _W_},
+	{.name = "-X-", .address = _X_},
+	{.name = "-Y-", .address = _Y_},
+	{.name = "-Z-", .address = _Z_},
+	{.name = "-\\-", .address = _backslash_},
+	{.name = "-^-", .address = _caret_},
+	{.name = "-_-", .address = _underscore_},
+	{.name = "-`-", .address = _backquote_},
+	{.name = "-a-", .address = _a_},
+	{.name = "-b-", .address = _b_},
+	{.name = "-c-", .address = _c_},
+	{.name = "-d-", .address = _d_},
+	{.name = "-e-", .address = _e_},
+	{.name = "-f-", .address = _f_},
+	{.name = "-g-", .address = _g_},
+	{.name = "-h-", .address = _h_},
+	{.name = "-i-", .address = _i_},
+	{.name = "-j-", .address = _j_},
+	{.name = "-k-", .address = _k_},
+	{.name = "-l-", .address = _l_},
+	{.name = "-m-", .address = _m_},
+	{.name = "-n-", .address = _n_},
+	{.name = "-o-", .address = _o_},
+	{.name = "-p-", .address = _p_},
+	{.name = "-q-", .address = _q_},
+	{.name = "-r-", .address = _r_},
+	{.name = "-s-", .address = _s_},
+	{.name = "-t-", .address = _t_},
+	{.name = "-u-", .address = _u_},
+	{.name = "-v-", .address = _v_},
+	{.name = "-w-", .address = _w_},
+	{.name = "-x-", .address = _x_},
+	{.name = "-y-", .address = _y_},
+	{.name = "-z-", .address = _z_},
+	{.name = "-|-", .address = _vertical_bar_},
+	{.name = "-~-", .address = _tilde_},
+	{.name = "fst", .address = _fst_},
+	{.name = "rst", .address = _rst_},
+	{.name = "lst", .address = _lst_},
+	{.name = "lst?", .address = is_lst},
+	{.name = "nil?", .address = is_nil},
+	{.name = "nil", .address = _nil_},
+	{.name = "char=", .address = char_equals},
+	{.name = "compile", .address = _compile_},
+	{.name = "load", .address = _load_},
+	{.name = "mutable-symbols", .address = _mutable_symbols_},
+	{.name = "immutable-symbols", .address = _immutable_symbols_},
+	{.name = "mutate-symbols", .address = _mutate_symbols_},
+	{.name = "start", .address = start},
+	{.name = "bootstrap-symbols", .address = _bootstrap_symbols_} //To ease further bootstrapping
+};
+
+list _bootstrap_symbols_() {
+	list bss_sexpr = nil(evaluate_region);
+	int i;
+	for(i = 0; i < sizeof(bootstrap_symbols) / sizeof(Symbol); i++) {
+		prepend(lst(build_symbol_sexpr(bootstrap_symbols[i].name, evaluate_region), lst(bootstrap_symbols[i].address,
+			nil(evaluate_region), evaluate_region), evaluate_region), &bss_sexpr, evaluate_region);
+	}
+	return bss_sexpr;
 }
 
 int main(int argc, char *argv[]) {
@@ -148,113 +288,15 @@ int main(int argc, char *argv[]) {
 		throw_arguments(&handler);
 	}
 	
-	Symbol env = make_symbol(NULL, NULL);
-	
+	list env = nil(evaluate_region);
 	unsigned char buf[mysize(argv[1])];
 	int fd = myopen(argv[1]);
 	myread(fd, buf, sizeof(buf));
 	myclose(fd);
 	unsigned char *raw_obj; int obj_size;
-	compile(&raw_obj, &obj_size, buf, sizeof(buf), &env, evaluate_region, &handler);
+	compile(&raw_obj, &obj_size, buf, sizeof(buf), env, evaluate_region, &handler);
 	Object *obj = load(raw_obj, obj_size, evaluate_region);
-	//Give the object that we are about to load just enough symbols for it to bootstrap
-	bss = nil(evaluate_region);
-	prepend((Symbol []) {make_symbol("-!-", _exclamation_mark_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-\"-", _double_quotation_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-#-", _number_sign_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-$-", _dollar_sign_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-%-", _percent_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-&-", _ampersand_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-'-", _apostrophe_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-*-", _asterisk_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-+-", _plus_sign_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-,-", _comma_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("---", _hyphen_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-.-", _period_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-/-", _slash_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-0-", _0_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-1-", _1_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-2-", _2_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-3-", _3_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-4-", _4_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-5-", _5_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-6-", _6_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-7-", _7_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-8-", _8_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-9-", _9_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-:-", _colon_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-;-", _semicolon_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-<-", _less_than_sign_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-=-", _equal_sign_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("->-", _greater_than_sign_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-?-", _question_mark_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-@-", _at_sign_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-A-", _A_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-B-", _B_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-C-", _C_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-D-", _D_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-E-", _E_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-F-", _F_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-G-", _G_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-H-", _H_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-I-", _I_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-J-", _J_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-K-", _K_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-L-", _L_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-M-", _M_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-N-", _N_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-O-", _O_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-P-", _P_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-Q-", _Q_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-R-", _R_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-S-", _S_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-T-", _T_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-U-", _U_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-V-", _V_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-W-", _W_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-X-", _X_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-Y-", _Y_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-Z-", _Z_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-\\-", _backslash_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-^-", _caret_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-_-", _underscore_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-`-", _backquote_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-a-", _a_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-b-", _b_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-c-", _c_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-d-", _d_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-e-", _e_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-f-", _f_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-g-", _g_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-h-", _h_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-i-", _i_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-j-", _j_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-k-", _k_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-l-", _l_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-m-", _m_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-n-", _n_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-o-", _o_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-p-", _p_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-q-", _q_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-r-", _r_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-s-", _s_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-t-", _t_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-u-", _u_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-v-", _v_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-w-", _w_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-x-", _x_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-y-", _y_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-z-", _z_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-|-", _vertical_bar_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("-~-", _tilde_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("bootstrap-symbols", _bootstrap_symbols_)}, &bss, evaluate_region); //To ease further bootstrapping
-	//mutate_symbol(obj, make_symbol("compile-l2", compile));
-	prepend((Symbol []) {make_symbol("load", _load_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("mutable-symbols", _mutable_symbols_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("immutable-symbols", _immutable_symbols_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("mutate-symbols", _mutate_symbols_)}, &bss, evaluate_region);
-	prepend((Symbol []) {make_symbol("start", start)}, &bss, evaluate_region);
-	
+	mutate_symbols(obj, bootstrap_symbols, sizeof(bootstrap_symbols) / sizeof(Symbol));
 	start(obj)();
 	destroy_region(evaluate_region);
 	return 0;
