@@ -41,29 +41,31 @@ bool equals(void *a, void *b) {
  */
 
 void compile_expressions(unsigned char **objdest, int *objdest_sz, list exprs, region elfreg, jmp_buf *handler) {
-	union expression *container = make_begin(), *t;
+	region manreg = create_region(0);
+	union expression *container = make_begin(manreg), *t;
 	{foreach(t, exprs) {
 		t->base.parent = container;
 	}}
 	container->begin.expressions = exprs;
-	union expression *root_function = make_function(), *program = root_function;
+	union expression *root_function = make_function(manreg), *program = root_function;
 	put(program, function.expression, container);
 	
 	visit_expressions(vfind_multiple_definitions, &program, handler);
-	visit_expressions(vlink_references, &program, handler);
+	visit_expressions(vlink_references, &program, (void* []) {handler, manreg});
 	visit_expressions(vescape_analysis, &program, NULL);
-	program = use_return_value(program, make_reference());
-	visit_expressions(vlayout_frames, &program, NULL);
-	visit_expressions(vgenerate_references, &program, NULL);
-	visit_expressions(vgenerate_continuation_expressions, &program, NULL);
-	visit_expressions(vgenerate_literals, &program, NULL);
-	visit_expressions(vgenerate_ifs, &program, NULL);
-	visit_expressions(vgenerate_function_expressions, &program, NULL);
+	program = use_return_value(program, make_reference(manreg), manreg);
+	visit_expressions(vlayout_frames, &program, manreg);
+	visit_expressions(vgenerate_references, &program, manreg);
+	visit_expressions(vgenerate_continuation_expressions, &program, manreg);
+	visit_expressions(vgenerate_literals, &program, manreg);
+	visit_expressions(vgenerate_ifs, &program, manreg);
+	visit_expressions(vgenerate_function_expressions, &program, manreg);
 	list locals = program->function.locals;
 	list globals = program->function.parameters;
-	program = generate_toplevel(program);
+	program = generate_toplevel(program, manreg);
 	visit_expressions(vmerge_begins, &program, NULL);
 	write_elf(program->begin.expressions, locals, globals, objdest, objdest_sz, elfreg);
+	destroy_region(manreg);
 }
 
 #include "parser.c"
@@ -76,17 +78,17 @@ void compile_expressions(unsigned char **objdest, int *objdest_sz, list exprs, r
  */
 
 void compile(unsigned char **objdest, int *objdest_sz, char *l2src, int l2src_sz, Symbol *env, region objreg, jmp_buf *handler) {
-	list expressions = nil();
-	list expansion_lists = nil();
 	region syntax_tree_region = create_region(0);
+	list expressions = nil(syntax_tree_region);
+	list expansion_lists = nil(syntax_tree_region);
 	
 	int pos = 0;
 	while(after_leading_space(l2src, l2src_sz, &pos)) {
 		build_expr_list_handler = handler;
-		list sexpr = build_expr_list(l2src, l2src_sz, &pos);
+		list sexpr = build_expr_list(l2src, l2src_sz, &pos, syntax_tree_region);
 		build_syntax_tree_handler = handler;
-		build_syntax_tree_expansion_lists = nil();
-		build_syntax_tree(sexpr, append(NULL, &expressions), syntax_tree_region);
+		build_syntax_tree_expansion_lists = nil(syntax_tree_region);
+		build_syntax_tree(sexpr, append(NULL, &expressions, syntax_tree_region), syntax_tree_region);
 		merge_onto(build_syntax_tree_expansion_lists, &expansion_lists);
 	}
 	

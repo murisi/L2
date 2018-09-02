@@ -13,14 +13,14 @@
  * of the list of lists to make it exist.
  */
 
-list *list_at(int index, list *l) {
+list *list_at(int index, list *l, region reg) {
 	int len = length(*l);
 	while(-len < index) {
 		l = &(*l)->rst;
 		len--;
 	}
 	while(index < -len) {
-		*l = lst(nil(), *l);
+		*l = lst(nil(reg), *l, reg);
 		len++;
 	}
 	return (list *) &(*l)->fst;
@@ -59,15 +59,15 @@ void build_syntax_tree(list d, union expression **s, region reg) {
 		(*s)->with.type = with;
 		build_syntax_tree_under(d->frst, &(*s)->with.reference, *s, reg);
 		build_syntax_tree_under(d->frrst, &(*s)->with.expression, *s, reg);
-		(*s)->with.parameter = make_list(1, NULL);
+		(*s)->with.parameter = make_list(reg, 1, NULL);
 	} else if(!strcmp(to_string(d->fst), "begin")) {
 		(*s)->begin.type = begin;
-		(*s)->begin.expressions = nil();
+		(*s)->begin.expressions = nil(reg);
 	
 		list t = d->rst;
 		list v;
 		foreach(v, t) {
-			build_syntax_tree_under(v, append(NULL, &(*s)->begin.expressions), *s, reg);
+			build_syntax_tree_under(v, append(NULL, &(*s)->begin.expressions, reg), *s, reg);
 		}
 	} else if(!strcmp(to_string(d->fst), "if")) {
 		if(length(d) != 4) {
@@ -91,15 +91,15 @@ void build_syntax_tree(list d, union expression **s, region reg) {
 		build_syntax_tree_under(d->frst, &(*s)->function.reference, *s, reg);
 		
 		if((*s)->function.type == function) {
-			(*s)->function.locals = nil();
+			(*s)->function.locals = nil(reg);
 		}
-		(*s)->function.parameters = nil();
+		(*s)->function.parameters = nil(reg);
 		list v;
 		foreach(v, d->frrst) {
 			if(!is_string(v)) {
 				thelongjmp(*build_syntax_tree_handler, make_special_form(d, (list) v));
 			}
-			build_syntax_tree_under((list) v, append(NULL, &(*s)->function.parameters), *s, reg);
+			build_syntax_tree_under((list) v, append(NULL, &(*s)->function.parameters, reg), *s, reg);
 		}
 	
 		build_syntax_tree_under(d->frrrst, &(*s)->function.expression, *s, reg);
@@ -131,9 +131,9 @@ void build_syntax_tree(list d, union expression **s, region reg) {
 		build_syntax_tree_under(d->frst, &(*s)->invoke.reference, *s, reg);
 	
 		list v;
-		(*s)->invoke.arguments = nil();
+		(*s)->invoke.arguments = nil(reg);
 		foreach(v, d->rrst) {
-			build_syntax_tree_under(v, append(NULL, &(*s)->invoke.arguments), *s, reg);
+			build_syntax_tree_under(v, append(NULL, &(*s)->invoke.arguments, reg), *s, reg);
 		}
 	} else {
 		(*s)->non_primitive.type = non_primitive;
@@ -141,7 +141,7 @@ void build_syntax_tree(list d, union expression **s, region reg) {
 		expansion_depth--;
 		build_syntax_tree_under(d->fst, &(*s)->non_primitive.function, *s, reg);
 		expansion_depth++;
-		prepend(s, list_at(expansion_depth, &build_syntax_tree_expansion_lists));
+		prepend(s, list_at(expansion_depth, &build_syntax_tree_expansion_lists, reg), reg);
 	}
 }
 
@@ -194,16 +194,16 @@ jmp_buf *expand_expressions_handler;
 void expand_expressions(list *expansion_lists, Symbol *env, region exprreg) {
 	list expansions, *remaining_expansion_lists;
 	foreachlist(remaining_expansion_lists, expansions, expansion_lists) {
-		list urgent_expansion_lists = nil();
+		list urgent_expansion_lists = nil(exprreg);
 		
 		union expression **expansion;
-		list expander_containers = nil();
-		list expander_container_names = nil();
+		list expander_containers = nil(exprreg);
+		list expander_container_names = nil(exprreg);
 		foreach(expansion, expansions) {
-			union expression *expander_container = make_function();
+			union expression *expander_container = make_function(exprreg);
 			put(expander_container, function.expression, (*expansion)->non_primitive.function);
-			append(expander_container, &expander_containers);
-			append(expander_container->function.reference->reference.name, &expander_container_names);
+			append(expander_container, &expander_containers, exprreg);
+			append(expander_container->function.reference->reference.name, &expander_container_names, exprreg);
 		}
 		
 		region objreg = create_region(0);
@@ -222,7 +222,7 @@ void expand_expressions(list *expansion_lists, Symbol *env, region exprreg) {
 			list transformed = macro((*expansion)->non_primitive.argument);
 			
 			build_syntax_tree_handler = expand_expressions_handler;
-			build_syntax_tree_expansion_lists = nil();
+			build_syntax_tree_expansion_lists = nil(exprreg);
 			build_syntax_tree_under(transformed, expansion, (*expansion)->non_primitive.parent, exprreg);
 			merge_onto(build_syntax_tree_expansion_lists, &urgent_expansion_lists);
 		}

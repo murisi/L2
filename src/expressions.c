@@ -147,15 +147,15 @@ union expression {
 	struct np_expression non_primitive;
 };
 
-union expression *make_literal(long int value) {
-	union expression *t = calloc(1, sizeof(union expression));
+union expression *make_literal(long int value, region reg) {
+	union expression *t = region_malloc(reg, sizeof(union expression));
 	t->literal.type = literal;
 	t->literal.value = value;
 	return t;
 }
 
-union expression *make_reference() {
-	union expression *ref = calloc(1, sizeof(union expression));
+union expression *make_reference(region reg) {
+	union expression *ref = region_malloc(reg, sizeof(union expression));
 	ref->reference.type = reference;
 	ref->reference.name = "";
 	ref->reference.referent = ref;
@@ -179,21 +179,21 @@ bool strequal(void *a, void *b) {
 	return strcmp(a, b) == 0;
 }
 
-union expression *make_begin() {
-	union expression *beg = calloc(1, sizeof(union expression));
+union expression *make_begin(region reg) {
+	union expression *beg = region_malloc(reg, sizeof(union expression));
 	beg->begin.type = begin;
-	beg->begin.expressions = nil();
+	beg->begin.expressions = nil(reg);
 	return beg;
 }
 
-union expression *make_function() {
-	union expression *func = calloc(1, sizeof(union expression));
+union expression *make_function(region reg) {
+	union expression *func = region_malloc(reg, sizeof(union expression));
 	func->function.type = function;
-	func->function.reference = make_reference();
+	func->function.reference = make_reference(reg);
 	func->function.reference->reference.parent = func;
-	func->function.parameters = nil();
-	func->function.locals = nil();
-	func->function.expression = make_begin();
+	func->function.parameters = nil(reg);
+	func->function.locals = nil(reg);
+	func->function.expression = make_begin(reg);
 	return func;
 }
 
@@ -204,27 +204,27 @@ union expression *make_function() {
 	_set_val->base.parent = _set_expr; \
 }
 
-union expression *use(int opcode) {
-	union expression *u = calloc(1, sizeof(union expression));
+union expression *use(int opcode, region reg) {
+	union expression *u = region_malloc(reg, sizeof(union expression));
 	u->instruction.type = instruction;
 	u->instruction.opcode = opcode;
-	u->instruction.arguments = nil();
+	u->instruction.arguments = nil(reg);
 	return u;
 }
 
-union expression *prepend_parameter(union expression *function) {
-	union expression *v = make_reference();
+union expression *prepend_parameter(union expression *function, region reg) {
+	union expression *v = make_reference(reg);
 	v->reference.parent = function;
 	v->reference.referent = v;
-	prepend(v, &(function->function.parameters));
+	prepend(v, &(function->function.parameters), reg);
 	return v;
 }
 
-union expression *make_instr(int opcode, int arg_count, ...) {
-	union expression *u = calloc(1, sizeof(union expression));
+union expression *make_instr(region reg, int opcode, int arg_count, ...) {
+	union expression *u = region_malloc(reg, sizeof(union expression));
 	u->instruction.type = instruction;
 	u->instruction.opcode = opcode;
-	u->instruction.arguments = nil();
+	u->instruction.arguments = nil(reg);
 	
 	va_list valist;
 	va_start(valist, arg_count);
@@ -233,7 +233,7 @@ union expression *make_instr(int opcode, int arg_count, ...) {
 	for(i = 0; i < arg_count; i++) {
 		union expression *arg = va_arg(valist, union expression *);
 		arg->base.parent = u;
-		append(arg, &u->instruction.arguments);
+		append(arg, &u->instruction.arguments, reg);
 	}
 	va_end(valist);
 	return u;

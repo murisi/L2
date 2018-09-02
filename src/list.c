@@ -12,8 +12,8 @@ typedef struct _list_* list;
 #define frrrrrst rst->rst->rst->rst->rst->fst
 #define rrrrrrst rst->rst->rst->rst->rst->rst
 
-list nil() {
-	list s = malloc(sizeof(struct _list_));
+list nil(region reg) {
+	list s = region_malloc(reg, sizeof(struct _list_));
 	s->fst = s;
 	s->rst = NULL;
 	return s;
@@ -38,18 +38,18 @@ bool is_nil(list s) {
 	w = u; \
 	for(; !is_nil(*w) ? (t = (*w)->fst, true) : false; w = &((*w)->rst))
 
-void *append(void *data, list *l) {
+void *append(void *data, list *l, region reg) {
 	while(!is_nil(*l)) {
 		l = &((*l)->rst);
 	}
-	*l = malloc(sizeof(struct _list_));
+	*l = region_malloc(reg, sizeof(struct _list_));
 	(*l)->fst = data;
-	(*l)->rst = nil();
+	(*l)->rst = nil(reg);
 	return &(*l)->fst;
 }
 
-list lst(void *data, list l) {
-	list ret = calloc(1, sizeof(struct _list_));
+list lst(void *data, list l, region reg) {
+	list ret = region_malloc(reg, sizeof(struct _list_));
 	ret->fst = data;
 	ret->rst = l;
 	return ret;
@@ -62,17 +62,17 @@ void append_list(list *fst, list snd) {
 	*fst = snd;
 }
 
-void prepend(void *data, list *l) {
-	list ret = malloc(sizeof(struct _list_));
+void prepend(void *data, list *l, region reg) {
+	list ret = region_malloc(reg, sizeof(struct _list_));
 	ret->fst = data;
 	ret->rst = *l;
 	*l = ret;
 }
 
-list address_list(list l) {
-	list mapped = nil();
+list address_list(list l, region reg) {
+	list mapped = nil(reg);
 	for(; !is_nil(l); l = l->rst) {
-		append(&l->fst, &mapped);
+		append(&l->fst, &mapped, reg);
 	}
 	return mapped;
 }
@@ -83,24 +83,24 @@ int length(list l) {
 	return size;
 }
 
-list make_list(int len, ...) {
-	list lst = nil(), *t = &lst;
+list make_list(region reg, int len, ...) {
+	list lst = nil(reg), *t = &lst;
 	va_list vlist;
 	va_start(vlist, len);
 	
 	int i;
 	for(i = 0; i < len; i++) {
-		append(va_arg(vlist, void *), t);
+		append(va_arg(vlist, void *), t, reg);
 		t = &((*t)->rst);
 	}
 	return lst;
 }
 
-list reverse(list l) {
-	list ret = nil();
+list reverse(list l, region reg) {
+	list ret = nil(reg);
 	void *data;
 	foreach(data, l) {
-		prepend(data, &ret);
+		prepend(data, &ret, reg);
 	}
 	return ret;
 }

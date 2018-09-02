@@ -21,12 +21,14 @@ union expression *vfind_multiple_definitions(union expression *e, void *ctx) {
 			}
 			break;
 		} case continuation: case function: {
-			list ref_with_params = lst(e->continuation.reference, e->continuation.parameters);
+			region tempreg = create_region(0);
+			list ref_with_params = lst(e->continuation.reference, e->continuation.parameters, tempreg);
 			foreachlist(partial, t, &ref_with_params) {
 				if(exists(reference_named, &(*partial)->rst, t->reference.name)) {
 					thelongjmp(*handler, make_multiple_definition(t->reference.name));
 				}
 			}
+			destroy_region(tempreg);
 			break;
 		}
 	}
@@ -107,11 +109,12 @@ union expression *root_function_of(union expression *s) {
 }
 
 union expression *vlink_references(union expression *s, void *ctx) {
-	jmp_buf *handler = ctx;
+	jmp_buf *handler = ((void **) ctx)[0];
+	region *r = ((void **) ctx)[1];
 	if(s->base.type == reference) {
 		s->reference.referent = referent_of(s);
 		if(s->reference.referent == NULL) {
-			s->reference.referent = prepend_parameter(root_function_of(s));
+			s->reference.referent = prepend_parameter(root_function_of(s), r);
 			s->reference.referent->reference.name = s->reference.name;
 		} else if(is_jump_reference(s) && is_c_reference(s->reference.referent) &&
 			length(s->reference.parent->jump.arguments) != length(target_expression(s)->continuation.parameters)) {
@@ -149,10 +152,11 @@ union expression *vescape_analysis(union expression *s, void *ctx) {
 }
 
 void visit_expressions(union expression *(*visitor)(union expression *, void *), union expression **s, void *ctx) {
+	region tempreg = create_region(0);
 	switch((*s)->base.type) {
 		case begin: {
 			union expression **t;
-			foreach(t, address_list((*s)->begin.expressions)) {
+			foreach(t, address_list((*s)->begin.expressions, tempreg)) {
 				visit_expressions(visitor, t, ctx);
 			}
 			break;
@@ -164,7 +168,7 @@ void visit_expressions(union expression *(*visitor)(union expression *, void *),
 		} case function: case continuation: case with: {
 			if((*s)->base.type == function || (*s)->base.type == continuation) {
 				union expression **t;
-				foreach(t, address_list((*s)->function.parameters)) {
+				foreach(t, address_list((*s)->function.parameters, tempreg)) {
 					visit_expressions(visitor, t, ctx);
 				}
 			}
@@ -173,79 +177,80 @@ void visit_expressions(union expression *(*visitor)(union expression *, void *),
 			break;
 		} case jump: case invoke: {
 			union expression **t;
-			foreach(t, lst(&(*s)->invoke.reference, address_list((*s)->invoke.arguments))) {
+			foreach(t, lst(&(*s)->invoke.reference, address_list((*s)->invoke.arguments, tempreg), tempreg)) {
 				visit_expressions(visitor, t, ctx);
 			}
 			break;
 		}
 	}
+	destroy_region(tempreg);
 	union expression *parent = (*s)->base.parent;
 	*s = (*visitor)(*s, ctx);
 	(*s)->base.parent = parent;
 }
 
-#define emit(x) { \
+#define emit(x, r) { \
 	union expression *_emit_x = x; \
-	append(_emit_x, &container->begin.expressions); \
+	append(_emit_x, &container->begin.expressions, r); \
 	_emit_x->base.parent = container; \
 }
 
-union expression *make_local(union expression *function) {
-	union expression *r = make_reference();
-	r->reference.parent = function;
-	prepend(r, &function->function.locals);
-	return r;
+union expression *make_local(union expression *function, region r) {
+	union expression *ref = make_reference(r);
+	ref->reference.parent = function;
+	prepend(ref, &function->function.locals, r);
+	return ref;
 }
 
 // Renders the "parent" field meaningless
-union expression *use_return_value(union expression *n, union expression *ret_val) {
+union expression *use_return_value(union expression *n, union expression *ret_val, region r) {
 	switch(n->base.type) {
 		case with: {
-			n->with.parameter->fst = make_reference();
+			n->with.parameter->fst = make_reference(r);
 		} case continuation: {
 			n->continuation.return_value = ret_val;
-			put(n, continuation.expression, use_return_value(n->continuation.expression, make_local(get_zeroth_function(n))));
+			put(n, continuation.expression, use_return_value(n->continuation.expression, make_local(get_zeroth_function(n), r), r));
 			return n;
 		} case function: {
 			n->function.return_value = ret_val;
-			n->function.expression_return_value = make_local(n);
-			put(n, function.expression, use_return_value(n->function.expression, n->function.expression_return_value));
+			n->function.expression_return_value = make_local(n, r);
+			put(n, function.expression, use_return_value(n->function.expression, n->function.expression_return_value, r));
 			return n;
 		} case invoke: case jump: {
-			union expression *container = make_begin();
+			union expression *container = make_begin(r);
 			
 			if(n->base.type == jump && n->jump.short_circuit && n->jump.reference->base.type == reference) {
 				n->jump.reference->reference.return_value = NULL;
 			} else {
-				union expression *ref_ret_val = make_local(get_zeroth_function(n));
-				emit(use_return_value(n->invoke.reference, ref_ret_val));
+				union expression *ref_ret_val = make_local(get_zeroth_function(n), r);
+				emit(use_return_value(n->invoke.reference, ref_ret_val, r), r);
 				n->invoke.reference = ref_ret_val;
 			}
 			
 			union expression **t;
-			foreach(t, address_list(n->invoke.arguments)) {
-				union expression *arg_ret_val = make_local(get_zeroth_function(n));
-				emit(use_return_value(*t, arg_ret_val));
+			foreach(t, address_list(n->invoke.arguments, r)) {
+				union expression *arg_ret_val = make_local(get_zeroth_function(n), r);
+				emit(use_return_value(*t, arg_ret_val, r), r);
 				*t = arg_ret_val;
 			}
 			n->invoke.return_value = ret_val;
-			emit(n);
+			emit(n, r);
 			return container;
 		} case _if: {
-			union expression *container = make_begin();
+			union expression *container = make_begin(r);
 			
-			put(n, _if.consequent, use_return_value(n->_if.consequent, ret_val));
-			put(n, _if.alternate, use_return_value(n->_if.alternate, ret_val));
+			put(n, _if.consequent, use_return_value(n->_if.consequent, ret_val, r));
+			put(n, _if.alternate, use_return_value(n->_if.alternate, ret_val, r));
 			
-			union expression *cond_ret_val = make_local(get_zeroth_function(n));
-			emit(use_return_value(n->_if.condition, cond_ret_val));
+			union expression *cond_ret_val = make_local(get_zeroth_function(n), r);
+			emit(use_return_value(n->_if.condition, cond_ret_val, r), r);
 			put(n, _if.condition, cond_ret_val);
-			emit(n);
+			emit(n, r);
 			return container;
 		} case begin: {
 			union expression **t;
-			foreach(t, address_list(n->begin.expressions)) {
-				*t = use_return_value(*t, make_local(get_zeroth_function(n)));
+			foreach(t, address_list(n->begin.expressions, r)) {
+				*t = use_return_value(*t, make_local(get_zeroth_function(n), r), r);
 				(*t)->base.parent = n;
 			}
 			return n;
