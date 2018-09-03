@@ -147,7 +147,7 @@ union expression {
 	struct np_expression non_primitive;
 };
 
-union expression *make_literal(long int value, region reg) {
+union expression *make_literal(unsigned long value, region reg) {
 	union expression *t = region_malloc(reg, sizeof(union expression));
 	t->literal.type = literal;
 	t->literal.value = value;

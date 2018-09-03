@@ -127,24 +127,37 @@ void mymunmap(void *ptr, unsigned long len) {
 	mysyscall(SYS_MUNMAP, ptr, len);
 }
 
-int round_size(unsigned long x, unsigned long nearest) {
+unsigned long round_size(unsigned long x, unsigned long nearest) {
 	return x + (nearest - (x % nearest));
 }
 
 typedef void* region;
 
 region create_region(unsigned long min_capacity) {
-	unsigned long len = round_size(min_capacity + 3 * sizeof(void *), PAGE_SIZE);
+	unsigned long len = round_size(min_capacity + 4 * sizeof(void *), PAGE_SIZE);
 	region reg = mymmap(len);
 	((void **) reg)[0] = NULL;
-	((void **) reg)[1] = ((void **) reg) + 3;
+	((void **) reg)[1] = ((void **) reg) + 4;
 	((void **) reg)[2] = reg + len;
+	((void **) reg)[3] = (void *) 0xDEADBEEFDEADBEEFUL;
 	return reg;
 }
 
 #define ALIGNMENT 8
 
+void check_region_integrity(region reg) {
+	do {
+		if(((void **) reg)[3] != (void *) 0xDEADBEEFDEADBEEFUL) {
+			*((void **) NULL) = NULL;
+			return;
+		}
+		reg = ((void **) reg)[0];
+	} while(reg);
+}
+
 void *region_malloc(region reg, unsigned long len) {
+	check_region_integrity(reg);
+	
 	len = round_size(len, ALIGNMENT);
 	while(((void **) reg)[1] + len > ((void **) reg)[2]) {
 		if(!((void **) reg)[0]) {
@@ -158,6 +171,8 @@ void *region_malloc(region reg, unsigned long len) {
 }
 
 void destroy_region(region reg) {
+	check_region_integrity(reg);
+	
 	do {
 		region next_reg = ((void **) reg)[0];
 		mymunmap(reg, ((void **) reg)[2] - reg);
