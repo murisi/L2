@@ -26,7 +26,7 @@ bool equals(void *a, void *b) {
  * executable that it is embedded in.
  */
 
-void evaluate_expressions(list exprs, myjmp_buf *handler) {
+void evaluate_expressions(list exprs, list env, myjmp_buf *handler) {
 	region manreg = create_region(0);
 	union expression *container = make_begin(manreg), *t;
 	{foreach(t, exprs) {
@@ -54,7 +54,10 @@ void evaluate_expressions(list exprs, myjmp_buf *handler) {
 	unsigned char *objdest; int objdest_sz;
 	write_elf(program->begin.expressions, locals, globals, &objdest, &objdest_sz, manreg);
 	Object *obj = load(objdest, objdest_sz, manreg);
-	//mutate_symbols(obj, bootstrap_symbols, sizeof(bootstrap_symbols) / sizeof(Symbol));
+	Symbol *sym;
+	foreach(sym, env) {
+		mutate_symbols(obj, sym, 1);
+	}
 	start(obj)();
 	destroy_region(manreg);
 }
@@ -82,7 +85,7 @@ void evaluate_source(char *l2src, int l2src_sz, list env, myjmp_buf *handler) {
 			syntax_tree_region);
 	}
 	
-	evaluate_expressions(expressions, handler);
+	evaluate_expressions(expressions, env, handler);
 	destroy_region(syntax_tree_region);
 }
 

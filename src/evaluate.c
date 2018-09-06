@@ -52,7 +52,7 @@ void _set_(void *dest, void *src) {
 }
 
 //These symbols are enough for any L2 code to bootstrap
-Symbol bootstrap_symbols[] = {
+Symbol sexpr_symbols[] = {
 	{.name = "-!-", .address = _exclamation_mark_},
 	{.name = "-\"-", .address = _double_quotation_},
 	{.name = "-#-", .address = _number_sign_},
@@ -147,7 +147,9 @@ Symbol bootstrap_symbols[] = {
 	{.name = "lst?", .address = is_lst},
 	{.name = "nil?", .address = is_nil},
 	{.name = "nil", .address = _nil_},
-	{.name = "char=", .address = char_equals}
+	{.name = "char=", .address = char_equals},
+	{.name = "get", .address = _get_},
+	{.name = "set", .address = _set_}
 };
 
 int main(int argc, char *argv[]) {
@@ -214,6 +216,10 @@ int main(int argc, char *argv[]) {
 	}
 	
 	list env = nil(evaluate_region);
+	int i;
+	for(i = 0; i < sizeof(sexpr_symbols) / sizeof(Symbol); i++) {
+		prepend(&sexpr_symbols[i], &env, evaluate_region);
+	}
 	unsigned char buf[mysize(argv[1])];
 	int fd = myopen(argv[1]);
 	myread(fd, buf, sizeof(buf));

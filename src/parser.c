@@ -1,4 +1,4 @@
-unsigned long execute_macro(list (*expander)(list), list arg, list bindings);
+unsigned long execute_macro(list (*expander)(list), list arg, list bindings, union expression *parent, list static_bindings, list dynamic_bindings);
 
 Symbol *make_symbol(char *nm, void *addr, region r) {
 	Symbol *sym = region_malloc(r, sizeof(Symbol));
@@ -125,12 +125,6 @@ union expression *build_syntax_tree(list d, union expression *parent, list stati
 			append(build_syntax_tree(v, s, static_bindings, dynamic_bindings, reg), &s->invoke.arguments, reg);
 		}
 	} else {
-		s->invoke.type = invoke;
-		s->invoke.arguments = nil(reg);
-		s->invoke.reference = make_literal((unsigned long) execute_macro, reg);
-		append(build_syntax_tree(d->fst, s, static_bindings, dynamic_bindings, reg), &s->invoke.arguments, reg);
-		append(make_literal((unsigned long) d->rst, reg), &s->invoke.arguments, reg);
-		
 		union expression *bindings_code = make_invoke1(make_literal((unsigned long) nil, reg),
 			make_literal((unsigned long) reg, reg), reg);
 		//Loops have special ordering to allow for shadowing
@@ -147,15 +141,22 @@ union expression *build_syntax_tree(list d, union expression *parent, list stati
 					use_reference(ref, reg), make_literal((unsigned long) reg, reg), reg),
 				bindings_code, make_literal((unsigned long) reg, reg), reg);
 		}}
-		bindings_code->base.parent = s;
-		append(bindings_code, &s->invoke.arguments, reg);
+		
+		s = make_invoke6(make_literal((unsigned long) execute_macro, reg),
+			build_syntax_tree(d->fst, s, static_bindings, dynamic_bindings, reg), make_literal((unsigned long) d->rst, reg),
+			bindings_code, make_literal((unsigned long) parent, reg), make_literal((unsigned long) static_bindings, reg),
+			make_literal((unsigned long) dynamic_bindings, reg), reg);
+		s->invoke.parent = parent;
 	}
 	return s;
 }
 
 #undef WORD_BIN_LEN
 
-unsigned long execute_macro(list (*expander)(list), list arg, list bindings) {
-	//list transformed = expander(arg);
-	mywrite_str(STDOUT, "hey\n");
+unsigned long execute_macro(list (*expander)(list), list arg, list bindings, union expression *parent, list static_bindings, list dynamic_bindings) {
+	list transformed = expander(arg);
+	region reg = create_region(0);
+	//build_syntax_tree_handler = handler;
+	list exprs = lst(build_syntax_tree(transformed, parent, static_bindings, dynamic_bindings, reg), nil(reg), reg);
+	evaluate_expressions(exprs, bindings, NULL);
 }
