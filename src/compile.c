@@ -73,13 +73,9 @@ void compile(unsigned char **objdest, int *objdest_sz, char *l2src, int l2src_sz
 		build_expr_list_handler = handler;
 		list sexpr = build_expr_list(l2src, l2src_sz, &pos, syntax_tree_region);
 		build_syntax_tree_handler = handler;
-		build_syntax_tree_expansion_lists = nil(syntax_tree_region);
-		build_syntax_tree(sexpr, append(NULL, &expressions, syntax_tree_region), syntax_tree_region);
-		merge_onto(build_syntax_tree_expansion_lists, &expansion_lists);
+		append(build_syntax_tree(sexpr, NULL, syntax_tree_region), &expressions, syntax_tree_region);
 	}
 	
-	expand_expressions_handler = handler;
-	expand_expressions(&expansion_lists, env, syntax_tree_region);
 	compile_expressions(objdest, objdest_sz, expressions, objreg, handler);
 	destroy_region(syntax_tree_region);
 }

@@ -27,74 +27,6 @@ an_sexpr(i); an_sexpr(j); an_sexpr(k); an_sexpr(l); an_sexpr(m); an_sexpr(n); an
 an_sexpr(s); an_sexpr(t); an_sexpr(u); an_sexpr(v); an_sexpr(w); an_sexpr(x); an_sexpr(y); an_sexpr(z); char_sexpr(vertical_bar, '|');
 char_sexpr(tilde, '~');
 
-list _compile_(list dst, list src, list env) {
-	char *src_str = to_string(src, evaluate_region);
-	unsigned char buf[mysize(src_str)];
-	int fd = myopen(src_str);
-	myread(fd, buf, sizeof(buf));
-	myclose(fd);
-	list env_symbols = nil(evaluate_region);
-	list symbol;
-	foreach(symbol, env) {
-		Symbol *sym = region_malloc(evaluate_region, sizeof(Symbol));
-		sym->name = to_string(symbol->fst, evaluate_region);
-		sym->address = symbol->frst;
-		prepend(sym, &env_symbols, evaluate_region);
-	}
-	unsigned char *raw_obj; int obj_size;
-	compile(&raw_obj, &obj_size, buf, sizeof(buf), env_symbols, evaluate_region, &evaluate_handler);
-	int outfd = myopen(to_string(dst, evaluate_region));
-	mywrite(outfd, raw_obj, obj_size);
-	myclose(outfd);
-}
-
-list _bootstrap_symbols_();
-
-Object *_load_(list name) {
-	char *name_str = to_string(name, evaluate_region);
-	int obj_sz = mysize(name_str);
-	unsigned char *raw_obj = region_malloc(evaluate_region, obj_sz);
-	int fd = myopen(name_str);
-	myread(fd, raw_obj, obj_sz);
-	myclose(fd);
-	return load(raw_obj, obj_sz, evaluate_region);
-}
-
-list _mutable_symbols_(Object *obj) {
-	int msc = mutable_symbol_count(obj);
-	Symbol ms_arr[msc];
-	mutable_symbols(obj, ms_arr);
-	int i;
-	list ms_lst = nil(evaluate_region);
-	for(i = msc-1; i >= 0; i--) {
-		prepend(lst(build_symbol_sexpr(ms_arr[i].name, evaluate_region), lst(ms_arr[i].address, nil(evaluate_region), evaluate_region),
-			evaluate_region), &ms_lst, evaluate_region);
-	}
-	return ms_lst;
-}
-
-list _immutable_symbols_(Object *obj) {
-	int isc = immutable_symbol_count(obj);
-	Symbol is_arr[isc];
-	immutable_symbols(obj, is_arr);
-	int i;
-	list is_lst = nil(evaluate_region);
-	for(i = isc-1; i >= 0; i--) {
-		prepend(lst(build_symbol_sexpr(is_arr[i].name, evaluate_region), lst(is_arr[i].address, nil(evaluate_region), evaluate_region),
-			evaluate_region), &is_lst, evaluate_region);
-	}
-	return is_lst;
-}
-
-Object *_mutate_symbols_(Object *obj, list updates) {
-	int sc = length(updates);
-	list symbol;
-	foreach(symbol, updates) {
-		mutate_symbols(obj, (Symbol []) {make_symbol(to_string(symbol->fst, evaluate_region), symbol->frst)}, 1);
-	}
-	return obj;
-}
-
 void *_fst_(list l) {
 	return l->fst;
 }
@@ -215,27 +147,8 @@ Symbol bootstrap_symbols[] = {
 	{.name = "lst?", .address = is_lst},
 	{.name = "nil?", .address = is_nil},
 	{.name = "nil", .address = _nil_},
-	{.name = "char=", .address = char_equals},
-	{.name = "get", .address = _get_},
-	{.name = "set", .address = _set_},
-	{.name = "compile", .address = _compile_},
-	{.name = "load", .address = _load_},
-	{.name = "mutable-symbols", .address = _mutable_symbols_},
-	{.name = "immutable-symbols", .address = _immutable_symbols_},
-	{.name = "mutate-symbols", .address = _mutate_symbols_},
-	{.name = "start", .address = start},
-	{.name = "bootstrap-symbols", .address = _bootstrap_symbols_} //To ease further bootstrapping
+	{.name = "char=", .address = char_equals}
 };
-
-list _bootstrap_symbols_() {
-	list bss_sexpr = nil(evaluate_region);
-	int i;
-	for(i = 0; i < sizeof(bootstrap_symbols) / sizeof(Symbol); i++) {
-		prepend(lst(build_symbol_sexpr(bootstrap_symbols[i].name, evaluate_region), lst(bootstrap_symbols[i].address,
-			nil(evaluate_region), evaluate_region), evaluate_region), &bss_sexpr, evaluate_region);
-	}
-	return bss_sexpr;
-}
 
 int main(int argc, char *argv[]) {
 	//Initialize the error handler
