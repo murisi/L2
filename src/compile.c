@@ -15,10 +15,6 @@ typedef unsigned long int bool;
 #include "x86_64_object.c"
 #include "x86_64_assembler.c"
 
-bool equals(void *a, void *b) {
-	return a == b;
-}
-
 /*
  * Makes a new binary file at the path outbin from the list of primitive
  * expressions, exprs. The resulting binary file executes the list from top to
@@ -80,9 +76,8 @@ void evaluate_source(char *l2src, int l2src_sz, list env, myjmp_buf *handler) {
 	while(after_leading_space(l2src, l2src_sz, &pos)) {
 		build_expr_list_handler = handler;
 		list sexpr = build_expr_list(l2src, l2src_sz, &pos, syntax_tree_region);
-		build_syntax_tree_handler = handler;
-		append(build_syntax_tree(sexpr, NULL, nil(syntax_tree_region), nil(syntax_tree_region), syntax_tree_region), &expressions,
-			syntax_tree_region);
+		append(build_syntax_tree(sexpr, NULL, nil(syntax_tree_region), nil(syntax_tree_region), syntax_tree_region, handler),
+			&expressions, syntax_tree_region);
 	}
 	
 	evaluate_expressions(expressions, env, handler);

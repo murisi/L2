@@ -295,6 +295,13 @@ union expression *make_invoke6(union expression *ref, union expression *arg1, un
 	return u;
 }
 
+union expression *make_invoke7(union expression *ref, union expression *arg1, union expression *arg2, union expression *arg3, union expression *arg4, union expression *arg5, union expression *arg6, union expression *arg7, region reg) {
+	union expression *u = make_invoke6(ref, arg2, arg3, arg4, arg5, arg6, arg7, reg);
+	u->invoke.arguments = lst(arg1, u->invoke.arguments, reg);
+	arg1->base.parent = u;
+	return u;
+}
+
 void print_syntax_tree(union expression *s) {
 	switch(s->base.type) {
 		case begin: {
