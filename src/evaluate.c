@@ -218,11 +218,7 @@ int main(int argc, char *argv[]) {
 	int fd = myopen(argv[1]);
 	myread(fd, buf, sizeof(buf));
 	myclose(fd);
-	unsigned char *raw_obj; int obj_size;
-	compile(&raw_obj, &obj_size, buf, sizeof(buf), env, evaluate_region, &evaluate_handler);
-	Object *obj = load(raw_obj, obj_size, evaluate_region);
-	mutate_symbols(obj, bootstrap_symbols, sizeof(bootstrap_symbols) / sizeof(Symbol));
-	start(obj)();
+	evaluate_source(buf, sizeof(buf), env, &evaluate_handler);
 	destroy_region(evaluate_region);
 	return 0;
 }

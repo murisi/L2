@@ -26,7 +26,7 @@ bool equals(void *a, void *b) {
  * executable that it is embedded in.
  */
 
-void compile_expressions(unsigned char **objdest, int *objdest_sz, list exprs, region elfreg, myjmp_buf *handler) {
+void evaluate_expressions(list exprs, myjmp_buf *handler) {
 	region manreg = create_region(0);
 	union expression *container = make_begin(manreg), *t;
 	{foreach(t, exprs) {
@@ -50,7 +50,12 @@ void compile_expressions(unsigned char **objdest, int *objdest_sz, list exprs, r
 	list globals = program->function.parameters;
 	program = generate_toplevel(program, manreg);
 	visit_expressions(vmerge_begins, &program, NULL);
-	write_elf(program->begin.expressions, locals, globals, objdest, objdest_sz, elfreg);
+	
+	unsigned char *objdest; int objdest_sz;
+	write_elf(program->begin.expressions, locals, globals, &objdest, &objdest_sz, manreg);
+	Object *obj = load(objdest, objdest_sz, manreg);
+	//mutate_symbols(obj, bootstrap_symbols, sizeof(bootstrap_symbols) / sizeof(Symbol));
+	start(obj)();
 	destroy_region(manreg);
 }
 
@@ -63,7 +68,7 @@ void compile_expressions(unsigned char **objdest, int *objdest_sz, list exprs, r
  * that it is embedded in.
  */
 
-void compile(unsigned char **objdest, int *objdest_sz, char *l2src, int l2src_sz, list env, region objreg, myjmp_buf *handler) {
+void evaluate_source(char *l2src, int l2src_sz, list env, myjmp_buf *handler) {
 	region syntax_tree_region = create_region(0);
 	list expressions = nil(syntax_tree_region);
 	list expansion_lists = nil(syntax_tree_region);
@@ -73,10 +78,11 @@ void compile(unsigned char **objdest, int *objdest_sz, char *l2src, int l2src_sz
 		build_expr_list_handler = handler;
 		list sexpr = build_expr_list(l2src, l2src_sz, &pos, syntax_tree_region);
 		build_syntax_tree_handler = handler;
-		append(build_syntax_tree(sexpr, NULL, syntax_tree_region), &expressions, syntax_tree_region);
+		append(build_syntax_tree(sexpr, NULL, nil(syntax_tree_region), nil(syntax_tree_region), syntax_tree_region), &expressions,
+			syntax_tree_region);
 	}
 	
-	compile_expressions(objdest, objdest_sz, expressions, objreg, handler);
+	evaluate_expressions(expressions, handler);
 	destroy_region(syntax_tree_region);
 }
 

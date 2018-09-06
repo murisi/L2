@@ -241,8 +241,6 @@ typedef struct {
 	void *address;
 } Symbol;
 
-#define make_symbol(nm, addr) (Symbol) {.name = nm, .address = addr}
-
 /*
  * Goes through the loaded object obj and modifies all occurences of symbols
  * with the same name as update to point to the same address as update.
