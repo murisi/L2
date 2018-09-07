@@ -22,7 +22,7 @@ typedef unsigned long int bool;
  * executable that it is embedded in.
  */
 
-void evaluate_expressions(list exprs, list env, myjmp_buf *handler) {
+void evaluate_expressions(list exprs, list static_bindings, myjmp_buf *handler) {
 	region manreg = create_region(0);
 	union expression *container = make_begin(manreg), *t;
 	{foreach(t, exprs) {
@@ -51,7 +51,7 @@ void evaluate_expressions(list exprs, list env, myjmp_buf *handler) {
 	write_elf(program->begin.expressions, locals, globals, &objdest, &objdest_sz, manreg);
 	Object *obj = load(objdest, objdest_sz, manreg);
 	Symbol *sym;
-	foreach(sym, env) {
+	foreach(sym, static_bindings) {
 		mutate_symbols(obj, sym, 1);
 	}
 	start(obj)();
@@ -67,20 +67,26 @@ void evaluate_expressions(list exprs, list env, myjmp_buf *handler) {
  * that it is embedded in.
  */
 
-void evaluate_source(char *l2src, int l2src_sz, list env, myjmp_buf *handler) {
+void evaluate_source(char *l2src, int l2src_sz, list static_bindings, myjmp_buf *handler) {
 	region syntax_tree_region = create_region(0);
 	list expressions = nil(syntax_tree_region);
 	list expansion_lists = nil(syntax_tree_region);
+	list st_ref_nms = nil(syntax_tree_region);
+	
+	Symbol *sym;
+	foreach(sym, static_bindings) {
+		prepend(sym->name, &st_ref_nms, syntax_tree_region);
+	}
 	
 	int pos = 0;
 	while(after_leading_space(l2src, l2src_sz, &pos)) {
 		build_expr_list_handler = handler;
 		list sexpr = build_expr_list(l2src, l2src_sz, &pos, syntax_tree_region);
-		append(build_syntax_tree(sexpr, NULL, nil(syntax_tree_region), nil(syntax_tree_region), syntax_tree_region, handler),
-			&expressions, syntax_tree_region);
+		append(build_syntax_tree(sexpr, NULL, nil(syntax_tree_region), nil(syntax_tree_region), syntax_tree_region,
+			handler), &expressions, syntax_tree_region);
 	}
 	
-	evaluate_expressions(expressions, env, handler);
+	evaluate_expressions(expressions, static_bindings, handler);
 	destroy_region(syntax_tree_region);
 }
 

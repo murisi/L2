@@ -1,4 +1,4 @@
-unsigned long execute_macro(list (*expander)(list), list arg, list bindings, union expression *parent, list static_bindings, list dynamic_bindings, myjmp_buf *handler);
+unsigned long execute_macro(list (*expander)(list), list arg, list bindings, union expression *parent, list st_ref_nms, list dyn_ref_nms, myjmp_buf *handler);
 
 Symbol *make_symbol(char *nm, void *addr, region r) {
 	Symbol *sym = region_malloc(r, sizeof(Symbol));
@@ -19,10 +19,10 @@ Symbol *make_symbol(char *nm, void *addr, region r) {
  * happen second, and so on.
  */
 
-union expression *build_syntax_tree(list d, union expression *parent, list static_bindings, list dynamic_bindings, region reg, myjmp_buf *handler) {
+union expression *build_syntax_tree(list d, union expression *parent, list st_ref_nms, list dyn_ref_nms, region reg, myjmp_buf *handler) {
 	union expression *s = region_malloc(reg, sizeof(union expression));
 	s->base.parent = parent;
-	list *bindings = get_zeroth_function(s) ? &dynamic_bindings : &static_bindings;
+	list *bindings = get_zeroth_function(s) ? &dyn_ref_nms : &st_ref_nms;
 	
 	if(is_string(d)) {
 		char *str = to_string(d, reg);
@@ -37,8 +37,8 @@ union expression *build_syntax_tree(list d, union expression *parent, list stati
 	
 		s->with.type = with;
 		s->with.reference = build_syntax_tree(d->frst, s, NULL, NULL, reg, handler);
-		prepend(s->with.reference, bindings, reg);
-		s->with.expression = build_syntax_tree(d->frrst, s, static_bindings, dynamic_bindings, reg, handler);
+		prepend(s->with.reference->reference.name, bindings, reg);
+		s->with.expression = build_syntax_tree(d->frrst, s, st_ref_nms, dyn_ref_nms, reg, handler);
 		s->with.parameter = lst(NULL, nil(reg), reg);
 	} else if(!strcmp(to_string(d->fst, reg), "begin")) {
 		s->begin.type = begin;
@@ -47,7 +47,7 @@ union expression *build_syntax_tree(list d, union expression *parent, list stati
 		list t = d->rst;
 		list v;
 		foreach(v, t) {
-			append(build_syntax_tree(v, s, static_bindings, dynamic_bindings, reg, handler), &s->begin.expressions, reg);
+			append(build_syntax_tree(v, s, st_ref_nms, dyn_ref_nms, reg, handler), &s->begin.expressions, reg);
 		}
 	} else if(!strcmp(to_string(d->fst, reg), "if")) {
 		if(length(d) != 4) {
@@ -55,9 +55,9 @@ union expression *build_syntax_tree(list d, union expression *parent, list stati
 		}
 	
 		s->_if.type = _if;
-		s->_if.condition = build_syntax_tree(d->frst, s, static_bindings, dynamic_bindings, reg, handler);
-		s->_if.consequent = build_syntax_tree(d->frrst, s, static_bindings, dynamic_bindings, reg, handler);
-		s->_if.alternate = build_syntax_tree(d->frrrst, s, static_bindings, dynamic_bindings, reg, handler);
+		s->_if.condition = build_syntax_tree(d->frst, s, st_ref_nms, dyn_ref_nms, reg, handler);
+		s->_if.consequent = build_syntax_tree(d->frrst, s, st_ref_nms, dyn_ref_nms, reg, handler);
+		s->_if.alternate = build_syntax_tree(d->frrrst, s, st_ref_nms, dyn_ref_nms, reg, handler);
 	} else if(!strcmp(to_string(d->fst, reg), "function") || !strcmp(to_string(d->fst, reg), "continuation")) {
 		if(length(d) != 4) {
 			throw_special_form(d, NULL, handler);
@@ -69,11 +69,11 @@ union expression *build_syntax_tree(list d, union expression *parent, list stati
 		
 		s->function.type = !strcmp(to_string(d->fst, reg), "function") ? function : continuation;
 		if(s->function.type == function) {
-			bindings = &dynamic_bindings;
+			bindings = &dyn_ref_nms;
 			*bindings = nil(reg);
 		}
-		s->function.reference = build_syntax_tree(d->frst, s, static_bindings, dynamic_bindings, reg, handler);
-		prepend(s->function.reference, bindings, reg);
+		s->function.reference = build_syntax_tree(d->frst, s, st_ref_nms, dyn_ref_nms, reg, handler);
+		prepend(s->function.reference->reference.name, bindings, reg);
 		
 		if(s->function.type == function) {
 			s->function.locals = nil(reg);
@@ -84,12 +84,12 @@ union expression *build_syntax_tree(list d, union expression *parent, list stati
 			if(!is_string(v)) {
 				throw_special_form(d, (list) v, handler);
 			}
-			union expression *param = build_syntax_tree((list) v, s, static_bindings, dynamic_bindings, reg, handler);
+			union expression *param = build_syntax_tree((list) v, s, st_ref_nms, dyn_ref_nms, reg, handler);
 			append(param, &s->function.parameters, reg);
-			prepend(param, bindings, reg);
+			prepend(param->reference.name, bindings, reg);
 		}
 	
-		s->function.expression = build_syntax_tree(d->frrrst, s, static_bindings, dynamic_bindings, reg, handler);
+		s->function.expression = build_syntax_tree(d->frrrst, s, st_ref_nms, dyn_ref_nms, reg, handler);
 	} else if(!strcmp(to_string(d->fst, reg), "literal")) {
 		char *str;
 		if(length(d) != 2) {
@@ -115,35 +115,39 @@ union expression *build_syntax_tree(list d, union expression *parent, list stati
 		}
 	
 		s->invoke.type = !strcmp(to_string(d->fst, reg), "invoke") ? invoke : jump;
-		s->invoke.reference = build_syntax_tree(d->frst, s, static_bindings, dynamic_bindings, reg, handler);
+		s->invoke.reference = build_syntax_tree(d->frst, s, st_ref_nms, dyn_ref_nms, reg, handler);
 	
 		list v;
 		s->invoke.arguments = nil(reg);
 		foreach(v, d->rrst) {
-			append(build_syntax_tree(v, s, static_bindings, dynamic_bindings, reg, handler), &s->invoke.arguments, reg);
+			append(build_syntax_tree(v, s, st_ref_nms, dyn_ref_nms, reg, handler), &s->invoke.arguments, reg);
 		}
 	} else {
 		union expression *bindings_code = make_invoke1(make_literal((unsigned long) nil, reg),
 			make_literal((unsigned long) reg, reg), reg);
 		//Loops have special ordering to allow for shadowing
-		union expression *ref;
-		{foreach(ref, reverse(static_bindings, reg)) {
+		char *name;
+		{foreach(name, reverse(st_ref_nms, reg)) {
+			union expression *ref = make_reference(reg);
+			ref->reference.name = name;
 			bindings_code = make_invoke3(make_literal((unsigned long) lst, reg),
-				make_invoke3(make_literal((unsigned long) make_symbol, reg), make_literal((unsigned long) ref->reference.name, reg),
-					use_reference(ref, reg), make_literal((unsigned long) reg, reg), reg),
+				make_invoke3(make_literal((unsigned long) make_symbol, reg), make_literal((unsigned long) name, reg),
+					ref, make_literal((unsigned long) reg, reg), reg),
 				bindings_code, make_literal((unsigned long) reg, reg), reg);
 		}}
-		{foreach(ref, reverse(dynamic_bindings, reg)) {
+		{foreach(name, reverse(dyn_ref_nms, reg)) {
+			union expression *ref = make_reference(reg);
+			ref->reference.name = name;
 			bindings_code = make_invoke3(make_literal((unsigned long) lst, reg),
-				make_invoke3(make_literal((unsigned long) make_symbol, reg), make_literal((unsigned long) ref->reference.name, reg),
-					use_reference(ref, reg), make_literal((unsigned long) reg, reg), reg),
+				make_invoke3(make_literal((unsigned long) make_symbol, reg), make_literal((unsigned long) name, reg),
+					ref, make_literal((unsigned long) reg, reg), reg),
 				bindings_code, make_literal((unsigned long) reg, reg), reg);
 		}}
 		
 		s = make_invoke7(make_literal((unsigned long) execute_macro, reg),
-			build_syntax_tree(d->fst, s, static_bindings, dynamic_bindings, reg, handler), make_literal((unsigned long) d->rst, reg),
-			bindings_code, make_literal((unsigned long) parent, reg), make_literal((unsigned long) static_bindings, reg),
-			make_literal((unsigned long) dynamic_bindings, reg), make_literal((unsigned long) handler, reg), reg);
+			build_syntax_tree(d->fst, s, st_ref_nms, dyn_ref_nms, reg, handler), make_literal((unsigned long) d->rst, reg),
+			bindings_code, make_literal((unsigned long) parent, reg), make_literal((unsigned long) st_ref_nms, reg),
+			make_literal((unsigned long) dyn_ref_nms, reg), make_literal((unsigned long) handler, reg), reg);
 		s->invoke.parent = parent;
 	}
 	return s;
@@ -151,10 +155,9 @@ union expression *build_syntax_tree(list d, union expression *parent, list stati
 
 #undef WORD_BIN_LEN
 
-unsigned long execute_macro(list (*expander)(list), list arg, list bindings, union expression *parent, list static_bindings, list dynamic_bindings, myjmp_buf *handler) {
-	list transformed = expander(arg);
+unsigned long execute_macro(list (*expander)(list), list arg, list bindings, union expression *parent, list st_ref_nms, list dyn_ref_nms, myjmp_buf *handler) {
 	region reg = create_region(0);
-	evaluate_expressions(lst(build_syntax_tree(transformed, parent, static_bindings, dynamic_bindings, reg, handler), nil(reg), reg),
+	evaluate_expressions(lst(build_syntax_tree(expander(arg), parent, st_ref_nms, dyn_ref_nms, reg, handler), nil(reg), reg),
 		bindings, handler);
 	destroy_region(reg);
 }

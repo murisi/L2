@@ -162,14 +162,6 @@ union expression *make_reference(region reg) {
 	return ref;
 }
 
-union expression *use_reference(union expression *theref, region reg) {
-	union expression *ref = region_malloc(reg, sizeof(union expression));
-	ref->reference.type = reference;
-	ref->reference.name = theref->reference.name;
-	ref->reference.referent = theref;
-	return ref;
-}
-
 bool strequal(void *a, void *b) {
 	return strcmp(a, b) == 0;
 }
