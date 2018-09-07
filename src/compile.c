@@ -82,7 +82,7 @@ void evaluate_source(char *l2src, int l2src_sz, list static_bindings, myjmp_buf 
 	while(after_leading_space(l2src, l2src_sz, &pos)) {
 		build_expr_list_handler = handler;
 		list sexpr = build_expr_list(l2src, l2src_sz, &pos, syntax_tree_region);
-		append(build_syntax_tree(sexpr, NULL, nil(syntax_tree_region), nil(syntax_tree_region), syntax_tree_region,
+		append(build_syntax_tree(sexpr, NULL, st_ref_nms, nil(syntax_tree_region), syntax_tree_region,
 			handler), &expressions, syntax_tree_region);
 	}
 	

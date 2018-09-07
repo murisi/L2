@@ -155,9 +155,15 @@ union expression *build_syntax_tree(list d, union expression *parent, list st_re
 
 #undef WORD_BIN_LEN
 
+void _set_(void *dest, void *src) {
+	*((void **) dest) = src;
+}
+
 unsigned long execute_macro(list (*expander)(list), list arg, list bindings, union expression *parent, list st_ref_nms, list dyn_ref_nms, myjmp_buf *handler) {
 	region reg = create_region(0);
-	evaluate_expressions(lst(build_syntax_tree(expander(arg), parent, st_ref_nms, dyn_ref_nms, reg, handler), nil(reg), reg),
-		bindings, handler);
+	unsigned long retval;
+	evaluate_expressions(lst(make_invoke2(make_literal((unsigned long) _set_, reg), make_literal((unsigned long) &retval, reg),
+		build_syntax_tree(expander(arg), parent, st_ref_nms, dyn_ref_nms, reg, handler), reg), nil(reg), reg), bindings, handler);
 	destroy_region(reg);
+	return retval;
 }

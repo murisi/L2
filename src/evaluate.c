@@ -47,10 +47,6 @@ void *_get_(void *ref) {
 	return *((void **) ref);
 }
 
-void _set_(void *dest, void *src) {
-	*((void **) dest) = src;
-}
-
 //These symbols are enough for any L2 code to bootstrap
 Symbol sexpr_symbols[] = {
 	{.name = "-!-", .address = _exclamation_mark_},
@@ -149,7 +145,8 @@ Symbol sexpr_symbols[] = {
 	{.name = "nil", .address = _nil_},
 	{.name = "char=", .address = char_equals},
 	{.name = "get", .address = _get_},
-	{.name = "set", .address = _set_}
+	{.name = "set", .address = _set_},
+	{.name = "mywrite-uint", .address = mywrite_uint}
 };
 
 int main(int argc, char *argv[]) {
@@ -218,8 +215,6 @@ int main(int argc, char *argv[]) {
 	list env = nil(evaluate_region);
 	int i;
 	for(i = 0; i < sizeof(sexpr_symbols) / sizeof(Symbol); i++) {
-		Symbol *sym = region_malloc(evaluate_region, sizeof(Symbol));
-		*sym = sexpr_symbols[i];
 		prepend(&sexpr_symbols[i], &env, evaluate_region);
 	}
 	//{
@@ -232,8 +227,6 @@ int main(int argc, char *argv[]) {
 		Symbol is[isc];
 		immutable_symbols(obj, is);
 		for(i = 0; i < isc; i++) {
-			mywrite_str(STDOUT, is[i].name);
-			mywrite_str(STDOUT, "\n");
 			prepend(&is[i], &env, evaluate_region);
 		}
 	//}

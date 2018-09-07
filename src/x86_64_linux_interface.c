@@ -134,12 +134,13 @@ unsigned long round_size(unsigned long x, unsigned long nearest) {
 typedef void* region;
 
 region create_region(unsigned long min_capacity) {
-	unsigned long len = round_size(min_capacity + 4 * sizeof(void *), PAGE_SIZE);
+	unsigned long len = round_size(min_capacity + 5 * sizeof(void *), PAGE_SIZE);
 	region reg = mymmap(len);
 	((void **) reg)[0] = NULL;
-	((void **) reg)[1] = ((void **) reg) + 4;
-	((void **) reg)[2] = reg + len;
-	((void **) reg)[3] = (void *) 0xDEADBEEFDEADBEEFUL;
+	((void **) reg)[1] = reg;
+	((void **) reg)[2] = ((void **) reg) + 5;
+	((void **) reg)[3] = reg + len;
+	((void **) reg)[4] = (void *) 0xDEADBEEFDEADBEEFUL;
 	return reg;
 }
 
@@ -147,7 +148,7 @@ region create_region(unsigned long min_capacity) {
 
 void check_region_integrity(region reg) {
 	do {
-		if(((void **) reg)[3] != (void *) 0xDEADBEEFDEADBEEFUL) {
+		if(((void **) reg)[4] != (void *) 0xDEADBEEFDEADBEEFUL) {
 			*((void **) NULL) = NULL;
 			return;
 		}
@@ -156,26 +157,23 @@ void check_region_integrity(region reg) {
 }
 
 void *region_malloc(region reg, unsigned long len) {
-	check_region_integrity(reg);
+	//check_region_integrity(reg);
 	
 	len = round_size(len, ALIGNMENT);
-	while(((void **) reg)[1] + len > ((void **) reg)[2]) {
-		if(!((void **) reg)[0]) {
-			((void **) reg)[0] = create_region(len);
-		}
-		reg = ((void **) reg)[0];
+	if((((void ***) reg)[1][2] + len > ((void ***) reg)[1][3])) {
+		((void **) reg)[1] = ((void ***) reg)[1][0] = create_region(len);
 	}
-	void *mem = ((void **) reg)[1];
-	((void **) reg)[1] += len;
+	void *mem = ((void ***) reg)[1][2];
+	((void ***) reg)[1][2] += len;
 	return mem;
 }
 
 void destroy_region(region reg) {
-	check_region_integrity(reg);
+	//check_region_integrity(reg);
 	
 	do {
 		region next_reg = ((void **) reg)[0];
-		mymunmap(reg, ((void **) reg)[2] - reg);
+		mymunmap(reg, ((void **) reg)[3] - reg);
 		reg = next_reg;
 	} while(reg);
 }
