@@ -34,7 +34,8 @@ void do_relocations(Object *obj, Elf64_Sym *sym) {
 			int relanum = obj->shdrs[sec].sh_size / obj->shdrs[sec].sh_entsize;
 			int rela;
 			for(rela = 0; rela < relanum; rela++) {
-				if(sym == &obj->syms[obj->shdrs[sec].sh_link][ELF64_R_SYM(obj->relas[sec][rela].r_info)]) {
+				if(sym == NULL || sym == &obj->syms[obj->shdrs[sec].sh_link][ELF64_R_SYM(obj->relas[sec][rela].r_info)]) {
+					Elf64_Sym *sym = &obj->syms[obj->shdrs[sec].sh_link][ELF64_R_SYM(obj->relas[sec][rela].r_info)];
 					unsigned char *location = (unsigned char *) obj->relas[sec][rela].r_offset;
 					Elf64_Addr temp;
 					switch(ELF64_R_TYPE(obj->relas[sec][rela].r_info)) {
@@ -219,16 +220,7 @@ Object *load(unsigned char *objsrc, int objsrc_sz, region reg) {
 	Object *obj = read_object(objsrc, objsrc_sz, reg);
 	offsets_to_addresses(obj);
 	store_addends(obj, reg);
-	int sec;
-	for(sec = 0; sec < obj->ehdr->e_shnum; sec++) {
-		if(obj->shdrs[sec].sh_type == SHT_SYMTAB) {
-			int symnum = obj->shdrs[sec].sh_size / obj->shdrs[sec].sh_entsize;
-			int sym;
-			for(sym = 1; sym < symnum; sym++) {
-				do_relocations(obj, &obj->syms[sec][sym]);
-			}
-		}
-	}
+	do_relocations(obj, NULL);
 	return obj;
 }
 
