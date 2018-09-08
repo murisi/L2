@@ -207,10 +207,6 @@ int main(int argc, char *argv[]) {
 		return err->arguments.type;
 	}
 	
-	if(argc != 3) {
-		throw_arguments(&evaluate_handler);
-	}
-	
 	list static_bindings = nil(evaluate_region);
 	int i;
 	for(i = 0; i < sizeof(sexpr_symbols) / sizeof(Symbol); i++) {

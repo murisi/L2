@@ -290,7 +290,7 @@ union expression *vmerge_begins(union expression *n, void *ctx) {
 	return n;
 }
 
-void evaluate_expressions(list exprs, list static_bindings, list dynamic_bindings, myjmp_buf *handler);
+Object *load_expressions(list exprs, list st_ref_nms, list dyn_ref_nms, region reg, myjmp_buf *handler);
 union expression *build_syntax_tree(list d, union expression *parent, region reg, myjmp_buf *handler);
 unsigned long execute_macro(list (*expander)(list), list arg, list static_bindings, list dynamic_bindings, union expression *parent, myjmp_buf *handler);
 
@@ -391,8 +391,24 @@ void _set_(void *dest, void *src) {
 unsigned long execute_macro(list (*expander)(list), list arg, list st_bindings, list dyn_bindings, union expression *parent, myjmp_buf *handler) {
 	region reg = create_region(0);
 	unsigned long retval;
-	evaluate_expressions(lst(make_invoke2(make_literal((unsigned long) _set_, reg), make_literal((unsigned long) &retval, reg),
-		build_syntax_tree(expander(arg), parent, reg, handler), reg), nil(reg), reg), st_bindings, dyn_bindings, handler);
+	list st_ref_nms = nil(reg), dyn_ref_nms = nil(reg);
+	Symbol *sym;
+	{foreach(sym, st_bindings) {
+		prepend(sym->name, &st_ref_nms, reg);
+	}}
+	{foreach(sym, dyn_bindings) {
+		prepend(sym->name, &dyn_ref_nms, reg);
+	}}
+	Object *obj = load_expressions(lst(make_invoke2(make_literal((unsigned long) _set_, reg), make_literal((unsigned long) &retval,
+		reg), build_syntax_tree(expander(arg), parent, reg, handler), reg), nil(reg), reg), st_ref_nms, dyn_ref_nms, reg, handler);
+	
+	{foreach(sym, st_bindings) {
+		mutate_symbols(obj, sym, 1);
+	}}
+	{foreach(sym, dyn_bindings) {
+		mutate_symbols(obj, sym, 1);
+	}}
+	start(obj)();
 	destroy_region(reg);
 	return retval;
 }

@@ -1,4 +1,3 @@
-.text
 .global get
 .global getb
 .global set
@@ -18,6 +17,7 @@
 .global not
 .global allocate
 
+.text
 jmp l2rt_end
 
 get:
@@ -128,3 +128,4 @@ movq %rsp, 56(%rsi)
 jmp *8(%rsi)
 
 l2rt_end:
+ret

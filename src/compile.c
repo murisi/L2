@@ -22,7 +22,7 @@ typedef unsigned long int bool;
  * executable that it is embedded in.
  */
 
-void evaluate_expressions(list exprs, list static_bindings, list dynamic_bindings, myjmp_buf *handler) {
+Object *load_expressions(list exprs, list st_ref_nms, list dyn_ref_nms, region obj_reg, myjmp_buf *handler) {
 	region manreg = create_region(0);
 	union expression *container = make_begin(manreg), *t;
 	{foreach(t, exprs) {
@@ -31,15 +31,7 @@ void evaluate_expressions(list exprs, list static_bindings, list dynamic_binding
 	container->begin.expressions = exprs;
 	union expression *root_function = make_function(manreg), *program = root_function;
 	put(program, function.expression, container);
-	list st_ref_nms = nil(manreg), dyn_ref_nms = nil(manreg);
-	Symbol *sym;
-	{foreach(sym, static_bindings) {
-		prepend(sym->name, &st_ref_nms, manreg);
-	}}
-	{foreach(sym, dynamic_bindings) {
-		prepend(sym->name, &dyn_ref_nms, manreg);
-	}}
-	program->function.expression = generate_macros(program->function.expression, st_ref_nms, dyn_ref_nms, manreg, handler);
+	program->function.expression = generate_macros(program->function.expression, st_ref_nms, dyn_ref_nms, obj_reg, handler);
 	visit_expressions(vfind_multiple_definitions, &program, handler);
 	visit_expressions(vlink_references, &program, (void* []) {handler, manreg});
 	visit_expressions(vescape_analysis, &program, NULL);
@@ -57,15 +49,9 @@ void evaluate_expressions(list exprs, list static_bindings, list dynamic_binding
 	
 	unsigned char *objdest; int objdest_sz;
 	write_elf(program->begin.expressions, locals, globals, &objdest, &objdest_sz, manreg);
-	Object *obj = load(objdest, objdest_sz, manreg);
-	{foreach(sym, static_bindings) {
-		mutate_symbols(obj, sym, 1);
-	}}
-	{foreach(sym, dynamic_bindings) {
-		mutate_symbols(obj, sym, 1);
-	}}
-	start(obj)();
+	Object *obj = load(objdest, objdest_sz, obj_reg);
 	destroy_region(manreg);
+	return obj;
 }
 
 #include "parser.c"
@@ -79,7 +65,7 @@ void evaluate_expressions(list exprs, list static_bindings, list dynamic_binding
 
 void evaluate_source(int srcc, char *srcv[], list static_bindings, myjmp_buf *handler) {
 	region syntax_tree_region = create_region(0);
-	list expressions = nil(syntax_tree_region);
+	list expressions = nil(syntax_tree_region), objects = nil(syntax_tree_region);
 	
 	int i;
 	for(i = 0; i < srcc; i++) {
@@ -105,16 +91,44 @@ void evaluate_source(int srcc, char *srcv[], list static_bindings, myjmp_buf *ha
 			myclose(obj_fd);
 			
 			Object *obj = load(obj_buf, obj_sz, syntax_tree_region);
+			prepend(obj, &objects, syntax_tree_region);
+			append(make_invoke0(make_literal((unsigned long) start(obj), syntax_tree_region), syntax_tree_region),
+				&expressions, syntax_tree_region);
 			int isc = immutable_symbol_count(obj);
 			Symbol *is = region_malloc(syntax_tree_region, isc * sizeof(Symbol));
 			immutable_symbols(obj, is);
-			for(i = 0; i < isc; i++) {
-				prepend(&is[i], &static_bindings, syntax_tree_region);
+			int j;
+			for(j = 0; j < isc; j++) {
+				prepend(&is[j], &static_bindings, syntax_tree_region);
 			}
 		}
 	}
 	
-	evaluate_expressions(expressions, static_bindings, nil(syntax_tree_region), handler);
+	list st_ref_nms = nil(syntax_tree_region);
+	Symbol *sym;
+	{foreach(sym, static_bindings) {
+		prepend(sym->name, &st_ref_nms, syntax_tree_region);
+	}}
+	Object *main_obj = load_expressions(expressions, st_ref_nms, nil(syntax_tree_region), syntax_tree_region, handler);
+	int isc = immutable_symbol_count(main_obj);
+	Symbol *is = region_malloc(syntax_tree_region, isc * sizeof(Symbol));
+	immutable_symbols(main_obj, is);
+	for(i = 0; i < isc; i++) {
+		prepend(&is[i], &static_bindings, syntax_tree_region);
+	}
+	
+	int sbc = length(static_bindings);
+	Symbol *sb = region_malloc(syntax_tree_region, sbc * sizeof(Symbol));
+	i = 0;
+	{foreach(sym, static_bindings) {
+		sb[i++] = *sym;
+	}}
+	mutate_symbols(main_obj, sb, sbc);
+	Object *obj;
+	{foreach(obj, objects) {
+		mutate_symbols(obj, sb, sbc);
+	}}
+	start(main_obj)();
 	destroy_region(syntax_tree_region);
 }
 
