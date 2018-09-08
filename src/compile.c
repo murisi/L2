@@ -94,13 +94,7 @@ void evaluate_source(int srcc, char *srcv[], list static_bindings, myjmp_buf *ha
 			prepend(obj, &objects, syntax_tree_region);
 			append(make_invoke0(make_literal((unsigned long) start(obj), syntax_tree_region), syntax_tree_region),
 				&expressions, syntax_tree_region);
-			int isc = immutable_symbol_count(obj);
-			Symbol *is = region_malloc(syntax_tree_region, isc * sizeof(Symbol));
-			immutable_symbols(obj, is);
-			int j;
-			for(j = 0; j < isc; j++) {
-				prepend(&is[j], &static_bindings, syntax_tree_region);
-			}
+			append_list(&static_bindings, immutable_symbols(obj, syntax_tree_region));
 		}
 	}
 	
@@ -110,23 +104,12 @@ void evaluate_source(int srcc, char *srcv[], list static_bindings, myjmp_buf *ha
 		prepend(sym->name, &st_ref_nms, syntax_tree_region);
 	}}
 	Object *main_obj = load_expressions(expressions, st_ref_nms, nil(syntax_tree_region), syntax_tree_region, handler);
-	int isc = immutable_symbol_count(main_obj);
-	Symbol *is = region_malloc(syntax_tree_region, isc * sizeof(Symbol));
-	immutable_symbols(main_obj, is);
-	for(i = 0; i < isc; i++) {
-		prepend(&is[i], &static_bindings, syntax_tree_region);
-	}
-	
-	int sbc = length(static_bindings);
-	Symbol *sb = region_malloc(syntax_tree_region, sbc * sizeof(Symbol));
-	i = 0;
-	{foreach(sym, static_bindings) {
-		sb[i++] = *sym;
-	}}
-	mutate_symbols(main_obj, sb, sbc);
+	list is = immutable_symbols(main_obj, syntax_tree_region);
+	append_list(&static_bindings, is);
+	mutate_symbols(main_obj, static_bindings);
 	Object *obj;
 	{foreach(obj, objects) {
-		mutate_symbols(obj, sb, sbc);
+		mutate_symbols(obj, static_bindings);
 	}}
 	start(main_obj)();
 	destroy_region(syntax_tree_region);

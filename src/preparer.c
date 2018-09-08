@@ -402,12 +402,8 @@ unsigned long execute_macro(list (*expander)(list), list arg, list st_bindings, 
 	Object *obj = load_expressions(lst(make_invoke2(make_literal((unsigned long) _set_, reg), make_literal((unsigned long) &retval,
 		reg), build_syntax_tree(expander(arg), parent, reg, handler), reg), nil(reg), reg), st_ref_nms, dyn_ref_nms, reg, handler);
 	
-	{foreach(sym, st_bindings) {
-		mutate_symbols(obj, sym, 1);
-	}}
-	{foreach(sym, dyn_bindings) {
-		mutate_symbols(obj, sym, 1);
-	}}
+	mutate_symbols(obj, st_bindings);
+	mutate_symbols(obj, dyn_bindings);
 	start(obj)();
 	destroy_region(reg);
 	return retval;

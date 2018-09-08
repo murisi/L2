@@ -245,20 +245,20 @@ typedef struct {
  * Goes through the loaded object obj and modifies all occurences of symbols
  * with the same name as update to point to the same address as update.
  */
-void mutate_symbols(Object *obj, Symbol updates[], int update_count) {
-	int update;
-	for(update = 0; update < update_count; update++) {
+void mutate_symbols(Object *obj, list updates) {
+	Symbol *update;
+	foreach(update, updates) {
 		int sec;
 		for(sec = 0; sec < obj->ehdr->e_shnum; sec++) {
 			if(obj->shdrs[sec].sh_type == SHT_SYMTAB) {
 				int symnum = obj->shdrs[sec].sh_size / obj->shdrs[sec].sh_entsize;
 				int sym;
 				for(sym = 1; sym < symnum; sym++) {
-					if(!strcmp(name_of(obj, &obj->shdrs[sec], &obj->syms[sec][sym]), updates[update].name) &&
+					if(!strcmp(name_of(obj, &obj->shdrs[sec], &obj->syms[sec][sym]), update->name) &&
 						(obj->syms[sec][sym].st_shndx == SHN_UNDEF || obj->syms[sec][sym].st_shndx == SHN_COMMON) &&
 						(ELF64_ST_BIND(obj->syms[sec][sym].st_info) == STB_GLOBAL ||
 						ELF64_ST_BIND(obj->syms[sec][sym].st_info) == STB_WEAK)) {
-							obj->syms[sec][sym].st_value = (Elf64_Addr) updates[update].address;
+							obj->syms[sec][sym].st_value = (Elf64_Addr) update->address;
 							do_relocations(obj, &obj->syms[sec][sym]);
 					}
 				}
@@ -267,8 +267,9 @@ void mutate_symbols(Object *obj, Symbol updates[], int update_count) {
 	}
 }
 
-int symbol_count(int flag, Object *obj) {
-	int sec, total_symnum = 0;
+list symbols(int flag, Object *obj, region reg) {
+	list syms = nil(reg);
+	int sec;
 	for(sec = 0; sec < obj->ehdr->e_shnum; sec++) {
 		if(obj->shdrs[sec].sh_type == SHT_SYMTAB) {
 			int symnum = obj->shdrs[sec].sh_size / obj->shdrs[sec].sh_entsize;
@@ -277,60 +278,29 @@ int symbol_count(int flag, Object *obj) {
 				if(((obj->syms[sec][sym].st_shndx == SHN_UNDEF || obj->syms[sec][sym].st_shndx == SHN_COMMON) == flag) &&
 					(ELF64_ST_BIND(obj->syms[sec][sym].st_info) == STB_GLOBAL ||
 					ELF64_ST_BIND(obj->syms[sec][sym].st_info) == STB_WEAK)) {
-						total_symnum++;
+						Symbol *symbol = region_malloc(reg, sizeof(Symbol));
+						symbol->name = name_of(obj, &obj->shdrs[sec], &obj->syms[sec][sym]);
+						symbol->address = (void *) obj->syms[sec][sym].st_value;
+						prepend(symbol, &syms, reg);
 				}
 			}
 		}
 	}
-	return total_symnum;
-}
-
-/*
- * Counts the number of mutable symbols in the loaded object obj.
- */
-int mutable_symbol_count(Object *obj) {
-	return symbol_count(1, obj);
-}
-
-/*
- * Places the mutable symbols of the loaded object obj into the buffer buffer.
- * The buffer's size should be informed by object_mutable_symbol_count.
- */
-int immutable_symbol_count(Object *obj) {
-	return symbol_count(0, obj);
-}
-
-void symbols(int flag, Object *obj, Symbol *buffer) {
-	int sec, overall_sym = 0;
-	for(sec = 0; sec < obj->ehdr->e_shnum; sec++) {
-		if(obj->shdrs[sec].sh_type == SHT_SYMTAB) {
-			int symnum = obj->shdrs[sec].sh_size / obj->shdrs[sec].sh_entsize;
-			int sym;
-			for(sym = 1; sym < symnum; sym++) {
-				if(((obj->syms[sec][sym].st_shndx == SHN_UNDEF || obj->syms[sec][sym].st_shndx == SHN_COMMON) == flag) &&
-					(ELF64_ST_BIND(obj->syms[sec][sym].st_info) == STB_GLOBAL ||
-					ELF64_ST_BIND(obj->syms[sec][sym].st_info) == STB_WEAK)) {
-						buffer[overall_sym].name = name_of(obj, &obj->shdrs[sec], &obj->syms[sec][sym]);
-						buffer[overall_sym].address = (void *) obj->syms[sec][sym].st_value;
-						overall_sym++;
-				}
-			}
-		}
-	}
+	return syms;
 }
 
 /*
  * See the analogous function for mutable symbols.
  */
-void mutable_symbols(Object *obj, Symbol *buffer) {
-	symbols(1, obj, buffer);
+list mutable_symbols(Object *obj, region reg) {
+	return symbols(1, obj, reg);
 }
 
 /*
  * See the analogous function for mutable symbols.
  */
-void immutable_symbols(Object *obj, Symbol *buffer) {
-	symbols(0, obj, buffer);
+list immutable_symbols(Object *obj, region reg) {
+	return symbols(0, obj, reg);
 }
 
 /*
