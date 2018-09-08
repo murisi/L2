@@ -128,7 +128,7 @@ struct np_expression {
 	union expression *parent;
 	union expression *return_value;
 	
-	union expression *function;
+	union expression *reference;
 	list argument;
 };
 
@@ -358,7 +358,7 @@ void print_syntax_tree(union expression *s) {
 			break;
 		} case non_primitive: {
 			mywrite_str(STDOUT, "(");
-			print_syntax_tree(s->non_primitive.function);
+			print_syntax_tree(s->non_primitive.reference);
 			mywrite_str(STDOUT, " ");
 			print_expr_list(s->non_primitive.argument);
 			mywrite_str(STDOUT, ")");

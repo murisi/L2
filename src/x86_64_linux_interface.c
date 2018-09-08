@@ -29,6 +29,16 @@ unsigned long strlen(const char *str) {
 	return i;
 }
 
+char *strrchr(const char *s, int c) {
+	const char *t = s + strlen(s);
+	for(; t >= s; t--) {
+		if(*t == c) {
+			return (char *) t;
+		}
+	}
+	return NULL;
+}
+
 char *strcpy(char *dest, const char *src) {
 	unsigned long i;
 	for(i = 0; src[i]; i++) {

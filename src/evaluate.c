@@ -47,7 +47,6 @@ void *_get_(void *ref) {
 	return *((void **) ref);
 }
 
-//These symbols are enough for any L2 code to bootstrap
 Symbol sexpr_symbols[] = {
 	{.name = "-!-", .address = _exclamation_mark_},
 	{.name = "-\"-", .address = _double_quotation_},
@@ -212,30 +211,13 @@ int main(int argc, char *argv[]) {
 		throw_arguments(&evaluate_handler);
 	}
 	
-	list env = nil(evaluate_region);
+	list static_bindings = nil(evaluate_region);
 	int i;
 	for(i = 0; i < sizeof(sexpr_symbols) / sizeof(Symbol); i++) {
-		prepend(&sexpr_symbols[i], &env, evaluate_region);
+		prepend(&sexpr_symbols[i], &static_bindings, evaluate_region);
 	}
-	//{
-		unsigned char obj_buf[mysize(argv[2])];
-		int obj_fd = myopen(argv[2]);
-		myread(obj_fd, obj_buf, sizeof(obj_buf));
-		myclose(obj_fd);
-		Object *obj = load(obj_buf, sizeof(obj_buf), evaluate_region);
-		int isc = immutable_symbol_count(obj);
-		Symbol is[isc];
-		immutable_symbols(obj, is);
-		for(i = 0; i < isc; i++) {
-			prepend(&is[i], &env, evaluate_region);
-		}
-	//}
 	
-	unsigned char src_buf[mysize(argv[1])];
-	int fd = myopen(argv[1]);
-	myread(fd, src_buf, sizeof(src_buf));
-	myclose(fd);
-	evaluate_source(src_buf, sizeof(src_buf), env, &evaluate_handler);
+	evaluate_source(argc - 1, argv + 1, static_bindings, &evaluate_handler);
 	destroy_region(evaluate_region);
 	return 0;
 }

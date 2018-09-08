@@ -28,11 +28,6 @@ bool is_nil(list s) {
 	for(; !is_nil(_foreach_v) ? (t = _foreach_v->fst, true) : (t = NULL, false); \
 		_foreach_v = _foreach_v->rst)
 
-#define foreachzipped(t, v, u, w) \
-	list _foreach_s = u; \
-	list _foreach_t = w; \
-	for(; !is_nil(_foreach_s) ? (t = _foreach_s->fst, v = _foreach_t->fst, true) : (t = NULL, v = NULL, false); \
-		_foreach_s = _foreach_s->rst, _foreach_t = _foreach_t->rst)
 
 #define foreachlist(w, t, u) \
 	w = u; \

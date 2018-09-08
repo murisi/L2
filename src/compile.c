@@ -10,9 +10,9 @@ typedef unsigned long int bool;
 #include "compile_errors.c"
 #include "lexer.c"
 #include "expressions.c"
+#include "x86_64_object.c"
 #include "preparer.c"
 #include "x86_64_generator.c"
-#include "x86_64_object.c"
 #include "x86_64_assembler.c"
 
 /*
@@ -22,7 +22,7 @@ typedef unsigned long int bool;
  * executable that it is embedded in.
  */
 
-void evaluate_expressions(list exprs, list static_bindings, myjmp_buf *handler) {
+void evaluate_expressions(list exprs, list static_bindings, list dynamic_bindings, myjmp_buf *handler) {
 	region manreg = create_region(0);
 	union expression *container = make_begin(manreg), *t;
 	{foreach(t, exprs) {
@@ -31,7 +31,15 @@ void evaluate_expressions(list exprs, list static_bindings, myjmp_buf *handler) 
 	container->begin.expressions = exprs;
 	union expression *root_function = make_function(manreg), *program = root_function;
 	put(program, function.expression, container);
-	
+	list st_ref_nms = nil(manreg), dyn_ref_nms = nil(manreg);
+	Symbol *sym;
+	{foreach(sym, static_bindings) {
+		prepend(sym->name, &st_ref_nms, manreg);
+	}}
+	{foreach(sym, dynamic_bindings) {
+		prepend(sym->name, &dyn_ref_nms, manreg);
+	}}
+	program->function.expression = generate_macros(program->function.expression, st_ref_nms, dyn_ref_nms, manreg, handler);
 	visit_expressions(vfind_multiple_definitions, &program, handler);
 	visit_expressions(vlink_references, &program, (void* []) {handler, manreg});
 	visit_expressions(vescape_analysis, &program, NULL);
@@ -50,10 +58,12 @@ void evaluate_expressions(list exprs, list static_bindings, myjmp_buf *handler) 
 	unsigned char *objdest; int objdest_sz;
 	write_elf(program->begin.expressions, locals, globals, &objdest, &objdest_sz, manreg);
 	Object *obj = load(objdest, objdest_sz, manreg);
-	Symbol *sym;
-	foreach(sym, static_bindings) {
+	{foreach(sym, static_bindings) {
 		mutate_symbols(obj, sym, 1);
-	}
+	}}
+	{foreach(sym, dynamic_bindings) {
+		mutate_symbols(obj, sym, 1);
+	}}
 	start(obj)();
 	destroy_region(manreg);
 }
@@ -67,26 +77,44 @@ void evaluate_expressions(list exprs, list static_bindings, myjmp_buf *handler) 
  * that it is embedded in.
  */
 
-void evaluate_source(char *l2src, int l2src_sz, list static_bindings, myjmp_buf *handler) {
+void evaluate_source(int srcc, char *srcv[], list static_bindings, myjmp_buf *handler) {
 	region syntax_tree_region = create_region(0);
 	list expressions = nil(syntax_tree_region);
-	list expansion_lists = nil(syntax_tree_region);
-	list st_ref_nms = nil(syntax_tree_region);
 	
-	Symbol *sym;
-	foreach(sym, static_bindings) {
-		prepend(sym->name, &st_ref_nms, syntax_tree_region);
+	int i;
+	for(i = 0; i < srcc; i++) {
+		char *dot = strrchr(srcv[i], '.');
+		if(dot && !strcmp(dot, ".l2")) {
+			long int src_sz = mysize(srcv[i]);
+			unsigned char *src_buf = region_malloc(syntax_tree_region, src_sz);
+			int fd = myopen(srcv[i]);
+			myread(fd, src_buf, src_sz);
+			myclose(fd);
+			
+			int pos = 0;
+			while(after_leading_space(src_buf, src_sz, &pos)) {
+				build_expr_list_handler = handler;
+				list sexpr = build_expr_list(src_buf, src_sz, &pos, syntax_tree_region);
+				append(build_syntax_tree(sexpr, NULL, syntax_tree_region, handler), &expressions, syntax_tree_region);
+			}
+		} else if(dot && !strcmp(dot, ".o")) {
+			long int obj_sz = mysize(srcv[i]);
+			unsigned char *obj_buf = region_malloc(syntax_tree_region, obj_sz);
+			int obj_fd = myopen(srcv[i]);
+			myread(obj_fd, obj_buf, obj_sz);
+			myclose(obj_fd);
+			
+			Object *obj = load(obj_buf, obj_sz, syntax_tree_region);
+			int isc = immutable_symbol_count(obj);
+			Symbol *is = region_malloc(syntax_tree_region, isc * sizeof(Symbol));
+			immutable_symbols(obj, is);
+			for(i = 0; i < isc; i++) {
+				prepend(&is[i], &static_bindings, syntax_tree_region);
+			}
+		}
 	}
 	
-	int pos = 0;
-	while(after_leading_space(l2src, l2src_sz, &pos)) {
-		build_expr_list_handler = handler;
-		list sexpr = build_expr_list(l2src, l2src_sz, &pos, syntax_tree_region);
-		append(build_syntax_tree(sexpr, NULL, st_ref_nms, nil(syntax_tree_region), syntax_tree_region,
-			handler), &expressions, syntax_tree_region);
-	}
-	
-	evaluate_expressions(expressions, static_bindings, handler);
+	evaluate_expressions(expressions, static_bindings, nil(syntax_tree_region), handler);
 	destroy_region(syntax_tree_region);
 }
 

@@ -290,3 +290,110 @@ union expression *vmerge_begins(union expression *n, void *ctx) {
 	}
 	return n;
 }
+
+void evaluate_expressions(list exprs, list static_bindings, list dynamic_bindings, myjmp_buf *handler);
+union expression *build_syntax_tree(list d, union expression *parent, region reg, myjmp_buf *handler);
+unsigned long execute_macro(list (*expander)(list), list arg, list static_bindings, list dynamic_bindings, union expression *parent, myjmp_buf *handler);
+
+Symbol *make_symbol(char *nm, void *addr, region r) {
+	Symbol *sym = region_malloc(r, sizeof(Symbol));
+	sym->name = nm;
+	sym->address = addr;
+	return sym;
+}
+
+union expression *generate_macros(union expression *s, list st_ref_nms, list dyn_ref_nms, region reg, myjmp_buf *handler) {
+	list *ref_nms = get_zeroth_function(s) ? &dyn_ref_nms : &st_ref_nms;
+	switch(s->base.type) {
+		case begin: {
+			union expression *expr;
+			{foreach(expr, s->begin.expressions) {
+				if(expr->base.type == function) {
+					prepend(expr->function.reference->reference.name, &st_ref_nms, reg);
+				}
+			}}
+			union expression **exprr;
+			{foreach(exprr, address_list(s->begin.expressions, reg)) {
+				*exprr = generate_macros(*exprr, st_ref_nms, dyn_ref_nms, reg, handler);
+			}}
+			break;
+		} case with: {
+			prepend(s->with.reference->reference.name, ref_nms, reg);
+			s->with.expression = generate_macros(s->with.expression, st_ref_nms, dyn_ref_nms, reg, handler);
+			break;
+		} case _if: {
+			s->_if.condition = generate_macros(s->_if.condition, st_ref_nms, dyn_ref_nms, reg, handler);
+			s->_if.consequent = generate_macros(s->_if.consequent, st_ref_nms, dyn_ref_nms, reg, handler);
+			s->_if.alternate = generate_macros(s->_if.alternate, st_ref_nms, dyn_ref_nms, reg, handler);
+			break;
+		} case function: {
+			prepend(s->function.reference->reference.name, &st_ref_nms, reg);
+			union expression *param;
+			{foreach(param, s->function.parameters) {
+				prepend(param->reference.name, &dyn_ref_nms, reg);
+			}}
+			s->function.expression = generate_macros(s->function.expression, st_ref_nms, dyn_ref_nms, reg, handler);
+			break;
+		} case continuation: {
+			prepend(s->continuation.reference->reference.name, ref_nms, reg);
+			union expression *param;
+			{foreach(param, s->continuation.parameters) {
+				prepend(param->reference.name, ref_nms, reg);
+			}}
+			s->continuation.expression = generate_macros(s->continuation.expression, st_ref_nms, dyn_ref_nms, reg, handler);
+			break;
+		} case invoke: case jump: {
+			s->invoke.reference = generate_macros(s->invoke.reference, st_ref_nms, dyn_ref_nms, reg, handler);
+			union expression **arg;
+			{foreach(arg, address_list(s->invoke.arguments, reg)) {
+				*arg = generate_macros(*arg, st_ref_nms, dyn_ref_nms, reg, handler);
+			}}
+			break;
+		} case non_primitive: {
+			union expression *static_bindings_code = make_invoke1(make_literal((unsigned long) nil, reg),
+				make_literal((unsigned long) reg, reg), reg);
+			//Loops have special ordering to allow for shadowing
+			char *name;
+			{foreach(name, reverse(st_ref_nms, reg)) {
+				union expression *ref = make_reference(reg);
+				ref->reference.name = name;
+				static_bindings_code = make_invoke3(make_literal((unsigned long) lst, reg),
+					make_invoke3(make_literal((unsigned long) make_symbol, reg), make_literal((unsigned long) name, reg),
+						ref, make_literal((unsigned long) reg, reg), reg),
+					static_bindings_code, make_literal((unsigned long) reg, reg), reg);
+			}}
+			union expression *dynamic_bindings_code = make_invoke1(make_literal((unsigned long) nil, reg),
+				make_literal((unsigned long) reg, reg), reg);
+			
+			{foreach(name, reverse(dyn_ref_nms, reg)) {
+				union expression *ref = make_reference(reg);
+				ref->reference.name = name;
+				dynamic_bindings_code = make_invoke3(make_literal((unsigned long) lst, reg),
+					make_invoke3(make_literal((unsigned long) make_symbol, reg), make_literal((unsigned long) name, reg),
+						ref, make_literal((unsigned long) reg, reg), reg),
+					dynamic_bindings_code, make_literal((unsigned long) reg, reg), reg);
+			}}
+			
+			union expression *parent = s->non_primitive.parent;
+			s = make_invoke6(make_literal((unsigned long) execute_macro, reg),
+				generate_macros(s->non_primitive.reference, st_ref_nms, dyn_ref_nms, reg, handler),
+				make_literal((unsigned long) s->non_primitive.argument, reg), static_bindings_code, dynamic_bindings_code,
+				make_literal((unsigned long) parent, reg), make_literal((unsigned long) handler, reg), reg);
+			s->invoke.parent = parent;
+		}
+	}
+	return s;
+}
+
+void _set_(void *dest, void *src) {
+	*((void **) dest) = src;
+}
+
+unsigned long execute_macro(list (*expander)(list), list arg, list st_bindings, list dyn_bindings, union expression *parent, myjmp_buf *handler) {
+	region reg = create_region(0);
+	unsigned long retval;
+	evaluate_expressions(lst(make_invoke2(make_literal((unsigned long) _set_, reg), make_literal((unsigned long) &retval, reg),
+		build_syntax_tree(expander(arg), parent, reg, handler), reg), nil(reg), reg), st_bindings, dyn_bindings, handler);
+	destroy_region(reg);
+	return retval;
+}
