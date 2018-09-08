@@ -157,11 +157,10 @@ union expression *vescape_analysis(union expression *s, void *ctx) {
 }
 
 void visit_expressions(union expression *(*visitor)(union expression *, void *), union expression **s, void *ctx) {
-	region tempreg = create_region(0);
 	switch((*s)->base.type) {
 		case begin: {
 			union expression **t;
-			foreach(t, address_list((*s)->begin.expressions, tempreg)) {
+			foreachaddress(t, (*s)->begin.expressions) {
 				visit_expressions(visitor, t, ctx);
 			}
 			break;
@@ -173,7 +172,7 @@ void visit_expressions(union expression *(*visitor)(union expression *, void *),
 		} case function: case continuation: case with: {
 			if((*s)->base.type == function || (*s)->base.type == continuation) {
 				union expression **t;
-				foreach(t, address_list((*s)->function.parameters, tempreg)) {
+				foreachaddress(t, (*s)->function.parameters) {
 					visit_expressions(visitor, t, ctx);
 				}
 			}
@@ -181,14 +180,14 @@ void visit_expressions(union expression *(*visitor)(union expression *, void *),
 			visit_expressions(visitor, &(*s)->function.expression, ctx);
 			break;
 		} case jump: case invoke: {
+			visit_expressions(visitor, &(*s)->invoke.reference, ctx);
 			union expression **t;
-			foreach(t, lst(&(*s)->invoke.reference, address_list((*s)->invoke.arguments, tempreg), tempreg)) {
+			foreachaddress(t, (*s)->invoke.arguments) {
 				visit_expressions(visitor, t, ctx);
 			}
 			break;
 		}
 	}
-	destroy_region(tempreg);
 	union expression *parent = (*s)->base.parent;
 	*s = (*visitor)(*s, ctx);
 	(*s)->base.parent = parent;
@@ -233,7 +232,7 @@ union expression *use_return_value(union expression *n, union expression *ret_va
 			}
 			
 			union expression **t;
-			foreach(t, address_list(n->invoke.arguments, r)) {
+			foreachaddress(t, n->invoke.arguments) {
 				union expression *arg_ret_val = make_local(get_zeroth_function(n), r);
 				emit(use_return_value(*t, arg_ret_val, r), r);
 				*t = arg_ret_val;
@@ -254,7 +253,7 @@ union expression *use_return_value(union expression *n, union expression *ret_va
 			return container;
 		} case begin: {
 			union expression **t;
-			foreach(t, address_list(n->begin.expressions, r)) {
+			foreachaddress(t, n->begin.expressions) {
 				*t = use_return_value(*t, make_local(get_zeroth_function(n), r), r);
 				(*t)->base.parent = n;
 			}
@@ -313,7 +312,7 @@ union expression *generate_macros(union expression *s, list st_ref_nms, list dyn
 				}
 			}}
 			union expression **exprr;
-			{foreach(exprr, address_list(s->begin.expressions, reg)) {
+			{foreachaddress(exprr, s->begin.expressions) {
 				*exprr = generate_macros(*exprr, st_ref_nms, dyn_ref_nms, reg, handler);
 			}}
 			break;
@@ -345,7 +344,7 @@ union expression *generate_macros(union expression *s, list st_ref_nms, list dyn
 		} case invoke: case jump: {
 			s->invoke.reference = generate_macros(s->invoke.reference, st_ref_nms, dyn_ref_nms, reg, handler);
 			union expression **arg;
-			{foreach(arg, address_list(s->invoke.arguments, reg)) {
+			{foreachaddress(arg, s->invoke.arguments) {
 				*arg = generate_macros(*arg, st_ref_nms, dyn_ref_nms, reg, handler);
 			}}
 			break;
@@ -375,8 +374,8 @@ union expression *generate_macros(union expression *s, list st_ref_nms, list dyn
 			}}
 			
 			union expression *parent = s->non_primitive.parent;
-			s = make_invoke6(make_literal((unsigned long) execute_macro, reg),
-				generate_macros(s->non_primitive.reference, st_ref_nms, dyn_ref_nms, reg, handler),
+			s->non_primitive.reference = generate_macros(s->non_primitive.reference, st_ref_nms, dyn_ref_nms, reg, handler);
+			s = make_invoke6(make_literal((unsigned long) execute_macro, reg), s->non_primitive.reference,
 				make_literal((unsigned long) s->non_primitive.argument, reg), static_bindings_code, dynamic_bindings_code,
 				make_literal((unsigned long) parent, reg), make_literal((unsigned long) handler, reg), reg);
 			s->invoke.parent = parent;

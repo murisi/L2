@@ -28,6 +28,10 @@ bool is_nil(list s) {
 	for(; !is_nil(_foreach_v) ? (t = _foreach_v->fst, true) : (t = NULL, false); \
 		_foreach_v = _foreach_v->rst)
 
+#define foreachaddress(t, u) \
+	list _foreach_v = u; \
+	for(; !is_nil(_foreach_v) ? (t = (void *) &_foreach_v->fst, true) : (t = NULL, false); \
+		_foreach_v = _foreach_v->rst)
 
 #define foreachlist(w, t, u) \
 	w = u; \
@@ -62,14 +66,6 @@ void prepend(void *data, list *l, region reg) {
 	ret->fst = data;
 	ret->rst = *l;
 	*l = ret;
-}
-
-list address_list(list l, region reg) {
-	list mapped = nil(reg);
-	for(; !is_nil(l); l = l->rst) {
-		append(&l->fst, &mapped, reg);
-	}
-	return mapped;
 }
 
 int length(list l) {
