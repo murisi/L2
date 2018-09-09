@@ -31,21 +31,23 @@ struct compilation {
 
 void compile_expressions(unsigned char **objdest, int *objdest_sz, list exprs, list ref_nms, list *comps, region obj_reg, myjmp_buf *handler) {
 	region manreg = create_region(0);
-	union expression *container = make_begin(manreg), *t;
+	union expression *oprogram = make_function(obj_reg), *program;
+	union expression *ocontainer = make_begin(obj_reg), *t;
 	{foreach(t, exprs) {
-		union expression *c = copy_expression(t, manreg);
-		c->base.parent = container;
-		append(c, &container->begin.expressions, manreg);
+		append(t, &ocontainer->begin.expressions, obj_reg);
 	}}
-	union expression *program = make_function(manreg);
-	/*struct compilation *pc;
-	{foreach(pc, comps) {
-		if(expression_equals(program, pc->program)) {
+	put(oprogram, function.expression, ocontainer);
+	struct compilation *pc;
+	{foreach(pc, *comps) {
+		if(expression_equals(oprogram, pc->program)) {
 			*objdest = pc->objdest;
 			*objdest_sz = pc->objdest_sz;
+			destroy_region(manreg);
+			return;
 		}
-	}}*/
-	put(program, function.expression, container);
+	}}
+	
+	program = copy_expression(oprogram, manreg);
 	put(program, function.expression, generate_macros(program->function.expression, ref_nms, nil(obj_reg), comps, obj_reg, handler));
 	visit_expressions(vfind_multiple_definitions, &program, handler);
 	visit_expressions(vlink_references, &program, (void* []) {handler, manreg});
@@ -64,12 +66,12 @@ void compile_expressions(unsigned char **objdest, int *objdest_sz, list exprs, l
 	write_elf(program->begin.expressions, locals, globals, objdest, objdest_sz, obj_reg);
 	destroy_region(manreg);
 	
-	/*struct compilation *c = region_malloc(obj_reg, sizeof(struct compilation));
+	struct compilation *c = region_malloc(obj_reg, sizeof(struct compilation));
 	c->objdest = *objdest;
 	c->objdest_sz = *objdest_sz;
-	c->exprs = exprs;
+	c->program = oprogram;
 	c->ref_nms = ref_nms;
-	prepend(c, comps, obj_reg);*/
+	prepend(c, comps, obj_reg);
 }
 
 #include "parser.c"

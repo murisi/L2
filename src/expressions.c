@@ -396,7 +396,17 @@ bool expression_equals(union expression *expr1, union expression *expr2) {
 				if(!expression_equals(u, v)) return false;
 			}
 			return true;
-		} case non_primitive: case instruction: {
+		} case begin: {
+			if(length(expr1->begin.expressions) != length(expr2->begin.expressions)) return false;
+			union expression *u, *v;
+			foreachzipped(u, v, expr1->begin.expressions, expr2->begin.expressions) {
+				if(!expression_equals(u, v)) return false;
+			}
+			return true;
+		} case non_primitive: {
+			return (expression_equals(expr1->non_primitive.reference, expr2->non_primitive.reference) &&
+				sexpr_list_equals(expr1->non_primitive.argument, expr2->non_primitive.argument)) ? true : false;
+		} case instruction: {
 			return false;
 		}
 	}

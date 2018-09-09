@@ -394,8 +394,8 @@ unsigned long execute_macro(list (*expander)(list), list arg, list bindings, lis
 			prepend(sym, &named_bindings, reg);
 		}
 	}}
-	union expression *func = make_function(reg);
-	put(func, function.expression, build_syntax_tree(expander(arg), reg, handler));
+	union expression *func = make_function(comps_reg);
+	put(func, function.expression, build_syntax_tree(expander(arg), comps_reg, handler));
 	unsigned char *objdest; int objdest_sz;
 	compile_expressions(&objdest, &objdest_sz, lst(func, nil(reg), reg), ref_nms, comps, comps_reg, handler);
 	Object *obj = load(objdest, objdest_sz, reg);

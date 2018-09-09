@@ -32,6 +32,21 @@ bool char_equals(struct character *a, struct character *b) {
 	return a->character == b->character ? true : false;
 }
 
+bool sexpr_list_equals(list c, list d) {
+	if(length(c) != length(d)) return false;
+	union sexpr *a, *b;
+	foreachzipped(a, b, c, d) {
+		if(!a->list_flag != !b->list_flag) {
+			return false;
+		} else if(!a->list_flag && a->character.character != b->character.character) {
+			return false;
+		} else if(a->list_flag && !sexpr_list_equals((list) a, (list) b)) {
+			return false;
+		}
+	}
+	return true;
+}
+
 union sexpr *build_character_sexpr(char d, region r) {
 	union sexpr *c = region_malloc(r, sizeof(union sexpr));
 	c->character.list_flag = NULL;
