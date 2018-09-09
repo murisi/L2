@@ -22,7 +22,7 @@ typedef unsigned long int bool;
  * executable that it is embedded in.
  */
 
-Object *load_expressions(list exprs, list ref_nms, region obj_reg, myjmp_buf *handler) {
+void compile_expressions(unsigned char **objdest, int *objdest_sz, list exprs, list ref_nms, region obj_reg, myjmp_buf *handler) {
 	region manreg = create_region(0);
 	union expression *container = make_begin(manreg), *t;
 	{foreach(t, exprs) {
@@ -46,12 +46,8 @@ Object *load_expressions(list exprs, list ref_nms, region obj_reg, myjmp_buf *ha
 	list globals = program->function.parameters;
 	program = generate_toplevel(program, manreg);
 	visit_expressions(vmerge_begins, &program, NULL);
-	
-	unsigned char *objdest; int objdest_sz;
-	write_elf(program->begin.expressions, locals, globals, &objdest, &objdest_sz, manreg);
-	Object *obj = load(objdest, objdest_sz, obj_reg);
+	write_elf(program->begin.expressions, locals, globals, objdest, objdest_sz, obj_reg);
 	destroy_region(manreg);
-	return obj;
 }
 
 #include "parser.c"
@@ -103,7 +99,9 @@ void evaluate_source(int srcc, char *srcv[], list bindings, myjmp_buf *handler) 
 	{foreach(sym, bindings) {
 		prepend(sym->name, &ref_nms, syntax_tree_region);
 	}}
-	Object *main_obj = load_expressions(expressions, ref_nms, syntax_tree_region, handler);
+	unsigned char *objdest; int objdest_sz;
+	compile_expressions(&objdest, &objdest_sz, expressions, ref_nms, syntax_tree_region, handler);
+	Object *main_obj = load(objdest, objdest_sz, syntax_tree_region);
 	list is = immutable_symbols(main_obj, syntax_tree_region);
 	append_list(&bindings, is);
 	mutate_symbols(main_obj, bindings);

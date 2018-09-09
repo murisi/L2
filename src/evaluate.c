@@ -43,14 +43,6 @@ list _nil_() {
 	return nil(evaluate_region);
 }
 
-void *_get_(void *ref) {
-	return *((void **) ref);
-}
-
-void _set_(void *dest, void *src) {
-	*((void **) dest) = src;
-}
-
 Symbol sexpr_symbols[] = {
 	{.name = "-!-", .address = _exclamation_mark_},
 	{.name = "-\"-", .address = _double_quotation_},
@@ -147,8 +139,6 @@ Symbol sexpr_symbols[] = {
 	{.name = "nil?", .address = is_nil},
 	{.name = "nil", .address = _nil_},
 	{.name = "char=", .address = char_equals},
-	{.name = "get", .address = _get_},
-	{.name = "set", .address = _set_},
 	{.name = "mywrite-uint", .address = mywrite_uint},
 	{.name = "mywrite-str", .address = mywrite_str}
 };

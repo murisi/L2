@@ -290,7 +290,7 @@ union expression *vmerge_begins(union expression *n, void *ctx) {
 	return n;
 }
 
-Object *load_expressions(list exprs, list ref_nms, region reg, myjmp_buf *handler);
+void compile_expressions(unsigned char **objdest, int *objdest_sz, list exprs, list ref_nms, region reg, myjmp_buf *handler);
 union expression *build_syntax_tree(list d, region reg, myjmp_buf *handler);
 unsigned long execute_macro(list (*expander)(list), list arg, list bindings, myjmp_buf *handler);
 
@@ -383,6 +383,11 @@ union expression *generate_macros(union expression *s, list st_ref_nms, list dyn
 	return s;
 }
 
+struct compilation {
+	union sexpr *source;
+	Object *output;
+};
+
 unsigned long execute_macro(list (*expander)(list), list arg, list bindings, myjmp_buf *handler) {
 	region reg = create_region(0);
 	list ref_nms = nil(reg), named_bindings = nil(reg);
@@ -395,8 +400,11 @@ unsigned long execute_macro(list (*expander)(list), list arg, list bindings, myj
 	}}
 	union expression *func = make_function(reg);
 	put(func, function.expression, build_syntax_tree(expander(arg), reg, handler));
-	Object *obj = load_expressions(lst(func, nil(reg), reg), ref_nms, reg, handler);
+	unsigned char *objdest; int objdest_sz;
+	compile_expressions(&objdest, &objdest_sz, lst(func, nil(reg), reg), ref_nms, reg, handler);
+	Object *obj = load(objdest, objdest_sz, reg);
 	mutate_symbols(obj, named_bindings);
+	//There is only one immutable symbol: our annonymous function
 	unsigned long retval = ((unsigned long (*)()) ((Symbol *) immutable_symbols(obj, reg)->fst)->address)();
 	destroy_region(reg);
 	return retval;
