@@ -290,9 +290,9 @@ union expression *vmerge_begins(union expression *n, void *ctx) {
 	return n;
 }
 
-void compile_expressions(unsigned char **objdest, int *objdest_sz, list exprs, list ref_nms, region reg, myjmp_buf *handler);
+void compile_expressions(unsigned char **objdest, int *objdest_sz, list exprs, list ref_nms, list *comps, region reg, myjmp_buf *handler);
 union expression *build_syntax_tree(list d, region reg, myjmp_buf *handler);
-unsigned long execute_macro(list (*expander)(list), list arg, list bindings, myjmp_buf *handler);
+unsigned long execute_macro(list (*expander)(list), list arg, list bindings, list *comps, region comps_reg, myjmp_buf *handler);
 
 Symbol *make_symbol(char *nm, void *addr, region r) {
 	Symbol *sym = region_malloc(r, sizeof(Symbol));
@@ -301,7 +301,7 @@ Symbol *make_symbol(char *nm, void *addr, region r) {
 	return sym;
 }
 
-union expression *generate_macros(union expression *s, list st_ref_nms, list dyn_ref_nms, region reg, myjmp_buf *handler) {
+union expression *generate_macros(union expression *s, list st_ref_nms, list dyn_ref_nms, list *comps, region reg, myjmp_buf *handler) {
 	list *ref_nms = get_zeroth_function(s) ? &dyn_ref_nms : &st_ref_nms;
 	switch(s->base.type) {
 		case begin: {
@@ -313,18 +313,18 @@ union expression *generate_macros(union expression *s, list st_ref_nms, list dyn
 			}}
 			union expression **exprr;
 			{foreachaddress(exprr, s->begin.expressions) {
-				*exprr = generate_macros(*exprr, st_ref_nms, dyn_ref_nms, reg, handler);
+				*exprr = generate_macros(*exprr, st_ref_nms, dyn_ref_nms, comps, reg, handler);
 				(*exprr)->base.parent = s;
 			}}
 			break;
 		} case with: {
 			prepend(s->with.reference->reference.name, ref_nms, reg);
-			put(s, with.expression, generate_macros(s->with.expression, st_ref_nms, dyn_ref_nms, reg, handler));
+			put(s, with.expression, generate_macros(s->with.expression, st_ref_nms, dyn_ref_nms, comps, reg, handler));
 			break;
 		} case _if: {
-			put(s, _if.condition, generate_macros(s->_if.condition, st_ref_nms, dyn_ref_nms, reg, handler));
-			put(s, _if.consequent, generate_macros(s->_if.consequent, st_ref_nms, dyn_ref_nms, reg, handler));
-			put(s, _if.alternate, generate_macros(s->_if.alternate, st_ref_nms, dyn_ref_nms, reg, handler));
+			put(s, _if.condition, generate_macros(s->_if.condition, st_ref_nms, dyn_ref_nms, comps, reg, handler));
+			put(s, _if.consequent, generate_macros(s->_if.consequent, st_ref_nms, dyn_ref_nms, comps, reg, handler));
+			put(s, _if.alternate, generate_macros(s->_if.alternate, st_ref_nms, dyn_ref_nms, comps, reg, handler));
 			break;
 		} case function: {
 			prepend(s->function.reference->reference.name, &st_ref_nms, reg);
@@ -333,7 +333,7 @@ union expression *generate_macros(union expression *s, list st_ref_nms, list dyn
 			{foreach(param, s->function.parameters) {
 				prepend(param->reference.name, &dyn_ref_nms, reg);
 			}}
-			put(s, function.expression, generate_macros(s->function.expression, st_ref_nms, dyn_ref_nms, reg, handler));
+			put(s, function.expression, generate_macros(s->function.expression, st_ref_nms, dyn_ref_nms, comps, reg, handler));
 			break;
 		} case continuation: {
 			prepend(s->continuation.reference->reference.name, ref_nms, reg);
@@ -341,13 +341,13 @@ union expression *generate_macros(union expression *s, list st_ref_nms, list dyn
 			{foreach(param, s->continuation.parameters) {
 				prepend(param->reference.name, ref_nms, reg);
 			}}
-			put(s, continuation.expression, generate_macros(s->continuation.expression, st_ref_nms, dyn_ref_nms, reg, handler));
+			put(s, continuation.expression, generate_macros(s->continuation.expression, st_ref_nms, dyn_ref_nms, comps, reg, handler));
 			break;
 		} case invoke: case jump: {
-			put(s, invoke.reference, generate_macros(s->invoke.reference, st_ref_nms, dyn_ref_nms, reg, handler));
+			put(s, invoke.reference, generate_macros(s->invoke.reference, st_ref_nms, dyn_ref_nms, comps, reg, handler));
 			union expression **arg;
 			{foreachaddress(arg, s->invoke.arguments) {
-				*arg = generate_macros(*arg, st_ref_nms, dyn_ref_nms, reg, handler);
+				*arg = generate_macros(*arg, st_ref_nms, dyn_ref_nms, comps, reg, handler);
 				(*arg)->base.parent = s;
 			}}
 			break;
@@ -374,21 +374,17 @@ union expression *generate_macros(union expression *s, list st_ref_nms, list dyn
 					bindings_code, make_literal((unsigned long) reg, reg), reg);
 			}}
 			
-			put(s, non_primitive.reference, generate_macros(s->non_primitive.reference, st_ref_nms, dyn_ref_nms, reg, handler));
-			s = make_invoke4(make_literal((unsigned long) execute_macro, reg), s->non_primitive.reference,
-				make_literal((unsigned long) s->non_primitive.argument, reg), bindings_code,
+			put(s, non_primitive.reference, generate_macros(s->non_primitive.reference, st_ref_nms, dyn_ref_nms, comps, reg, handler));
+			s = make_invoke6(make_literal((unsigned long) execute_macro, reg), s->non_primitive.reference,
+				make_literal((unsigned long) copy_sexpr_list(s->non_primitive.argument, reg), reg), bindings_code,
+				make_literal((unsigned long) comps, reg), make_literal((unsigned long) reg, reg),
 				make_literal((unsigned long) handler, reg), reg);
 		}
 	}
 	return s;
 }
 
-struct compilation {
-	union sexpr *source;
-	Object *output;
-};
-
-unsigned long execute_macro(list (*expander)(list), list arg, list bindings, myjmp_buf *handler) {
+unsigned long execute_macro(list (*expander)(list), list arg, list bindings, list *comps, region comps_reg, myjmp_buf *handler) {
 	region reg = create_region(0);
 	list ref_nms = nil(reg), named_bindings = nil(reg);
 	Symbol *sym;
@@ -401,7 +397,7 @@ unsigned long execute_macro(list (*expander)(list), list arg, list bindings, myj
 	union expression *func = make_function(reg);
 	put(func, function.expression, build_syntax_tree(expander(arg), reg, handler));
 	unsigned char *objdest; int objdest_sz;
-	compile_expressions(&objdest, &objdest_sz, lst(func, nil(reg), reg), ref_nms, reg, handler);
+	compile_expressions(&objdest, &objdest_sz, lst(func, nil(reg), reg), ref_nms, comps, comps_reg, handler);
 	Object *obj = load(objdest, objdest_sz, reg);
 	mutate_symbols(obj, named_bindings);
 	//There is only one immutable symbol: our annonymous function

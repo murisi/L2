@@ -15,6 +15,13 @@ typedef unsigned long int bool;
 #include "x86_64_generator.c"
 #include "x86_64_assembler.c"
 
+struct compilation {
+	unsigned char *objdest;
+	int objdest_sz;
+	union expression *program;
+	list ref_nms;
+};
+
 /*
  * Makes a new binary file at the path outbin from the list of primitive
  * expressions, exprs. The resulting binary file executes the list from top to
@@ -22,16 +29,24 @@ typedef unsigned long int bool;
  * executable that it is embedded in.
  */
 
-void compile_expressions(unsigned char **objdest, int *objdest_sz, list exprs, list ref_nms, region obj_reg, myjmp_buf *handler) {
+void compile_expressions(unsigned char **objdest, int *objdest_sz, list exprs, list ref_nms, list *comps, region obj_reg, myjmp_buf *handler) {
 	region manreg = create_region(0);
 	union expression *container = make_begin(manreg), *t;
 	{foreach(t, exprs) {
-		t->base.parent = container;
+		union expression *c = copy_expression(t, manreg);
+		c->base.parent = container;
+		append(c, &container->begin.expressions, manreg);
 	}}
-	container->begin.expressions = exprs;
-	union expression *root_function = make_function(manreg), *program = root_function;
+	union expression *program = make_function(manreg);
+	/*struct compilation *pc;
+	{foreach(pc, comps) {
+		if(expression_equals(program, pc->program)) {
+			*objdest = pc->objdest;
+			*objdest_sz = pc->objdest_sz;
+		}
+	}}*/
 	put(program, function.expression, container);
-	put(program, function.expression, generate_macros(program->function.expression, ref_nms, nil(obj_reg), obj_reg, handler));
+	put(program, function.expression, generate_macros(program->function.expression, ref_nms, nil(obj_reg), comps, obj_reg, handler));
 	visit_expressions(vfind_multiple_definitions, &program, handler);
 	visit_expressions(vlink_references, &program, (void* []) {handler, manreg});
 	visit_expressions(vescape_analysis, &program, NULL);
@@ -48,6 +63,13 @@ void compile_expressions(unsigned char **objdest, int *objdest_sz, list exprs, l
 	visit_expressions(vmerge_begins, &program, NULL);
 	write_elf(program->begin.expressions, locals, globals, objdest, objdest_sz, obj_reg);
 	destroy_region(manreg);
+	
+	/*struct compilation *c = region_malloc(obj_reg, sizeof(struct compilation));
+	c->objdest = *objdest;
+	c->objdest_sz = *objdest_sz;
+	c->exprs = exprs;
+	c->ref_nms = ref_nms;
+	prepend(c, comps, obj_reg);*/
 }
 
 #include "parser.c"
@@ -99,8 +121,8 @@ void evaluate_source(int srcc, char *srcv[], list bindings, myjmp_buf *handler) 
 	{foreach(sym, bindings) {
 		prepend(sym->name, &ref_nms, syntax_tree_region);
 	}}
-	unsigned char *objdest; int objdest_sz;
-	compile_expressions(&objdest, &objdest_sz, expressions, ref_nms, syntax_tree_region, handler);
+	unsigned char *objdest; int objdest_sz; list comps = nil(syntax_tree_region);
+	compile_expressions(&objdest, &objdest_sz, expressions, ref_nms, &comps, syntax_tree_region, handler);
 	Object *main_obj = load(objdest, objdest_sz, syntax_tree_region);
 	list is = immutable_symbols(main_obj, syntax_tree_region);
 	append_list(&bindings, is);

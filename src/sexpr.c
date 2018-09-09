@@ -13,6 +13,21 @@ bool is_lst(union sexpr *s) {
 	return s->list_flag ? true : false;
 }
 
+list copy_sexpr_list(list l, region r) {
+	list c = nil(r);
+	union sexpr *s;
+	foreach(s, l) {
+		if(is_lst(s)) {
+			append(copy_sexpr_list((list) s, r), &c, r);
+		} else {
+			union sexpr *t = region_malloc(r, sizeof(union sexpr));
+			t->character = s->character;
+			append(t, &c, r);
+		}
+	}
+	return c;
+}
+
 bool char_equals(struct character *a, struct character *b) {
 	return a->character == b->character ? true : false;
 }

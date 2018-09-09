@@ -366,3 +366,95 @@ void print_syntax_tree(union expression *s) {
 		}
 	}
 }
+
+bool expression_equals(union expression *expr1, union expression *expr2) {
+	if(expr1->base.type != expr2->base.type) return false;
+	switch(expr1->base.type) {
+		case literal: {
+			return expr1->literal.value == expr2->literal.value ? true : false;
+		} case reference: {
+			return (expr1->reference.name == expr2->reference.name) ||
+				(expr1->reference.name && expr2->reference.name && strcmp(expr1->reference.name, expr2->reference.name) == 0) ?
+				true : false;
+		} case invoke: case jump: {
+			if(!expression_equals(expr1->invoke.reference, expr2->invoke.reference)) return false;
+			if(length(expr1->invoke.arguments) != length(expr2->invoke.arguments)) return false;
+			union expression *u, *v;
+			foreachzipped(u, v, expr1->invoke.arguments, expr2->invoke.arguments) {
+				if(!expression_equals(u, v)) return false;
+			}
+			return true;
+		} case _if: {
+			return (expression_equals(expr1->_if.condition, expr2->_if.condition) &&
+				expression_equals(expr1->_if.consequent, expr2->_if.consequent) &&
+				expression_equals(expr1->_if.alternate, expr2->_if.alternate)) ? true : false;
+		} case function: case continuation: case with: {
+			if(!expression_equals(expr1->function.reference, expr2->function.reference)) return false;
+			if(!expression_equals(expr1->function.expression, expr2->function.expression)) return false;
+			union expression *u, *v;
+			foreachzipped(u, v, expr1->function.parameters, expr2->function.parameters) {
+				if(!expression_equals(u, v)) return false;
+			}
+			return true;
+		} case non_primitive: case instruction: {
+			return false;
+		}
+	}
+}
+
+union expression *copy_expression(union expression *expr, region reg) {
+	union expression *copy = region_malloc(reg, sizeof(union expression));
+	copy->base.type = expr->base.type;
+	switch(expr->base.type) {
+		case literal: {
+			copy->literal.value = expr->literal.value;
+			break;
+		} case reference: {
+			copy->reference.name = expr->reference.name;
+			break;
+		} case invoke: case jump: {
+			put(copy, invoke.reference, copy_expression(expr->invoke.reference, reg));
+			copy->invoke.arguments = nil(reg);
+			union expression *arg;
+			foreach(arg, expr->invoke.arguments) {
+				union expression *arg_copy = copy_expression(arg, reg);
+				append(arg_copy, &copy->invoke.arguments, reg);
+				arg_copy->base.parent = copy;
+			}
+			break;
+		} case _if: {
+			put(copy, _if.condition, copy_expression(expr->_if.condition, reg));
+			put(copy, _if.consequent, copy_expression(expr->_if.consequent, reg));
+			put(copy, _if.alternate, copy_expression(expr->_if.alternate, reg));
+			break;
+		} case function: case continuation: case with: {
+			put(copy, function.reference, copy_expression(expr->function.reference, reg));
+			put(copy, function.expression, copy_expression(expr->function.expression, reg));
+			if(expr->base.type == function) {
+				copy->function.locals = nil(reg);
+			}
+			copy->function.parameters = nil(reg);
+			union expression *param;
+			foreach(param, expr->function.parameters) {
+				union expression *param_copy = copy_expression(param, reg);
+				append(param_copy, &copy->function.parameters, reg);
+				param_copy->reference.parent = copy;
+			}
+			break;
+		} case begin: {
+			copy->begin.expressions = nil(reg);
+			union expression *e;
+			foreach(e, expr->begin.expressions) {
+				union expression *e_copy = copy_expression(e, reg);
+				append(e_copy, &copy->begin.expressions, reg);
+				e_copy->base.parent = copy;
+			}
+			break;
+		} case non_primitive: {
+			put(copy, non_primitive.reference, copy_expression(expr->non_primitive.reference, reg));
+			copy->non_primitive.argument = copy_sexpr_list(expr->non_primitive.argument, reg);
+			break;
+		}
+	}
+	return copy;
+}
