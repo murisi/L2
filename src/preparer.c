@@ -314,24 +314,26 @@ union expression *generate_macros(union expression *s, list st_ref_nms, list dyn
 			union expression **exprr;
 			{foreachaddress(exprr, s->begin.expressions) {
 				*exprr = generate_macros(*exprr, st_ref_nms, dyn_ref_nms, reg, handler);
+				(*exprr)->base.parent = s;
 			}}
 			break;
 		} case with: {
 			prepend(s->with.reference->reference.name, ref_nms, reg);
-			s->with.expression = generate_macros(s->with.expression, st_ref_nms, dyn_ref_nms, reg, handler);
+			put(s, with.expression, generate_macros(s->with.expression, st_ref_nms, dyn_ref_nms, reg, handler));
 			break;
 		} case _if: {
-			s->_if.condition = generate_macros(s->_if.condition, st_ref_nms, dyn_ref_nms, reg, handler);
-			s->_if.consequent = generate_macros(s->_if.consequent, st_ref_nms, dyn_ref_nms, reg, handler);
-			s->_if.alternate = generate_macros(s->_if.alternate, st_ref_nms, dyn_ref_nms, reg, handler);
+			put(s, _if.condition, generate_macros(s->_if.condition, st_ref_nms, dyn_ref_nms, reg, handler));
+			put(s, _if.consequent, generate_macros(s->_if.consequent, st_ref_nms, dyn_ref_nms, reg, handler));
+			put(s, _if.alternate, generate_macros(s->_if.alternate, st_ref_nms, dyn_ref_nms, reg, handler));
 			break;
 		} case function: {
 			prepend(s->function.reference->reference.name, &st_ref_nms, reg);
+			dyn_ref_nms = nil(reg);
 			union expression *param;
 			{foreach(param, s->function.parameters) {
 				prepend(param->reference.name, &dyn_ref_nms, reg);
 			}}
-			s->function.expression = generate_macros(s->function.expression, st_ref_nms, dyn_ref_nms, reg, handler);
+			put(s, function.expression, generate_macros(s->function.expression, st_ref_nms, dyn_ref_nms, reg, handler));
 			break;
 		} case continuation: {
 			prepend(s->continuation.reference->reference.name, ref_nms, reg);
@@ -339,13 +341,14 @@ union expression *generate_macros(union expression *s, list st_ref_nms, list dyn
 			{foreach(param, s->continuation.parameters) {
 				prepend(param->reference.name, ref_nms, reg);
 			}}
-			s->continuation.expression = generate_macros(s->continuation.expression, st_ref_nms, dyn_ref_nms, reg, handler);
+			put(s, continuation.expression, generate_macros(s->continuation.expression, st_ref_nms, dyn_ref_nms, reg, handler));
 			break;
 		} case invoke: case jump: {
-			s->invoke.reference = generate_macros(s->invoke.reference, st_ref_nms, dyn_ref_nms, reg, handler);
+			put(s, invoke.reference, generate_macros(s->invoke.reference, st_ref_nms, dyn_ref_nms, reg, handler));
 			union expression **arg;
 			{foreachaddress(arg, s->invoke.arguments) {
 				*arg = generate_macros(*arg, st_ref_nms, dyn_ref_nms, reg, handler);
+				(*arg)->base.parent = s;
 			}}
 			break;
 		} case non_primitive: {
@@ -374,7 +377,7 @@ union expression *generate_macros(union expression *s, list st_ref_nms, list dyn
 			}}
 			
 			union expression *parent = s->non_primitive.parent;
-			s->non_primitive.reference = generate_macros(s->non_primitive.reference, st_ref_nms, dyn_ref_nms, reg, handler);
+			put(s, non_primitive.reference, generate_macros(s->non_primitive.reference, st_ref_nms, dyn_ref_nms, reg, handler));
 			s = make_invoke6(make_literal((unsigned long) execute_macro, reg), s->non_primitive.reference,
 				make_literal((unsigned long) s->non_primitive.argument, reg), static_bindings_code, dynamic_bindings_code,
 				make_literal((unsigned long) parent, reg), make_literal((unsigned long) handler, reg), reg);
@@ -399,8 +402,11 @@ unsigned long execute_macro(list (*expander)(list), list arg, list st_bindings, 
 	{foreach(sym, dyn_bindings) {
 		prepend(sym->name, &dyn_ref_nms, reg);
 	}}
+	union expression *expr = build_syntax_tree(expander(arg), parent, reg, handler);
+	print_syntax_tree(expr);
+	mywrite_str(STDOUT, "\n");
 	Object *obj = load_expressions(lst(make_invoke2(make_literal((unsigned long) _set_, reg), make_literal((unsigned long) &retval,
-		reg), build_syntax_tree(expander(arg), parent, reg, handler), reg), nil(reg), reg), st_ref_nms, dyn_ref_nms, reg, handler);
+		reg), expr, reg), nil(reg), reg), st_ref_nms, dyn_ref_nms, reg, handler);
 	
 	mutate_symbols(obj, st_bindings);
 	mutate_symbols(obj, dyn_bindings);

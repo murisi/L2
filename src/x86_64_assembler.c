@@ -388,9 +388,11 @@ void write_elf(list generated_expressions, list locals, list globals, unsigned c
 		}
 	}}
 	
-	int text_len;
-	unsigned char text[round_size(MAX_INSTR_LEN * length(generated_expressions), ALIGNMENT)];
-	Elf64_Rela relas[MAX_INSTR_FIELDS * length(generated_expressions)];
+	int text_len, max_text_sec_len = round_size(MAX_INSTR_LEN * length(generated_expressions), ALIGNMENT),
+		max_rela_sec_len = MAX_INSTR_FIELDS * length(generated_expressions) * sizeof(Elf64_Rela);
+	region temp_reg = create_region(0);
+	unsigned char *text = region_malloc(temp_reg, max_text_sec_len);
+	Elf64_Rela *relas = region_malloc(temp_reg, max_rela_sec_len);;
 	Elf64_Rela *rela_ptr = relas;
 	assemble(generated_expressions, text, &text_len, syms, &rela_ptr);
 	
@@ -442,7 +444,7 @@ void write_elf(list generated_expressions, list locals, list globals, unsigned c
 	strtab_shdr.sh_type = SHT_STRTAB;
 	strtab_shdr.sh_flags = 0;
 	strtab_shdr.sh_addr = 0;
-	strtab_shdr.sh_offset = text_shdr.sh_offset + sizeof(text);
+	strtab_shdr.sh_offset = text_shdr.sh_offset + max_text_sec_len;
 	strtab_shdr.sh_size = strtab_len;
 	strtab_shdr.sh_link = SHN_UNDEF;
 	strtab_shdr.sh_info = 0;
@@ -490,8 +492,9 @@ void write_elf(list generated_expressions, list locals, list globals, unsigned c
 	mem_write(*bin, pos, &rela_shdr, sizeof(Elf64_Shdr));
 	
 	mem_write(*bin, pos, shstrtab_padded, sizeof(shstrtab_padded));
-	mem_write(*bin, pos, text, sizeof(text));
+	mem_write(*bin, pos, text, max_text_sec_len);
 	mem_write(*bin, pos, strtab, sizeof(strtab));
 	mem_write(*bin, pos, syms, sizeof(syms));
 	mem_write(*bin, pos, relas, (rela_ptr - relas) * sizeof(Elf64_Rela));
+	destroy_region(temp_reg);
 }

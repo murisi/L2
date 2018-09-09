@@ -1,17 +1,16 @@
 (function reverse (l)
 	(with return
 		{(continuation _ (l reversed)
-			(if [sexpr= $l [nil]]
+			(if [nil? $l]
 				{return $reversed}
 				{_ [rst $l] [lst [fst $l] $reversed]})) $l [nil]}))
 
-(** Returns a list with mapper applied to each element.
 (function map (l mapper)
 	(with return
 		{(continuation aux (in out)
-			(if [sexpr= $in [nil]]
+			(if [nil? $in]
 				{return [reverse $out]}
-				{aux [rst $in] [lst [$mapper [fst $in]] $out]})) $l [nil]})))
+				{aux [rst $in] [lst [$mapper [fst $in]] $out]})) $l [nil]}))
 
 (function let (l)
 	(`(with let:return
@@ -23,7 +22,7 @@
 	(`(let (switch:= (,[fst $l])) (switch:val (,[frst $l]))
 		(,(with return
 			{(continuation aux (remaining else-clause)
-				(if [sexpr= $remaining [nil]]
+				(if [nil? $remaining]
 					{return $else-clause}
 					{aux [rst $remaining]
 						(`(if (,[llllst `invoke `$switch:= `$switch:val [ffst $remaining] [nil]])
@@ -40,7 +39,7 @@
 		(,[fst $l])})))
 
 (function array (l)
-	(if [sexpr= [rrst $l] [nil]]
+	(if [nil? [rrst $l]]
 		(`(with return [allocate [* (,[fst $l]) (,[frst $l])] return]))
 		(`(with return [allocate [* (,[fst $l]) [words]]
 			(continuation cont (arg)
@@ -49,7 +48,7 @@
 				{return $arg}))]))))
 
 (function loc (l)
-	(if [sexpr= [rrrst $l] [nil]]
+	(if [nil? [rrrst $l]]
 		(`[+ (,[fst $l]) [* (,[frst $l]) (,[frrst $l])]])
 		[loc [lst (`($[+ (,[fst $l]) [* (,[frst $l]) [words]]])) [rrst $l]]]))
 

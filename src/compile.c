@@ -31,7 +31,7 @@ Object *load_expressions(list exprs, list st_ref_nms, list dyn_ref_nms, region o
 	container->begin.expressions = exprs;
 	union expression *root_function = make_function(manreg), *program = root_function;
 	put(program, function.expression, container);
-	program->function.expression = generate_macros(program->function.expression, st_ref_nms, dyn_ref_nms, obj_reg, handler);
+	put(program, function.expression, generate_macros(program->function.expression, st_ref_nms, dyn_ref_nms, obj_reg, handler));
 	visit_expressions(vfind_multiple_definitions, &program, handler);
 	visit_expressions(vlink_references, &program, (void* []) {handler, manreg});
 	visit_expressions(vescape_analysis, &program, NULL);

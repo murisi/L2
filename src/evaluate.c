@@ -145,7 +145,8 @@ Symbol sexpr_symbols[] = {
 	{.name = "char=", .address = char_equals},
 	{.name = "get", .address = _get_},
 	{.name = "set", .address = _set_},
-	{.name = "mywrite-uint", .address = mywrite_uint}
+	{.name = "mywrite-uint", .address = mywrite_uint},
+	{.name = "mywrite-str", .address = mywrite_str}
 };
 
 int main(int argc, char *argv[]) {
