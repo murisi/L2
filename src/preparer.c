@@ -383,26 +383,21 @@ union expression *generate_macros(union expression *s, list st_ref_nms, list dyn
 	return s;
 }
 
-void _set_(void *dest, void *src) {
-	*((void **) dest) = src;
-}
-
 unsigned long execute_macro(list (*expander)(list), list arg, list bindings, myjmp_buf *handler) {
 	region reg = create_region(0);
-	unsigned long retval;
-	list ref_nms = nil(reg);
+	list ref_nms = nil(reg), named_bindings = nil(reg);
 	Symbol *sym;
 	{foreach(sym, bindings) {
-		prepend(sym->name, &ref_nms, reg);
+		if(sym->name) {
+			prepend(sym->name, &ref_nms, reg);
+			prepend(sym, &named_bindings, reg);
+		}
 	}}
-	union expression *expr = build_syntax_tree(expander(arg), reg, handler);
-	//print_syntax_tree(expr);
-	//mywrite_str(STDOUT, "\n");
-	Object *obj = load_expressions(lst(make_invoke2(make_literal((unsigned long) _set_, reg), make_literal((unsigned long) &retval,
-		reg), expr, reg), nil(reg), reg), ref_nms, reg, handler);
-	
-	mutate_symbols(obj, bindings);
-	start(obj)();
+	union expression *func = make_function(reg);
+	put(func, function.expression, build_syntax_tree(expander(arg), reg, handler));
+	Object *obj = load_expressions(lst(func, nil(reg), reg), ref_nms, reg, handler);
+	mutate_symbols(obj, named_bindings);
+	unsigned long retval = ((unsigned long (*)()) ((Symbol *) immutable_symbols(obj, reg)->fst)->address)();
 	destroy_region(reg);
 	return retval;
 }

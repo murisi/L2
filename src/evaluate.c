@@ -47,6 +47,10 @@ void *_get_(void *ref) {
 	return *((void **) ref);
 }
 
+void _set_(void *dest, void *src) {
+	*((void **) dest) = src;
+}
+
 Symbol sexpr_symbols[] = {
 	{.name = "-!-", .address = _exclamation_mark_},
 	{.name = "-\"-", .address = _double_quotation_},
