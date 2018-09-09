@@ -81,7 +81,7 @@ void evaluate_source(int srcc, char *srcv[], list static_bindings, myjmp_buf *ha
 			while(after_leading_space(src_buf, src_sz, &pos)) {
 				build_expr_list_handler = handler;
 				list sexpr = build_expr_list(src_buf, src_sz, &pos, syntax_tree_region);
-				append(build_syntax_tree(sexpr, NULL, syntax_tree_region, handler), &expressions, syntax_tree_region);
+				append(build_syntax_tree(sexpr, syntax_tree_region, handler), &expressions, syntax_tree_region);
 			}
 		} else if(dot && !strcmp(dot, ".o")) {
 			long int obj_sz = mysize(srcv[i]);

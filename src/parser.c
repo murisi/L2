@@ -10,9 +10,8 @@
  * happen second, and so on.
  */
 
-union expression *build_syntax_tree(list d, union expression *parent, region reg, myjmp_buf *handler) {
+union expression *build_syntax_tree(list d, region reg, myjmp_buf *handler) {
 	union expression *s = region_malloc(reg, sizeof(union expression));
-	s->base.parent = parent;
 	
 	if(is_string(d)) {
 		char *str = to_string(d, reg);
@@ -26,8 +25,8 @@ union expression *build_syntax_tree(list d, union expression *parent, region reg
 		}
 	
 		s->with.type = with;
-		s->with.reference = build_syntax_tree(d->frst, s, reg, handler);
-		s->with.expression = build_syntax_tree(d->frrst, s, reg, handler);
+		put(s, with.reference, build_syntax_tree(d->frst, reg, handler));
+		put(s, with.expression, build_syntax_tree(d->frrst, reg, handler));
 		s->with.parameter = lst(NULL, nil(reg), reg);
 	} else if(!strcmp(to_string(d->fst, reg), "begin")) {
 		s->begin.type = begin;
@@ -36,7 +35,9 @@ union expression *build_syntax_tree(list d, union expression *parent, region reg
 		list t = d->rst;
 		list v;
 		{foreach(v, t) {
-			append(build_syntax_tree(v, s, reg, handler), &s->begin.expressions, reg);
+			union expression *expr = build_syntax_tree(v, reg, handler);
+			append(expr, &s->begin.expressions, reg);
+			expr->base.parent = s;
 		}}
 	} else if(!strcmp(to_string(d->fst, reg), "if")) {
 		if(length(d) != 4) {
@@ -44,9 +45,9 @@ union expression *build_syntax_tree(list d, union expression *parent, region reg
 		}
 	
 		s->_if.type = _if;
-		s->_if.condition = build_syntax_tree(d->frst, s, reg, handler);
-		s->_if.consequent = build_syntax_tree(d->frrst, s, reg, handler);
-		s->_if.alternate = build_syntax_tree(d->frrrst, s, reg, handler);
+		put(s, _if.condition, build_syntax_tree(d->frst, reg, handler));
+		put(s, _if.consequent, build_syntax_tree(d->frrst, reg, handler));
+		put(s, _if.alternate, build_syntax_tree(d->frrrst, reg, handler));
 	} else if(!strcmp(to_string(d->fst, reg), "function") || !strcmp(to_string(d->fst, reg), "continuation")) {
 		if(length(d) != 4) {
 			throw_special_form(d, NULL, handler);
@@ -57,7 +58,7 @@ union expression *build_syntax_tree(list d, union expression *parent, region reg
 		}
 		
 		s->function.type = !strcmp(to_string(d->fst, reg), "function") ? function : continuation;
-		s->function.reference = build_syntax_tree(d->frst, s, reg, handler);
+		put(s, function.reference, build_syntax_tree(d->frst, reg, handler));
 		
 		if(s->function.type == function) {
 			s->function.locals = nil(reg);
@@ -68,10 +69,12 @@ union expression *build_syntax_tree(list d, union expression *parent, region reg
 			if(!is_string(v)) {
 				throw_special_form(d, (list) v, handler);
 			}
-			append(build_syntax_tree((list) v, s, reg, handler), &s->function.parameters, reg);
+			union expression *expr = build_syntax_tree((list) v, reg, handler);
+			append(expr, &s->function.parameters, reg);
+			expr->reference.parent = s;
 		}
 	
-		s->function.expression = build_syntax_tree(d->frrrst, s, reg, handler);
+		put(s, function.expression, build_syntax_tree(d->frrrst, reg, handler));
 	} else if(!strcmp(to_string(d->fst, reg), "literal")) {
 		char *str;
 		if(length(d) != 2) {
@@ -97,16 +100,18 @@ union expression *build_syntax_tree(list d, union expression *parent, region reg
 		}
 	
 		s->invoke.type = !strcmp(to_string(d->fst, reg), "invoke") ? invoke : jump;
-		s->invoke.reference = build_syntax_tree(d->frst, s, reg, handler);
+		put(s, invoke.reference, build_syntax_tree(d->frst, reg, handler));
 	
 		list v;
 		s->invoke.arguments = nil(reg);
 		foreach(v, d->rrst) {
-			append(build_syntax_tree(v, s, reg, handler), &s->invoke.arguments, reg);
+			union expression *expr = build_syntax_tree(v, reg, handler);
+			append(expr, &s->invoke.arguments, reg);
+			expr->base.parent = s;
 		}
 	} else {
 		s->non_primitive.type = non_primitive;
-		s->non_primitive.reference = build_syntax_tree(d->fst, s, reg, handler);
+		put(s, non_primitive.reference, build_syntax_tree(d->fst, reg, handler));
 		s->non_primitive.argument = d->rst;
 	}
 	return s;
