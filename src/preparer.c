@@ -290,9 +290,9 @@ union expression *vmerge_begins(union expression *n, void *ctx) {
 	return n;
 }
 
-Object *load_expressions(list exprs, list st_ref_nms, list dyn_ref_nms, region reg, myjmp_buf *handler);
+Object *load_expressions(list exprs, list ref_nms, region reg, myjmp_buf *handler);
 union expression *build_syntax_tree(list d, region reg, myjmp_buf *handler);
-unsigned long execute_macro(list (*expander)(list), list arg, list static_bindings, list dynamic_bindings, myjmp_buf *handler);
+unsigned long execute_macro(list (*expander)(list), list arg, list bindings, myjmp_buf *handler);
 
 Symbol *make_symbol(char *nm, void *addr, region r) {
 	Symbol *sym = region_malloc(r, sizeof(Symbol));
@@ -352,33 +352,31 @@ union expression *generate_macros(union expression *s, list st_ref_nms, list dyn
 			}}
 			break;
 		} case non_primitive: {
-			union expression *static_bindings_code = make_invoke1(make_literal((unsigned long) nil, reg),
+			union expression *bindings_code = make_invoke1(make_literal((unsigned long) nil, reg),
 				make_literal((unsigned long) reg, reg), reg);
 			//Loops have special ordering to allow for shadowing
 			char *name;
 			{foreach(name, reverse(st_ref_nms, reg)) {
 				union expression *ref = make_reference(reg);
 				ref->reference.name = name;
-				static_bindings_code = make_invoke3(make_literal((unsigned long) lst, reg),
+				bindings_code = make_invoke3(make_literal((unsigned long) lst, reg),
 					make_invoke3(make_literal((unsigned long) make_symbol, reg), make_literal((unsigned long) name, reg),
 						ref, make_literal((unsigned long) reg, reg), reg),
-					static_bindings_code, make_literal((unsigned long) reg, reg), reg);
+					bindings_code, make_literal((unsigned long) reg, reg), reg);
 			}}
-			union expression *dynamic_bindings_code = make_invoke1(make_literal((unsigned long) nil, reg),
-				make_literal((unsigned long) reg, reg), reg);
 			
 			{foreach(name, reverse(dyn_ref_nms, reg)) {
 				union expression *ref = make_reference(reg);
 				ref->reference.name = name;
-				dynamic_bindings_code = make_invoke3(make_literal((unsigned long) lst, reg),
+				bindings_code = make_invoke3(make_literal((unsigned long) lst, reg),
 					make_invoke3(make_literal((unsigned long) make_symbol, reg), make_literal((unsigned long) name, reg),
 						ref, make_literal((unsigned long) reg, reg), reg),
-					dynamic_bindings_code, make_literal((unsigned long) reg, reg), reg);
+					bindings_code, make_literal((unsigned long) reg, reg), reg);
 			}}
 			
 			put(s, non_primitive.reference, generate_macros(s->non_primitive.reference, st_ref_nms, dyn_ref_nms, reg, handler));
-			s = make_invoke5(make_literal((unsigned long) execute_macro, reg), s->non_primitive.reference,
-				make_literal((unsigned long) s->non_primitive.argument, reg), static_bindings_code, dynamic_bindings_code,
+			s = make_invoke4(make_literal((unsigned long) execute_macro, reg), s->non_primitive.reference,
+				make_literal((unsigned long) s->non_primitive.argument, reg), bindings_code,
 				make_literal((unsigned long) handler, reg), reg);
 		}
 	}
@@ -389,25 +387,21 @@ void _set_(void *dest, void *src) {
 	*((void **) dest) = src;
 }
 
-unsigned long execute_macro(list (*expander)(list), list arg, list st_bindings, list dyn_bindings, myjmp_buf *handler) {
+unsigned long execute_macro(list (*expander)(list), list arg, list bindings, myjmp_buf *handler) {
 	region reg = create_region(0);
 	unsigned long retval;
-	list st_ref_nms = nil(reg), dyn_ref_nms = nil(reg);
+	list ref_nms = nil(reg);
 	Symbol *sym;
-	{foreach(sym, st_bindings) {
-		prepend(sym->name, &st_ref_nms, reg);
-	}}
-	{foreach(sym, dyn_bindings) {
-		prepend(sym->name, &dyn_ref_nms, reg);
+	{foreach(sym, bindings) {
+		prepend(sym->name, &ref_nms, reg);
 	}}
 	union expression *expr = build_syntax_tree(expander(arg), reg, handler);
 	//print_syntax_tree(expr);
 	//mywrite_str(STDOUT, "\n");
 	Object *obj = load_expressions(lst(make_invoke2(make_literal((unsigned long) _set_, reg), make_literal((unsigned long) &retval,
-		reg), expr, reg), nil(reg), reg), st_ref_nms, dyn_ref_nms, reg, handler);
+		reg), expr, reg), nil(reg), reg), ref_nms, reg, handler);
 	
-	mutate_symbols(obj, st_bindings);
-	mutate_symbols(obj, dyn_bindings);
+	mutate_symbols(obj, bindings);
 	start(obj)();
 	destroy_region(reg);
 	return retval;

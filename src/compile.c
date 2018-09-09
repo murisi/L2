@@ -22,7 +22,7 @@ typedef unsigned long int bool;
  * executable that it is embedded in.
  */
 
-Object *load_expressions(list exprs, list st_ref_nms, list dyn_ref_nms, region obj_reg, myjmp_buf *handler) {
+Object *load_expressions(list exprs, list ref_nms, region obj_reg, myjmp_buf *handler) {
 	region manreg = create_region(0);
 	union expression *container = make_begin(manreg), *t;
 	{foreach(t, exprs) {
@@ -31,7 +31,7 @@ Object *load_expressions(list exprs, list st_ref_nms, list dyn_ref_nms, region o
 	container->begin.expressions = exprs;
 	union expression *root_function = make_function(manreg), *program = root_function;
 	put(program, function.expression, container);
-	put(program, function.expression, generate_macros(program->function.expression, st_ref_nms, dyn_ref_nms, obj_reg, handler));
+	put(program, function.expression, generate_macros(program->function.expression, ref_nms, nil(obj_reg), obj_reg, handler));
 	visit_expressions(vfind_multiple_definitions, &program, handler);
 	visit_expressions(vlink_references, &program, (void* []) {handler, manreg});
 	visit_expressions(vescape_analysis, &program, NULL);
@@ -63,7 +63,7 @@ Object *load_expressions(list exprs, list st_ref_nms, list dyn_ref_nms, region o
  * that it is embedded in.
  */
 
-void evaluate_source(int srcc, char *srcv[], list static_bindings, myjmp_buf *handler) {
+void evaluate_source(int srcc, char *srcv[], list bindings, myjmp_buf *handler) {
 	region syntax_tree_region = create_region(0);
 	list expressions = nil(syntax_tree_region), objects = nil(syntax_tree_region);
 	
@@ -94,22 +94,22 @@ void evaluate_source(int srcc, char *srcv[], list static_bindings, myjmp_buf *ha
 			prepend(obj, &objects, syntax_tree_region);
 			append(make_invoke0(make_literal((unsigned long) start(obj), syntax_tree_region), syntax_tree_region),
 				&expressions, syntax_tree_region);
-			append_list(&static_bindings, immutable_symbols(obj, syntax_tree_region));
+			append_list(&bindings, immutable_symbols(obj, syntax_tree_region));
 		}
 	}
 	
-	list st_ref_nms = nil(syntax_tree_region);
+	list ref_nms = nil(syntax_tree_region);
 	Symbol *sym;
-	{foreach(sym, static_bindings) {
-		prepend(sym->name, &st_ref_nms, syntax_tree_region);
+	{foreach(sym, bindings) {
+		prepend(sym->name, &ref_nms, syntax_tree_region);
 	}}
-	Object *main_obj = load_expressions(expressions, st_ref_nms, nil(syntax_tree_region), syntax_tree_region, handler);
+	Object *main_obj = load_expressions(expressions, ref_nms, syntax_tree_region, handler);
 	list is = immutable_symbols(main_obj, syntax_tree_region);
-	append_list(&static_bindings, is);
-	mutate_symbols(main_obj, static_bindings);
+	append_list(&bindings, is);
+	mutate_symbols(main_obj, bindings);
 	Object *obj;
 	{foreach(obj, objects) {
-		mutate_symbols(obj, static_bindings);
+		mutate_symbols(obj, bindings);
 	}}
 	start(main_obj)();
 	destroy_region(syntax_tree_region);
