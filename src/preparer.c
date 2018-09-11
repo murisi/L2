@@ -115,7 +115,7 @@ union expression *root_function_of(union expression *s) {
 
 union expression *vlink_references(union expression *s, void *ctx) {
 	myjmp_buf *handler = ((void **) ctx)[0];
-	region *r = ((void **) ctx)[1];
+	region r = ((void **) ctx)[1];
 	if(s->base.type == reference) {
 		s->reference.referent = referent_of(s);
 		if(s->reference.referent == NULL) {
@@ -269,23 +269,10 @@ union expression *use_return_value(union expression *n, union expression *ret_va
 }
 
 union expression *vmerge_begins(union expression *n, void *ctx) {
-	if(n->base.type == begin) {
-		union expression *t;
-		list *l;
-		
-		foreachlist(l, t, &n->begin.expressions) {
-			repeat:
-			if(t->base.type == begin) {
-				append_list(&t->begin.expressions, (*l)->rst);
-				*l = t->begin.expressions;
-				if(is_nil(t->begin.expressions)) {
-					break;
-				} else {
-					t = (*l)->fst;
-					goto repeat;
-				}
-			}
-		}
+	if(n->base.type != begin) {
+		list *l = ((void **) ctx)[0];
+		region r = ((void **) ctx)[1];
+		prepend(n, l, r);
 	}
 	return n;
 }

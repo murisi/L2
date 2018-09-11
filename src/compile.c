@@ -62,8 +62,9 @@ void compile_expressions(unsigned char **objdest, int *objdest_sz, list exprs, l
 	list locals = program->function.locals;
 	list globals = program->function.parameters;
 	program = generate_toplevel(program, manreg);
-	visit_expressions(vmerge_begins, &program, NULL);
-	write_elf(program->begin.expressions, locals, globals, objdest, objdest_sz, obj_reg);
+	list asms = nil(manreg);
+	visit_expressions(vmerge_begins, &program, (void* []) {&asms, manreg});
+	write_elf(reverse(asms, manreg), locals, globals, objdest, objdest_sz, obj_reg);
 	destroy_region(manreg);
 	
 	struct compilation *c = region_malloc(obj_reg, sizeof(struct compilation));
