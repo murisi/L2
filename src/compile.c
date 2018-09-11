@@ -30,7 +30,6 @@ struct compilation {
  */
 
 void compile_expressions(unsigned char **objdest, int *objdest_sz, list exprs, list ref_nms, list *comps, region obj_reg, myjmp_buf *handler) {
-	region manreg = create_region(0);
 	union expression *oprogram = make_function(obj_reg), *program;
 	union expression *ocontainer = make_begin(obj_reg), *t;
 	{foreach(t, exprs) {
@@ -38,15 +37,16 @@ void compile_expressions(unsigned char **objdest, int *objdest_sz, list exprs, l
 	}}
 	put(oprogram, function.expression, ocontainer);
 	struct compilation *pc;
+	
 	{foreach(pc, *comps) {
 		if(expression_equals(oprogram, pc->program)) {
 			*objdest = pc->objdest;
 			*objdest_sz = pc->objdest_sz;
-			destroy_region(manreg);
 			return;
 		}
 	}}
 	
+	region manreg = create_region(0);
 	program = copy_expression(oprogram, manreg);
 	put(program, function.expression, generate_macros(program->function.expression, ref_nms, nil(obj_reg), comps, obj_reg, handler));
 	visit_expressions(vfind_multiple_definitions, &program, handler);

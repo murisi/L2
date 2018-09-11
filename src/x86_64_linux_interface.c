@@ -172,8 +172,8 @@ void *region_malloc(region reg, unsigned long len) {
 	//check_region_integrity(reg);
 	
 	len = round_size(len, ALIGNMENT);
-	if((((void ***) reg)[1][2] + len > ((void ***) reg)[1][3])) {
-		((void **) reg)[1] = ((void ***) reg)[1][0] = create_region(len);
+	if(((void ***) reg)[1][2] + len > ((void ***) reg)[1][3]) {
+		((void **) reg)[1] = ((void ***) reg)[1][0] = create_region(len + (2*(((void ***) reg)[1][3] - ((void **) reg)[1])));
 	}
 	void *mem = ((void ***) reg)[1][2];
 	((void ***) reg)[1][2] += len;

@@ -392,7 +392,7 @@ void write_elf(list generated_expressions, list locals, list globals, unsigned c
 		max_rela_sec_len = MAX_INSTR_FIELDS * length(generated_expressions) * sizeof(Elf64_Rela);
 	region temp_reg = create_region(0);
 	unsigned char *text = region_malloc(temp_reg, max_text_sec_len);
-	Elf64_Rela *relas = region_malloc(temp_reg, max_rela_sec_len);;
+	Elf64_Rela *relas = region_malloc(temp_reg, max_rela_sec_len);
 	Elf64_Rela *rela_ptr = relas;
 	assemble(generated_expressions, text, &text_len, syms, &rela_ptr);
 	
