@@ -117,7 +117,7 @@ union expression *vlink_references(union expression *s, void *ctx) {
 	myjmp_buf *handler = ((void **) ctx)[0];
 	region r = ((void **) ctx)[1];
 	if(s->base.type == reference) {
-		s->reference.referent = referent_of(s);
+		s->reference.referent = s->reference.referent ? s->reference.referent : referent_of(s);
 		if(s->reference.referent == NULL) {
 			s->reference.referent = prepend_parameter(root_function_of(s), r);
 			s->reference.referent->reference.name = s->reference.name;
@@ -293,6 +293,14 @@ Symbol *make_symbol(char *nm, void *addr, region r) {
 	return sym;
 }
 
+void *_get_(void *ref) {
+	return *((void **) ref);
+}
+
+void _set_(void *ref, void *val) {
+	*((void **) ref) = val;
+}
+
 union expression *generate_macros(union expression *s, list st_ref_nms, list dyn_ref_nms, list *comps, region reg, myjmp_buf *handler) {
 	list *ref_nms = get_zeroth_function(s) ? &dyn_ref_nms : &st_ref_nms;
 	switch(s->base.type) {
@@ -344,33 +352,51 @@ union expression *generate_macros(union expression *s, list st_ref_nms, list dyn
 			}}
 			break;
 		} case non_primitive: {
-			union expression *bindings_code = make_invoke1(make_literal((unsigned long) nil, reg),
-				make_literal((unsigned long) reg, reg), reg);
+			union expression *region_ref = make_reference(reg), *retval_ref = make_reference(reg), *return_expr = make_with(reg),
+				*binding_expr = make_continuation(reg), *bindings_code = make_invoke1(make_literal((unsigned long) nil, reg),
+				make_invoke1(make_literal((unsigned long) _get_, reg), use_reference(region_ref, reg), reg), reg);
 			//Loops have special ordering to allow for shadowing
 			char *name;
 			{foreach(name, reverse(st_ref_nms, reg)) {
 				union expression *ref = make_reference(reg);
 				ref->reference.name = name;
+				ref->reference.referent = NULL;
 				bindings_code = make_invoke3(make_literal((unsigned long) lst, reg),
 					make_invoke3(make_literal((unsigned long) make_symbol, reg), make_literal((unsigned long) name, reg),
-						ref, make_literal((unsigned long) reg, reg), reg),
-					bindings_code, make_literal((unsigned long) reg, reg), reg);
+						ref, make_invoke1(make_literal((unsigned long) _get_, reg), use_reference(region_ref, reg), reg), reg),
+						bindings_code, make_invoke1(make_literal((unsigned long) _get_, reg), use_reference(region_ref, reg), reg),
+						reg);
 			}}
 			
 			{foreach(name, reverse(dyn_ref_nms, reg)) {
 				union expression *ref = make_reference(reg);
 				ref->reference.name = name;
+				ref->reference.referent = NULL;
 				bindings_code = make_invoke3(make_literal((unsigned long) lst, reg),
 					make_invoke3(make_literal((unsigned long) make_symbol, reg), make_literal((unsigned long) name, reg),
-						ref, make_literal((unsigned long) reg, reg), reg),
-					bindings_code, make_literal((unsigned long) reg, reg), reg);
+						ref, make_invoke1(make_literal((unsigned long) _get_, reg), use_reference(region_ref, reg), reg), reg),
+						bindings_code, make_invoke1(make_literal((unsigned long) _get_, reg), use_reference(region_ref, reg), reg),
+						reg);
 			}}
 			
 			put(s, non_primitive.reference, generate_macros(s->non_primitive.reference, st_ref_nms, dyn_ref_nms, comps, reg, handler));
-			s = make_invoke6(make_literal((unsigned long) execute_macro, reg), s->non_primitive.reference,
-				make_literal((unsigned long) copy_sexpr_list(s->non_primitive.argument, reg), reg), bindings_code,
-				make_literal((unsigned long) comps, reg), make_literal((unsigned long) reg, reg),
-				make_literal((unsigned long) handler, reg), reg);
+			append_expr(region_ref, binding_expr, continuation.parameters, reg);
+			append_expr(retval_ref, binding_expr, continuation.parameters, reg);
+			append_expr(make_invoke2(make_literal((unsigned long) _set_, reg), use_reference(retval_ref, reg),
+				make_invoke6(make_literal((unsigned long) execute_macro, reg), s->non_primitive.reference,
+					make_literal((unsigned long) copy_sexpr_list(s->non_primitive.argument, reg), reg), bindings_code,
+					make_literal((unsigned long) comps, reg), make_literal((unsigned long) reg, reg),
+					make_literal((unsigned long) handler, reg), reg), reg), binding_expr->continuation.expression, begin.expressions,
+					reg);
+			append_expr(make_invoke1(make_literal((unsigned long) destroy_region, reg),
+				make_invoke1(make_literal((unsigned long) _get_, reg), use_reference(region_ref, reg), reg), reg),
+				binding_expr->continuation.expression, begin.expressions, reg);
+			append_expr(make_jump1(use_reference(return_expr->with.reference, reg),
+				make_invoke1(make_literal((unsigned long) _get_, reg), use_reference(retval_ref, reg), reg), reg),
+				binding_expr->continuation.expression, begin.expressions, reg);
+			put(return_expr, with.expression, make_jump2(binding_expr,
+				make_invoke1(make_literal((unsigned long) create_region, reg), make_literal(0, reg), reg), make_begin(reg), reg));
+			return return_expr;
 		}
 	}
 	return s;

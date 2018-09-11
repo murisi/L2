@@ -17,6 +17,7 @@ union expression *build_syntax_tree(list d, region reg, myjmp_buf *handler) {
 		char *str = to_string(d, reg);
 		s->reference.type = reference;
 		s->reference.name = str;
+		s->reference.referent = NULL;
 	} else if(!strcmp(to_string(d->fst, reg), "with")) {
 		if(length(d) != 3) {
 			throw_special_form(d, NULL, handler);

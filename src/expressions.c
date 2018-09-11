@@ -162,6 +162,14 @@ union expression *make_reference(region reg) {
 	return ref;
 }
 
+union expression *use_reference(union expression *referent, region reg) {
+	union expression *ref = region_malloc(reg, sizeof(union expression));
+	ref->reference.type = reference;
+	ref->reference.name = referent->reference.name;
+	ref->reference.referent = referent;
+	return ref;
+}
+
 bool strequal(void *a, void *b) {
 	return strcmp(a, b) == 0;
 }
@@ -173,6 +181,20 @@ union expression *make_begin(region reg) {
 	return beg;
 }
 
+#define put(expr, part, val) { \
+	union expression *_set_expr = expr; \
+	union expression *_set_val = val; \
+	_set_expr->part = _set_val; \
+	_set_val->base.parent = _set_expr; \
+}
+
+#define append_expr(val, expr, part, reg) { \
+	union expression *_set_expr = expr; \
+	union expression *_set_val = val; \
+	append(_set_val, &(_set_expr->part), reg); \
+	_set_val->base.parent = _set_expr; \
+}
+
 union expression *make_function(region reg) {
 	union expression *func = region_malloc(reg, sizeof(union expression));
 	func->function.type = function;
@@ -180,15 +202,30 @@ union expression *make_function(region reg) {
 	func->function.reference->reference.parent = func;
 	func->function.parameters = nil(reg);
 	func->function.locals = nil(reg);
-	func->function.expression = make_begin(reg);
+	put(func, function.expression, make_begin(reg));
 	return func;
 }
 
-#define put(expr, part, val) { \
-	union expression *_set_expr = expr; \
-	union expression *_set_val = val; \
-	_set_expr->part = _set_val; \
-	_set_val->base.parent = _set_expr; \
+union expression *make_continuation(region reg) {
+	union expression *cont = region_malloc(reg, sizeof(union expression));
+	cont->continuation.type = continuation;
+	cont->continuation.reference = make_reference(reg);
+	cont->continuation.reference->reference.parent = cont;
+	cont->continuation.parameters = nil(reg);
+	put(cont, continuation.expression, make_begin(reg));
+	return cont;
+}
+
+union expression *make_with(region reg) {
+	union expression *wth = region_malloc(reg, sizeof(union expression));
+	wth->with.type = with;
+	wth->with.reference = make_reference(reg);
+	wth->with.reference->reference.parent = wth;
+	union expression *param = make_reference(reg);
+	param->reference.parent = wth;
+	wth->with.parameter = lst(param, nil(reg), reg);
+	put(wth, with.expression, make_begin(reg));
+	return wth;
 }
 
 union expression *use(int opcode, region reg) {
@@ -232,6 +269,29 @@ union expression *make_instr2(int opcode, union expression *arg1, union expressi
 union expression *make_instr3(int opcode, union expression *arg1, union expression *arg2, union expression *arg3, region reg) {
 	union expression *u = make_instr2(opcode, arg2, arg3, reg);
 	u->instruction.arguments = lst(arg1, u->instruction.arguments, reg);
+	arg1->base.parent = u;
+	return u;
+}
+
+union expression *make_jump0(union expression *ref, region reg) {
+	union expression *u = region_malloc(reg, sizeof(union expression));
+	u->jump.type = jump;
+	u->jump.reference = ref;
+	ref->base.parent = u;
+	u->jump.arguments = nil(reg);
+	return u;
+}
+
+union expression *make_jump1(union expression *ref, union expression *arg1, region reg) {
+	union expression *u = make_jump0(ref, reg);
+	u->jump.arguments = lst(arg1, u->jump.arguments, reg);
+	arg1->base.parent = u;
+	return u;
+}
+
+union expression *make_jump2(union expression *ref, union expression *arg1, union expression *arg2, region reg) {
+	union expression *u = make_jump1(ref, arg2, reg);
+	u->jump.arguments = lst(arg1, u->jump.arguments, reg);
 	arg1->base.parent = u;
 	return u;
 }
@@ -306,7 +366,7 @@ void print_syntax_tree(union expression *s) {
 			mywrite_str(STDOUT, "\b)");
 			break;
 		} case with: {
-			mywrite_str(STDOUT, "(with-continuation ");
+			mywrite_str(STDOUT, "(with ");
 			print_syntax_tree(s->with.reference);
 			mywrite_str(STDOUT, " ");
 			print_syntax_tree(s->with.expression);
@@ -326,7 +386,7 @@ void print_syntax_tree(union expression *s) {
 			break;
 		} case function: case continuation: {
 			mywrite_str(STDOUT, "(");
-			mywrite_str(STDOUT, s->base.type == function ? "function" : "make-continuation");
+			mywrite_str(STDOUT, s->base.type == function ? "function" : "continuation");
 			mywrite_str(STDOUT, " ");
 			print_syntax_tree(s->function.reference);
 			mywrite_str(STDOUT, " ( ");
@@ -349,7 +409,11 @@ void print_syntax_tree(union expression *s) {
 			mywrite_str(STDOUT, ")");
 			break;
 		} case reference: {
-			mywrite_str(STDOUT, s->reference.name);
+			if(s->reference.name) {
+				mywrite_str(STDOUT, s->reference.name);
+			} else {
+				mywrite_str(STDOUT, "()");
+			}
 			break;
 		} case literal: {
 			mywrite_str(STDOUT, "(literal ");

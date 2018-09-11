@@ -150,7 +150,7 @@ union expression *cont_instr_ref(union expression *n, region r) {
 	return n->continuation.cont_instr_ref ? n->continuation.cont_instr_ref : (n->continuation.cont_instr_ref = make_reference(r));
 }
 
-union expression *make_continuation(union expression *n, region r) {
+union expression *make_store_continuation(union expression *n, region r) {
 	union expression *container = make_begin(r);
 	emit(make_store(use(RBX, r), n->continuation.reference, CONT_RBX, use(R11, r), r), r);
 	emit(make_store(use(R12, r), n->continuation.reference, CONT_R12, use(R11, r), r), r);
@@ -182,7 +182,7 @@ union expression *vgenerate_continuation_expressions(union expression *n, region
 			emit(make_load_address(n->continuation.escapes ? n->continuation.reference : cont_instr_ref(n, r), use(R11, r), r), r);
 			emit(make_store(use(R11, r), n->continuation.return_value, 0, use(R10, r), r), r);
 			if(n->continuation.escapes) {
-				emit(make_continuation(n, r), r);
+				emit(make_store_continuation(n, r), r);
 			}
 			
 			//Skip the actual instructions of the continuation
@@ -195,7 +195,7 @@ union expression *vgenerate_continuation_expressions(union expression *n, region
 		} case with: {
 			union expression *container = make_begin(r);
 			if(n->with.escapes) {
-				emit(make_continuation(n, r), r);
+				emit(make_store_continuation(n, r), r);
 			}
 			emit(n->with.expression, r);
 			emit(make_instr1(LOCAL_LABEL, cont_instr_ref(n, r), r), r);
@@ -269,7 +269,7 @@ int get_current_offset(union expression *function) {
 	}
 }
 
-//Must be used after all local references have been made, i.e. after make_continuations
+//Must be used after all local references have been made, i.e. after make_store_continuations
 union expression *vgenerate_function_expressions(union expression *n, region r) {
 	if(n->base.type == function && n->function.parent) {
 		union expression *container = make_begin(r);

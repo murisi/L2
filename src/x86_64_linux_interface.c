@@ -246,8 +246,8 @@ struct timer {
 
 #define print_timer(src) {\
 	mywrite_str(STDOUT, #src ": "); \
-	mywrite_ul(STDOUT, src.seconds); \
+	mywrite_l(STDOUT, src.seconds); \
 	mywrite_str(STDOUT, "s "); \
-	mywrite_ul(STDOUT, src.nanoseconds); \
+	mywrite_l(STDOUT, src.nanoseconds); \
 	mywrite_str(STDOUT, "ns\n"); \
 }
