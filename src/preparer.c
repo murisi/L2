@@ -277,6 +277,11 @@ union expression *vmerge_begins(union expression *n, void *ctx) {
 	return n;
 }
 
+union expression *vcount_expressions(union expression *n, void *ctx) {
+	(*((unsigned long *) ctx))++;
+	return n;
+}
+
 void compile_expressions(unsigned char **objdest, int *objdest_sz, list exprs, list ref_nms, list *comps, region reg, myjmp_buf *handler);
 union expression *build_syntax_tree(list d, region reg, myjmp_buf *handler);
 unsigned long execute_macro(list (*expander)(list), list arg, list bindings, list *comps, region comps_reg, myjmp_buf *handler);

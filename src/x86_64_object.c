@@ -233,6 +233,17 @@ typedef struct {
 	void *address;
 } Symbol;
 
+unsigned long elf64_hash(const unsigned char *name) {
+	unsigned long h = 0, g;
+	while (*name) {
+		h = (h << 4) + *name++;
+		if(g = h & 0xf0000000)
+			h ^= g >> 24;
+		h &= 0x0fffffff;
+	}
+	return h;
+}
+
 /*
  * Goes through the loaded object obj and modifies all occurences of symbols
  * with the same name as update to point to the same address as update.
@@ -242,7 +253,7 @@ void mutate_symbols(Object *obj, list updates) {
 	foreach(update, updates) {
 		int sec;
 		for(sec = 0; sec < obj->ehdr->e_shnum; sec++) {
-			if(obj->shdrs[sec].sh_type == SHT_SYMTAB) {
+			/*if(obj->shdrs[sec].sh_type == SHT_SYMTAB) {
 				int symnum = obj->shdrs[sec].sh_size / obj->shdrs[sec].sh_entsize;
 				int sym;
 				for(sym = 1; sym < symnum; sym++) {
@@ -254,9 +265,26 @@ void mutate_symbols(Object *obj, list updates) {
 							do_relocations(obj, &obj->syms[sec][sym]);
 					}
 				}
+			}*/
+			if(obj->shdrs[sec].sh_type == SHT_HASH) {
+				Elf64_Word *hash_tbl = obj->segs[sec];
+				int nbucket = hash_tbl[0], nchain = hash_tbl[1];
+				Elf64_Word *bucket = hash_tbl + 2, *chain = hash_tbl + 2 + nbucket;
+				int sym = bucket[elf64_hash(update->name) % nbucket];
+				int sym_sec = obj->shdrs[sec].sh_link;
+				while(sym != STN_UNDEF && !(!strcmp(name_of(obj, &obj->shdrs[sym_sec], &obj->syms[sym_sec][sym]), update->name) &&
+					(obj->syms[sym_sec][sym].st_shndx == SHN_UNDEF || obj->syms[sym_sec][sym].st_shndx == SHN_COMMON) &&
+					(ELF64_ST_BIND(obj->syms[sym_sec][sym].st_info) == STB_GLOBAL ||
+					ELF64_ST_BIND(obj->syms[sym_sec][sym].st_info) == STB_WEAK))) {
+						sym = chain[sym];
+				}
+				if(sym != STN_UNDEF) {
+					obj->syms[sym_sec][sym].st_value = (Elf64_Addr) update->address;
+				}
 			}
 		}
 	}
+	do_relocations(obj, NULL);
 }
 
 list symbols(int flag, Object *obj, region reg) {

@@ -253,9 +253,9 @@ int strvlen(char *strv) {
 	return i;
 }
 
-#define SHSTRTAB "\0.shstrtab\0.text\0.strtab\0.symtab\0.bss\0.rela.text\0"
+#define SHSTRTAB "\0.shstrtab\0.text\0.strtab\0.symtab\0.bss\0.rela.text\0.hash\0"
 
-#define SH_COUNT 7
+#define SH_COUNT 8
 
 int max_elf_size(list generated_expressions, list locals, list globals) {
 	return sizeof(Elf64_Ehdr) + (sizeof(Elf64_Shdr) * SH_COUNT) + round_size(strvlen(SHSTRTAB), ALIGNMENT) +
@@ -396,6 +396,28 @@ void write_elf(list generated_expressions, list locals, list globals, unsigned c
 	Elf64_Rela *rela_ptr = relas;
 	assemble(generated_expressions, text, &text_len, syms, &rela_ptr);
 	
+	int nbucket = 2 * sym_count, nchain = sym_count;
+	Elf64_Word hash[2 + nbucket + nchain];
+	hash[0] = nbucket;
+	hash[1] = nchain;
+	Elf64_Word *bucket = hash + 2, *chain = hash + 2 + nbucket;
+	for(i = 0; i < nbucket; i++) {
+		bucket[i] = STN_UNDEF;
+	}
+	for(i = 0; i < nchain; i++) {
+		unsigned long x = elf64_hash(&strtab[syms[i].st_name]);
+		if(bucket[x % nbucket] == STN_UNDEF) {
+			bucket[x % nbucket] = i;
+		} else {
+			int j = bucket[x % nbucket];
+			while(chain[j] != STN_UNDEF) {
+				j = chain[j];
+			}
+			chain[j] = i;
+		}
+		chain[i] = STN_UNDEF;
+	}
+	
 	//Mandatory undefined section
 	Elf64_Shdr undef_shdr;
 	undef_shdr.sh_name = 0;
@@ -470,7 +492,7 @@ void write_elf(list generated_expressions, list locals, list globals, unsigned c
 	bss_shdr.sh_type = SHT_NOBITS;
 	bss_shdr.sh_flags = SHF_WRITE | SHF_ALLOC;
 	bss_shdr.sh_addr = 0;
-	bss_shdr.sh_offset = symtab_shdr.sh_offset + sizeof(syms);
+	bss_shdr.sh_offset = symtab_shdr.sh_offset + symtab_shdr.sh_size;
 	bss_shdr.sh_size = length(locals) * WORD_SIZE;
 	bss_shdr.sh_link = SHN_UNDEF;
 	bss_shdr.sh_info = 0;
@@ -483,7 +505,7 @@ void write_elf(list generated_expressions, list locals, list globals, unsigned c
 	rela_shdr.sh_type = SHT_RELA;
 	rela_shdr.sh_flags = 0;
 	rela_shdr.sh_addr = 0;
-	rela_shdr.sh_offset = bss_shdr.sh_offset;
+	rela_shdr.sh_offset = bss_shdr.sh_offset + 0;
 	rela_shdr.sh_size = (rela_ptr - relas) * sizeof(Elf64_Rela);
 	rela_shdr.sh_link = 4;
 	rela_shdr.sh_info = 2;
@@ -491,10 +513,24 @@ void write_elf(list generated_expressions, list locals, list globals, unsigned c
 	rela_shdr.sh_entsize = sizeof(Elf64_Rela);
 	mem_write(*bin, pos, &rela_shdr, sizeof(Elf64_Shdr));
 	
+	Elf64_Shdr hash_shdr;
+	hash_shdr.sh_name = rela_shdr.sh_name + strlen(".rela.text") + 1;
+	hash_shdr.sh_type = SHT_HASH;
+	hash_shdr.sh_flags = SHF_ALLOC;
+	hash_shdr.sh_addr = 0;
+	hash_shdr.sh_offset = rela_shdr.sh_offset + rela_shdr.sh_size;
+	hash_shdr.sh_size = sizeof(hash);
+	hash_shdr.sh_link = 4;
+	hash_shdr.sh_info = 0;
+	hash_shdr.sh_addralign = WORD_SIZE;
+	hash_shdr.sh_entsize = sizeof(Elf64_Word);
+	mem_write(*bin, pos, &hash_shdr, sizeof(Elf64_Shdr));
+	
 	mem_write(*bin, pos, shstrtab_padded, sizeof(shstrtab_padded));
 	mem_write(*bin, pos, text, max_text_sec_len);
 	mem_write(*bin, pos, strtab, sizeof(strtab));
 	mem_write(*bin, pos, syms, sizeof(syms));
 	mem_write(*bin, pos, relas, (rela_ptr - relas) * sizeof(Elf64_Rela));
+	mem_write(*bin, pos, hash, sizeof(hash));
 	destroy_region(temp_reg);
 }
