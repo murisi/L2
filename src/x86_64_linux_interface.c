@@ -5,6 +5,7 @@
 #define SYS_CLOSE 3
 #define SYS_MMAP 9
 #define SYS_MUNMAP 11
+#define SYS_CLOCK_GETTIME 228
 #define	O_RDWR 02
 #define	O_CREAT	0100
 #define S_IRWXU 00700
@@ -17,6 +18,7 @@
 #define MAP_PRIVATE 0x02
 #define MAP_ANONYMOUS 0x20
 #define PAGE_SIZE 4096
+#define CLOCK_PROCESS_CPUTIME_ID 2
 
 #define STDIN 0
 #define STDOUT 1
@@ -82,7 +84,7 @@ void mywrite_char(int fd, char ch) {
 	mywrite(fd, &ch, 1);
 }
 
-void mywrite_uint(int fd, unsigned int i) {
+void mywrite_ul(int fd, unsigned long i) {
 	char str[10]; int j;
 	for(j = 9; i; j--, i/=10) {
 		switch(i % 10) {
@@ -101,12 +103,12 @@ void mywrite_uint(int fd, unsigned int i) {
 	mywrite(fd, str+j+1, 9-j);
 }
 
-void mywrite_int(int fd, int i) {
+void mywrite_l(int fd, long i) {
 	if(i < 0) {
 		mywrite_char(fd, '-');
-		mywrite_uint(fd, -((unsigned int) i));
+		mywrite_ul(fd, -((unsigned long) i));
 	} else {
-		mywrite_uint(fd, i);
+		mywrite_ul(fd, i);
 	}
 }
 
@@ -200,3 +202,52 @@ typedef struct {
 	void *rsp;
 	void *ctx; //For data that you want to transfer through jumps
 } myjmp_buf;
+
+void gettime(long *sec, long *nsec) {
+	struct {
+		long sec;
+		long nsec;
+	} t;
+	mysyscall(SYS_CLOCK_GETTIME, CLOCK_PROCESS_CPUTIME_ID, &t);
+	*sec = t.sec;
+	*nsec = t.nsec;
+}
+
+struct timer {
+	long seconds;
+	long nanoseconds;
+};
+
+#define timer_reset(tmr) {\
+	tmr.seconds = 0; \
+	tmr.nanoseconds = 0; \
+}
+
+#define mod(a, b) (((a) % (b)) < 0 ? (((a) % (b)) + (b)) : ((a) % (b)))
+
+#define timer_add(dest, src) { \
+	dest.seconds = dest.seconds + src.seconds + (dest.nanoseconds + src.nanoseconds >= 1000000000L ? 1 : 0); \
+	dest.nanoseconds = mod(dest.nanoseconds + src.nanoseconds, 1000000000L); \
+}
+
+#define timer_subtract(dest, src) { \
+	dest.seconds = (dest.seconds - src.seconds) + (dest.nanoseconds - src.nanoseconds < 0 ? -1 : 0); \
+	dest.nanoseconds = mod(dest.nanoseconds - src.nanoseconds, 1000000000L); \
+}
+
+#define timer_time(dest, stm) {\
+	struct timer timer_i, timer_f; \
+	gettime(&timer_i.seconds, &timer_i.nanoseconds); \
+	stm; \
+	gettime(&timer_f.seconds, &timer_f.nanoseconds); \
+	timer_add(dest, timer_f); \
+	timer_subtract(dest, timer_i); \
+}
+
+#define print_timer(src) {\
+	mywrite_str(STDOUT, #src ": "); \
+	mywrite_ul(STDOUT, src.seconds); \
+	mywrite_str(STDOUT, "s "); \
+	mywrite_ul(STDOUT, src.nanoseconds); \
+	mywrite_str(STDOUT, "ns\n"); \
+}

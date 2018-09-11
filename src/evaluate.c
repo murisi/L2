@@ -139,7 +139,7 @@ Symbol sexpr_symbols[] = {
 	{.name = "nil?", .address = is_nil},
 	{.name = "nil", .address = _nil_},
 	{.name = "char=", .address = char_equals},
-	{.name = "mywrite-uint", .address = mywrite_uint},
+	{.name = "mywrite-ul", .address = mywrite_ul},
 	{.name = "mywrite-str", .address = mywrite_str}
 };
 
@@ -175,7 +175,7 @@ int main(int argc, char *argv[]) {
 				mywrite_str(STDOUT, "Unexpectedly read ");
 				mywrite_char(STDOUT, err->unexpected_character.character);
 				mywrite_str(STDOUT, " at ");
-				mywrite_uint(STDOUT, err->unexpected_character.position);
+				mywrite_ul(STDOUT, err->unexpected_character.position);
 				mywrite_str(STDOUT, ".\n");
 				break;
 			} case MULTIPLE_DEFINITION: {

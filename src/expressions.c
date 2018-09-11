@@ -352,8 +352,8 @@ void print_syntax_tree(union expression *s) {
 			mywrite_str(STDOUT, s->reference.name);
 			break;
 		} case literal: {
-			mywrite_str(STDOUT, "(b ");
-			mywrite_int(STDOUT, s->literal.value);
+			mywrite_str(STDOUT, "(literal ");
+			mywrite_ul(STDOUT, s->literal.value);
 			mywrite_str(STDOUT, ")");
 			break;
 		} case non_primitive: {
