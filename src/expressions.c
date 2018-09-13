@@ -570,11 +570,17 @@ union expression *insert_indirections(union expression *expr, union expression *
 			put(expr, _if.alternate, insert_indirections(expr->_if.alternate, ref, reg));
 			return expr;
 		} case begin: {
+			union expression *f;
+			{foreach(f, expr->begin.expressions) {
+				if(f->base.type == function && expression_equals(f->function.reference, ref)) {
+					return expr;
+				}
+			}}
 			union expression **e;
-			foreachaddress(e, expr->begin.expressions) {
+			{foreachaddress(e, expr->begin.expressions) {
 				*e = insert_indirections(*e, ref, reg);
 				(*e)->base.parent = expr;
-			}
+			}}
 			return expr;
 		} case continuation: case with: {
 			if(expression_equals(expr->continuation.reference, ref)) {

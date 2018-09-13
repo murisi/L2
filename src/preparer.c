@@ -293,17 +293,6 @@ Symbol *make_symbol(char *nm, void *addr, region r) {
 	return sym;
 }
 
-void shadow_prepend(union expression *ref, list *binds, region reg) {
-	union expression **e;
-	foreachaddress(e, *binds) {
-		if(ref->reference.name && (*e)->reference.name && !strcmp(ref->reference.name, (*e)->reference.name)) {
-			*e = ref;
-			return;
-		}
-	}
-	prepend(ref, binds, reg);
-}
-
 union expression *generate_macros(union expression *s, bool is_static, list *ext_binds, list st_binds, list dyn_refs, list *comps, region reg, myjmp_buf *handler) {
 	switch(s->base.type) {
 		case begin: {
@@ -325,7 +314,7 @@ union expression *generate_macros(union expression *s, bool is_static, list *ext
 				s->with.reference->reference.symbol = make_symbol(s->with.reference->reference.name, NULL, reg);
 				prepend(s->with.reference->reference.symbol, &st_binds, reg);
 			} else {
-				shadow_prepend(s->with.reference, &dyn_refs, reg);
+				prepend(s->with.reference, &dyn_refs, reg);
 			}
 			put(s, with.expression, generate_macros(s->with.expression, is_static, ext_binds, st_binds, dyn_refs, comps, reg, handler));
 			break;
@@ -338,7 +327,7 @@ union expression *generate_macros(union expression *s, bool is_static, list *ext
 			dyn_refs = nil(reg);
 			union expression *param;
 			{foreach(param, s->function.parameters) {
-				shadow_prepend(param, &dyn_refs, reg);
+				prepend(param, &dyn_refs, reg);
 			}}
 			put(s, function.expression, generate_macros(s->function.expression, false, ext_binds, st_binds, dyn_refs, comps, reg, handler));
 			break;
@@ -352,10 +341,10 @@ union expression *generate_macros(union expression *s, bool is_static, list *ext
 					prepend(param->reference.symbol, &st_binds, reg);
 				}}
 			} else {
-				shadow_prepend(s->continuation.reference, &dyn_refs, reg);
+				prepend(s->continuation.reference, &dyn_refs, reg);
 				union expression *param;
 				{foreach(param, s->continuation.parameters) {
-					shadow_prepend(param, &dyn_refs, reg);
+					prepend(param, &dyn_refs, reg);
 				}}
 			}
 			put(s, continuation.expression, generate_macros(s->continuation.expression, is_static, ext_binds, st_binds, dyn_refs, comps, reg, handler));
@@ -373,10 +362,14 @@ union expression *generate_macros(union expression *s, bool is_static, list *ext
 				comps, reg, handler));
 			list dyn_refs_copy = nil(reg);
 			union expression *arg;
-			{foreach(arg, reverse(dyn_refs, reg)) {
-				union expression *arg_copy = make_reference(reg);
-				arg_copy->reference.name = arg->reference.name;
-				prepend(arg_copy, &dyn_refs_copy, reg);
+			dyn_refs = reverse(dyn_refs, reg);
+			list *dyn_refs_suffix;
+			{foreachlist(dyn_refs_suffix, arg, &dyn_refs) {
+				if(!exists(reference_named, &(*dyn_refs_suffix)->rst, arg->reference.name)) {
+					union expression *arg_copy = make_reference(reg);
+					arg_copy->reference.name = arg->reference.name;
+					prepend(arg_copy, &dyn_refs_copy, reg);
+				}
 			}}
 			union expression *macro_invocation = make_invoke0(make_invoke8(make_literal((unsigned long) execute_macro, reg),
 				s->non_primitive.reference, make_literal((unsigned long) s, reg),
@@ -384,10 +377,12 @@ union expression *generate_macros(union expression *s, bool is_static, list *ext
 				make_literal((unsigned long) dyn_refs_copy, reg), make_literal((unsigned long) comps, reg),
 				make_literal((unsigned long) reg, reg), make_literal((unsigned long) handler, reg), reg), reg);
 			//Loops have special ordering to allow for shadowing
-			{foreach(arg, reverse(dyn_refs, reg)) {
-				union expression *arg_copy = use_reference(arg, reg);
-				prepend(arg_copy, &macro_invocation->invoke.arguments, reg);
-				arg_copy->reference.parent = macro_invocation;
+			{foreachlist(dyn_refs_suffix, arg, &dyn_refs) {
+				if(!exists(reference_named, &(*dyn_refs_suffix)->rst, arg->reference.name)) {
+					union expression *arg_copy = use_reference(arg, reg);
+					prepend(arg_copy, &macro_invocation->invoke.arguments, reg);
+					arg_copy->reference.parent = macro_invocation;
+				}
 			}}
 			return macro_invocation;
 		}
