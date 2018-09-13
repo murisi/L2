@@ -293,14 +293,6 @@ Symbol *make_symbol(char *nm, void *addr, region r) {
 	return sym;
 }
 
-void *_get_(void *ref) {
-	return *((void **) ref);
-}
-
-void _set_(void *ref, void *val) {
-	*((void **) ref) = val;
-}
-
 void shadow_prepend(union expression *ref, list *binds, region reg) {
 	union expression **e;
 	foreachaddress(e, *binds) {
@@ -413,12 +405,10 @@ void *execute_macro(list (*expander)(list), union expression *np, list *ext_bind
 	}}
 	put(func, function.expression, build_syntax_tree(expander(np->non_primitive.argument), comps_reg, handler));
 	{foreach(ref, func->function.parameters) {
-		put(func, function.expression, find_and_replace_dyn_ref(func->function.expression, ref,
-			make_invoke1(make_literal((unsigned long) _get_, reg), ref, reg), reg));
+		put(func, function.expression, insert_indirections(func->function.expression, ref, reg));
 	}}
 	{foreach(ref, np->non_primitive.indirections) {
-		put(func, function.expression, find_and_replace_dyn_ref(func->function.expression, ref,
-			make_invoke1(make_literal((unsigned long) _get_, reg), ref, reg), reg));
+		put(func, function.expression, insert_indirections(func->function.expression, ref, reg));
 	}}
 	Object *obj = load_expressions(lst(func, nil(reg), reg), ext_binds, st_binds, comps, comps_reg, handler);
 	mutate_symbols(obj, *ext_binds);
