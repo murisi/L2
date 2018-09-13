@@ -541,3 +541,51 @@ union expression *copy_expression(union expression *expr, region reg) {
 	}
 	return copy;
 }
+
+union expression *find_and_replace_dyn_ref(union expression *expr, union expression *find, union expression *replace, region reg) {
+	switch(expr->base.type) {
+		case literal: {
+			return expr;
+		} case reference: {
+			if(expression_equals(expr, find)) {
+				return copy_expression(replace, reg);
+			} else {
+				return expr;
+			}
+		} case _if: {
+			put(expr, _if.condition, find_and_replace_dyn_ref(expr->_if.condition, find, replace, reg));
+			put(expr, _if.consequent, find_and_replace_dyn_ref(expr->_if.consequent, find, replace, reg));
+			put(expr, _if.alternate, find_and_replace_dyn_ref(expr->_if.alternate, find, replace, reg));
+			return expr;
+		} case begin: {
+			union expression **e;
+			foreachaddress(e, expr->begin.expressions) {
+				*e = find_and_replace_dyn_ref(*e, find, replace, reg);
+				(*e)->base.parent = expr;
+			}
+			return expr;
+		} case continuation: case with: {
+			if(expression_equals(expr->continuation.reference, find)) {
+				return expr;
+			}
+			union expression *e;
+			foreach(e, expr->continuation.parameters) {
+				if(expression_equals(e, find)) {
+					return expr;
+				}
+			}
+			put(expr, continuation.expression, find_and_replace_dyn_ref(expr->continuation.expression, find, replace, reg));
+			return expr;
+		} case function: {
+			return expr;
+		} case invoke: case jump: {
+			put(expr, invoke.reference, find_and_replace_dyn_ref(expr->invoke.reference, find, replace, reg));
+			union expression **e;
+			foreachaddress(e, expr->invoke.arguments) {
+				*e = find_and_replace_dyn_ref(*e, find, replace, reg);
+				(*e)->base.parent = expr;
+			}
+			return expr;
+		}
+	}
+}

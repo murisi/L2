@@ -86,8 +86,8 @@ void mywrite_char(int fd, char ch) {
 }
 
 void mywrite_ul(int fd, unsigned long i) {
-	char str[10]; int j;
-	for(j = 9; i; j--, i/=10) {
+	char str[20]; int j;
+	for(j = 19; i; j--, i/=10) {
 		switch(i % 10) {
 			case 0: str[j] = '0'; break;
 			case 1: str[j] = '1'; break;
@@ -101,7 +101,7 @@ void mywrite_ul(int fd, unsigned long i) {
 			case 9: str[j] = '9'; break;
 		}
 	}
-	mywrite(fd, str+j+1, 9-j);
+	mywrite(fd, str+j+1, 19-j);
 }
 
 void mywrite_l(int fd, long i) {

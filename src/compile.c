@@ -37,11 +37,11 @@ Object *load_expressions(list exprs, list *ext_binds, list st_binds, list *comps
 	put(oprogram, function.expression, ocontainer);
 	struct compilation *pc;
 	
-	{foreach(pc, *comps) {
+	/*{foreach(pc, *comps) {
 		if(expression_equals(oprogram, pc->program)) {
 			return pc->object;
 		}
-	}}
+	}}*/
 	
 	region manreg = create_region(0);
 	program = copy_expression(oprogram, manreg);
