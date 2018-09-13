@@ -284,7 +284,7 @@ union expression *vcount_expressions(union expression *n, void *ctx) {
 
 Object *load_expressions(list exprs, list *ext_binds, list st_binds, list *comps, region obj_reg, myjmp_buf *handler);
 union expression *build_syntax_tree(list d, region reg, myjmp_buf *handler);
-void *execute_macro(list (*expander)(list), list arg, list *ext_binds, list st_binds, list dyn_refs, list *comps, region comps_reg, myjmp_buf *handler);
+void *execute_macro(list (*expander)(list), union expression *np, list *ext_binds, list st_binds, list dyn_refs, list *comps, region comps_reg, myjmp_buf *handler);
 
 Symbol *make_symbol(char *nm, void *addr, region r) {
 	Symbol *sym = region_malloc(r, sizeof(Symbol));
@@ -381,13 +381,13 @@ union expression *generate_macros(union expression *s, bool is_static, list *ext
 				comps, reg, handler));
 			list dyn_refs_copy = nil(reg);
 			union expression *arg;
-			{foreach(arg, reverse(dyn_refs_copy, reg)) {
+			{foreach(arg, reverse(dyn_refs, reg)) {
 				union expression *arg_copy = make_reference(reg);
 				arg_copy->reference.name = arg->reference.name;
 				prepend(arg_copy, &dyn_refs_copy, reg);
 			}}
 			union expression *macro_invocation = make_invoke0(make_invoke8(make_literal((unsigned long) execute_macro, reg),
-				s->non_primitive.reference, make_literal((unsigned long) copy_sexpr_list(s->non_primitive.argument, reg), reg),
+				s->non_primitive.reference, make_literal((unsigned long) s, reg),
 				make_literal((unsigned long) ext_binds, reg), make_literal((unsigned long) st_binds, reg),
 				make_literal((unsigned long) dyn_refs_copy, reg), make_literal((unsigned long) comps, reg),
 				make_literal((unsigned long) reg, reg), make_literal((unsigned long) handler, reg), reg), reg);
@@ -403,28 +403,28 @@ union expression *generate_macros(union expression *s, bool is_static, list *ext
 	return s;
 }
 
-void *execute_macro(list (*expander)(list), list arg, list *ext_binds, list st_binds, list dyn_refs, list *comps, region comps_reg, myjmp_buf *handler) {
+void *execute_macro(list (*expander)(list), union expression *np, list *ext_binds, list st_binds, list dyn_refs, list *comps, region comps_reg, myjmp_buf *handler) {
 	region reg = create_region(0);
 	union expression *func = make_function(comps_reg), *ref;
 	{foreach(ref, reverse(dyn_refs, comps_reg)) {
-		print_syntax_tree(ref);
 		union expression *param = copy_expression(ref, reg);
 		prepend(param, &func->function.parameters, reg);
 		param->reference.parent = func;
 	}}
-	put(func, function.expression, build_syntax_tree(expander(arg), comps_reg, handler));
+	put(func, function.expression, build_syntax_tree(expander(np->non_primitive.argument), comps_reg, handler));
 	{foreach(ref, func->function.parameters) {
 		put(func, function.expression, find_and_replace_dyn_ref(func->function.expression, ref,
 			make_invoke1(make_literal((unsigned long) _get_, reg), ref, reg), reg));
 	}}
-	print_syntax_tree(func);
-	mywrite_str(STDOUT, "\n");
+	{foreach(ref, np->non_primitive.indirections) {
+		put(func, function.expression, find_and_replace_dyn_ref(func->function.expression, ref,
+			make_invoke1(make_literal((unsigned long) _get_, reg), ref, reg), reg));
+	}}
 	Object *obj = load_expressions(lst(func, nil(reg), reg), ext_binds, st_binds, comps, comps_reg, handler);
 	mutate_symbols(obj, *ext_binds);
 	mutate_symbols(obj, st_binds);
 	//There is only one immutable symbol: our annonymous function
 	void *expansion = ((Symbol *) immutable_symbols(obj, reg)->fst)->address;
-	mywrite_ul(STDOUT, (unsigned long) expansion);
 	destroy_region(reg);
 	return expansion;
 }

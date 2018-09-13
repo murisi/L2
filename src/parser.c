@@ -116,6 +116,7 @@ union expression *build_syntax_tree(list d, region reg, myjmp_buf *handler) {
 		s->non_primitive.type = non_primitive;
 		put(s, non_primitive.reference, build_syntax_tree(d->fst, reg, handler));
 		s->non_primitive.argument = d->rst;
+		s->non_primitive.indirections = nil(reg);
 	}
 	return s;
 }

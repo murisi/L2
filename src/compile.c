@@ -79,7 +79,7 @@ Object *load_expressions(list exprs, list *ext_binds, list st_binds, list *comps
 			}
 		}
 	}}
-	destroy_region(manreg);
+	//destroy_region(manreg);
 	
 	struct compilation *c = region_malloc(obj_reg, sizeof(struct compilation));
 	c->object = obj;

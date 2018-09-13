@@ -131,6 +131,7 @@ struct np_expression {
 	
 	union expression *reference;
 	list argument;
+	list indirections;
 };
 
 union expression {
@@ -536,6 +537,13 @@ union expression *copy_expression(union expression *expr, region reg) {
 		} case non_primitive: {
 			put(copy, non_primitive.reference, copy_expression(expr->non_primitive.reference, reg));
 			copy->non_primitive.argument = copy_sexpr_list(expr->non_primitive.argument, reg);
+			copy->non_primitive.indirections = nil(reg);
+			union expression *e;
+			foreach(e, expr->non_primitive.indirections) {
+				union expression *e_copy = copy_expression(e, reg);
+				append(e_copy, &copy->non_primitive.indirections, reg);
+				e_copy->base.parent = copy;
+			}
 			break;
 		}
 	}
@@ -585,6 +593,9 @@ union expression *find_and_replace_dyn_ref(union expression *expr, union express
 				*e = find_and_replace_dyn_ref(*e, find, replace, reg);
 				(*e)->base.parent = expr;
 			}
+			return expr;
+		} case non_primitive: {
+			prepend(find, &expr->non_primitive.indirections, reg);
 			return expr;
 		}
 	}
