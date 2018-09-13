@@ -9,15 +9,14 @@ typedef unsigned long int bool;
 #include "sexpr.c"
 #include "compile_errors.c"
 #include "lexer.c"
-#include "expressions.c"
 #include "x86_64_object.c"
+#include "expressions.c"
 #include "preparer.c"
 #include "x86_64_generator.c"
 #include "x86_64_assembler.c"
 
 struct compilation {
-	unsigned char *objdest;
-	int objdest_sz;
+	Object *object;
 	union expression *program;
 	list ref_nms;
 };
@@ -29,7 +28,7 @@ struct compilation {
  * executable that it is embedded in.
  */
 
-void compile_expressions(unsigned char **objdest, int *objdest_sz, list exprs, list ref_nms, list *comps, region obj_reg, myjmp_buf *handler) {
+Object *load_expressions(list exprs, list *ext_binds, list st_binds, list *comps, region obj_reg, myjmp_buf *handler) {
 	union expression *oprogram = make_function(obj_reg), *program;
 	union expression *ocontainer = make_begin(obj_reg), *t;
 	{foreach(t, exprs) {
@@ -40,15 +39,14 @@ void compile_expressions(unsigned char **objdest, int *objdest_sz, list exprs, l
 	
 	{foreach(pc, *comps) {
 		if(expression_equals(oprogram, pc->program)) {
-			*objdest = pc->objdest;
-			*objdest_sz = pc->objdest_sz;
-			return;
+			return pc->object;
 		}
 	}}
 	
 	region manreg = create_region(0);
 	program = copy_expression(oprogram, manreg);
-	put(program, function.expression, generate_macros(program->function.expression, ref_nms, nil(obj_reg), comps, obj_reg, handler));
+	put(program, function.expression, generate_macros(program->function.expression, true, ext_binds, st_binds, nil(obj_reg), comps,
+		obj_reg, handler));
 	visit_expressions(vfind_multiple_definitions, &program, handler);
 	visit_expressions(vlink_references, &program, (void* []) {handler, manreg});
 	visit_expressions(vescape_analysis, &program, NULL);
@@ -64,15 +62,31 @@ void compile_expressions(unsigned char **objdest, int *objdest_sz, list exprs, l
 	program = generate_toplevel(program, manreg);
 	list asms = nil(manreg);
 	visit_expressions(vmerge_begins, &program, (void* []) {&asms, manreg});
-	write_elf(reverse(asms, manreg), locals, globals, objdest, objdest_sz, obj_reg);
+	unsigned char *objdest; int objdest_sz;
+	write_elf(reverse(asms, manreg), locals, globals, &objdest, &objdest_sz, manreg);
+	Object *obj = load(objdest, objdest_sz, obj_reg);
+	union expression *l;
+	{foreach(l, locals) {
+		if(l->reference.symbol) {
+			l->reference.symbol->address += (unsigned long) segment(obj, ".bss");
+		}
+	}}
+	{foreach(l, asms) {
+		if(l->instruction.opcode == LOCAL_LABEL || l->instruction.opcode == GLOBAL_LABEL) {
+			union expression *label_ref = l->instruction.arguments->fst;
+			if(label_ref->reference.symbol) {
+				label_ref->reference.symbol->address += (unsigned long) segment(obj, ".text");
+			}
+		}
+	}}
 	destroy_region(manreg);
 	
 	struct compilation *c = region_malloc(obj_reg, sizeof(struct compilation));
-	c->objdest = *objdest;
-	c->objdest_sz = *objdest_sz;
+	c->object = obj;
 	c->program = oprogram;
-	c->ref_nms = ref_nms;
+	//c->ref_nms = ref_nms;
 	prepend(c, comps, obj_reg);
+	return obj;
 }
 
 #include "parser.c"
@@ -113,20 +127,19 @@ void evaluate_source(int srcc, char *srcv[], list bindings, myjmp_buf *handler) 
 			
 			Object *obj = load(obj_buf, obj_sz, syntax_tree_region);
 			prepend(obj, &objects, syntax_tree_region);
-			append(make_invoke0(make_literal((unsigned long) start(obj), syntax_tree_region), syntax_tree_region),
+			append(make_invoke0(make_literal((unsigned long) segment(obj, ".text"), syntax_tree_region), syntax_tree_region),
 				&expressions, syntax_tree_region);
 			append_list(&bindings, immutable_symbols(obj, syntax_tree_region));
 		}
 	}
 	
-	list ref_nms = nil(syntax_tree_region);
+	list ext_binds = nil(syntax_tree_region);
 	Symbol *sym;
 	{foreach(sym, bindings) {
-		prepend(sym->name, &ref_nms, syntax_tree_region);
+		prepend(sym, &ext_binds, syntax_tree_region);
 	}}
 	unsigned char *objdest; int objdest_sz; list comps = nil(syntax_tree_region);
-	compile_expressions(&objdest, &objdest_sz, expressions, ref_nms, &comps, syntax_tree_region, handler);
-	Object *main_obj = load(objdest, objdest_sz, syntax_tree_region);
+	Object *main_obj = load_expressions(expressions, &ext_binds, nil(syntax_tree_region), &comps, syntax_tree_region, handler);
 	list is = immutable_symbols(main_obj, syntax_tree_region);
 	append_list(&bindings, is);
 	mutate_symbols(main_obj, bindings);
@@ -134,7 +147,7 @@ void evaluate_source(int srcc, char *srcv[], list bindings, myjmp_buf *handler) 
 	{foreach(obj, objects) {
 		mutate_symbols(obj, bindings);
 	}}
-	start(main_obj)();
+	((void (*)()) segment(main_obj, ".text"))();
 	destroy_region(syntax_tree_region);
 }
 

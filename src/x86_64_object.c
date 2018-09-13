@@ -330,11 +330,11 @@ list immutable_symbols(Object *obj, region reg) {
  * have a main function; for those cases one should get the address of the
  * symbol "main" and call it.
  */
-void (*start(Object *obj))() {
+void *segment(Object *obj, char *name) {
 	if(obj->ehdr->e_shstrndx != SHN_UNDEF) {
 		int sec;
 		for(sec = 0; sec < obj->ehdr->e_shnum; sec++) {
-			if(!strcmp(obj->segs[obj->ehdr->e_shstrndx] + obj->shdrs[sec].sh_name, ".text")) {
+			if(!strcmp(obj->segs[obj->ehdr->e_shstrndx] + obj->shdrs[sec].sh_name, name)) {
 				return (void (*)()) obj->segs[sec];
 			}
 		}

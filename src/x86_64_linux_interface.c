@@ -5,6 +5,7 @@
 #define SYS_CLOSE 3
 #define SYS_MMAP 9
 #define SYS_MUNMAP 11
+#define SYS_EXIT 60
 #define SYS_CLOCK_GETTIME 228
 #define	O_RDWR 02
 #define	O_CREAT	0100
@@ -129,6 +130,10 @@ long int mysize(char *path) {
 	}
 	myclose(fd);
 	return file_size;
+}
+
+void myexit(int status) {
+	mysyscall(SYS_EXIT, status);
 }
 
 void *mymmap(unsigned long len) {

@@ -92,7 +92,11 @@ void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sy
 	foreach(n, generated_expressions) {
 		switch(n->instruction.opcode) {
 			case LOCAL_LABEL: case GLOBAL_LABEL: {
-				Elf64_Sym *sym = ((union expression *) n->instruction.arguments->fst)->reference.context;
+				union expression *label_ref = (union expression *) n->instruction.arguments->fst;
+				Elf64_Sym *sym = label_ref->reference.context;
+				if(label_ref->reference.symbol) {
+					label_ref->reference.symbol->address = (void *) (unsigned long) *pos;
+				}
 				sym->st_value = *pos;
 				break;
 			} case LEAQ_OF_MDB_INTO_REG: {
@@ -325,6 +329,9 @@ void write_elf(list generated_expressions, list locals, list globals, unsigned c
 			sym_ptr->st_name = 0;
 		}
 		sym_ptr->st_value = (sym_ptr - syms - 1) * WORD_SIZE;
+		if(e->reference.symbol) {
+			e->reference.symbol->address = sym_ptr;
+		}
 		sym_ptr->st_size = 0;
 		sym_ptr->st_info = ELF64_ST_INFO(STB_LOCAL, STT_NOTYPE);
 		sym_ptr->st_other = 0;

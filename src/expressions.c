@@ -121,6 +121,7 @@ struct reference_expression {
 	union expression *referent;
 	union expression *offset;
 	void *context;
+	Symbol *symbol;
 };
 
 struct np_expression {
@@ -158,6 +159,7 @@ union expression *make_reference(region reg) {
 	union expression *ref = region_malloc(reg, sizeof(union expression));
 	ref->reference.type = reference;
 	ref->reference.name = NULL;
+	ref->reference.symbol = NULL;
 	ref->reference.referent = ref;
 	return ref;
 }
@@ -349,6 +351,13 @@ union expression *make_invoke6(union expression *ref, union expression *arg1, un
 
 union expression *make_invoke7(union expression *ref, union expression *arg1, union expression *arg2, union expression *arg3, union expression *arg4, union expression *arg5, union expression *arg6, union expression *arg7, region reg) {
 	union expression *u = make_invoke6(ref, arg2, arg3, arg4, arg5, arg6, arg7, reg);
+	u->invoke.arguments = lst(arg1, u->invoke.arguments, reg);
+	arg1->base.parent = u;
+	return u;
+}
+
+union expression *make_invoke8(union expression *ref, union expression *arg1, union expression *arg2, union expression *arg3, union expression *arg4, union expression *arg5, union expression *arg6, union expression *arg7, union expression *arg8, region reg) {
+	union expression *u = make_invoke7(ref, arg2, arg3, arg4, arg5, arg6, arg7, arg8, reg);
 	u->invoke.arguments = lst(arg1, u->invoke.arguments, reg);
 	arg1->base.parent = u;
 	return u;
