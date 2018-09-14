@@ -23,15 +23,11 @@ typedef unsigned long int bool;
  */
 
 Object *load_expressions(list exprs, list *ext_binds, list st_binds, list *comps, region obj_reg, myjmp_buf *handler) {
-	union expression *oprogram = make_function(obj_reg), *program;
-	union expression *ocontainer = make_begin(obj_reg), *t;
-	{foreach(t, exprs) {
-		append(t, &ocontainer->begin.expressions, obj_reg);
-	}}
-	put(oprogram, function.expression, ocontainer);
-	
 	region manreg = create_region(0);
-	program = copy_expression(oprogram, manreg);
+	union expression *program = make_function(manreg), *t;
+	{foreach(t, exprs) {
+		append(copy_expression(t, manreg), &program->function.expression->begin.expressions, manreg);
+	}}
 	put(program, function.expression, generate_macros(program->function.expression, true, ext_binds, st_binds, nil(obj_reg), comps,
 		manreg, obj_reg, handler));
 	visit_expressions(vfind_multiple_definitions, &program, handler);
