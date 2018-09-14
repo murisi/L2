@@ -46,7 +46,7 @@ Object *load_expressions(list exprs, list *ext_binds, list st_binds, list *comps
 	region manreg = create_region(0);
 	program = copy_expression(oprogram, manreg);
 	put(program, function.expression, generate_macros(program->function.expression, true, ext_binds, st_binds, nil(obj_reg), comps,
-		obj_reg, handler));
+		manreg, obj_reg, handler));
 	visit_expressions(vfind_multiple_definitions, &program, handler);
 	visit_expressions(vlink_references, &program, (void* []) {handler, manreg});
 	visit_expressions(vescape_analysis, &program, NULL);
@@ -79,7 +79,7 @@ Object *load_expressions(list exprs, list *ext_binds, list st_binds, list *comps
 			}
 		}
 	}}
-	//destroy_region(manreg);
+	destroy_region(manreg);
 	
 	struct compilation *c = region_malloc(obj_reg, sizeof(struct compilation));
 	c->object = obj;

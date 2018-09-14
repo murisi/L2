@@ -461,7 +461,7 @@ bool expression_equals(union expression *expr1, union expression *expr2) {
 			return expr1->literal.value == expr2->literal.value ? true : false;
 		} case reference: {
 			return (expr1->reference.name == expr2->reference.name) ||
-				(expr1->reference.name && expr2->reference.name && strcmp(expr1->reference.name, expr2->reference.name) == 0) ?
+				(expr1->reference.name && expr2->reference.name && !strcmp(expr1->reference.name, expr2->reference.name)) ?
 				true : false;
 		} case invoke: case jump: {
 			if(!expression_equals(expr1->invoke.reference, expr2->invoke.reference)) return false;

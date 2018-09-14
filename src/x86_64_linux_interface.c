@@ -195,6 +195,16 @@ void destroy_region(region reg) {
 	} while(reg);
 }
 
+char *rstrcpy(const char *src, region reg) {
+	char *dest = region_malloc(reg, strlen(src) + 1);
+	unsigned long i;
+	for(i = 0; src[i]; i++) {
+		dest[i] = src[i];
+	}
+	dest[i] = '\0';
+	return dest;
+}
+
 typedef struct {
 	void *rbp;
 	void *cir;
