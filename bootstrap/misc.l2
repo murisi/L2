@@ -1,33 +1,33 @@
-(function reverse (l)
+(function reverse (l r)
 	(with return
 		{(continuation _ (l reversed)
 			(if [nil? $l]
 				{return $reversed}
-				{_ [rst $l] [lst [fst $l] $reversed]})) $l [nil]}))
+				{_ [rst $l] [lst [fst $l] $reversed $r]})) $l [nil $r]}))
 
-(function map (l mapper)
+(function map (l mapper r)
 	(with return
 		{(continuation aux (in out)
 			(if [nil? $in]
-				{return [reverse $out]}
-				{aux [rst $in] [lst [$mapper [fst $in]] $out]})) $l [nil]}))
+				{return [reverse $out $r]}
+				{aux [rst $in] [lst [$mapper [fst $in]] $out $r]})) $l [nil $r]}))
 
-(function let (l)
+(function let (l r)
 	(`(with let:return
-		(,[llst `jump (`(continuation let:aux
-			(,[map [rst [reverse $l]] fst])
-			{let:return (,[fst [reverse $l]])})) [map [rst [reverse $l]] frst]]))))
+		(,[llst (` jump $r) (`(continuation let:aux
+			(,[map [rst [reverse $l $r]] fst $r])
+			{let:return (,[fst [reverse $l $r]])}) $r) [map [rst [reverse $l $r]] frst $r] $r])) $r))
 
-(function switch (l)
+(function switch (l r)
 	(`(let (switch:= (,[fst $l])) (switch:val (,[frst $l]))
 		(,(with return
 			{(continuation aux (remaining else-clause)
 				(if [nil? $remaining]
 					{return $else-clause}
 					{aux [rst $remaining]
-						(`(if (,[llllst `invoke `$switch:= `$switch:val [ffst $remaining] [nil]])
-							(,[frfst $remaining]) ,$else-clause))}))
-				[rst [reverse [rrst $l]]] [fst [reverse $l]]})))))
+						(`(if (,[llllst (` invoke $r) (` $switch:= $r) (` $switch:val $r) [ffst $remaining] [nil $r] $r])
+							(,[frfst $remaining]) ,$else-clause) $r)}))
+				[rst [reverse [rrst $l] $r]] [fst [reverse $l $r]]}))) $r))
 
 (function while (l)
 	(`(with while:return {(continuation while:aux (while:val)

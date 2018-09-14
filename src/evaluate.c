@@ -2,13 +2,12 @@
 #include "evaluate_errors.c"
 
 myjmp_buf evaluate_handler;
-region evaluate_region;
 
 //The following functions form the interface provided to loaded L2 files
 
 #define char_sexpr(str, ch) \
-union sexpr * _ ## str ## _() { \
-	return build_character_sexpr(ch, evaluate_region); \
+union sexpr * _ ## str ## _(region r) { \
+	return build_character_sexpr(ch, r); \
 }
 
 #define an_sexpr(ch) char_sexpr(ch, #ch [0])
@@ -33,14 +32,6 @@ void *_fst_(list l) {
 
 list _rst_(list l) {
 	return l->rst;
-}
-
-list _lst_(void *data, list l) {
-	return lst(data, l, evaluate_region);
-}
-
-list _nil_() {
-	return nil(evaluate_region);
 }
 
 Symbol sexpr_symbols[] = {
@@ -134,10 +125,10 @@ Symbol sexpr_symbols[] = {
 	{.name = "-~-", .address = _tilde_},
 	{.name = "fst", .address = _fst_},
 	{.name = "rst", .address = _rst_},
-	{.name = "lst", .address = _lst_},
+	{.name = "lst", .address = lst},
 	{.name = "lst?", .address = is_lst},
 	{.name = "nil?", .address = is_nil},
-	{.name = "nil", .address = _nil_},
+	{.name = "nil", .address = nil},
 	{.name = "char=", .address = char_equals},
 	{.name = "mywrite-ul", .address = mywrite_ul},
 	{.name = "mywrite-str", .address = mywrite_str}
@@ -145,7 +136,7 @@ Symbol sexpr_symbols[] = {
 
 int main(int argc, char *argv[]) {
 	//Initialize the error handler
-	evaluate_handler.ctx = evaluate_region = create_region(0);
+	region evaluate_region = evaluate_handler.ctx = create_region(0);
 	mysetjmp(&evaluate_handler);
 	if(evaluate_handler.ctx != evaluate_region) {
 		union evaluate_error *err = (union evaluate_error *) evaluate_handler.ctx;

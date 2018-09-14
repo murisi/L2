@@ -279,7 +279,7 @@ union expression *vmerge_begins(union expression *n, void *ctx) {
 
 Object *load_expressions(list exprs, list *ext_binds, list st_binds, list *comps, region obj_reg, myjmp_buf *handler);
 union expression *build_syntax_tree(list d, region reg, myjmp_buf *handler);
-void *execute_macro(list (*expander)(list), union expression *np, list *ext_binds, list st_binds, list dyn_refs, list *comps, region comps_reg, myjmp_buf *handler);
+void *execute_macro(list (*expander)(list, region), union expression *np, list *ext_binds, list st_binds, list dyn_refs, list *comps, region comps_reg, myjmp_buf *handler);
 
 Symbol *make_symbol(char *nm, void *addr, region r) {
 	Symbol *sym = region_malloc(r, sizeof(Symbol));
@@ -383,16 +383,17 @@ struct compilation {
 	void *macro;
 };
 
-void *execute_macro(list (*expander)(list), union expression *np, list *ext_binds, list st_binds, list dyn_refs, list *compilations, region rt_reg, myjmp_buf *handler) {
-	list np_expanded = expander(np->non_primitive.argument);
+void *execute_macro(list (*expander)(list, region), union expression *np, list *ext_binds, list st_binds, list dyn_refs, list *compilations, region rt_reg, myjmp_buf *handler) {
+	region ct_reg = create_region(0);
+	list np_expanded = expander(np->non_primitive.argument, ct_reg);
 	struct compilation *pc;
 	{foreach(pc, *compilations) {
 		if(np == pc->np_expression && sexpr_list_equals(np_expanded, pc->np_expanded)) {
+			destroy_region(ct_reg);
 			return pc->macro;
 		}
 	}}
 	
-	region ct_reg = create_region(0);
 	union expression *func = make_function(ct_reg), *ref;
 	{foreach(ref, reverse(dyn_refs, ct_reg)) {
 		union expression *param = copy_expression(ref, ct_reg);
@@ -412,7 +413,7 @@ void *execute_macro(list (*expander)(list), union expression *np, list *ext_bind
 	
 	pc = region_malloc(rt_reg, sizeof(struct compilation));
 	pc->np_expression = np;
-	pc->np_expanded = np_expanded;
+	pc->np_expanded = copy_sexpr_list(np_expanded, rt_reg);
 	//There is only one immutable symbol: our annonymous function
 	pc->macro = ((Symbol *) immutable_symbols(obj, ct_reg)->fst)->address;
 	prepend(pc, compilations, rt_reg);
