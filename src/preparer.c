@@ -277,11 +277,6 @@ union expression *vmerge_begins(union expression *n, void *ctx) {
 	return n;
 }
 
-union expression *vcount_expressions(union expression *n, void *ctx) {
-	(*((unsigned long *) ctx))++;
-	return n;
-}
-
 Object *load_expressions(list exprs, list *ext_binds, list st_binds, list *comps, region obj_reg, myjmp_buf *handler);
 union expression *build_syntax_tree(list d, region reg, myjmp_buf *handler);
 void *execute_macro(list (*expander)(list), union expression *np, list *ext_binds, list st_binds, list dyn_refs, list *comps, region comps_reg, myjmp_buf *handler);
@@ -360,30 +355,20 @@ union expression *generate_macros(union expression *s, bool is_static, list *ext
 		} case non_primitive: {
 			put(s, non_primitive.reference, generate_macros(s->non_primitive.reference, is_static, ext_binds, st_binds, dyn_refs,
 				comps, reg, handler));
-			list dyn_refs_copy = nil(reg);
-			union expression *arg;
 			dyn_refs = reverse(dyn_refs, reg);
-			list *dyn_refs_suffix;
-			{foreachlist(dyn_refs_suffix, arg, &dyn_refs) {
-				if(!exists(reference_named, &(*dyn_refs_suffix)->rst, arg->reference.name)) {
-					union expression *arg_copy = make_reference(reg);
-					arg_copy->reference.name = arg->reference.name;
-					prepend(arg_copy, &dyn_refs_copy, reg);
+			list *dyn_refs_suffix, params_rt = nil(reg), args_ct = nil(reg);
+			union expression *dyn_ref;
+			{foreachlist(dyn_refs_suffix, dyn_ref, &dyn_refs) {
+				if(!exists(reference_named, &(*dyn_refs_suffix)->rst, dyn_ref->reference.name)) {
+					prepend(copy_expression(dyn_ref, reg), &params_rt, reg);
+					prepend(use_reference(dyn_ref, reg), &args_ct, reg);
 				}
 			}}
-			union expression *macro_invocation = make_invoke0(make_invoke8(make_literal((unsigned long) execute_macro, reg),
+			union expression *macro_invocation = make_invoke(make_invoke8(make_literal((unsigned long) execute_macro, reg),
 				s->non_primitive.reference, make_literal((unsigned long) s, reg),
 				make_literal((unsigned long) ext_binds, reg), make_literal((unsigned long) st_binds, reg),
-				make_literal((unsigned long) dyn_refs_copy, reg), make_literal((unsigned long) comps, reg),
-				make_literal((unsigned long) reg, reg), make_literal((unsigned long) handler, reg), reg), reg);
-			//Loops have special ordering to allow for shadowing
-			{foreachlist(dyn_refs_suffix, arg, &dyn_refs) {
-				if(!exists(reference_named, &(*dyn_refs_suffix)->rst, arg->reference.name)) {
-					union expression *arg_copy = use_reference(arg, reg);
-					prepend(arg_copy, &macro_invocation->invoke.arguments, reg);
-					arg_copy->reference.parent = macro_invocation;
-				}
-			}}
+				make_literal((unsigned long) params_rt, reg), make_literal((unsigned long) comps, reg),
+				make_literal((unsigned long) reg, reg), make_literal((unsigned long) handler, reg), reg), args_ct, reg);
 			return macro_invocation;
 		}
 	}

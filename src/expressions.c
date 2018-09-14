@@ -299,6 +299,19 @@ union expression *make_jump2(union expression *ref, union expression *arg1, unio
 	return u;
 }
 
+union expression *make_invoke(union expression *ref, list args, region reg) {
+	union expression *u = region_malloc(reg, sizeof(union expression));
+	u->invoke.type = invoke;
+	u->invoke.reference = ref;
+	ref->base.parent = u;
+	u->invoke.arguments = args;
+	union expression *arg;
+	foreach(arg, args) {
+		arg->base.parent = u;
+	}
+	return u;
+}
+
 union expression *make_invoke0(union expression *ref, region reg) {
 	union expression *u = region_malloc(reg, sizeof(union expression));
 	u->invoke.type = invoke;
@@ -494,7 +507,12 @@ union expression *copy_expression(union expression *expr, region reg) {
 			copy->literal.value = expr->literal.value;
 			break;
 		} case reference: {
-			copy->reference.name = expr->reference.name;
+			if(expr->reference.name) {
+				copy->reference.name = region_malloc(reg, strlen(expr->reference.name) + 1);
+				strcpy(copy->reference.name, expr->reference.name);
+			} else {
+				copy->reference.name = expr->reference.name;
+			}
 			break;
 		} case invoke: case jump: {
 			put(copy, invoke.reference, copy_expression(expr->invoke.reference, reg));
