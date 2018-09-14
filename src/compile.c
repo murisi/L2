@@ -15,12 +15,6 @@ typedef unsigned long int bool;
 #include "x86_64_generator.c"
 #include "x86_64_assembler.c"
 
-struct compilation {
-	Object *object;
-	union expression *program;
-	list ref_nms;
-};
-
 /*
  * Makes a new binary file at the path outbin from the list of primitive
  * expressions, exprs. The resulting binary file executes the list from top to
@@ -35,13 +29,6 @@ Object *load_expressions(list exprs, list *ext_binds, list st_binds, list *comps
 		append(t, &ocontainer->begin.expressions, obj_reg);
 	}}
 	put(oprogram, function.expression, ocontainer);
-	struct compilation *pc;
-	
-	/*{foreach(pc, *comps) {
-		if(expression_equals(oprogram, pc->program)) {
-			return pc->object;
-		}
-	}}*/
 	
 	region manreg = create_region(0);
 	program = copy_expression(oprogram, manreg);
@@ -80,12 +67,6 @@ Object *load_expressions(list exprs, list *ext_binds, list st_binds, list *comps
 		}
 	}}
 	destroy_region(manreg);
-	
-	struct compilation *c = region_malloc(obj_reg, sizeof(struct compilation));
-	c->object = obj;
-	c->program = oprogram;
-	//c->ref_nms = ref_nms;
-	prepend(c, comps, obj_reg);
 	return obj;
 }
 

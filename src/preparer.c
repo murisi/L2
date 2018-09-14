@@ -377,7 +377,21 @@ union expression *generate_macros(union expression *s, bool is_static, list *ext
 	return s;
 }
 
+struct compilation {
+	union expression *np_expression;
+	list np_expanded;
+	void *macro;
+};
+
 void *execute_macro(list (*expander)(list), union expression *np, list *ext_binds, list st_binds, list dyn_refs, list *comps, region comps_reg, myjmp_buf *handler) {
+	list np_expanded = expander(np->non_primitive.argument);
+	struct compilation *pc;
+	{foreach(pc, *comps) {
+		if(np == pc->np_expression && sexpr_list_equals(np_expanded, pc->np_expanded)) {
+			return pc->macro;
+		}
+	}}
+	
 	region reg = create_region(0);
 	union expression *func = make_function(comps_reg), *ref;
 	{foreach(ref, reverse(dyn_refs, comps_reg)) {
@@ -385,7 +399,7 @@ void *execute_macro(list (*expander)(list), union expression *np, list *ext_bind
 		prepend(param, &func->function.parameters, reg);
 		param->reference.parent = func;
 	}}
-	put(func, function.expression, build_syntax_tree(expander(np->non_primitive.argument), comps_reg, handler));
+	put(func, function.expression, build_syntax_tree(np_expanded, comps_reg, handler));
 	{foreach(ref, func->function.parameters) {
 		put(func, function.expression, insert_indirections(func->function.expression, ref, reg));
 	}}
@@ -395,8 +409,13 @@ void *execute_macro(list (*expander)(list), union expression *np, list *ext_bind
 	Object *obj = load_expressions(lst(func, nil(reg), reg), ext_binds, st_binds, comps, comps_reg, handler);
 	mutate_symbols(obj, *ext_binds);
 	mutate_symbols(obj, st_binds);
+	
+	pc = region_malloc(comps_reg, sizeof(struct compilation));
+	pc->np_expression = np;
+	pc->np_expanded = np_expanded;
 	//There is only one immutable symbol: our annonymous function
-	void *expansion = ((Symbol *) immutable_symbols(obj, reg)->fst)->address;
+	pc->macro = ((Symbol *) immutable_symbols(obj, reg)->fst)->address;
+	prepend(pc, comps, comps_reg);
 	destroy_region(reg);
-	return expansion;
+	return pc->macro;
 }
