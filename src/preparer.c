@@ -379,28 +379,25 @@ union expression *generate_macros(union expression *s, bool is_static, list *ext
 
 struct compilation {
 	union expression *np_expression;
-	list np_expanded;
 	void *macro;
 };
 
 void *execute_macro(list (*expander)(list, region), union expression *np, list *ext_binds, list st_binds, list dyn_refs, list *compilations, region rt_reg, myjmp_buf *handler) {
-	region ct_reg = create_region(0);
-	list np_expanded = expander(np->non_primitive.argument, ct_reg);
 	struct compilation *pc;
 	{foreach(pc, *compilations) {
-		if(np == pc->np_expression && sexpr_list_equals(np_expanded, pc->np_expanded)) {
-			destroy_region(ct_reg);
+		if(np == pc->np_expression) {
 			return pc->macro;
 		}
 	}}
 	
+	region ct_reg = create_region(0);
 	union expression *func = make_function(ct_reg), *ref;
 	{foreach(ref, reverse(dyn_refs, ct_reg)) {
 		union expression *param = copy_expression(ref, ct_reg);
 		prepend(param, &func->function.parameters, ct_reg);
 		param->reference.parent = func;
 	}}
-	put(func, function.expression, build_syntax_tree(np_expanded, ct_reg, handler));
+	put(func, function.expression, build_syntax_tree(expander(np->non_primitive.argument, ct_reg), ct_reg, handler));
 	{foreach(ref, func->function.parameters) {
 		put(func, function.expression, insert_indirections(func->function.expression, ref, ct_reg));
 	}}
@@ -413,7 +410,6 @@ void *execute_macro(list (*expander)(list, region), union expression *np, list *
 	
 	pc = region_malloc(rt_reg, sizeof(struct compilation));
 	pc->np_expression = np;
-	pc->np_expanded = copy_sexpr_list(np_expanded, rt_reg);
 	//There is only one immutable symbol: our annonymous function
 	pc->macro = ((Symbol *) immutable_symbols(obj, ct_reg)->fst)->address;
 	prepend(pc, compilations, rt_reg);
