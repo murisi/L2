@@ -22,54 +22,52 @@ typedef struct {
  * Update the segments of the loaded object with the current symbol values under
  * the direction of the relocation entries.
  */
-void do_relocations(Object *obj, Elf64_Sym *sym) {
+void do_relocations(Object *obj) {
 	int sec;
 	for(sec = 0; sec < obj->ehdr->e_shnum; sec++) {
 		if(obj->shdrs[sec].sh_type == SHT_REL || obj->shdrs[sec].sh_type == SHT_RELA) {
 			int relanum = obj->shdrs[sec].sh_size / obj->shdrs[sec].sh_entsize;
 			int rela;
 			for(rela = 0; rela < relanum; rela++) {
-				if(sym == NULL || sym == &obj->syms[obj->shdrs[sec].sh_link][ELF64_R_SYM(obj->relas[sec][rela].r_info)]) {
-					Elf64_Sym *sym = &obj->syms[obj->shdrs[sec].sh_link][ELF64_R_SYM(obj->relas[sec][rela].r_info)];
-					unsigned char *location = (unsigned char *) obj->relas[sec][rela].r_offset;
-					Elf64_Addr temp;
-					switch(ELF64_R_TYPE(obj->relas[sec][rela].r_info)) {
-						case R_X86_64_NONE:
-							break;
-						case R_X86_64_64:
-							memcpy(location, (temp = sym->st_value + obj->addends[sec][rela], &temp), 8);
-							break;
-						case R_X86_64_PC32:
-							memcpy(location, (temp = sym->st_value + obj->addends[sec][rela] - obj->relas[sec][rela].r_offset, &temp), 4);
-							break;
-						case R_X86_64_GLOB_DAT://LP32
-							memcpy(location, (temp = sym->st_value, &temp), 8);
-							break;
-						case R_X86_64_JUMP_SLOT://LP32
-							memcpy(location, (temp = sym->st_value, &temp), 8);
-							break;
-						case R_X86_64_32:
-							memcpy(location, (temp = sym->st_value + obj->addends[sec][rela], &temp), 4);
-							break;
-						case R_X86_64_32S:
-							memcpy(location, (temp = sym->st_value + obj->addends[sec][rela], &temp), 4);
-							break;
-						case R_X86_64_16:
-							memcpy(location, (temp = sym->st_value + obj->addends[sec][rela], &temp), 2);
-							break;
-						case R_X86_64_8:
-							memcpy(location, (temp = sym->st_value + obj->addends[sec][rela], &temp), 1);
-							break;
-						case R_X86_64_SIZE32:
-							memcpy(location, (temp = sym->st_size + obj->addends[sec][rela], &temp), 4);
-							break;
-						case R_X86_64_SIZE64:
-							memcpy(location, (temp = sym->st_size + obj->addends[sec][rela], &temp), 8);
-							break;
-						default:
-							//assert(0);
-							break;
-					}
+				Elf64_Sym *sym = &obj->syms[obj->shdrs[sec].sh_link][ELF64_R_SYM(obj->relas[sec][rela].r_info)];
+				unsigned char *location = (unsigned char *) obj->relas[sec][rela].r_offset;
+				Elf64_Addr temp;
+				switch(ELF64_R_TYPE(obj->relas[sec][rela].r_info)) {
+					case R_X86_64_NONE:
+						break;
+					case R_X86_64_64:
+						memcpy(location, (temp = sym->st_value + obj->addends[sec][rela], &temp), 8);
+						break;
+					case R_X86_64_PC32:
+						memcpy(location, (temp = sym->st_value + obj->addends[sec][rela] - obj->relas[sec][rela].r_offset, &temp), 4);
+						break;
+					case R_X86_64_GLOB_DAT://LP32
+						memcpy(location, (temp = sym->st_value, &temp), 8);
+						break;
+					case R_X86_64_JUMP_SLOT://LP32
+						memcpy(location, (temp = sym->st_value, &temp), 8);
+						break;
+					case R_X86_64_32:
+						memcpy(location, (temp = sym->st_value + obj->addends[sec][rela], &temp), 4);
+						break;
+					case R_X86_64_32S:
+						memcpy(location, (temp = sym->st_value + obj->addends[sec][rela], &temp), 4);
+						break;
+					case R_X86_64_16:
+						memcpy(location, (temp = sym->st_value + obj->addends[sec][rela], &temp), 2);
+						break;
+					case R_X86_64_8:
+						memcpy(location, (temp = sym->st_value + obj->addends[sec][rela], &temp), 1);
+						break;
+					case R_X86_64_SIZE32:
+						memcpy(location, (temp = sym->st_size + obj->addends[sec][rela], &temp), 4);
+						break;
+					case R_X86_64_SIZE64:
+						memcpy(location, (temp = sym->st_size + obj->addends[sec][rela], &temp), 8);
+						break;
+					default:
+						//assert(0);
+						break;
 				}
 			}
 		}
@@ -215,7 +213,7 @@ Object *load(unsigned char *objsrc, int objsrc_sz, region reg) {
 	Object *obj = read_object(objsrc, objsrc_sz, reg);
 	offsets_to_addresses(obj);
 	store_addends(obj, reg);
-	do_relocations(obj, NULL);
+	do_relocations(obj);
 	return obj;
 }
 
@@ -279,7 +277,7 @@ void mutate_symbols(Object *obj, list updates) {
 			}
 		}
 	}
-	do_relocations(obj, NULL);
+	do_relocations(obj);
 }
 
 list symbols(int flag, Object *obj, region reg) {
