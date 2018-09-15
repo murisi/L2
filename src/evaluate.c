@@ -48,7 +48,7 @@ Object *load_expressions(list exprs, list *ext_binds, list st_binds, list *comps
 	visit_expressions(vmerge_begins, &program, (void* []) {&asms, manreg});
 	unsigned char *objdest; int objdest_sz;
 	write_elf(reverse(asms, manreg), locals, globals, &objdest, &objdest_sz, manreg);
-	Object *obj = load(objdest, objdest_sz, obj_reg);
+	Object *obj = load(objdest, objdest_sz, obj_reg, handler);
 	union expression *l;
 	{foreach(l, locals) {
 		if(l->reference.symbol) {
@@ -105,7 +105,7 @@ void evaluate_files(int srcc, char *srcv[], list bindings, jumpbuf *handler) {
 			read(obj_fd, obj_buf, obj_sz);
 			close(obj_fd);
 			
-			Object *obj = load(obj_buf, obj_sz, syntax_tree_region);
+			Object *obj = load(obj_buf, obj_sz, syntax_tree_region, handler);
 			append(obj, &objects, syntax_tree_region);
 			append_list(&bindings, immutable_symbols(obj, syntax_tree_region));
 		}
@@ -294,10 +294,8 @@ int main(int argc, char *argv[]) {
 				write_str(STDOUT, err->multiple_definition.reference_value);
 				write_str(STDOUT, " erroneously occured multiple times.\n");
 				break;
-			} case ENVIRONMENT: {
-				write_str(STDOUT, "The following occured when trying to use an environment: ");
-				write_str(STDOUT, err->environment.error_string);
-				write_str(STDOUT, "\n");
+			} case OBJECT: {
+				write_str(STDOUT, "Bad object file supplied.\n");
 				break;
 			} case MISSING_FILE: {
 				write_str(STDOUT, "There is no file at the path ");

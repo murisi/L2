@@ -65,9 +65,6 @@ void do_relocations(Object *obj) {
 					case R_X86_64_SIZE64:
 						memcpy(location, (temp = sym->st_size + obj->addends[sec][rela], &temp), 8);
 						break;
-					default:
-						//assert(0);
-						break;
 				}
 			}
 		}
@@ -78,7 +75,7 @@ void do_relocations(Object *obj) {
  * Store the relocation addends because we may want to do several relocations on
  * the object files.
  */
-void store_addends(Object *obj, region reg) {
+void store_addends(Object *obj, region reg, jumpbuf *handler) {
 	int sec;
 	for(sec = 0; sec < obj->ehdr->e_shnum; sec++) {
 		if(obj->shdrs[sec].sh_type == SHT_RELA) {
@@ -108,7 +105,7 @@ void store_addends(Object *obj, region reg) {
 						obj->addends[sec][rel] = *((Elf64_Xword *) obj->relas[sec][rel].r_offset);
 						break;
 					default:
-						//assert(0);
+						throw_object(handler);
 						break;
 				}
 			}
@@ -157,14 +154,15 @@ void offsets_to_addresses(Object *obj) {
  * at address mem and require the amount of memory stated by
  * object_required_memory. Returns a handle to manipulate the loaded object.
  */
-Object *read_object(unsigned char *objsrc, int objsrc_sz, region reg) {
+Object *read_object(unsigned char *objsrc, int objsrc_sz, region reg, jumpbuf *handler) {
 	Object *obj = region_alloc(reg, sizeof(Object));
 	obj->ehdr = region_alloc(reg, sizeof(Elf64_Ehdr));
+	if(objsrc_sz < sizeof(Elf64_Ehdr)) throw_object(handler);
 	memcpy(obj->ehdr, objsrc, sizeof(Elf64_Ehdr));
-	//assert(obj->ehdr->e_ident[EI_MAG0] == ELFMAG0 && obj->ehdr->e_ident[EI_MAG1] == ELFMAG1 &&
-	//	obj->ehdr->e_ident[EI_MAG2] == ELFMAG2 && obj->ehdr->e_ident[EI_MAG3] == ELFMAG3);
-	//assert(obj->ehdr->e_ident[EI_CLASS] == ELFCLASS64);
-	//assert(obj->ehdr->e_ident[EI_DATA] == ELFDATA2LSB);
+	if(!(obj->ehdr->e_ident[EI_MAG0] == ELFMAG0 && obj->ehdr->e_ident[EI_MAG1] == ELFMAG1 &&
+		obj->ehdr->e_ident[EI_MAG2] == ELFMAG2 && obj->ehdr->e_ident[EI_MAG3] == ELFMAG3 &&
+		obj->ehdr->e_ident[EI_CLASS] == ELFCLASS64 && obj->ehdr->e_ident[EI_DATA] == ELFDATA2LSB))
+			throw_object(handler);
 	
 	obj->shdrs = region_alloc(reg, obj->ehdr->e_shnum * sizeof(Elf64_Shdr));
 	obj->syms = region_alloc(reg, obj->ehdr->e_shnum * sizeof(Elf64_Sym *));
@@ -209,10 +207,10 @@ Object *read_object(unsigned char *objsrc, int objsrc_sz, region reg) {
  * object code now has a concrete address in memory. Returns a handle to
  * manipulate the loaded object.
  */
-Object *load(unsigned char *objsrc, int objsrc_sz, region reg) {
-	Object *obj = read_object(objsrc, objsrc_sz, reg);
+Object *load(unsigned char *objsrc, int objsrc_sz, region reg, jumpbuf *handler) {
+	Object *obj = read_object(objsrc, objsrc_sz, reg, handler);
 	offsets_to_addresses(obj);
-	store_addends(obj, reg);
+	store_addends(obj, reg, handler);
 	do_relocations(obj);
 	return obj;
 }

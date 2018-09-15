@@ -2,7 +2,7 @@
 #define SPECIAL_FORM 2
 #define UNEXPECTED_CHARACTER 3
 #define MULTIPLE_DEFINITION 4
-#define ENVIRONMENT 5
+#define OBJECT 5
 #define MISSING_FILE 6
 
 struct param_count_mismatch_error {
@@ -28,9 +28,8 @@ struct multiple_definition_error {
 	char *reference_value;
 };
 
-struct environment_error {
+struct object_error {
 	int type;
-	char *error_string;
 };
 
 struct missing_file_error {
@@ -43,7 +42,7 @@ union compile_error {
 	struct special_form_error special_form;
 	struct unexpected_character_error unexpected_character;
 	struct multiple_definition_error multiple_definition;
-	struct environment_error environment;
+	struct object_error object;
 	struct missing_file_error missing_file;
 };
 
@@ -81,10 +80,9 @@ void throw_multiple_definition(char *reference_value, jumpbuf *jb) {
 	longjump(jb);
 }
 
-void throw_environment(char *error_string, jumpbuf *jb) {
-	struct environment_error *err = region_alloc(jb->ctx, sizeof(struct environment_error));
-	err->type = ENVIRONMENT;
-	err->error_string = error_string;
+void throw_object(jumpbuf *jb) {
+	struct object_error *err = region_alloc(jb->ctx, sizeof(struct object_error));
+	err->type = OBJECT;
 	jb->ctx = err;
 	longjump(jb);
 }

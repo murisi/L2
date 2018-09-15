@@ -11,7 +11,7 @@ union evaluate_error {
 	struct special_form_error special_form;
 	struct unexpected_character_error unexpected_character;
 	struct multiple_definition_error multiple_definition;
-	struct environment_error environment;
+	struct object_error object;
 };
 
 void throw_arguments(jumpbuf *jb) {
