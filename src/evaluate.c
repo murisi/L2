@@ -6,7 +6,6 @@ typedef unsigned long int bool;
 #define true (~0UL)
 #define false (0UL)
 #include "list.c"
-#include "sexpr.c"
 #include "compile_errors.c"
 #include "lexer.c"
 #include "x86_64_object.c"
@@ -121,8 +120,6 @@ void evaluate_files(int srcc, char *srcv[], list bindings, myjmp_buf *handler) {
 	}}
 	destroy_region(syntax_tree_region);
 }
-
-myjmp_buf evaluate_handler;
 
 //The following functions form the interface provided to loaded L2 files
 
@@ -257,8 +254,10 @@ Symbol sexpr_symbols[] = {
 
 int main(int argc, char *argv[]) {
 	//Initialize the error handler
+	myjmp_buf evaluate_handler;
 	region evaluate_region = evaluate_handler.ctx = create_region(0);
 	mysetjmp(&evaluate_handler);
+	
 	if(evaluate_handler.ctx != evaluate_region) {
 		union evaluate_error *err = (union evaluate_error *) evaluate_handler.ctx;
 		mywrite_str(STDOUT, "Error found: ");
@@ -306,8 +305,9 @@ int main(int argc, char *argv[]) {
 				mywrite_str(STDOUT, ".\n");
 				break;
 			} case ARGUMENTS: {
-				mywrite_str(STDOUT, "Bad command line arguments.\nUsage: l2compile inputs.l2\n"
-					"Outcome: Compiles inputs.l2 and runs it.\n");
+				mywrite_str(STDOUT, "Bad command line arguments.\nUsage: l2evaluate (src1.l2 | obj1.o) ...\n"
+					"Outcome: Compiles each L2 file into an object file, links all the object files\n"
+					"together, and then executes each object file in the order they were specified.\n");
 				break;
 			}
 		}

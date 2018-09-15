@@ -218,20 +218,17 @@ typedef struct {
 	void *ctx; //For data that you want to transfer through jumps
 } myjmp_buf;
 
-void gettime(long *sec, long *nsec) {
-	struct {
-		long sec;
-		long nsec;
-	} t;
-	mysyscall(SYS_CLOCK_GETTIME, CLOCK_PROCESS_CPUTIME_ID, &t);
-	*sec = t.sec;
-	*nsec = t.nsec;
-}
-
 struct timer {
 	long seconds;
 	long nanoseconds;
 };
+
+void gettime(long *sec, long *nsec) {
+	struct timer t;
+	mysyscall(SYS_CLOCK_GETTIME, CLOCK_PROCESS_CPUTIME_ID, &t);
+	*sec = t.seconds;
+	*nsec = t.nanoseconds;
+}
 
 #define timer_reset(tmr) {\
 	tmr.seconds = 0; \
