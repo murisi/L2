@@ -1,32 +1,61 @@
+(++ The following functions are abbreviations of sequences of list operations
+	that are frequently useful when working with s-expressions.)
+
 (function frst (l) [fst [rst [get l]]])
+
 (function ffrst (l) [fst [frst [get l]]])
+
 (function frfrst (l) [fst [rst [frst [get l]]]])
+
 (function rrst (l) [rst [rst [get l]]])
+
 (function rrrst (l) [rst [rrst [get l]]])
+
 (function rfst (l) [rst [fst [get l]]])
+
 (function frfst (l) [fst [rfst [get l]]])
+
 (function frrfst (l) [fst [rst [rfst [get l]]]])
+
 (function frrst (l) [fst [rst [rst [get l]]]])
+
 (function frrrst (l) [fst [rst [rst [rst [get l]]]]])
+
 (function ffst (l) [fst [fst [get l]]])
+
 (function llst (a b c r) [lst [get a] [lst [get b] [get c] [get r]] [get r]])
+
 (function lllst (a b c d r) [lst [get a] [llst [get b] [get c] [get d] [get r]] [get r]])
+
 (function llllst (a b c d e r) [lst [get a] [lllst [get b] [get c] [get d] [get e] [get r]] [get r]])
+
 (function lllllst (a b c d e f r) [lst [get a] [llllst [get b] [get c] [get d] [get e] [get f] [get r]] [get r]])
+
 (function llllllst (a b c d e f g r) [lst [get a] [lllllst [get b] [get c] [get d] [get e] [get f] [get g] [get r]] [get r]])
+
 (function lllllllst (a b c d e f g h r) [lst [get a] [llllllst [get b] [get c] [get d] [get e] [get f] [get g] [get h] [get r]] [get r]])
+
+(++ The following function provides an abbreviation for getting a value from a
+	memory address. It implements the transformation $a -> [get a].)
 
 (function $ (var r) [llst
 		[llllllst[-i-[get r]][-n-[get r]][-v-[get r]][-o-[get r]][-k-[get r]][-e-[get r]][nil[get r]][get r]]
 		[lllst[-g-[get r]][-e-[get r]][-t-[get r]][nil[get r]][get r]]
 		[get var][get r]])
 
+(++ The following function provides a method for commenting L2 code. It
+	implements the transformation (** expr1 ... exprN) -> exprN.)
+
 (function ** (l r)
 	(with return
 		{(continuation find (first last)
-			(if [nil? [get last]]
-				{return [get first]}
-				{find [fst [get last]] [rst [get last]]})) [fst [get l]] [rst [get l]]}))
+			(if [nil? $last]
+				{return $first}
+				{find [fst $last] [rst $last]})) [fst $l] [rst $l]}))
+
+(++ The following function generates the L2 code to generate an s-expression
+	corresponding to the supplied s-expression. Known as backquote in other
+	languages.)
 
 (function ` (l r)
 	[(function aux (s t r)
@@ -46,7 +75,14 @@
 						[lllst [--- $r][fst $s][--- $r][nil $r]$r] $t [nil $r]$r])
 					[aux [rst $s] $t $r] $t [nil $r]$r]))) [fst $l] [frst $l] $r])
 
-(let (d &20)
+(++ The following function provides another method for commenting L2 code. It
+	implements the transformation (++ expr1 ...) -> (begin). It is being used
+	for this comment to work.)
+
+(function ++ (l r)
+	(`(begin)$r))
+
+(** Now things are working: (let (d &20)
 	(for (i &5 &23) (begin
 		[mywrite-str &1 (" Hello(lf))]
-		[mywrite-ul &1 $d])))
+		[mywrite-ul &1 $d]))))
