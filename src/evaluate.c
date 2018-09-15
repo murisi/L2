@@ -85,7 +85,7 @@ void evaluate_files(int srcc, char *srcv[], list bindings, jumpbuf *handler) {
 			int fd = open(srcv[i]);
 			long int src_sz = size(fd);
 			unsigned char *src_buf = region_alloc(syntax_tree_region, src_sz);
-			myread(fd, src_buf, src_sz);
+			read(fd, src_buf, src_sz);
 			close(fd);
 			
 			list expressions = nil(syntax_tree_region);
@@ -102,7 +102,7 @@ void evaluate_files(int srcc, char *srcv[], list bindings, jumpbuf *handler) {
 			int obj_fd = open(srcv[i]);
 			long int obj_sz = size(obj_fd);
 			unsigned char *obj_buf = region_alloc(syntax_tree_region, obj_sz);
-			myread(obj_fd, obj_buf, obj_sz);
+			read(obj_fd, obj_buf, obj_sz);
 			close(obj_fd);
 			
 			Object *obj = load(obj_buf, obj_sz, syntax_tree_region);
@@ -248,7 +248,7 @@ Symbol sexpr_symbols[] = {
 	{.name = "nil?", .address = is_nil},
 	{.name = "nil", .address = nil},
 	{.name = "char=", .address = char_equals},
-	{.name = "write-ul", .address = mywrite_ul},
+	{.name = "write-ul", .address = write_ulong},
 	{.name = "write-str", .address = write_str}
 };
 
@@ -284,9 +284,9 @@ int main(int argc, char *argv[]) {
 				break;
 			} case UNEXPECTED_CHARACTER: {
 				write_str(STDOUT, "Unexpectedly read ");
-				mywrite_char(STDOUT, err->unexpected_character.character);
+				write_char(STDOUT, err->unexpected_character.character);
 				write_str(STDOUT, " at ");
-				mywrite_ul(STDOUT, err->unexpected_character.position);
+				write_ulong(STDOUT, err->unexpected_character.position);
 				write_str(STDOUT, ".\n");
 				break;
 			} case MULTIPLE_DEFINITION: {

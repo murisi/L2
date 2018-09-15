@@ -396,7 +396,7 @@ void print_syntax_tree(union expression *s) {
 			write_str(STDOUT, ")");
 			break;
 		} case invoke: case jump: {
-			mywrite_char(STDOUT, s->base.type == invoke ? '[' : s->base.type == jump ? '{' : '(');
+			write_char(STDOUT, s->base.type == invoke ? '[' : s->base.type == jump ? '{' : '(');
 			print_syntax_tree(s->invoke.reference);
 			write_str(STDOUT, " ");
 			union expression *t;
@@ -405,7 +405,7 @@ void print_syntax_tree(union expression *s) {
 				write_str(STDOUT, " ");
 			}
 			write_str(STDOUT, "\b");
-			mywrite_char(STDOUT, s->base.type == invoke ? ']' : s->base.type == jump ? '}' : ')');
+			write_char(STDOUT, s->base.type == invoke ? ']' : s->base.type == jump ? '}' : ')');
 			break;
 		} case function: case continuation: {
 			write_str(STDOUT, "(");
@@ -440,7 +440,7 @@ void print_syntax_tree(union expression *s) {
 			break;
 		} case literal: {
 			write_str(STDOUT, "(literal ");
-			mywrite_ul(STDOUT, s->literal.value);
+			write_ulong(STDOUT, s->literal.value);
 			write_str(STDOUT, ")");
 			break;
 		} case non_primitive: {

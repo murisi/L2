@@ -169,7 +169,7 @@ void print_expr_list(list d) {
 		if(is_lst(_fst)) {
 			print_expr_list((list) _fst);
 		} else {
-			mywrite_char(STDOUT, _fst->character.character);
+			write_char(STDOUT, _fst->character.character);
 		}
 		write_str(STDOUT, " . ");
 		print_expr_list(d->rst);

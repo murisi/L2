@@ -82,11 +82,11 @@ void write_str(int fd, char *str) {
 	write(fd, str, strlen(str));
 }
 
-void mywrite_char(int fd, char ch) {
+void write_char(int fd, char ch) {
 	write(fd, &ch, 1);
 }
 
-void mywrite_ul(int fd, unsigned long i) {
+void write_ulong(int fd, unsigned long i) {
 	char str[20]; int j;
 	for(j = 19; i; j--, i/=10) {
 		switch(i % 10) {
@@ -105,16 +105,16 @@ void mywrite_ul(int fd, unsigned long i) {
 	write(fd, str+j+1, 19-j);
 }
 
-void mywrite_l(int fd, long i) {
+void write_long(int fd, long i) {
 	if(i < 0) {
-		mywrite_char(fd, '-');
-		mywrite_ul(fd, -((unsigned long) i));
+		write_char(fd, '-');
+		write_ulong(fd, -((unsigned long) i));
 	} else {
-		mywrite_ul(fd, i);
+		write_ulong(fd, i);
 	}
 }
 
-long int myread(int fd, void *buf, int cnt) {
+long int read(int fd, void *buf, int cnt) {
 	return syscall(SYS_READ, fd, buf, cnt);
 }
 
@@ -250,8 +250,8 @@ void gettime(long *sec, long *nsec) {
 
 #define print_timer(src) {\
 	write_str(STDOUT, #src ": "); \
-	mywrite_l(STDOUT, src.seconds); \
+	write_long(STDOUT, src.seconds); \
 	write_str(STDOUT, "s "); \
-	mywrite_l(STDOUT, src.nanoseconds); \
+	write_long(STDOUT, src.nanoseconds); \
 	write_str(STDOUT, "ns\n"); \
 }
