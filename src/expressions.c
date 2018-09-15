@@ -380,75 +380,75 @@ union expression *make_invoke8(union expression *ref, union expression *arg1, un
 void print_syntax_tree(union expression *s) {
 	switch(s->base.type) {
 		case begin: {
-			mywrite_str(STDOUT, "(begin ");
+			write_str(STDOUT, "(begin ");
 			union expression *t;
 			foreach(t, s->begin.expressions) {
 				print_syntax_tree(t);
-				mywrite_str(STDOUT, " ");
+				write_str(STDOUT, " ");
 			}
-			mywrite_str(STDOUT, "\b)");
+			write_str(STDOUT, "\b)");
 			break;
 		} case with: {
-			mywrite_str(STDOUT, "(with ");
+			write_str(STDOUT, "(with ");
 			print_syntax_tree(s->with.reference);
-			mywrite_str(STDOUT, " ");
+			write_str(STDOUT, " ");
 			print_syntax_tree(s->with.expression);
-			mywrite_str(STDOUT, ")");
+			write_str(STDOUT, ")");
 			break;
 		} case invoke: case jump: {
 			mywrite_char(STDOUT, s->base.type == invoke ? '[' : s->base.type == jump ? '{' : '(');
 			print_syntax_tree(s->invoke.reference);
-			mywrite_str(STDOUT, " ");
+			write_str(STDOUT, " ");
 			union expression *t;
 			foreach(t, s->invoke.arguments) {
 				print_syntax_tree(t);
-				mywrite_str(STDOUT, " ");
+				write_str(STDOUT, " ");
 			}
-			mywrite_str(STDOUT, "\b");
+			write_str(STDOUT, "\b");
 			mywrite_char(STDOUT, s->base.type == invoke ? ']' : s->base.type == jump ? '}' : ')');
 			break;
 		} case function: case continuation: {
-			mywrite_str(STDOUT, "(");
-			mywrite_str(STDOUT, s->base.type == function ? "function" : "continuation");
-			mywrite_str(STDOUT, " ");
+			write_str(STDOUT, "(");
+			write_str(STDOUT, s->base.type == function ? "function" : "continuation");
+			write_str(STDOUT, " ");
 			print_syntax_tree(s->function.reference);
-			mywrite_str(STDOUT, " ( ");
+			write_str(STDOUT, " ( ");
 			union expression *t;
 			foreach(t, s->function.parameters) {
 				print_syntax_tree(t);
-				mywrite_str(STDOUT, " ");
+				write_str(STDOUT, " ");
 			}
-			mywrite_str(STDOUT, ") ");
+			write_str(STDOUT, ") ");
 			print_syntax_tree(s->function.expression);
-			mywrite_str(STDOUT, ")");
+			write_str(STDOUT, ")");
 			break;
 		} case _if: {
-			mywrite_str(STDOUT, "(if ");
+			write_str(STDOUT, "(if ");
 			print_syntax_tree(s->_if.condition);
-			mywrite_str(STDOUT, " ");
+			write_str(STDOUT, " ");
 			print_syntax_tree(s->_if.consequent);
-			mywrite_str(STDOUT, " ");
+			write_str(STDOUT, " ");
 			print_syntax_tree(s->_if.alternate);
-			mywrite_str(STDOUT, ")");
+			write_str(STDOUT, ")");
 			break;
 		} case reference: {
 			if(s->reference.name) {
-				mywrite_str(STDOUT, s->reference.name);
+				write_str(STDOUT, s->reference.name);
 			} else {
-				mywrite_str(STDOUT, "()");
+				write_str(STDOUT, "()");
 			}
 			break;
 		} case literal: {
-			mywrite_str(STDOUT, "(literal ");
+			write_str(STDOUT, "(literal ");
 			mywrite_ul(STDOUT, s->literal.value);
-			mywrite_str(STDOUT, ")");
+			write_str(STDOUT, ")");
 			break;
 		} case non_primitive: {
-			mywrite_str(STDOUT, "(");
+			write_str(STDOUT, "(");
 			print_syntax_tree(s->non_primitive.reference);
-			mywrite_str(STDOUT, " ");
+			write_str(STDOUT, " ");
 			print_expr_list(s->non_primitive.argument);
-			mywrite_str(STDOUT, ")");
+			write_str(STDOUT, ")");
 			break;
 		}
 	}

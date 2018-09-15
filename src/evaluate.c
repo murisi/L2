@@ -82,11 +82,11 @@ void evaluate_files(int srcc, char *srcv[], list bindings, jumpbuf *handler) {
 	for(i = 0; i < srcc; i++) {
 		char *dot = strrchr(srcv[i], '.');
 		if(dot && !strcmp(dot, ".l2")) {
-			int fd = myopen(srcv[i]);
-			long int src_sz = mysize(fd);
+			int fd = open(srcv[i]);
+			long int src_sz = size(fd);
 			unsigned char *src_buf = region_alloc(syntax_tree_region, src_sz);
 			myread(fd, src_buf, src_sz);
-			myclose(fd);
+			close(fd);
 			
 			list expressions = nil(syntax_tree_region);
 			int pos = 0;
@@ -99,11 +99,11 @@ void evaluate_files(int srcc, char *srcv[], list bindings, jumpbuf *handler) {
 			append(obj, &objects, syntax_tree_region);
 			append_list(&bindings, immutable_symbols(obj, syntax_tree_region));
 		} else if(dot && !strcmp(dot, ".o")) {
-			int obj_fd = myopen(srcv[i]);
-			long int obj_sz = mysize(obj_fd);
+			int obj_fd = open(srcv[i]);
+			long int obj_sz = size(obj_fd);
 			unsigned char *obj_buf = region_alloc(syntax_tree_region, obj_sz);
 			myread(obj_fd, obj_buf, obj_sz);
-			myclose(obj_fd);
+			close(obj_fd);
 			
 			Object *obj = load(obj_buf, obj_sz, syntax_tree_region);
 			append(obj, &objects, syntax_tree_region);
@@ -248,8 +248,8 @@ Symbol sexpr_symbols[] = {
 	{.name = "nil?", .address = is_nil},
 	{.name = "nil", .address = nil},
 	{.name = "char=", .address = char_equals},
-	{.name = "mywrite-ul", .address = mywrite_ul},
-	{.name = "mywrite-str", .address = mywrite_str}
+	{.name = "write-ul", .address = mywrite_ul},
+	{.name = "write-str", .address = write_str}
 };
 
 int main(int argc, char *argv[]) {
@@ -260,52 +260,52 @@ int main(int argc, char *argv[]) {
 	
 	if(evaluate_handler.ctx != evaluate_region) {
 		union evaluate_error *err = (union evaluate_error *) evaluate_handler.ctx;
-		mywrite_str(STDOUT, "Error found: ");
+		write_str(STDOUT, "Error found: ");
 		switch(err->arguments.type) {
 			case PARAM_COUNT_MISMATCH: {
-				mywrite_str(STDOUT, "The number of arguments in ");
+				write_str(STDOUT, "The number of arguments in ");
 				print_syntax_tree(err->param_count_mismatch.src_expression);
-				mywrite_str(STDOUT, " does not match the number of parameters in ");
+				write_str(STDOUT, " does not match the number of parameters in ");
 				print_syntax_tree(err->param_count_mismatch.dest_expression);
-				mywrite_str(STDOUT, ".\n");
+				write_str(STDOUT, ".\n");
 				break;
 			} case SPECIAL_FORM: {
 				if(err->special_form.subexpression_list) {
-					mywrite_str(STDOUT, "The subexpression ");
+					write_str(STDOUT, "The subexpression ");
 					print_expr_list(err->special_form.subexpression_list);
-					mywrite_str(STDOUT, " does not satisfy the requirements of the expression ");
+					write_str(STDOUT, " does not satisfy the requirements of the expression ");
 					print_expr_list(err->special_form.expression_list);
-					mywrite_str(STDOUT, ".\n");
+					write_str(STDOUT, ".\n");
 				} else {
-					mywrite_str(STDOUT, "The expression ");
+					write_str(STDOUT, "The expression ");
 					print_expr_list(err->special_form.expression_list);
-					mywrite_str(STDOUT, " has an incorrect number of subexpressions.\n");
+					write_str(STDOUT, " has an incorrect number of subexpressions.\n");
 				}
 				break;
 			} case UNEXPECTED_CHARACTER: {
-				mywrite_str(STDOUT, "Unexpectedly read ");
+				write_str(STDOUT, "Unexpectedly read ");
 				mywrite_char(STDOUT, err->unexpected_character.character);
-				mywrite_str(STDOUT, " at ");
+				write_str(STDOUT, " at ");
 				mywrite_ul(STDOUT, err->unexpected_character.position);
-				mywrite_str(STDOUT, ".\n");
+				write_str(STDOUT, ".\n");
 				break;
 			} case MULTIPLE_DEFINITION: {
-				mywrite_str(STDOUT, "The definition of ");
-				mywrite_str(STDOUT, err->multiple_definition.reference_value);
-				mywrite_str(STDOUT, " erroneously occured multiple times.\n");
+				write_str(STDOUT, "The definition of ");
+				write_str(STDOUT, err->multiple_definition.reference_value);
+				write_str(STDOUT, " erroneously occured multiple times.\n");
 				break;
 			} case ENVIRONMENT: {
-				mywrite_str(STDOUT, "The following occured when trying to use an environment: ");
-				mywrite_str(STDOUT, err->environment.error_string);
-				mywrite_str(STDOUT, "\n");
+				write_str(STDOUT, "The following occured when trying to use an environment: ");
+				write_str(STDOUT, err->environment.error_string);
+				write_str(STDOUT, "\n");
 				break;
 			} case MISSING_FILE: {
-				mywrite_str(STDOUT, "There is no file at the path ");
-				mywrite_str(STDOUT, err->missing_file.path);
-				mywrite_str(STDOUT, ".\n");
+				write_str(STDOUT, "There is no file at the path ");
+				write_str(STDOUT, err->missing_file.path);
+				write_str(STDOUT, ".\n");
 				break;
 			} case ARGUMENTS: {
-				mywrite_str(STDOUT, "Bad command line arguments.\nUsage: l2evaluate (src1.l2 | obj1.o) ...\n"
+				write_str(STDOUT, "Bad command line arguments.\nUsage: l2evaluate (src1.l2 | obj1.o) ...\n"
 					"Outcome: Compiles each L2 file into an object file, links all the object files\n"
 					"together, and then executes each object file in the order they were specified.\n");
 				break;

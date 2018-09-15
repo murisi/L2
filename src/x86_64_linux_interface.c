@@ -70,20 +70,20 @@ int isspace(int c) {
 	return c == ' ' || c == '\f' || c == '\n' || c == '\r' || c == '\t' || c == '\v';
 }
 
-int myopen(char *path) {
+int open(char *path) {
 	return (int) syscall(SYS_OPEN, path, O_RDWR | O_CREAT, S_IRWXU | S_IRWXG | S_IRWXO);
 }
 
-void mywrite(int fd, void *d, int len) {
+void write(int fd, void *d, int len) {
 	syscall(SYS_WRITE, fd, d, len);
 }
 
-void mywrite_str(int fd, char *str) {
-	mywrite(fd, str, strlen(str));
+void write_str(int fd, char *str) {
+	write(fd, str, strlen(str));
 }
 
 void mywrite_char(int fd, char ch) {
-	mywrite(fd, &ch, 1);
+	write(fd, &ch, 1);
 }
 
 void mywrite_ul(int fd, unsigned long i) {
@@ -102,7 +102,7 @@ void mywrite_ul(int fd, unsigned long i) {
 			case 9: str[j] = '9'; break;
 		}
 	}
-	mywrite(fd, str+j+1, 19-j);
+	write(fd, str+j+1, 19-j);
 }
 
 void mywrite_l(int fd, long i) {
@@ -118,11 +118,11 @@ long int myread(int fd, void *buf, int cnt) {
 	return syscall(SYS_READ, fd, buf, cnt);
 }
 
-void myclose(int fd) {
+void close(int fd) {
 	syscall(SYS_CLOSE, fd);
 }
 
-long int mysize(int fd) {
+long int size(int fd) {
 	long int statbuf[18];
 	syscall(SYS_FSTAT, fd, statbuf);
 	return statbuf[6];
@@ -249,9 +249,9 @@ void gettime(long *sec, long *nsec) {
 }
 
 #define print_timer(src) {\
-	mywrite_str(STDOUT, #src ": "); \
+	write_str(STDOUT, #src ": "); \
 	mywrite_l(STDOUT, src.seconds); \
-	mywrite_str(STDOUT, "s "); \
+	write_str(STDOUT, "s "); \
 	mywrite_l(STDOUT, src.nanoseconds); \
-	mywrite_str(STDOUT, "ns\n"); \
+	write_str(STDOUT, "ns\n"); \
 }

@@ -160,9 +160,9 @@ char *to_string(list d, region r) {
 }
 
 void print_expr_list(list d) {
-	mywrite_str(STDOUT, "(");
+	write_str(STDOUT, "(");
 	if(is_nil(d)) {
-		mywrite_str(STDOUT, ")");
+		write_str(STDOUT, ")");
 		return;
 	} else {
 		union sexpr *_fst = d->fst;
@@ -171,8 +171,8 @@ void print_expr_list(list d) {
 		} else {
 			mywrite_char(STDOUT, _fst->character.character);
 		}
-		mywrite_str(STDOUT, " . ");
+		write_str(STDOUT, " . ");
 		print_expr_list(d->rst);
-		mywrite_str(STDOUT, ")");
+		write_str(STDOUT, ")");
 	}	
 }
