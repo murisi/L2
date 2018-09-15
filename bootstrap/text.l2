@@ -1,3 +1,7 @@
+(++ The following function turns a character s-expression into its equivalent
+	ASCII code. So for example, the L2 expression (char A) is equivalent to the
+	C literal 'A'.)
+
 (function char (l r)
 	(switch char= [ffst $l]
 		([-!- $r] (` &33 $r)) ([-"- $r] (` &34 $r)) ([-$- $r] (` &36 $r)) ([-%- $r] (` &37 $r)) ([-&- $r] (` &38 $r))
@@ -18,6 +22,12 @@
 		([-r- $r] (` &114 $r)) ([-s- $r] (` &115 $r)) ([-t- $r] (` &116 $r)) ([-u- $r] (` &117 $r)) ([-v- $r] (` &118 $r))
 		([-w- $r] (` &119 $r)) ([-x- $r] (` &120 $r)) ([-y- $r] (` &121 $r)) ([-z- $r] (` &122 $r)) ([-|- $r] (` &124 $r))
 		([-~- $r] (` &126 $r)) (` &0 $r)))
+
+(++ The following function turns text in the form of a list of s-expressions
+	into code that allocates a buffer on the stack and puts the equivalent
+	C-string into it. So for example, the L2 expression (" Hello world.) is
+	the same as the C literal "Hello world." except that it is allocated on the
+	stack.)
 
 (function " (l r) (with return
 	{(continuation add-word (str index instrs)
@@ -41,17 +51,34 @@
 									(,[char [lst [lst [fst $word] [nil $r]$r] [nil $r]$r]$r])]$r) $instrs $r]})))
 				[fst $str] $index $instrs})) $l &0 [nil $r]}))
 
+(++ The following functions implement ASCII control characters. These can be
+	embedded into uses of the quote function above. So for example, the L2
+	expression (" Hello(lf)Bye) is equivalent to the C literal "Hello \nBye".)
+
 (function nul (l r) (` &0 $r))
+
 (function bel (l r) (` &7 $r))
+
 (function bs (l r) (` &8 $r))
+
 (function ht (l r) (` &9 $r))
+
 (function lf (l r) (` &10 $r))
+
 (function cr (l r) (` &13 $r))
+
 (function vt (l r) (` &11 $r))
+
 (function ff (l r) (` &12 $r))
+
 (function lparen (l r) (` &40 $r))
+
 (function rparen (l r) (` &41 $r))
+
 (function lbrace (l r) (` &123 $r))
+
 (function rbrace (l r) (` &125 $r))
+
 (function lbracket (l r) (` &91 $r))
+
 (function rbracket (l r) (` &93 $r))

@@ -12,11 +12,35 @@
 				{return [reverse $out $r]}
 				{aux [rst $in] [lst [$mapper [fst $in]] $out $r]})) $l [nil $r]}))
 
+(++ The following function implements variable binding by do the following
+	transformation:
+	
+	(let (params args) ... expr0)
+	->
+	(with return
+		{(continuation templet0 (params ...)
+			{return expr0}) vals ...}))
+
 (function let (l r)
 	(`(with let:return
 		(,[llst (` jump $r) (`(continuation let:aux
 			(,[map [rst [reverse $l $r]] fst $r])
 			{let:return (,[fst [reverse $l $r]])}) $r) [map [rst [reverse $l $r]] frst $r] $r])) $r))
+
+(++ The following function implements the switch expression by doing the
+	following transformation:
+	
+	(switch eq0 val0 (vals exprs) ... expr0)
+	->
+	(let (tempeq0 eq0) (tempval0 val0)
+		(if [[' tempeq0] [' tempval0] vals1]
+			exprs1
+			(if [[' tempeq0] [' tempval0] vals2]
+				exprs2
+				...
+					(if [[' tempeq0] [' tempval0] valsN]
+						exprsN
+						expr0)))))
 
 (function switch (l r)
 	(`(let (switch:= (,[fst $l])) (switch:val (,[frst $l]))
@@ -27,7 +51,7 @@
 					{aux [rst $remaining]
 						(`(if (,[llllst (` invoke $r) (` $switch:= $r) (` $switch:val $r) [ffst $remaining] [nil $r] $r])
 							(,[frfst $remaining]) ,$else-clause) $r)}))
-				[rst [reverse [rrst $l] $r]] [fst [reverse $l $r]]}))) $r))
+				[rst [reverse [rrst $l] $r]] [fst [reverse $l $r]]})))$r))
 
 (function while (l r)
 	(`(with while:return {(continuation while:aux (while:val)
