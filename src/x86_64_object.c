@@ -1,9 +1,4 @@
-#include "stdio.h"
 #include "elf.h"
-#include "stdlib.h"
-#include "string.h"
-#include "sys/mman.h"
-#include "assert.h"
 
 #define SEGMENT_ALIGNMENT 16
 

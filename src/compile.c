@@ -28,8 +28,8 @@ Object *load_expressions(list exprs, list *ext_binds, list st_binds, list *comps
 	{foreach(t, exprs) {
 		append(copy_expression(t, manreg), &program->function.expression->begin.expressions, manreg);
 	}}
-	put(program, function.expression, generate_macros(program->function.expression, true, ext_binds, st_binds, nil(obj_reg), comps,
-		manreg, obj_reg, handler));
+	put(program, function.expression, generate_np_expressions(program->function.expression, true, ext_binds, st_binds, nil(obj_reg),
+		comps, manreg, obj_reg, handler));
 	visit_expressions(vfind_multiple_definitions, &program, handler);
 	visit_expressions(vlink_references, &program, (void* []) {handler, manreg});
 	visit_expressions(vescape_analysis, &program, NULL);
