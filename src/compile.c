@@ -77,7 +77,7 @@ Object *load_expressions(list exprs, list *ext_binds, list st_binds, list *comps
 
 void evaluate_source(int srcc, char *srcv[], list bindings, myjmp_buf *handler) {
 	region syntax_tree_region = create_region(0);
-	list expressions = nil(syntax_tree_region), objects = nil(syntax_tree_region);
+	list objects = nil(syntax_tree_region), comps = nil(syntax_tree_region);
 	
 	int i;
 	for(i = 0; i < srcc; i++) {
@@ -89,12 +89,16 @@ void evaluate_source(int srcc, char *srcv[], list bindings, myjmp_buf *handler) 
 			myread(fd, src_buf, src_sz);
 			myclose(fd);
 			
+			list expressions = nil(syntax_tree_region);
 			int pos = 0;
 			while(after_leading_space(src_buf, src_sz, &pos)) {
 				build_expr_list_handler = handler;
 				list sexpr = build_expr_list(src_buf, src_sz, &pos, syntax_tree_region);
 				append(build_syntax_tree(sexpr, syntax_tree_region, handler), &expressions, syntax_tree_region);
 			}
+			Object *obj = load_expressions(expressions, &bindings, nil(syntax_tree_region), &comps, syntax_tree_region, handler);
+			append(obj, &objects, syntax_tree_region);
+			append_list(&bindings, immutable_symbols(obj, syntax_tree_region));
 		} else if(dot && !strcmp(dot, ".o")) {
 			long int obj_sz = mysize(srcv[i]);
 			unsigned char *obj_buf = region_malloc(syntax_tree_region, obj_sz);
@@ -103,28 +107,18 @@ void evaluate_source(int srcc, char *srcv[], list bindings, myjmp_buf *handler) 
 			myclose(obj_fd);
 			
 			Object *obj = load(obj_buf, obj_sz, syntax_tree_region);
-			prepend(obj, &objects, syntax_tree_region);
-			append(make_invoke0(make_literal((unsigned long) segment(obj, ".text"), syntax_tree_region), syntax_tree_region),
-				&expressions, syntax_tree_region);
+			append(obj, &objects, syntax_tree_region);
 			append_list(&bindings, immutable_symbols(obj, syntax_tree_region));
 		}
 	}
 	
-	list ext_binds = nil(syntax_tree_region);
-	Symbol *sym;
-	{foreach(sym, bindings) {
-		prepend(sym, &ext_binds, syntax_tree_region);
-	}}
-	unsigned char *objdest; int objdest_sz; list comps = nil(syntax_tree_region);
-	Object *main_obj = load_expressions(expressions, &ext_binds, nil(syntax_tree_region), &comps, syntax_tree_region, handler);
-	list is = immutable_symbols(main_obj, syntax_tree_region);
-	append_list(&bindings, is);
-	mutate_symbols(main_obj, bindings);
 	Object *obj;
 	{foreach(obj, objects) {
 		mutate_symbols(obj, bindings);
 	}}
-	((void (*)()) segment(main_obj, ".text"))();
+	{foreach(obj, objects) {
+		((void (*)()) segment(obj, ".text"))();
+	}}
 	destroy_region(syntax_tree_region);
 }
 
