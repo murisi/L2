@@ -24,7 +24,7 @@
 #define STDIN 0
 #define STDOUT 1
 
-long int mysyscall(long int syscall_num, ...);
+long int syscall(long int syscall_num, ...);
 
 unsigned long strlen(const char *str) {
 	unsigned long i;
@@ -70,11 +70,11 @@ int isspace(int c) {
 }
 
 int myopen(char *path) {
-	return (int) mysyscall(SYS_OPEN, path, O_RDWR | O_CREAT, S_IRWXU | S_IRWXG | S_IRWXO);
+	return (int) syscall(SYS_OPEN, path, O_RDWR | O_CREAT, S_IRWXU | S_IRWXG | S_IRWXO);
 }
 
 void mywrite(int fd, void *d, int len) {
-	mysyscall(SYS_WRITE, fd, d, len);
+	syscall(SYS_WRITE, fd, d, len);
 }
 
 void mywrite_str(int fd, char *str) {
@@ -114,11 +114,11 @@ void mywrite_l(int fd, long i) {
 }
 
 long int myread(int fd, void *buf, int cnt) {
-	return mysyscall(SYS_READ, fd, buf, cnt);
+	return syscall(SYS_READ, fd, buf, cnt);
 }
 
 void myclose(int fd) {
-	mysyscall(SYS_CLOSE, fd);
+	syscall(SYS_CLOSE, fd);
 }
 
 long int mysize(char *path) {
@@ -133,15 +133,15 @@ long int mysize(char *path) {
 }
 
 void myexit(int status) {
-	mysyscall(SYS_EXIT, status);
+	syscall(SYS_EXIT, status);
 }
 
 void *mymmap(unsigned long len) {
-	return (void *) mysyscall(SYS_MMAP, NULL, len, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0L);
+	return (void *) syscall(SYS_MMAP, NULL, len, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0L);
 }
 
 void mymunmap(void *ptr, unsigned long len) {
-	mysyscall(SYS_MUNMAP, ptr, len);
+	syscall(SYS_MUNMAP, ptr, len);
 }
 
 unsigned long round_size(unsigned long x, unsigned long nearest) {
@@ -225,7 +225,7 @@ struct timer {
 
 void gettime(long *sec, long *nsec) {
 	struct timer t;
-	mysyscall(SYS_CLOCK_GETTIME, CLOCK_PROCESS_CPUTIME_ID, &t);
+	syscall(SYS_CLOCK_GETTIME, CLOCK_PROCESS_CPUTIME_ID, &t);
 	*sec = t.seconds;
 	*nsec = t.nanoseconds;
 }

@@ -1,4 +1,4 @@
-.globl mysyscall
+.globl syscall
 .globl mysetjmp
 .globl mylongjmp
 .globl _start
@@ -8,7 +8,7 @@
  * this function and its six arguments being provided by arguments 2 to 7 of
  * this function.
  */
-mysyscall:
+syscall:
 	movq %rdi, %rax
 	movq %rsi, %rdi
 	movq %rdx, %rsi
