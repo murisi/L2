@@ -3,6 +3,7 @@
 #define SYS_WRITE 1
 #define SYS_OPEN 2
 #define SYS_CLOSE 3
+#define SYS_FSTAT 5
 #define SYS_MMAP 9
 #define SYS_MUNMAP 11
 #define SYS_EXIT 60
@@ -121,15 +122,10 @@ void myclose(int fd) {
 	syscall(SYS_CLOSE, fd);
 }
 
-long int mysize(char *path) {
-	unsigned char buf[1024];
-	long int file_size = 0, bytes_read;
-	int fd = myopen(path);
-	while(bytes_read = myread(fd, buf, sizeof(buf))) {
-		file_size += bytes_read;
-	}
-	myclose(fd);
-	return file_size;
+long int mysize(int fd) {
+	long int statbuf[18];
+	syscall(SYS_FSTAT, fd, statbuf);
+	return statbuf[6];
 }
 
 void *mmap(unsigned long len) {

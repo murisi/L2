@@ -82,9 +82,9 @@ void evaluate_files(int srcc, char *srcv[], list bindings, jumpbuf *handler) {
 	for(i = 0; i < srcc; i++) {
 		char *dot = strrchr(srcv[i], '.');
 		if(dot && !strcmp(dot, ".l2")) {
-			long int src_sz = mysize(srcv[i]);
-			unsigned char *src_buf = region_alloc(syntax_tree_region, src_sz);
 			int fd = myopen(srcv[i]);
+			long int src_sz = mysize(fd);
+			unsigned char *src_buf = region_alloc(syntax_tree_region, src_sz);
 			myread(fd, src_buf, src_sz);
 			myclose(fd);
 			
@@ -99,9 +99,9 @@ void evaluate_files(int srcc, char *srcv[], list bindings, jumpbuf *handler) {
 			append(obj, &objects, syntax_tree_region);
 			append_list(&bindings, immutable_symbols(obj, syntax_tree_region));
 		} else if(dot && !strcmp(dot, ".o")) {
-			long int obj_sz = mysize(srcv[i]);
-			unsigned char *obj_buf = region_alloc(syntax_tree_region, obj_sz);
 			int obj_fd = myopen(srcv[i]);
+			long int obj_sz = mysize(obj_fd);
+			unsigned char *obj_buf = region_alloc(syntax_tree_region, obj_sz);
 			myread(obj_fd, obj_buf, obj_sz);
 			myclose(obj_fd);
 			
