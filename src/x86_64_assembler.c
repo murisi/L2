@@ -19,7 +19,7 @@ void mem_write(char *mem, int *idx, void *bytes, int cnt) {
 	}
 }
 
-void write_mr_rm_instr(char *bin, int *pos, char opcode, int reg, int rm, bool m, bool rexw) {
+void write_mr_instr(char *bin, int *pos, char opcode, int reg, int rm, bool m, bool rexw) {
 	char mod = m ? 2 : 3;
 	char modrm = (mod << MOD) | ((reg & 0x7) << REG) | ((rm & 0x7) << RM);
 	int has_SIB = m && (rm == RSP || rm == R12);
@@ -103,14 +103,14 @@ void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sy
 				unsigned char opcode = 0x8D;
 				int reg = ((union expression *) n->invoke.arguments->frrst)->instruction.opcode; //Dest
 				int rm = ((union expression *) n->invoke.arguments->frst)->instruction.opcode; //Src
-				write_mr_rm_instr(bin, pos, opcode, reg, rm, true, true);
+				write_mr_instr(bin, pos, opcode, reg, rm, true, true);
 				write_static_value(bin, pos, n->invoke.arguments->fst, 4, symtab, relas);
 				break;
 			} case MOVQ_FROM_REG_INTO_MDB: {
 				unsigned char opcode = 0x89;
 				int reg = ((union expression *) n->invoke.arguments->fst)->instruction.opcode; //Src
 				int rm = ((union expression *) n->invoke.arguments->frrst)->instruction.opcode; //Dest
-				write_mr_rm_instr(bin, pos, opcode, reg, rm, true, true);
+				write_mr_instr(bin, pos, opcode, reg, rm, true, true);
 				write_static_value(bin, pos, n->invoke.arguments->frst, 4, symtab, relas);
 				break;
 			} case JMP_REL: {
@@ -122,7 +122,7 @@ void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sy
 				unsigned char opcode = 0x8B;
 				int reg = ((union expression *) n->invoke.arguments->frrst)->instruction.opcode; //Dest
 				int rm = ((union expression *) n->invoke.arguments->frst)->instruction.opcode; //Src
-				write_mr_rm_instr(bin, pos, opcode, reg, rm, true, true);
+				write_mr_instr(bin, pos, opcode, reg, rm, true, true);
 				write_static_value(bin, pos, n->invoke.arguments->fst, 4, symtab, relas);
 				break;
 			} case PUSHQ_REG: {
@@ -134,20 +134,20 @@ void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sy
 				unsigned char opcode = 0x8B;
 				int reg = ((union expression *) n->invoke.arguments->frst)->instruction.opcode; //Dest
 				int rm = ((union expression *) n->invoke.arguments->fst)->instruction.opcode; //Src
-				write_mr_rm_instr(bin, pos, opcode, reg, rm, false, true);
+				write_mr_instr(bin, pos, opcode, reg, rm, false, true);
 				break;
 			} case SUBQ_IMM_FROM_REG: {
 				unsigned char opcode = 0x81;
 				unsigned char reg = 5;
 				int rm = ((union expression *) n->invoke.arguments->frst)->instruction.opcode; //Dest
-				write_mr_rm_instr(bin, pos, opcode, reg, rm, false, true);
+				write_mr_instr(bin, pos, opcode, reg, rm, false, true);
 				mem_write(bin, pos, &((union expression *) n->invoke.arguments->fst)->literal.value, 4);
 				break;
 			} case ADDQ_IMM_TO_REG: {
 				unsigned char opcode = 0x81;
 				unsigned char reg = 0;
 				int rm = ((union expression *) n->invoke.arguments->frst)->instruction.opcode; //Dest
-				write_mr_rm_instr(bin, pos, opcode, reg, rm, false, true);
+				write_mr_instr(bin, pos, opcode, reg, rm, false, true);
 				mem_write(bin, pos, &((union expression *) n->invoke.arguments->fst)->literal.value, 4);
 				break;
 			} case POPQ_REG: {
@@ -167,7 +167,7 @@ void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sy
 				unsigned char opcode = 0xFF;
 				unsigned char reg = 4;
 				int rm = ((union expression *) n->invoke.arguments->fst)->instruction.opcode;
-				write_mr_rm_instr(bin, pos, opcode, reg, rm, false, false);
+				write_mr_instr(bin, pos, opcode, reg, rm, false, false);
 				break;
 			} case JE_REL: {
 				unsigned char opcode1 = 0x0F;
@@ -180,7 +180,7 @@ void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sy
 				char opcode = 0x0B;
 				int reg = ((union expression *) n->invoke.arguments->frst)->instruction.opcode; //Dest
 				int rm = ((union expression *) n->invoke.arguments->fst)->instruction.opcode; //Src
-				write_mr_rm_instr(bin, pos, opcode, reg, rm, false, true);
+				write_mr_instr(bin, pos, opcode, reg, rm, false, true);
 				break;
 			} case MOVQ_IMM_TO_REG: {
 				unsigned char opcode = 0xB8;
@@ -203,7 +203,7 @@ void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sy
 				unsigned char opcode = 0xFF;
 				unsigned char reg = 2;
 				int rm = ((union expression *) n->invoke.arguments->fst)->instruction.opcode;
-				write_mr_rm_instr(bin, pos, opcode, reg, rm, false, false);
+				write_mr_instr(bin, pos, opcode, reg, rm, false, false);
 				break;
 			}
 		}

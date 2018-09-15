@@ -132,15 +132,11 @@ long int mysize(char *path) {
 	return file_size;
 }
 
-void myexit(int status) {
-	syscall(SYS_EXIT, status);
-}
-
-void *mymmap(unsigned long len) {
+void *mmap(unsigned long len) {
 	return (void *) syscall(SYS_MMAP, NULL, len, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0L);
 }
 
-void mymunmap(void *ptr, unsigned long len) {
+void munmap(void *ptr, unsigned long len) {
 	syscall(SYS_MUNMAP, ptr, len);
 }
 
@@ -152,7 +148,7 @@ typedef void* region;
 
 region create_region(unsigned long min_capacity) {
 	unsigned long len = round_size(min_capacity + 5 * sizeof(void *), PAGE_SIZE);
-	region reg = mymmap(len);
+	region reg = mmap(len);
 	((void **) reg)[0] = NULL;
 	((void **) reg)[1] = reg;
 	((void **) reg)[2] = ((void **) reg) + 5;
@@ -190,7 +186,7 @@ void destroy_region(region reg) {
 	
 	do {
 		region next_reg = ((void **) reg)[0];
-		mymunmap(reg, ((void **) reg)[3] - reg);
+		munmap(reg, ((void **) reg)[3] - reg);
 		reg = next_reg;
 	} while(reg);
 }
