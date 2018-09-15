@@ -11,7 +11,7 @@
  */
 
 union expression *build_syntax_tree(list d, region reg, myjmp_buf *handler) {
-	union expression *s = region_malloc(reg, sizeof(union expression));
+	union expression *s = region_alloc(reg, sizeof(union expression));
 	
 	if(is_string(d)) {
 		char *str = to_string(d, reg);

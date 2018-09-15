@@ -311,7 +311,7 @@ void *np_expansion(list (*expander)(list, region), union expression *np, list *e
 	mutate_symbols(obj, *ext_binds);
 	mutate_symbols(obj, st_binds);
 	
-	pc = region_malloc(rt_reg, sizeof(struct compilation));
+	pc = region_alloc(rt_reg, sizeof(struct compilation));
 	pc->np_expression = np;
 	//There is only one immutable symbol: our annonymous function
 	pc->macro = ((Symbol *) immutable_symbols(obj, ct_reg)->fst)->address;
@@ -321,7 +321,7 @@ void *np_expansion(list (*expander)(list, region), union expression *np, list *e
 }
 
 Symbol *make_symbol(char *nm, void *addr, region r) {
-	Symbol *sym = region_malloc(r, sizeof(Symbol));
+	Symbol *sym = region_alloc(r, sizeof(Symbol));
 	sym->name = nm;
 	sym->address = addr;
 	return sym;

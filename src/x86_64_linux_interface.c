@@ -173,7 +173,7 @@ void check_region_integrity(region reg) {
 	} while(reg);
 }
 
-void *region_malloc(region reg, unsigned long len) {
+void *region_alloc(region reg, unsigned long len) {
 	//check_region_integrity(reg);
 	
 	len = round_size(len, ALIGNMENT);
@@ -196,7 +196,7 @@ void destroy_region(region reg) {
 }
 
 char *rstrcpy(const char *src, region reg) {
-	char *dest = region_malloc(reg, strlen(src) + 1);
+	char *dest = region_alloc(reg, strlen(src) + 1);
 	unsigned long i;
 	for(i = 0; src[i]; i++) {
 		dest[i] = src[i];

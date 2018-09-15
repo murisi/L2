@@ -15,7 +15,7 @@ union evaluate_error {
 };
 
 void throw_arguments(myjmp_buf *jb) {
-	struct arguments_error *err = region_malloc(jb->ctx, sizeof(struct arguments_error));
+	struct arguments_error *err = region_alloc(jb->ctx, sizeof(struct arguments_error));
 	err->type = ARGUMENTS;
 	jb->ctx = err;
 	mylongjmp(jb);

@@ -85,14 +85,14 @@ void store_addends(Object *obj, region reg) {
 	for(sec = 0; sec < obj->ehdr->e_shnum; sec++) {
 		if(obj->shdrs[sec].sh_type == SHT_RELA) {
 			int relanum = obj->shdrs[sec].sh_size / obj->shdrs[sec].sh_entsize;
-			obj->addends[sec] = region_malloc(reg, relanum * sizeof(Elf64_Sxword));
+			obj->addends[sec] = region_alloc(reg, relanum * sizeof(Elf64_Sxword));
 			int rela;
 			for(rela = 0; rela < relanum; rela++) {
 				obj->addends[sec][rela] = obj->relas[sec][rela].r_addend;
 			}
 		} else if(obj->shdrs[sec].sh_type == SHT_REL) {
 			int relnum = obj->shdrs[sec].sh_size / obj->shdrs[sec].sh_entsize;
-			obj->addends[sec] = region_malloc(reg, relnum * sizeof(Elf64_Sxword));
+			obj->addends[sec] = region_alloc(reg, relnum * sizeof(Elf64_Sxword));
 			int rel;
 			for(rel = 0; rel < relnum; rel++) {
 				switch(ELF64_R_TYPE(obj->relas[sec][rel].r_info)) {
@@ -160,38 +160,38 @@ void offsets_to_addresses(Object *obj) {
  * object_required_memory. Returns a handle to manipulate the loaded object.
  */
 Object *read_object(unsigned char *objsrc, int objsrc_sz, region reg) {
-	Object *obj = region_malloc(reg, sizeof(Object));
-	obj->ehdr = region_malloc(reg, sizeof(Elf64_Ehdr));
+	Object *obj = region_alloc(reg, sizeof(Object));
+	obj->ehdr = region_alloc(reg, sizeof(Elf64_Ehdr));
 	memcpy(obj->ehdr, objsrc, sizeof(Elf64_Ehdr));
 	//assert(obj->ehdr->e_ident[EI_MAG0] == ELFMAG0 && obj->ehdr->e_ident[EI_MAG1] == ELFMAG1 &&
 	//	obj->ehdr->e_ident[EI_MAG2] == ELFMAG2 && obj->ehdr->e_ident[EI_MAG3] == ELFMAG3);
 	//assert(obj->ehdr->e_ident[EI_CLASS] == ELFCLASS64);
 	//assert(obj->ehdr->e_ident[EI_DATA] == ELFDATA2LSB);
 	
-	obj->shdrs = region_malloc(reg, obj->ehdr->e_shnum * sizeof(Elf64_Shdr));
-	obj->syms = region_malloc(reg, obj->ehdr->e_shnum * sizeof(Elf64_Sym *));
-	obj->relas = region_malloc(reg, obj->ehdr->e_shnum * sizeof(Elf64_Rela *));
-	obj->addends = region_malloc(reg, obj->ehdr->e_shnum * sizeof(Elf64_Sxword *));
-	obj->segs = region_malloc(reg, obj->ehdr->e_shnum * sizeof(void *));
+	obj->shdrs = region_alloc(reg, obj->ehdr->e_shnum * sizeof(Elf64_Shdr));
+	obj->syms = region_alloc(reg, obj->ehdr->e_shnum * sizeof(Elf64_Sym *));
+	obj->relas = region_alloc(reg, obj->ehdr->e_shnum * sizeof(Elf64_Rela *));
+	obj->addends = region_alloc(reg, obj->ehdr->e_shnum * sizeof(Elf64_Sxword *));
+	obj->segs = region_alloc(reg, obj->ehdr->e_shnum * sizeof(void *));
 	
 	int sec;
 	for(sec = 0; sec < obj->ehdr->e_shnum; sec++) {
 		memcpy(&obj->shdrs[sec], objsrc + obj->ehdr->e_shoff + (obj->ehdr->e_shentsize * sec), sizeof(Elf64_Shdr));
-		obj->segs[sec] = region_malloc(reg, obj->shdrs[sec].sh_size);
+		obj->segs[sec] = region_alloc(reg, obj->shdrs[sec].sh_size);
 		if(obj->shdrs[sec].sh_type != SHT_NOBITS) {
 			memcpy(obj->segs[sec], objsrc + obj->shdrs[sec].sh_offset, obj->shdrs[sec].sh_size);
 		}
 		
 		if(obj->shdrs[sec].sh_type == SHT_SYMTAB) {
 			int symnum = obj->shdrs[sec].sh_size / obj->shdrs[sec].sh_entsize;
-			obj->syms[sec] = region_malloc(reg, symnum * sizeof(Elf64_Sym));
+			obj->syms[sec] = region_alloc(reg, symnum * sizeof(Elf64_Sym));
 			int sym;
 			for(sym = 0; sym < symnum; sym++) {
 				memcpy(&obj->syms[sec][sym], obj->segs[sec] + (obj->shdrs[sec].sh_entsize * sym), sizeof(Elf64_Sym));
 			}
 		} else if(obj->shdrs[sec].sh_type == SHT_RELA || obj->shdrs[sec].sh_type == SHT_REL) {
 			int relanum = obj->shdrs[sec].sh_size / obj->shdrs[sec].sh_entsize;
-			obj->relas[sec] = region_malloc(reg, relanum * sizeof(Elf64_Rela));
+			obj->relas[sec] = region_alloc(reg, relanum * sizeof(Elf64_Rela));
 			int rela;
 			for(rela = 0; rela < relanum; rela++) {
 				memcpy(&obj->relas[sec][rela], obj->segs[sec] + (obj->shdrs[sec].sh_entsize * rela),
@@ -293,7 +293,7 @@ list symbols(int flag, Object *obj, region reg) {
 				if(((obj->syms[sec][sym].st_shndx == SHN_UNDEF || obj->syms[sec][sym].st_shndx == SHN_COMMON) == flag) &&
 					(ELF64_ST_BIND(obj->syms[sec][sym].st_info) == STB_GLOBAL ||
 					ELF64_ST_BIND(obj->syms[sec][sym].st_info) == STB_WEAK)) {
-						Symbol *symbol = region_malloc(reg, sizeof(Symbol));
+						Symbol *symbol = region_alloc(reg, sizeof(Symbol));
 						symbol->name = name_of(obj, &obj->shdrs[sec], &obj->syms[sec][sym]);
 						symbol->address = (void *) obj->syms[sec][sym].st_value;
 						prepend(symbol, &syms, reg);

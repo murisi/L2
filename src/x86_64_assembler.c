@@ -271,7 +271,7 @@ int max_elf_size(list generated_expressions, list locals, list globals) {
 
 void write_elf(list generated_expressions, list locals, list globals, unsigned char **bin, int *pos, region elfreg) {
 	*pos = 0;
-	*bin = region_malloc(elfreg, max_elf_size(generated_expressions, locals, globals));
+	*bin = region_alloc(elfreg, max_elf_size(generated_expressions, locals, globals));
 	
 	Elf64_Ehdr ehdr;
 	ehdr.e_ident[EI_MAG0] = ELFMAG0;
@@ -398,8 +398,8 @@ void write_elf(list generated_expressions, list locals, list globals, unsigned c
 	int text_len, max_text_sec_len = round_size(MAX_INSTR_LEN * length(generated_expressions), ALIGNMENT),
 		max_rela_sec_len = MAX_INSTR_FIELDS * length(generated_expressions) * sizeof(Elf64_Rela);
 	region temp_reg = create_region(0);
-	unsigned char *text = region_malloc(temp_reg, max_text_sec_len);
-	Elf64_Rela *relas = region_malloc(temp_reg, max_rela_sec_len);
+	unsigned char *text = region_alloc(temp_reg, max_text_sec_len);
+	Elf64_Rela *relas = region_alloc(temp_reg, max_rela_sec_len);
 	Elf64_Rela *rela_ptr = relas;
 	assemble(generated_expressions, text, &text_len, syms, &rela_ptr);
 	

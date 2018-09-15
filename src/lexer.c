@@ -20,7 +20,7 @@ list copy_sexpr_list(list l, region r) {
 		if(is_lst(s)) {
 			append(copy_sexpr_list((list) s, r), &c, r);
 		} else {
-			union sexpr *t = region_malloc(r, sizeof(union sexpr));
+			union sexpr *t = region_alloc(r, sizeof(union sexpr));
 			t->character = s->character;
 			append(t, &c, r);
 		}
@@ -48,7 +48,7 @@ bool sexpr_list_equals(list c, list d) {
 }
 
 union sexpr *build_character_sexpr(char d, region r) {
-	union sexpr *c = region_malloc(r, sizeof(union sexpr));
+	union sexpr *c = region_alloc(r, sizeof(union sexpr));
 	c->character.list_flag = NULL;
 	c->character.character = d;
 	return c;
@@ -148,7 +148,7 @@ bool is_string(list d) {
 }
 
 char *to_string(list d, region r) {
-	char *str = region_malloc(r, (length(d) + 1) * sizeof(char));
+	char *str = region_alloc(r, (length(d) + 1) * sizeof(char));
 	int i = 0;
 	
 	union sexpr *t;

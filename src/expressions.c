@@ -150,14 +150,14 @@ union expression {
 };
 
 union expression *make_literal(unsigned long value, region reg) {
-	union expression *t = region_malloc(reg, sizeof(union expression));
+	union expression *t = region_alloc(reg, sizeof(union expression));
 	t->literal.type = literal;
 	t->literal.value = value;
 	return t;
 }
 
 union expression *make_reference(region reg) {
-	union expression *ref = region_malloc(reg, sizeof(union expression));
+	union expression *ref = region_alloc(reg, sizeof(union expression));
 	ref->reference.type = reference;
 	ref->reference.name = NULL;
 	ref->reference.symbol = NULL;
@@ -166,7 +166,7 @@ union expression *make_reference(region reg) {
 }
 
 union expression *use_reference(union expression *referent, region reg) {
-	union expression *ref = region_malloc(reg, sizeof(union expression));
+	union expression *ref = region_alloc(reg, sizeof(union expression));
 	ref->reference.type = reference;
 	ref->reference.name = referent->reference.name;
 	ref->reference.referent = referent;
@@ -178,7 +178,7 @@ bool strequal(void *a, void *b) {
 }
 
 union expression *make_begin(region reg) {
-	union expression *beg = region_malloc(reg, sizeof(union expression));
+	union expression *beg = region_alloc(reg, sizeof(union expression));
 	beg->begin.type = begin;
 	beg->begin.expressions = nil(reg);
 	return beg;
@@ -199,7 +199,7 @@ union expression *make_begin(region reg) {
 }
 
 union expression *make_function(region reg) {
-	union expression *func = region_malloc(reg, sizeof(union expression));
+	union expression *func = region_alloc(reg, sizeof(union expression));
 	func->function.type = function;
 	func->function.reference = make_reference(reg);
 	func->function.reference->reference.parent = func;
@@ -210,7 +210,7 @@ union expression *make_function(region reg) {
 }
 
 union expression *make_continuation(region reg) {
-	union expression *cont = region_malloc(reg, sizeof(union expression));
+	union expression *cont = region_alloc(reg, sizeof(union expression));
 	cont->continuation.type = continuation;
 	cont->continuation.reference = make_reference(reg);
 	cont->continuation.reference->reference.parent = cont;
@@ -220,7 +220,7 @@ union expression *make_continuation(region reg) {
 }
 
 union expression *make_with(region reg) {
-	union expression *wth = region_malloc(reg, sizeof(union expression));
+	union expression *wth = region_alloc(reg, sizeof(union expression));
 	wth->with.type = with;
 	wth->with.reference = make_reference(reg);
 	wth->with.reference->reference.parent = wth;
@@ -232,7 +232,7 @@ union expression *make_with(region reg) {
 }
 
 union expression *use(int opcode, region reg) {
-	union expression *u = region_malloc(reg, sizeof(union expression));
+	union expression *u = region_alloc(reg, sizeof(union expression));
 	u->instruction.type = instruction;
 	u->instruction.opcode = opcode;
 	u->instruction.arguments = nil(reg);
@@ -248,7 +248,7 @@ union expression *prepend_parameter(union expression *function, region reg) {
 }
 
 union expression *make_instr0(int opcode, region reg) {
-	union expression *u = region_malloc(reg, sizeof(union expression));
+	union expression *u = region_alloc(reg, sizeof(union expression));
 	u->instruction.type = instruction;
 	u->instruction.opcode = opcode;
 	u->instruction.arguments = nil(reg);
@@ -277,7 +277,7 @@ union expression *make_instr3(int opcode, union expression *arg1, union expressi
 }
 
 union expression *make_jump0(union expression *ref, region reg) {
-	union expression *u = region_malloc(reg, sizeof(union expression));
+	union expression *u = region_alloc(reg, sizeof(union expression));
 	u->jump.type = jump;
 	u->jump.reference = ref;
 	ref->base.parent = u;
@@ -300,7 +300,7 @@ union expression *make_jump2(union expression *ref, union expression *arg1, unio
 }
 
 union expression *make_invoke(union expression *ref, list args, region reg) {
-	union expression *u = region_malloc(reg, sizeof(union expression));
+	union expression *u = region_alloc(reg, sizeof(union expression));
 	u->invoke.type = invoke;
 	u->invoke.reference = ref;
 	ref->base.parent = u;
@@ -313,7 +313,7 @@ union expression *make_invoke(union expression *ref, list args, region reg) {
 }
 
 union expression *make_invoke0(union expression *ref, region reg) {
-	union expression *u = region_malloc(reg, sizeof(union expression));
+	union expression *u = region_alloc(reg, sizeof(union expression));
 	u->invoke.type = invoke;
 	u->invoke.reference = ref;
 	ref->base.parent = u;
@@ -500,7 +500,7 @@ bool expression_equals(union expression *expr1, union expression *expr2) {
 }
 
 union expression *copy_expression(union expression *expr, region reg) {
-	union expression *copy = region_malloc(reg, sizeof(union expression));
+	union expression *copy = region_alloc(reg, sizeof(union expression));
 	copy->base.type = expr->base.type;
 	switch(expr->base.type) {
 		case literal: {
@@ -508,7 +508,7 @@ union expression *copy_expression(union expression *expr, region reg) {
 			break;
 		} case reference: {
 			if(expr->reference.name) {
-				copy->reference.name = region_malloc(reg, strlen(expr->reference.name) + 1);
+				copy->reference.name = region_alloc(reg, strlen(expr->reference.name) + 1);
 				strcpy(copy->reference.name, expr->reference.name);
 			} else {
 				copy->reference.name = expr->reference.name;
