@@ -1,6 +1,6 @@
 .globl syscall
-.globl mysetjmp
-.globl mylongjmp
+.globl setjump
+.globl longjump
 .globl _start
 .text
 /*
@@ -19,7 +19,7 @@ syscall:
 	syscall
 	ret
 
-mysetjmp:
+setjump:
 	movq %rbp, 0(%rdi)
 	movq 0(%rsp), %rsi
 	movq %rsi, 8(%rdi)
@@ -31,7 +31,7 @@ mysetjmp:
 	movq %rsp, 56(%rdi)
 	ret
 
-mylongjmp:
+longjump:
 	movq 0(%rdi), %rbp
 	movq 16(%rdi), %r14
 	movq 24(%rdi), %r13

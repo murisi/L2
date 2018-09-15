@@ -23,7 +23,7 @@ typedef unsigned long int bool;
  * executable that it is embedded in.
  */
 
-Object *load_expressions(list exprs, list *ext_binds, list st_binds, list *comps, region obj_reg, myjmp_buf *handler) {
+Object *load_expressions(list exprs, list *ext_binds, list st_binds, list *comps, region obj_reg, jumpbuf *handler) {
 	region manreg = create_region(0);
 	union expression *program = make_function(manreg), *t;
 	{foreach(t, exprs) {
@@ -74,7 +74,7 @@ Object *load_expressions(list exprs, list *ext_binds, list st_binds, list *comps
  * that it is embedded in.
  */
 
-void evaluate_files(int srcc, char *srcv[], list bindings, myjmp_buf *handler) {
+void evaluate_files(int srcc, char *srcv[], list bindings, jumpbuf *handler) {
 	region syntax_tree_region = create_region(0);
 	list objects = nil(syntax_tree_region), comps = nil(syntax_tree_region);
 	
@@ -254,9 +254,9 @@ Symbol sexpr_symbols[] = {
 
 int main(int argc, char *argv[]) {
 	//Initialize the error handler
-	myjmp_buf evaluate_handler;
+	jumpbuf evaluate_handler;
 	region evaluate_region = evaluate_handler.ctx = create_region(0);
-	mysetjmp(&evaluate_handler);
+	setjump(&evaluate_handler);
 	
 	if(evaluate_handler.ctx != evaluate_region) {
 		union evaluate_error *err = (union evaluate_error *) evaluate_handler.ctx;

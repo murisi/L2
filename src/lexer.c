@@ -100,7 +100,7 @@ list build_list(char *primitive, char delimiter, char *l2src, int l2src_sz, int 
 	return sexprs;
 }
 
-myjmp_buf *build_expr_list_handler;
+jumpbuf *build_expr_list_handler;
 
 list build_expr_list(char *l2src, int l2src_sz, int *pos, region r) {
 	if(l2src_sz == *pos) {

@@ -14,9 +14,9 @@ union evaluate_error {
 	struct environment_error environment;
 };
 
-void throw_arguments(myjmp_buf *jb) {
+void throw_arguments(jumpbuf *jb) {
 	struct arguments_error *err = region_alloc(jb->ctx, sizeof(struct arguments_error));
 	err->type = ARGUMENTS;
 	jb->ctx = err;
-	mylongjmp(jb);
+	longjump(jb);
 }

@@ -47,52 +47,52 @@ union compile_error {
 	struct missing_file_error missing_file;
 };
 
-void throw_param_count_mismatch(union expression *src_expression, union expression *dest_expression, myjmp_buf *jb) {
+void throw_param_count_mismatch(union expression *src_expression, union expression *dest_expression, jumpbuf *jb) {
 	struct param_count_mismatch_error *err = region_alloc(jb->ctx, sizeof(struct param_count_mismatch_error));
 	err->type = PARAM_COUNT_MISMATCH;
 	err->src_expression = src_expression;
 	err->dest_expression = dest_expression;
 	jb->ctx = err;
-	mylongjmp(jb);
+	longjump(jb);
 }
 
-void throw_special_form(list expression_list, list subexpression_list, myjmp_buf *jb) {
+void throw_special_form(list expression_list, list subexpression_list, jumpbuf *jb) {
 	struct special_form_error *err = region_alloc(jb->ctx, sizeof(struct special_form_error));
 	err->type = SPECIAL_FORM;
 	err->expression_list = expression_list;
 	err->subexpression_list = subexpression_list;
 	jb->ctx = err;
-	mylongjmp(jb);
+	longjump(jb);
 }
 
-void throw_unexpected_character(int character, long int position, myjmp_buf *jb) {
+void throw_unexpected_character(int character, long int position, jumpbuf *jb) {
 	struct unexpected_character_error *err = region_alloc(jb->ctx, sizeof(struct unexpected_character_error));
 	err->type = UNEXPECTED_CHARACTER;
 	err->character = character;
 	err->position = position;
 	jb->ctx = err;
-	mylongjmp(jb);
+	longjump(jb);
 }
-void throw_multiple_definition(char *reference_value, myjmp_buf *jb) {
+void throw_multiple_definition(char *reference_value, jumpbuf *jb) {
 	struct multiple_definition_error *err = region_alloc(jb->ctx, sizeof(struct multiple_definition_error));
 	err->type = MULTIPLE_DEFINITION;
 	err->reference_value = reference_value;
 	jb->ctx = err;
-	mylongjmp(jb);
+	longjump(jb);
 }
 
-void throw_environment(char *error_string, myjmp_buf *jb) {
+void throw_environment(char *error_string, jumpbuf *jb) {
 	struct environment_error *err = region_alloc(jb->ctx, sizeof(struct environment_error));
 	err->type = ENVIRONMENT;
 	err->error_string = error_string;
 	jb->ctx = err;
-	mylongjmp(jb);
+	longjump(jb);
 }
 
-void throw_missing_file(char *path, myjmp_buf *jb) {
+void throw_missing_file(char *path, jumpbuf *jb) {
 	struct missing_file_error *err = region_alloc(jb->ctx, sizeof(struct missing_file_error));
 	err->type = MISSING_FILE;
 	err->path = path;
 	jb->ctx = err;
-	mylongjmp(jb);
+	longjump(jb);
 }

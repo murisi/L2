@@ -10,7 +10,7 @@
  * happen second, and so on.
  */
 
-union expression *build_syntax_tree(list d, region reg, myjmp_buf *handler) {
+union expression *build_syntax_tree(list d, region reg, jumpbuf *handler) {
 	union expression *s = region_alloc(reg, sizeof(union expression));
 	
 	if(is_string(d)) {

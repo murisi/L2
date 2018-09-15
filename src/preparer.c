@@ -9,7 +9,7 @@ bool reference_named(void *expr_void, void *ctx) {
 }
 
 union expression *vfind_multiple_definitions(union expression *e, void *ctx) {
-	myjmp_buf *handler = ctx;
+	jumpbuf *handler = ctx;
 	union expression *t;
 	list *partial;
 	switch(e->base.type) {
@@ -114,7 +114,7 @@ union expression *root_function_of(union expression *s) {
 }
 
 union expression *vlink_references(union expression *s, void *ctx) {
-	myjmp_buf *handler = ((void **) ctx)[0];
+	jumpbuf *handler = ((void **) ctx)[0];
 	region r = ((void **) ctx)[1];
 	if(s->base.type == reference) {
 		s->reference.referent = s->reference.referent ? s->reference.referent : referent_of(s);
@@ -277,15 +277,15 @@ union expression *vmerge_begins(union expression *n, void *ctx) {
 	return n;
 }
 
-Object *load_expressions(list exprs, list *ext_binds, list st_binds, list *comps, region obj_reg, myjmp_buf *handler);
-union expression *build_syntax_tree(list d, region reg, myjmp_buf *handler);
+Object *load_expressions(list exprs, list *ext_binds, list st_binds, list *comps, region obj_reg, jumpbuf *handler);
+union expression *build_syntax_tree(list d, region reg, jumpbuf *handler);
 
 struct compilation {
 	union expression *np_expression;
 	void *macro;
 };
 
-void *np_expansion(list (*expander)(list, region), union expression *np, list *ext_binds, list st_binds, list dyn_refs, list *compilations, region rt_reg, myjmp_buf *handler) {
+void *np_expansion(list (*expander)(list, region), union expression *np, list *ext_binds, list st_binds, list dyn_refs, list *compilations, region rt_reg, jumpbuf *handler) {
 	struct compilation *pc;
 	{foreach(pc, *compilations) {
 		if(np == pc->np_expression) {
@@ -327,7 +327,7 @@ Symbol *make_symbol(char *nm, void *addr, region r) {
 	return sym;
 }
 
-union expression *generate_np_expressions(union expression *s, bool is_static, list *ext_binds, list st_binds, list dyn_refs, list *comps, region ct_reg, region rt_reg, myjmp_buf *handler) {
+union expression *generate_np_expressions(union expression *s, bool is_static, list *ext_binds, list st_binds, list dyn_refs, list *comps, region ct_reg, region rt_reg, jumpbuf *handler) {
 	switch(s->base.type) {
 		case begin: {
 			union expression *expr;

@@ -216,7 +216,7 @@ typedef struct {
 	void *r15;
 	void *rsp;
 	void *ctx; //For data that you want to transfer through jumps
-} myjmp_buf;
+} jumpbuf;
 
 struct timer {
 	long seconds;
