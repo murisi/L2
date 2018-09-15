@@ -29,14 +29,14 @@
 							(,[frfst $remaining]) ,$else-clause) $r)}))
 				[rst [reverse [rrst $l] $r]] [fst [reverse $l $r]]}))) $r))
 
-(function while (l)
+(function while (l r)
 	(`(with while:return {(continuation while:aux (while:val)
-		(if (,[fst $l]) {while:aux (,[frst $l])} {while:return $while:val})) (begin)})))
+		(if (,[fst $l]) {while:aux (,[frst $l])} {while:return $while:val})) (begin)})$r))
 
-(function do-while (l)
+(function do-while (l r)
 	(`(with do-while:return {(continuation do-while:aux (do-while:val)
 			(if (,[frst $l]) {do-while:aux (,[fst $l])} {do-while:return $do-while:val}))
-		(,[fst $l])})))
+		(,[fst $l])})$r))
 
 (function array (l)
 	(if [nil? [rrst $l]]
@@ -52,8 +52,8 @@
 		(`[+ (,[fst $l]) [* (,[frst $l]) (,[frrst $l])]])
 		[loc [lst (`($[+ (,[fst $l]) [* (,[frst $l]) [words]]])) [rrst $l]]]))
 
-(function for (l)
+(function for (l r)
 	(`(with for:return {(continuation for:aux ((,[ffst $l]))
 		(if [= ($(,[ffst $l])) (,[frrfst $l])]
 			{for:return (begin)}
-			(begin (,[frst $l]) {for:aux [+ ($(,[ffst $l])) &1]}))) (,[frfst $l])})))
+			(begin (,[frst $l]) {for:aux [+ ($(,[ffst $l])) &1]}))) (,[frfst $l])})$r))
