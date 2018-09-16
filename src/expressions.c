@@ -276,6 +276,19 @@ union expression *make_instr3(int opcode, union expression *arg1, union expressi
 	return u;
 }
 
+union expression *make_jump(union expression *ref, list args, region reg) {
+	union expression *u = region_alloc(reg, sizeof(union expression));
+	u->jump.type = jump;
+	u->jump.reference = ref;
+	ref->base.parent = u;
+	u->jump.arguments = args;
+	union expression *arg;
+	foreach(arg, args) {
+		arg->base.parent = u;
+	}
+	return u;
+}
+
 union expression *make_jump0(union expression *ref, region reg) {
 	union expression *u = region_alloc(reg, sizeof(union expression));
 	u->jump.type = jump;

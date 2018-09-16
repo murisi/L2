@@ -294,19 +294,28 @@ void *np_expansion(list (*expander)(list, region), union expression *np, list *e
 	}}
 	
 	region ct_reg = create_region(0);
-	union expression *func = make_function(ct_reg), *ref;
+	union expression *func = make_function(ct_reg), *cont = make_continuation(ct_reg), *host_cont_param = make_reference(ct_reg),
+		*guest_cont_param = make_reference(ct_reg), *ref;
+	prepend(host_cont_param, &func->function.parameters, ct_reg);
+	host_cont_param->reference.parent = func;
+	
 	{foreach(ref, reverse(dyn_refs, ct_reg)) {
 		union expression *param = copy_expression(ref, ct_reg);
-		prepend(param, &func->function.parameters, ct_reg);
-		param->reference.parent = func;
+		prepend(param, &cont->continuation.parameters, ct_reg);
+		param->reference.parent = cont;
 	}}
-	put(func, function.expression, build_syntax_tree(expander(np->non_primitive.argument, ct_reg), ct_reg, handler));
-	{foreach(ref, func->function.parameters) {
-		put(func, function.expression, insert_indirections(func->function.expression, ref, ct_reg));
+	prepend(guest_cont_param, &cont->continuation.parameters, ct_reg);
+	put(cont, continuation.expression, make_jump1(make_invoke1(make_literal((unsigned long) _get_, ct_reg),
+		use_reference(guest_cont_param, ct_reg), ct_reg), build_syntax_tree(expander(np->non_primitive.argument, ct_reg),
+		ct_reg, handler), ct_reg));
+	{foreach(ref, dyn_refs) {
+		put(cont, continuation.expression, insert_indirections(cont->continuation.expression, ref, ct_reg));
 	}}
 	{foreach(ref, np->non_primitive.indirections) {
-		put(func, function.expression, insert_indirections(func->function.expression, ref, ct_reg));
+		put(cont, continuation.expression, insert_indirections(cont->continuation.expression, ref, ct_reg));
 	}}
+	put(func, function.expression, make_jump1(make_invoke1(make_literal((unsigned long) _get_, ct_reg),
+		use_reference(host_cont_param, ct_reg), ct_reg), cont, ct_reg));
 	Object *obj = load_expressions(lst(func, nil(ct_reg), ct_reg), ext_binds, st_binds, compilations, rt_reg, handler);
 	mutate_symbols(obj, *ext_binds);
 	mutate_symbols(obj, st_binds);
@@ -401,6 +410,7 @@ union expression *generate_np_expressions(union expression *s, bool is_static, l
 			}}
 			break;
 		} case non_primitive: {
+			union expression *param = make_reference(ct_reg);
 			put(s, non_primitive.reference, generate_np_expressions(s->non_primitive.reference, is_static, ext_binds, st_binds,
 				dyn_refs, comps, ct_reg, rt_reg, handler));
 			dyn_refs = reverse(dyn_refs, ct_reg);
@@ -412,11 +422,22 @@ union expression *generate_np_expressions(union expression *s, bool is_static, l
 					prepend(use_reference(dyn_ref, ct_reg), &args_ct, ct_reg);
 				}
 			}}
-			union expression *macro_invocation = make_invoke(make_invoke8(make_literal((unsigned long) np_expansion, ct_reg),
+			union expression *macro_invocation = make_with(ct_reg);
+			prepend(use_reference(macro_invocation->with.reference, ct_reg), &args_ct, ct_reg);
+			put(macro_invocation, with.expression, make_jump(make_invoke1(make_literal((unsigned long) _get_, ct_reg),
+				use_reference(param, ct_reg), ct_reg), args_ct, ct_reg));
+			
+			union expression *wth = make_with(ct_reg), *cont = make_continuation(ct_reg);
+			put(wth, with.expression, make_invoke1(make_invoke8(make_literal((unsigned long) np_expansion, ct_reg),
 				s->non_primitive.reference, make_literal((unsigned long) copy_expression(s, rt_reg), ct_reg),
 				make_literal((unsigned long) ext_binds, ct_reg), make_literal((unsigned long) st_binds, ct_reg),
 				make_literal((unsigned long) params_rt, ct_reg), make_literal((unsigned long) comps, ct_reg),
-				make_literal((unsigned long) rt_reg, ct_reg), make_literal((unsigned long) handler, ct_reg), ct_reg), args_ct, ct_reg);
+				make_literal((unsigned long) rt_reg, ct_reg), make_literal((unsigned long) handler, ct_reg), ct_reg), cont, ct_reg));
+			prepend(param, &cont->continuation.parameters, ct_reg);
+			param->reference.parent = cont;
+			put(cont, continuation.expression, make_jump1(use_reference(wth->with.reference, ct_reg),
+				get_zeroth_function(s)->function.expression, ct_reg));
+			put(get_zeroth_function(s), function.expression, wth);
 			return macro_invocation;
 		}
 	}
