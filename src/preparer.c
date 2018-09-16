@@ -355,12 +355,12 @@ union expression *generate_np_expressions(union expression *s, bool is_static, l
 				rt_reg, handler));
 			break;
 		} case _if: {
-			put(s, _if.condition, generate_np_expressions(s->_if.condition, is_static, ext_binds, st_binds, dyn_refs, comps, ct_reg, rt_reg,
-				handler));
-			put(s, _if.consequent, generate_np_expressions(s->_if.consequent, is_static, ext_binds, st_binds, dyn_refs, comps, ct_reg, rt_reg,
-				handler));
-			put(s, _if.alternate, generate_np_expressions(s->_if.alternate, is_static, ext_binds, st_binds, dyn_refs, comps, ct_reg, rt_reg,
-				handler));
+			put(s, _if.condition, generate_np_expressions(s->_if.condition, is_static, ext_binds, st_binds, dyn_refs, comps, ct_reg,
+				rt_reg, handler));
+			put(s, _if.consequent, generate_np_expressions(s->_if.consequent, is_static, ext_binds, st_binds, dyn_refs, comps, ct_reg,
+				rt_reg, handler));
+			put(s, _if.alternate, generate_np_expressions(s->_if.alternate, is_static, ext_binds, st_binds, dyn_refs, comps, ct_reg,
+				rt_reg, handler));
 			break;
 		} case function: {
 			dyn_refs = nil(ct_reg);
@@ -368,8 +368,8 @@ union expression *generate_np_expressions(union expression *s, bool is_static, l
 			{foreach(param, s->function.parameters) {
 				prepend(param, &dyn_refs, ct_reg);
 			}}
-			put(s, function.expression, generate_np_expressions(s->function.expression, false, ext_binds, st_binds, dyn_refs, comps, ct_reg,
-				rt_reg, handler));
+			put(s, function.expression, generate_np_expressions(s->function.expression, false, ext_binds, st_binds, dyn_refs, comps,
+				ct_reg, rt_reg, handler));
 			break;
 		} case continuation: {
 			if(is_static) {
@@ -388,12 +388,12 @@ union expression *generate_np_expressions(union expression *s, bool is_static, l
 					prepend(param, &dyn_refs, ct_reg);
 				}}
 			}
-			put(s, continuation.expression, generate_np_expressions(s->continuation.expression, is_static, ext_binds, st_binds, dyn_refs,
-				comps, ct_reg, rt_reg, handler));
+			put(s, continuation.expression, generate_np_expressions(s->continuation.expression, is_static, ext_binds, st_binds,
+				dyn_refs, comps, ct_reg, rt_reg, handler));
 			break;
 		} case invoke: case jump: {
-			put(s, invoke.reference, generate_np_expressions(s->invoke.reference, is_static, ext_binds, st_binds, dyn_refs, comps, ct_reg,
-				rt_reg, handler));
+			put(s, invoke.reference, generate_np_expressions(s->invoke.reference, is_static, ext_binds, st_binds, dyn_refs, comps,
+				ct_reg, rt_reg, handler));
 			union expression **arg;
 			{foreachaddress(arg, s->invoke.arguments) {
 				*arg = generate_np_expressions(*arg, is_static, ext_binds, st_binds, dyn_refs, comps, ct_reg, rt_reg, handler);
@@ -401,8 +401,8 @@ union expression *generate_np_expressions(union expression *s, bool is_static, l
 			}}
 			break;
 		} case non_primitive: {
-			put(s, non_primitive.reference, generate_np_expressions(s->non_primitive.reference, is_static, ext_binds, st_binds, dyn_refs,
-				comps, ct_reg, rt_reg, handler));
+			put(s, non_primitive.reference, generate_np_expressions(s->non_primitive.reference, is_static, ext_binds, st_binds,
+				dyn_refs, comps, ct_reg, rt_reg, handler));
 			dyn_refs = reverse(dyn_refs, ct_reg);
 			list *dyn_refs_suffix, params_rt = nil(rt_reg), args_ct = nil(ct_reg);
 			union expression *dyn_ref;
