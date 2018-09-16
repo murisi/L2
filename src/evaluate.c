@@ -27,10 +27,11 @@ Object *load_expressions(list exprs, list *ext_binds, list st_binds, list *comps
 	region manreg = create_region(0);
 	union expression *program = make_function(manreg), *t;
 	{foreach(t, exprs) {
-		append(copy_expression(t, manreg), &program->function.expression->begin.expressions, manreg);
+		union expression *cpy = copy_expression(t, manreg);
+		append(cpy, &program->function.expression->begin.expressions, manreg);
+		cpy->base.parent = program->function.expression;
 	}}
-	put(program, function.expression, generate_np_expressions(program->function.expression, true, ext_binds, st_binds, nil(obj_reg),
-		comps, manreg, obj_reg, handler));
+	generate_np_expressions(&program->function.expression, true, ext_binds, st_binds, nil(obj_reg), comps, manreg, obj_reg, handler);
 	visit_expressions(vfind_multiple_definitions, &program, handler);
 	visit_expressions(vlink_references, &program, (void* []) {handler, manreg});
 	visit_expressions(vescape_analysis, &program, NULL);

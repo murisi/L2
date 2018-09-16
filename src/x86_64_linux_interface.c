@@ -66,6 +66,12 @@ void *memcpy(void *dest, const void *src, unsigned long n) {
 	return dest;
 }
 
+void *memset(void *s, int c, unsigned long n) {
+	for(; n; s++, n--) {
+		*((unsigned char *) s) = c;
+	}
+}
+
 int isspace(int c) {
 	return c == ' ' || c == '\f' || c == '\n' || c == '\r' || c == '\t' || c == '\v';
 }

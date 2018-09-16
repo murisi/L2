@@ -336,11 +336,11 @@ Symbol *make_symbol(char *nm, void *addr, region r) {
 	return sym;
 }
 
-union expression *generate_np_expressions(union expression *s, bool is_static, list *ext_binds, list st_binds, list dyn_refs, list *comps, region ct_reg, region rt_reg, jumpbuf *handler) {
-	switch(s->base.type) {
+void generate_np_expressions(union expression **s, bool is_static, list *ext_binds, list st_binds, list dyn_refs, list *comps, region ct_reg, region rt_reg, jumpbuf *handler) {
+	switch((*s)->base.type) {
 		case begin: {
 			union expression *expr;
-			{foreach(expr, s->begin.expressions) {
+			{foreach(expr, (*s)->begin.expressions) {
 				if(expr->base.type == function && expr->function.reference->reference.name) {
 					expr->function.reference->reference.symbol =
 						make_symbol(rstrcpy(expr->function.reference->reference.name, rt_reg), NULL, rt_reg);
@@ -348,71 +348,62 @@ union expression *generate_np_expressions(union expression *s, bool is_static, l
 				}
 			}}
 			union expression **exprr;
-			{foreachaddress(exprr, s->begin.expressions) {
-				*exprr = generate_np_expressions(*exprr, is_static, ext_binds, st_binds, dyn_refs, comps, ct_reg, rt_reg, handler);
-				(*exprr)->base.parent = s;
+			{foreachaddress(exprr, (*s)->begin.expressions) {
+				generate_np_expressions(exprr, is_static, ext_binds, st_binds, dyn_refs, comps, ct_reg, rt_reg, handler);
 			}}
 			break;
 		} case with: {
 			if(is_static) {
-				s->with.reference->reference.symbol = make_symbol(rstrcpy(s->with.reference->reference.name, rt_reg), NULL, rt_reg);
-				prepend(s->with.reference->reference.symbol, &st_binds, rt_reg);
+				(*s)->with.reference->reference.symbol = make_symbol(rstrcpy((*s)->with.reference->reference.name, rt_reg), NULL, rt_reg);
+				prepend((*s)->with.reference->reference.symbol, &st_binds, rt_reg);
 			} else {
-				prepend(s->with.reference, &dyn_refs, ct_reg);
+				prepend((*s)->with.reference, &dyn_refs, ct_reg);
 			}
-			put(s, with.expression, generate_np_expressions(s->with.expression,is_static, ext_binds, st_binds, dyn_refs, comps, ct_reg,
-				rt_reg, handler));
+			generate_np_expressions(&(*s)->with.expression,is_static, ext_binds, st_binds, dyn_refs, comps, ct_reg, rt_reg, handler);
 			break;
 		} case _if: {
-			put(s, _if.condition, generate_np_expressions(s->_if.condition, is_static, ext_binds, st_binds, dyn_refs, comps, ct_reg,
-				rt_reg, handler));
-			put(s, _if.consequent, generate_np_expressions(s->_if.consequent, is_static, ext_binds, st_binds, dyn_refs, comps, ct_reg,
-				rt_reg, handler));
-			put(s, _if.alternate, generate_np_expressions(s->_if.alternate, is_static, ext_binds, st_binds, dyn_refs, comps, ct_reg,
-				rt_reg, handler));
+			generate_np_expressions(&(*s)->_if.condition, is_static, ext_binds, st_binds, dyn_refs, comps, ct_reg, rt_reg, handler);
+			generate_np_expressions(&(*s)->_if.consequent, is_static, ext_binds, st_binds, dyn_refs, comps, ct_reg, rt_reg, handler);
+			generate_np_expressions(&(*s)->_if.alternate, is_static, ext_binds, st_binds, dyn_refs, comps, ct_reg, rt_reg, handler);
 			break;
 		} case function: {
 			dyn_refs = nil(ct_reg);
 			union expression *param;
-			{foreach(param, s->function.parameters) {
+			{foreach(param, (*s)->function.parameters) {
 				prepend(param, &dyn_refs, ct_reg);
 			}}
-			put(s, function.expression, generate_np_expressions(s->function.expression, false, ext_binds, st_binds, dyn_refs, comps,
-				ct_reg, rt_reg, handler));
+			generate_np_expressions(&(*s)->function.expression, false, ext_binds, st_binds, dyn_refs, comps, ct_reg, rt_reg, handler);
 			break;
 		} case continuation: {
 			if(is_static) {
-				s->continuation.reference->reference.symbol =
-					make_symbol(rstrcpy(s->continuation.reference->reference.name, rt_reg), NULL, rt_reg);
-				prepend(s->continuation.reference->reference.symbol, &st_binds, rt_reg);
+				(*s)->continuation.reference->reference.symbol =
+					make_symbol(rstrcpy((*s)->continuation.reference->reference.name, rt_reg), NULL, rt_reg);
+				prepend((*s)->continuation.reference->reference.symbol, &st_binds, rt_reg);
 				union expression *param;
-				{foreach(param, s->continuation.parameters) {
+				{foreach(param, (*s)->continuation.parameters) {
 					param->reference.symbol = make_symbol(rstrcpy(param->reference.name, rt_reg), NULL, rt_reg);
 					prepend(param->reference.symbol, &st_binds, rt_reg);
 				}}
 			} else {
-				prepend(s->continuation.reference, &dyn_refs, ct_reg);
+				prepend((*s)->continuation.reference, &dyn_refs, ct_reg);
 				union expression *param;
-				{foreach(param, s->continuation.parameters) {
+				{foreach(param, (*s)->continuation.parameters) {
 					prepend(param, &dyn_refs, ct_reg);
 				}}
 			}
-			put(s, continuation.expression, generate_np_expressions(s->continuation.expression, is_static, ext_binds, st_binds,
-				dyn_refs, comps, ct_reg, rt_reg, handler));
+			generate_np_expressions(&(*s)->continuation.expression, is_static, ext_binds, st_binds, dyn_refs, comps, ct_reg, rt_reg, handler);
 			break;
 		} case invoke: case jump: {
-			put(s, invoke.reference, generate_np_expressions(s->invoke.reference, is_static, ext_binds, st_binds, dyn_refs, comps,
-				ct_reg, rt_reg, handler));
+			generate_np_expressions(&(*s)->invoke.reference, is_static, ext_binds, st_binds, dyn_refs, comps, ct_reg, rt_reg, handler);
 			union expression **arg;
-			{foreachaddress(arg, s->invoke.arguments) {
-				*arg = generate_np_expressions(*arg, is_static, ext_binds, st_binds, dyn_refs, comps, ct_reg, rt_reg, handler);
-				(*arg)->base.parent = s;
+			{foreachaddress(arg, (*s)->invoke.arguments) {
+				generate_np_expressions(arg, is_static, ext_binds, st_binds, dyn_refs, comps, ct_reg, rt_reg, handler);
 			}}
 			break;
 		} case non_primitive: {
-			union expression *param = make_reference(ct_reg);
-			put(s, non_primitive.reference, generate_np_expressions(s->non_primitive.reference, is_static, ext_binds, st_binds,
-				dyn_refs, comps, ct_reg, rt_reg, handler));
+			generate_np_expressions(&(*s)->non_primitive.reference, is_static, ext_binds, st_binds, dyn_refs, comps, ct_reg, rt_reg,
+				handler);
+			
 			dyn_refs = reverse(dyn_refs, ct_reg);
 			list *dyn_refs_suffix, params_rt = nil(rt_reg), args_ct = nil(ct_reg);
 			union expression *dyn_ref;
@@ -422,24 +413,27 @@ union expression *generate_np_expressions(union expression *s, bool is_static, l
 					prepend(use_reference(dyn_ref, ct_reg), &args_ct, ct_reg);
 				}
 			}}
-			union expression *macro_invocation = make_with(ct_reg);
-			prepend(use_reference(macro_invocation->with.reference, ct_reg), &args_ct, ct_reg);
-			put(macro_invocation, with.expression, make_jump(make_invoke1(make_literal((unsigned long) _get_, ct_reg),
-				use_reference(param, ct_reg), ct_reg), args_ct, ct_reg));
 			
-			union expression *wth = make_with(ct_reg), *cont = make_continuation(ct_reg);
+			union expression *wth = make_with(ct_reg), *cont = make_continuation(ct_reg), *param = make_reference(ct_reg);
 			put(wth, with.expression, make_invoke1(make_invoke8(make_literal((unsigned long) np_expansion, ct_reg),
-				s->non_primitive.reference, make_literal((unsigned long) copy_expression(s, rt_reg), ct_reg),
+				(*s)->non_primitive.reference, make_literal((unsigned long) copy_expression(*s, rt_reg), ct_reg),
 				make_literal((unsigned long) ext_binds, ct_reg), make_literal((unsigned long) st_binds, ct_reg),
 				make_literal((unsigned long) params_rt, ct_reg), make_literal((unsigned long) comps, ct_reg),
 				make_literal((unsigned long) rt_reg, ct_reg), make_literal((unsigned long) handler, ct_reg), ct_reg), cont, ct_reg));
 			prepend(param, &cont->continuation.parameters, ct_reg);
 			param->reference.parent = cont;
+			
+			union expression *macro_invocation = make_with(ct_reg);
+			macro_invocation->with.parent = (*s)->non_primitive.parent;
+			prepend(use_reference(macro_invocation->with.reference, ct_reg), &args_ct, ct_reg);
+			put(macro_invocation, with.expression, make_jump(make_invoke1(make_literal((unsigned long) _get_, ct_reg),
+				use_reference(param, ct_reg), ct_reg), args_ct, ct_reg));
+			union expression *parent_function = get_zeroth_function(*s);
+			*s = macro_invocation;
+			
 			put(cont, continuation.expression, make_jump1(use_reference(wth->with.reference, ct_reg),
-				get_zeroth_function(s)->function.expression, ct_reg));
-			put(get_zeroth_function(s), function.expression, wth);
-			return macro_invocation;
+				parent_function->function.expression, ct_reg));
+			put(parent_function, function.expression, wth);
 		}
 	}
-	return s;
 }
