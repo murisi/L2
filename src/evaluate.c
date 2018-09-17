@@ -257,9 +257,7 @@ Symbol sexpr_symbols[] = {
 	{.name = "lst?", .address = is_lst},
 	{.name = "nil?", .address = is_nil},
 	{.name = "nil", .address = nil},
-	{.name = "char=", .address = char_equals},
-	{.name = "write-ul", .address = write_ulong},
-	{.name = "write-str", .address = write_str}
+	{.name = "char=", .address = char_equals}
 };
 
 int main(int argc, char *argv[]) {

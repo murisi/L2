@@ -8,8 +8,8 @@
 #define SYS_MUNMAP 11
 #define SYS_EXIT 60
 #define SYS_CLOCK_GETTIME 228
-#define	O_RDWR 02
-#define	O_CREAT	0100
+#define O_RDWR 02
+#define O_CREAT	0100
 #define S_IRWXU 00700
 #define S_IRWXG 00070
 #define S_IRWXO 00007
@@ -44,26 +44,26 @@ char *strrchr(const char *s, int c) {
 }
 
 char *strcpy(char *dest, const char *src) {
-	unsigned long i;
-	for(i = 0; src[i]; i++) {
-		dest[i] = src[i];
+	char *odest = dest;
+	for(; *src; src++, dest++) {
+		*dest = *src;
 	}
-	dest[i] = '\0';
-	return dest;
+	*dest = '\0';
+	return odest;
 }
 
 int strcmp(const char *s1, const char *s2) {
 	unsigned long i;
-	for(i = 0; s1[i] && s2[i] && (s1[i] == s2[i]); i++);
-	return s1[i] - s2[i];
+	for(; *s1 && *s2 && (*s1 == *s2); s1++, s2++);
+	return *s1 - *s2;
 }
 
 void *memcpy(void *dest, const void *src, unsigned long n) {
-	unsigned long i;
-	for(i = 0; i < n; i++) {
-		((unsigned char *) dest)[i] = ((const unsigned char *) src)[i];
+	char *odest = dest;
+	for(; n; dest++, src++, n--) {
+		*((unsigned char *) dest) = *((const unsigned char *) src);
 	}
-	return dest;
+	return odest;
 }
 
 void *memset(void *s, int c, unsigned long n) {

@@ -1,0 +1,57 @@
+(function SYS-READ (l r) (` &0 $r))
+(function SYS-WRITE (l r) (` &1 $r))
+(function SYS-OPEN (l r) (` &2 $r))
+(function SYS-CLOSE (l r) (` &3 $r))
+(function SYS-FSTAT (l r) (` &5 $r))
+(function SYS-MMAP (l r) (` &9 $r))
+(function SYS-MUNMAP (l r) (` &11 $r))
+(function SYS-EXIT (l r) (` &60 $r))
+(function SYS-CLOCK-GETTIME (l r) (` &228 $r))
+(function O-RDWR (l r) (` &2 $r))
+(function O-CREAT (l r)	(` &64 $r))
+(function S-IRWXU (l r) (` &448 $r))
+(function S-IRWXG (l r) (` &56 $r))
+(function S-IRWXO (l r) (` &7 $r))
+(function PROT-READ (l r) (` &1 $r))
+(function PROT-WRITE (l r) (` &2 $r))
+(function PROT-EXEC (l r) (` &4 $r))
+(function PROT-NONE (l r) (` &0 $r))
+(function MAP-PRIVATE (l r) (` &2 $r))
+(function MAP-ANONYMOUS (l r) (` &32 $r))
+(function PAGE-SIZE (l r) (` &4096 $r))
+(function CLOCK-PROCESS-CPUTIME-ID (l r) (` &2 $r))
+(function STDIN (l r) (` &0 $r))
+(function STDOUT (l r) (` &1 $r))
+
+(function strlen (str) (with return
+	{(continuation loop (i)
+		(if [getb [+ $str $i]]
+			{loop [+ $i &1]}
+			{return $i})) &0}))
+
+(function write (fd d len) [syscall (SYS-WRITE) $fd $d $len])
+
+(function write-str (fd str) [write $fd $str [strlen $str]])
+
+(function write-char (fd ch) [write $fd ch &1])
+
+(function write-uint (fd i) (with return
+	[allocate &20 (continuation _ (str) (let (j &19) (begin
+		(while $i (begin
+			[setb [+ $str $j] (switch = [rem $i &10]
+				(&9 (char 9))
+				(&8 (char 8))
+				(&7 (char 7))
+				(&6 (char 6))
+				(&5 (char 5))
+				(&4 (char 4))
+				(&3 (char 3))
+				(&2 (char 2))
+				(&1 (char 1))
+				(char 0))]
+			[set j [- $j &1]]
+			[set i [/ $i &10]]))
+		[write $fd [+ $str [+ $j &1]] [- &19 $j]]
+		{return (begin)})))]))
+
+[syscall (SYS-WRITE) (STDOUT) (" Madness) &5]
