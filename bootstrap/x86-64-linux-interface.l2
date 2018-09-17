@@ -23,6 +23,8 @@
 (function STDIN (l r) (` &0 $r))
 (function STDOUT (l r) (` &1 $r))
 (function NULL (l r) (` &0 $r))
+(function UNIT (l r) (` &8 $r))
+(function ALLOC-ALIGNMENT (l r) (` &8 $r))
 
 (function strlen (str) (with return
 	{(continuation loop (i)
@@ -68,6 +70,15 @@
 				{loop [+ $s &1] [getb c] [- $n &1]})
 			{return (begin)})) $s $c $n}))
 
+(function isspace (c) (switch = [getb c]
+	((space) (true))
+	((ff) (true))
+	((lf) (true))
+	((cr) (true))
+	((ht) (true))
+	((vt) (true))
+	(false)))
+
 (function open (path) [syscall (SYS-OPEN) $path [or (O-RDWR) (O-CREAT)] [or (S-IRWXU) [or (S-IRWXG) (S-IRWXO)]]])
 
 (function write (fd d len) [syscall (SYS-WRITE) $fd $d $len])
@@ -103,6 +114,45 @@
 	[allocate &144 (continuation () (statbuf) (begin
 		[syscall (SYS-FSTAT) $fd $statbuf]
 		{return [get [+ $statbuf &48]]}))]))
+
+(function mmap (len) [syscall (SYS-MMAP) (NULL) $len [or (PROT-READ) (PROT-WRITE)] [or (MAP-PRIVATE) (MAP-ANONYMOUS)] (true) &0])
+
+(function munmap (ptr len) [syscall (SYS-MUNMAP) $ptr $len])
+
+(function pad-size (x nearest) [+ $x [- $nearest [rem $x $nearest]]])
+
+(function loc (l r)
+	(if [nil? [rrrst $l]]
+		(`[+ (,[fst $l]) [* (,[frst $l]) (,[frrst $l])]]$r)
+		[loc [lst (`($[+ (,[fst $l]) [*(,[frst $l])(UNIT)]])$r) [rrst $l]] $r]))
+
+(function create-region (min-capacity) (with return
+	(let (len [pad-size [+ [min-capacity] [* &5(UNIT)]] (PAGE-SIZE)])
+		(let (reg [mmap $len]) (begin
+			[set (loc $reg &0(UNIT)) (NULL)]
+			[set (loc $reg &1(UNIT)) $reg]
+			[set (loc $reg &2(UNIT)) [+ $reg [* &5(UNIT)]]]
+			[set (loc $reg &3(UNIT)) [+ $reg [* $len(UNIT)]]]
+			[set (loc $reg &4(UNIT)) &16045690984833335023]
+			{return $reg})))))
+
+(function region-alloc (reg len) (with return (begin
+	[set len [pad-size $len (ALLOC-ALIGNMENT)]]
+	(if [> [+($(loc $reg &1 &2(UNIT)))$len] ($(loc $reg &1 &3(UNIT)))]
+		(begin
+			[set (loc $reg &1 &0(UNIT)) [create-region [+ $len [* &2[-($(loc $reg &1 &3(UNIT)))($(loc $reg &1(UNIT)))]]]]]
+			[set (loc $reg &1(UNIT)) ($(loc $reg &1 &0(UNIT)))])
+		(begin))
+	[set (loc $reg &1 &2(UNIT)) [+($(loc $reg &1 &2(UNIT)))$len]]
+	{return [-($(loc $reg &1 &2(UNIT)))$len]})))
+
+(function destroy-region (reg) (do
+	(let (next-reg ($(loc $reg &0(UNIT)))) (begin
+		[munmap $reg [- ($(loc $reg &3(UNIT))) $reg]]
+		[set reg $next-reg]))
+	$reg))
+
+[write-str (STDOUT) [strrchr (" Hello.Bye.Okay) (char .)]]
 
 [write-str (STDOUT) [strrchr (" Hello.Bye.Okay) (char .)]]
 
