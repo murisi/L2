@@ -45,6 +45,29 @@
 			{loop [+ $s1 &1] [+ $s2 &1]}
 			{return [- [getb $s1] [getb $s2]]})) $s1 $s2}))
 
+(function strcpy (dest src) (with return
+	{(continuation loop (dest src) (begin
+		[setb $dest [getb $src]]
+		(if [getb $dest]
+			{loop [+ $dest &1] [+ $src &1]}
+			{return (begin)}))) $dest $src}))
+
+(function memcpy (dest src n) (with return
+	{(continuation loop (dest src n)
+		(if $n
+			(begin
+				[setb $dest [getb $src]]
+				{loop [+ $dest &1] [+ $src &1] [- $n &1]})
+			{return (begin)})) $dest $src $n}))
+
+(function memset (s c n) (with return
+	{(continuation loop (s c n)
+		(if $n
+			(begin
+				[setb $s [getb c]]
+				{loop [+ $s &1] [getb c] [- $n &1]})
+			{return (begin)})) $s $c $n}))
+
 (function open (path) [syscall (SYS-OPEN) $path [or (O-RDWR) (O-CREAT)] [or (S-IRWXU) [or (S-IRWXG) (S-IRWXO)]]])
 
 (function write (fd d len) [syscall (SYS-WRITE) $fd $d $len])
@@ -84,3 +107,9 @@
 [write-str (STDOUT) [strrchr (" Hello.Bye.Okay) (char .)]]
 
 [write-uint (STDOUT) [strcmp (" HelloB) (" Hello)]]
+
+(let (a (with ret [allocate &20 ret])) (begin
+	[strcpy $a (" HeyYa)]
+	[write-str (STDOUT) $a]
+	[memset $a &0 &6]
+	[write-str (STDOUT) $a]))
