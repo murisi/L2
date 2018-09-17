@@ -124,15 +124,15 @@
 (function loc (l r)
 	(if [nil? [rrrst $l]]
 		(`[+ (,[fst $l]) [* (,[frst $l]) (,[frrst $l])]]$r)
-		[loc [lst (`($[+ (,[fst $l]) [*(,[frst $l])(UNIT)]])$r) [rrst $l]] $r]))
+		[loc [lst (`($[+ (,[fst $l]) [*(,[frst $l])(UNIT)]])$r) [rrst $l] $r] $r]))
 
 (function create-region (min-capacity) (with return
-	(let (len [pad-size [+ [min-capacity] [* &5(UNIT)]] (PAGE-SIZE)])
+	(let (len [pad-size [+ $min-capacity [* &5(UNIT)]] (PAGE-SIZE)])
 		(let (reg [mmap $len]) (begin
 			[set (loc $reg &0(UNIT)) (NULL)]
 			[set (loc $reg &1(UNIT)) $reg]
 			[set (loc $reg &2(UNIT)) [+ $reg [* &5(UNIT)]]]
-			[set (loc $reg &3(UNIT)) [+ $reg [* $len(UNIT)]]]
+			[set (loc $reg &3(UNIT)) [+ $reg $len]]
 			[set (loc $reg &4(UNIT)) &16045690984833335023]
 			{return $reg})))))
 
@@ -146,11 +146,16 @@
 	[set (loc $reg &1 &2(UNIT)) [+($(loc $reg &1 &2(UNIT)))$len]]
 	{return [-($(loc $reg &1 &2(UNIT)))$len]})))
 
-(function destroy-region (reg) (do
+(function destroy-region (reg) (do-while
 	(let (next-reg ($(loc $reg &0(UNIT)))) (begin
 		[munmap $reg [- ($(loc $reg &3(UNIT))) $reg]]
 		[set reg $next-reg]))
 	$reg))
+
+(function rstrcpy (src reg) (with return
+	(let (dest [region-alloc $reg [+[strlen $src]&1]]) (begin
+		[strcpy $dest $src]
+		{return $dest}))))
 
 [write-str (STDOUT) [strrchr (" Hello.Bye.Okay) (char .)]]
 
@@ -158,8 +163,7 @@
 
 [write-uint (STDOUT) [strcmp (" HelloB) (" Hello)]]
 
-(let (a (with ret [allocate &20 ret])) (begin
-	[strcpy $a (" HeyYa)]
-	[write-str (STDOUT) $a]
+(let (r [create-region &0]) (let (a [region-alloc $r &20]) (begin
+	[write-str (STDOUT) [rstrcpy (" HeyYa) $r]]
 	[memset $a &0 &6]
-	[write-str (STDOUT) $a]))
+	[write-str (STDOUT) $a])))
