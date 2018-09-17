@@ -29,6 +29,8 @@
 			{loop [+ $i &1]}
 			{return $i})) &0}))
 
+(function open (path) [syscall (SYS-OPEN) $path [or (O-RDWR) (O-CREAT)] [or (S-IRWXU) [or (S-IRWXG) (S-IRWXO)]]]
+
 (function write (fd d len) [syscall (SYS-WRITE) $fd $d $len])
 
 (function write-str (fd str) [write $fd $str [strlen $str]])
@@ -36,7 +38,7 @@
 (function write-char (fd ch) [write $fd ch &1])
 
 (function write-uint (fd i) (with return
-	[allocate &20 (continuation _ (str) (let (j &19) (begin
+	[allocate &20 (continuation () (str) (let (j &19) (begin
 		(while $i (begin
 			[setb [+ $str $j] (switch = [rem $i &10]
 				(&9 (char 9))
@@ -54,4 +56,12 @@
 		[write $fd [+ $str [+ $j &1]] [- &19 $j]]
 		{return (begin)})))]))
 
-[syscall (SYS-WRITE) (STDOUT) (" Madness) &5]
+(function read (fd buf cnt) [syscall (SYS-READ) $fd $buf $cnt])
+
+(function close (fd) [syscall (SYS-CLOSE) $fd])
+
+(function size (fd) (with return
+	[allocate &144 (continuation () (statbuf) (begin
+		[syscall (SYS-FSTAT) $fd $statbuf]
+		{return [get [+ $statbuf &48]]}))]))
+
