@@ -22,6 +22,7 @@
 (function CLOCK-PROCESS-CPUTIME-ID (l r) (` &2 $r))
 (function STDIN (l r) (` &0 $r))
 (function STDOUT (l r) (` &1 $r))
+(function NULL (l r) (` &0 $r))
 
 (function strlen (str) (with return
 	{(continuation loop (i)
@@ -29,7 +30,22 @@
 			{loop [+ $i &1]}
 			{return $i})) &0}))
 
-(function open (path) [syscall (SYS-OPEN) $path [or (O-RDWR) (O-CREAT)] [or (S-IRWXU) [or (S-IRWXG) (S-IRWXO)]]]
+(function strrchr (s c) (with return
+	(let (t [+ $s [strlen $s]]) (begin
+		{(continuation loop (t)
+			(if [= [getb $t] [getb c]]
+				{return $t}
+			(if [= $t $s]
+				{return (NULL)}
+				{loop [- $t &1]}))) $t}))))
+
+(function strcmp (s1 s2) (with return
+	{(continuation loop (s1 s2)
+		(if [and [and [getb $s1] [getb $s2]] [= [getb $s1] [getb $s2]]]
+			{loop [+ $s1 &1] [+ $s2 &1]}
+			{return [- [getb $s1] [getb $s2]]})) $s1 $s2}))
+
+(function open (path) [syscall (SYS-OPEN) $path [or (O-RDWR) (O-CREAT)] [or (S-IRWXU) [or (S-IRWXG) (S-IRWXO)]]])
 
 (function write (fd d len) [syscall (SYS-WRITE) $fd $d $len])
 
@@ -65,3 +81,6 @@
 		[syscall (SYS-FSTAT) $fd $statbuf]
 		{return [get [+ $statbuf &48]]}))]))
 
+[write-str (STDOUT) [strrchr (" Hello.Bye.Okay) (char .)]]
+
+[write-uint (STDOUT) [strcmp (" HelloB) (" Hello)]]
