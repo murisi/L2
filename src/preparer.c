@@ -5,7 +5,7 @@ bool function_named(void *expr_void, void *ctx) {
 }
 
 bool reference_named(void *expr_void, void *ctx) {
-	return ((union expression *) expr_void)->reference.name && strequal(ctx, ((union expression *) expr_void)->reference.name);
+	return ((union expression *) expr_void)->reference.name && ctx && strequal(ctx, ((union expression *) expr_void)->reference.name);
 }
 
 union expression *vfind_multiple_definitions(union expression *e, void *ctx) {
@@ -305,6 +305,7 @@ void *np_expansion(list (*expander)(list, region), union expression *np, list *e
 		param->reference.parent = cont;
 	}}
 	prepend(guest_cont_param, &cont->continuation.parameters, ct_reg);
+	guest_cont_param->reference.parent = cont;
 	put(cont, continuation.expression, make_jump1(make_invoke1(make_literal((unsigned long) _get_, ct_reg),
 		use_reference(guest_cont_param, ct_reg), ct_reg), build_syntax_tree(expander(np->non_primitive.argument, ct_reg),
 		ct_reg, handler), ct_reg));
@@ -336,15 +337,26 @@ Symbol *make_symbol(char *nm, void *addr, region r) {
 	return sym;
 }
 
+void prepend_binding(union expression *ref, list *binds, region rt_reg) {
+	if(ref->reference.name) {
+		ref->reference.symbol = make_symbol(rstrcpy(ref->reference.name, rt_reg), NULL, rt_reg);
+		prepend(ref->reference.symbol, binds, rt_reg);
+	}
+}
+
+void cond_prepend_ref(union expression *ref, list *refs, region rt_reg) {
+	if(ref->reference.name) {
+		prepend(ref, refs, rt_reg);
+	}
+}
+
 void generate_np_expressions(union expression **s, bool is_static, list *ext_binds, list st_binds, list dyn_refs, list *comps, region ct_reg, region rt_reg, jumpbuf *handler) {
 	switch((*s)->base.type) {
 		case begin: {
 			union expression *expr;
 			{foreach(expr, (*s)->begin.expressions) {
-				if(expr->base.type == function && expr->function.reference->reference.name) {
-					expr->function.reference->reference.symbol =
-						make_symbol(rstrcpy(expr->function.reference->reference.name, rt_reg), NULL, rt_reg);
-					prepend(expr->function.reference->reference.symbol, &st_binds, rt_reg);
+				if(expr->base.type == function) {
+					prepend_binding(expr->function.reference, &st_binds, rt_reg);
 				}
 			}}
 			union expression **exprr;
@@ -354,10 +366,9 @@ void generate_np_expressions(union expression **s, bool is_static, list *ext_bin
 			break;
 		} case with: {
 			if(is_static) {
-				(*s)->with.reference->reference.symbol = make_symbol(rstrcpy((*s)->with.reference->reference.name, rt_reg), NULL, rt_reg);
-				prepend((*s)->with.reference->reference.symbol, &st_binds, rt_reg);
+				prepend_binding((*s)->with.reference, &st_binds, rt_reg);
 			} else {
-				prepend((*s)->with.reference, &dyn_refs, ct_reg);
+				cond_prepend_ref((*s)->with.reference, &dyn_refs, ct_reg);
 			}
 			generate_np_expressions(&(*s)->with.expression,is_static, ext_binds, st_binds, dyn_refs, comps, ct_reg, rt_reg, handler);
 			break;
@@ -370,25 +381,22 @@ void generate_np_expressions(union expression **s, bool is_static, list *ext_bin
 			dyn_refs = nil(ct_reg);
 			union expression *param;
 			{foreach(param, (*s)->function.parameters) {
-				prepend(param, &dyn_refs, ct_reg);
+				cond_prepend_ref(param, &dyn_refs, ct_reg);
 			}}
 			generate_np_expressions(&(*s)->function.expression, false, ext_binds, st_binds, dyn_refs, comps, ct_reg, rt_reg, handler);
 			break;
 		} case continuation: {
 			if(is_static) {
-				(*s)->continuation.reference->reference.symbol =
-					make_symbol(rstrcpy((*s)->continuation.reference->reference.name, rt_reg), NULL, rt_reg);
-				prepend((*s)->continuation.reference->reference.symbol, &st_binds, rt_reg);
+				prepend_binding((*s)->continuation.reference, &st_binds, rt_reg);
 				union expression *param;
 				{foreach(param, (*s)->continuation.parameters) {
-					param->reference.symbol = make_symbol(rstrcpy(param->reference.name, rt_reg), NULL, rt_reg);
-					prepend(param->reference.symbol, &st_binds, rt_reg);
+					prepend_binding(param, &st_binds, rt_reg);
 				}}
 			} else {
-				prepend((*s)->continuation.reference, &dyn_refs, ct_reg);
+				cond_prepend_ref((*s)->continuation.reference, &dyn_refs, ct_reg);
 				union expression *param;
 				{foreach(param, (*s)->continuation.parameters) {
-					prepend(param, &dyn_refs, ct_reg);
+					cond_prepend_ref(param, &dyn_refs, ct_reg);
 				}}
 			}
 			generate_np_expressions(&(*s)->continuation.expression, is_static, ext_binds, st_binds, dyn_refs, comps, ct_reg, rt_reg, handler);
