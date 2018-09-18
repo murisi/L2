@@ -1,13 +1,13 @@
 (function meta:zip (a b r) (with return
 	{(continuation aux (output a b)
-		(if [not [char= $a [emt $r]]]
+		(if [not [emt? $a]]
 			{aux [lst [llst [fst $a] [fst $b] [emt $r] $r] $output $r] [rst $a] [rst $b]}
 			{return [meta:reverse $output $r]})) [emt $r] $a $b}))
 
 (function foreach (s r)
 	(let (bindings [meta:reverse [rst [meta:reverse $s $r]] $r]) (body [fst [meta:reverse $s $r]])
 			(labels (with return {(continuation aux (index-refs ref input-pairs)
-				(if [not [char= $input-pairs [emt $r] $r]]
+				(if [not [emt? $input-pairs]]
 					{aux [lst $ref $index-refs $r]
 						[meta:reverse [lst [-1- $r][meta:reverse $ref $r]$r]$r]
 						[rst $input-pairs]}
@@ -56,21 +56,21 @@
 (function nil (r) (with return
 	(let (l [region-alloc $r [list-structs]]) (begin
 		[set [car $l] $l]
-		[set [cdr $l] [null]]
+		[set [cdr $l] (null)]
 		{return $l}))))
 
 (function nil? (l)
-	(if [= ($[cdr $l]) [null]] [true] [false]))
+	(if [= ($[cdr $l]) (null)] (true) (false)))
 
-(function append (data l) (with return (begin
+(function append (data l r) (with return (begin
 	(while [not [nil? $$l]] [set l [cdr $$l]])
-	[set $l [malloc [list-structs]]]
+	[set $l [region-alloc $r [list-structs]]]
 	[set [car $$l] $data]
-	[set [cdr $$l] [nil]]
+	[set [cdr $$l] [nil $r]]
 	{return [car $$l]})))
 
-(function cons (data rest) (with return
-	(let (l [malloc [list-structs]]) (begin
+(function cons (data rest r) (with return
+	(let (l [region-alloc $r [list-structs]]) (begin
 		[set [car $l] $data]
 		[set [cdr $l] $rest]
 		{return $l}))))
@@ -80,8 +80,8 @@
 		[set fst-ref [cdr $$fst-ref]])
 	[set $fst-ref $snd]))
 
-(function prepend (data l-ref)
-	(let (ret [malloc [list-structs]]) (begin
+(function prepend (data l-ref r)
+	(let (ret [region-alloc $r [list-structs]]) (begin
 		[set [car $ret] $data]
 		[set [cdr $ret] $$l-ref]
 		[set $l-ref $ret])))
@@ -93,19 +93,24 @@
 			[set size [+ &1 $size]]))
 		{return $size}))))
 
-(function reference-list (l) (with return
-	(let (mapped [nil]) (begin
-		(while [not [nil? $l]] (begin
-			[append [car $l] mapped]
-			[set l [rst $l]]))
-		{return $mapped}))))
-
 (function find (pred l ctx) (with return (begin
 	(foreach* (s $l)
 		(if [$pred [fst $$s] $ctx] {return $s} (begin)))
-	{return [null]})))
+	{return (null)})))
 
-(function reverse (l) (with return
-	(let (ret [nil]) (begin
+(function reverse (l r) (with return
+	(let (ret [nil $r]) (begin
 		(foreach (data $l) [prepend $data ret])
 		{return $ret}))))
+
+(let (r [create-region &0])
+	(let (l [nil $r]) (begin
+		[prepend (" Hello) l $r]
+		[prepend (" And) l $r]
+		[prepend (" Then) l $r]
+		[prepend (" Bye) l $r]
+		[write-uint (stdout) [length $l]]
+		(foreach (ele $l) (begin
+			[write-str (stdout) $ele]
+			[write-str (stdout) ("(lf))]))
+		[write-str (stdout) (" (lf))])))
