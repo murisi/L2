@@ -478,7 +478,7 @@ void *_get_(void *ref) {
 	return *((void **) ref);
 }
 
-bool string_equals(char *a, char *b) {
+bool defined_string_equals(char *a, char *b) {
 	return a && b && !strcmp(a, b);
 }
 
@@ -487,7 +487,7 @@ union expression *insert_indirections(union expression *expr, char *ref_name, re
 		case literal: {
 			return expr;
 		} case reference: {
-			if(string_equals(expr->reference.name, ref_name)) {
+			if(defined_string_equals(expr->reference.name, ref_name)) {
 				return make_invoke1(make_literal((unsigned long) _get_, reg), expr, reg);
 			} else {
 				return expr;
@@ -500,7 +500,7 @@ union expression *insert_indirections(union expression *expr, char *ref_name, re
 		} case begin: {
 			union expression *f;
 			{foreach(f, expr->begin.expressions) {
-				if(f->base.type == function && string_equals(f->function.reference->reference.name, ref_name)) {
+				if(f->base.type == function && defined_string_equals(f->function.reference->reference.name, ref_name)) {
 					return expr;
 				}
 			}}
@@ -511,12 +511,12 @@ union expression *insert_indirections(union expression *expr, char *ref_name, re
 			}}
 			return expr;
 		} case continuation: case with: {
-			if(string_equals(expr->continuation.reference->reference.name, ref_name)) {
+			if(defined_string_equals(expr->continuation.reference->reference.name, ref_name)) {
 				return expr;
 			}
 			union expression *e;
 			foreach(e, expr->continuation.parameters) {
-				if(string_equals(e->reference.name, ref_name)) {
+				if(defined_string_equals(e->reference.name, ref_name)) {
 					return expr;
 				}
 			}

@@ -1,11 +1,9 @@
-bool function_named(void *expr_void, void *ctx) {
-	union expression *expr = expr_void;
-	return expr->base.type == function && expr->function.reference->reference.name &&
-		strequal(ctx, expr->function.reference->reference.name);
+bool reference_named(union expression *expr, char *ctx) {
+	return defined_string_equals(expr->reference.name, ctx);
 }
 
-bool reference_named(void *expr_void, void *ctx) {
-	return ((union expression *) expr_void)->reference.name && ctx && strequal(ctx, ((union expression *) expr_void)->reference.name);
+bool function_named(union expression *expr, char *ctx) {
+	return expr->base.type == function && reference_named(expr->function.reference, ctx);
 }
 
 union expression *vfind_multiple_definitions(union expression *e, void *ctx) {
@@ -16,7 +14,7 @@ union expression *vfind_multiple_definitions(union expression *e, void *ctx) {
 		case begin: {
 			foreachlist(partial, t, &e->begin.expressions) {
 				if(t->base.type == function && t->function.reference->reference.name &&
-					exists(function_named, &(*partial)->rst, t->function.reference->reference.name)) {
+					exists((bool (*)(void *, void *)) function_named, &(*partial)->rst, t->function.reference->reference.name)) {
 						throw_multiple_definition(t->function.reference->reference.name, handler);
 				}
 			}
@@ -25,7 +23,7 @@ union expression *vfind_multiple_definitions(union expression *e, void *ctx) {
 			region tempreg = create_region(0);
 			list ref_with_params = lst(e->continuation.reference, e->continuation.parameters, tempreg);
 			foreachlist(partial, t, &ref_with_params) {
-				if(t->reference.name && exists(reference_named, &(*partial)->rst, t->reference.name)) {
+				if(exists((bool (*)(void *, void *)) reference_named, &(*partial)->rst, t->reference.name)) {
 					throw_multiple_definition(t->reference.name, handler);
 				}
 			}
@@ -416,7 +414,7 @@ void generate_np_expressions(union expression **s, bool is_static, list *ext_bin
 			list *dyn_refs_suffix, param_names_rt = nil(rt_reg), args_ct = nil(ct_reg);
 			union expression *dyn_ref;
 			{foreachlist(dyn_refs_suffix, dyn_ref, &dyn_refs) {
-				if(!exists(reference_named, &(*dyn_refs_suffix)->rst, dyn_ref->reference.name)) {
+				if(!exists((bool (*)(void *, void *)) reference_named, &(*dyn_refs_suffix)->rst, dyn_ref->reference.name)) {
 					prepend(rstrcpy(dyn_ref->reference.name, rt_reg), &param_names_rt, rt_reg);
 					prepend(use_reference(dyn_ref, ct_reg), &args_ct, ct_reg);
 				}
