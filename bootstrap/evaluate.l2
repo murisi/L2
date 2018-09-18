@@ -1,27 +1,13 @@
-[set f [fopen (" /proc/self/cmdline) (" r)]]
-[set arg-vector (array &64[words])]
-[set arg-size &64]
-[set i &0]
-[set j &0]
+(function argv (reg) (with return
+	(let (f [open (" /proc/self/cmdline)]) (buf [region-alloc $reg (arg-max)])
+		(let (bytes-rem [read $f $buf (arg-max)]) (begin
+			[close $f]
+			{(continuation loop (buf bytes-rem args)
+				(if $bytes-rem
+					{loop [+ $buf [+ [strlen $buf] &1]] [- $bytes-rem [+ [strlen $buf] &1]] [cons $buf $args $reg]}
+					{return [reverse $args $reg]})) $buf $bytes-rem [nil $reg]})))))
 
-(**	The file /proc/self/cmdline contains the command line arguments
-	separated by null bytes. Here we are putting these arguments into
-	an array of strings.
-
-(do-while (begin
-	[set (loc $arg-vector $i[words]) (array $arg-size[bytes])]
-	(do-while (begin
-		[setb c [getc $f]]
-		[setb (loc $arg-vector $i $j[bytes]) $c]
-		[set j [+ $j &1]])
-		$c)
-	
-	[set j &0]
-	[set i [+ $i &1]]
-	[setb c [getc $f]]
-	[ungetc $c $f])
-	[not [= $c &255]]))
-
-[fclose $f]
-
-(for (j &0 $i) [printf (" Argument %i: %s(lf)) $j ($(loc $arg-vector $j[words]))])
+(let (r [create-region &0])
+	(foreach (arg [argv $r]) (begin
+		[write-str (stdout) $arg]
+		[write-char (stdout) (lf)])))
