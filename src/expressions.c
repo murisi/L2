@@ -474,57 +474,6 @@ void print_syntax_tree(union expression *s) {
 	}
 }
 
-bool expression_equals(union expression *expr1, union expression *expr2) {
-	if(expr1->base.type != expr2->base.type) return false;
-	switch(expr1->base.type) {
-		case literal: {
-			return expr1->literal.value == expr2->literal.value ? true : false;
-		} case reference: {
-			return (expr1->reference.name == expr2->reference.name) ||
-				(expr1->reference.name && expr2->reference.name && !strcmp(expr1->reference.name, expr2->reference.name)) ?
-				true : false;
-		} case invoke: case jump: {
-			if(!expression_equals(expr1->invoke.reference, expr2->invoke.reference)) return false;
-			if(length(expr1->invoke.arguments) != length(expr2->invoke.arguments)) return false;
-			union expression *u, *v;
-			foreachzipped(u, v, expr1->invoke.arguments, expr2->invoke.arguments) {
-				if(!expression_equals(u, v)) return false;
-			}
-			return true;
-		} case _if: {
-			return (expression_equals(expr1->_if.condition, expr2->_if.condition) &&
-				expression_equals(expr1->_if.consequent, expr2->_if.consequent) &&
-				expression_equals(expr1->_if.alternate, expr2->_if.alternate)) ? true : false;
-		} case function: case continuation: case with: {
-			if(!expression_equals(expr1->function.reference, expr2->function.reference)) return false;
-			if(!expression_equals(expr1->function.expression, expr2->function.expression)) return false;
-			union expression *u, *v;
-			foreachzipped(u, v, expr1->function.parameters, expr2->function.parameters) {
-				if(!expression_equals(u, v)) return false;
-			}
-			return true;
-		} case begin: {
-			if(length(expr1->begin.expressions) != length(expr2->begin.expressions)) return false;
-			union expression *u, *v;
-			foreachzipped(u, v, expr1->begin.expressions, expr2->begin.expressions) {
-				if(!expression_equals(u, v)) return false;
-			}
-			return true;
-		} case non_primitive: {
-			return (expression_equals(expr1->non_primitive.reference, expr2->non_primitive.reference) &&
-				sexpr_list_equals(expr1->non_primitive.argument, expr2->non_primitive.argument)) ? true : false;
-		} case instruction: {
-			return false;
-		}
-	}
-}
-
-union expression *copy_reference(union expression *ref, region reg) {
-	union expression *cpy = make_reference(reg);
-	cpy->reference.name = rstrcpy(ref->reference.name, reg);
-	return cpy;
-}
-
 void *_get_(void *ref) {
 	return *((void **) ref);
 }
