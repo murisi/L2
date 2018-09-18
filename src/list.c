@@ -99,3 +99,12 @@ list *exists(bool (*pred)(void *, void *), list *l, void *ctx) {
 	}
 	return NULL;
 }
+
+list map(list l, void *ctx, void* (*mapper)(void *, void *), region reg) {
+	list ret = nil(reg);
+	void *e;
+	foreach(e, l) {
+		prepend(mapper(e, ctx), &ret, reg);
+	}
+	return reverse(ret, reg);
+}

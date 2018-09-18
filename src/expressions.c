@@ -390,6 +390,13 @@ union expression *make_invoke8(union expression *ref, union expression *arg1, un
 	return u;
 }
 
+union expression *make_invoke9(union expression *ref, union expression *arg1, union expression *arg2, union expression *arg3, union expression *arg4, union expression *arg5, union expression *arg6, union expression *arg7, union expression *arg8, union expression *arg9, region reg) {
+	union expression *u = make_invoke8(ref, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, reg);
+	u->invoke.arguments = lst(arg1, u->invoke.arguments, reg);
+	arg1->base.parent = u;
+	return u;
+}
+
 void print_syntax_tree(union expression *s) {
 	switch(s->base.type) {
 		case begin: {
@@ -512,131 +519,72 @@ bool expression_equals(union expression *expr1, union expression *expr2) {
 	}
 }
 
-union expression *copy_expression(union expression *expr, region reg) {
-	union expression *copy = region_alloc(reg, sizeof(union expression));
-	copy->base.type = expr->base.type;
-	switch(expr->base.type) {
-		case literal: {
-			copy->literal.value = expr->literal.value;
-			break;
-		} case reference: {
-			if(expr->reference.name) {
-				copy->reference.name = region_alloc(reg, strlen(expr->reference.name) + 1);
-				strcpy(copy->reference.name, expr->reference.name);
-			} else {
-				copy->reference.name = expr->reference.name;
-			}
-			break;
-		} case invoke: case jump: {
-			put(copy, invoke.reference, copy_expression(expr->invoke.reference, reg));
-			copy->invoke.arguments = nil(reg);
-			union expression *arg;
-			foreach(arg, expr->invoke.arguments) {
-				union expression *arg_copy = copy_expression(arg, reg);
-				append(arg_copy, &copy->invoke.arguments, reg);
-				arg_copy->base.parent = copy;
-			}
-			break;
-		} case _if: {
-			put(copy, _if.condition, copy_expression(expr->_if.condition, reg));
-			put(copy, _if.consequent, copy_expression(expr->_if.consequent, reg));
-			put(copy, _if.alternate, copy_expression(expr->_if.alternate, reg));
-			break;
-		} case function: case continuation: case with: {
-			put(copy, function.reference, copy_expression(expr->function.reference, reg));
-			put(copy, function.expression, copy_expression(expr->function.expression, reg));
-			if(expr->base.type == function) {
-				copy->function.locals = nil(reg);
-			}
-			copy->function.parameters = nil(reg);
-			union expression *param;
-			foreach(param, expr->function.parameters) {
-				union expression *param_copy = copy_expression(param, reg);
-				append(param_copy, &copy->function.parameters, reg);
-				param_copy->reference.parent = copy;
-			}
-			break;
-		} case begin: {
-			copy->begin.expressions = nil(reg);
-			union expression *e;
-			foreach(e, expr->begin.expressions) {
-				union expression *e_copy = copy_expression(e, reg);
-				append(e_copy, &copy->begin.expressions, reg);
-				e_copy->base.parent = copy;
-			}
-			break;
-		} case non_primitive: {
-			put(copy, non_primitive.reference, copy_expression(expr->non_primitive.reference, reg));
-			copy->non_primitive.argument = copy_sexpr_list(expr->non_primitive.argument, reg);
-			copy->non_primitive.indirections = nil(reg);
-			union expression *e;
-			foreach(e, expr->non_primitive.indirections) {
-				union expression *e_copy = copy_expression(e, reg);
-				append(e_copy, &copy->non_primitive.indirections, reg);
-				e_copy->base.parent = copy;
-			}
-			break;
-		}
-	}
-	return copy;
+union expression *copy_reference(union expression *ref, region reg) {
+	union expression *cpy = make_reference(reg);
+	cpy->reference.name = rstrcpy(ref->reference.name, reg);
+	return cpy;
 }
 
 void *_get_(void *ref) {
 	return *((void **) ref);
 }
 
-union expression *insert_indirections(union expression *expr, union expression *ref, region reg) {
+bool string_equals(char *a, char *b) {
+	return a && b && !strcmp(a, b);
+}
+
+union expression *insert_indirections(union expression *expr, char *ref_name, region reg) {
 	switch(expr->base.type) {
 		case literal: {
 			return expr;
 		} case reference: {
-			if(expression_equals(expr, ref)) {
-				return make_invoke1(make_literal((unsigned long) _get_, reg), copy_expression(ref, reg), reg);
+			if(string_equals(expr->reference.name, ref_name)) {
+				return make_invoke1(make_literal((unsigned long) _get_, reg), expr, reg);
 			} else {
 				return expr;
 			}
 		} case _if: {
-			put(expr, _if.condition, insert_indirections(expr->_if.condition, ref, reg));
-			put(expr, _if.consequent, insert_indirections(expr->_if.consequent, ref, reg));
-			put(expr, _if.alternate, insert_indirections(expr->_if.alternate, ref, reg));
+			put(expr, _if.condition, insert_indirections(expr->_if.condition, ref_name, reg));
+			put(expr, _if.consequent, insert_indirections(expr->_if.consequent, ref_name, reg));
+			put(expr, _if.alternate, insert_indirections(expr->_if.alternate, ref_name, reg));
 			return expr;
 		} case begin: {
 			union expression *f;
 			{foreach(f, expr->begin.expressions) {
-				if(f->base.type == function && expression_equals(f->function.reference, ref)) {
+				if(f->base.type == function && string_equals(f->function.reference->reference.name, ref_name)) {
 					return expr;
 				}
 			}}
 			union expression **e;
 			{foreachaddress(e, expr->begin.expressions) {
-				*e = insert_indirections(*e, ref, reg);
+				*e = insert_indirections(*e, ref_name, reg);
 				(*e)->base.parent = expr;
 			}}
 			return expr;
 		} case continuation: case with: {
-			if(expression_equals(expr->continuation.reference, ref)) {
+			if(string_equals(expr->continuation.reference->reference.name, ref_name)) {
 				return expr;
 			}
 			union expression *e;
 			foreach(e, expr->continuation.parameters) {
-				if(expression_equals(e, ref)) {
+				if(string_equals(e->reference.name, ref_name)) {
 					return expr;
 				}
 			}
-			put(expr, continuation.expression, insert_indirections(expr->continuation.expression, ref, reg));
+			put(expr, continuation.expression, insert_indirections(expr->continuation.expression, ref_name, reg));
 			return expr;
 		} case function: {
 			return expr;
 		} case invoke: case jump: {
-			put(expr, invoke.reference, insert_indirections(expr->invoke.reference, ref, reg));
+			put(expr, invoke.reference, insert_indirections(expr->invoke.reference, ref_name, reg));
 			union expression **e;
 			foreachaddress(e, expr->invoke.arguments) {
-				*e = insert_indirections(*e, ref, reg);
+				*e = insert_indirections(*e, ref_name, reg);
 				(*e)->base.parent = expr;
 			}
 			return expr;
 		} case non_primitive: {
-			prepend(ref, &expr->non_primitive.indirections, reg);
+			prepend(ref_name, &expr->non_primitive.indirections, reg);
 			return expr;
 		}
 	}
