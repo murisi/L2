@@ -255,8 +255,8 @@ Symbol sexpr_symbols[] = {
 	{.name = "rst", .address = _rst_},
 	{.name = "lst", .address = lst},
 	{.name = "lst?", .address = is_lst},
-	{.name = "nil?", .address = is_nil},
-	{.name = "nil", .address = nil},
+	{.name = "emt?", .address = is_nil},
+	{.name = "emt", .address = nil},
 	{.name = "char=", .address = char_equals}
 };
 

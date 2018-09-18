@@ -5,16 +5,16 @@
 (function meta:reverse (l r)
 	(with return
 		{(continuation _ (l reversed)
-			(if [nil? $l]
+			(if [emt? $l]
 				{return $reversed}
-				{_ [rst $l] [lst [fst $l] $reversed $r]})) $l [nil $r]}))
+				{_ [rst $l] [lst [fst $l] $reversed $r]})) $l [emt $r]}))
 
 (function meta:map (l mapper r)
 	(with return
 		{(continuation aux (in out)
-			(if [nil? $in]
+			(if [emt? $in]
 				{return [meta:reverse $out $r]}
-				{aux [rst $in] [lst [$mapper [fst $in]] $out $r]})) $l [nil $r]}))
+				{aux [rst $in] [lst [$mapper [fst $in]] $out $r]})) $l [emt $r]}))
 
 (++ The following function implements variable binding by do the following
 	transformation:
@@ -50,10 +50,10 @@
 	(`(let (switch:= (,[fst $l])) (switch:val (,[frst $l]))
 		(,(with return
 			{(continuation aux (remaining else-clause)
-				(if [nil? $remaining]
+				(if [emt? $remaining]
 					{return $else-clause}
 					{aux [rst $remaining]
-						(`(if (,[llllst (` invoke $r) (` $switch:= $r) (` $switch:val $r) [ffst $remaining] [nil $r] $r])
+						(`(if (,[llllst (` invoke $r) (` $switch:= $r) (` $switch:val $r) [ffst $remaining] [emt $r] $r])
 							(,[frfst $remaining]) ,$else-clause) $r)}))
 				[rst [meta:reverse [rrst $l] $r]] [fst [meta:reverse $l $r]]})))$r))
 
@@ -67,7 +67,7 @@
 		(,[fst $l])})$r))
 
 (function array (l)
-	(if [nil? [rrst $l]]
+	(if [emt? [rrst $l]]
 		(`(with return [allocate [* (,[fst $l]) (,[frst $l])] return]))
 		(`(with return [allocate [* (,[fst $l]) [words]]
 			(continuation cont (arg)
