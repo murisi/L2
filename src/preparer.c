@@ -277,7 +277,7 @@ union expression *vmerge_begins(union expression *n, void *ctx) {
 	return n;
 }
 
-Object *load_expressions(list exprs, list *ext_binds, list st_binds, list *comps, region obj_reg, jumpbuf *handler);
+Object *load_expressions(union expression *program, list *ext_binds, list st_binds, list *comps, region ct_reg, region rt_reg, jumpbuf *handler);
 union expression *build_syntax_tree(list d, region reg, jumpbuf *handler);
 
 struct compilation {
@@ -317,7 +317,7 @@ void *np_expansion(list (*expander)(list, region), union expression *np, list *e
 	}}
 	put(func, function.expression, make_jump1(make_invoke1(make_literal((unsigned long) _get_, ct_reg),
 		use_reference(host_cont_param, ct_reg), ct_reg), cont, ct_reg));
-	Object *obj = load_expressions(lst(func, nil(ct_reg), ct_reg), ext_binds, st_binds, compilations, rt_reg, handler);
+	Object *obj = load_expressions(make_program(lst(func, nil(ct_reg), ct_reg), ct_reg), ext_binds, st_binds, compilations, ct_reg, rt_reg, handler);
 	mutate_symbols(obj, *ext_binds);
 	mutate_symbols(obj, st_binds);
 	

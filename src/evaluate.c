@@ -23,22 +23,19 @@ typedef unsigned long int bool;
  * executable that it is embedded in.
  */
 
-Object *load_expressions(list exprs, list *ext_binds, list st_binds, list *comps, region obj_reg, jumpbuf *handler) {
-	region manreg = create_region(0);
-	union expression *program = make_function(manreg), *t;
-	{foreach(t, exprs) {
-		union expression *cpy = t;
-		if(cpy->base.type == function) {
-			generate_np_expressions(&cpy, true, ext_binds, st_binds, nil(obj_reg), comps, manreg, obj_reg, handler);
+Object *load_expressions(union expression *program, list *ext_binds, list st_binds, list *comps, region manreg, region rt_reg, jumpbuf *handler) {
+	union expression **t;
+	{foreachaddress(t, program->function.expression->begin.expressions) {
+		if((*t)->base.type == function) {
+			generate_np_expressions(t, true, ext_binds, st_binds, nil(rt_reg), comps, manreg, rt_reg, handler);
 		} else {
-			union expression *tempfunc = make_function(manreg);
-			put(tempfunc, function.expression, cpy);
-			generate_np_expressions(&tempfunc->function.expression, true, ext_binds, st_binds, nil(obj_reg), comps, manreg, obj_reg,
+			union expression *container = make_function(manreg);
+			put(container, function.expression, *t);
+			generate_np_expressions(&container->function.expression, true, ext_binds, st_binds, nil(rt_reg), comps, manreg, rt_reg,
 				handler);
-			cpy = tempfunc->function.expression;
+			*t = container->function.expression;
+			(*t)->base.parent = program->function.expression;
 		}
-		append(cpy, &program->function.expression->begin.expressions, manreg);
-		cpy->base.parent = program->function.expression;
 	}}
 	
 	visit_expressions(vfind_multiple_definitions, &program, handler);
@@ -58,7 +55,7 @@ Object *load_expressions(list exprs, list *ext_binds, list st_binds, list *comps
 	visit_expressions(vmerge_begins, &program, (void* []) {&asms, manreg});
 	unsigned char *objdest; int objdest_sz;
 	write_elf(reverse(asms, manreg), locals, globals, &objdest, &objdest_sz, manreg);
-	Object *obj = load(objdest, objdest_sz, obj_reg, handler);
+	Object *obj = load(objdest, objdest_sz, rt_reg, handler);
 	union expression *l;
 	{foreach(l, locals) {
 		if(l->reference.symbol) {
@@ -73,7 +70,6 @@ Object *load_expressions(list exprs, list *ext_binds, list st_binds, list *comps
 			}
 		}
 	}}
-	destroy_region(manreg);
 	return obj;
 }
 
@@ -105,7 +101,7 @@ void evaluate_files(int srcc, char *srcv[], list bindings, jumpbuf *handler) {
 				list sexpr = build_expr_list(src_buf, src_sz, &pos, syntax_tree_region);
 				append(build_syntax_tree(sexpr, syntax_tree_region, handler), &expressions, syntax_tree_region);
 			}
-			Object *obj = load_expressions(expressions, &bindings, nil(syntax_tree_region), &comps, syntax_tree_region, handler);
+			Object *obj = load_expressions(make_program(expressions, syntax_tree_region), &bindings, nil(syntax_tree_region), &comps, syntax_tree_region, syntax_tree_region, handler);
 			append(obj, &objects, syntax_tree_region);
 			append_list(&bindings, immutable_symbols(obj, syntax_tree_region));
 		} else if(dot && !strcmp(dot, ".o")) {

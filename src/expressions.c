@@ -641,3 +641,13 @@ union expression *insert_indirections(union expression *expr, union expression *
 		}
 	}
 }
+
+union expression *make_program(list exprs, region r) {
+	union expression *program = make_function(r);
+	program->function.expression->begin.expressions = exprs;
+	union expression *expr;
+	{foreach(expr, exprs) {
+		expr->base.parent = program->function.expression;
+	}}
+	return program;
+}
