@@ -1,39 +1,37 @@
-(function zip (a b) (with return
+(function zip (a b r) (with return
 	{(continuation aux (output a b)
-		(if [not [sexpr= $a [nil]]]
-			{aux [lst [llst [fst $a] [fst $b] [nil]] $output] [rst $a] [rst $b]}
-			{return [reverse $output]})) [nil] $a $b}))
+		(if [not [char= $a [nil $r]]]
+			{aux [lst [llst [fst $a] [fst $b] [nil $r] $r] $output $r] [rst $a] [rst $b]}
+			{return [reverse $output $r]})) [nil $r] $a $b}))
 
-(function foreach (s)
-	(let (bindings [reverse [rst [reverse $s]]]) (body [fst [reverse $s]])
+(function foreach (s r)
+	(let (bindings [reverse [rst [reverse $s $r]] $r]) (body [fst [reverse $s $r]])
 			(labels (with return {(continuation aux (index-refs ref input-pairs)
-				(if [not [sexpr= $input-pairs [nil]]]
-					{aux [lst $ref $index-refs]
-						[reverse [lst [-1-][reverse $ref]]]
+				(if [not [char= $input-pairs [nil $r] $r]]
+					{aux [lst $ref $index-refs $r]
+						[reverse [lst [-1- $r][reverse $ref $r]$r]$r]
 						[rst $input-pairs]}
-					{return [reverse $index-refs]})) [nil] `foreach:v [rst [reverse $s]]}))
-		[lst `let [reverse [lst
-			(`(while [not [nil? $foreach:v]] (,[llst `begin
-				[lst `let [reverse [lst $body [map [zip [map $bindings fst] $labels]
-						(function make-binding (a) (`((,[fst $a]) [fst ($(,[frst $a]))])))]]]]
-				[map $labels (function make-update (a) (`[set ,$a [rst $,$a]]))]])))
-			[zip $labels [map $bindings frst]]]]]))
+					{return [reverse $index-refs $r]})) [nil $r] (` foreach:v $r) [rst [reverse $s $r]]}))
+		[lst (` let $r) [reverse [lst
+			(`(while [not [nil? $foreach:v]] (,[llst (` begin $r)
+				[lst (` let $r) [reverse [lst $body [map [zip [map $bindings fst $r] $labels $r]
+						(function make-binding (a) (`((,[fst $a]) [fst ($(,[frst $a]))])$r))$r]$r]$r]$r]
+				[map $labels (function make-update (a) (`[set ,$a [rst $,$a]]$r))$r]$r]))$r)
+			[zip $labels [map $bindings frst $r]$r]$r]$r]$r]))
 
-(function foreach* (s)
-	(let (bindings [reverse [rst [reverse $s]]]) (body [fst [reverse $s]])
-		[lst `let [reverse [lst
-			(`(while [not [nil? ($($(,[ffst $bindings])))]] (,[llst `begin $body
+(function foreach* (s r)
+	(let (bindings [reverse [rst [reverse $s $r]]$r]) (body [fst [reverse $s $r]])
+		[lst (` let $r) [reverse [lst
+			(`(while [not [nil? ($($(,[ffst $bindings])))]] (,[llst (` begin $r) $body
 				[map $bindings (function make-update (a)
-					(`[set (,[fst $a]) [cdr ($($(,[fst $a]))) ]]))]])))
-			$bindings]]]))
+					(`[set (,[fst $a]) [cdr ($($(,[fst $a])))]]$r))$r]$r]))$r)
+			$bindings $r]$r]$r]))
 
-(function null () &0)
-
-(function list-structs () [+ [words] [words]])
+(function list-structs () [+ (unit) (unit)])
 
 (function car (l) $l)
 
-(function cdr (l) [+ $l [words]])
+(function cdr (l) [+ $l (unit)])
 
 (function cddr (l) [cdr ($[cdr $l])])
 
@@ -55,8 +53,8 @@
 
 (function cadddddr (l) [car ($[cdddddr $l])])
 
-(function nil () (with return
-	(let (l [malloc [list-structs]]) (begin
+(function nil (r) (with return
+	(let (l [region-alloc $r [list-structs]]) (begin
 		[set [car $l] $l]
 		[set [cdr $l] [null]]
 		{return $l}))))

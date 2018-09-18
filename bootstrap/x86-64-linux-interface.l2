@@ -1,30 +1,30 @@
-(function SYS-READ (l r) (` &0 $r))
-(function SYS-WRITE (l r) (` &1 $r))
-(function SYS-OPEN (l r) (` &2 $r))
-(function SYS-CLOSE (l r) (` &3 $r))
-(function SYS-FSTAT (l r) (` &5 $r))
-(function SYS-MMAP (l r) (` &9 $r))
-(function SYS-MUNMAP (l r) (` &11 $r))
-(function SYS-EXIT (l r) (` &60 $r))
-(function SYS-CLOCK-GETTIME (l r) (` &228 $r))
-(function O-RDWR (l r) (` &2 $r))
-(function O-CREAT (l r)	(` &64 $r))
-(function S-IRWXU (l r) (` &448 $r))
-(function S-IRWXG (l r) (` &56 $r))
-(function S-IRWXO (l r) (` &7 $r))
-(function PROT-READ (l r) (` &1 $r))
-(function PROT-WRITE (l r) (` &2 $r))
-(function PROT-EXEC (l r) (` &4 $r))
-(function PROT-NONE (l r) (` &0 $r))
-(function MAP-PRIVATE (l r) (` &2 $r))
-(function MAP-ANONYMOUS (l r) (` &32 $r))
-(function PAGE-SIZE (l r) (` &4096 $r))
-(function CLOCK-PROCESS-CPUTIME-ID (l r) (` &2 $r))
-(function STDIN (l r) (` &0 $r))
-(function STDOUT (l r) (` &1 $r))
-(function NULL (l r) (` &0 $r))
-(function UNIT (l r) (` &8 $r))
-(function ALLOC-ALIGNMENT (l r) (` &8 $r))
+(function sys-read (l r) (` &0 $r))
+(function sys-write (l r) (` &1 $r))
+(function sys-open (l r) (` &2 $r))
+(function sys-close (l r) (` &3 $r))
+(function sys-fstat (l r) (` &5 $r))
+(function sys-mmap (l r) (` &9 $r))
+(function sys-munmap (l r) (` &11 $r))
+(function sys-exit (l r) (` &60 $r))
+(function sys-clock-gettime (l r) (` &228 $r))
+(function o-rdwr (l r) (` &2 $r))
+(function o-creat (l r)	(` &64 $r))
+(function s-irwxu (l r) (` &448 $r))
+(function s-irwxg (l r) (` &56 $r))
+(function s-irwxo (l r) (` &7 $r))
+(function prot-read (l r) (` &1 $r))
+(function prot-write (l r) (` &2 $r))
+(function prot-exec (l r) (` &4 $r))
+(function prot-none (l r) (` &0 $r))
+(function map-private (l r) (` &2 $r))
+(function map-anonymous (l r) (` &32 $r))
+(function page-size (l r) (` &4096 $r))
+(function clock-process-cputime-id (l r) (` &2 $r))
+(function stdin (l r) (` &0 $r))
+(function stdout (l r) (` &1 $r))
+(function null (l r) (` &0 $r))
+(function unit (l r) (` &8 $r))
+(function alloc-alignment (l r) (` &8 $r))
 
 (function strlen (str) (with return
 	{(continuation loop (i)
@@ -38,7 +38,7 @@
 			(if [= [getb $t] [getb c]]
 				{return $t}
 			(if [= $t $s]
-				{return (NULL)}
+				{return (null)}
 				{loop [- $t &1]}))) $t}))))
 
 (function strcmp (s1 s2) (with return
@@ -79,9 +79,9 @@
 	((vt) (true))
 	(false)))
 
-(function open (path) [syscall (SYS-OPEN) $path [or (O-RDWR) (O-CREAT)] [or (S-IRWXU) [or (S-IRWXG) (S-IRWXO)]]])
+(function open (path) [syscall (sys-open) $path [or (o-rdwr) (o-creat)] [or (s-irwxu) [or (s-irwxg) (s-irwxo)]]])
 
-(function write (fd d len) [syscall (SYS-WRITE) $fd $d $len])
+(function write (fd d len) [syscall (sys-write) $fd $d $len])
 
 (function write-str (fd str) [write $fd $str [strlen $str]])
 
@@ -106,49 +106,49 @@
 		[write $fd [+ $str [+ $j &1]] [- &19 $j]]
 		{return (begin)})))]))
 
-(function read (fd buf cnt) [syscall (SYS-READ) $fd $buf $cnt])
+(function read (fd buf cnt) [syscall (sys-read) $fd $buf $cnt])
 
-(function close (fd) [syscall (SYS-CLOSE) $fd])
+(function close (fd) [syscall (sys-close) $fd])
 
 (function size (fd) (with return
 	[allocate &144 (continuation () (statbuf) (begin
-		[syscall (SYS-FSTAT) $fd $statbuf]
+		[syscall (sys-fstat) $fd $statbuf]
 		{return [get [+ $statbuf &48]]}))]))
 
-(function mmap (len) [syscall (SYS-MMAP) (NULL) $len [or (PROT-READ) (PROT-WRITE)] [or (MAP-PRIVATE) (MAP-ANONYMOUS)] (true) &0])
+(function mmap (len) [syscall (sys-mmap) (null) $len [or (prot-read) (prot-write)] [or (map-private) (map-anonymous)] (true) &0])
 
-(function munmap (ptr len) [syscall (SYS-MUNMAP) $ptr $len])
+(function munmap (ptr len) [syscall (sys-munmap) $ptr $len])
 
 (function pad-size (x nearest) [+ $x [- $nearest [rem $x $nearest]]])
 
 (function loc (l r)
 	(if [nil? [rrrst $l]]
 		(`[+ (,[fst $l]) [* (,[frst $l]) (,[frrst $l])]]$r)
-		[loc [lst (`($[+ (,[fst $l]) [*(,[frst $l])(UNIT)]])$r) [rrst $l] $r] $r]))
+		[loc [lst (`($[+ (,[fst $l]) [*(,[frst $l])(unit)]])$r) [rrst $l] $r] $r]))
 
 (function create-region (min-capacity) (with return
-	(let (len [pad-size [+ $min-capacity [* &5(UNIT)]] (PAGE-SIZE)])
+	(let (len [pad-size [+ $min-capacity [* &5(unit)]] (page-size)])
 		(let (reg [mmap $len]) (begin
-			[set (loc $reg &0(UNIT)) (NULL)]
-			[set (loc $reg &1(UNIT)) $reg]
-			[set (loc $reg &2(UNIT)) [+ $reg [* &5(UNIT)]]]
-			[set (loc $reg &3(UNIT)) [+ $reg $len]]
-			[set (loc $reg &4(UNIT)) &16045690984833335023]
+			[set (loc $reg &0(unit)) (null)]
+			[set (loc $reg &1(unit)) $reg]
+			[set (loc $reg &2(unit)) [+ $reg [* &5(unit)]]]
+			[set (loc $reg &3(unit)) [+ $reg $len]]
+			[set (loc $reg &4(unit)) &16045690984833335023]
 			{return $reg})))))
 
 (function region-alloc (reg len) (with return (begin
-	[set len [pad-size $len (ALLOC-ALIGNMENT)]]
-	(if [> [+($(loc $reg &1 &2(UNIT)))$len] ($(loc $reg &1 &3(UNIT)))]
+	[set len [pad-size $len (alloc-alignment)]]
+	(if [> [+($(loc $reg &1 &2(unit)))$len] ($(loc $reg &1 &3(unit)))]
 		(begin
-			[set (loc $reg &1 &0(UNIT)) [create-region [+ $len [* &2[-($(loc $reg &1 &3(UNIT)))($(loc $reg &1(UNIT)))]]]]]
-			[set (loc $reg &1(UNIT)) ($(loc $reg &1 &0(UNIT)))])
+			[set (loc $reg &1 &0(unit)) [create-region [+ $len [* &2[-($(loc $reg &1 &3(unit)))($(loc $reg &1(unit)))]]]]]
+			[set (loc $reg &1(unit)) ($(loc $reg &1 &0(unit)))])
 		(begin))
-	[set (loc $reg &1 &2(UNIT)) [+($(loc $reg &1 &2(UNIT)))$len]]
-	{return [-($(loc $reg &1 &2(UNIT)))$len]})))
+	[set (loc $reg &1 &2(unit)) [+($(loc $reg &1 &2(unit)))$len]]
+	{return [-($(loc $reg &1 &2(unit)))$len]})))
 
 (function destroy-region (reg) (do-while
-	(let (next-reg ($(loc $reg &0(UNIT)))) (begin
-		[munmap $reg [- ($(loc $reg &3(UNIT))) $reg]]
+	(let (next-reg ($(loc $reg &0(unit)))) (begin
+		[munmap $reg [- ($(loc $reg &3(unit))) $reg]]
 		[set reg $next-reg]))
 	$reg))
 
@@ -157,13 +157,13 @@
 		[strcpy $dest $src]
 		{return $dest}))))
 
-[write-str (STDOUT) [strrchr (" Hello.Bye.Okay) (char .)]]
+[write-str (stdout) [strrchr (" Hello.Bye.Okay) (char .)]]
 
-[write-str (STDOUT) [strrchr (" Hello.Bye.Okay) (char .)]]
+[write-str (stdout) [strrchr (" Hello.Bye.Okay) (char .)]]
 
-[write-uint (STDOUT) [strcmp (" HelloB) (" Hello)]]
+[write-uint (stdout) [strcmp (" HelloB) (" Hello)]]
 
 (let (r [create-region &0]) (let (a [region-alloc $r &20]) (begin
-	[write-str (STDOUT) [rstrcpy (" HeyYa) $r]]
+	[write-str (stdout) [rstrcpy (" HeyYa) $r]]
 	[memset $a &0 &6]
-	[write-str (STDOUT) $a])))
+	[write-str (stdout) $a])))
