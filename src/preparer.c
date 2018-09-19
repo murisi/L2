@@ -281,8 +281,8 @@ struct compilation {
 };
 
 struct expansion_context {
-	list *ext_binds;
-	list *comps;
+	list ext_binds;
+	list comps;
 	region rt_reg;
 	jumpbuf *handler;
 };
@@ -292,7 +292,7 @@ union expression *build_syntax_tree(list d, region reg, jumpbuf *handler);
 
 void *np_expansion(list (*expander)(list, region), list argument, struct expansion_context *ectx, list st_binds, list dyn_ref_names, list indirections) {
 	struct compilation *pc;
-	{foreach(pc, *ectx->comps) {
+	{foreach(pc, ectx->comps) {
 		if(argument == pc->argument) {
 			return pc->macro;
 		}
@@ -323,14 +323,14 @@ void *np_expansion(list (*expander)(list, region), list argument, struct expansi
 	put(func, function.expression, make_jump1(make_invoke1(make_literal((unsigned long) _get_, ct_reg),
 		use_reference(host_cont_param, ct_reg), ct_reg), cont, ct_reg));
 	Object *obj = load_expressions(make_program(lst(func, nil(ct_reg), ct_reg), ct_reg), ectx, st_binds, ct_reg);
-	mutate_symbols(obj, *ectx->ext_binds);
+	mutate_symbols(obj, ectx->ext_binds);
 	mutate_symbols(obj, st_binds);
 	
 	pc = region_alloc(ectx->rt_reg, sizeof(struct compilation));
 	pc->argument = argument;
 	//There is only one immutable symbol: our annonymous function
 	pc->macro = ((Symbol *) immutable_symbols(obj, ct_reg)->fst)->address;
-	prepend(pc, ectx->comps, ectx->rt_reg);
+	prepend(pc, &ectx->comps, ectx->rt_reg);
 	destroy_region(ct_reg);
 	return pc->macro;
 }
