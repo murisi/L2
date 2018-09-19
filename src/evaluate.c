@@ -83,10 +83,9 @@ Object *load_expressions(union expression *program, struct expansion_context *ec
 
 void evaluate_files(int srcc, char *srcv[], list bindings, jumpbuf *handler) {
 	region syntax_tree_region = create_region(0);
-	list objects = nil(syntax_tree_region), comps = nil(syntax_tree_region);
+	list objects = nil(syntax_tree_region);
 	struct expansion_context *ectx = region_alloc(syntax_tree_region, sizeof(struct expansion_context));
-	ectx->ext_binds = bindings;
-	ectx->comps = comps;
+	ectx->comps = nil(syntax_tree_region);
 	ectx->rt_reg = syntax_tree_region;
 	ectx->handler = handler;
 	
@@ -122,6 +121,7 @@ void evaluate_files(int srcc, char *srcv[], list bindings, jumpbuf *handler) {
 			append_list(&bindings, immutable_symbols(obj, syntax_tree_region));
 		}
 	}
+	ectx->ext_binds = bindings;
 	
 	Object *obj;
 	{foreach(obj, objects) {

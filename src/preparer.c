@@ -529,6 +529,7 @@ void generate_np_expressions(union expression **s, region ct_reg, struct expansi
 			put(cont, continuation.expression, make_jump1(use_reference(wth->with.reference, ct_reg),
 				parent_function->function.expression, ct_reg));
 			put(parent_function, function.expression, wth);
+			break;
 		}
 	}
 }
