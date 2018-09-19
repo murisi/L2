@@ -26,16 +26,15 @@ typedef unsigned long int bool;
 Object *load_expressions(union expression *program, list *ext_binds, list st_binds, list *comps, region manreg, region rt_reg, jumpbuf *handler) {
 	visit_expressions(vstore_external_bindings, &program, ext_binds);
 	store_static_bindings(&program->function.expression, true, st_binds, rt_reg);
-	store_dynamic_refnames(&program->function.expression, true, nil(rt_reg), manreg);
+	store_dynamic_refs(&program->function.expression, true, nil(rt_reg), manreg);
 	union expression **t;
 	{foreachaddress(t, program->function.expression->begin.expressions) {
 		if((*t)->base.type == function) {
-			generate_np_expressions(t, true, comps, manreg, rt_reg, handler);
+			generate_np_expressions(t, comps, manreg, rt_reg, handler);
 		} else {
 			union expression *container = make_function(manreg);
 			put(container, function.expression, *t);
-			generate_np_expressions(&container->function.expression, true, comps, manreg, rt_reg,
-				handler);
+			generate_np_expressions(&container->function.expression, comps, manreg, rt_reg, handler);
 			*t = container->function.expression;
 			(*t)->base.parent = program->function.expression;
 		}

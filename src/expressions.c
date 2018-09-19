@@ -134,7 +134,7 @@ struct np_expression {
 	list indirections;
 	list *ext_binds;
 	list st_binds;
-	list dyn_ref_names;
+	list dyn_refs;
 };
 
 union expression {
