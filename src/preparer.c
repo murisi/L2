@@ -355,7 +355,7 @@ union expression *vstore_external_bindings(union expression *s, void *ext_binds)
 	return s;
 }
 
-void generate_np_expressions(union expression **s, bool is_static, list st_binds, list dyn_refs, list *comps, region ct_reg, region rt_reg, jumpbuf *handler) {
+void store_static_bindings(union expression **s, bool is_static, list st_binds, region rt_reg) {
 	switch((*s)->base.type) {
 		case begin: {
 			union expression *expr;
@@ -366,29 +366,22 @@ void generate_np_expressions(union expression **s, bool is_static, list st_binds
 			}}
 			union expression **exprr;
 			{foreachaddress(exprr, (*s)->begin.expressions) {
-				generate_np_expressions(exprr, is_static, st_binds, dyn_refs, comps, ct_reg, rt_reg, handler);
+				store_static_bindings(exprr, is_static, st_binds, rt_reg);
 			}}
 			break;
 		} case with: {
 			if(is_static) {
 				prepend_binding((*s)->with.reference, &st_binds, rt_reg);
-			} else {
-				cond_prepend_ref((*s)->with.reference, &dyn_refs, ct_reg);
 			}
-			generate_np_expressions(&(*s)->with.expression,is_static, st_binds, dyn_refs, comps, ct_reg, rt_reg, handler);
+			store_static_bindings(&(*s)->with.expression, is_static, st_binds, rt_reg);
 			break;
 		} case _if: {
-			generate_np_expressions(&(*s)->_if.condition, is_static, st_binds, dyn_refs, comps, ct_reg, rt_reg, handler);
-			generate_np_expressions(&(*s)->_if.consequent, is_static, st_binds, dyn_refs, comps, ct_reg, rt_reg, handler);
-			generate_np_expressions(&(*s)->_if.alternate, is_static, st_binds, dyn_refs, comps, ct_reg, rt_reg, handler);
+			store_static_bindings(&(*s)->_if.condition, is_static, st_binds, rt_reg);
+			store_static_bindings(&(*s)->_if.consequent, is_static, st_binds, rt_reg);
+			store_static_bindings(&(*s)->_if.alternate, is_static, st_binds, rt_reg);
 			break;
 		} case function: {
-			dyn_refs = nil(ct_reg);
-			union expression *param;
-			{foreach(param, (*s)->function.parameters) {
-				cond_prepend_ref(param, &dyn_refs, ct_reg);
-			}}
-			generate_np_expressions(&(*s)->function.expression, false, st_binds, dyn_refs, comps, ct_reg, rt_reg, handler);
+			store_static_bindings(&(*s)->function.expression, false, st_binds, rt_reg);
 			break;
 		} case continuation: {
 			if(is_static) {
@@ -397,24 +390,69 @@ void generate_np_expressions(union expression **s, bool is_static, list st_binds
 				{foreach(param, (*s)->continuation.parameters) {
 					prepend_binding(param, &st_binds, rt_reg);
 				}}
-			} else {
+			}
+			store_static_bindings(&(*s)->continuation.expression, is_static, st_binds, rt_reg);
+			break;
+		} case invoke: case jump: {
+			store_static_bindings(&(*s)->invoke.reference, is_static, st_binds, rt_reg);
+			union expression **arg;
+			{foreachaddress(arg, (*s)->invoke.arguments) {
+				store_static_bindings(arg, is_static, st_binds, rt_reg);
+			}}
+			break;
+		} case non_primitive: {
+			store_static_bindings(&(*s)->non_primitive.reference, is_static, st_binds, rt_reg);
+			(*s)->non_primitive.st_binds = st_binds;
+		}
+	}
+}
+
+void generate_np_expressions(union expression **s, bool is_static, list dyn_refs, list *comps, region ct_reg, region rt_reg, jumpbuf *handler) {
+	switch((*s)->base.type) {
+		case begin: {
+			union expression **exprr;
+			{foreachaddress(exprr, (*s)->begin.expressions) {
+				generate_np_expressions(exprr, is_static, dyn_refs, comps, ct_reg, rt_reg, handler);
+			}}
+			break;
+		} case with: {
+			if(!is_static) {
+				cond_prepend_ref((*s)->with.reference, &dyn_refs, ct_reg);
+			}
+			generate_np_expressions(&(*s)->with.expression, is_static, dyn_refs, comps, ct_reg, rt_reg, handler);
+			break;
+		} case _if: {
+			generate_np_expressions(&(*s)->_if.condition, is_static, dyn_refs, comps, ct_reg, rt_reg, handler);
+			generate_np_expressions(&(*s)->_if.consequent, is_static, dyn_refs, comps, ct_reg, rt_reg, handler);
+			generate_np_expressions(&(*s)->_if.alternate, is_static, dyn_refs, comps, ct_reg, rt_reg, handler);
+			break;
+		} case function: {
+			dyn_refs = nil(ct_reg);
+			union expression *param;
+			{foreach(param, (*s)->function.parameters) {
+				cond_prepend_ref(param, &dyn_refs, ct_reg);
+			}}
+			generate_np_expressions(&(*s)->function.expression, false, dyn_refs, comps, ct_reg, rt_reg, handler);
+			break;
+		} case continuation: {
+			if(!is_static) {
 				cond_prepend_ref((*s)->continuation.reference, &dyn_refs, ct_reg);
 				union expression *param;
 				{foreach(param, (*s)->continuation.parameters) {
 					cond_prepend_ref(param, &dyn_refs, ct_reg);
 				}}
 			}
-			generate_np_expressions(&(*s)->continuation.expression, is_static, st_binds, dyn_refs, comps, ct_reg, rt_reg, handler);
+			generate_np_expressions(&(*s)->continuation.expression, is_static, dyn_refs, comps, ct_reg, rt_reg, handler);
 			break;
 		} case invoke: case jump: {
-			generate_np_expressions(&(*s)->invoke.reference, is_static, st_binds, dyn_refs, comps, ct_reg, rt_reg, handler);
+			generate_np_expressions(&(*s)->invoke.reference, is_static, dyn_refs, comps, ct_reg, rt_reg, handler);
 			union expression **arg;
 			{foreachaddress(arg, (*s)->invoke.arguments) {
-				generate_np_expressions(arg, is_static, st_binds, dyn_refs, comps, ct_reg, rt_reg, handler);
+				generate_np_expressions(arg, is_static, dyn_refs, comps, ct_reg, rt_reg, handler);
 			}}
 			break;
 		} case non_primitive: {
-			generate_np_expressions(&(*s)->non_primitive.reference, is_static, st_binds, dyn_refs, comps, ct_reg, rt_reg, handler);
+			generate_np_expressions(&(*s)->non_primitive.reference, is_static, dyn_refs, comps, ct_reg, rt_reg, handler);
 			
 			dyn_refs = reverse(dyn_refs, ct_reg);
 			list *dyn_refs_suffix, param_names_rt = nil(rt_reg), args_ct = nil(ct_reg);
@@ -430,7 +468,8 @@ void generate_np_expressions(union expression **s, bool is_static, list st_binds
 			put(wth, with.expression, make_invoke1(make_invoke9(make_literal((unsigned long) np_expansion, ct_reg),
 				(*s)->non_primitive.reference, make_literal((unsigned long) copy_sexpr_list((*s)->non_primitive.argument, rt_reg),
 				ct_reg), make_literal((unsigned long) (*s)->non_primitive.ext_binds, ct_reg),
-				make_literal((unsigned long) st_binds, ct_reg), make_literal((unsigned long) param_names_rt, ct_reg),
+				make_literal((unsigned long) (*s)->non_primitive.st_binds, ct_reg),
+				make_literal((unsigned long) param_names_rt, ct_reg),
 				make_literal((unsigned long) map((*s)->non_primitive.indirections, rt_reg, (void *(*)(void *, void *)) rstrcpy,
 					rt_reg), ct_reg), make_literal((unsigned long) comps, ct_reg), make_literal((unsigned long) rt_reg, ct_reg),
 				make_literal((unsigned long) handler, ct_reg), ct_reg), cont, ct_reg));
