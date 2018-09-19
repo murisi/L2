@@ -23,25 +23,24 @@ typedef unsigned long int bool;
  * executable that it is embedded in.
  */
 
-Object *load_expressions(union expression *program, list *ext_binds, list st_binds, list *comps, region manreg, region rt_reg, jumpbuf *handler) {
-	visit_expressions(vstore_external_bindings, &program, ext_binds);
-	store_static_bindings(&program->function.expression, true, st_binds, rt_reg);
-	store_dynamic_refs(&program->function.expression, true, nil(rt_reg), manreg);
+Object *load_expressions(union expression *program, struct expansion_context *ectx, list st_binds, region manreg) {
+	store_static_bindings(&program->function.expression, true, st_binds, ectx->rt_reg);
+	store_dynamic_refs(&program->function.expression, true, nil(ectx->rt_reg), manreg);
 	union expression **t;
 	{foreachaddress(t, program->function.expression->begin.expressions) {
 		if((*t)->base.type == function) {
-			generate_np_expressions(t, comps, manreg, rt_reg, handler);
+			generate_np_expressions(t, manreg, ectx);
 		} else {
 			union expression *container = make_function(manreg);
 			put(container, function.expression, *t);
-			generate_np_expressions(&container->function.expression, comps, manreg, rt_reg, handler);
+			generate_np_expressions(&container->function.expression, manreg, ectx);
 			*t = container->function.expression;
 			(*t)->base.parent = program->function.expression;
 		}
 	}}
 	
-	visit_expressions(vfind_multiple_definitions, &program, handler);
-	visit_expressions(vlink_references, &program, (void* []) {handler, manreg});
+	visit_expressions(vfind_multiple_definitions, &program, ectx->handler);
+	visit_expressions(vlink_references, &program, (void* []) {ectx->handler, manreg});
 	visit_expressions(vescape_analysis, &program, NULL);
 	program = use_return_value(program, make_reference(manreg), manreg);
 	visit_expressions(vlayout_frames, &program, manreg);
@@ -57,7 +56,7 @@ Object *load_expressions(union expression *program, list *ext_binds, list st_bin
 	visit_expressions(vmerge_begins, &program, (void* []) {&asms, manreg});
 	unsigned char *objdest; int objdest_sz;
 	write_elf(reverse(asms, manreg), locals, globals, &objdest, &objdest_sz, manreg);
-	Object *obj = load(objdest, objdest_sz, rt_reg, handler);
+	Object *obj = load(objdest, objdest_sz, ectx->rt_reg, ectx->handler);
 	union expression *l;
 	{foreach(l, locals) {
 		if(l->reference.symbol) {
@@ -85,6 +84,11 @@ Object *load_expressions(union expression *program, list *ext_binds, list st_bin
 void evaluate_files(int srcc, char *srcv[], list bindings, jumpbuf *handler) {
 	region syntax_tree_region = create_region(0);
 	list objects = nil(syntax_tree_region), comps = nil(syntax_tree_region);
+	struct expansion_context *ectx = region_alloc(syntax_tree_region, sizeof(struct expansion_context));
+	ectx->ext_binds = &bindings;
+	ectx->comps = &comps;
+	ectx->rt_reg = syntax_tree_region;
+	ectx->handler = handler;
 	
 	int i;
 	for(i = 0; i < srcc; i++) {
@@ -103,7 +107,7 @@ void evaluate_files(int srcc, char *srcv[], list bindings, jumpbuf *handler) {
 				list sexpr = build_expr_list(src_buf, src_sz, &pos, syntax_tree_region);
 				append(build_syntax_tree(sexpr, syntax_tree_region, handler), &expressions, syntax_tree_region);
 			}
-			Object *obj = load_expressions(make_program(expressions, syntax_tree_region), &bindings, nil(syntax_tree_region), &comps, syntax_tree_region, syntax_tree_region, handler);
+			Object *obj = load_expressions(make_program(expressions, syntax_tree_region), ectx, nil(syntax_tree_region), syntax_tree_region);
 			append(obj, &objects, syntax_tree_region);
 			append_list(&bindings, immutable_symbols(obj, syntax_tree_region));
 		} else if(dot && !strcmp(dot, ".o")) {

@@ -275,17 +275,24 @@ union expression *vmerge_begins(union expression *n, void *ctx) {
 	return n;
 }
 
-Object *load_expressions(union expression *program, list *ext_binds, list st_binds, list *comps, region ct_reg, region rt_reg, jumpbuf *handler);
-union expression *build_syntax_tree(list d, region reg, jumpbuf *handler);
-
 struct compilation {
 	list argument;
 	void *macro;
 };
 
-void *np_expansion(list (*expander)(list, region), list argument, list *ext_binds, list st_binds, list dyn_ref_names, list indirections, list *compilations, region rt_reg, jumpbuf *handler) {
+struct expansion_context {
+	list *ext_binds;
+	list *comps;
+	region rt_reg;
+	jumpbuf *handler;
+};
+
+Object *load_expressions(union expression *program, struct expansion_context *ectx, list st_binds, region ct_reg);
+union expression *build_syntax_tree(list d, region reg, jumpbuf *handler);
+
+void *np_expansion(list (*expander)(list, region), list argument, struct expansion_context *ectx, list st_binds, list dyn_ref_names, list indirections) {
 	struct compilation *pc;
-	{foreach(pc, *compilations) {
+	{foreach(pc, *ectx->comps) {
 		if(argument == pc->argument) {
 			return pc->macro;
 		}
@@ -306,7 +313,7 @@ void *np_expansion(list (*expander)(list, region), list argument, list *ext_bind
 	prepend(guest_cont_param, &cont->continuation.parameters, ct_reg);
 	guest_cont_param->reference.parent = cont;
 	put(cont, continuation.expression, make_jump1(make_invoke1(make_literal((unsigned long) _get_, ct_reg),
-		use_reference(guest_cont_param, ct_reg), ct_reg), build_syntax_tree(expander(argument, ct_reg), ct_reg, handler), ct_reg));
+		use_reference(guest_cont_param, ct_reg), ct_reg), build_syntax_tree(expander(argument, ct_reg), ct_reg, ectx->handler), ct_reg));
 	{foreach(ref_name, dyn_ref_names) {
 		put(cont, continuation.expression, insert_indirections(cont->continuation.expression, ref_name, ct_reg));
 	}}
@@ -315,15 +322,15 @@ void *np_expansion(list (*expander)(list, region), list argument, list *ext_bind
 	}}
 	put(func, function.expression, make_jump1(make_invoke1(make_literal((unsigned long) _get_, ct_reg),
 		use_reference(host_cont_param, ct_reg), ct_reg), cont, ct_reg));
-	Object *obj = load_expressions(make_program(lst(func, nil(ct_reg), ct_reg), ct_reg), ext_binds, st_binds, compilations, ct_reg, rt_reg, handler);
-	mutate_symbols(obj, *ext_binds);
+	Object *obj = load_expressions(make_program(lst(func, nil(ct_reg), ct_reg), ct_reg), ectx, st_binds, ct_reg);
+	mutate_symbols(obj, *ectx->ext_binds);
 	mutate_symbols(obj, st_binds);
 	
-	pc = region_alloc(rt_reg, sizeof(struct compilation));
+	pc = region_alloc(ectx->rt_reg, sizeof(struct compilation));
 	pc->argument = argument;
 	//There is only one immutable symbol: our annonymous function
 	pc->macro = ((Symbol *) immutable_symbols(obj, ct_reg)->fst)->address;
-	prepend(pc, compilations, rt_reg);
+	prepend(pc, ectx->comps, ectx->rt_reg);
 	destroy_region(ct_reg);
 	return pc->macro;
 }
@@ -346,20 +353,6 @@ void cond_prepend_ref(union expression *ref, list *refs, region rt_reg) {
 	if(ref->reference.name) {
 		prepend(ref, refs, rt_reg);
 	}
-}
-
-struct expansion_context {
-	list *ext_binds;
-	list *comps;
-	region rt_reg;
-	jumpbuf *handler;
-};
-
-union expression *vstore_external_bindings(union expression *s, void *ext_binds) {
-	if(s->base.type == non_primitive) {
-		s->non_primitive.ext_binds = ext_binds;
-	}
-	return s;
 }
 
 void store_static_bindings(union expression **s, bool is_static, list st_binds, region rt_reg) {
@@ -475,54 +468,53 @@ void store_dynamic_refs(union expression **s, bool is_static, list dyn_refs, reg
 	}
 }
 
-void generate_np_expressions(union expression **s, list *comps, region ct_reg, region rt_reg, jumpbuf *handler) {
+void generate_np_expressions(union expression **s, region ct_reg, struct expansion_context *ectx) {
 	switch((*s)->base.type) {
 		case begin: {
 			union expression **exprr;
 			{foreachaddress(exprr, (*s)->begin.expressions) {
-				generate_np_expressions(exprr, comps, ct_reg, rt_reg, handler);
+				generate_np_expressions(exprr, ct_reg, ectx);
 			}}
 			break;
 		} case with: {
-			generate_np_expressions(&(*s)->with.expression, comps, ct_reg, rt_reg, handler);
+			generate_np_expressions(&(*s)->with.expression, ct_reg, ectx);
 			break;
 		} case _if: {
-			generate_np_expressions(&(*s)->_if.condition, comps, ct_reg, rt_reg, handler);
-			generate_np_expressions(&(*s)->_if.consequent, comps, ct_reg, rt_reg, handler);
-			generate_np_expressions(&(*s)->_if.alternate, comps, ct_reg, rt_reg, handler);
+			generate_np_expressions(&(*s)->_if.condition, ct_reg, ectx);
+			generate_np_expressions(&(*s)->_if.consequent, ct_reg, ectx);
+			generate_np_expressions(&(*s)->_if.alternate, ct_reg, ectx);
 			break;
 		} case function: {
-			generate_np_expressions(&(*s)->function.expression, comps, ct_reg, rt_reg, handler);
+			generate_np_expressions(&(*s)->function.expression, ct_reg, ectx);
 			break;
 		} case continuation: {
-			generate_np_expressions(&(*s)->continuation.expression, comps, ct_reg, rt_reg, handler);
+			generate_np_expressions(&(*s)->continuation.expression, ct_reg, ectx);
 			break;
 		} case invoke: case jump: {
-			generate_np_expressions(&(*s)->invoke.reference, comps, ct_reg, rt_reg, handler);
+			generate_np_expressions(&(*s)->invoke.reference, ct_reg, ectx);
 			union expression **arg;
 			{foreachaddress(arg, (*s)->invoke.arguments) {
-				generate_np_expressions(arg, comps, ct_reg, rt_reg, handler);
+				generate_np_expressions(arg, ct_reg, ectx);
 			}}
 			break;
 		} case non_primitive: {
-			generate_np_expressions(&(*s)->non_primitive.reference, comps, ct_reg, rt_reg, handler);
+			generate_np_expressions(&(*s)->non_primitive.reference, ct_reg, ectx);
 			
-			list param_names_rt = nil(rt_reg), args_ct = nil(ct_reg);
+			list param_names_rt = nil(ectx->rt_reg), args_ct = nil(ct_reg);
 			union expression *dyn_ref;
 			{foreach(dyn_ref, (*s)->non_primitive.dyn_refs) {
-				prepend(rstrcpy(dyn_ref->reference.name, rt_reg), &param_names_rt, rt_reg);
+				prepend(rstrcpy(dyn_ref->reference.name, ectx->rt_reg), &param_names_rt, ectx->rt_reg);
 				prepend(use_reference(dyn_ref, ct_reg), &args_ct, ct_reg);
 			}}
 			
 			union expression *wth = make_with(ct_reg), *cont = make_continuation(ct_reg), *param = make_reference(ct_reg);
-			put(wth, with.expression, make_invoke1(make_invoke9(make_literal((unsigned long) np_expansion, ct_reg),
-				(*s)->non_primitive.reference, make_literal((unsigned long) copy_sexpr_list((*s)->non_primitive.argument, rt_reg),
-				ct_reg), make_literal((unsigned long) (*s)->non_primitive.ext_binds, ct_reg),
+			put(wth, with.expression, make_invoke1(make_invoke6(make_literal((unsigned long) np_expansion, ct_reg),
+				(*s)->non_primitive.reference, make_literal((unsigned long) copy_sexpr_list((*s)->non_primitive.argument,
+				ectx->rt_reg), ct_reg), make_literal((unsigned long) ectx, ct_reg),
 				make_literal((unsigned long) (*s)->non_primitive.st_binds, ct_reg),
 				make_literal((unsigned long) param_names_rt, ct_reg),
-				make_literal((unsigned long) map((*s)->non_primitive.indirections, rt_reg, (void *(*)(void *, void *)) rstrcpy,
-					rt_reg), ct_reg), make_literal((unsigned long) comps, ct_reg), make_literal((unsigned long) rt_reg, ct_reg),
-				make_literal((unsigned long) handler, ct_reg), ct_reg), cont, ct_reg));
+				make_literal((unsigned long) map((*s)->non_primitive.indirections, ectx->rt_reg, (void *(*)(void *, void *)) rstrcpy,
+					ectx->rt_reg), ct_reg), ct_reg), cont, ct_reg));
 			prepend(param, &cont->continuation.parameters, ct_reg);
 			param->reference.parent = cont;
 			
