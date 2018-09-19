@@ -132,6 +132,9 @@ struct np_expression {
 	union expression *reference;
 	list argument;
 	list indirections;
+	list *ext_binds;
+	list st_binds;
+	list dyn_ref_names;
 };
 
 union expression {
