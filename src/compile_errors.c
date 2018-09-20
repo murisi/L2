@@ -4,6 +4,7 @@
 #define MULTIPLE_DEFINITION 4
 #define OBJECT 5
 #define MISSING_FILE 6
+#define UNDEFINED_REFERENCE 7
 
 struct param_count_mismatch_error {
 	int type;
@@ -37,6 +38,11 @@ struct missing_file_error {
 	char *path;
 };
 
+struct undefined_reference_error {
+	int type;
+	char *reference_value;
+};
+
 union compile_error {
 	struct param_count_mismatch_error param_count_mismatch;
 	struct special_form_error special_form;
@@ -44,6 +50,7 @@ union compile_error {
 	struct multiple_definition_error multiple_definition;
 	struct object_error object;
 	struct missing_file_error missing_file;
+	struct undefined_reference_error undefined_reference;
 };
 
 void throw_param_count_mismatch(union expression *src_expression, union expression *dest_expression, jumpbuf *jb) {
@@ -91,6 +98,14 @@ void throw_missing_file(char *path, jumpbuf *jb) {
 	struct missing_file_error *err = region_alloc(jb->ctx, sizeof(struct missing_file_error));
 	err->type = MISSING_FILE;
 	err->path = path;
+	jb->ctx = err;
+	longjump(jb);
+}
+
+void throw_undefined_reference(char *reference_value, jumpbuf *jb) {
+	struct undefined_reference_error *err = region_alloc(jb->ctx, sizeof(struct undefined_reference_error));
+	err->type = UNDEFINED_REFERENCE;
+	err->reference_value = reference_value;
 	jb->ctx = err;
 	longjump(jb);
 }

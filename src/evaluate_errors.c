@@ -1,4 +1,4 @@
-#define ARGUMENTS 7
+#define ARGUMENTS 8
 
 struct arguments_error {
 	int type;
@@ -12,6 +12,7 @@ union evaluate_error {
 	struct unexpected_character_error unexpected_character;
 	struct multiple_definition_error multiple_definition;
 	struct object_error object;
+	struct undefined_reference_error undefined_reference;
 };
 
 void throw_arguments(jumpbuf *jb) {

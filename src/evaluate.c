@@ -316,6 +316,11 @@ int main(int argc, char *argv[]) {
 					"Outcome: Compiles each L2 file into an object file, links all the object files\n"
 					"together, and then executes each object file in the order they were specified.\n");
 				break;
+			} case UNDEFINED_REFERENCE: {
+				write_str(STDOUT, "Undefined reference: ");
+				write_str(STDOUT, err->undefined_reference.reference_value);
+				write_str(STDOUT, ".\n");
+				break;
 			}
 		}
 		return err->arguments.type;
