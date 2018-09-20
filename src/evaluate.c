@@ -88,6 +88,7 @@ void evaluate_files(int srcc, char *srcv[], list bindings, jumpbuf *handler) {
 	ectx->comps = nil(syntax_tree_region);
 	ectx->rt_reg = syntax_tree_region;
 	ectx->handler = handler;
+	ectx->ext_binds = bindings;
 	
 	int i;
 	for(i = 0; i < srcc; i++) {
@@ -108,7 +109,7 @@ void evaluate_files(int srcc, char *srcv[], list bindings, jumpbuf *handler) {
 			}
 			Object *obj = load_expressions(make_program(expressions, syntax_tree_region), ectx, nil(syntax_tree_region), syntax_tree_region);
 			append(obj, &objects, syntax_tree_region);
-			append_list(&bindings, immutable_symbols(obj, syntax_tree_region));
+			append_list(&ectx->ext_binds, immutable_symbols(obj, syntax_tree_region));
 		} else if(dot && !strcmp(dot, ".o")) {
 			int obj_fd = open(srcv[i]);
 			long int obj_sz = size(obj_fd);
@@ -118,14 +119,13 @@ void evaluate_files(int srcc, char *srcv[], list bindings, jumpbuf *handler) {
 			
 			Object *obj = load(obj_buf, obj_sz, syntax_tree_region, handler);
 			append(obj, &objects, syntax_tree_region);
-			append_list(&bindings, immutable_symbols(obj, syntax_tree_region));
+			append_list(&ectx->ext_binds, immutable_symbols(obj, syntax_tree_region));
 		}
 	}
-	ectx->ext_binds = bindings;
 	
 	Object *obj;
 	{foreach(obj, objects) {
-		mutate_symbols(obj, bindings);
+		mutate_symbols(obj, ectx->ext_binds);
 	}}
 	{foreach(obj, objects) {
 		((void (*)()) segment(obj, ".text"))();
