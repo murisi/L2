@@ -1,19 +1,19 @@
 (function meta:zip (a b r) (with return
 	{(continuation aux (output a b)
-		(if [not [emt? $a]]
+		(if (lnot [emt? $a])
 			{aux [lst [llst [fst $a] [fst $b] [emt $r] $r] $output $r] [rst $a] [rst $b]}
 			{return [meta:reverse $output $r]})) [emt $r] $a $b}))
 
 (function foreach (s r)
 	(let (bindings [meta:reverse [rst [meta:reverse $s $r]] $r]) (body [fst [meta:reverse $s $r]])
 			(labels (with return {(continuation aux (index-refs ref input-pairs)
-				(if [not [emt? $input-pairs]]
+				(if (lnot [emt? $input-pairs])
 					{aux [lst $ref $index-refs $r]
 						[meta:reverse [lst [-1- $r][meta:reverse $ref $r]$r]$r]
 						[rst $input-pairs]}
 					{return [meta:reverse $index-refs $r]})) [emt $r] (` foreach:v $r) [rst [meta:reverse $s $r]]}))
 		[lst (` let $r) [meta:reverse [lst
-			(`(while [not [emt? $foreach:v]] (,[llst (` begin $r)
+			(`(while (lnot [emt? $foreach:v]) (,[llst (` begin $r)
 				[lst (` let $r) [meta:reverse [lst $body [meta:map [meta:zip [meta:map $bindings (null) fst $r] $labels $r]
 						$r (function make-binding (a r) (`((,[fst $a]) [get-car ($(,[frst $a]))])$r))$r]$r]$r]$r]
 				[meta:map $labels $r (function make-update (a r) (`[set ,$a [get-cdr $,$a]]$r))$r]$r]))$r)
@@ -22,7 +22,7 @@
 (function foreach* (s r)
 	(let (bindings [meta:reverse [rst [meta:reverse $s $r]]$r]) (body [fst [meta:reverse $s $r]])
 		[lst (` let $r) [meta:reverse [lst
-			(`(while [not [emt? ($($(,[ffst $bindings])))]] (,[llst (` begin $r) $body
+			(`(while (lnot [emt? ($($(,[ffst $bindings])))]) (,[llst (` begin $r) $body
 				[meta:map $bindings $r (function make-update (a r)
 					(`[set (,[fst $a]) [cdr ($($(,[fst $a])))]]$r))$r]$r]))$r)
 			$bindings $r]$r]$r]))
@@ -71,7 +71,7 @@
 	(if [= [get-cdr $l] (null)] (true) (false)))
 
 (function append (data l r) (with return (begin
-	(while [not [nil? $$l]] [set l [cdr $$l]])
+	(while (lnot [nil? $$l]) [set l [cdr $$l]])
 	[set $l [region-alloc $r (list-struct)]]
 	[set-car $$l $data]
 	[set-cdr $$l [nil $r]]
@@ -84,7 +84,7 @@
 		{return $l}))))
 
 (function append-list (fst-ref snd) (begin
-	(while [not [nil? $$fst-ref]]
+	(while (lnot [nil? $$fst-ref])
 		[set fst-ref [cdr $$fst-ref]])
 	[set $fst-ref $snd]))
 
@@ -96,7 +96,7 @@
 
 (function length (l) (with return
 	{(continuation loop (l size)
-		(if [not [nil? $l]]
+		(if (lnot [nil? $l])
 			{loop [get-cdr $l] [+ &1 $size]}
 			{return $size})) $l &0}))
 

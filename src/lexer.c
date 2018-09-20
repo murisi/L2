@@ -70,7 +70,6 @@ list build_sigil(char *sigil, char *l2src, int l2src_sz, int *pos, region r) {
 }
 
 list build_list(char *primitive, char delimiter, char *l2src, int l2src_sz, int *pos, region r) {
-	char c;
 	list sexprs = nil(r);
 	append(build_symbol_sexpr(primitive, r), &sexprs, r);
 	

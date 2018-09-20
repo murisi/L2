@@ -1,6 +1,22 @@
 (function false (l r) (` &0 $r))
 
-(function true (l r) (`[not &0]$r))
+(function true (l r) (` &1 $r))
+
+(function lor (l r) (with return
+	{(continuation loop (l sexpr)
+			(if [nil? $l]
+				{return $sexpr}
+				{loop [rst $l] (`(let (lor:temp (,[fst $l])) (if $lor:temp $sor:temp (, $sexpr $r)))$r)}))
+		[meta:reverse $l $r] (`(false)$r)}))
+
+(function land (l r) (with return
+	{(continuation loop (l sexpr)
+			(if [nil? $l]
+				{return $sexpr}
+				{loop [rst $l] (`(let (lor:temp (,[fst $l])) (if $lor:temp (, $sexpr $r) $sor:temp))$r)}))
+		[meta:reverse $l $r] (`(true)$r)}))
+
+(function lnot (l r) (`(if (,[fst $l]) &0 &1)$r))
 
 (function meta:reverse (l r)
 	(with return

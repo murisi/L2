@@ -1,0 +1,80 @@
+(function char-sexpr (s r)
+	(`(function () ()
+		[build-character-sexpr (char (,[fst $s]))])$r))
+
+(function symbol-sexpr (s r)
+	(`(function (,[fst $s]) (arg)
+		[lst [build-symbol-sexpr ("(,[fst $s]))] $arg])$r))
+
+(function character-struct (l r) (`[* &2(unit)]$r))
+
+(function list-flag (l) $l)
+
+(function get-list-flag (l) ($[list-flag $l]))
+
+(function set-list-flag (l v) [set [list-flag $l] $v])
+
+(function character (l) [+ $l (unit)])
+
+(function get-character (l) [getb [character $l]])
+
+(function set-character (l v) [setb [character $l] $v])
+
+(function sexpr-struct (l r) (`[* &2(unit)]$r))
+
+(++(function i/f:lst? (s) (if [get-list-flag $s] (true) (false))))
+
+(++(function char= (a b) (if [= [get-character $a] [get-character $b]] (true) (false))))
+
+(function build-character-sexpr (d r) (with return
+	(let (c [region-alloc $r (sexpr-struct)]) (begin
+		[set-list-flag $c (null)]
+		[set-character $c $d]
+		{return $c}))))
+
+(char-sexpr !) (char-sexpr ") (char-sexpr $) (char-sexpr %) (char-sexpr &) (char-sexpr ') (char-sexpr *) (char-sexpr +)
+(char-sexpr ,) (char-sexpr -) (char-sexpr .) (char-sexpr /) (char-sexpr 0) (char-sexpr 1) (char-sexpr 2) (char-sexpr 3)
+(char-sexpr 4) (char-sexpr 5) (char-sexpr 6) (char-sexpr 7) (char-sexpr 8) (char-sexpr 9) (char-sexpr :) (char-sexpr ;)
+(char-sexpr <) (char-sexpr =) (char-sexpr >) (char-sexpr ?) (char-sexpr A) (char-sexpr B) (char-sexpr C) (char-sexpr D)
+(char-sexpr E) (char-sexpr F) (char-sexpr G) (char-sexpr H) (char-sexpr I) (char-sexpr J) (char-sexpr K) (char-sexpr L)
+(char-sexpr M) (char-sexpr N) (char-sexpr O) (char-sexpr P) (char-sexpr Q) (char-sexpr R) (char-sexpr S) (char-sexpr T)
+(char-sexpr U) (char-sexpr V) (char-sexpr W) (char-sexpr X) (char-sexpr Y) (char-sexpr Z) (char-sexpr \) (char-sexpr ^)
+(char-sexpr _) (char-sexpr `) (char-sexpr a) (char-sexpr b) (char-sexpr c) (char-sexpr d) (char-sexpr e) (char-sexpr f)
+(char-sexpr g) (char-sexpr h) (char-sexpr i) (char-sexpr j) (char-sexpr k) (char-sexpr l) (char-sexpr m) (char-sexpr n)
+(char-sexpr o) (char-sexpr p) (char-sexpr q) (char-sexpr r) (char-sexpr s) (char-sexpr t) (char-sexpr u) (char-sexpr v)
+(char-sexpr w) (char-sexpr x) (char-sexpr y) (char-sexpr z) (char-sexpr |) (char-sexpr ~)
+
+(function build-symbol-sexpr (str r) (with return
+	(let (sexprs [nil $r]) (begin
+		(while [getb $str] (begin
+			[append [build-character-sexpr [getb $str] $r] sexprs $r]
+			[set str [+ $str &1]]))
+		{return $sexprs}))))
+
+(let (r [create-region &0])
+	[build-symbol-sexpr (" Hello) $r])
+
+(function after-leading-space (l2src l2src-sz pos) (with return
+	{(continuation loop ()
+		(if (land [< $$pos $l2src-sz] [isspace [getb[+ $l2src $$pos]]])
+			(begin [set $pos [+ $$pos &1]] {loop})
+			{return [- $l2src-sz $$pos]}))}))
+
+(function build-sigil (sigil l2src l2src-sz pos r) (with return (begin
+	(if [= $l2src-sz $$pos] {return [build-symbol-sexpr $sigil $r]} (begin))
+	(let (d [getb [+ $l2src $$pos]])
+		(if (vor [isspace $d] [= $d (rparen)] [= $d (rbrace)] [= $d (rbracket)] [= $d (lparen)] [= $d (lbrace)] [= $d (lbracket)])
+			{return [build-symbol-sexpr $sigil $r]}
+			(let (sexprs [nil $r]) (begin
+				[append [build-symbol-sexpr $sigil $r] sexprs $r]
+				[append [build-expr-list $l2src $l2src-sz $pos $r] sexprs $r]
+				{return $sexprs})))))))
+
+
+
+(++(function build-list (primitive delimeter l2src l2src-sz pos r) (with return
+	(let (sexprs [nil $r]) (begin
+		[append [build-symbol-sexpr $primitive $r] sexprs $r]
+		(while (true) (let (rem [after-leading-space $l2src $l2src-sz $pos]) )))))))
+
+[write-uint (stdout) (lnot &0)]
