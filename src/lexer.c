@@ -52,9 +52,9 @@ int after_leading_space(char *l2src, int l2src_sz, int *pos) {
 	return l2src_sz - *pos;
 }
 
-list build_expr_list(char *l2src, int l2src_sz, int *pos, region r);
+list build_expr_list(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler);
 
-list build_sigil(char *sigil, char *l2src, int l2src_sz, int *pos, region r) {
+list build_sigil(char *sigil, char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
 	if(l2src_sz == *pos) {
 		return build_symbol_sexpr(sigil, r);
 	}
@@ -64,12 +64,12 @@ list build_sigil(char *sigil, char *l2src, int l2src_sz, int *pos, region r) {
 	} else {
 		list sexprs = nil(r);
 		append(build_symbol_sexpr(sigil, r), &sexprs, r);
-		append(build_expr_list(l2src, l2src_sz, pos, r), &sexprs, r);
+		append(build_expr_list(l2src, l2src_sz, pos, r, handler), &sexprs, r);
 		return sexprs;
 	}
 }
 
-list build_list(char *primitive, char delimiter, char *l2src, int l2src_sz, int *pos, region r) {
+list build_list(char *primitive, char delimiter, char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
 	list sexprs = nil(r);
 	append(build_symbol_sexpr(primitive, r), &sexprs, r);
 	
@@ -79,36 +79,34 @@ list build_list(char *primitive, char delimiter, char *l2src, int l2src_sz, int 
 			(*pos) ++;
 			break;
 		}
-		append(build_expr_list(l2src, l2src_sz, pos, r), &sexprs, r);
+		append(build_expr_list(l2src, l2src_sz, pos, r, handler), &sexprs, r);
 	}
 	return sexprs;
 }
 
-jumpbuf *build_expr_list_handler;
-
-list build_expr_list(char *l2src, int l2src_sz, int *pos, region r) {
+list build_expr_list(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
 	if(l2src_sz == *pos) {
-		throw_unexpected_character(0, *pos, build_expr_list_handler);
+		throw_unexpected_character(0, *pos, handler);
 	}
 	char c = l2src[*pos];
 	if(isspace(c) || c == ')' || c == '}' || c == ']') {
-		throw_unexpected_character(c, *pos, build_expr_list_handler);
+		throw_unexpected_character(c, *pos, handler);
 	}
 	(*pos)++;
 	if(c == '(') {
-		return build_list("()", ')', l2src, l2src_sz, pos, r)->rst;
+		return build_list("()", ')', l2src, l2src_sz, pos, r, handler)->rst;
 	} else if(c == '{') {
-		return build_list("jump", '}', l2src, l2src_sz, pos, r);
+		return build_list("jump", '}', l2src, l2src_sz, pos, r, handler);
 	} else if(c == '[') {
-		return build_list("invoke", ']', l2src, l2src_sz, pos, r);
+		return build_list("invoke", ']', l2src, l2src_sz, pos, r, handler);
 	} else if(c == '$') {
-		return build_sigil("$", l2src, l2src_sz, pos, r);
+		return build_sigil("$", l2src, l2src_sz, pos, r, handler);
 	} else if(c == '&') {
-		return build_sigil("&", l2src, l2src_sz, pos, r);
+		return build_sigil("&", l2src, l2src_sz, pos, r, handler);
 	} else if(c == ',') {
-		return build_sigil(",", l2src, l2src_sz, pos, r);
+		return build_sigil(",", l2src, l2src_sz, pos, r, handler);
 	} else if(c == '`') {
-		return build_sigil("`", l2src, l2src_sz, pos, r);
+		return build_sigil("`", l2src, l2src_sz, pos, r, handler);
 	} else {
 		list l = nil(r);
 		do {

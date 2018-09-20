@@ -51,9 +51,6 @@
 			[set str [+ $str &1]]))
 		{return $sexprs}))))
 
-(let (r [create-region &0])
-	[build-symbol-sexpr (" Hello) $r])
-
 (function after-leading-space (l2src l2src-sz pos) (with return
 	{(continuation loop ()
 		(if (land [< $$pos $l2src-sz] [isspace [getb[+ $l2src $$pos]]])
@@ -63,18 +60,25 @@
 (function build-sigil (sigil l2src l2src-sz pos r) (with return (begin
 	(if [= $l2src-sz $$pos] {return [build-symbol-sexpr $sigil $r]} (begin))
 	(let (d [getb [+ $l2src $$pos]])
-		(if (vor [isspace $d] [= $d (rparen)] [= $d (rbrace)] [= $d (rbracket)] [= $d (lparen)] [= $d (lbrace)] [= $d (lbracket)])
+		(if (lor [isspace $d] [= $d (rparen)] [= $d (rbrace)] [= $d (rbracket)] [= $d (lparen)] [= $d (lbrace)] [= $d (lbracket)])
 			{return [build-symbol-sexpr $sigil $r]}
 			(let (sexprs [nil $r]) (begin
 				[append [build-symbol-sexpr $sigil $r] sexprs $r]
 				[append [build-expr-list $l2src $l2src-sz $pos $r] sexprs $r]
 				{return $sexprs})))))))
 
-
-
-(++(function build-list (primitive delimeter l2src l2src-sz pos r) (with return
+(function build-list (primitive delimeter l2src l2src-sz pos r) (with return
 	(let (sexprs [nil $r]) (begin
 		[append [build-symbol-sexpr $primitive $r] sexprs $r]
-		(while (true) (let (rem [after-leading-space $l2src $l2src-sz $pos]) )))))))
+		(while (true) (begin
+			(let (rem [after-leading-space $l2src $l2src-sz $pos])
+				(if (land $rem [= [getb [+ $l2src $$pos]] $delimeter])
+					(begin [set $pos [+ $$pos &1]] {return $sexprs})
+					(begin)))
+			[append [build-expr-list $l2src $l2src-sz $pos $r] sexprs $r]))
+		{return $sexprs}))))
 
 [write-uint (stdout) (lnot &0)]
+
+(let (r [create-region &0])
+	[build-symbol-sexpr (" Hello) $r])
