@@ -15,8 +15,8 @@
 		[lst (` let $r) [meta:reverse [lst
 			(`(while [not [emt? $foreach:v]] (,[llst (` begin $r)
 				[lst (` let $r) [meta:reverse [lst $body [meta:map [meta:zip [meta:map $bindings (null) fst $r] $labels $r]
-						$r (function make-binding (a r) (`((,[fst $a]) ($[car ($(,[frst $a]))]))$r))$r]$r]$r]$r]
-				[meta:map $labels $r (function make-update (a r) (`[set ,$a ($[cdr $,$a])]$r))$r]$r]))$r)
+						$r (function make-binding (a r) (`((,[fst $a]) [get-car ($(,[frst $a]))])$r))$r]$r]$r]$r]
+				[meta:map $labels $r (function make-update (a r) (`[set ,$a [get-cdr $,$a]]$r))$r]$r]))$r)
 			[meta:zip $labels [meta:map $bindings (null) frst $r]$r]$r]$r]$r]))
 
 (function foreach* (s r)
@@ -33,46 +33,54 @@
 
 (function cdr (l) [+ $l (unit)])
 
-(function cddr (l) [cdr ($[cdr $l])])
+(function get-car (l) ($[car $l]))
 
-(function cdddr (l) [cdr ($[cddr $l])])
+(function get-cdr (l) ($[cdr $l]))
 
-(function cddddr (l) [cdr ($[cdddr $l])])
+(function get-cddr (l) [get-cdr [get-cdr $l]])
 
-(function cdddddr (l) [cdr ($[cddddr $l])])
+(function get-cdddr (l) [get-cdr [get-cddr $l]])
 
-(function cddddddr (l) [cdr ($[cdddddr $l])])
+(function get-cddddr (l) [get-cdr [get-cdddr $l]])
 
-(function cadr (l) [car ($[cdr $l])])
+(function get-cdddddr (l) [get-cdr [get-cddddr $l]])
 
-(function caddr (l) [car ($[cddr $l])])
+(function get-cddddddr (l) [get-cdr [get-cdddddr $l]])
 
-(function cadddr (l) [car ($[cdddr $l])])
+(function get-cadr (l) [get-car [get-cdr $l]])
 
-(function caddddr (l) [car ($[cddddr $l])])
+(function get-caddr (l) [get-car [get-cddr $l]])
 
-(function cadddddr (l) [car ($[cdddddr $l])])
+(function get-cadddr (l) [get-car [get-cdddr $l]])
+
+(function get-caddddr (l) [get-car [get-cddddr $l]])
+
+(function get-cadddddr (l) [get-car [get-cdddddr $l]])
+
+(function set-car (l v) [set [car $l] $v])
+
+(function set-cdr (l v) [set [cdr $l] $v])
 
 (function nil (r) (with return
 	(let (l [region-alloc $r (list-struct)]) (begin
-		[set [car $l] $l]
-		[set [cdr $l] (null)]
+		[set-car $l $l]
+		[set-cdr $l (null)]
 		{return $l}))))
 
 (function nil? (l)
-	(if [= ($[cdr $l]) (null)] (true) (false)))
+	(if [= [get-cdr $l] (null)] (true) (false)))
 
 (function append (data l r) (with return (begin
 	(while [not [nil? $$l]] [set l [cdr $$l]])
 	[set $l [region-alloc $r (list-struct)]]
-	[set [car $$l] $data]
-	[set [cdr $$l] [nil $r]]
+	[set-car $$l $data]
+	[set-cdr $$l [nil $r]]
 	{return [car $$l]})))
 
 (function cons (data rest r) (with return
 	(let (l [region-alloc $r (list-struct)]) (begin
-		[set [car $l] $data]
-		[set [cdr $l] $rest]
+		[set-car $l $data]
+		[set-cdr $l $rest]
 		{return $l}))))
 
 (function append-list (fst-ref snd) (begin
@@ -82,16 +90,15 @@
 
 (function prepend (data l-ref r)
 	(let (ret [region-alloc $r (list-struct)]) (begin
-		[set [car $ret] $data]
-		[set [cdr $ret] $$l-ref]
+		[set-car $ret $data]
+		[set-cdr $ret $$l-ref]
 		[set $l-ref $ret])))
 
 (function length (l) (with return
-	(let (size &0) (begin
-		(while [not [nil? $l]] (begin
-			[set l ($[cdr $l])]
-			[set size [+ &1 $size]]))
-		{return $size}))))
+	{(continuation loop (l size)
+		(if [not [nil? $l]]
+			{loop [get-cdr $l] [+ &1 $size]}
+			{return $size})) $l &0}))
 
 (function find (pred l ctx) (with return (begin
 	(foreach* (s $l)
@@ -115,4 +122,4 @@
 			[write-str (stdout) (" :)]
 			[write-str (stdout) $okay]
 			[write-char (stdout) (lf)]))
-		[write-str (stdout) (" (lf))])))
+		[write-char (stdout) (lf)])))
