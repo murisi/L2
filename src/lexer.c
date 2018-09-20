@@ -143,10 +143,7 @@ char *to_string(list d, region r) {
 
 void print_expr_list(list d) {
 	write_str(STDOUT, "(");
-	if(is_nil(d)) {
-		write_str(STDOUT, ")");
-		return;
-	} else {
+	if(!is_nil(d)) {
 		union sexpr *_fst = d->fst;
 		if(is_lst(_fst)) {
 			print_expr_list((list) _fst);
@@ -155,6 +152,6 @@ void print_expr_list(list d) {
 		}
 		write_str(STDOUT, " . ");
 		print_expr_list(d->rst);
-		write_str(STDOUT, ")");
-	}	
+	}
+	write_str(STDOUT, ")");	
 }

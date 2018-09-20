@@ -22,7 +22,7 @@
 
 (function sexpr-struct (l r) (`[* &2(unit)]$r))
 
-(++(function i/f:lst? (s) (if [get-list-flag $s] (true) (false))))
+(function i/f:lst? (s) (if [get-list-flag $s] (true) (false)))
 
 (++(function char= (a b) (if [= [get-character $a] [get-character $b]] (true) (false))))
 
@@ -104,6 +104,33 @@
 									[= $c (lbracket)] [= $c (rbracket)])))
 							[set $pos [- $$pos &1]]
 							{return $l})))}))))))
+
+(function string? (d) (with return (begin
+	(foreach (t $d)
+		(if [i/f:lst? $t]
+			{return (false)}
+			(begin)))
+	{return (true)})))
+
+(function to-string (d r) (with return
+	(let (str [region-alloc $r [+ [length $d] &1]]) (i &0) (begin
+		(foreach (t $d) (begin
+			[setb [+ $str $i] [get-character $t]]
+			[set i [+ $i &1]]))
+		[setb [+ $str $i] (null)]
+		{return $str}))))
+
+(function print-expr-list (d) (begin
+	[write-str (stdout) (lparen)]
+	(if [nil? $d] (begin) (begin
+		(if [i/f:lst? [get-car $d]]
+			[print-expr-list [get-car $d]]
+			[write-char (stdout) [get-character $d]])
+		[write-char (stdout) (space)]
+		[write-char (stdout) (char .)]
+		[write-char (stdout) (space)]
+		[print-expr-list [get-cdr $d]]))
+	[write-str (stdout) (rparen)]))
 
 [write-uint (stdout) (lnot &0)]
 
