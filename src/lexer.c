@@ -94,7 +94,7 @@ list build_expr_list(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *han
 	}
 	(*pos)++;
 	if(c == '(') {
-		return build_list("()", ')', l2src, l2src_sz, pos, r, handler)->rst;
+		return build_list("expression", ')', l2src, l2src_sz, pos, r, handler)->rst;
 	} else if(c == '{') {
 		return build_list("jump", '}', l2src, l2src_sz, pos, r, handler);
 	} else if(c == '[') {

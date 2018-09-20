@@ -57,17 +57,17 @@
 			(begin [set $pos [+ $$pos &1]] {loop})
 			{return [- $l2src-sz $$pos]}))}))
 
-(function build-sigil (sigil l2src l2src-sz pos r) (with return (begin
+(function build-sigil (sigil l2src l2src-sz pos r handler) (with return (begin
 	(if [= $l2src-sz $$pos] {return [build-symbol-sexpr $sigil $r]} (begin))
 	(let (d [getb [+ $l2src $$pos]])
 		(if (lor [isspace $d] [= $d (rparen)] [= $d (rbrace)] [= $d (rbracket)] [= $d (lparen)] [= $d (lbrace)] [= $d (lbracket)])
 			{return [build-symbol-sexpr $sigil $r]}
 			(let (sexprs [nil $r]) (begin
 				[append [build-symbol-sexpr $sigil $r] sexprs $r]
-				[append [build-expr-list $l2src $l2src-sz $pos $r] sexprs $r]
+				[append [build-expr-list $l2src $l2src-sz $pos $r $handler] sexprs $r]
 				{return $sexprs})))))))
 
-(function build-list (primitive delimeter l2src l2src-sz pos r) (with return
+(function build-list (primitive delimeter l2src l2src-sz pos r handler) (with return
 	(let (sexprs [nil $r]) (begin
 		[append [build-symbol-sexpr $primitive $r] sexprs $r]
 		(while (true) (begin
@@ -75,8 +75,35 @@
 				(if (land $rem [= [getb [+ $l2src $$pos]] $delimeter])
 					(begin [set $pos [+ $$pos &1]] {return $sexprs})
 					(begin)))
-			[append [build-expr-list $l2src $l2src-sz $pos $r] sexprs $r]))
+			[append [build-expr-list $l2src $l2src-sz $pos $r $handler] sexprs $r]))
 		{return $sexprs}))))
+
+(function build-expr-list (l2src l2src-sz pos r handler) (with return
+	(if [= $l2src-sz $$pos]
+		[throw-unexpected-character &0 $$pos $handler]
+		(let (c [getb [+ $l2src $$pos]])
+			(if (lor [isspace $c] [= $c (rparen)] [= $c (rbrace)] [= $c (rbracket)])
+				[throw-unexpected-character $c $$pos $handler]
+				(begin
+					[set $pos [+ $$pos &1]]
+					{return (switch = $c
+						((lparen) [get-cdr [build-list (" expression) (rparen) $l2src $l2src-sz $pos $r $handler]])
+						((lbrace) [build-list (" jump) (rparen) $l2src $l2src-sz $pos $r $handler])
+						((lbracket) [build-list (" invoke) (rparen) $l2src $l2src-sz $pos $r $handler])
+						((char $) [build-sigil (" $) $l2src $l2src-sz $pos $r $handler])
+						((char &) [build-sigil (" &) $l2src $l2src-sz $pos $r $handler])
+						((char ,) [build-sigil (" ,) $l2src $l2src-sz $pos $r $handler])
+						((char `) [build-sigil (" `) $l2src $l2src-sz $pos $r $handler])
+						(let (l [nil $r]) (begin
+							(do (begin
+									[append [build-character-sexpr $c $r] l $r]
+									(if [= $$pos $l2src-sz] {return $l} (begin))
+									[set c [getb $l2src $$pos]]
+									[set $pos [+ $$pos &1]])
+								(lnot (lor [isspace $c] [= $c (lparen)] [= $c (rparen)] [= $c (lbrace)] [= $c (rbrace)]
+									[= $c (lbracket)] [= $c (rbracket)])))
+							[set $pos [- $$pos &1]]
+							{return $l})))}))))))
 
 [write-uint (stdout) (lnot &0)]
 
