@@ -92,7 +92,9 @@ void evaluate_files(int srcc, char *srcv[], list bindings, jumpbuf *handler) {
 	
 	int i;
 	for(i = 0; i < srcc; i++) {
+		Object *obj;
 		char *dot = strrchr(srcv[i], '.');
+		
 		if(dot && !strcmp(dot, ".l2")) {
 			int fd = open(srcv[i]);
 			long int src_sz = size(fd);
@@ -107,9 +109,7 @@ void evaluate_files(int srcc, char *srcv[], list bindings, jumpbuf *handler) {
 				list sexpr = build_expr_list(src_buf, src_sz, &pos, syntax_tree_region);
 				append(build_syntax_tree(sexpr, syntax_tree_region, handler), &expressions, syntax_tree_region);
 			}
-			Object *obj = load_expressions(make_program(expressions, syntax_tree_region), ectx, nil(syntax_tree_region), syntax_tree_region);
-			append(obj, &objects, syntax_tree_region);
-			append_list(&ectx->ext_binds, immutable_symbols(obj, syntax_tree_region));
+			obj = load_expressions(make_program(expressions, syntax_tree_region), ectx, nil(syntax_tree_region), syntax_tree_region);
 		} else if(dot && !strcmp(dot, ".o")) {
 			int obj_fd = open(srcv[i]);
 			long int obj_sz = size(obj_fd);
@@ -117,10 +117,10 @@ void evaluate_files(int srcc, char *srcv[], list bindings, jumpbuf *handler) {
 			read(obj_fd, obj_buf, obj_sz);
 			close(obj_fd);
 			
-			Object *obj = load(obj_buf, obj_sz, syntax_tree_region, handler);
-			append(obj, &objects, syntax_tree_region);
-			append_list(&ectx->ext_binds, immutable_symbols(obj, syntax_tree_region));
+			obj = load(obj_buf, obj_sz, syntax_tree_region, handler);
 		}
+		append(obj, &objects, syntax_tree_region);
+		append_list(&ectx->ext_binds, immutable_symbols(obj, syntax_tree_region));
 	}
 	
 	Object *obj;
