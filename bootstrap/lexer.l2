@@ -95,10 +95,10 @@
 						((char ,) [build-sigil (" ,) $l2src $l2src-sz $pos $r $handler])
 						((char `) [build-sigil (" `) $l2src $l2src-sz $pos $r $handler])
 						(let (l [nil $r]) (begin
-							(do (begin
+							(do-while (begin
 									[append [build-character-sexpr $c $r] l $r]
 									(if [= $$pos $l2src-sz] {return $l} (begin))
-									[set c [getb $l2src $$pos]]
+									[set c [getb [+ $l2src $$pos]]]
 									[set $pos [+ $$pos &1]])
 								(lnot (lor [isspace $c] [= $c (lparen)] [= $c (rparen)] [= $c (lbrace)] [= $c (rbrace)]
 									[= $c (lbracket)] [= $c (rbracket)])))
@@ -121,18 +121,19 @@
 		{return $str}))))
 
 (function print-expr-list (d) (begin
-	[write-str (stdout) (lparen)]
+	[write-char (stdout) (lparen)]
 	(if [nil? $d] (begin) (begin
 		(if [i/f:lst? [get-car $d]]
 			[print-expr-list [get-car $d]]
-			[write-char (stdout) [get-character $d]])
+			[write-char (stdout) [get-character [get-car $d]]])
 		[write-char (stdout) (space)]
 		[write-char (stdout) (char .)]
 		[write-char (stdout) (space)]
 		[print-expr-list [get-cdr $d]]))
-	[write-str (stdout) (rparen)]))
+	[write-char (stdout) (rparen)]))
 
-[write-uint (stdout) (lnot &0)]
+[write-str (stdout) (" Starting here:(lf))]
 
-(let (r [create-region &0])
-	[build-symbol-sexpr (" Hello) $r])
+(let (r [create-region &0]) (pos &0) (begin
+	[print-expr-list [build-expr-list (" He(lparen)lla(rparen)o) &5 pos $r]]
+	[build-symbol-sexpr (" Hello) $r]))
