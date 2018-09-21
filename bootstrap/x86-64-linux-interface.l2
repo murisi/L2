@@ -47,7 +47,7 @@
 
 (function strcmp (s1 s2) (with return
 	{(continuation loop (s1 s2)
-		(if (land [getb $s1] [getb $s2] [= [getb $s1] [getb $s2]])
+		(if (and [getb $s1] [getb $s2] [= [getb $s1] [getb $s2]])
 			{loop [+ $s1 &1] [+ $s2 &1]}
 			{return [- [getb $s1] [getb $s2]]})) $s1 $s2}))
 
@@ -83,7 +83,7 @@
 	((vt) (true))
 	(false)))
 
-(function open (path) [syscall (sys-open) $path [or (o-rdonly) (o-creat)] [or (s-irwxu) [or (s-irwxg) (s-irwxo)]]])
+(function open (path) [syscall (sys-open) $path [lor (o-rdonly) (o-creat)] [lor (s-irwxu) [lor (s-irwxg) (s-irwxo)]]])
 
 (function write (fd d len) [syscall (sys-write) $fd $d $len])
 
@@ -121,7 +121,7 @@
 
 (++ Creates a new virtual address mapping of the size in bytes given at len.)
 
-(function mmap (len) [syscall (sys-mmap) (null) $len [or (prot-read) (prot-write)] [or (map-private) (map-anonymous)] [not &0] &0])
+(function mmap (len) [syscall (sys-mmap) (null) $len [lor (prot-read) (prot-write)] [lor (map-private) (map-anonymous)] [lnot &0] &0])
 
 (++ Deletes virtual address mappings coinciding with the range starting with the
 	value at ptr and having an extent of the value given at len.)

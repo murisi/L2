@@ -12,9 +12,9 @@
 .global lesserthan
 .global leftshift
 .global rightshift
-.global and
-.global or
-.global not
+.global land
+.global lor
+.global lnot
 .global allocate
 .global syscall
 
@@ -100,17 +100,17 @@ movq %rsi, %rcx
 shr %cl, %rax
 ret
 
-and:
+land:
 movq %rdi, %rax
 andq %rsi, %rax
 ret
 
-or:
+lor:
 movq %rdi, %rax
 orq %rsi, %rax
 ret
 
-not:
+lnot:
 movq %rdi, %rax
 notq %rax
 ret

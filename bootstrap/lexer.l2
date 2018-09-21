@@ -53,14 +53,14 @@
 
 (function after-leading-space (l2src l2src-sz pos) (with return
 	{(continuation loop ()
-		(if (land [< $$pos $l2src-sz] [isspace [getb[+ $l2src $$pos]]])
+		(if (and [< $$pos $l2src-sz] [isspace [getb[+ $l2src $$pos]]])
 			(begin [set $pos [+ $$pos &1]] {loop})
 			{return [- $l2src-sz $$pos]}))}))
 
 (function build-sigil (sigil l2src l2src-sz pos r handler) (with return (begin
 	(if [= $l2src-sz $$pos] {return [build-symbol-sexpr $sigil $r]} (begin))
 	(let (d [getb [+ $l2src $$pos]])
-		(if (lor [isspace $d] [= $d (rparen)] [= $d (rbrace)] [= $d (rbracket)] [= $d (lparen)] [= $d (lbrace)] [= $d (lbracket)])
+		(if (or [isspace $d] [= $d (rparen)] [= $d (rbrace)] [= $d (rbracket)] [= $d (lparen)] [= $d (lbrace)] [= $d (lbracket)])
 			{return [build-symbol-sexpr $sigil $r]}
 			(let (sexprs [nil $r]) (begin
 				[append [build-symbol-sexpr $sigil $r] sexprs $r]
@@ -72,7 +72,7 @@
 		[append [build-symbol-sexpr $primitive $r] sexprs $r]
 		(while (true) (begin
 			(let (rem [after-leading-space $l2src $l2src-sz $pos])
-				(if (land $rem [= [getb [+ $l2src $$pos]] $delimeter])
+				(if (and $rem [= [getb [+ $l2src $$pos]] $delimeter])
 					(begin [set $pos [+ $$pos &1]] {return $sexprs})
 					(begin)))
 			[append [build-expr-list $l2src $l2src-sz $pos $r $handler] sexprs $r]))
@@ -84,7 +84,7 @@
 	(if [= $l2src-sz $$pos]
 		{$handler (unexpected-char) build-expr-list &0 $$pos}
 		(let (c [getb [+ $l2src $$pos]])
-			(if (lor [isspace $c] [= $c (rparen)] [= $c (rbrace)] [= $c (rbracket)])
+			(if (or [isspace $c] [= $c (rparen)] [= $c (rbrace)] [= $c (rbracket)])
 				{$handler (unexpected-char) build-expr-list $c $$pos}
 				(begin
 					[set $pos [+ $$pos &1]]
@@ -102,7 +102,7 @@
 									(if [= $$pos $l2src-sz] {return $l} (begin))
 									[set c [getb [+ $l2src $$pos]]]
 									[set $pos [+ $$pos &1]])
-								(lnot (lor [isspace $c] [= $c (lparen)] [= $c (rparen)] [= $c (lbrace)] [= $c (rbrace)]
+								(not (or [isspace $c] [= $c (lparen)] [= $c (rparen)] [= $c (lbrace)] [= $c (rbrace)]
 									[= $c (lbracket)] [= $c (rbracket)])))
 							[set $pos [- $$pos &1]]
 							{return $l})))}))))))
