@@ -78,12 +78,14 @@
 			[append [build-expr-list $l2src $l2src-sz $pos $r $handler] sexprs $r]))
 		{return $sexprs}))))
 
+(function unexpected-char (l r) (` &0 $r))
+
 (function build-expr-list (l2src l2src-sz pos r handler) (with return
 	(if [= $l2src-sz $$pos]
-		[throw-unexpected-character &0 $$pos $handler]
+		{$handler (unexpected-char) build-expr-list &0 $$pos}
 		(let (c [getb [+ $l2src $$pos]])
 			(if (lor [isspace $c] [= $c (rparen)] [= $c (rbrace)] [= $c (rbracket)])
-				[throw-unexpected-character $c $$pos $handler]
+				{$handler (unexpected-char) build-expr-list $c $$pos}
 				(begin
 					[set $pos [+ $$pos &1]]
 					{return (switch = $c
@@ -134,8 +136,11 @@
 
 [write-str (stdout) (" Starting here:(lf))]
 
-(let (r [create-region &0]) (pos &0) (begin
-	[print-expr-list [build-expr-list (" He(lparen)lla(rparen)o) &10 pos $r]]
-	[set pos [+ $pos &1]]
-	[print-expr-list [build-expr-list (" He(lparen)lla(rparen)o) &10 pos $r]]
-	[build-symbol-sexpr (" Hello) $r]))
+(let (r [create-region &0]) (pos &0)
+	(do-let (begin
+			[write-str (stdout) (" (lparen)l(lparen)lokay(rparen)a(rparen)o)]
+			[print-expr-list [build-expr-list (" (lparen)l(lparen)lokay(rparen)a(rparen)o) &18 pos $r $handler]]
+			[build-symbol-sexpr (" Hello) $r])
+		(handler (continuation () (code src character pos) (begin
+			[write-str (stdout) (" Error occured.)]
+			[exit &1])))))
