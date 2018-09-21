@@ -41,10 +41,10 @@ void do_relocations(Object *obj) {
 					case R_X86_64_PC32:
 						memcpy(location, (temp = sym->st_value + obj->addends[sec][rela] - obj->relas[sec][rela].r_offset, &temp), 4);
 						break;
-					case R_X86_64_GLOB_DAT://LP32
+					case R_X86_64_GLOB_DAT://LP64
 						memcpy(location, (temp = sym->st_value, &temp), 8);
 						break;
-					case R_X86_64_JUMP_SLOT://LP32
+					case R_X86_64_JUMP_SLOT://LP64
 						memcpy(location, (temp = sym->st_value, &temp), 8);
 						break;
 					case R_X86_64_32:

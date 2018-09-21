@@ -8,28 +8,28 @@
 
 (function character-struct (l r) (`[* &2(unit)]$r))
 
-(function list-flag (l) $l)
+(function list-flag (l r) (`[+(,[fst $l])&0]$r))
 
-(function get-list-flag (l) ($[list-flag $l]))
+(function get-list-flag (l r) (`[get[+(,[fst $l])&0]]$r))
 
-(function set-list-flag (l v) [set [list-flag $l] $v])
+(function set-list-flag (l r) (`[set[+(,[fst $l])&0](,[frst $l])]$r))
 
-(function character (l) [+ $l (unit)])
+(function character (l r) (`[+(,[fst $l])(unit)]$r))
 
-(function get-character (l) [getb [character $l]])
+(function get-character (l r) (`[get[+(,[fst $l])(unit)]]$r))
 
-(function set-character (l v) [setb [character $l] $v])
+(function set-character (l r) (`[set[+(,[fst $l])(unit)](,[frst $l])]$r))
 
 (function sexpr-struct (l r) (`[* &2(unit)]$r))
 
-(function i/f:lst? (s) (if [get-list-flag $s] (true) (false)))
+(function i/f:lst? (s) (if (get-list-flag $s) (true) (false)))
 
-(++(function char= (a b) (if [= [get-character $a] [get-character $b]] (true) (false))))
+(++(function char= (a b) (if [= (get-character $a) (get-character $b)] (true) (false))))
 
 (function build-character-sexpr (d r) (with return
 	(let (c [region-alloc $r (sexpr-struct)]) (begin
-		[set-list-flag $c (null)]
-		[set-character $c $d]
+		(set-list-flag $c (null))
+		(set-character $c $d)
 		{return $c}))))
 
 (char-sexpr !) (char-sexpr ") (char-sexpr $) (char-sexpr %) (char-sexpr &) (char-sexpr ') (char-sexpr *) (char-sexpr +)
@@ -117,7 +117,7 @@
 (function to-string (d r) (with return
 	(let (str [region-alloc $r [+ [length $d] &1]]) (i &0) (begin
 		(foreach (t $d) (begin
-			[setb [+ $str $i] [get-character $t]]
+			[setb [+ $str $i] (get-character $t)]
 			[set i [+ $i &1]]))
 		[setb [+ $str $i] (null)]
 		{return $str}))))
@@ -127,7 +127,7 @@
 	(if [nil? $d] (begin) (begin
 		(if [i/f:lst? [get-car $d]]
 			[print-expr-list [get-car $d]]
-			[write-char (stdout) [get-character [get-car $d]]])
+			[write-char (stdout) (get-character [get-car $d])])
 		[write-char (stdout) (space)]
 		[write-char (stdout) (char .)]
 		[write-char (stdout) (space)]
