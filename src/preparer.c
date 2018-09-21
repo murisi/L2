@@ -290,17 +290,6 @@ struct expansion_context {
 Object *load_expressions(union expression *program, struct expansion_context *ectx, list st_binds, region ct_reg);
 union expression *build_syntax_tree(list d, region reg, jumpbuf *handler);
 
-unsigned long hash(const unsigned char *name) {
-	unsigned long h = 0, g;
-	while (*name) {
-		h = (h << 4) + *name++;
-		if(g = h & 0xf0000000)
-			h ^= g >> 24;
-		h &= 0x0fffffff;
-	}
-	return h;
-}
-
 void *np_expansion(list (*expander)(list, region), list argument, struct expansion_context *ectx, list st_binds, list dyn_ref_names, list indirections) {
 	struct compilation *pc;
 	{foreach(pc, ectx->comps) {
