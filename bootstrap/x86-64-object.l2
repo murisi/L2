@@ -14,8 +14,26 @@
 (function addends< (l r) (`[set[+(,[fst $l])[* &4(unit)]](,[frst $l])]$r))
 (function segs< (l r) (`[set[+(,[fst $l])[* &5(unit)]](,[frst $l])]$r))
 
-
-						
+(function offsets-to-addresses (obj)
+	(for (sec-idx &0 (e-shnum@(ehdr@ $obj)))
+		(let (shdr-buf (loc (shdrs@ $obj) $sec-idx (elf64-shdr)))
+			(if (or [= (sh-type@ $shdr-buf) (sht-rela)] [= (sh-type@ $shdr-buf) (sht-rel)])
+				(let (relanum [/ (sh-size@ $shdr-buf) (sh-entsize@ $shdr-buf)]) (relas-buf ($(loc (relas@ $obj) $sec-idx (unit))))
+					(for (rela-idx &0 $relanum)
+						(let (rela (loc $relas-buf $rela-idx (elf64-rela)))
+								(target-seg-addr ($(loc (segs@ $obj) (sh-info@ $shdr-buf) (unit))))
+							(r-offset< $rela [+ $target-seg-addr (r-offset@ $rela)]))))
+			(if [= (sh-type@ $shdr-buf) (sht-symtab)]
+				(let (symnum [/ (sh-size@ $shdr-buf) (sh-entsize@ $shdr-buf)]) (syms-buf ($(loc (syms@ $obj) $sec-idx (unit))))
+					(for (sym-idx &0 $symnum)
+						(let (sym (loc $syms-buf $sym-idx (elf64-sym)))
+							(st-value< $sym (switch = (st-shndx@ $sym)
+								((shn-abs) (st-value@ $sym))
+								((shn-common) &0)
+								((shn-undef) &0)
+								(let (base-seg-addr ($(loc (segs@ $obj) (st-shndx@ $sym) (unit))))
+									[+ $base-seg-addr (st-value@ $sym)]))))))
+			(begin))))))
 
 (function read-object (objsrc objsrc-sz reg handler) (with return
 	(let (obj [region-alloc $reg (object)]) (begin
@@ -42,16 +60,17 @@
 							[memcpy (loc $$syms-buf $sym-idx (elf64-sym)) (loc $seg-buf $sym-idx (sh-entsize@ $shdr-buf))
 								(elf64-sym)])))
 				(if (or [= (sh-type@ $shdr-buf) (sht-rela)] [= (sh-type@ $shdr-buf) (sht-rel)])
-					(let (relanum [/ (sh-size@ $shdr-buf) (sh-entsize@ $shdr-buf)]) (relas-buf (loc (syms@ $obj) $sec-idx (unit)))
+					(let (relanum [/ (sh-size@ $shdr-buf) (sh-entsize@ $shdr-buf)]) (relas-buf (loc (relas@ $obj) $sec-idx (unit)))
 						(begin
 						(++ Following code copies recognized information from the relocations into (relas@ $obj))
 						[set $relas-buf [region-alloc $reg [* $relanum (elf64-rela)]]]
 						(for (rela-idx &0 $relanum)
 							[memcpy (loc $$relas-buf $rela-idx (elf64-rela)) (loc $seg-buf $rela-idx (sh-entsize@ $shdr-buf))
-								(if [= (sh-type@ $shdr-buf) (sht-rela)] (elf64-rela) (elf64-rel))]))) (begin))))))
+								(if [= (sh-type@ $shdr-buf) (sht-rela)] (elf64-rela) (elf64-rel))])))
+				(begin))))))
 		{return $obj}))))
 
 (let (f [open (" ../bin/x86_64.o)]) (reg [create-region &0])
 	(let (buf [region-alloc $reg [size $f]]) (begin
 		[read $f $buf [size $f]]
-		[read-object $buf [size $f] $reg (null)])))
+		[offsets-to-addresses [read-object $buf [size $f] $reg (null)]])))
