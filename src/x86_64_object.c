@@ -56,8 +56,14 @@ void do_relocations(Object *obj) {
 					case R_X86_64_16:
 						memcpy(location, (temp = sym->st_value + obj->addends[sec][rela], &temp), 2);
 						break;
+					case R_X86_64_PC16:
+						memcpy(location, (temp = sym->st_value + obj->addends[sec][rela] - obj->relas[sec][rela].r_offset, &temp), 2);
+						break;
 					case R_X86_64_8:
 						memcpy(location, (temp = sym->st_value + obj->addends[sec][rela], &temp), 1);
+						break;
+					case R_X86_64_PC8:
+						memcpy(location, (temp = sym->st_value + obj->addends[sec][rela] - obj->relas[sec][rela].r_offset, &temp), 1);
 						break;
 					case R_X86_64_SIZE32:
 						memcpy(location, (temp = sym->st_size + obj->addends[sec][rela], &temp), 4);
@@ -91,10 +97,10 @@ void store_addends(Object *obj, region reg, jumpbuf *handler) {
 			int rel;
 			for(rel = 0; rel < relnum; rel++) {
 				switch(ELF64_R_TYPE(obj->relas[sec][rel].r_info)) {
-					case R_X86_64_8:
+					case R_X86_64_8: case R_X86_64_PC8:
 						obj->addends[sec][rel] = *((unsigned char *) obj->relas[sec][rel].r_offset);
 						break;
-					case R_X86_64_16:
+					case R_X86_64_16: case R_X86_64_PC16:
 						obj->addends[sec][rel] = *((Elf64_Half *) obj->relas[sec][rel].r_offset);
 						break;
 					case R_X86_64_PC32: case R_X86_64_32: case R_X86_64_32S:
