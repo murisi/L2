@@ -14,6 +14,34 @@
 (function addends< (l r) (`[set[+(,[fst $l])[* &4(unit)]](,[frst $l])]$r))
 (function segs< (l r) (`[set[+(,[fst $l])[* &5(unit)]](,[frst $l])]$r))
 
+(function reference (l r) (`(let (reference:temp (,[fst $l])) reference:temp)$r))
+
+(function do-relocations (obj) (for (sec-idx &0 (e-shnum@(ehdr@ $obj)))
+	(let (shdr-buf (loc (shdrs@ $obj) $sec-idx (elf64-shdr)))
+		(if (or [= (sh-type@ $shdr-buf) (sht-rela)] [= (sh-type@ $shdr-buf) (sht-rel)])
+			(let (relanum [/ (sh-size@ $shdr-buf) (sh-entsize@ $shdr-buf)]) (relas-buf ($(loc (relas@ $obj) $sec-idx (unit))))
+					(addends-buf ($(loc (addends@ $obj) $sec-idx (unit))))
+				(for (rela-idx &0 $relanum)
+					(let (syms-buf ($(loc (syms@ $obj) (sh-link@ $shdr-buf) (unit))))
+							(rela (loc $relas-buf $rela-idx (elf64-rela))) (addend ($(loc $addends-buf $rela-idx (elf64-sxword))))
+							(let (sym (loc $syms-buf (elf64-r-sym (r-info@ $rela)) (elf64-sym)))
+						(switch = (elf64-r-type (r-info@ $rela))
+							((r-x86-64-none) (begin))
+							((r-x86-64-64) [memcpy (r-offset@ $rela) (reference [+(st-value@ $sym)$addend]) &8])
+							((r-x86-64-pc32) [memcpy (r-offset@ $rela) (reference [-[+(st-value@ $sym)$addend](r-offset@ $rela)]) &4])
+							((r-x86-64-glob-dat) [memcpy (r-offset@ $rela) (reference (st-value@ $sym)) &8])
+							((r-x86-64-jump-slot) [memcpy (r-offset@ $rela) (reference (st-value@ $sym)) &8])
+							((r-x86-64-32) [memcpy (r-offset@ $rela) (reference [+(st-value@ $sym) $addend]) &4])
+							((r-x86-64-32s) [memcpy (r-offset@ $rela) (reference [+(st-value@ $sym) $addend]) &4])
+							((r-x86-64-16) [memcpy (r-offset@ $rela) (reference [+(st-value@ $sym) $addend]) &2])
+							((r-x86-64-pc16) [memcpy (r-offset@ $rela) (reference [-[+(st-value@ $sym)$addend](r-offset@ $rela)])&2])
+							((r-x86-64-8) [memcpy (r-offset@ $rela) (reference [+(st-value@ $sym)$addend]) &1])
+							((r-x86-64-pc8) [memcpy (r-offset@ $rela) (reference [-[+(st-value@ $sym)$addend](r-offset@ $rela)])&1])
+							((r-x86-64-size32) [memcpy (r-offset@ $rela) (reference [+(st-size@ $sym)$addend]) &4])
+							((r-x86-64-size64) [memcpy (r-offset@ $rela) (reference [+(st-size@ $sym)$addend]) &8])
+							(null))))))
+			(begin)))))
+
 (function store-addends (obj reg handler)
 	(for (sec-idx &0 (e-shnum@(ehdr@ $obj)))
 		(let (shdr-buf (loc (shdrs@ $obj) $sec-idx (elf64-shdr)))
@@ -63,11 +91,11 @@
 	(let (obj [region-alloc $reg (object)]) (begin
 		(ehdr< $obj [region-alloc $reg (elf64-ehdr)])
 		[memcpy (ehdr@ $obj) $objsrc (elf64-ehdr)]
-		(shdrs< $obj [region-alloc $reg [* (e-shnum@ (ehdr@ $obj)) (elf64-shdr)]])
-		(syms< $obj [region-alloc $reg [* (e-shnum@ (ehdr@ $obj)) (unit)]])
-		(relas< $obj [region-alloc $reg [* (e-shnum@ (ehdr@ $obj)) (unit)]])
-		(addends< $obj [region-alloc $reg [* (e-shnum@ (ehdr@ $obj)) (unit)]])
-		(segs< $obj [region-alloc $reg [* (e-shnum@ (ehdr@ $obj)) (unit)]])
+		(shdrs< $obj [region-alloc $reg [* (e-shnum@(ehdr@ $obj)) (elf64-shdr)]])
+		(syms< $obj [region-alloc $reg [* (e-shnum@(ehdr@ $obj)) (unit)]])
+		(relas< $obj [region-alloc $reg [* (e-shnum@(ehdr@ $obj)) (unit)]])
+		(addends< $obj [region-alloc $reg [* (e-shnum@(ehdr@ $obj)) (unit)]])
+		(segs< $obj [region-alloc $reg [* (e-shnum@(ehdr@ $obj)) (unit)]])
 		
 		(for (sec-idx &0 (e-shnum@(ehdr@ $obj)))
 			(let (shdr-buf (loc (shdrs@ $obj) $sec-idx (elf64-shdr))) (seg-buf (loc (segs@ $obj) $sec-idx (unit))) (begin
@@ -99,4 +127,5 @@
 		[read $f $buf [size $f]]
 		(let (obj [read-object $buf [size $f] $reg (null)]) (begin
 			[offsets-to-addresses $obj]
-			[store-addends $obj $reg (null)])))))
+			[store-addends $obj $reg (null)]
+			[do-relocations $obj])))))
