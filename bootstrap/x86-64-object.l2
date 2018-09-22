@@ -14,6 +14,9 @@
 (function addends< (l r) (`[set[+(,[fst $l])[* &4(unit)]](,[frst $l])]$r))
 (function segs< (l r) (`[set[+(,[fst $l])[* &5(unit)]](,[frst $l])]$r))
 
+
+						
+
 (function read-object (objsrc objsrc-sz reg handler) (with return
 	(let (obj [region-alloc $reg (object)]) (begin
 		(ehdr< $obj [region-alloc $reg (elf64-ehdr)])
@@ -36,15 +39,16 @@
 						(++ Following code copies recognized information from the symbol table into (syms@ $obj))
 						[set $syms-buf [region-alloc $reg [* $symnum (elf64-sym)]]]
 						(for (sym-idx &0 $symnum)
-							[memcpy (loc $syms-buf $sym-idx (elf64-sym)) (loc $seg-buf $sym-idx (sh-entsize@ $shdr-buf)) (elf64-sym)])))
+							[memcpy (loc $$syms-buf $sym-idx (elf64-sym)) (loc $seg-buf $sym-idx (sh-entsize@ $shdr-buf))
+								(elf64-sym)])))
 				(if (or [= (sh-type@ $shdr-buf) (sht-rela)] [= (sh-type@ $shdr-buf) (sht-rel)])
 					(let (relanum [/ (sh-size@ $shdr-buf) (sh-entsize@ $shdr-buf)]) (relas-buf (loc (syms@ $obj) $sec-idx (unit)))
 						(begin
 						(++ Following code copies recognized information from the relocations into (relas@ $obj))
 						[set $relas-buf [region-alloc $reg [* $relanum (elf64-rela)]]]
 						(for (rela-idx &0 $relanum)
-							[memcpy (loc $relas-buf $rela-idx (elf64-rela)) (loc $seg-buf $rela-idx (sh-entsize@ $shdr-buf))
-								(elf64-rela)]))) (begin))))))
+							[memcpy (loc $$relas-buf $rela-idx (elf64-rela)) (loc $seg-buf $rela-idx (sh-entsize@ $shdr-buf))
+								(if [= (sh-type@ $shdr-buf) (sht-rela)] (elf64-rela) (elf64-rel))]))) (begin))))))
 		{return $obj}))))
 
 (let (f [open (" ../bin/x86_64.o)]) (reg [create-region &0])
