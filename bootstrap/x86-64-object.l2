@@ -129,7 +129,48 @@
 			[do-relocations $obj]
 			{return $obj}))))
 
+(function name-of (obj shdr sym)
+	(let (seg-buf ($(loc (segs@ $obj) (sh-link@ $shdr) (unit))))
+		[+ $seg-buf (st-name@ $sym)]))
+
+(function symbol (l r) (`[* &2(unit)]$r))
+
+(function name@ (l r) (`[get[+(,[fst $l])[* &0(unit)]]]$r))
+(function address@ (l r) (`[get[+(,[fst $l])[* &1(unit)]]]$r))
+
+(function name< (l r) (`[set[+(,[fst $l])[* &0(unit)]](,[frst $l])]$r))
+(function address< (l r) (`[set[+(,[fst $l])[* &1(unit)]](,[frst $l])]$r))
+
+(function make-symbol (name address reg) (with return
+	(let (sym [region-alloc $reg (symbol)]) (begin
+		(name< $sym $name)
+		(address< $sym $address)
+		{return $sym}))))
+
+(function symbols (flag obj reg) (with return
+	(let (syms [nil $reg]) (begin
+		(for (sec-idx &0 (e-shnum@(ehdr@ $obj)))
+			(let (shdr-buf (loc (shdrs@ $obj) $sec-idx (elf64-shdr)))
+				(if [= (sh-type@ $shdr-buf) (sht-symtab)]
+					(let (symnum [/ (sh-size@ $shdr-buf) (sh-entsize@ $shdr-buf)]) (syms-buf ($(loc (syms@ $obj) $sec-idx (unit))))
+						(for (sym-idx &0 $symnum)
+							(let (sym (loc $syms-buf $sym-idx (elf64-sym)))
+								(if (and [= (or [= (st-shndx@ $sym) (shn-undef)] [= (st-shndx@ $sym) (shn-common)]) $flag]
+										(or [= (elf64-st-bind (st-info@ $sym)) (stb-global)]
+											[= (elf64-st-bind (st-info@ $sym)) (stb-weak)]))
+									[prepend [make-symbol [name-of $obj $shdr-buf $sym] (st-value@ $sym) $reg] syms $reg]
+									(begin)))))
+				(begin))))
+		{return $syms}))))
+
+(function mutable-symbols (obj reg) [symbols &1 $obj $reg])
+
+(function immutable-symbols (obj reg) [symbols &0 $obj $reg])
+
 (let (f [open (" ../bin/x86_64.o)]) (reg [create-region &0])
 	(let (buf [region-alloc $reg [size $f]]) (begin
 		[read $f $buf [size $f]]
-		[load $buf [size $f] $reg (null)])))
+		(let (obj [load $buf [size $f] $reg (null)])
+			(foreach (j [immutable-symbols $obj $reg]) (begin
+				[write-str (stdout) (name@ $j)]
+				[write-char (stdout) (lf)]))))))
