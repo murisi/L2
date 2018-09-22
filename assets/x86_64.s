@@ -1,9 +1,13 @@
-.global get
 .global getb
 .global get1b
-.global set
+.global get2b
+.global get8b
+.global get
 .global setb
 .global set1b
+.global set2b
+.global set8b
+.global set
 .global add
 .global subtract
 .global multiply
@@ -24,6 +28,7 @@
 jmp l2rt_end
 
 get:
+get8b:
 movq 0(%rdi), %rax
 ret
 
@@ -33,7 +38,13 @@ xorq %rax, %rax
 movb 0(%rdi), %al
 ret
 
+get2b:
+xorq %rax, %rax
+movw 0(%rdi), %ax
+ret
+
 set:
+set8b:
 movq %rsi, 0(%rdi)
 ret
 
@@ -41,6 +52,11 @@ setb:
 set1b:
 movq %rsi, %rax
 movb %al, 0(%rdi)
+ret
+
+set2b:
+movq %rsi, %rax
+movw %ax, 0(%rdi)
 ret
 
 add:
