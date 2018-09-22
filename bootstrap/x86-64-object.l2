@@ -102,14 +102,14 @@
 				[memcpy $shdr-buf [+ $objsrc (loc (e-shoff@(ehdr@ $obj)) $sec-idx (e-shentsize@(ehdr@ $obj)))] (elf64-shdr)]
 				[set $seg-buf [region-alloc $reg (sh-size@ $shdr-buf)]]
 				(if [= (sh-type@ $shdr-buf) (sht-nobits)] (begin)
-					[memcpy $seg-buf [+ $objsrc (sh-offset@ $shdr-buf)] (sh-size@ $shdr-buf)])
+					[memcpy $$seg-buf [+ $objsrc (sh-offset@ $shdr-buf)] (sh-size@ $shdr-buf)])
 				(if [= (sh-type@ $shdr-buf) (sht-symtab)]
 					(let (symnum [/ (sh-size@ $shdr-buf) (sh-entsize@ $shdr-buf)]) (syms-buf (loc (syms@ $obj) $sec-idx (unit)))
 						(begin
 						(++ Following code copies recognized information from the symbol table into (syms@ $obj))
 						[set $syms-buf [region-alloc $reg [* $symnum (elf64-sym)]]]
 						(for (sym-idx &0 $symnum)
-							[memcpy (loc $$syms-buf $sym-idx (elf64-sym)) (loc $seg-buf $sym-idx (sh-entsize@ $shdr-buf))
+							[memcpy (loc $$syms-buf $sym-idx (elf64-sym)) (loc $$seg-buf $sym-idx (sh-entsize@ $shdr-buf))
 								(elf64-sym)])))
 				(if (or [= (sh-type@ $shdr-buf) (sht-rela)] [= (sh-type@ $shdr-buf) (sht-rel)])
 					(let (relanum [/ (sh-size@ $shdr-buf) (sh-entsize@ $shdr-buf)]) (relas-buf (loc (relas@ $obj) $sec-idx (unit)))
@@ -117,15 +117,19 @@
 						(++ Following code copies recognized information from the relocations into (relas@ $obj))
 						[set $relas-buf [region-alloc $reg [* $relanum (elf64-rela)]]]
 						(for (rela-idx &0 $relanum)
-							[memcpy (loc $$relas-buf $rela-idx (elf64-rela)) (loc $seg-buf $rela-idx (sh-entsize@ $shdr-buf))
+							[memcpy (loc $$relas-buf $rela-idx (elf64-rela)) (loc $$seg-buf $rela-idx (sh-entsize@ $shdr-buf))
 								(if [= (sh-type@ $shdr-buf) (sht-rela)] (elf64-rela) (elf64-rel))])))
 				(begin))))))
 		{return $obj}))))
 
+(function load (objsrc objsrc-sz reg handler) (with return
+	(let (obj [read-object $objsrc $objsrc-sz $reg $handler]) (begin
+			[offsets-to-addresses $obj]
+			[store-addends $obj $reg $handler]
+			[do-relocations $obj]
+			{return $obj}))))
+
 (let (f [open (" ../bin/x86_64.o)]) (reg [create-region &0])
 	(let (buf [region-alloc $reg [size $f]]) (begin
 		[read $f $buf [size $f]]
-		(let (obj [read-object $buf [size $f] $reg (null)]) (begin
-			[offsets-to-addresses $obj]
-			[store-addends $obj $reg (null)]
-			[do-relocations $obj])))))
+		[load $buf [size $f] $reg (null)])))
