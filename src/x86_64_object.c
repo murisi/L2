@@ -224,17 +224,6 @@ typedef struct {
 	void *address;
 } Symbol;
 
-unsigned long elf64_hash(const unsigned char *name) {
-	unsigned long h = 0, g;
-	while (*name) {
-		h = (h << 4) + *name++;
-		if(g = h & 0xf0000000)
-			h ^= g >> 24;
-		h &= 0x0fffffff;
-	}
-	return h;
-}
-
 /*
  * Goes through the loaded object obj and modifies all occurences of symbols
  * with the same name as update to point to the same address as update.

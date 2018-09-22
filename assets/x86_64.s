@@ -1,7 +1,9 @@
 .global get
 .global getb
+.global get1b
 .global set
 .global setb
+.global set1b
 .global add
 .global subtract
 .global multiply
@@ -26,6 +28,7 @@ movq 0(%rdi), %rax
 ret
 
 getb:
+get1b:
 xorq %rax, %rax
 movb 0(%rdi), %al
 ret
@@ -35,6 +38,7 @@ movq %rsi, 0(%rdi)
 ret
 
 setb:
+set1b:
 movq %rsi, %rax
 movb %al, 0(%rdi)
 ret
