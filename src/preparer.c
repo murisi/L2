@@ -1,3 +1,7 @@
+bool defined_string_equals(char *a, char *b) {
+	return a && b && !strcmp(a, b);
+}
+
 bool reference_named(union expression *expr, char *ctx) {
 	return defined_string_equals(expr->reference.name, ctx);
 }
@@ -273,6 +277,67 @@ union expression *vmerge_begins(union expression *n, void *ctx) {
 		prepend(n, l, r);
 	}
 	return n;
+}
+
+void *_get_(void *ref) {
+	return *((void **) ref);
+}
+
+union expression *insert_indirections(union expression *expr, char *ref_name, region reg) {
+	switch(expr->base.type) {
+		case literal: {
+			return expr;
+		} case reference: {
+			if(defined_string_equals(expr->reference.name, ref_name)) {
+				return make_invoke1(make_literal((unsigned long) _get_, reg), expr, reg);
+			} else {
+				return expr;
+			}
+		} case _if: {
+			put(expr, _if.condition, insert_indirections(expr->_if.condition, ref_name, reg));
+			put(expr, _if.consequent, insert_indirections(expr->_if.consequent, ref_name, reg));
+			put(expr, _if.alternate, insert_indirections(expr->_if.alternate, ref_name, reg));
+			return expr;
+		} case begin: {
+			union expression *f;
+			{foreach(f, expr->begin.expressions) {
+				if(f->base.type == function && defined_string_equals(f->function.reference->reference.name, ref_name)) {
+					return expr;
+				}
+			}}
+			union expression **e;
+			{foreachaddress(e, expr->begin.expressions) {
+				*e = insert_indirections(*e, ref_name, reg);
+				(*e)->base.parent = expr;
+			}}
+			return expr;
+		} case continuation: case with: {
+			if(defined_string_equals(expr->continuation.reference->reference.name, ref_name)) {
+				return expr;
+			}
+			union expression *e;
+			foreach(e, expr->continuation.parameters) {
+				if(defined_string_equals(e->reference.name, ref_name)) {
+					return expr;
+				}
+			}
+			put(expr, continuation.expression, insert_indirections(expr->continuation.expression, ref_name, reg));
+			return expr;
+		} case function: {
+			return expr;
+		} case invoke: case jump: {
+			put(expr, invoke.reference, insert_indirections(expr->invoke.reference, ref_name, reg));
+			union expression **e;
+			foreachaddress(e, expr->invoke.arguments) {
+				*e = insert_indirections(*e, ref_name, reg);
+				(*e)->base.parent = expr;
+			}
+			return expr;
+		} case non_primitive: {
+			prepend(ref_name, &expr->non_primitive.indirections, reg);
+			return expr;
+		}
+	}
 }
 
 struct expansion_context {
