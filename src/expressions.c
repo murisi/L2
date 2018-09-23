@@ -259,7 +259,7 @@ union expression *prepend_parameter(union expression *function, region reg) {
 	return v;
 }
 
-union expression *make_instr0(int opcode, region reg) {
+union expression *make_asm0(int opcode, region reg) {
 	union expression *u = region_alloc(reg, sizeof(union expression));
 	u->assembly.type = assembly;
 	u->assembly.opcode = opcode;
@@ -267,22 +267,22 @@ union expression *make_instr0(int opcode, region reg) {
 	return u;
 }
 
-union expression *make_instr1(int opcode, union expression *arg1, region reg) {
-	union expression *u = make_instr0(opcode, reg);
+union expression *make_asm1(int opcode, union expression *arg1, region reg) {
+	union expression *u = make_asm0(opcode, reg);
 	u->assembly.arguments = lst(arg1, u->assembly.arguments, reg);
 	arg1->base.parent = u;
 	return u;
 }
 
-union expression *make_instr2(int opcode, union expression *arg1, union expression *arg2, region reg) {
-	union expression *u = make_instr1(opcode, arg2, reg);
+union expression *make_asm2(int opcode, union expression *arg1, union expression *arg2, region reg) {
+	union expression *u = make_asm1(opcode, arg2, reg);
 	u->assembly.arguments = lst(arg1, u->assembly.arguments, reg);
 	arg1->base.parent = u;
 	return u;
 }
 
-union expression *make_instr3(int opcode, union expression *arg1, union expression *arg2, union expression *arg3, region reg) {
-	union expression *u = make_instr2(opcode, arg2, arg3, reg);
+union expression *make_asm3(int opcode, union expression *arg1, union expression *arg2, union expression *arg3, region reg) {
+	union expression *u = make_asm2(opcode, arg2, arg3, reg);
 	u->assembly.arguments = lst(arg1, u->assembly.arguments, reg);
 	arg1->base.parent = u;
 	return u;
