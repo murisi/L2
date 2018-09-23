@@ -275,14 +275,8 @@ union expression *vmerge_begins(union expression *n, void *ctx) {
 	return n;
 }
 
-struct compilation {
-	list argument;
-	void *macro;
-};
-
 struct expansion_context {
 	list ext_binds;
-	list comps;
 	region rt_reg;
 	jumpbuf *handler;
 };
@@ -290,7 +284,7 @@ struct expansion_context {
 Object *load_expressions(union expression *program, struct expansion_context *ectx, list st_binds, region ct_reg);
 union expression *build_syntax_tree(list d, region reg, jumpbuf *handler);
 
-void *np_expansion(list (*expander)(list, region), list argument, struct expansion_context *ectx, list st_binds, list dyn_ref_names, list indirections, void (*(*macro_cache))(void *)) {
+void (*np_expansion(list (*expander)(list, region), list argument, struct expansion_context *ectx, list st_binds, list dyn_ref_names, list indirections, void (*(*macro_cache))(void *)))(void *) {
 	if(*macro_cache) {
 		return *macro_cache;
 	}

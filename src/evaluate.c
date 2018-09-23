@@ -85,7 +85,6 @@ void evaluate_files(int srcc, char *srcv[], list bindings, jumpbuf *handler) {
 	region syntax_tree_region = create_region(0);
 	list objects = nil(syntax_tree_region);
 	struct expansion_context *ectx = region_alloc(syntax_tree_region, sizeof(struct expansion_context));
-	ectx->comps = nil(syntax_tree_region);
 	ectx->rt_reg = syntax_tree_region;
 	ectx->handler = handler;
 	ectx->ext_binds = bindings;
