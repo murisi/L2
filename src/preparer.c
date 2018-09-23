@@ -198,7 +198,7 @@ void visit_expressions(union expression *(*visitor)(union expression *, void *),
 }
 
 union expression *make_local(union expression *function, region r) {
-	union expression *ref = make_reference(r);
+	union expression *ref = make_reference(NULL, r);
 	ref->reference.parent = function;
 	prepend(ref, &function->function.locals, r);
 	return ref;
@@ -208,7 +208,7 @@ union expression *make_local(union expression *function, region r) {
 union expression *use_return_value(union expression *n, union expression *ret_val, region r) {
 	switch(n->base.type) {
 		case with: {
-			n->with.parameter->fst = make_reference(r);
+			n->with.parameter->fst = make_reference(NULL, r);
 		} case continuation: {
 			n->continuation.return_value = ret_val;
 			put(n, continuation.expression, use_return_value(n->continuation.expression, make_local(get_zeroth_function(n), r), r));
@@ -219,7 +219,7 @@ union expression *use_return_value(union expression *n, union expression *ret_va
 			put(n, function.expression, use_return_value(n->function.expression, n->function.expression_return_value, r));
 			return n;
 		} case invoke: case jump: {
-			union expression *container = make_begin(r);
+			union expression *container = make_begin(nil(r), r);
 			
 			if(n->base.type == jump && n->jump.short_circuit && n->jump.reference->base.type == reference) {
 				n->jump.reference->reference.return_value = NULL;
@@ -239,7 +239,7 @@ union expression *use_return_value(union expression *n, union expression *ret_va
 			emit(n, r);
 			return container;
 		} case _if: {
-			union expression *container = make_begin(r);
+			union expression *container = make_begin(nil(r), r);
 			
 			put(n, _if.consequent, use_return_value(n->_if.consequent, ret_val, r));
 			put(n, _if.alternate, use_return_value(n->_if.alternate, ret_val, r));
@@ -290,13 +290,12 @@ void (*np_expansion(list (*expander)(list, region), list argument, struct expans
 	}
 	
 	region ct_reg = create_region(0);
-	union expression *func = make_function(ct_reg), *cont = make_continuation(ct_reg), *host_cont_param = make_reference(ct_reg),
-		*guest_cont_param = make_reference(ct_reg);
-	prepend(host_cont_param, &func->function.parameters, ct_reg);
-	host_cont_param->reference.parent = func;
+	union expression *cont = make_continuation(make_reference(NULL, ct_reg), nil(ct_reg), make_begin(nil(ct_reg), ct_reg), ct_reg),
+		*host_cont_param = make_reference(NULL, ct_reg), *guest_cont_param = make_reference(NULL, ct_reg);
+	
 	char *ref_name;
 	{foreach(ref_name, reverse(dyn_ref_names, ct_reg)) {
-		union expression *param = make_reference(ct_reg);
+		union expression *param = make_reference(NULL, ct_reg);
 		param->reference.name = ref_name;
 		prepend(param, &cont->continuation.parameters, ct_reg);
 		param->reference.parent = cont;
@@ -311,8 +310,12 @@ void (*np_expansion(list (*expander)(list, region), list argument, struct expans
 	{foreach(ref_name, indirections) {
 		put(cont, continuation.expression, insert_indirections(cont->continuation.expression, ref_name, ct_reg));
 	}}
-	put(func, function.expression, make_jump1(make_invoke1(make_literal((unsigned long) _get_, ct_reg),
-		use_reference(host_cont_param, ct_reg), ct_reg), cont, ct_reg));
+	union expression *func = make_function(make_reference(NULL, ct_reg), nil(ct_reg),
+		make_jump1(make_invoke1(make_literal((unsigned long) _get_, ct_reg),
+		use_reference(host_cont_param, ct_reg), ct_reg), cont, ct_reg), ct_reg);
+	prepend(host_cont_param, &func->function.parameters, ct_reg);
+	host_cont_param->reference.parent = func;
+	
 	Object *obj = load_expressions(make_program(lst(func, nil(ct_reg), ct_reg), ct_reg), ectx, st_binds, ct_reg);
 	list ms = mutable_symbols(obj, ct_reg);
 	Symbol *mutable_sym;
@@ -516,7 +519,8 @@ void generate_np_expressions(union expression **s, region ct_reg, struct expansi
 			}}
 			void (*(*macro_cache))(void *) = region_alloc(ectx->rt_reg, sizeof(void (*)(void *)));
 			*macro_cache = NULL;
-			union expression *wth = make_with(ct_reg), *cont = make_continuation(ct_reg), *param = make_reference(ct_reg);
+			union expression *wth = make_with(make_reference(NULL, ct_reg), make_begin(nil(ct_reg), ct_reg), ct_reg), *cont = make_continuation(make_reference(NULL, ct_reg), nil(ct_reg),
+				make_begin(nil(ct_reg), ct_reg), ct_reg), *param = make_reference(NULL, ct_reg);
 			put(wth, with.expression, make_invoke1(make_invoke7(make_literal((unsigned long) np_expansion, ct_reg),
 				(*s)->non_primitive.reference, make_literal((unsigned long) copy_sexpr_list((*s)->non_primitive.argument,
 				ectx->rt_reg), ct_reg), make_literal((unsigned long) ectx, ct_reg),
@@ -527,7 +531,7 @@ void generate_np_expressions(union expression **s, region ct_reg, struct expansi
 			prepend(param, &cont->continuation.parameters, ct_reg);
 			param->reference.parent = cont;
 			
-			union expression *macro_invocation = make_with(ct_reg);
+			union expression *macro_invocation = make_with(make_reference(NULL, ct_reg), make_begin(nil(ct_reg), ct_reg), ct_reg);
 			macro_invocation->with.parent = (*s)->non_primitive.parent;
 			prepend(use_reference(macro_invocation->with.reference, ct_reg), &args_ct, ct_reg);
 			put(macro_invocation, with.expression, make_jump(make_invoke1(make_literal((unsigned long) _get_, ct_reg),

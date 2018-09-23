@@ -68,7 +68,7 @@ union expression *vlayout_frames(union expression *n, region r) {
 				//Make space for the buffer
 				int i;
 				for(i = 1; i < (CONT_SIZE / WORD_SIZE); i++) {
-					append(make_reference(r), &get_zeroth_function(n)->function.locals, r);
+					append(make_reference(NULL, r), &get_zeroth_function(n)->function.locals, r);
 				}
 			}
 			append_list(&get_zeroth_function(n)->function.locals, n->continuation.parameters);
@@ -79,7 +79,7 @@ union expression *vlayout_frames(union expression *n, region r) {
 }
 
 union expression *make_load(union expression *ref, int offset, union expression *dest_reg, union expression *scratch_reg, region r) {
-	union expression *container = make_begin(r);
+	union expression *container = make_begin(nil(r), r);
 	if(ref->reference.referent->reference.offset) {
 		emit(make_instr3(MOVQ_MDB_TO_REG, make_literal(ref->reference.referent->reference.offset->literal.value + offset, r),
 			use(RBP, r), dest_reg, r), r);
@@ -91,7 +91,7 @@ union expression *make_load(union expression *ref, int offset, union expression 
 }
 
 union expression *make_store(union expression *src_reg, union expression *ref, int offset, union expression *scratch_reg, region r) {
-	union expression *container = make_begin(r);
+	union expression *container = make_begin(nil(r), r);
 	if(ref->reference.referent->reference.offset) {
 		emit(make_instr3(MOVQ_FROM_REG_INTO_MDB,
 			src_reg, make_literal(ref->reference.referent->reference.offset->literal.value + offset, r), use(RBP, r), r), r);
@@ -105,15 +105,15 @@ union expression *make_store(union expression *src_reg, union expression *ref, i
 //Must be used after use_return_reference and init_i386_registers
 union expression *vgenerate_ifs(union expression *n, region r) {
 	if(n->base.type == _if) {
-		union expression *container = make_begin(r);
+		union expression *container = make_begin(nil(r), r);
 		
 		emit(make_load(n->_if.condition, 0, use(R10, r), use(R13, r), r), r);
 		emit(make_instr2(ORQ_REG_TO_REG, use(R10, r), use(R10, r), r), r);
 		
-		union expression *alternate_label = make_reference(r);
+		union expression *alternate_label = make_reference(NULL, r);
 		emit(make_instr1(JE_REL, make_instr1(STVAL_SUB_RIP_FROM_REF, alternate_label, r), r), r);
 		emit(n->_if.consequent, r);
-		union expression *end_label = make_reference(r);
+		union expression *end_label = make_reference(NULL, r);
 		emit(make_instr1(JMP_REL, make_instr1(STVAL_SUB_RIP_FROM_REF, end_label, r), r), r);
 		emit(make_instr1(LOCAL_LABEL, alternate_label, r), r);
 		emit(n->_if.alternate, r);
@@ -125,7 +125,7 @@ union expression *vgenerate_ifs(union expression *n, region r) {
 }
 
 union expression *make_load_address(union expression *ref, union expression *dest_reg, region r) {
-	union expression *container = make_begin(r);
+	union expression *container = make_begin(nil(r), r);
 	if(ref->reference.referent->reference.offset) {
 		emit(make_instr3(LEAQ_OF_MDB_INTO_REG, ref->reference.referent->reference.offset, use(RBP, r), dest_reg, r), r);
 	} else {
@@ -137,7 +137,7 @@ union expression *make_load_address(union expression *ref, union expression *des
 //Must be used after use_return_reference and generate_continuation_expressions
 union expression *vgenerate_references(union expression *n, region r) {
 	if(n->base.type == reference && n->reference.return_value) {
-		union expression *container = make_begin(r);
+		union expression *container = make_begin(nil(r), r);
 		emit(make_load_address(n, use(R11, r), r), r);
 		emit(make_store(use(R11, r), n->base.return_value, 0, use(R10, r), r), r);
 		return container;
@@ -147,11 +147,12 @@ union expression *vgenerate_references(union expression *n, region r) {
 }
 
 union expression *cont_instr_ref(union expression *n, region r) {
-	return n->continuation.cont_instr_ref ? n->continuation.cont_instr_ref : (n->continuation.cont_instr_ref = make_reference(r));
+	return n->continuation.cont_instr_ref ?
+		n->continuation.cont_instr_ref : (n->continuation.cont_instr_ref = make_reference(NULL, r));
 }
 
 union expression *make_store_continuation(union expression *n, region r) {
-	union expression *container = make_begin(r);
+	union expression *container = make_begin(nil(r), r);
 	emit(make_store(use(RBX, r), n->continuation.reference, CONT_RBX, use(R11, r), r), r);
 	emit(make_store(use(R12, r), n->continuation.reference, CONT_R12, use(R11, r), r), r);
 	emit(make_store(use(R13, r), n->continuation.reference, CONT_R13, use(R11, r), r), r);
@@ -164,7 +165,7 @@ union expression *make_store_continuation(union expression *n, region r) {
 }
 
 union expression *move_arguments(union expression *n, int offset, region r) {
-	union expression *container = make_begin(r);
+	union expression *container = make_begin(nil(r), r);
 	union expression *t;
 	foreach(t, n->jump.arguments) {
 		emit(make_load(t, 0, use(R10, r), use(R13, r), r), r);
@@ -178,7 +179,7 @@ union expression *move_arguments(union expression *n, int offset, region r) {
 union expression *vgenerate_continuation_expressions(union expression *n, region r) {
 	switch(n->base.type) {
 		case continuation: {
-			union expression *container = make_begin(r);
+			union expression *container = make_begin(nil(r), r);
 			emit(make_load_address(n->continuation.escapes ? n->continuation.reference : cont_instr_ref(n, r), use(R11, r), r), r);
 			emit(make_store(use(R11, r), n->continuation.return_value, 0, use(R10, r), r), r);
 			if(n->continuation.escapes) {
@@ -186,14 +187,14 @@ union expression *vgenerate_continuation_expressions(union expression *n, region
 			}
 			
 			//Skip the actual instructions of the continuation
-			union expression *after_reference = make_reference(r);
+			union expression *after_reference = make_reference(NULL, r);
 			emit(make_instr1(JMP_REL, make_instr1(STVAL_SUB_RIP_FROM_REF, after_reference, r), r), r);
 			emit(make_instr1(LOCAL_LABEL, cont_instr_ref(n, r), r), r);
 			emit(n->continuation.expression, r);
 			emit(make_instr1(LOCAL_LABEL, after_reference, r), r);
 			return container;
 		} case with: {
-			union expression *container = make_begin(r);
+			union expression *container = make_begin(nil(r), r);
 			if(n->with.escapes) {
 				emit(make_store_continuation(n, r), r);
 			}
@@ -203,7 +204,7 @@ union expression *vgenerate_continuation_expressions(union expression *n, region
 			emit(make_store(use(R11, r), n->with.return_value, 0, use(R10, r), r), r);
 			return container;
 		} case jump: {
-			union expression *container = make_begin(r);
+			union expression *container = make_begin(nil(r), r);
 			if(n->jump.short_circuit) {
 				if(length(n->jump.short_circuit->continuation.parameters) > 0) {
 					emit(make_load_address(n->jump.short_circuit->continuation.parameters->fst, use(R11, r), r), r);
@@ -232,7 +233,7 @@ union expression *vgenerate_continuation_expressions(union expression *n, region
 //Must be used after use_return_reference and init_i386_registers
 union expression *vgenerate_literals(union expression *n, region r) {
 	if(n->base.type == literal && n->literal.return_value) {
-		union expression *container = make_begin(r);
+		union expression *container = make_begin(nil(r), r);
 		emit(make_instr2(MOVQ_IMM_TO_REG, make_literal(n->literal.value, r), use(R11, r), r), r);
 		emit(make_store(use(R11, r), n->literal.return_value, 0, use(R13, r), r), r);
 		return container;
@@ -242,7 +243,7 @@ union expression *vgenerate_literals(union expression *n, region r) {
 }
 
 union expression *generate_toplevel(union expression *n, region r) {
-	union expression *container = make_begin(r);
+	union expression *container = make_begin(nil(r), r);
 	emit(make_instr1(PUSHQ_REG, use(R12, r), r), r);
 	emit(make_instr1(PUSHQ_REG, use(R13, r), r), r);
 	emit(make_instr1(PUSHQ_REG, use(R14, r), r), r);
@@ -272,11 +273,11 @@ int get_current_offset(union expression *function) {
 //Must be used after all local references have been made, i.e. after make_store_continuations
 union expression *vgenerate_function_expressions(union expression *n, region r) {
 	if(n->base.type == function && n->function.parent) {
-		union expression *container = make_begin(r);
+		union expression *container = make_begin(nil(r), r);
 		emit(make_load_address(n->function.reference, use(R11, r), r), r);
 		emit(make_store(use(R11, r), n->function.return_value, 0, use(R10, r), r), r);
 		
-		union expression *after_reference = make_reference(r);
+		union expression *after_reference = make_reference(NULL, r);
 		
 		emit(make_instr1(JMP_REL, make_instr1(STVAL_SUB_RIP_FROM_REF, after_reference, r), r), r);
 		if(root_function_of(n) == n->function.parent->begin.parent) {
@@ -327,7 +328,7 @@ union expression *vgenerate_function_expressions(union expression *n, region r) 
 		emit(make_instr1(LOCAL_LABEL, after_reference, r), r);
 		return container;
 	} else if(n->base.type == invoke) {
-		union expression *container = make_begin(r);
+		union expression *container = make_begin(nil(r), r);
 		
 		//Push arguments onto stack
 		if(length(n->invoke.arguments) > 6) {

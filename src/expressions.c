@@ -158,10 +158,10 @@ union expression *make_literal(unsigned long value, region reg) {
 	return t;
 }
 
-union expression *make_reference(region reg) {
+union expression *make_reference(char *name, region reg) {
 	union expression *ref = region_alloc(reg, sizeof(union expression));
 	ref->reference.type = reference;
-	ref->reference.name = NULL;
+	ref->reference.name = name;
 	ref->reference.symbol = NULL;
 	ref->reference.referent = ref;
 	return ref;
@@ -179,10 +179,14 @@ bool strequal(void *a, void *b) {
 	return strcmp(a, b) == 0;
 }
 
-union expression *make_begin(region reg) {
+union expression *make_begin(list expressions, region reg) {
 	union expression *beg = region_alloc(reg, sizeof(union expression));
 	beg->begin.type = begin;
-	beg->begin.expressions = nil(reg);
+	beg->begin.expressions = expressions;
+	union expression *expr;
+	foreach(expr, expressions) {
+		expr->base.parent = beg;
+	}
 	return beg;
 }
 
@@ -200,36 +204,42 @@ union expression *make_begin(region reg) {
 	_set_val->base.parent = _set_expr; \
 }
 
-union expression *make_function(region reg) {
+union expression *make_function(union expression *ref, list params, union expression *expr, region reg) {
 	union expression *func = region_alloc(reg, sizeof(union expression));
 	func->function.type = function;
-	func->function.reference = make_reference(reg);
+	put(func, function.reference, ref);
 	func->function.reference->reference.parent = func;
-	func->function.parameters = nil(reg);
+	func->function.parameters = params;
+	union expression *param;
+	foreach(param, params) {
+		param->base.parent = func;
+	}
 	func->function.locals = nil(reg);
-	put(func, function.expression, make_begin(reg));
+	put(func, function.expression, expr);
 	return func;
 }
 
-union expression *make_continuation(region reg) {
+union expression *make_continuation(union expression *ref, list params, union expression *expr, region reg) {
 	union expression *cont = region_alloc(reg, sizeof(union expression));
 	cont->continuation.type = continuation;
-	cont->continuation.reference = make_reference(reg);
-	cont->continuation.reference->reference.parent = cont;
-	cont->continuation.parameters = nil(reg);
-	put(cont, continuation.expression, make_begin(reg));
+	put(cont, continuation.reference, ref);
+	cont->continuation.parameters = params;
+	union expression *param;
+	foreach(param, params) {
+		param->base.parent = cont;
+	}
+	put(cont, continuation.expression, expr);
 	return cont;
 }
 
-union expression *make_with(region reg) {
+union expression *make_with(union expression *ref, union expression *expr, region reg) {
 	union expression *wth = region_alloc(reg, sizeof(union expression));
 	wth->with.type = with;
-	wth->with.reference = make_reference(reg);
-	wth->with.reference->reference.parent = wth;
-	union expression *param = make_reference(reg);
+	put(wth, with.reference, ref);
+	union expression *param = make_reference(NULL, reg);
 	param->reference.parent = wth;
 	wth->with.parameter = lst(param, nil(reg), reg);
-	put(wth, with.expression, make_begin(reg));
+	put(wth, with.expression, expr);
 	return wth;
 }
 
@@ -242,7 +252,7 @@ union expression *use(int opcode, region reg) {
 }
 
 union expression *prepend_parameter(union expression *function, region reg) {
-	union expression *v = make_reference(reg);
+	union expression *v = make_reference(NULL, reg);
 	v->reference.parent = function;
 	v->reference.referent = v;
 	prepend(v, &(function->function.parameters), reg);
@@ -542,11 +552,5 @@ union expression *insert_indirections(union expression *expr, char *ref_name, re
 }
 
 union expression *make_program(list exprs, region r) {
-	union expression *program = make_function(r);
-	program->function.expression->begin.expressions = exprs;
-	union expression *expr;
-	{foreach(expr, exprs) {
-		expr->base.parent = program->function.expression;
-	}}
-	return program;
+	return make_function(make_reference(NULL, r), nil(r), make_begin(exprs, r), r);
 }

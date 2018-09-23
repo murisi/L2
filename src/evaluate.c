@@ -31,8 +31,7 @@ Object *load_expressions(union expression *program, struct expansion_context *ec
 		if((*t)->base.type == function) {
 			generate_np_expressions(t, manreg, ectx);
 		} else {
-			union expression *container = make_function(manreg);
-			put(container, function.expression, *t);
+			union expression *container = make_function(make_reference(NULL, manreg), nil(manreg), *t, manreg);
 			generate_np_expressions(&container->function.expression, manreg, ectx);
 			*t = container->function.expression;
 			(*t)->base.parent = program->function.expression;
@@ -42,7 +41,7 @@ Object *load_expressions(union expression *program, struct expansion_context *ec
 	visit_expressions(vfind_multiple_definitions, &program, ectx->handler);
 	visit_expressions(vlink_references, &program, (void* []) {ectx->handler, manreg});
 	visit_expressions(vescape_analysis, &program, NULL);
-	program = use_return_value(program, make_reference(manreg), manreg);
+	program = use_return_value(program, make_reference(NULL, manreg), manreg);
 	visit_expressions(vlayout_frames, &program, manreg);
 	visit_expressions(vgenerate_references, &program, manreg);
 	visit_expressions(vgenerate_continuation_expressions, &program, manreg);

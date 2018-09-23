@@ -28,7 +28,7 @@ union expression *build_syntax_tree(list d, region reg, jumpbuf *handler) {
 		s->with.type = with;
 		put(s, with.reference, build_syntax_tree(d->frst, reg, handler));
 		put(s, with.expression, build_syntax_tree(d->frrst, reg, handler));
-		union expression *param = make_reference(reg);
+		union expression *param = make_reference(NULL, reg);
 		param->reference.parent = s;
 		s->with.parameter = lst(param, nil(reg), reg);
 	} else if(!strcmp(to_string(d->fst, reg), "begin")) {
