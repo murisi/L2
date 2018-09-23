@@ -175,10 +175,6 @@ union expression *use_reference(union expression *referent, region reg) {
 	return ref;
 }
 
-bool strequal(void *a, void *b) {
-	return strcmp(a, b) == 0;
-}
-
 union expression *make_begin(list expressions, region reg) {
 	union expression *beg = region_alloc(reg, sizeof(union expression));
 	beg->begin.type = begin;
@@ -194,13 +190,6 @@ union expression *make_begin(list expressions, region reg) {
 	union expression *_set_expr = expr; \
 	union expression *_set_val = val; \
 	_set_expr->part = _set_val; \
-	_set_val->base.parent = _set_expr; \
-}
-
-#define append_expr(val, expr, part, reg) { \
-	union expression *_set_expr = expr; \
-	union expression *_set_val = val; \
-	append(_set_val, &(_set_expr->part), reg); \
 	_set_val->base.parent = _set_expr; \
 }
 
