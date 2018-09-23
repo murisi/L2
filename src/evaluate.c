@@ -63,8 +63,8 @@ Object *load_expressions(union expression *program, struct expansion_context *ec
 		}
 	}}
 	{foreach(l, asms) {
-		if(l->instruction.opcode == LOCAL_LABEL || l->instruction.opcode == GLOBAL_LABEL) {
-			union expression *label_ref = l->instruction.arguments->fst;
+		if(l->assembly.opcode == LOCAL_LABEL || l->assembly.opcode == GLOBAL_LABEL) {
+			union expression *label_ref = l->assembly.arguments->fst;
 			if(label_ref->reference.symbol) {
 				label_ref->reference.symbol->address += (unsigned long) segment(obj, ".text");
 			}

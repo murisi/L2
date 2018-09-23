@@ -8,7 +8,7 @@ enum expression_type {
 	reference,
 	jump,
 	continuation,
-	instruction,
+	assembly,
 	non_primitive
 };
 
@@ -26,7 +26,7 @@ struct begin_expression {
 	list expressions; // void * = struct expression *
 };
 
-struct instruction_expression {
+struct assembly_expression {
 	enum expression_type type;
 	union expression *parent;
 	union expression *return_value;
@@ -144,11 +144,11 @@ union expression {
 	struct with_expression with;
 	struct jump_expression jump;
 	struct invoke_expression invoke;
-	struct instruction_expression instruction;
 	struct if_expression _if;
 	struct literal_expression literal;
 	struct reference_expression reference;
 	struct np_expression non_primitive;
+	struct assembly_expression assembly;
 };
 
 union expression *make_literal(unsigned long value, region reg) {
@@ -245,9 +245,9 @@ union expression *make_with(union expression *ref, union expression *expr, regio
 
 union expression *use(int opcode, region reg) {
 	union expression *u = region_alloc(reg, sizeof(union expression));
-	u->instruction.type = instruction;
-	u->instruction.opcode = opcode;
-	u->instruction.arguments = nil(reg);
+	u->assembly.type = assembly;
+	u->assembly.opcode = opcode;
+	u->assembly.arguments = nil(reg);
 	return u;
 }
 
@@ -261,29 +261,29 @@ union expression *prepend_parameter(union expression *function, region reg) {
 
 union expression *make_instr0(int opcode, region reg) {
 	union expression *u = region_alloc(reg, sizeof(union expression));
-	u->instruction.type = instruction;
-	u->instruction.opcode = opcode;
-	u->instruction.arguments = nil(reg);
+	u->assembly.type = assembly;
+	u->assembly.opcode = opcode;
+	u->assembly.arguments = nil(reg);
 	return u;
 }
 
 union expression *make_instr1(int opcode, union expression *arg1, region reg) {
 	union expression *u = make_instr0(opcode, reg);
-	u->instruction.arguments = lst(arg1, u->instruction.arguments, reg);
+	u->assembly.arguments = lst(arg1, u->assembly.arguments, reg);
 	arg1->base.parent = u;
 	return u;
 }
 
 union expression *make_instr2(int opcode, union expression *arg1, union expression *arg2, region reg) {
 	union expression *u = make_instr1(opcode, arg2, reg);
-	u->instruction.arguments = lst(arg1, u->instruction.arguments, reg);
+	u->assembly.arguments = lst(arg1, u->assembly.arguments, reg);
 	arg1->base.parent = u;
 	return u;
 }
 
 union expression *make_instr3(int opcode, union expression *arg1, union expression *arg2, union expression *arg3, region reg) {
 	union expression *u = make_instr2(opcode, arg2, arg3, reg);
-	u->instruction.arguments = lst(arg1, u->instruction.arguments, reg);
+	u->assembly.arguments = lst(arg1, u->assembly.arguments, reg);
 	arg1->base.parent = u;
 	return u;
 }

@@ -55,15 +55,15 @@ void write_static_value(char *bin, int *pos, union expression *expr, int bytes, 
 		(*relas)->r_info = ELF64_R_INFO((Elf64_Sym *) expr->reference.referent->reference.context - symtab, R_X86_64_64);
 		(*relas)->r_addend = 0;
 		(*relas)++;
-	} else if(expr->base.type == instruction && expr->instruction.opcode == STVAL_ADD_OFF_TO_REF && bytes == 8) {
-		union expression *ref = expr->instruction.arguments->fst;
-		union expression *offset = expr->instruction.arguments->frst;
+	} else if(expr->base.type == assembly && expr->assembly.opcode == STVAL_ADD_OFF_TO_REF && bytes == 8) {
+		union expression *ref = expr->assembly.arguments->fst;
+		union expression *offset = expr->assembly.arguments->frst;
 		(*relas)->r_offset = *pos;
 		(*relas)->r_info = ELF64_R_INFO((Elf64_Sym *) ref->reference.referent->reference.context - symtab, R_X86_64_64);
 		(*relas)->r_addend = offset->literal.value;
 		(*relas)++;
-	} else if(expr->base.type == instruction && expr->instruction.opcode == STVAL_SUB_RIP_FROM_REF && bytes == 4) {
-		union expression *ref = expr->instruction.arguments->fst;
+	} else if(expr->base.type == assembly && expr->assembly.opcode == STVAL_SUB_RIP_FROM_REF && bytes == 4) {
+		union expression *ref = expr->assembly.arguments->fst;
 		(*relas)->r_offset = *pos;
 		(*relas)->r_info = ELF64_R_INFO((Elf64_Sym *) ref->reference.referent->reference.context - symtab, R_X86_64_PC32);
 		(*relas)->r_addend = -bytes;
@@ -90,9 +90,9 @@ void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sy
 	*pos = 0;
 	union expression *n;
 	foreach(n, generated_expressions) {
-		switch(n->instruction.opcode) {
+		switch(n->assembly.opcode) {
 			case LOCAL_LABEL: case GLOBAL_LABEL: {
-				union expression *label_ref = (union expression *) n->instruction.arguments->fst;
+				union expression *label_ref = (union expression *) n->assembly.arguments->fst;
 				Elf64_Sym *sym = label_ref->reference.context;
 				if(label_ref->reference.symbol) {
 					label_ref->reference.symbol->address = (void *) (unsigned long) *pos;
@@ -101,15 +101,15 @@ void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sy
 				break;
 			} case LEAQ_OF_MDB_INTO_REG: {
 				unsigned char opcode = 0x8D;
-				int reg = ((union expression *) n->invoke.arguments->frrst)->instruction.opcode; //Dest
-				int rm = ((union expression *) n->invoke.arguments->frst)->instruction.opcode; //Src
+				int reg = ((union expression *) n->invoke.arguments->frrst)->assembly.opcode; //Dest
+				int rm = ((union expression *) n->invoke.arguments->frst)->assembly.opcode; //Src
 				write_mr_instr(bin, pos, opcode, reg, rm, true, true);
 				write_static_value(bin, pos, n->invoke.arguments->fst, 4, symtab, relas);
 				break;
 			} case MOVQ_FROM_REG_INTO_MDB: {
 				unsigned char opcode = 0x89;
-				int reg = ((union expression *) n->invoke.arguments->fst)->instruction.opcode; //Src
-				int rm = ((union expression *) n->invoke.arguments->frrst)->instruction.opcode; //Dest
+				int reg = ((union expression *) n->invoke.arguments->fst)->assembly.opcode; //Src
+				int rm = ((union expression *) n->invoke.arguments->frrst)->assembly.opcode; //Dest
 				write_mr_instr(bin, pos, opcode, reg, rm, true, true);
 				write_static_value(bin, pos, n->invoke.arguments->frst, 4, symtab, relas);
 				break;
@@ -120,39 +120,39 @@ void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sy
 				break;
 			} case MOVQ_MDB_TO_REG: {
 				unsigned char opcode = 0x8B;
-				int reg = ((union expression *) n->invoke.arguments->frrst)->instruction.opcode; //Dest
-				int rm = ((union expression *) n->invoke.arguments->frst)->instruction.opcode; //Src
+				int reg = ((union expression *) n->invoke.arguments->frrst)->assembly.opcode; //Dest
+				int rm = ((union expression *) n->invoke.arguments->frst)->assembly.opcode; //Src
 				write_mr_instr(bin, pos, opcode, reg, rm, true, true);
 				write_static_value(bin, pos, n->invoke.arguments->fst, 4, symtab, relas);
 				break;
 			} case PUSHQ_REG: {
 				unsigned char opcode = 0x50;
-				int reg = ((union expression *) n->invoke.arguments->fst)->instruction.opcode; //Dest
+				int reg = ((union expression *) n->invoke.arguments->fst)->assembly.opcode; //Dest
 				write_o_instr(bin, pos, opcode, reg);
 				break;
 			} case MOVQ_REG_TO_REG: {
 				unsigned char opcode = 0x8B;
-				int reg = ((union expression *) n->invoke.arguments->frst)->instruction.opcode; //Dest
-				int rm = ((union expression *) n->invoke.arguments->fst)->instruction.opcode; //Src
+				int reg = ((union expression *) n->invoke.arguments->frst)->assembly.opcode; //Dest
+				int rm = ((union expression *) n->invoke.arguments->fst)->assembly.opcode; //Src
 				write_mr_instr(bin, pos, opcode, reg, rm, false, true);
 				break;
 			} case SUBQ_IMM_FROM_REG: {
 				unsigned char opcode = 0x81;
 				unsigned char reg = 5;
-				int rm = ((union expression *) n->invoke.arguments->frst)->instruction.opcode; //Dest
+				int rm = ((union expression *) n->invoke.arguments->frst)->assembly.opcode; //Dest
 				write_mr_instr(bin, pos, opcode, reg, rm, false, true);
 				mem_write(bin, pos, &((union expression *) n->invoke.arguments->fst)->literal.value, 4);
 				break;
 			} case ADDQ_IMM_TO_REG: {
 				unsigned char opcode = 0x81;
 				unsigned char reg = 0;
-				int rm = ((union expression *) n->invoke.arguments->frst)->instruction.opcode; //Dest
+				int rm = ((union expression *) n->invoke.arguments->frst)->assembly.opcode; //Dest
 				write_mr_instr(bin, pos, opcode, reg, rm, false, true);
 				mem_write(bin, pos, &((union expression *) n->invoke.arguments->fst)->literal.value, 4);
 				break;
 			} case POPQ_REG: {
 				unsigned char opcode = 0x58;
-				int reg = ((union expression *) n->invoke.arguments->fst)->instruction.opcode; //Dest
+				int reg = ((union expression *) n->invoke.arguments->fst)->assembly.opcode; //Dest
 				write_o_instr(bin, pos, opcode, reg);
 				break;
 			} case LEAVE: {
@@ -166,7 +166,7 @@ void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sy
 			} case JMP_TO_REG: {
 				unsigned char opcode = 0xFF;
 				unsigned char reg = 4;
-				int rm = ((union expression *) n->invoke.arguments->fst)->instruction.opcode;
+				int rm = ((union expression *) n->invoke.arguments->fst)->assembly.opcode;
 				write_mr_instr(bin, pos, opcode, reg, rm, false, false);
 				break;
 			} case JE_REL: {
@@ -178,14 +178,14 @@ void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sy
 				break;
 			} case ORQ_REG_TO_REG: {
 				char opcode = 0x0B;
-				int reg = ((union expression *) n->invoke.arguments->frst)->instruction.opcode; //Dest
-				int rm = ((union expression *) n->invoke.arguments->fst)->instruction.opcode; //Src
+				int reg = ((union expression *) n->invoke.arguments->frst)->assembly.opcode; //Dest
+				int rm = ((union expression *) n->invoke.arguments->fst)->assembly.opcode; //Src
 				write_mr_instr(bin, pos, opcode, reg, rm, false, true);
 				break;
 			} case MOVQ_IMM_TO_REG: {
 				unsigned char opcode = 0xB8;
 				union expression *imm_expr = ((union expression *) n->invoke.arguments->fst);
-				int reg = ((union expression *) n->invoke.arguments->frst)->instruction.opcode; //Dest
+				int reg = ((union expression *) n->invoke.arguments->frst)->assembly.opcode; //Dest
 				unsigned char rd = (0x7 & reg);
 				unsigned char opcoderd = opcode + rd;
 				unsigned char REX = 4 << 4;
@@ -202,7 +202,7 @@ void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sy
 			} case CALL_REG: {
 				unsigned char opcode = 0xFF;
 				unsigned char reg = 2;
-				int rm = ((union expression *) n->invoke.arguments->fst)->instruction.opcode;
+				int rm = ((union expression *) n->invoke.arguments->fst)->assembly.opcode;
 				write_mr_instr(bin, pos, opcode, reg, rm, false, false);
 				break;
 			}
@@ -224,8 +224,8 @@ int measure_strtab(list generated_expressions, list locals, list globals) {
 		}
 	}}
 	{foreach(e, generated_expressions) {
-		if(e->instruction.opcode == LOCAL_LABEL || e->instruction.opcode == GLOBAL_LABEL) {
-			char *label_str = ((union expression *) e->instruction.arguments->fst)->reference.name;
+		if(e->assembly.opcode == LOCAL_LABEL || e->assembly.opcode == GLOBAL_LABEL) {
+			char *label_str = ((union expression *) e->assembly.arguments->fst)->reference.name;
 			if(label_str) {
 				strtab_len += strlen(label_str) + 1;
 			}
@@ -244,7 +244,7 @@ int measure_symtab(list generated_expressions, list locals, list globals) {
 		sym_count++;
 	}}
 	{foreach(e, generated_expressions) {
-		if(e->instruction.opcode == LOCAL_LABEL || e->instruction.opcode == GLOBAL_LABEL) {
+		if(e->assembly.opcode == LOCAL_LABEL || e->assembly.opcode == GLOBAL_LABEL) {
 			sym_count++;
 		}
 	}}
@@ -340,8 +340,8 @@ void write_elf(list generated_expressions, list locals, list globals, unsigned c
 		sym_ptr++;
 	}}
 	{foreach(e, generated_expressions) {
-		if(e->instruction.opcode == LOCAL_LABEL) {
-			union expression *ref = (union expression *) e->instruction.arguments->fst;
+		if(e->assembly.opcode == LOCAL_LABEL) {
+			union expression *ref = (union expression *) e->assembly.arguments->fst;
 			if(ref->reference.name) {
 				strcpy(strtabptr, ref->reference.name);
 				sym_ptr->st_name = strtabptr - strtab;
@@ -376,8 +376,8 @@ void write_elf(list generated_expressions, list locals, list globals, unsigned c
 		sym_ptr++;
 	}}
 	{foreach(e, generated_expressions) {
-		if(e->instruction.opcode == GLOBAL_LABEL) {
-			union expression *ref = (union expression *) e->instruction.arguments->fst;
+		if(e->assembly.opcode == GLOBAL_LABEL) {
+			union expression *ref = (union expression *) e->assembly.arguments->fst;
 			if(ref->reference.name) {
 				strcpy(strtabptr, ref->reference.name);
 				sym_ptr->st_name = strtabptr - strtab;
