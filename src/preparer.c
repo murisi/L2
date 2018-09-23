@@ -115,6 +115,14 @@ union expression *root_function_of(union expression *s) {
 	return s;
 }
 
+union expression *prepend_parameter(union expression *function, region reg) {
+	union expression *v = make_reference(NULL, reg);
+	v->reference.parent = function;
+	v->reference.referent = v;
+	prepend(v, &(function->function.parameters), reg);
+	return v;
+}
+
 union expression *vlink_references(union expression *s, void *ctx) {
 	jumpbuf *handler = ((void **) ctx)[0];
 	region r = ((void **) ctx)[1];

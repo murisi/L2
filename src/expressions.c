@@ -243,14 +243,6 @@ union expression *make_with(union expression *ref, union expression *expr, regio
 	return wth;
 }
 
-union expression *prepend_parameter(union expression *function, region reg) {
-	union expression *v = make_reference(NULL, reg);
-	v->reference.parent = function;
-	v->reference.referent = v;
-	prepend(v, &(function->function.parameters), reg);
-	return v;
-}
-
 union expression *make_asm0(int opcode, region reg) {
 	union expression *u = region_alloc(reg, sizeof(union expression));
 	u->assembly.type = assembly;
