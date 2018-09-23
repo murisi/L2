@@ -1,7 +1,5 @@
 #include "elf.h"
 
-#define SEGMENT_ALIGNMENT 16
-
 /*
  * Some functions for loading up object files, querying the addresses of its
  * symbols in memory, and mutating those of its symbols that are mutable.

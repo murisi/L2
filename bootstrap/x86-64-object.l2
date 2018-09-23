@@ -26,7 +26,7 @@
 
 (function reference (l r) (`(let (reference:temp (,[fst $l])) reference:temp)$r))
 
-(function do-relocations (obj) (for (sec-idx &0 (e-shnum@(ehdr@ $obj)))
+(function do-relocations (obj handler) (for (sec-idx &0 (e-shnum@(ehdr@ $obj)))
 	(let (shdr-buf (loc (shdrs@ $obj) $sec-idx (elf64-shdr)))
 		(if (or [= (sh-type@ $shdr-buf) (sht-rela)] [= (sh-type@ $shdr-buf) (sht-rel)])
 			(let (relanum [/ (sh-size@ $shdr-buf) (sh-entsize@ $shdr-buf)]) (relas-buf ($(loc (relas@ $obj) $sec-idx (unit))))
@@ -49,7 +49,7 @@
 							((r-x86-64-pc8) [memcpy (r-offset@ $rela) (reference [-[+(st-value@ $sym)$addend](r-offset@ $rela)])&1])
 							((r-x86-64-size32) [memcpy (r-offset@ $rela) (reference [+(st-size@ $sym)$addend]) &4])
 							((r-x86-64-size64) [memcpy (r-offset@ $rela) (reference [+(st-size@ $sym)$addend]) &8])
-							(null))))))
+							{$handler})))))
 			(begin)))))
 
 (function store-addends (obj reg handler)
@@ -136,7 +136,7 @@
 	(let (obj [read-object $objsrc $objsrc-sz $reg $handler]) (begin
 			[offsets-to-addresses $obj]
 			[store-addends $obj $reg $handler]
-			[do-relocations $obj]
+			[do-relocations $obj $handler]
 			{return $obj}))))
 
 (function name-of (obj shdr sym)
@@ -159,13 +159,31 @@
 		(address< $sym $address)
 		{return $sym}))))
 
+(function mutate-symbols (obj updates) (begin
+	(foreach (update $updates)
+		(for (sec-idx &0 (e-shnum@(ehdr@ $obj)))
+			(let (shdr-buf (loc (shdrs@ $obj) $sec-idx (elf64-shdr)))
+				(if [= (sh-type@ $shdr-buf) (sht-symtab)]
+					(let (symnum [/ (sh-size@ $shdr-buf) (sh-entsize@ $shdr-buf)]) (syms-buf ($(loc (syms@ $obj) $sec-idx (unit))))
+						(for (sym-idx &1 $symnum)
+							(let (sym (loc $syms-buf $sym-idx (elf64-sym)))
+								(if (and (not [strcmp [name-of $obj $shdr-buf $sym] (name@ $update)])
+										(or [= (st-shndx@ $sym) (shn-undef)] [= (st-shndx@ $sym) (shn-common)])
+										(or [= (elf64-st-bind (st-info@ $sym)) (stb-global)]
+											[= (elf64-st-bind (st-info@ $sym)) (stb-weak)]))
+									(st-value< $sym (address@ $update))
+									(begin)))))
+					(begin)))))
+	(++ If $obj was created using load, the following invocation cannot produce an error; hence the (null) handler argument.)
+	[do-relocations $obj (null)]))
+
 (function symbols (flag obj reg) (with return
 	(let (syms [nil $reg]) (begin
 		(for (sec-idx &0 (e-shnum@(ehdr@ $obj)))
 			(let (shdr-buf (loc (shdrs@ $obj) $sec-idx (elf64-shdr)))
 				(if [= (sh-type@ $shdr-buf) (sht-symtab)]
 					(let (symnum [/ (sh-size@ $shdr-buf) (sh-entsize@ $shdr-buf)]) (syms-buf ($(loc (syms@ $obj) $sec-idx (unit))))
-						(for (sym-idx &0 $symnum)
+						(for (sym-idx &1 $symnum)
 							(let (sym (loc $syms-buf $sym-idx (elf64-sym)))
 								(if (and [= (or [= (st-shndx@ $sym) (shn-undef)] [= (st-shndx@ $sym) (shn-common)]) $flag]
 										(or [= (elf64-st-bind (st-info@ $sym)) (stb-global)]
@@ -179,10 +197,22 @@
 
 (function immutable-symbols (obj reg) [symbols &0 $obj $reg])
 
+(function segment (obj name)
+	(if [= (e-shstrndx@(ehdr@ $obj)) (shn-undef)] (begin)
+		(with return
+			(let (shstrseg-buf ($(loc (segs@ $obj) (e-shstrndx@(ehdr@ $obj)) (unit))))
+				(for (sec-idx &0 (e-shnum@(ehdr@ $obj)))
+					(let (shdr-buf (loc (shdrs@ $obj) $sec-idx (elf64-shdr)))
+						(if [strcmp (loc $shstrseg-buf (sh-name@ $shdr-buf) &1) $name] (begin)
+							{return ($(loc (segs@ $obj) $sec-idx (unit)))})))))))
+
 (let (f [open (" ../bin/x86_64.o)]) (reg [create-region &0])
 	(let (buf [region-alloc $reg [size $f]]) (begin
 		[read $f $buf [size $f]]
-		(let (obj [load $buf [size $f] $reg (null)])
-			(foreach (j [immutable-symbols $obj $reg]) (begin
-				[write-str (stdout) (name@ $j)]
-				[write-char (stdout) (lf)]))))))
+		(let (obj [load $buf [size $f] $reg (null)]) (begin
+			(foreach (j [immutable-symbols $obj $reg])
+				(if (not [strcmp (name@ $j) (" syscall)])
+					(let (hdl (address@ $j))
+						[$hdl (sys-write) (stdout) (" Hellopeople) &6])
+					(begin [mutate-symbols $obj [nil $reg]])))
+			[[segment $obj (" .text)]])))))
