@@ -221,11 +221,8 @@ struct timer {
 	long nanoseconds;
 };
 
-void gettime(long *sec, long *nsec) {
-	struct timer t;
-	syscall(SYS_CLOCK_GETTIME, CLOCK_PROCESS_CPUTIME_ID, &t);
-	*sec = t.seconds;
-	*nsec = t.nanoseconds;
+void gettime(struct timer *t) {
+	syscall(SYS_CLOCK_GETTIME, CLOCK_PROCESS_CPUTIME_ID, t);
 }
 
 #define timer_reset(tmr) {\
@@ -247,9 +244,9 @@ void gettime(long *sec, long *nsec) {
 
 #define timer_time(dest, stm) {\
 	struct timer timer_i, timer_f; \
-	gettime(&timer_i.seconds, &timer_i.nanoseconds); \
+	gettime(&timer_i); \
 	stm; \
-	gettime(&timer_f.seconds, &timer_f.nanoseconds); \
+	gettime(&timer_f); \
 	timer_add(dest, timer_f); \
 	timer_subtract(dest, timer_i); \
 }
