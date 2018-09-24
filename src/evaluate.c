@@ -42,6 +42,8 @@ Object *load_expressions(union expression *program, struct expansion_context *ec
 	visit_expressions(vlink_references, &program, (void* []) {ectx->handler, manreg});
 	visit_expressions(vescape_analysis, &program, NULL);
 	program = use_return_value(program, make_reference(NULL, manreg), manreg);
+	visit_expressions(vmake_symbols, &program, manreg);
+	visit_expressions(vshare_symbols, &program, manreg);
 	visit_expressions(vlayout_frames, &program, manreg);
 	visit_expressions(vgenerate_references, &program, manreg);
 	visit_expressions(vgenerate_continuation_expressions, &program, manreg);
@@ -59,14 +61,14 @@ Object *load_expressions(union expression *program, struct expansion_context *ec
 	union expression *l;
 	{foreach(l, locals) {
 		if(l->reference.symbol) {
-			l->reference.symbol->address += (unsigned long) segment(obj, ".bss");
+			l->reference.symbol->offset += (unsigned long) segment(obj, ".bss");
 		}
 	}}
 	{foreach(l, asms) {
 		if(l->assembly.opcode == LOCAL_LABEL || l->assembly.opcode == GLOBAL_LABEL) {
 			union expression *label_ref = l->assembly.arguments->fst;
 			if(label_ref->reference.symbol) {
-				label_ref->reference.symbol->address += (unsigned long) segment(obj, ".text");
+				label_ref->reference.symbol->offset += (unsigned long) segment(obj, ".text");
 			}
 		}
 	}}
@@ -161,7 +163,7 @@ list _rst_(list l) {
 	return l->rst;
 }
 
-Symbol sexpr_symbols[] = {
+object_symbol sexpr_symbols[] = {
 	{.name = "-!-", .address = _exclamation_mark_},
 	{.name = "-\"-", .address = _double_quotation_},
 	{.name = "-#-", .address = _number_sign_},
@@ -326,7 +328,7 @@ int main(int argc, char *argv[]) {
 	
 	list static_bindings = nil(evaluate_region);
 	int i;
-	for(i = 0; i < sizeof(sexpr_symbols) / sizeof(Symbol); i++) {
+	for(i = 0; i < sizeof(sexpr_symbols) / sizeof(object_symbol); i++) {
 		prepend(&sexpr_symbols[i], &static_bindings, evaluate_region);
 	}
 	evaluate_files(argc - 1, argv + 1, static_bindings, &evaluate_handler);

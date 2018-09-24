@@ -226,14 +226,21 @@ char *name_of(Object *obj, Elf64_Shdr *shdr, Elf64_Sym *sym) {
 typedef struct {
 	char *name;
 	void *address;
-} Symbol;
+} object_symbol;
+
+object_symbol *make_object_symbol(char *nm, void *addr, region r) {
+	object_symbol *sym = region_alloc(r, sizeof(object_symbol));
+	sym->name = nm;
+	sym->address = addr;
+	return sym;
+}
 
 /*
  * Goes through the loaded object obj and modifies all occurences of symbols
  * with the same name as update to point to the same address as update.
  */
 void mutate_symbols(Object *obj, list updates) {
-	Symbol *update;
+	object_symbol *update;
 	foreach(update, updates) {
 		int sec;
 		for(sec = 0; sec < obj->ehdr->e_shnum; sec++) {
@@ -265,7 +272,7 @@ list symbols(int flag, Object *obj, region reg) {
 				if(((obj->syms[sec][sym].st_shndx == SHN_UNDEF || obj->syms[sec][sym].st_shndx == SHN_COMMON) == flag) &&
 					(ELF64_ST_BIND(obj->syms[sec][sym].st_info) == STB_GLOBAL ||
 					ELF64_ST_BIND(obj->syms[sec][sym].st_info) == STB_WEAK)) {
-						Symbol *symbol = region_alloc(reg, sizeof(Symbol));
+						object_symbol *symbol = region_alloc(reg, sizeof(object_symbol));
 						symbol->name = name_of(obj, &obj->shdrs[sec], &obj->syms[sec][sym]);
 						symbol->address = (void *) obj->syms[sec][sym].st_value;
 						prepend(symbol, &syms, reg);

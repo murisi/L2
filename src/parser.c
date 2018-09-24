@@ -18,6 +18,7 @@ union expression *build_syntax_tree(list d, region reg, jumpbuf *handler) {
 		s->reference.type = reference;
 		s->reference.name = str;
 		s->reference.referent = NULL;
+		s->reference.symbol = NULL;
 	} else if(!strcmp(to_string(d->fst, reg), "with")) {
 		if(length(d) != 3) {
 			throw_special_form(d, NULL, handler);

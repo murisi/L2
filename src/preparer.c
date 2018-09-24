@@ -212,6 +212,7 @@ void visit_expressions(union expression *(*visitor)(union expression *, void *),
 union expression *make_local(union expression *function, region r) {
 	union expression *ref = make_reference(NULL, r);
 	ref->reference.parent = function;
+	ref->reference.symbol = make_symbol(function->function.parent ? dynamic_storage : static_storage, NULL, r);
 	prepend(ref, &function->function.locals, r);
 	return ref;
 }
@@ -283,6 +284,43 @@ union expression *vmerge_begins(union expression *n, void *ctx) {
 		list *l = ((void **) ctx)[0];
 		region r = ((void **) ctx)[1];
 		prepend(n, l, r);
+	}
+	return n;
+}
+
+union expression *vmake_symbols(union expression *n, region r) {
+	switch(n->base.type) {
+		case function: {
+			if(!n->function.reference->reference.symbol) {
+				n->function.reference->reference.symbol = make_symbol(_function, n->function.reference->reference.name, r);
+			}
+			union expression *param;
+			foreach(param, n->function.parameters) {
+				if(!param->reference.symbol) {
+					param->reference.symbol = make_symbol(n->function.parent ? dynamic_storage : static_storage, param->reference.name, r);
+				}
+			}
+			break;
+		} case continuation: case with: {
+			enum symbol_type type = get_zeroth_function(n)->function.parent ? dynamic_storage : static_storage;
+			if(!n->continuation.reference->reference.symbol) {
+				n->continuation.reference->reference.symbol = make_symbol(type, n->continuation.reference->reference.name, r);
+			}
+			union expression *param;
+			foreach(param, n->continuation.parameters) {
+				if(!param->reference.symbol) {
+					param->reference.symbol = make_symbol(type, param->reference.name, r);
+				}
+			}
+			break;
+		}
+	}
+	return n;
+}
+
+union expression *vshare_symbols(union expression *n, region r) {
+	if(n->base.type == reference && !n->reference.symbol) {
+		n->reference.symbol = n->reference.referent->reference.symbol;
 	}
 	return n;
 }
@@ -391,10 +429,10 @@ void (*np_expansion(list (*expander)(list, region), list argument, struct expans
 	
 	Object *obj = load_expressions(make_program(lst(func, nil(ct_reg), ct_reg), ct_reg), ectx, st_binds, ct_reg);
 	list ms = mutable_symbols(obj, ct_reg);
-	Symbol *mutable_sym;
+	object_symbol *mutable_sym;
 	{foreach(mutable_sym, ms) {
 		bool found = false;
-		Symbol *bind_sym;
+		object_symbol *bind_sym;
 		{foreach(bind_sym, ectx->ext_binds) {
 			if(!strcmp(mutable_sym->name, bind_sym->name)) {
 				found = true;
@@ -413,22 +451,22 @@ void (*np_expansion(list (*expander)(list, region), list argument, struct expans
 	}}
 	mutate_symbols(obj, ectx->ext_binds);
 	mutate_symbols(obj, st_binds);
+	/*object_symbol *sym;
+	{foreach(sym, st_binds) {
+		write_str(STDOUT, sym->name);
+		write_str(STDOUT, " : ");
+		write_ulong(STDOUT, (unsigned long) sym->address);
+		write_char(STDOUT, '\n');
+	}}*/
 	//There is only one immutable symbol: our annonymous function
-	*macro_cache = ((Symbol *) immutable_symbols(obj, ct_reg)->fst)->address;
+	*macro_cache = ((object_symbol *) immutable_symbols(obj, ct_reg)->fst)->address;
 	destroy_region(ct_reg);
 	return *macro_cache;
 }
 
-Symbol *make_symbol(char *nm, void *addr, region r) {
-	Symbol *sym = region_alloc(r, sizeof(Symbol));
-	sym->name = nm;
-	sym->address = addr;
-	return sym;
-}
-
 void prepend_binding(union expression *ref, list *binds, region rt_reg) {
 	if(ref->reference.name) {
-		ref->reference.symbol = make_symbol(rstrcpy(ref->reference.name, rt_reg), NULL, rt_reg);
+		ref->reference.symbol = make_symbol(static_storage, rstrcpy(ref->reference.name, rt_reg), rt_reg);
 		prepend(ref->reference.symbol, binds, rt_reg);
 	}
 }

@@ -53,13 +53,13 @@ union expression *vlayout_frames(union expression *n, region r) {
 			int parameter_offset = 7*WORD_SIZE;
 			union expression *t;
 			{foreach(t, n->function.parameters) {
-				t->reference.offset = n->function.parent ? make_literal(parameter_offset, r) : NULL;
+				t->reference.symbol->offset = parameter_offset;
 				parameter_offset += WORD_SIZE;
 			}}
 			int local_offset = 0;
 			foreach(t, reverse(n->function.locals, r)) {
 				local_offset -= WORD_SIZE;
-				t->reference.offset = n->function.parent ? make_literal(local_offset, r) : NULL;
+				t->reference.symbol->offset = local_offset;
 			}
 			break;
 		} case continuation: case with: {
@@ -68,7 +68,9 @@ union expression *vlayout_frames(union expression *n, region r) {
 				//Make space for the buffer
 				int i;
 				for(i = 1; i < (CONT_SIZE / WORD_SIZE); i++) {
-					append(make_reference(NULL, r), &get_zeroth_function(n)->function.locals, r);
+					union expression *ref = use_symbol(make_symbol(get_zeroth_function(n)->function.parent ?
+						dynamic_storage : static_storage, NULL, r), r);
+					append(ref, &get_zeroth_function(n)->function.locals, r);
 				}
 			}
 			append_list(&get_zeroth_function(n)->function.locals, n->continuation.parameters);
@@ -80,9 +82,8 @@ union expression *vlayout_frames(union expression *n, region r) {
 
 union expression *make_load(union expression *ref, int offset, union expression *dest_reg, union expression *scratch_reg, region r) {
 	union expression *container = make_begin(nil(r), r);
-	if(ref->reference.referent->reference.offset) {
-		emit(make_asm3(MOVQ_MDB_TO_REG, make_literal(ref->reference.referent->reference.offset->literal.value + offset, r),
-			make_asm0(RBP, r), dest_reg, r), r);
+	if(ref->reference.symbol->type == dynamic_storage) {
+		emit(make_asm3(MOVQ_MDB_TO_REG, make_literal(ref->reference.symbol->offset + offset, r), make_asm0(RBP, r), dest_reg, r), r);
 	} else {
 		emit(make_asm2(MOVQ_IMM_TO_REG, make_asm2(STVAL_ADD_OFF_TO_REF, ref, make_literal(offset, r), r), scratch_reg, r), r);
 		emit(make_asm3(MOVQ_MDB_TO_REG, make_literal(0, r), scratch_reg, dest_reg, r), r);
@@ -92,9 +93,9 @@ union expression *make_load(union expression *ref, int offset, union expression 
 
 union expression *make_store(union expression *src_reg, union expression *ref, int offset, union expression *scratch_reg, region r) {
 	union expression *container = make_begin(nil(r), r);
-	if(ref->reference.referent->reference.offset) {
+	if(ref->reference.symbol->type == dynamic_storage) {
 		emit(make_asm3(MOVQ_FROM_REG_INTO_MDB,
-			src_reg, make_literal(ref->reference.referent->reference.offset->literal.value + offset, r), make_asm0(RBP, r), r), r);
+			src_reg, make_literal(ref->reference.symbol->offset + offset, r), make_asm0(RBP, r), r), r);
 	} else {
 		emit(make_asm2(MOVQ_IMM_TO_REG, make_asm2(STVAL_ADD_OFF_TO_REF, ref, make_literal(offset, r), r), scratch_reg, r), r);
 		emit(make_asm3(MOVQ_FROM_REG_INTO_MDB, src_reg, make_literal(0, r), scratch_reg, r), r);
@@ -110,14 +111,14 @@ union expression *vgenerate_ifs(union expression *n, region r) {
 		emit(make_load(n->_if.condition, 0, make_asm0(R10, r), make_asm0(R13, r), r), r);
 		emit(make_asm2(ORQ_REG_TO_REG, make_asm0(R10, r), make_asm0(R10, r), r), r);
 		
-		union expression *alternate_label = make_reference(NULL, r);
-		emit(make_asm1(JE_REL, make_asm1(STVAL_SUB_RIP_FROM_REF, alternate_label, r), r), r);
+		struct symbol *alternate_symbol = make_symbol(_function, NULL, r);
+		emit(make_asm1(JE_REL, make_asm1(STVAL_SUB_RIP_FROM_REF, use_symbol(alternate_symbol, r), r), r), r);
 		emit(n->_if.consequent, r);
-		union expression *end_label = make_reference(NULL, r);
-		emit(make_asm1(JMP_REL, make_asm1(STVAL_SUB_RIP_FROM_REF, end_label, r), r), r);
-		emit(make_asm1(LOCAL_LABEL, alternate_label, r), r);
+		struct symbol *end_symbol = make_symbol(_function, NULL, r);
+		emit(make_asm1(JMP_REL, make_asm1(STVAL_SUB_RIP_FROM_REF, use_symbol(end_symbol, r), r), r), r);
+		emit(make_asm1(LOCAL_LABEL, use_symbol(alternate_symbol, r), r), r);
 		emit(n->_if.alternate, r);
-		emit(make_asm1(LOCAL_LABEL, end_label, r), r);
+		emit(make_asm1(LOCAL_LABEL, use_symbol(end_symbol, r), r), r);
 		return container;
 	} else {
 		return n;
@@ -126,8 +127,8 @@ union expression *vgenerate_ifs(union expression *n, region r) {
 
 union expression *make_load_address(union expression *ref, union expression *dest_reg, region r) {
 	union expression *container = make_begin(nil(r), r);
-	if(ref->reference.referent->reference.offset) {
-		emit(make_asm3(LEAQ_OF_MDB_INTO_REG, ref->reference.referent->reference.offset, make_asm0(RBP, r), dest_reg, r), r);
+	if(ref->reference.symbol->type == dynamic_storage) {
+		emit(make_asm3(LEAQ_OF_MDB_INTO_REG, make_literal(ref->reference.symbol->offset, r), make_asm0(RBP, r), dest_reg, r), r);
 	} else {
 		emit(make_asm2(MOVQ_IMM_TO_REG, ref, dest_reg, r), r);
 	}
@@ -148,7 +149,7 @@ union expression *vgenerate_references(union expression *n, region r) {
 
 union expression *cont_instr_ref(union expression *n, region r) {
 	return n->continuation.cont_instr_ref ?
-		n->continuation.cont_instr_ref : (n->continuation.cont_instr_ref = make_reference(NULL, r));
+		n->continuation.cont_instr_ref : (n->continuation.cont_instr_ref = use_symbol(make_symbol(_function, NULL, r), r));
 }
 
 union expression *make_store_continuation(union expression *n, region r) {
@@ -188,11 +189,11 @@ union expression *vgenerate_continuation_expressions(union expression *n, region
 			}
 			
 			//Skip the actual instructions of the continuation
-			union expression *after_reference = make_reference(NULL, r);
-			emit(make_asm1(JMP_REL, make_asm1(STVAL_SUB_RIP_FROM_REF, after_reference, r), r), r);
+			struct symbol *after_symbol = make_symbol(_function, NULL, r);
+			emit(make_asm1(JMP_REL, make_asm1(STVAL_SUB_RIP_FROM_REF, use_symbol(after_symbol, r), r), r), r);
 			emit(make_asm1(LOCAL_LABEL, cont_instr_ref(n, r), r), r);
 			emit(n->continuation.expression, r);
-			emit(make_asm1(LOCAL_LABEL, after_reference, r), r);
+			emit(make_asm1(LOCAL_LABEL, use_symbol(after_symbol, r), r), r);
 			return container;
 		} case with: {
 			union expression *container = make_begin(nil(r), r);
@@ -265,7 +266,7 @@ union expression *generate_toplevel(union expression *n, region r) {
 
 int get_current_offset(union expression *function) {
 	if(length(function->function.locals) > 0) {
-		return ((union expression *) function->function.locals->fst)->reference.offset->literal.value;
+		return ((union expression *) function->function.locals->fst)->reference.symbol->offset;
 	} else {
 		return 0;
 	}
@@ -278,9 +279,9 @@ union expression *vgenerate_function_expressions(union expression *n, region r) 
 		emit(make_load_address(n->function.reference, make_asm0(R11, r), r), r);
 		emit(make_store(make_asm0(R11, r), n->function.return_value, 0, make_asm0(R10, r), r), r);
 		
-		union expression *after_reference = make_reference(NULL, r);
+		struct symbol *after_symbol = make_symbol(_function, NULL, r);
 		
-		emit(make_asm1(JMP_REL, make_asm1(STVAL_SUB_RIP_FROM_REF, after_reference, r), r), r);
+		emit(make_asm1(JMP_REL, make_asm1(STVAL_SUB_RIP_FROM_REF, use_symbol(after_symbol, r), r), r), r);
 		if(root_function_of(n) == n->function.parent->begin.parent) {
 			emit(make_asm1(GLOBAL_LABEL, n->function.reference, r), r);
 		} else {
@@ -326,7 +327,7 @@ union expression *vgenerate_function_expressions(union expression *n, region r) 
 		emit(make_asm2(ADDQ_IMM_TO_REG, make_literal(6*WORD_SIZE, r), make_asm0(RSP, r), r), r);
 		emit(make_asm1(PUSHQ_REG, make_asm0(R11, r), r), r);
 		emit(make_asm0(RET, r), r);
-		emit(make_asm1(LOCAL_LABEL, after_reference, r), r);
+		emit(make_asm1(LOCAL_LABEL, use_symbol(after_symbol, r), r), r);
 		return container;
 	} else if(n->base.type == invoke) {
 		union expression *container = make_begin(nil(r), r);

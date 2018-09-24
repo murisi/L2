@@ -52,20 +52,20 @@ void write_static_value(char *bin, int *pos, union expression *expr, int bytes, 
 		val = expr->literal.value;
 	} else if(expr->base.type == reference && bytes == 8) {
 		(*relas)->r_offset = *pos;
-		(*relas)->r_info = ELF64_R_INFO((Elf64_Sym *) expr->reference.referent->reference.context - symtab, R_X86_64_64);
+		(*relas)->r_info = ELF64_R_INFO((Elf64_Sym *) expr->reference.symbol->context - symtab, R_X86_64_64);
 		(*relas)->r_addend = 0;
 		(*relas)++;
 	} else if(expr->base.type == assembly && expr->assembly.opcode == STVAL_ADD_OFF_TO_REF && bytes == 8) {
 		union expression *ref = expr->assembly.arguments->fst;
 		union expression *offset = expr->assembly.arguments->frst;
 		(*relas)->r_offset = *pos;
-		(*relas)->r_info = ELF64_R_INFO((Elf64_Sym *) ref->reference.referent->reference.context - symtab, R_X86_64_64);
+		(*relas)->r_info = ELF64_R_INFO((Elf64_Sym *) ref->reference.symbol->context - symtab, R_X86_64_64);
 		(*relas)->r_addend = offset->literal.value;
 		(*relas)++;
 	} else if(expr->base.type == assembly && expr->assembly.opcode == STVAL_SUB_RIP_FROM_REF && bytes == 4) {
 		union expression *ref = expr->assembly.arguments->fst;
 		(*relas)->r_offset = *pos;
-		(*relas)->r_info = ELF64_R_INFO((Elf64_Sym *) ref->reference.referent->reference.context - symtab, R_X86_64_PC32);
+		(*relas)->r_info = ELF64_R_INFO((Elf64_Sym *) ref->reference.symbol->context - symtab, R_X86_64_PC32);
 		(*relas)->r_addend = -bytes;
 		(*relas)++;
 	}
@@ -93,9 +93,9 @@ void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sy
 		switch(n->assembly.opcode) {
 			case LOCAL_LABEL: case GLOBAL_LABEL: {
 				union expression *label_ref = (union expression *) n->assembly.arguments->fst;
-				Elf64_Sym *sym = label_ref->reference.context;
+				Elf64_Sym *sym = label_ref->reference.symbol->context;
 				if(label_ref->reference.symbol) {
-					label_ref->reference.symbol->address = (void *) (unsigned long) *pos;
+					label_ref->reference.symbol->offset = (unsigned long) *pos;
 				}
 				sym->st_value = *pos;
 				break;
@@ -330,13 +330,13 @@ void write_elf(list generated_expressions, list locals, list globals, unsigned c
 		}
 		sym_ptr->st_value = (sym_ptr - syms - 1) * WORD_SIZE;
 		if(e->reference.symbol) {
-			e->reference.symbol->address = (void *) sym_ptr->st_value;
+			e->reference.symbol->offset = sym_ptr->st_value;
 		}
 		sym_ptr->st_size = 0;
 		sym_ptr->st_info = ELF64_ST_INFO(STB_LOCAL, STT_NOTYPE);
 		sym_ptr->st_other = 0;
 		sym_ptr->st_shndx = 5;
-		e->reference.context = sym_ptr;
+		e->reference.symbol->context = sym_ptr;
 		sym_ptr++;
 	}}
 	{foreach(e, generated_expressions) {
@@ -354,7 +354,7 @@ void write_elf(list generated_expressions, list locals, list globals, unsigned c
 			sym_ptr->st_info = ELF64_ST_INFO(STB_LOCAL, STT_NOTYPE);
 			sym_ptr->st_other = 0;
 			sym_ptr->st_shndx = 2;
-			ref->reference.context = sym_ptr;
+			ref->reference.symbol->context = sym_ptr;
 			sym_ptr++;
 		}
 	}}
@@ -372,7 +372,7 @@ void write_elf(list generated_expressions, list locals, list globals, unsigned c
 		sym_ptr->st_info = ELF64_ST_INFO(STB_GLOBAL, STT_NOTYPE);
 		sym_ptr->st_other = 0;
 		sym_ptr->st_shndx = SHN_UNDEF;
-		e->reference.context = sym_ptr;
+		e->reference.symbol->context = sym_ptr;
 		sym_ptr++;
 	}}
 	{foreach(e, generated_expressions) {
@@ -390,7 +390,7 @@ void write_elf(list generated_expressions, list locals, list globals, unsigned c
 			sym_ptr->st_info = ELF64_ST_INFO(STB_GLOBAL, STT_NOTYPE);
 			sym_ptr->st_other = 0;
 			sym_ptr->st_shndx = 2;
-			ref->reference.context = sym_ptr;
+			ref->reference.symbol->context = sym_ptr;
 			sym_ptr++;
 		}
 	}}

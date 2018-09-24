@@ -83,6 +83,7 @@ struct function_expression {
 	list parameters; //void * = union expression *
 	
 	list locals;
+	list local_symbols;
 	union expression *expression_return_value;
 };
 
@@ -112,6 +113,23 @@ struct with_expression {
 	bool escapes;
 };
 
+enum symbol_type { static_storage, dynamic_storage, _function };
+
+struct symbol {
+	char *name;
+	long int offset;
+	enum symbol_type type;
+	long int size;
+	void *context;
+};
+
+struct symbol *make_symbol(enum symbol_type type, char *name, region r) {
+	struct symbol *sym = region_alloc(r, sizeof(struct symbol));
+	sym->type = type;
+	sym->name = name;
+	return sym;
+}
+
 struct reference_expression {
 	enum expression_type type;
 	union expression *parent;
@@ -119,9 +137,7 @@ struct reference_expression {
 	
 	char *name;
 	union expression *referent;
-	union expression *offset;
-	void *context;
-	Symbol *symbol;
+	struct symbol *symbol;
 };
 
 struct np_expression {
@@ -172,6 +188,15 @@ union expression *use_reference(union expression *referent, region reg) {
 	ref->reference.type = reference;
 	ref->reference.name = referent->reference.name;
 	ref->reference.referent = referent;
+	ref->reference.symbol = NULL;
+	return ref;
+}
+
+union expression *use_symbol(struct symbol *sym, region reg) {
+	union expression *ref = region_alloc(reg, sizeof(union expression));
+	ref->reference.type = reference;
+	ref->reference.name = sym->name;
+	ref->reference.symbol = sym;
 	return ref;
 }
 
