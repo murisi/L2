@@ -41,7 +41,7 @@ Object *load_expressions(union expression *program, struct expansion_context *ec
 	visit_expressions(vfind_multiple_definitions, &program, ectx->handler);
 	visit_expressions(vlink_references, &program, (void* []) {ectx->handler, manreg});
 	visit_expressions(vescape_analysis, &program, NULL);
-	program = use_return_value(program, make_reference(NULL, manreg), manreg);
+	program = use_return_symbol(program, make_symbol(_function, NULL, manreg), manreg);
 	visit_expressions(vmake_symbols, &program, manreg);
 	visit_expressions(vshare_symbols, &program, manreg);
 	visit_expressions(vlayout_frames, &program, manreg);
@@ -50,26 +50,26 @@ Object *load_expressions(union expression *program, struct expansion_context *ec
 	visit_expressions(vgenerate_literals, &program, manreg);
 	visit_expressions(vgenerate_ifs, &program, manreg);
 	visit_expressions(vgenerate_function_expressions, &program, manreg);
-	list locals = program->function.locals;
-	list globals = program->function.parameters;
+	list local_symbols = program->function.local_symbols;
+	list global_symbols = nil(manreg);
+	union expression *l;
+	{foreach(l, program->function.parameters) {
+		append(l->reference.symbol, &global_symbols, manreg);
+	}}
 	program = generate_toplevel(program, manreg);
 	list asms = nil(manreg);
 	visit_expressions(vmerge_begins, &program, (void* []) {&asms, manreg});
 	unsigned char *objdest; int objdest_sz;
-	write_elf(reverse(asms, manreg), locals, globals, &objdest, &objdest_sz, manreg);
+	write_elf(reverse(asms, manreg), local_symbols, global_symbols, &objdest, &objdest_sz, manreg);
 	Object *obj = load(objdest, objdest_sz, ectx->rt_reg, ectx->handler);
-	union expression *l;
-	{foreach(l, locals) {
-		if(l->reference.symbol) {
-			l->reference.symbol->offset += (unsigned long) segment(obj, ".bss");
-		}
+	struct symbol *sym;
+	{foreach(sym, local_symbols) {
+		sym->offset += (unsigned long) segment(obj, ".bss");
 	}}
 	{foreach(l, asms) {
 		if(l->assembly.opcode == LOCAL_LABEL || l->assembly.opcode == GLOBAL_LABEL) {
 			union expression *label_ref = l->assembly.arguments->fst;
-			if(label_ref->reference.symbol) {
-				label_ref->reference.symbol->offset += (unsigned long) segment(obj, ".text");
-			}
+			label_ref->reference.symbol->offset += (unsigned long) segment(obj, ".text");
 		}
 	}}
 	return obj;

@@ -57,47 +57,51 @@ union expression *vlayout_frames(union expression *n, region r) {
 				parameter_offset += WORD_SIZE;
 			}}
 			int local_offset = 0;
-			foreach(t, reverse(n->function.locals, r)) {
+			struct symbol *u;
+			foreach(u, reverse(n->function.local_symbols, r)) {
 				local_offset -= WORD_SIZE;
-				t->reference.symbol->offset = local_offset;
+				u->offset = local_offset;
 			}
 			break;
 		} case continuation: case with: {
 			if(n->continuation.escapes) {
-				append(n->continuation.reference, &get_zeroth_function(n)->function.locals, r);
+				append(n->continuation.reference->reference.symbol, &get_zeroth_function(n)->function.local_symbols, r);
 				//Make space for the buffer
 				int i;
 				for(i = 1; i < (CONT_SIZE / WORD_SIZE); i++) {
-					union expression *ref = use_symbol(make_symbol(get_zeroth_function(n)->function.parent ?
-						dynamic_storage : static_storage, NULL, r), r);
-					append(ref, &get_zeroth_function(n)->function.locals, r);
+					append(make_symbol(get_zeroth_function(n)->function.parent ?
+						dynamic_storage : static_storage, NULL, r), &get_zeroth_function(n)->function.local_symbols, r);
 				}
 			}
-			append_list(&get_zeroth_function(n)->function.locals, n->continuation.parameters);
+			union expression *t;
+			foreach(t, n->continuation.parameters) {
+				append(t->reference.symbol, &get_zeroth_function(n)->function.local_symbols, r);
+			}
 			break;
 		}
 	}
 	return n;
 }
 
-union expression *make_load(union expression *ref, int offset, union expression *dest_reg, union expression *scratch_reg, region r) {
+union expression *make_load(struct symbol *sym, int offset, union expression *dest_reg, union expression *scratch_reg, region r) {
 	union expression *container = make_begin(nil(r), r);
-	if(ref->reference.symbol->type == dynamic_storage) {
-		emit(make_asm3(MOVQ_MDB_TO_REG, make_literal(ref->reference.symbol->offset + offset, r), make_asm0(RBP, r), dest_reg, r), r);
+	if(sym->type == dynamic_storage) {
+		emit(make_asm3(MOVQ_MDB_TO_REG, make_literal(sym->offset + offset, r), make_asm0(RBP, r), dest_reg, r), r);
 	} else {
-		emit(make_asm2(MOVQ_IMM_TO_REG, make_asm2(STVAL_ADD_OFF_TO_REF, ref, make_literal(offset, r), r), scratch_reg, r), r);
+		emit(make_asm2(MOVQ_IMM_TO_REG, make_asm2(STVAL_ADD_OFF_TO_REF, use_symbol(sym, r), make_literal(offset, r), r), scratch_reg,
+			r), r);
 		emit(make_asm3(MOVQ_MDB_TO_REG, make_literal(0, r), scratch_reg, dest_reg, r), r);
 	}
 	return container;
 }
 
-union expression *make_store(union expression *src_reg, union expression *ref, int offset, union expression *scratch_reg, region r) {
+union expression *make_store(union expression *src_reg, struct symbol *sym, int offset, union expression *scratch_reg, region r) {
 	union expression *container = make_begin(nil(r), r);
-	if(ref->reference.symbol->type == dynamic_storage) {
-		emit(make_asm3(MOVQ_FROM_REG_INTO_MDB,
-			src_reg, make_literal(ref->reference.symbol->offset + offset, r), make_asm0(RBP, r), r), r);
+	if(sym->type == dynamic_storage) {
+		emit(make_asm3(MOVQ_FROM_REG_INTO_MDB, src_reg, make_literal(sym->offset + offset, r), make_asm0(RBP, r), r), r);
 	} else {
-		emit(make_asm2(MOVQ_IMM_TO_REG, make_asm2(STVAL_ADD_OFF_TO_REF, ref, make_literal(offset, r), r), scratch_reg, r), r);
+		emit(make_asm2(MOVQ_IMM_TO_REG, make_asm2(STVAL_ADD_OFF_TO_REF, use_symbol(sym, r), make_literal(offset, r), r), scratch_reg,
+			r), r);
 		emit(make_asm3(MOVQ_FROM_REG_INTO_MDB, src_reg, make_literal(0, r), scratch_reg, r), r);
 	}
 	return container;
@@ -108,7 +112,7 @@ union expression *vgenerate_ifs(union expression *n, region r) {
 	if(n->base.type == _if) {
 		union expression *container = make_begin(nil(r), r);
 		
-		emit(make_load(n->_if.condition, 0, make_asm0(R10, r), make_asm0(R13, r), r), r);
+		emit(make_load(n->_if.condition->reference.symbol, 0, make_asm0(R10, r), make_asm0(R13, r), r), r);
 		emit(make_asm2(ORQ_REG_TO_REG, make_asm0(R10, r), make_asm0(R10, r), r), r);
 		
 		struct symbol *alternate_symbol = make_symbol(_function, NULL, r);
@@ -125,22 +129,22 @@ union expression *vgenerate_ifs(union expression *n, region r) {
 	}
 }
 
-union expression *make_load_address(union expression *ref, union expression *dest_reg, region r) {
+union expression *make_load_address(struct symbol *sym, union expression *dest_reg, region r) {
 	union expression *container = make_begin(nil(r), r);
-	if(ref->reference.symbol->type == dynamic_storage) {
-		emit(make_asm3(LEAQ_OF_MDB_INTO_REG, make_literal(ref->reference.symbol->offset, r), make_asm0(RBP, r), dest_reg, r), r);
+	if(sym->type == dynamic_storage) {
+		emit(make_asm3(LEAQ_OF_MDB_INTO_REG, make_literal(sym->offset, r), make_asm0(RBP, r), dest_reg, r), r);
 	} else {
-		emit(make_asm2(MOVQ_IMM_TO_REG, ref, dest_reg, r), r);
+		emit(make_asm2(MOVQ_IMM_TO_REG, use_symbol(sym, r), dest_reg, r), r);
 	}
 	return container;
 }
 
 //Must be used after use_return_reference and generate_continuation_expressions
 union expression *vgenerate_references(union expression *n, region r) {
-	if(n->base.type == reference && n->reference.return_value) {
+	if(n->base.type == reference && n->reference.return_symbol) {
 		union expression *container = make_begin(nil(r), r);
-		emit(make_load_address(n, make_asm0(R11, r), r), r);
-		emit(make_store(make_asm0(R11, r), n->base.return_value, 0, make_asm0(R10, r), r), r);
+		emit(make_load_address(n->reference.symbol, make_asm0(R11, r), r), r);
+		emit(make_store(make_asm0(R11, r), n->reference.return_symbol, 0, make_asm0(R10, r), r), r);
 		return container;
 	} else {
 		return n;
@@ -154,14 +158,14 @@ union expression *cont_instr_ref(union expression *n, region r) {
 
 union expression *make_store_continuation(union expression *n, region r) {
 	union expression *container = make_begin(nil(r), r);
-	emit(make_store(make_asm0(RBX, r), n->continuation.reference, CONT_RBX, make_asm0(R11, r), r), r);
-	emit(make_store(make_asm0(R12, r), n->continuation.reference, CONT_R12, make_asm0(R11, r), r), r);
-	emit(make_store(make_asm0(R13, r), n->continuation.reference, CONT_R13, make_asm0(R11, r), r), r);
-	emit(make_store(make_asm0(R14, r), n->continuation.reference, CONT_R14, make_asm0(R11, r), r), r);
-	emit(make_store(make_asm0(R15, r), n->continuation.reference, CONT_R15, make_asm0(R11, r), r), r);
-	emit(make_load_address(cont_instr_ref(n, r), make_asm0(R10, r), r), r);
-	emit(make_store(make_asm0(R10, r), n->continuation.reference, CONT_CIR, make_asm0(R11, r), r), r);
-	emit(make_store(make_asm0(RBP, r), n->continuation.reference, CONT_RBP, make_asm0(R11, r), r), r);
+	emit(make_store(make_asm0(RBX, r), n->continuation.reference->reference.symbol, CONT_RBX, make_asm0(R11, r), r), r);
+	emit(make_store(make_asm0(R12, r), n->continuation.reference->reference.symbol, CONT_R12, make_asm0(R11, r), r), r);
+	emit(make_store(make_asm0(R13, r), n->continuation.reference->reference.symbol, CONT_R13, make_asm0(R11, r), r), r);
+	emit(make_store(make_asm0(R14, r), n->continuation.reference->reference.symbol, CONT_R14, make_asm0(R11, r), r), r);
+	emit(make_store(make_asm0(R15, r), n->continuation.reference->reference.symbol, CONT_R15, make_asm0(R11, r), r), r);
+	emit(make_load_address(cont_instr_ref(n, r)->reference.symbol, make_asm0(R10, r), r), r);
+	emit(make_store(make_asm0(R10, r), n->continuation.reference->reference.symbol, CONT_CIR, make_asm0(R11, r), r), r);
+	emit(make_store(make_asm0(RBP, r), n->continuation.reference->reference.symbol, CONT_RBP, make_asm0(R11, r), r), r);
 	return container;
 }
 
@@ -169,7 +173,7 @@ union expression *move_arguments(union expression *n, int offset, region r) {
 	union expression *container = make_begin(nil(r), r);
 	union expression *t;
 	foreach(t, n->jump.arguments) {
-		emit(make_load(t, 0, make_asm0(R10, r), make_asm0(R13, r), r), r);
+		emit(make_load(t->reference.symbol, 0, make_asm0(R10, r), make_asm0(R13, r), r), r);
 		emit(make_asm3(MOVQ_FROM_REG_INTO_MDB, make_asm0(R10, r), make_literal(offset, r), make_asm0(R11, r), r), r);
 		offset += WORD_SIZE;
 	}
@@ -182,8 +186,8 @@ union expression *vgenerate_continuation_expressions(union expression *n, region
 		case continuation: {
 			union expression *container = make_begin(nil(r), r);
 			emit(make_load_address(n->continuation.escapes ?
-				n->continuation.reference : cont_instr_ref(n, r), make_asm0(R11, r), r), r);
-			emit(make_store(make_asm0(R11, r), n->continuation.return_value, 0, make_asm0(R10, r), r), r);
+				n->continuation.reference->reference.symbol : cont_instr_ref(n, r)->reference.symbol, make_asm0(R11, r), r), r);
+			emit(make_store(make_asm0(R11, r), n->continuation.return_symbol, 0, make_asm0(R10, r), r), r);
 			if(n->continuation.escapes) {
 				emit(make_store_continuation(n, r), r);
 			}
@@ -202,19 +206,19 @@ union expression *vgenerate_continuation_expressions(union expression *n, region
 			}
 			emit(n->with.expression, r);
 			emit(make_asm1(LOCAL_LABEL, cont_instr_ref(n, r), r), r);
-			emit(make_load(n->with.parameter->fst, 0, make_asm0(R11, r), make_asm0(R10, r), r), r);
-			emit(make_store(make_asm0(R11, r), n->with.return_value, 0, make_asm0(R10, r), r), r);
+			emit(make_load(((union expression *) n->with.parameter->fst)->reference.symbol, 0, make_asm0(R11, r), make_asm0(R10, r), r), r);
+			emit(make_store(make_asm0(R11, r), n->with.return_symbol, 0, make_asm0(R10, r), r), r);
 			return container;
 		} case jump: {
 			union expression *container = make_begin(nil(r), r);
 			if(n->jump.short_circuit) {
 				if(length(n->jump.short_circuit->continuation.parameters) > 0) {
-					emit(make_load_address(n->jump.short_circuit->continuation.parameters->fst, make_asm0(R11, r), r), r);
+					emit(make_load_address(((union expression *) n->jump.short_circuit->continuation.parameters->fst)->reference.symbol, make_asm0(R11, r), r), r);
 					emit(move_arguments(n, 0, r), r);
 				}
 				emit(make_asm1(JMP_REL, make_asm1(STVAL_SUB_RIP_FROM_REF, cont_instr_ref(n->jump.short_circuit, r), r), r), r);
 			} else {
-				emit(make_load(n->jump.reference, 0, make_asm0(R11, r), make_asm0(R10, r), r), r);
+				emit(make_load(n->jump.reference->reference.symbol, 0, make_asm0(R11, r), make_asm0(R10, r), r), r);
 				emit(move_arguments(n, CONT_SIZE, r), r);
 				emit(make_asm3(MOVQ_MDB_TO_REG, make_literal(CONT_RBX, r), make_asm0(R11, r), make_asm0(RBX, r), r), r);
 				emit(make_asm3(MOVQ_MDB_TO_REG, make_literal(CONT_R12, r), make_asm0(R11, r), make_asm0(R12, r), r), r);
@@ -234,10 +238,10 @@ union expression *vgenerate_continuation_expressions(union expression *n, region
 
 //Must be used after use_return_reference and init_i386_registers
 union expression *vgenerate_literals(union expression *n, region r) {
-	if(n->base.type == literal && n->literal.return_value) {
+	if(n->base.type == literal && n->literal.return_symbol) {
 		union expression *container = make_begin(nil(r), r);
 		emit(make_asm2(MOVQ_IMM_TO_REG, make_literal(n->literal.value, r), make_asm0(R11, r), r), r);
-		emit(make_store(make_asm0(R11, r), n->literal.return_value, 0, make_asm0(R13, r), r), r);
+		emit(make_store(make_asm0(R11, r), n->literal.return_symbol, 0, make_asm0(R13, r), r), r);
 		return container;
 	} else {
 		return n;
@@ -265,8 +269,8 @@ union expression *generate_toplevel(union expression *n, region r) {
 }
 
 int get_current_offset(union expression *function) {
-	if(length(function->function.locals) > 0) {
-		return ((union expression *) function->function.locals->fst)->reference.symbol->offset;
+	if(length(function->function.local_symbols) > 0) {
+		return ((struct symbol *) function->function.local_symbols->fst)->offset;
 	} else {
 		return 0;
 	}
@@ -276,8 +280,8 @@ int get_current_offset(union expression *function) {
 union expression *vgenerate_function_expressions(union expression *n, region r) {
 	if(n->base.type == function && n->function.parent) {
 		union expression *container = make_begin(nil(r), r);
-		emit(make_load_address(n->function.reference, make_asm0(R11, r), r), r);
-		emit(make_store(make_asm0(R11, r), n->function.return_value, 0, make_asm0(R10, r), r), r);
+		emit(make_load_address(n->function.reference->reference.symbol, make_asm0(R11, r), r), r);
+		emit(make_store(make_asm0(R11, r), n->function.return_symbol, 0, make_asm0(R10, r), r), r);
 		
 		struct symbol *after_symbol = make_symbol(_function, NULL, r);
 		
@@ -313,7 +317,7 @@ union expression *vgenerate_function_expressions(union expression *n, region r) 
 		emit(n->function.expression, r);
 		
 		//Place the return value
-		emit(make_load(n->function.expression_return_value, 0, make_asm0(RAX, r), make_asm0(R13, r), r), r);
+		emit(make_load(n->function.expression_return_symbol, 0, make_asm0(RAX, r), make_asm0(R13, r), r), r);
 		
 		emit(make_asm0(LEAVE, r), r);
 		//Restore callee-saved registers
@@ -336,34 +340,34 @@ union expression *vgenerate_function_expressions(union expression *n, region r) 
 		if(length(n->invoke.arguments) > 6) {
 			union expression *t;
 			foreach(t, reverse(n->invoke.arguments->rrrrrrst, r)) {
-				emit(make_load(t, 0, make_asm0(R11, r), make_asm0(R10, r), r), r);
+				emit(make_load(t->reference.symbol, 0, make_asm0(R11, r), make_asm0(R10, r), r), r);
 				emit(make_asm1(PUSHQ_REG, make_asm0(R11, r), r), r);
 			}
 		}
 		if(length(n->invoke.arguments) > 5) {
-			emit(make_load(n->invoke.arguments->frrrrrst, 0, make_asm0(R9, r), make_asm0(R10, r), r), r);
+			emit(make_load(((union expression *) n->invoke.arguments->frrrrrst)->reference.symbol, 0, make_asm0(R9, r), make_asm0(R10, r), r), r);
 		}
 		if(length(n->invoke.arguments) > 4) {
-			emit(make_load(n->invoke.arguments->frrrrst, 0, make_asm0(R8, r), make_asm0(R10, r), r), r);
+			emit(make_load(((union expression *) n->invoke.arguments->frrrrst)->reference.symbol, 0, make_asm0(R8, r), make_asm0(R10, r), r), r);
 		}
 		if(length(n->invoke.arguments) > 3) {
-			emit(make_load(n->invoke.arguments->frrrst, 0, make_asm0(RCX, r), make_asm0(R10, r), r), r);
+			emit(make_load(((union expression *) n->invoke.arguments->frrrst)->reference.symbol, 0, make_asm0(RCX, r), make_asm0(R10, r), r), r);
 		}
 		if(length(n->invoke.arguments) > 2) {
-			emit(make_load(n->invoke.arguments->frrst, 0, make_asm0(RDX, r), make_asm0(R10, r), r), r);
+			emit(make_load(((union expression *) n->invoke.arguments->frrst)->reference.symbol, 0, make_asm0(RDX, r), make_asm0(R10, r), r), r);
 		}
 		if(length(n->invoke.arguments) > 1) {
-			emit(make_load(n->invoke.arguments->frst, 0, make_asm0(RSI, r), make_asm0(R10, r), r), r);
+			emit(make_load(((union expression *) n->invoke.arguments->frst)->reference.symbol, 0, make_asm0(RSI, r), make_asm0(R10, r), r), r);
 		}
 		if(length(n->invoke.arguments) > 0) {
-			emit(make_load(n->invoke.arguments->fst, 0, make_asm0(RDI, r), make_asm0(R10, r), r), r);
+			emit(make_load(((union expression *) n->invoke.arguments->fst)->reference.symbol, 0, make_asm0(RDI, r), make_asm0(R10, r), r), r);
 		}
 		emit(make_asm2(MOVQ_IMM_TO_REG, make_literal(0, r), make_asm0(RAX, r), r), r);
 		
-		emit(make_load(n->invoke.reference, 0, make_asm0(R11, r), make_asm0(R10, r), r), r);
+		emit(make_load(n->invoke.reference->reference.symbol, 0, make_asm0(R11, r), make_asm0(R10, r), r), r);
 		emit(make_asm1(CALL_REG, make_asm0(R11, r), r), r);
 		
-		emit(make_store(make_asm0(RAX, r), n->invoke.return_value, 0, make_asm0(R10, r), r), r);
+		emit(make_store(make_asm0(RAX, r), n->invoke.return_symbol, 0, make_asm0(R10, r), r), r);
 		if(length(n->invoke.arguments) > 6) {
 			emit(make_asm2(ADDQ_IMM_TO_REG, make_literal(WORD_SIZE * (length(n->invoke.arguments) - 6), r), make_asm0(RSP, r), r), r);
 		}

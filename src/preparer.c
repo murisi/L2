@@ -209,71 +209,68 @@ void visit_expressions(union expression *(*visitor)(union expression *, void *),
 	_emit_x->base.parent = container; \
 }
 
-union expression *make_local(union expression *function, region r) {
-	union expression *ref = make_reference(NULL, r);
-	ref->reference.parent = function;
-	ref->reference.symbol = make_symbol(function->function.parent ? dynamic_storage : static_storage, NULL, r);
-	prepend(ref, &function->function.locals, r);
-	return ref;
+struct symbol *make_local(union expression *function, region r) {
+	struct symbol *sym = make_symbol(function->function.parent ? dynamic_storage : static_storage, NULL, r);
+	prepend(sym, &function->function.local_symbols, r);
+	return sym;
 }
 
-// Renders the "parent" field meaningless
-union expression *use_return_value(union expression *n, union expression *ret_val, region r) {
+union expression *use_return_symbol(union expression *n, struct symbol *ret_sym, region r) {
 	switch(n->base.type) {
 		case with: {
 			n->with.parameter->fst = make_reference(NULL, r);
 		} case continuation: {
-			n->continuation.return_value = ret_val;
-			put(n, continuation.expression, use_return_value(n->continuation.expression, make_local(get_zeroth_function(n), r), r));
+			n->continuation.return_symbol = ret_sym;
+			put(n, continuation.expression, use_return_symbol(n->continuation.expression, make_local(get_zeroth_function(n), r), r));
 			return n;
 		} case function: {
-			n->function.return_value = ret_val;
-			n->function.expression_return_value = make_local(n, r);
-			put(n, function.expression, use_return_value(n->function.expression, n->function.expression_return_value, r));
+			n->function.return_symbol = ret_sym;
+			n->function.expression_return_symbol = make_local(n, r);
+			put(n, function.expression, use_return_symbol(n->function.expression, n->function.expression_return_symbol, r));
 			return n;
 		} case invoke: case jump: {
 			union expression *container = make_begin(nil(r), r);
 			
 			if(n->base.type == jump && n->jump.short_circuit && n->jump.reference->base.type == reference) {
-				n->jump.reference->reference.return_value = NULL;
+				n->jump.reference->reference.return_symbol = NULL;
 			} else {
-				union expression *ref_ret_val = make_local(get_zeroth_function(n), r);
-				emit(use_return_value(n->invoke.reference, ref_ret_val, r), r);
-				n->invoke.reference = ref_ret_val;
+				struct symbol *ref_ret_sym = make_local(get_zeroth_function(n), r);
+				emit(use_return_symbol(n->invoke.reference, ref_ret_sym, r), r);
+				n->invoke.reference = use_symbol(ref_ret_sym, r);
 			}
 			
 			union expression **t;
 			foreachaddress(t, n->invoke.arguments) {
-				union expression *arg_ret_val = make_local(get_zeroth_function(n), r);
-				emit(use_return_value(*t, arg_ret_val, r), r);
-				*t = arg_ret_val;
+				struct symbol *arg_ret_sym = make_local(get_zeroth_function(n), r);
+				emit(use_return_symbol(*t, arg_ret_sym, r), r);
+				*t = use_symbol(arg_ret_sym, r);
 			}
-			n->invoke.return_value = ret_val;
+			n->invoke.return_symbol = ret_sym;
 			emit(n, r);
 			return container;
 		} case _if: {
 			union expression *container = make_begin(nil(r), r);
 			
-			put(n, _if.consequent, use_return_value(n->_if.consequent, ret_val, r));
-			put(n, _if.alternate, use_return_value(n->_if.alternate, ret_val, r));
+			put(n, _if.consequent, use_return_symbol(n->_if.consequent, ret_sym, r));
+			put(n, _if.alternate, use_return_symbol(n->_if.alternate, ret_sym, r));
 			
-			union expression *cond_ret_val = make_local(get_zeroth_function(n), r);
-			emit(use_return_value(n->_if.condition, cond_ret_val, r), r);
-			put(n, _if.condition, cond_ret_val);
+			struct symbol *cond_ret_sym = make_local(get_zeroth_function(n), r);
+			emit(use_return_symbol(n->_if.condition, cond_ret_sym, r), r);
+			put(n, _if.condition, use_symbol(cond_ret_sym, r));
 			emit(n, r);
 			return container;
 		} case begin: {
 			union expression **t;
 			foreachaddress(t, n->begin.expressions) {
-				*t = use_return_value(*t, make_local(get_zeroth_function(n), r), r);
+				*t = use_return_symbol(*t, make_local(get_zeroth_function(n), r), r);
 				(*t)->base.parent = n;
 			}
 			return n;
 		} case reference: {
-			n->reference.return_value = ret_val;
+			n->reference.return_symbol = ret_sym;
 			return n;
 		} case literal: {
-			n->literal.return_value = ret_val;
+			n->literal.return_symbol = ret_sym;
 			return n;
 		}
 	}

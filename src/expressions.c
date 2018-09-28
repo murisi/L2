@@ -12,107 +12,6 @@ enum expression_type {
 	non_primitive
 };
 
-struct base_expression {
-	enum expression_type type;
-	union expression *parent;
-	union expression *return_value;
-};
-
-struct begin_expression {
-	enum expression_type type;
-	union expression *parent;
-	union expression *return_value;
-	
-	list expressions; // void * = struct expression *
-};
-
-struct assembly_expression {
-	enum expression_type type;
-	union expression *parent;
-	union expression *return_value;
-	
-	int opcode;
-	list arguments; // void * = union expression *
-};
-
-struct invoke_expression {
-	enum expression_type type;
-	union expression *parent;
-	union expression *return_value;
-	
-	union expression *reference;
-	list arguments; // void * = union expression *
-};
-
-struct jump_expression {
-	enum expression_type type;
-	union expression *parent;
-	union expression *return_value;
-	
-	union expression *reference;
-	list arguments;
-	
-	union expression *short_circuit;
-};
-
-struct if_expression {
-	enum expression_type type;
-	union expression *parent;
-	union expression *return_value;
-	
-	union expression *condition;
-	union expression *consequent;
-	union expression *alternate;
-};
-
-struct literal_expression {
-	enum expression_type type;
-	union expression *parent;
-	union expression *return_value;
-	
-	long int value;
-};
-
-struct function_expression {
-	enum expression_type type;
-	union expression *parent;
-	union expression *return_value;
-	
-	union expression *reference;
-	union expression *expression;
-	list parameters; //void * = union expression *
-	
-	list locals;
-	list local_symbols;
-	union expression *expression_return_value;
-};
-
-struct continuation_expression {
-	enum expression_type type;
-	union expression *parent;
-	union expression *return_value;
-	
-	union expression *reference;
-	union expression *expression;
-	list parameters; //void * = union expression *
-	
-	union expression *cont_instr_ref;
-	bool escapes;
-};
-
-struct with_expression {
-	enum expression_type type;
-	union expression *parent;
-	union expression *return_value;
-	
-	union expression *reference;
-	union expression *expression;
-	list parameter; //void * = union expression *
-	
-	union expression *cont_instr_ref;
-	bool escapes;
-};
-
 enum symbol_type { static_storage, dynamic_storage, _function };
 
 struct symbol {
@@ -130,10 +29,110 @@ struct symbol *make_symbol(enum symbol_type type, char *name, region r) {
 	return sym;
 }
 
+struct base_expression {
+	enum expression_type type;
+	union expression *parent;
+	struct symbol *return_symbol;
+};
+
+struct begin_expression {
+	enum expression_type type;
+	union expression *parent;
+	struct symbol *return_symbol;
+	
+	list expressions; // void * = struct expression *
+};
+
+struct assembly_expression {
+	enum expression_type type;
+	union expression *parent;
+	struct symbol *return_symbol;
+	
+	int opcode;
+	list arguments; // void * = union expression *
+};
+
+struct invoke_expression {
+	enum expression_type type;
+	union expression *parent;
+	struct symbol *return_symbol;
+	
+	union expression *reference;
+	list arguments; // void * = union expression *
+};
+
+struct jump_expression {
+	enum expression_type type;
+	union expression *parent;
+	struct symbol *return_symbol;
+	
+	union expression *reference;
+	list arguments;
+	
+	union expression *short_circuit;
+};
+
+struct if_expression {
+	enum expression_type type;
+	union expression *parent;
+	struct symbol *return_symbol;
+	
+	union expression *condition;
+	union expression *consequent;
+	union expression *alternate;
+};
+
+struct literal_expression {
+	enum expression_type type;
+	union expression *parent;
+	struct symbol *return_symbol;
+	
+	long int value;
+};
+
+struct function_expression {
+	enum expression_type type;
+	union expression *parent;
+	struct symbol *return_symbol;
+	
+	union expression *reference;
+	union expression *expression;
+	list parameters; //void * = union expression *
+	
+	list local_symbols;
+	struct symbol *expression_return_symbol;
+};
+
+struct continuation_expression {
+	enum expression_type type;
+	union expression *parent;
+	struct symbol *return_symbol;
+	
+	union expression *reference;
+	union expression *expression;
+	list parameters; //void * = union expression *
+	
+	union expression *cont_instr_ref;
+	bool escapes;
+};
+
+struct with_expression {
+	enum expression_type type;
+	union expression *parent;
+	struct symbol *return_symbol;
+	
+	union expression *reference;
+	union expression *expression;
+	list parameter; //void * = union expression *
+	
+	union expression *cont_instr_ref;
+	bool escapes;
+};
+
 struct reference_expression {
 	enum expression_type type;
 	union expression *parent;
-	union expression *return_value;
+	struct symbol *return_symbol;
 	
 	char *name;
 	union expression *referent;
@@ -143,7 +142,7 @@ struct reference_expression {
 struct np_expression {
 	enum expression_type type;
 	union expression *parent;
-	union expression *return_value;
+	struct symbol *return_symbol;
 	
 	union expression *reference;
 	list argument;
@@ -228,7 +227,7 @@ union expression *make_function(union expression *ref, list params, union expres
 	foreach(param, params) {
 		param->base.parent = func;
 	}
-	func->function.locals = nil(reg);
+	func->function.local_symbols = nil(reg);
 	put(func, function.expression, expr);
 	return func;
 }

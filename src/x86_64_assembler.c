@@ -210,19 +210,20 @@ void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sy
 	}
 }
 
-int measure_strtab(list generated_expressions, list locals, list globals) {
-	union expression *e;
+int measure_strtab(list generated_expressions, list local_syms, list global_syms) {
+	struct symbol *sym;
 	int strtab_len = 1;
-	{foreach(e, locals) {
-		if(e->reference.name) {
-			strtab_len += strlen(e->reference.name) + 1;
+	{foreach(sym, local_syms) {
+		if(sym->name) {
+			strtab_len += strlen(sym->name) + 1;
 		}
 	}}
-	{foreach(e, globals) {
-		if(e->reference.name) {
-			strtab_len += strlen(e->reference.name) + 1;
+	{foreach(sym, global_syms) {
+		if(sym->name) {
+			strtab_len += strlen(sym->name) + 1;
 		}
 	}}
+	union expression *e;
 	{foreach(e, generated_expressions) {
 		if(e->assembly.opcode == LOCAL_LABEL || e->assembly.opcode == GLOBAL_LABEL) {
 			char *label_str = ((union expression *) e->assembly.arguments->fst)->reference.name;
@@ -234,15 +235,16 @@ int measure_strtab(list generated_expressions, list locals, list globals) {
 	return strtab_len;
 }
 
-int measure_symtab(list generated_expressions, list locals, list globals) {
+int measure_symtab(list generated_expressions, list local_syms, list global_syms) {
 	int sym_count = 1;
+	struct symbol *sym;
+	{foreach(sym, local_syms) {
+		sym_count++;
+	}}
+	{foreach(sym, global_syms) {
+		sym_count++;
+	}}
 	union expression *e;
-	{foreach(e, locals) {
-		sym_count++;
-	}}
-	{foreach(e, globals) {
-		sym_count++;
-	}}
 	{foreach(e, generated_expressions) {
 		if(e->assembly.opcode == LOCAL_LABEL || e->assembly.opcode == GLOBAL_LABEL) {
 			sym_count++;
@@ -261,17 +263,17 @@ int strvlen(char *strv) {
 
 #define SH_COUNT 7
 
-int max_elf_size(list generated_expressions, list locals, list globals) {
+int max_elf_size(list generated_expressions, list local_syms, list global_syms) {
 	return sizeof(Elf64_Ehdr) + (sizeof(Elf64_Shdr) * SH_COUNT) + round_size(strvlen(SHSTRTAB), ALIGNMENT) +
 		round_size(MAX_INSTR_LEN * length(generated_expressions), ALIGNMENT) +
-		round_size(measure_strtab(generated_expressions, locals, globals), ALIGNMENT) +
-		(sizeof(Elf64_Sym) * measure_symtab(generated_expressions, locals, globals)) +
+		round_size(measure_strtab(generated_expressions, local_syms, global_syms), ALIGNMENT) +
+		(sizeof(Elf64_Sym) * measure_symtab(generated_expressions, local_syms, global_syms)) +
 		(sizeof(Elf64_Rela) * MAX_INSTR_FIELDS * length(generated_expressions));
 }
 
-void write_elf(list generated_expressions, list locals, list globals, unsigned char **bin, int *pos, region elfreg) {
+void write_elf(list generated_expressions, list local_syms, list global_syms, unsigned char **bin, int *pos, region elfreg) {
 	*pos = 0;
-	*bin = region_alloc(elfreg, max_elf_size(generated_expressions, locals, globals));
+	*bin = region_alloc(elfreg, max_elf_size(generated_expressions, local_syms, global_syms));
 	
 	Elf64_Ehdr ehdr;
 	ehdr.e_ident[EI_MAG0] = ELFMAG0;
@@ -301,8 +303,8 @@ void write_elf(list generated_expressions, list locals, list globals, unsigned c
 	ehdr.e_shstrndx = 1;
 	mem_write(*bin, pos, &ehdr, sizeof(Elf64_Ehdr));
 	
-	int strtab_len = measure_strtab(generated_expressions, locals, globals),
-		sym_count = measure_symtab(generated_expressions, locals, globals);
+	int strtab_len = measure_strtab(generated_expressions, local_syms, global_syms),
+		sym_count = measure_symtab(generated_expressions, local_syms, global_syms);
 	
 	Elf64_Sym syms[sym_count];
 	Elf64_Sym *sym_ptr = syms;
@@ -319,26 +321,27 @@ void write_elf(list generated_expressions, list locals, list globals, unsigned c
 	char *strtabptr = strtab;
 	*(strtabptr++) = '\0';
 	
-	union expression *e;
-	{foreach(e, locals) {
-		if(e->reference.name) {
-			strcpy(strtabptr, e->reference.name);
+	struct symbol *local_sym;
+	{foreach(local_sym, local_syms) {
+		if(local_sym->name) {
+			strcpy(strtabptr, local_sym->name);
 			sym_ptr->st_name = strtabptr - strtab;
-			strtabptr += strlen(e->reference.name) + 1;
+			strtabptr += strlen(local_sym->name) + 1;
 		} else {
 			sym_ptr->st_name = 0;
 		}
 		sym_ptr->st_value = (sym_ptr - syms - 1) * WORD_SIZE;
-		if(e->reference.symbol) {
-			e->reference.symbol->offset = sym_ptr->st_value;
+		if(local_sym) {
+			local_sym->offset = sym_ptr->st_value;
 		}
 		sym_ptr->st_size = 0;
 		sym_ptr->st_info = ELF64_ST_INFO(STB_LOCAL, STT_NOTYPE);
 		sym_ptr->st_other = 0;
 		sym_ptr->st_shndx = 5;
-		e->reference.symbol->context = sym_ptr;
+		local_sym->context = sym_ptr;
 		sym_ptr++;
 	}}
+	union expression *e;
 	{foreach(e, generated_expressions) {
 		if(e->assembly.opcode == LOCAL_LABEL) {
 			union expression *ref = (union expression *) e->assembly.arguments->fst;
@@ -359,11 +362,12 @@ void write_elf(list generated_expressions, list locals, list globals, unsigned c
 		}
 	}}
 	int local_symbol_count = sym_ptr - syms;
-	{foreach(e, globals) {
-		if(e->reference.name) {
-			strcpy(strtabptr, e->reference.name);
+	struct symbol *global_sym;
+	{foreach(global_sym, global_syms) {
+		if(global_sym->name) {
+			strcpy(strtabptr, global_sym->name);
 			sym_ptr->st_name = strtabptr - strtab;
-			strtabptr += strlen(e->reference.name) + 1;
+			strtabptr += strlen(global_sym->name) + 1;
 		} else {
 			sym_ptr->st_name = 0;
 		}
@@ -372,7 +376,7 @@ void write_elf(list generated_expressions, list locals, list globals, unsigned c
 		sym_ptr->st_info = ELF64_ST_INFO(STB_GLOBAL, STT_NOTYPE);
 		sym_ptr->st_other = 0;
 		sym_ptr->st_shndx = SHN_UNDEF;
-		e->reference.symbol->context = sym_ptr;
+		global_sym->context = sym_ptr;
 		sym_ptr++;
 	}}
 	{foreach(e, generated_expressions) {
@@ -478,7 +482,7 @@ void write_elf(list generated_expressions, list locals, list globals, unsigned c
 	bss_shdr.sh_flags = SHF_WRITE | SHF_ALLOC;
 	bss_shdr.sh_addr = 0;
 	bss_shdr.sh_offset = symtab_shdr.sh_offset + symtab_shdr.sh_size;
-	bss_shdr.sh_size = length(locals) * WORD_SIZE;
+	bss_shdr.sh_size = length(local_syms) * WORD_SIZE;
 	bss_shdr.sh_link = SHN_UNDEF;
 	bss_shdr.sh_info = 0;
 	bss_shdr.sh_addralign = WORD_SIZE;
