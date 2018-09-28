@@ -50,6 +50,7 @@ Object *load_expressions(union expression *program, struct expansion_context *ec
 	visit_expressions(vgenerate_literals, &program, manreg);
 	visit_expressions(vgenerate_ifs, &program, manreg);
 	visit_expressions(vgenerate_function_expressions, &program, manreg);
+	visit_expressions(vgenerate_storage_expressions, &program, manreg);
 	list local_symbols = program->function.local_symbols;
 	list global_symbols = nil(manreg);
 	union expression *l;

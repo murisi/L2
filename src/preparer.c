@@ -6,35 +6,37 @@ bool reference_named(union expression *expr, char *ctx) {
 	return defined_string_equals(expr->reference.name, ctx);
 }
 
-bool function_named(union expression *expr, char *ctx) {
-	return expr->base.type == function && reference_named(expr->function.reference, ctx);
-}
-
 union expression *vfind_multiple_definitions(union expression *e, void *ctx) {
 	jumpbuf *handler = ctx;
 	union expression *t;
 	list *partial;
+	region tempreg = create_region(0);
 	switch(e->base.type) {
 		case begin: {
-			foreachlist(partial, t, &e->begin.expressions) {
-				if(t->base.type == function && t->function.reference->reference.name &&
-					exists((bool (*)(void *, void *)) function_named, &(*partial)->rst, t->function.reference->reference.name)) {
-						throw_multiple_definition(t->function.reference->reference.name, handler);
+			list definitions = nil(tempreg);
+			foreach(t, e->begin.expressions) {
+				if(t->base.type == storage || t->base.type == function) {
+					prepend(t->storage.reference->reference.name, &definitions, tempreg);
+				}
+			}
+			char *n;
+			foreachlist(partial, n, &definitions) {
+				if(exists((bool (*)(void *, void *)) defined_string_equals, &(*partial)->rst, n)) {
+					throw_multiple_definition(n, handler);
 				}
 			}
 			break;
 		} case continuation: case function: {
-			region tempreg = create_region(0);
 			list ref_with_params = lst(e->continuation.reference, e->continuation.parameters, tempreg);
 			foreachlist(partial, t, &ref_with_params) {
 				if(exists((bool (*)(void *, void *)) reference_named, &(*partial)->rst, t->reference.name)) {
 					throw_multiple_definition(t->reference.name, handler);
 				}
 			}
-			destroy_region(tempreg);
 			break;
 		}
 	}
+	destroy_region(tempreg);
 	return e;
 }
 
@@ -67,7 +69,7 @@ union expression *referent_of(union expression *reference) {
 			case begin: {
 				union expression *u;
 				foreach(u, t->begin.expressions) {
-					if(u->base.type == function && reference_equals(u->function.reference, reference)) {
+					if((u->base.type == function || u->base.type == storage) && reference_equals(u->function.reference, reference)) {
 						return u->function.reference;
 					}
 				}
@@ -189,7 +191,7 @@ void visit_expressions(union expression *(*visitor)(union expression *, void *),
 			visit_expressions(visitor, &(*s)->function.reference, ctx);
 			visit_expressions(visitor, &(*s)->function.expression, ctx);
 			break;
-		} case jump: case invoke: {
+		} case jump: case invoke: case storage: {
 			visit_expressions(visitor, &(*s)->invoke.reference, ctx);
 			union expression **t;
 			foreachaddress(t, (*s)->invoke.arguments) {
@@ -228,11 +230,12 @@ union expression *use_return_symbol(union expression *n, struct symbol *ret_sym,
 			n->function.expression_return_symbol = make_local(n, r);
 			put(n, function.expression, use_return_symbol(n->function.expression, n->function.expression_return_symbol, r));
 			return n;
-		} case invoke: case jump: {
+		} case invoke: case jump: case storage: {
 			union expression *container = make_begin(nil(r), r);
 			
 			if(n->base.type == jump && n->jump.short_circuit && n->jump.reference->base.type == reference) {
 				n->jump.reference->reference.return_symbol = NULL;
+			} else if(n->base.type == storage) {
 			} else {
 				struct symbol *ref_ret_sym = make_local(get_zeroth_function(n), r);
 				emit(use_return_symbol(n->invoke.reference, ref_ret_sym, r), r);
@@ -310,6 +313,12 @@ union expression *vmake_symbols(union expression *n, region r) {
 				}
 			}
 			break;
+		} case storage: {
+			enum symbol_type type = get_zeroth_function(n)->function.parent ? dynamic_storage : static_storage;
+			if(!n->storage.reference->reference.symbol) {
+				n->storage.reference->reference.symbol = make_symbol(type, n->storage.reference->reference.name, r);
+			}
+			break;
 		}
 	}
 	return n;
@@ -368,8 +377,10 @@ union expression *insert_indirections(union expression *expr, char *ref_name, re
 			return expr;
 		} case function: {
 			return expr;
-		} case invoke: case jump: {
-			put(expr, invoke.reference, insert_indirections(expr->invoke.reference, ref_name, reg));
+		} case invoke: case jump: case storage: {
+			if(expr->base.type != storage) {
+				put(expr, invoke.reference, insert_indirections(expr->invoke.reference, ref_name, reg));
+			}
 			union expression **e;
 			foreachaddress(e, expr->invoke.arguments) {
 				*e = insert_indirections(*e, ref_name, reg);
@@ -474,7 +485,7 @@ void store_static_bindings(union expression **s, bool is_static, list st_binds, 
 		case begin: {
 			union expression *expr;
 			{foreach(expr, (*s)->begin.expressions) {
-				if(expr->base.type == function) {
+				if(expr->base.type == function || expr->base.type == storage) {
 					prepend_binding(expr->function.reference, &st_binds, rt_reg);
 				}
 			}}
@@ -506,6 +517,15 @@ void store_static_bindings(union expression **s, bool is_static, list st_binds, 
 				}}
 			}
 			store_static_bindings(&(*s)->continuation.expression, is_static, st_binds, rt_reg);
+			break;
+		} case storage: {
+			if(is_static) {
+				prepend_binding((*s)->storage.reference, &st_binds, rt_reg);
+			}
+			union expression **arg;
+			{foreachaddress(arg, (*s)->storage.arguments) {
+				store_static_bindings(arg, is_static, st_binds, rt_reg);
+			}}
 			break;
 		} case invoke: case jump: {
 			store_static_bindings(&(*s)->invoke.reference, is_static, st_binds, rt_reg);
@@ -559,6 +579,15 @@ void store_dynamic_refs(union expression **s, bool is_static, list dyn_refs, reg
 			}
 			store_dynamic_refs(&(*s)->continuation.expression, is_static, dyn_refs, ct_reg);
 			break;
+		} case storage: {
+			if(!is_static) {
+				cond_prepend_ref((*s)->storage.reference, &dyn_refs, ct_reg);
+			}
+			union expression **arg;
+			{foreachaddress(arg, (*s)->storage.arguments) {
+				store_dynamic_refs(arg, is_static, dyn_refs, ct_reg);
+			}}
+			break;
 		} case invoke: case jump: {
 			store_dynamic_refs(&(*s)->invoke.reference, is_static, dyn_refs, ct_reg);
 			union expression **arg;
@@ -604,8 +633,10 @@ void generate_np_expressions(union expression **s, region ct_reg, struct expansi
 		} case continuation: {
 			generate_np_expressions(&(*s)->continuation.expression, ct_reg, ectx);
 			break;
-		} case invoke: case jump: {
-			generate_np_expressions(&(*s)->invoke.reference, ct_reg, ectx);
+		} case invoke: case jump: case storage: {
+			if((*s)->base.type != storage) {
+				generate_np_expressions(&(*s)->invoke.reference, ct_reg, ectx);
+			}
 			union expression **arg;
 			{foreachaddress(arg, (*s)->invoke.arguments) {
 				generate_np_expressions(arg, ct_reg, ectx);

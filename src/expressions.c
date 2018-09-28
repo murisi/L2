@@ -1,4 +1,5 @@
 enum expression_type {
+	storage,
 	function,
 	with,
 	invoke,
@@ -49,6 +50,15 @@ struct assembly_expression {
 	struct symbol *return_symbol;
 	
 	int opcode;
+	list arguments; // void * = union expression *
+};
+
+struct storage_expression {
+	enum expression_type type;
+	union expression *parent;
+	struct symbol *return_symbol;
+	
+	union expression *reference;
 	list arguments; // void * = union expression *
 };
 
@@ -154,6 +164,7 @@ struct np_expression {
 union expression {
 	struct base_expression base;
 	struct begin_expression begin;
+	struct storage_expression storage;
 	struct function_expression function;
 	struct continuation_expression continuation;
 	struct with_expression with;
@@ -318,6 +329,19 @@ union expression *make_jump2(union expression *ref, union expression *arg1, unio
 	union expression *u = make_jump1(ref, arg2, reg);
 	u->jump.arguments = lst(arg1, u->jump.arguments, reg);
 	arg1->base.parent = u;
+	return u;
+}
+
+union expression *make_storage(union expression *ref, list args, region reg) {
+	union expression *u = region_alloc(reg, sizeof(union expression));
+	u->storage.type = storage;
+	u->storage.reference = ref;
+	ref->base.parent = u;
+	u->storage.arguments = args;
+	union expression *arg;
+	foreach(arg, args) {
+		arg->base.parent = u;
+	}
 	return u;
 }
 

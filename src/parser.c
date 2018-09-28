@@ -98,12 +98,16 @@ union expression *build_syntax_tree(list d, region reg, jumpbuf *handler) {
 				throw_special_form(d, d->frst, handler);
 			}
 		}
-	} else if(!strcmp(to_string(d->fst, reg), "invoke") || !strcmp(to_string(d->fst, reg), "jump")) {
+	} else if(!strcmp(to_string(d->fst, reg), "invoke") || !strcmp(to_string(d->fst, reg), "jump") ||
+			!strcmp(to_string(d->fst, reg), "storage")) {
 		if(length(d) == 1) {
 			throw_special_form(d, NULL, handler);
+		} else if(!strcmp(to_string(d->fst, reg), "storage") && !is_string(d->frst)) {
+			throw_special_form(d->frst, NULL, handler);
 		}
 	
-		s->invoke.type = !strcmp(to_string(d->fst, reg), "invoke") ? invoke : jump;
+		s->invoke.type = !strcmp(to_string(d->fst, reg), "invoke") ? invoke :
+			(!strcmp(to_string(d->fst, reg), "jump") ? jump : storage);
 		put(s, invoke.reference, build_syntax_tree(d->frst, reg, handler));
 	
 		list v;

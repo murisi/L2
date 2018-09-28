@@ -78,6 +78,15 @@ union expression *vlayout_frames(union expression *n, region r) {
 				append(t->reference.symbol, &get_zeroth_function(n)->function.local_symbols, r);
 			}
 			break;
+		} case storage: {
+			append(n->storage.reference->reference.symbol, &get_zeroth_function(n)->function.local_symbols, r);
+			//Make space for the buffer
+			int i;
+			for(i = 1; i < length(n->storage.arguments); i++) {
+				append(make_symbol(get_zeroth_function(n)->function.parent ?
+					dynamic_storage : static_storage, NULL, r), &get_zeroth_function(n)->function.local_symbols, r);
+			}
+			break;
 		}
 	}
 	return n;
@@ -137,6 +146,24 @@ union expression *make_load_address(struct symbol *sym, union expression *dest_r
 		emit(make_asm2(MOVQ_IMM_TO_REG, use_symbol(sym, r), dest_reg, r), r);
 	}
 	return container;
+}
+
+union expression *vgenerate_storage_expressions(union expression *n, region r) {
+	if(n->base.type == storage) {
+		union expression *container = make_begin(nil(r), r);
+		int offset = 0;
+		union expression *t;
+		foreach(t, n->storage.arguments) {
+			emit(make_load(t->reference.symbol, 0, make_asm0(R10, r), make_asm0(R13, r), r), r);
+			emit(make_store(make_asm0(R10, r), n->storage.reference->reference.symbol, offset, make_asm0(R13, r), r), r);
+			offset += WORD_SIZE;
+		}
+		emit(make_load_address(n->storage.reference->reference.symbol, make_asm0(R11, r), r), r);
+		emit(make_store(make_asm0(R11, r), n->storage.return_symbol, 0, make_asm0(R10, r), r), r);
+		return container;
+	} else {
+		return n;
+	}
 }
 
 //Must be used after use_return_reference and generate_continuation_expressions
