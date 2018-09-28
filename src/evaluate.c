@@ -146,6 +146,10 @@ list _rst_(list l) {
 	return l->rst;
 }
 
+void *_buf_() {
+	return create_region(0);
+}
+
 int main(int argc, char *argv[]) {
 	//Initialize the error handler
 	jumpbuf evaluate_handler;
@@ -322,7 +326,9 @@ int main(int argc, char *argv[]) {
 		{.name = "lst?", .address = is_lst},
 		{.name = "emt?", .address = is_nil},
 		{.name = "emt", .address = &emt},
-		{.name = "char=", .address = char_equals}
+		{.name = "char=", .address = char_equals},
+		{.name = "buf", .address = _buf_},
+		{.name = "dtr", .address = destroy_region}
 	};
 	
 	list static_bindings = nil(evaluate_region);
