@@ -15,17 +15,21 @@ enum expression_type {
 
 enum symbol_type { static_storage, dynamic_storage, _function };
 
+enum symbol_scope { local_scope, global_scope };
+
 struct symbol {
 	char *name;
 	long int offset;
 	enum symbol_type type;
+	enum symbol_scope scope;
 	long int size;
 	void *context;
 };
 
-struct symbol *make_symbol(enum symbol_type type, char *name, region r) {
+struct symbol *make_symbol(enum symbol_type type, enum symbol_scope scope, char *name, region r) {
 	struct symbol *sym = region_alloc(r, sizeof(struct symbol));
 	sym->type = type;
+	sym->scope = scope;
 	sym->name = name;
 	return sym;
 }
