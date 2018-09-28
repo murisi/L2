@@ -448,13 +448,6 @@ void (*np_expansion(list (*expander)(list, region), list argument, struct expans
 	}}
 	mutate_symbols(obj, ectx->ext_binds);
 	mutate_symbols(obj, st_binds);
-	/*object_symbol *sym;
-	{foreach(sym, st_binds) {
-		write_str(STDOUT, sym->name);
-		write_str(STDOUT, " : ");
-		write_ulong(STDOUT, (unsigned long) sym->address);
-		write_char(STDOUT, '\n');
-	}}*/
 	//There is only one immutable symbol: our annonymous function
 	*macro_cache = ((object_symbol *) immutable_symbols(obj, ct_reg)->fst)->address;
 	destroy_region(ct_reg);
@@ -627,29 +620,28 @@ void generate_np_expressions(union expression **s, region ct_reg, struct expansi
 			}}
 			void (*(*macro_cache))(void *) = region_alloc(ectx->rt_reg, sizeof(void (*)(void *)));
 			*macro_cache = NULL;
-			union expression *wth = make_with(make_reference(NULL, ct_reg), make_begin(nil(ct_reg), ct_reg), ct_reg), *cont = make_continuation(make_reference(NULL, ct_reg), nil(ct_reg),
-				make_begin(nil(ct_reg), ct_reg), ct_reg), *param = make_reference(NULL, ct_reg);
-			put(wth, with.expression, make_invoke1(make_invoke7(make_literal((unsigned long) np_expansion, ct_reg),
+			
+			union expression *cont = make_continuation(make_reference(NULL, ct_reg), nil(ct_reg), make_begin(nil(ct_reg), ct_reg),
+				ct_reg), *param = make_reference(NULL, ct_reg);
+			prepend(param, &cont->continuation.parameters, ct_reg);
+			param->reference.parent = cont;
+			
+			union expression *macro_invocation = make_with(make_reference(NULL, ct_reg), make_begin(nil(ct_reg), ct_reg), ct_reg);
+			macro_invocation->with.parent = (*s)->non_primitive.parent;
+			
+			put(macro_invocation, with.expression, make_invoke1(make_invoke7(make_literal((unsigned long) np_expansion, ct_reg),
 				(*s)->non_primitive.reference, make_literal((unsigned long) copy_sexpr_list((*s)->non_primitive.argument,
 				ectx->rt_reg), ct_reg), make_literal((unsigned long) ectx, ct_reg),
 				make_literal((unsigned long) (*s)->non_primitive.st_binds, ct_reg),
 				make_literal((unsigned long) param_names_rt, ct_reg),
 				make_literal((unsigned long) map((*s)->non_primitive.indirections, ectx->rt_reg, (void *(*)(void *, void *)) rstrcpy,
 					ectx->rt_reg), ct_reg), make_literal((unsigned long) macro_cache, ct_reg), ct_reg), cont, ct_reg));
-			prepend(param, &cont->continuation.parameters, ct_reg);
-			param->reference.parent = cont;
 			
-			union expression *macro_invocation = make_with(make_reference(NULL, ct_reg), make_begin(nil(ct_reg), ct_reg), ct_reg);
-			macro_invocation->with.parent = (*s)->non_primitive.parent;
 			prepend(use_reference(macro_invocation->with.reference, ct_reg), &args_ct, ct_reg);
-			put(macro_invocation, with.expression, make_jump(make_invoke1(make_literal((unsigned long) _get_, ct_reg),
+			put(cont, continuation.expression, make_jump(make_invoke1(make_literal((unsigned long) _get_, ct_reg),
 				use_reference(param, ct_reg), ct_reg), args_ct, ct_reg));
-			union expression *parent_function = get_zeroth_function(*s);
-			*s = macro_invocation;
 			
-			put(cont, continuation.expression, make_jump1(use_reference(wth->with.reference, ct_reg),
-				parent_function->function.expression, ct_reg));
-			put(parent_function, function.expression, wth);
+			*s = macro_invocation;
 			break;
 		}
 	}
