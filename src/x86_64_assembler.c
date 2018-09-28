@@ -91,7 +91,7 @@ void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sy
 	union expression *n;
 	foreach(n, generated_expressions) {
 		switch(n->assembly.opcode) {
-			case LOCAL_LABEL: case GLOBAL_LABEL: {
+			case LABEL: {
 				union expression *label_ref = (union expression *) n->assembly.arguments->fst;
 				Elf64_Sym *sym = label_ref->reference.symbol->context;
 				if(label_ref->reference.symbol) {
@@ -225,7 +225,7 @@ int measure_strtab(list generated_expressions, list local_syms, list global_syms
 	}}
 	union expression *e;
 	{foreach(e, generated_expressions) {
-		if(e->assembly.opcode == LOCAL_LABEL || e->assembly.opcode == GLOBAL_LABEL) {
+		if(e->assembly.opcode == LABEL) {
 			char *label_str = ((union expression *) e->assembly.arguments->fst)->reference.name;
 			if(label_str) {
 				strtab_len += strlen(label_str) + 1;
@@ -246,7 +246,7 @@ int measure_symtab(list generated_expressions, list local_syms, list global_syms
 	}}
 	union expression *e;
 	{foreach(e, generated_expressions) {
-		if(e->assembly.opcode == LOCAL_LABEL || e->assembly.opcode == GLOBAL_LABEL) {
+		if(e->assembly.opcode == LABEL) {
 			sym_count++;
 		}
 	}}
@@ -343,7 +343,7 @@ void write_elf(list generated_expressions, list local_syms, list global_syms, un
 	}}
 	union expression *e;
 	{foreach(e, generated_expressions) {
-		if(e->assembly.opcode == LOCAL_LABEL) {
+		if(e->assembly.opcode == LABEL && ((union expression *) e->assembly.arguments->fst)->reference.symbol->scope == local_scope) {
 			union expression *ref = (union expression *) e->assembly.arguments->fst;
 			if(ref->reference.name) {
 				strcpy(strtabptr, ref->reference.name);
@@ -380,7 +380,7 @@ void write_elf(list generated_expressions, list local_syms, list global_syms, un
 		sym_ptr++;
 	}}
 	{foreach(e, generated_expressions) {
-		if(e->assembly.opcode == GLOBAL_LABEL) {
+		if(e->assembly.opcode == LABEL && ((union expression *) e->assembly.arguments->fst)->reference.symbol->scope == global_scope) {
 			union expression *ref = (union expression *) e->assembly.arguments->fst;
 			if(ref->reference.name) {
 				strcpy(strtabptr, ref->reference.name);

@@ -68,7 +68,7 @@ Object *load_expressions(union expression *program, struct expansion_context *ec
 		sym->offset += (unsigned long) segment(obj, ".bss");
 	}}
 	{foreach(l, asms) {
-		if(l->assembly.opcode == LOCAL_LABEL || l->assembly.opcode == GLOBAL_LABEL) {
+		if(l->assembly.opcode == LABEL) {
 			union expression *label_ref = l->assembly.arguments->fst;
 			label_ref->reference.symbol->offset += (unsigned long) segment(obj, ".text");
 		}

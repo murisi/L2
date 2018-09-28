@@ -32,8 +32,7 @@
 #define ORQ_REG_TO_REG 31
 #define MOVQ_IMM_TO_REG 32
 #define CALL_REG 34
-#define GLOBAL_LABEL 36
-#define LOCAL_LABEL 37
+#define LABEL 36
 #define STVAL_ADD_OFF_TO_REF 43
 #define STVAL_SUB_RIP_FROM_REF 44
 
@@ -129,9 +128,9 @@ union expression *vgenerate_ifs(union expression *n, region r) {
 		emit(n->_if.consequent, r);
 		struct symbol *end_symbol = make_symbol(_function, local_scope, NULL, r);
 		emit(make_asm1(JMP_REL, make_asm1(STVAL_SUB_RIP_FROM_REF, use_symbol(end_symbol, r), r), r), r);
-		emit(make_asm1(LOCAL_LABEL, use_symbol(alternate_symbol, r), r), r);
+		emit(make_asm1(LABEL, use_symbol(alternate_symbol, r), r), r);
 		emit(n->_if.alternate, r);
-		emit(make_asm1(LOCAL_LABEL, use_symbol(end_symbol, r), r), r);
+		emit(make_asm1(LABEL, use_symbol(end_symbol, r), r), r);
 		return container;
 	} else {
 		return n;
@@ -223,9 +222,9 @@ union expression *vgenerate_continuation_expressions(union expression *n, region
 			//Skip the actual instructions of the continuation
 			struct symbol *after_symbol = make_symbol(_function, local_scope, NULL, r);
 			emit(make_asm1(JMP_REL, make_asm1(STVAL_SUB_RIP_FROM_REF, use_symbol(after_symbol, r), r), r), r);
-			emit(make_asm1(LOCAL_LABEL, cont_instr_ref(n, r), r), r);
+			emit(make_asm1(LABEL, cont_instr_ref(n, r), r), r);
 			emit(n->continuation.expression, r);
-			emit(make_asm1(LOCAL_LABEL, use_symbol(after_symbol, r), r), r);
+			emit(make_asm1(LABEL, use_symbol(after_symbol, r), r), r);
 			return container;
 		} case with: {
 			union expression *container = make_begin(nil(r), r);
@@ -233,7 +232,7 @@ union expression *vgenerate_continuation_expressions(union expression *n, region
 				emit(make_store_continuation(n, r), r);
 			}
 			emit(n->with.expression, r);
-			emit(make_asm1(LOCAL_LABEL, cont_instr_ref(n, r), r), r);
+			emit(make_asm1(LABEL, cont_instr_ref(n, r), r), r);
 			emit(make_load(((union expression *) n->with.parameter->fst)->reference.symbol, 0, make_asm0(R11, r), make_asm0(R10, r), r), r);
 			emit(make_store(make_asm0(R11, r), n->with.return_symbol, 0, make_asm0(R10, r), r), r);
 			return container;
@@ -314,11 +313,7 @@ union expression *vgenerate_function_expressions(union expression *n, region r) 
 		struct symbol *after_symbol = make_symbol(_function, local_scope, NULL, r);
 		
 		emit(make_asm1(JMP_REL, make_asm1(STVAL_SUB_RIP_FROM_REF, use_symbol(after_symbol, r), r), r), r);
-		if(root_function_of(n) == n->function.parent->begin.parent) {
-			emit(make_asm1(GLOBAL_LABEL, n->function.reference, r), r);
-		} else {
-			emit(make_asm1(LOCAL_LABEL, n->function.reference, r), r);
-		}
+		emit(make_asm1(LABEL, n->function.reference, r), r);
 		
 		//Insert first 6 parameters onto stack
 		emit(make_asm1(POPQ_REG, make_asm0(R11, r), r), r);
@@ -359,7 +354,7 @@ union expression *vgenerate_function_expressions(union expression *n, region r) 
 		emit(make_asm2(ADDQ_IMM_TO_REG, make_literal(6*WORD_SIZE, r), make_asm0(RSP, r), r), r);
 		emit(make_asm1(PUSHQ_REG, make_asm0(R11, r), r), r);
 		emit(make_asm0(RET, r), r);
-		emit(make_asm1(LOCAL_LABEL, use_symbol(after_symbol, r), r), r);
+		emit(make_asm1(LABEL, use_symbol(after_symbol, r), r), r);
 		return container;
 	} else if(n->base.type == invoke) {
 		union expression *container = make_begin(nil(r), r);

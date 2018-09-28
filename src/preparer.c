@@ -288,11 +288,15 @@ union expression *vmerge_begins(union expression *n, void *ctx) {
 	return n;
 }
 
+bool is_toplevel(union expression *n) {
+	return n->base.parent && n->base.parent->base.parent && !n->base.parent->base.parent->base.parent;
+}
+
 union expression *vmake_symbols(union expression *n, region r) {
 	switch(n->base.type) {
 		case function: {
 			if(!n->function.reference->reference.symbol) {
-				n->function.reference->reference.symbol = make_symbol(_function, n->function.parent ? local_scope : global_scope,
+				n->function.reference->reference.symbol = make_symbol(_function, is_toplevel(n) ? global_scope : local_scope,
 					n->function.reference->reference.name, r);
 			}
 			union expression *param;
@@ -317,7 +321,7 @@ union expression *vmake_symbols(union expression *n, region r) {
 			}
 			break;
 		} case storage: {
-			bool toplevel = get_zeroth_function(n)->function.parent == NULL;
+			bool toplevel = is_toplevel(n);
 			if(!n->storage.reference->reference.symbol) {
 				n->storage.reference->reference.symbol = make_symbol(toplevel ? static_storage : dynamic_storage,
 					toplevel ? global_scope : local_scope, n->storage.reference->reference.name, r);
@@ -473,7 +477,7 @@ void (*np_expansion(list (*expander)(list, region, list), list argument, struct 
 
 void prepend_binding(union expression *ref, list *binds, region rt_reg) {
 	if(ref->reference.name) {
-		ref->reference.symbol = make_symbol(static_storage, local_scope, rstrcpy(ref->reference.name, rt_reg), rt_reg);
+		ref->reference.symbol = make_symbol(static_storage, global_scope, rstrcpy(ref->reference.name, rt_reg), rt_reg);
 		prepend(ref->reference.symbol, binds, rt_reg);
 	}
 }
