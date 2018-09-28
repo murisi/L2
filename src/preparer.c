@@ -392,8 +392,9 @@ struct expansion_context {
 Object *load_expressions(union expression *program, struct expansion_context *ectx, list st_binds, region ct_reg);
 union expression *build_syntax_tree(list d, region reg, jumpbuf *handler);
 
-void (*np_expansion(list (*expander)(list, region), list argument, struct expansion_context *ectx, list st_binds, list dyn_ref_names, list indirections, void (*(*macro_cache))(void *)))(void *) {
-	if(*macro_cache) {
+void (*np_expansion(list (*expander)(list, region, list), list argument, struct expansion_context *ectx, list st_binds, list dyn_ref_names, list indirections, void (*(*macro_cache))(void *), list *macro_sexpr_cache))(void *) {
+	list expansion = expander(argument, ectx->rt_reg, *macro_sexpr_cache);
+	if(expansion == *macro_sexpr_cache) {
 		return *macro_cache;
 	}
 	
@@ -411,7 +412,7 @@ void (*np_expansion(list (*expander)(list, region), list argument, struct expans
 	prepend(guest_cont_param, &cont->continuation.parameters, ct_reg);
 	guest_cont_param->reference.parent = cont;
 	put(cont, continuation.expression, make_jump1(make_invoke1(make_literal((unsigned long) _get_, ct_reg),
-		use_reference(guest_cont_param, ct_reg), ct_reg), build_syntax_tree(expander(argument, ct_reg), ct_reg, ectx->handler), ct_reg));
+		use_reference(guest_cont_param, ct_reg), ct_reg), build_syntax_tree(expansion, ct_reg, ectx->handler), ct_reg));
 	{foreach(ref_name, dyn_ref_names) {
 		put(cont, continuation.expression, insert_indirections(cont->continuation.expression, ref_name, ct_reg));
 	}}
@@ -450,6 +451,7 @@ void (*np_expansion(list (*expander)(list, region), list argument, struct expans
 	mutate_symbols(obj, st_binds);
 	//There is only one immutable symbol: our annonymous function
 	*macro_cache = ((object_symbol *) immutable_symbols(obj, ct_reg)->fst)->address;
+	*macro_sexpr_cache = expansion;
 	destroy_region(ct_reg);
 	return *macro_cache;
 }
@@ -620,26 +622,28 @@ void generate_np_expressions(union expression **s, region ct_reg, struct expansi
 			}}
 			void (*(*macro_cache))(void *) = region_alloc(ectx->rt_reg, sizeof(void (*)(void *)));
 			*macro_cache = NULL;
+			list *macro_sexpr_cache = region_alloc(ectx->rt_reg, sizeof(list *));
+			*macro_sexpr_cache = nil(ectx->rt_reg);
 			
 			union expression *cont = make_continuation(make_reference(NULL, ct_reg), nil(ct_reg), make_begin(nil(ct_reg), ct_reg),
-				ct_reg), *param = make_reference(NULL, ct_reg);
+				ct_reg), *param = make_reference(NULL, ct_reg), *macro_invocation = make_with(make_reference(NULL, ct_reg),
+				make_begin(nil(ct_reg), ct_reg), ct_reg);
+			
 			prepend(param, &cont->continuation.parameters, ct_reg);
 			param->reference.parent = cont;
+			prepend(use_reference(macro_invocation->with.reference, ct_reg), &args_ct, ct_reg);
+			put(cont, continuation.expression, make_jump(make_invoke1(make_literal((unsigned long) _get_, ct_reg),
+				use_reference(param, ct_reg), ct_reg), args_ct, ct_reg));
 			
-			union expression *macro_invocation = make_with(make_reference(NULL, ct_reg), make_begin(nil(ct_reg), ct_reg), ct_reg);
 			macro_invocation->with.parent = (*s)->non_primitive.parent;
-			
-			put(macro_invocation, with.expression, make_invoke1(make_invoke7(make_literal((unsigned long) np_expansion, ct_reg),
+			put(macro_invocation, with.expression, make_invoke1(make_invoke8(make_literal((unsigned long) np_expansion, ct_reg),
 				(*s)->non_primitive.reference, make_literal((unsigned long) copy_sexpr_list((*s)->non_primitive.argument,
 				ectx->rt_reg), ct_reg), make_literal((unsigned long) ectx, ct_reg),
 				make_literal((unsigned long) (*s)->non_primitive.st_binds, ct_reg),
 				make_literal((unsigned long) param_names_rt, ct_reg),
 				make_literal((unsigned long) map((*s)->non_primitive.indirections, ectx->rt_reg, (void *(*)(void *, void *)) rstrcpy,
-					ectx->rt_reg), ct_reg), make_literal((unsigned long) macro_cache, ct_reg), ct_reg), cont, ct_reg));
-			
-			prepend(use_reference(macro_invocation->with.reference, ct_reg), &args_ct, ct_reg);
-			put(cont, continuation.expression, make_jump(make_invoke1(make_literal((unsigned long) _get_, ct_reg),
-				use_reference(param, ct_reg), ct_reg), args_ct, ct_reg));
+					ectx->rt_reg), ct_reg), make_literal((unsigned long) macro_cache, ct_reg),
+					make_literal((unsigned long) macro_sexpr_cache, ct_reg), ct_reg), cont, ct_reg));
 			
 			*s = macro_invocation;
 			break;

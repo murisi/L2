@@ -38,46 +38,56 @@
 (++ The following function provides an abbreviation for getting a value from a
 	memory address. It implements the transformation $a -> [get a].)
 
-(function $ (var r) [llst
-		[llllllst -i- -n- -v- -o- -k- -e- emt [get r]]
-		[lllst -g- -e- -t- emt [get r]]
-		[get var][get r]])
+(function $ (var r p)
+	(if [emt? [get p]] [llst
+			[llllllst -i- -n- -v- -o- -k- -e- emt [get r]]
+			[lllst -g- -e- -t- emt [get r]]
+			[get var][get r]]
+		[get p]))
 
 (++ The following function provides a method for commenting L2 code. It
 	implements the transformation (** expr1 ... exprN) -> exprN.)
 
-(function ** (l r)
-	(with return
-		{(continuation find (first last)
-			(if [emt? $last]
-				{return $first}
-				{find [fst $last] [rst $last]})) [fst $l] [rst $l]}))
+(function ** (l r p)
+	(if [emt? $p]
+		(with return
+			{(continuation find (first last)
+				(if [emt? $last]
+					{return $first}
+					{find [fst $last] [rst $last]})) [fst $l] [rst $l]})
+		$p))
 
 (++ The following function generates the L2 code to generate an s-expression
 	corresponding to the supplied s-expression. Known as backquote in other
 	languages.)
 
-(function ` (l r)
-	[(function aux (s t r)
-		(if [emt? $s] [lllst -e- -m- -t- emt $r]
+(function ` (l r p)
+	(if [emt? $p]
+			[(function aux (s t r)
+				(if [emt? $s] [lllst -e- -m- -t- emt $r]
 		
-		(if (if [lst? $s] (if [emt? $s] &0 (if [lst? [fst $s]] (if [emt? [fst $s]]
-			&0 (if [char= [ffst $s] -,-] [emt? [rfst $s]] &0)) &0)) &0)
-					[frst $s]
+				(if (if [lst? $s] (if [emt? $s] &0 (if [lst? [fst $s]] (if [emt? [fst $s]]
+					&0 (if [char= [ffst $s] -,-] [emt? [rfst $s]] &0)) &0)) &0)
+							[frst $s]
 		
-		[lllllst [llllllst -i- -n- -v- -o- -k- -e- emt $r]
-			[lllst -l- -s- -t- emt $r]
-				(if [lst? [fst $s]]
-						[aux [fst $s] $t $r]
-						[lllst --- [fst $s] --- emt $r])
-					[aux [rst $s] $t $r] $t emt $r]))) [fst $l] [frst $l] $r])
+				[lllllst [llllllst -i- -n- -v- -o- -k- -e- emt $r]
+					[lllst -l- -s- -t- emt $r]
+						(if [lst? [fst $s]]
+								[aux [fst $s] $t $r]
+								[lllst --- [fst $s] --- emt $r])
+							[aux [rst $s] $t $r] $t emt $r]))) [fst $l] [frst $l] $r]
+		$p))
+
+(function use-memo (l r p)
+	(if [emt? $p]
+		(`(if [emt? (,[fst $l])] (,[frst $l]) (,[fst $l]))$r)
+		$p))
 
 (++ The following function provides another method for commenting L2 code. It
 	implements the transformation (++ expr1 ...) -> (begin). It is being used
 	for this comment to work.)
 
-(function ++ (l r)
-	(`(begin)$r))
+(function ++ (l r p) (use-memo $p (`(begin)$r)))
 
 (** Now things are working: (let (d &5)
 	(for (i &5 &23) (begin

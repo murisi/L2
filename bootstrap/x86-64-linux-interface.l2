@@ -1,5 +1,5 @@
 (function sys-read (l r) (` &0 $r))
-(function sys-write (l r) (` &1 $r))
+(function sys-write (l r p) (if [emt? $p] (` &1 $r) $p))
 (function sys-open (l r) (` &2 $r))
 (function sys-close (l r) (` &3 $r))
 (function sys-fstat (l r) (` &5 $r))
@@ -23,7 +23,7 @@
 (function arg-max (l r) (`(page-size)$r))
 (function clock-process-cputime-id (l r) (` &2 $r))
 (function stdin (l r) (` &0 $r))
-(function stdout (l r) (` &1 $r))
+(function stdout (l r p) (if [emt? $p] (` &1 $r) $p))
 (function null (l r) (` &0 $r))
 (function unit (l r) (` &8 $r))
 (function alloc-alignment (l r) (` &8 $r))
@@ -137,10 +137,10 @@
 	from $arr, and then gets the address at offset 5 units from that, and then
 	gets the address at offset 4 units from that.)
 
-(function loc (l r)
+(function loc (l r p) (use-memo $p
 	(if [emt? [rrrst $l]]
 		(`[+ (,[fst $l]) [* (,[frst $l]) (,[frrst $l])]]$r)
-		[loc [lst (`($[+ (,[fst $l]) [*(,[frst $l])(unit)]])$r) [rrst $l] $r] $r]))
+		[loc [lst (`($[+ (,[fst $l]) [*(,[frst $l])(unit)]])$r) [rrst $l] $r] $r emt])))
 
 (++ Creates a new region with a minimum capacity in bytes given by the value at
 	min-capacity.)
