@@ -23,7 +23,7 @@ union expression *build_syntax_tree(list d, region reg, jumpbuf *handler) {
 	} else if(!strcmp(to_string(d->fst, reg), "begin")) {
 		list t = d->rst;
 		list v;
-		list exprs;
+		list exprs = nil;
 		{foreach(v, t) {
 			append(build_syntax_tree(v, reg, handler), &exprs, reg);
 		}}

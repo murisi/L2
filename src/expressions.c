@@ -197,17 +197,12 @@ union expression *make_reference(char *name, region reg) {
 	ref->reference.type = reference;
 	ref->reference.name = name;
 	ref->reference.symbol = NULL;
-	ref->reference.referent = ref;
+	ref->reference.referent = NULL;
 	return ref;
 }
 
-union expression *use_reference(union expression *referent, region reg) {
-	union expression *ref = region_alloc(reg, sizeof(union expression));
-	ref->reference.type = reference;
-	ref->reference.name = referent->reference.name;
-	ref->reference.referent = referent;
-	ref->reference.symbol = referent->reference.symbol;
-	return ref;
+void refer_reference(union expression *reference, union expression *referent) {
+	reference->reference.symbol = referent->reference.symbol;
 }
 
 union expression *use_symbol(struct symbol *sym, region reg) {

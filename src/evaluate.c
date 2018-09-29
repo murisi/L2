@@ -27,7 +27,6 @@ Object *load_expressions(union expression *program, struct expansion_context *ec
 	store_static_bindings(&program->function.expression, true, st_binds, ectx->rt_reg);
 	store_dynamic_refs(&program->function.expression, true, nil, manreg);
 	visit_expressions(vgenerate_np_expressions, &program, (void* []) {manreg, ectx});
-	visit_expressions(vmake_symbols, &program, manreg);
 	visit_expressions(vfind_multiple_definitions, &program, ectx->handler);
 	visit_expressions(vlink_references, &program, (void* []) {ectx->handler, manreg});
 	visit_expressions(vescape_analysis, &program, NULL);
