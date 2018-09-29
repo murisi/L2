@@ -26,7 +26,7 @@ typedef unsigned long int bool;
 Object *load_expressions(union expression *program, struct expansion_context *ectx, list st_binds, region manreg) {
 	store_static_bindings(&program->function.expression, true, st_binds, ectx->rt_reg);
 	store_dynamic_refs(&program->function.expression, true, nil(ectx->rt_reg), manreg);
-	generate_np_expressions(&program, manreg, ectx);
+	visit_expressions(vgenerate_np_expressions, &program, (void* []) {manreg, ectx});
 	visit_expressions(vmake_symbols, &program, manreg);
 	visit_expressions(vfind_multiple_definitions, &program, ectx->handler);
 	visit_expressions(vlink_references, &program, (void* []) {ectx->handler, manreg});
