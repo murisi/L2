@@ -68,8 +68,8 @@ union expression *vlayout_frames(union expression *n, region r) {
 				//Make space for the buffer
 				int i;
 				for(i = 1; i < (CONT_SIZE / WORD_SIZE); i++) {
-					append(make_symbol(get_zeroth_function(n)->function.parent ?
-						dynamic_storage : static_storage, local_scope, NULL, r), &get_zeroth_function(n)->function.local_symbols, r);
+					append(make_symbol(get_zeroth_function(n)->function.parent ? dynamic_storage : static_storage, local_scope,
+						defined_state, NULL, r), &get_zeroth_function(n)->function.local_symbols, r);
 				}
 			}
 			union expression *t;
@@ -82,8 +82,8 @@ union expression *vlayout_frames(union expression *n, region r) {
 			//Make space for the buffer
 			int i;
 			for(i = 1; i < length(n->storage.arguments); i++) {
-				append(make_symbol(get_zeroth_function(n)->function.parent ?
-					dynamic_storage : static_storage, local_scope, NULL, r), &get_zeroth_function(n)->function.local_symbols, r);
+				append(make_symbol(get_zeroth_function(n)->function.parent ? dynamic_storage : static_storage, local_scope,
+					defined_state, NULL, r), &get_zeroth_function(n)->function.local_symbols, r);
 			}
 			break;
 		}
@@ -123,10 +123,10 @@ union expression *vgenerate_ifs(union expression *n, region r) {
 		emit(make_load(n->_if.condition->reference.symbol, 0, make_asm0(R10, r), make_asm0(R13, r), r), r);
 		emit(make_asm2(ORQ_REG_TO_REG, make_asm0(R10, r), make_asm0(R10, r), r), r);
 		
-		struct symbol *alternate_symbol = make_symbol(_function, local_scope, NULL, r);
+		struct symbol *alternate_symbol = make_symbol(_function, local_scope, defined_state, NULL, r);
 		emit(make_asm1(JE_REL, make_asm1(STVAL_SUB_RIP_FROM_REF, use_symbol(alternate_symbol, r), r), r), r);
 		emit(n->_if.consequent, r);
-		struct symbol *end_symbol = make_symbol(_function, local_scope, NULL, r);
+		struct symbol *end_symbol = make_symbol(_function, local_scope, defined_state, NULL, r);
 		emit(make_asm1(JMP_REL, make_asm1(STVAL_SUB_RIP_FROM_REF, use_symbol(end_symbol, r), r), r), r);
 		emit(make_asm1(LABEL, use_symbol(alternate_symbol, r), r), r);
 		emit(n->_if.alternate, r);
@@ -180,7 +180,7 @@ union expression *vgenerate_references(union expression *n, region r) {
 union expression *cont_instr_ref(union expression *n, region r) {
 	return n->continuation.cont_instr_ref ?
 		n->continuation.cont_instr_ref :
-		(n->continuation.cont_instr_ref = use_symbol(make_symbol(_function, local_scope, NULL, r), r));
+		(n->continuation.cont_instr_ref = use_symbol(make_symbol(_function, local_scope, defined_state, NULL, r), r));
 }
 
 union expression *make_store_continuation(union expression *n, region r) {
@@ -220,7 +220,7 @@ union expression *vgenerate_continuation_expressions(union expression *n, region
 			}
 			
 			//Skip the actual instructions of the continuation
-			struct symbol *after_symbol = make_symbol(_function, local_scope, NULL, r);
+			struct symbol *after_symbol = make_symbol(_function, local_scope, defined_state, NULL, r);
 			emit(make_asm1(JMP_REL, make_asm1(STVAL_SUB_RIP_FROM_REF, use_symbol(after_symbol, r), r), r), r);
 			emit(make_asm1(LABEL, cont_instr_ref(n, r), r), r);
 			emit(n->continuation.expression, r);
@@ -310,7 +310,7 @@ union expression *vgenerate_function_expressions(union expression *n, region r) 
 		emit(make_load_address(n->function.reference->reference.symbol, make_asm0(R11, r), r), r);
 		emit(make_store(make_asm0(R11, r), n->function.return_symbol, 0, make_asm0(R10, r), r), r);
 		
-		struct symbol *after_symbol = make_symbol(_function, local_scope, NULL, r);
+		struct symbol *after_symbol = make_symbol(_function, local_scope, defined_state, NULL, r);
 		
 		emit(make_asm1(JMP_REL, make_asm1(STVAL_SUB_RIP_FROM_REF, use_symbol(after_symbol, r), r), r), r);
 		emit(make_asm1(LABEL, n->function.reference, r), r);

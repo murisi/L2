@@ -17,19 +17,23 @@ enum symbol_type { static_storage, dynamic_storage, _function };
 
 enum symbol_scope { local_scope, global_scope };
 
+enum symbol_state { undefined_state, defined_state };
+
 struct symbol {
 	char *name;
 	long int offset;
+	unsigned long int size;
 	enum symbol_type type;
 	enum symbol_scope scope;
-	long int size;
+	enum symbol_state state;
 	void *context;
 };
 
-struct symbol *make_symbol(enum symbol_type type, enum symbol_scope scope, char *name, region r) {
+struct symbol *make_symbol(enum symbol_type type, enum symbol_scope scope, enum symbol_state state, char *name, region r) {
 	struct symbol *sym = region_alloc(r, sizeof(struct symbol));
 	sym->type = type;
 	sym->scope = scope;
+	sym->state = state;
 	sym->name = name;
 	return sym;
 }

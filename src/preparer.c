@@ -212,7 +212,7 @@ void visit_expressions(union expression *(*visitor)(union expression *, void *),
 }
 
 struct symbol *make_local(union expression *function, region r) {
-	struct symbol *sym = make_symbol(function->function.parent ? dynamic_storage : static_storage, local_scope, NULL, r);
+	struct symbol *sym = make_symbol(function->function.parent ? dynamic_storage : static_storage, local_scope, defined_state, NULL, r);
 	prepend(sym, &function->function.local_symbols, r);
 	return sym;
 }
@@ -297,26 +297,26 @@ union expression *vmake_symbols(union expression *n, region r) {
 		case function: {
 			if(!n->function.reference->reference.symbol) {
 				n->function.reference->reference.symbol = make_symbol(_function, is_toplevel(n) ? global_scope : local_scope,
-					n->function.reference->reference.name, r);
+					defined_state, n->function.reference->reference.name, r);
 			}
 			union expression *param;
 			foreach(param, n->function.parameters) {
 				if(!param->reference.symbol) {
 					param->reference.symbol = make_symbol(n->function.parent ? dynamic_storage : static_storage, local_scope,
-						param->reference.name, r);
+						defined_state, param->reference.name, r);
 				}
 			}
 			break;
 		} case continuation: case with: {
 			enum symbol_type type = get_zeroth_function(n)->function.parent ? dynamic_storage : static_storage;
 			if(!n->continuation.reference->reference.symbol) {
-				n->continuation.reference->reference.symbol = make_symbol(type, local_scope,
+				n->continuation.reference->reference.symbol = make_symbol(type, local_scope, defined_state,
 					n->continuation.reference->reference.name, r);
 			}
 			union expression *param;
 			foreach(param, n->continuation.parameters) {
 				if(!param->reference.symbol) {
-					param->reference.symbol = make_symbol(type, local_scope, param->reference.name, r);
+					param->reference.symbol = make_symbol(type, local_scope, defined_state, param->reference.name, r);
 				}
 			}
 			break;
@@ -324,7 +324,7 @@ union expression *vmake_symbols(union expression *n, region r) {
 			bool toplevel = is_toplevel(n);
 			if(!n->storage.reference->reference.symbol) {
 				n->storage.reference->reference.symbol = make_symbol(toplevel ? static_storage : dynamic_storage,
-					toplevel ? global_scope : local_scope, n->storage.reference->reference.name, r);
+					toplevel ? global_scope : local_scope, defined_state, n->storage.reference->reference.name, r);
 			}
 			break;
 		}
@@ -477,7 +477,7 @@ void (*np_expansion(list (*expander)(list, region, list), list argument, struct 
 
 void prepend_binding(union expression *ref, list *binds, region rt_reg) {
 	if(ref->reference.name) {
-		ref->reference.symbol = make_symbol(static_storage, global_scope, rstrcpy(ref->reference.name, rt_reg), rt_reg);
+		ref->reference.symbol = make_symbol(static_storage, global_scope, defined_state, rstrcpy(ref->reference.name, rt_reg), rt_reg);
 		prepend(ref->reference.symbol, binds, rt_reg);
 	}
 }
