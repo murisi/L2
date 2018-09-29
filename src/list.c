@@ -108,3 +108,15 @@ list map(list l, void *ctx, void* (*mapper)(void *, void *), region reg) {
 	}
 	return reverse(ret, reg);
 }
+
+list concat(list a, list b, region reg) {
+	list res = nil(reg);
+	void *e;
+	{foreach(e, a) {
+		prepend(e, &res, reg);
+	}}
+	{foreach(e, b) {
+		prepend(e, &res, reg);
+	}}
+	return reverse(res, reg);
+}

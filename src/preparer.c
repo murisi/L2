@@ -117,22 +117,17 @@ union expression *root_function_of(union expression *s) {
 	return s;
 }
 
-union expression *prepend_parameter(union expression *function, region reg) {
-	union expression *v = make_reference(NULL, reg);
-	v->reference.parent = function;
-	v->reference.referent = v;
-	prepend(v, &(function->function.parameters), reg);
-	return v;
-}
-
 union expression *vlink_references(union expression *s, void *ctx) {
 	jumpbuf *handler = ((void **) ctx)[0];
 	region r = ((void **) ctx)[1];
 	if(s->base.type == reference) {
 		s->reference.referent = s->reference.referent ? s->reference.referent : referent_of(s);
 		if(s->reference.referent == NULL) {
-			s->reference.referent = prepend_parameter(root_function_of(s), r);
-			s->reference.referent->reference.name = s->reference.name;
+			union expression *ref = use_symbol(make_symbol(static_storage, global_scope, undefined_state, s->reference.name, r), r);
+			prepend(ref, &root_function_of(s)->function.parameters, r);
+			ref->reference.parent = root_function_of(s);
+			ref->reference.referent = ref;
+			s->reference.referent = ref;
 		} else if(is_jump_reference(s) && is_c_reference(s->reference.referent) &&
 			length(s->reference.parent->jump.arguments) != length(target_expression(s)->continuation.parameters)) {
 				throw_param_count_mismatch(s->reference.parent, target_expression(s), handler);
