@@ -215,7 +215,6 @@ struct symbol *make_local(union expression *function, region r) {
 union expression *use_return_symbol(union expression *n, struct symbol *ret_sym, region r) {
 	switch(n->base.type) {
 		case with: {
-			n->with.parameter->fst = make_reference(NULL, r);
 		} case continuation: {
 			n->continuation.return_symbol = ret_sym;
 			put(n, continuation.expression, use_return_symbol(n->continuation.expression, make_local(get_zeroth_function(n), r), r));
