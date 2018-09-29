@@ -355,7 +355,8 @@ union expression *insert_indirections(union expression *expr, char *ref_name, re
 		} case begin: {
 			union expression *f;
 			{foreach(f, expr->begin.expressions) {
-				if(f->base.type == function && defined_string_equals(f->function.reference->reference.name, ref_name)) {
+				if((f->base.type == function || f->base.type == storage) &&
+						defined_string_equals(f->function.reference->reference.name, ref_name)) {
 					return expr;
 				}
 			}}
