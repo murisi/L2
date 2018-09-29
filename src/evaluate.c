@@ -1,10 +1,10 @@
 #define WORD_SIZE 8
 #define NULL 0UL
+typedef unsigned long int bool;
+#define true 1
+#define false 0
 
 #include "x86_64_linux_interface.c"
-typedef unsigned long int bool;
-#define true (~0UL)
-#define false (0UL)
 #include "list.c"
 #include "compile_errors.c"
 #include "lexer.c"
