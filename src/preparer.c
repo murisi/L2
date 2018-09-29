@@ -213,7 +213,7 @@ void visit_expressions(union expression *(*visitor)(union expression *, void *),
 
 struct symbol *make_local(union expression *function, region r) {
 	struct symbol *sym = make_symbol(function->function.parent ? dynamic_storage : static_storage, local_scope, defined_state, NULL, r);
-	prepend(sym, &function->function.local_symbols, r);
+	prepend(sym, &function->function.symbols, r);
 	return sym;
 }
 

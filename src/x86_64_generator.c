@@ -55,35 +55,35 @@ union expression *vlayout_frames(union expression *n, region r) {
 				t->reference.symbol->offset = parameter_offset;
 				parameter_offset += WORD_SIZE;
 			}}
-			int local_offset = 0;
+			int symbol_offset = 0;
 			struct symbol *u;
-			foreach(u, reverse(n->function.local_symbols, r)) {
-				local_offset -= WORD_SIZE;
-				u->offset = local_offset;
+			foreach(u, reverse(n->function.symbols, r)) {
+				symbol_offset -= WORD_SIZE;
+				u->offset = symbol_offset;
 			}
 			break;
 		} case continuation: case with: {
 			if(n->continuation.escapes) {
-				append(n->continuation.reference->reference.symbol, &get_zeroth_function(n)->function.local_symbols, r);
+				append(n->continuation.reference->reference.symbol, &get_zeroth_function(n)->function.symbols, r);
 				//Make space for the buffer
 				int i;
 				for(i = 1; i < (CONT_SIZE / WORD_SIZE); i++) {
 					append(make_symbol(get_zeroth_function(n)->function.parent ? dynamic_storage : static_storage, local_scope,
-						defined_state, NULL, r), &get_zeroth_function(n)->function.local_symbols, r);
+						defined_state, NULL, r), &get_zeroth_function(n)->function.symbols, r);
 				}
 			}
 			union expression *t;
 			foreach(t, n->continuation.parameters) {
-				append(t->reference.symbol, &get_zeroth_function(n)->function.local_symbols, r);
+				append(t->reference.symbol, &get_zeroth_function(n)->function.symbols, r);
 			}
 			break;
 		} case storage: {
-			append(n->storage.reference->reference.symbol, &get_zeroth_function(n)->function.local_symbols, r);
+			append(n->storage.reference->reference.symbol, &get_zeroth_function(n)->function.symbols, r);
 			//Make space for the buffer
 			int i;
 			for(i = 1; i < length(n->storage.arguments); i++) {
 				append(make_symbol(get_zeroth_function(n)->function.parent ? dynamic_storage : static_storage, local_scope,
-					defined_state, NULL, r), &get_zeroth_function(n)->function.local_symbols, r);
+					defined_state, NULL, r), &get_zeroth_function(n)->function.symbols, r);
 			}
 			break;
 		}
@@ -296,8 +296,8 @@ union expression *generate_toplevel(union expression *n, region r) {
 }
 
 int get_current_offset(union expression *function) {
-	if(length(function->function.local_symbols) > 0) {
-		return ((struct symbol *) function->function.local_symbols->fst)->offset;
+	if(length(function->function.symbols) > 0) {
+		return ((struct symbol *) function->function.symbols->fst)->offset;
 	} else {
 		return 0;
 	}

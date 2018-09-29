@@ -65,7 +65,7 @@ union expression *build_syntax_tree(list d, region reg, jumpbuf *handler) {
 		put(s, function.reference, build_syntax_tree(d->frst, reg, handler));
 		
 		if(s->function.type == function) {
-			s->function.local_symbols = nil(reg);
+			s->function.symbols = nil(reg);
 		}
 		s->function.parameters = nil(reg);
 		list v;

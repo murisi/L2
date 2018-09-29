@@ -117,7 +117,7 @@ struct function_expression {
 	union expression *expression;
 	list parameters; //void * = union expression *
 	
-	list local_symbols;
+	list symbols;
 	struct symbol *expression_return_symbol;
 };
 
@@ -246,7 +246,7 @@ union expression *make_function(union expression *ref, list params, union expres
 	foreach(param, params) {
 		param->base.parent = func;
 	}
-	func->function.local_symbols = nil(reg);
+	func->function.symbols = nil(reg);
 	put(func, function.expression, expr);
 	return func;
 }
