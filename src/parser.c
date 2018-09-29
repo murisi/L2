@@ -90,12 +90,7 @@ union expression *build_syntax_tree(list d, region reg, jumpbuf *handler) {
 			(!strcmp(to_string(d->fst, reg), "jump") ? make_jump : make_storage);
 		return fptr(build_syntax_tree(d->frst, reg, handler), arguments, reg);
 	} else {
-		union expression *s = region_alloc(reg, sizeof(union expression));
-		s->non_primitive.type = non_primitive;
-		put(s, non_primitive.reference, build_syntax_tree(d->fst, reg, handler));
-		s->non_primitive.argument = d->rst;
-		s->non_primitive.indirections = nil;
-		return s;
+		return make_non_primitive(build_syntax_tree(d->fst, reg, handler), d->rst, reg);
 	}
 }
 

@@ -360,6 +360,17 @@ union expression *make_storage(union expression *ref, list args, region reg) {
 	return u;
 }
 
+union expression *make_non_primitive(union expression *ref, list arg, region reg) {
+	union expression *u = region_alloc(reg, sizeof(union expression));
+	u->non_primitive.type = non_primitive;
+	put(u, non_primitive.reference, ref);
+	u->non_primitive.argument = arg;
+	u->non_primitive.indirections = nil;
+	u->non_primitive.st_binds = nil;
+	u->non_primitive.dyn_refs = nil;
+	return u;
+}
+
 union expression *make_if(union expression *condition, union expression *consequent, union expression *alternate, region reg) {
 	union expression *u = region_alloc(reg, sizeof(union expression));
 	u->_if.type = _if;
