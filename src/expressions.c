@@ -206,7 +206,7 @@ union expression *use_reference(union expression *referent, region reg) {
 	ref->reference.type = reference;
 	ref->reference.name = referent->reference.name;
 	ref->reference.referent = referent;
-	ref->reference.symbol = NULL;
+	ref->reference.symbol = referent->reference.symbol;
 	return ref;
 }
 
@@ -240,11 +240,13 @@ union expression *make_function(union expression *ref, list params, union expres
 	union expression *func = region_alloc(reg, sizeof(union expression));
 	func->function.type = function;
 	put(func, function.reference, ref);
+	ref->reference.symbol = make_symbol(static_storage, local_scope, defined_state, ref->reference.name, reg);
 	func->function.reference->reference.parent = func;
 	func->function.parameters = params;
 	union expression *param;
 	foreach(param, params) {
 		param->base.parent = func;
+		param->reference.symbol = make_symbol(dynamic_storage, local_scope, defined_state, ref->reference.name, reg);
 	}
 	func->function.symbols = nil;
 	put(func, function.expression, expr);
@@ -255,10 +257,12 @@ union expression *make_continuation(union expression *ref, list params, union ex
 	union expression *cont = region_alloc(reg, sizeof(union expression));
 	cont->continuation.type = continuation;
 	put(cont, continuation.reference, ref);
+	ref->reference.symbol = make_symbol(dynamic_storage, local_scope, defined_state, ref->reference.name, reg);
 	cont->continuation.parameters = params;
 	union expression *param;
 	foreach(param, params) {
 		param->base.parent = cont;
+		param->reference.symbol = make_symbol(dynamic_storage, local_scope, defined_state, ref->reference.name, reg);
 	}
 	put(cont, continuation.expression, expr);
 	return cont;
@@ -268,8 +272,10 @@ union expression *make_with(union expression *ref, union expression *expr, regio
 	union expression *wth = region_alloc(reg, sizeof(union expression));
 	wth->with.type = with;
 	put(wth, with.reference, ref);
+	ref->reference.symbol = make_symbol(dynamic_storage, local_scope, defined_state, ref->reference.name, reg);
 	union expression *param = make_reference(NULL, reg);
 	param->reference.parent = wth;
+	param->reference.symbol = make_symbol(dynamic_storage, local_scope, defined_state, ref->reference.name, reg);
 	wth->with.parameter = lst(param, nil, reg);
 	put(wth, with.expression, expr);
 	return wth;
@@ -344,12 +350,22 @@ union expression *make_storage(union expression *ref, list args, region reg) {
 	union expression *u = region_alloc(reg, sizeof(union expression));
 	u->storage.type = storage;
 	u->storage.reference = ref;
+	ref->reference.symbol = make_symbol(dynamic_storage, local_scope, defined_state, ref->reference.name, reg);
 	ref->base.parent = u;
 	u->storage.arguments = args;
 	union expression *arg;
 	foreach(arg, args) {
 		arg->base.parent = u;
 	}
+	return u;
+}
+
+union expression *make_if(union expression *condition, union expression *consequent, union expression *alternate, region reg) {
+	union expression *u = region_alloc(reg, sizeof(union expression));
+	u->_if.type = _if;
+	put(u, _if.condition, condition);
+	put(u, _if.consequent, consequent);
+	put(u, _if.alternate, alternate);
 	return u;
 }
 
@@ -438,6 +454,53 @@ union expression *make_invoke9(union expression *ref, union expression *arg1, un
 	return u;
 }
 
+void make_program_aux(union expression *expr) {
+	switch(expr->base.type) {
+		case begin: {
+			union expression *t;
+			foreach(t, expr->begin.expressions) {
+				make_program_aux(t);
+			}
+			break;
+		} case storage: {
+			expr->storage.reference->reference.symbol->type = static_storage;
+			expr->storage.reference->reference.symbol->scope = expr->storage.parent->base.parent->base.parent ?
+				local_scope : global_scope;
+			union expression *t;
+			foreach(t, expr->storage.arguments) {
+				make_program_aux(t);
+			}
+			break;
+		} case jump: case invoke: {
+			make_program_aux(expr->invoke.reference);
+			union expression *t;
+			foreach(t, expr->invoke.arguments) {
+				make_program_aux(t);
+			}
+			break;
+		} case non_primitive: {
+			make_program_aux(expr->non_primitive.reference);
+			break;
+		} case continuation: case with: {
+			expr->continuation.reference->reference.symbol->type = static_storage;
+			union expression *t;
+			foreach(t, expr->continuation.parameters) {
+				t->reference.symbol->type = static_storage;
+			}
+			make_program_aux(expr->continuation.expression);
+			break;
+		} case function: {
+			break;
+		}
+	}
+}
+
+union expression *make_program(list exprs, region r) {
+	union expression *program = make_function(make_reference(NULL, r), nil, make_begin(exprs, r), r);
+	make_program_aux(program->function.expression);
+	return program;
+}
+
 void print_syntax_tree(union expression *s) {
 	switch(s->base.type) {
 		case begin: {
@@ -513,8 +576,4 @@ void print_syntax_tree(union expression *s) {
 			break;
 		}
 	}
-}
-
-union expression *make_program(list exprs, region r) {
-	return make_function(make_reference(NULL, r), nil, make_begin(exprs, r), r);
 }
