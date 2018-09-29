@@ -241,7 +241,6 @@ union expression *make_function(union expression *ref, list params, union expres
 	func->function.type = function;
 	put(func, function.reference, ref);
 	ref->reference.symbol = make_symbol(static_storage, local_scope, defined_state, ref->reference.name, reg);
-	func->function.reference->reference.parent = func;
 	func->function.parameters = params;
 	union expression *param;
 	foreach(param, params) {
@@ -313,8 +312,7 @@ union expression *make_asm3(int opcode, union expression *arg1, union expression
 union expression *make_jump(union expression *ref, list args, region reg) {
 	union expression *u = region_alloc(reg, sizeof(union expression));
 	u->jump.type = jump;
-	u->jump.reference = ref;
-	ref->base.parent = u;
+	put(u, jump.reference, ref);
 	u->jump.arguments = args;
 	union expression *arg;
 	foreach(arg, args) {
@@ -326,8 +324,7 @@ union expression *make_jump(union expression *ref, list args, region reg) {
 union expression *make_jump0(union expression *ref, region reg) {
 	union expression *u = region_alloc(reg, sizeof(union expression));
 	u->jump.type = jump;
-	u->jump.reference = ref;
-	ref->base.parent = u;
+	put(u, jump.reference, ref);
 	u->jump.arguments = nil;
 	return u;
 }
@@ -349,9 +346,8 @@ union expression *make_jump2(union expression *ref, union expression *arg1, unio
 union expression *make_storage(union expression *ref, list args, region reg) {
 	union expression *u = region_alloc(reg, sizeof(union expression));
 	u->storage.type = storage;
-	u->storage.reference = ref;
+	put(u, storage.reference, ref);
 	ref->reference.symbol = make_symbol(dynamic_storage, local_scope, defined_state, ref->reference.name, reg);
-	ref->base.parent = u;
 	u->storage.arguments = args;
 	union expression *arg;
 	foreach(arg, args) {
@@ -383,8 +379,7 @@ union expression *make_if(union expression *condition, union expression *consequ
 union expression *make_invoke(union expression *ref, list args, region reg) {
 	union expression *u = region_alloc(reg, sizeof(union expression));
 	u->invoke.type = invoke;
-	u->invoke.reference = ref;
-	ref->base.parent = u;
+	put(u, invoke.reference, ref);
 	u->invoke.arguments = args;
 	union expression *arg;
 	foreach(arg, args) {
@@ -396,8 +391,7 @@ union expression *make_invoke(union expression *ref, list args, region reg) {
 union expression *make_invoke0(union expression *ref, region reg) {
 	union expression *u = region_alloc(reg, sizeof(union expression));
 	u->invoke.type = invoke;
-	u->invoke.reference = ref;
-	ref->base.parent = u;
+	put(u, invoke.reference, ref);
 	u->invoke.arguments = nil;
 	return u;
 }
