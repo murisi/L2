@@ -2,6 +2,7 @@ struct _list_ {
 	void *fst;
 	struct _list_ *rst;
 };
+
 typedef struct _list_* list;
 
 #define frst rst->fst
@@ -12,12 +13,7 @@ typedef struct _list_* list;
 #define frrrrrst rst->rst->rst->rst->rst->fst
 #define rrrrrrst rst->rst->rst->rst->rst->rst
 
-list nil(region reg) {
-	list s = region_alloc(reg, sizeof(struct _list_));
-	s->fst = s;
-	s->rst = NULL;
-	return s;
-}
+struct _list_ nil[] = {{ nil, NULL }};
 
 bool is_nil(list s) {
 	return s->rst == NULL ? true : false;
@@ -49,7 +45,7 @@ void *append(void *data, list *l, region reg) {
 	}
 	*l = region_alloc(reg, sizeof(struct _list_));
 	(*l)->fst = data;
-	(*l)->rst = nil(reg);
+	(*l)->rst = nil;
 	return &(*l)->fst;
 }
 
@@ -81,7 +77,7 @@ int length(list l) {
 }
 
 list reverse(list l, region reg) {
-	list ret = nil(reg);
+	list ret = nil;
 	void *data;
 	foreach(data, l) {
 		prepend(data, &ret, reg);
@@ -101,7 +97,7 @@ list *exists(bool (*pred)(void *, void *), list *l, void *ctx) {
 }
 
 list map(list l, void *ctx, void* (*mapper)(void *, void *), region reg) {
-	list ret = nil(reg);
+	list ret = nil;
 	void *e;
 	foreach(e, l) {
 		prepend(mapper(e, ctx), &ret, reg);
@@ -110,7 +106,7 @@ list map(list l, void *ctx, void* (*mapper)(void *, void *), region reg) {
 }
 
 list concat(list a, list b, region reg) {
-	list res = nil(reg);
+	list res = nil;
 	void *e;
 	{foreach(e, a) {
 		prepend(e, &res, reg);

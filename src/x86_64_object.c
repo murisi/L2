@@ -262,7 +262,7 @@ void mutate_symbols(Object *obj, list updates) {
 }
 
 list symbols(int flag, Object *obj, region reg) {
-	list syms = nil(reg);
+	list syms = nil;
 	int sec;
 	for(sec = 0; sec < obj->ehdr->e_shnum; sec++) {
 		if(obj->shdrs[sec].sh_type == SHT_SYMTAB) {

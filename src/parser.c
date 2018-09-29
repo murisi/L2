@@ -31,10 +31,10 @@ union expression *build_syntax_tree(list d, region reg, jumpbuf *handler) {
 		put(s, with.expression, build_syntax_tree(d->frrst, reg, handler));
 		union expression *param = make_reference(NULL, reg);
 		param->reference.parent = s;
-		s->with.parameter = lst(param, nil(reg), reg);
+		s->with.parameter = lst(param, nil, reg);
 	} else if(!strcmp(to_string(d->fst, reg), "begin")) {
 		s->begin.type = begin;
-		s->begin.expressions = nil(reg);
+		s->begin.expressions = nil;
 	
 		list t = d->rst;
 		list v;
@@ -65,9 +65,9 @@ union expression *build_syntax_tree(list d, region reg, jumpbuf *handler) {
 		put(s, function.reference, build_syntax_tree(d->frst, reg, handler));
 		
 		if(s->function.type == function) {
-			s->function.symbols = nil(reg);
+			s->function.symbols = nil;
 		}
-		s->function.parameters = nil(reg);
+		s->function.parameters = nil;
 		list v;
 		foreach(v, d->frrst) {
 			if(!is_string(v)) {
@@ -111,7 +111,7 @@ union expression *build_syntax_tree(list d, region reg, jumpbuf *handler) {
 		put(s, invoke.reference, build_syntax_tree(d->frst, reg, handler));
 	
 		list v;
-		s->invoke.arguments = nil(reg);
+		s->invoke.arguments = nil;
 		foreach(v, d->rrst) {
 			union expression *expr = build_syntax_tree(v, reg, handler);
 			append(expr, &s->invoke.arguments, reg);
@@ -121,7 +121,7 @@ union expression *build_syntax_tree(list d, region reg, jumpbuf *handler) {
 		s->non_primitive.type = non_primitive;
 		put(s, non_primitive.reference, build_syntax_tree(d->fst, reg, handler));
 		s->non_primitive.argument = d->rst;
-		s->non_primitive.indirections = nil(reg);
+		s->non_primitive.indirections = nil;
 	}
 	return s;
 }

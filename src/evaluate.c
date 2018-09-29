@@ -25,7 +25,7 @@ typedef unsigned long int bool;
 
 Object *load_expressions(union expression *program, struct expansion_context *ectx, list st_binds, region manreg) {
 	store_static_bindings(&program->function.expression, true, st_binds, ectx->rt_reg);
-	store_dynamic_refs(&program->function.expression, true, nil(ectx->rt_reg), manreg);
+	store_dynamic_refs(&program->function.expression, true, nil, manreg);
 	visit_expressions(vgenerate_np_expressions, &program, (void* []) {manreg, ectx});
 	visit_expressions(vmake_symbols, &program, manreg);
 	visit_expressions(vfind_multiple_definitions, &program, ectx->handler);
@@ -41,13 +41,13 @@ Object *load_expressions(union expression *program, struct expansion_context *ec
 	visit_expressions(vgenerate_function_expressions, &program, manreg);
 	visit_expressions(vgenerate_storage_expressions, &program, manreg);
 	list local_symbols = program->function.symbols;
-	list global_symbols = nil(manreg);
+	list global_symbols = nil;
 	union expression *l;
 	{foreach(l, program->function.parameters) {
 		append(l->reference.symbol, &global_symbols, manreg);
 	}}
 	program = generate_toplevel(program, manreg);
-	list asms = nil(manreg);
+	list asms = nil;
 	visit_expressions(vmerge_begins, &program, (void* []) {&asms, manreg});
 	unsigned char *objdest; int objdest_sz;
 	write_elf(reverse(asms, manreg), local_symbols, global_symbols, &objdest, &objdest_sz, manreg);
@@ -74,7 +74,7 @@ Object *load_expressions(union expression *program, struct expansion_context *ec
 
 void evaluate_files(int srcc, char *srcv[], list bindings, jumpbuf *handler) {
 	region syntax_tree_region = create_region(0);
-	list objects = nil(syntax_tree_region);
+	list objects = nil;
 	struct expansion_context *ectx = region_alloc(syntax_tree_region, sizeof(struct expansion_context));
 	ectx->rt_reg = syntax_tree_region;
 	ectx->handler = handler;
@@ -92,13 +92,13 @@ void evaluate_files(int srcc, char *srcv[], list bindings, jumpbuf *handler) {
 			read(fd, src_buf, src_sz);
 			close(fd);
 			
-			list expressions = nil(syntax_tree_region);
+			list expressions = nil;
 			int pos = 0;
 			while(after_leading_space(src_buf, src_sz, &pos)) {
 				list sexpr = build_expr_list(src_buf, src_sz, &pos, syntax_tree_region, handler);
 				append(build_syntax_tree(sexpr, syntax_tree_region, handler), &expressions, syntax_tree_region);
 			}
-			obj = load_expressions(make_program(expressions, syntax_tree_region), ectx, nil(syntax_tree_region), syntax_tree_region);
+			obj = load_expressions(make_program(expressions, syntax_tree_region), ectx, nil, syntax_tree_region);
 		} else if(dot && !strcmp(dot, ".o")) {
 			int obj_fd = open(srcv[i]);
 			long int obj_sz = size(obj_fd);
@@ -135,8 +135,6 @@ list _rst_(list l) {
 void *_buf_() {
 	return create_region(0);
 }
-
-union sexpr emt = { ._list = { &emt, NULL }};
 
 int main(int argc, char *argv[]) {
 	//Initialize the error handler
@@ -297,13 +295,13 @@ int main(int argc, char *argv[]) {
 		{.name = "lst", .address = lst},
 		{.name = "lst?", .address = is_lst},
 		{.name = "emt?", .address = is_nil},
-		{.name = "emt", .address = &emt},
+		{.name = "emt", .address = nil},
 		{.name = "char=", .address = char_equals},
 		{.name = "buf", .address = _buf_},
 		{.name = "dtr", .address = destroy_region}
 	};
 	
-	list static_bindings = nil(evaluate_region);
+	list static_bindings = nil;
 	int i;
 	for(i = 0; i < sizeof(sexpr_symbols) / sizeof(object_symbol); i++) {
 		prepend(&sexpr_symbols[i], &static_bindings, evaluate_region);

@@ -246,7 +246,7 @@ union expression *make_function(union expression *ref, list params, union expres
 	foreach(param, params) {
 		param->base.parent = func;
 	}
-	func->function.symbols = nil(reg);
+	func->function.symbols = nil;
 	put(func, function.expression, expr);
 	return func;
 }
@@ -270,7 +270,7 @@ union expression *make_with(union expression *ref, union expression *expr, regio
 	put(wth, with.reference, ref);
 	union expression *param = make_reference(NULL, reg);
 	param->reference.parent = wth;
-	wth->with.parameter = lst(param, nil(reg), reg);
+	wth->with.parameter = lst(param, nil, reg);
 	put(wth, with.expression, expr);
 	return wth;
 }
@@ -279,7 +279,7 @@ union expression *make_asm0(int opcode, region reg) {
 	union expression *u = region_alloc(reg, sizeof(union expression));
 	u->assembly.type = assembly;
 	u->assembly.opcode = opcode;
-	u->assembly.arguments = nil(reg);
+	u->assembly.arguments = nil;
 	return u;
 }
 
@@ -322,7 +322,7 @@ union expression *make_jump0(union expression *ref, region reg) {
 	u->jump.type = jump;
 	u->jump.reference = ref;
 	ref->base.parent = u;
-	u->jump.arguments = nil(reg);
+	u->jump.arguments = nil;
 	return u;
 }
 
@@ -371,7 +371,7 @@ union expression *make_invoke0(union expression *ref, region reg) {
 	u->invoke.type = invoke;
 	u->invoke.reference = ref;
 	ref->base.parent = u;
-	u->invoke.arguments = nil(reg);
+	u->invoke.arguments = nil;
 	return u;
 }
 
@@ -516,5 +516,5 @@ void print_syntax_tree(union expression *s) {
 }
 
 union expression *make_program(list exprs, region r) {
-	return make_function(make_reference(NULL, r), nil(r), make_begin(exprs, r), r);
+	return make_function(make_reference(NULL, r), nil, make_begin(exprs, r), r);
 }

@@ -13,7 +13,7 @@ union expression *vfind_multiple_definitions(union expression *e, void *ctx) {
 	region tempreg = create_region(0);
 	switch(e->base.type) {
 		case begin: {
-			list definitions = nil(tempreg);
+			list definitions = nil;
 			foreach(t, e->begin.expressions) {
 				if(t->base.type == storage || t->base.type == function) {
 					prepend(t->storage.reference->reference.name, &definitions, tempreg);
@@ -225,7 +225,7 @@ union expression *use_return_symbol(union expression *n, struct symbol *ret_sym,
 			put(n, function.expression, use_return_symbol(n->function.expression, n->function.expression_return_symbol, r));
 			return n;
 		} case invoke: case jump: case storage: {
-			union expression *container = make_begin(nil(r), r);
+			union expression *container = make_begin(nil, r);
 			
 			if(n->base.type == jump && n->jump.short_circuit && n->jump.reference->base.type == reference) {
 				n->jump.reference->reference.return_symbol = NULL;
@@ -246,7 +246,7 @@ union expression *use_return_symbol(union expression *n, struct symbol *ret_sym,
 			emit(n, r);
 			return container;
 		} case _if: {
-			union expression *container = make_begin(nil(r), r);
+			union expression *container = make_begin(nil, r);
 			
 			put(n, _if.consequent, use_return_symbol(n->_if.consequent, ret_sym, r));
 			put(n, _if.alternate, use_return_symbol(n->_if.alternate, ret_sym, r));
@@ -413,7 +413,7 @@ void (*np_expansion(list (*expander)(list, region, list), list argument, struct 
 	}
 	
 	region ct_reg = create_region(0);
-	union expression *cont = make_continuation(make_reference(NULL, ct_reg), nil(ct_reg), make_begin(nil(ct_reg), ct_reg), ct_reg),
+	union expression *cont = make_continuation(make_reference(NULL, ct_reg), nil, make_begin(nil, ct_reg), ct_reg),
 		*host_cont_param = make_reference(NULL, ct_reg), *guest_cont_param = make_reference(NULL, ct_reg);
 	
 	char *ref_name;
@@ -433,13 +433,13 @@ void (*np_expansion(list (*expander)(list, region, list), list argument, struct 
 	{foreach(ref_name, indirections) {
 		put(cont, continuation.expression, insert_indirections(cont->continuation.expression, ref_name, ct_reg));
 	}}
-	union expression *func = make_function(make_reference(NULL, ct_reg), nil(ct_reg),
+	union expression *func = make_function(make_reference(NULL, ct_reg), nil,
 		make_jump1(make_invoke1(make_literal((unsigned long) _get_, ct_reg),
 		use_reference(host_cont_param, ct_reg), ct_reg), cont, ct_reg), ct_reg);
 	prepend(host_cont_param, &func->function.parameters, ct_reg);
 	host_cont_param->reference.parent = func;
 	
-	Object *obj = load_expressions(make_program(lst(func, nil(ct_reg), ct_reg), ct_reg), ectx, st_binds, ct_reg);
+	Object *obj = load_expressions(make_program(lst(func, nil, ct_reg), ct_reg), ectx, st_binds, ct_reg);
 	list ms = mutable_symbols(obj, ct_reg);
 	object_symbol *mutable_sym;
 	{foreach(mutable_sym, ms) {
@@ -565,7 +565,7 @@ void store_dynamic_refs(union expression **s, bool is_static, list dyn_refs, reg
 			store_dynamic_refs(&(*s)->_if.alternate, is_static, dyn_refs, ct_reg);
 			break;
 		} case function: {
-			dyn_refs = nil(ct_reg);
+			dyn_refs = nil;
 			union expression *param;
 			{foreach(param, (*s)->function.parameters) {
 				cond_prepend_ref(param, &dyn_refs, ct_reg);
@@ -601,7 +601,7 @@ void store_dynamic_refs(union expression **s, bool is_static, list dyn_refs, reg
 		} case non_primitive: {
 			store_dynamic_refs(&(*s)->non_primitive.reference, is_static, dyn_refs, ct_reg);
 			dyn_refs = reverse(dyn_refs, ct_reg);
-			(*s)->non_primitive.dyn_refs = nil(ct_reg);
+			(*s)->non_primitive.dyn_refs = nil;
 			list *dyn_refs_suffix;
 			union expression *dyn_ref;
 			{foreachlist(dyn_refs_suffix, dyn_ref, &dyn_refs) {
@@ -619,7 +619,7 @@ union expression *vgenerate_np_expressions(union expression *s, void *ctx) {
 	struct expansion_context *ectx = ((void **) ctx)[1];
 	
 	if(s->base.type == non_primitive) {
-		list param_names_rt = nil(ectx->rt_reg), args_ct = nil(ct_reg);
+		list param_names_rt = nil, args_ct = nil;
 		union expression *dyn_ref;
 		{foreach(dyn_ref, s->non_primitive.dyn_refs) {
 			prepend(rstrcpy(dyn_ref->reference.name, ectx->rt_reg), &param_names_rt, ectx->rt_reg);
@@ -628,11 +628,11 @@ union expression *vgenerate_np_expressions(union expression *s, void *ctx) {
 		void (*(*macro_cache))(void *) = region_alloc(ectx->rt_reg, sizeof(void (*)(void *)));
 		*macro_cache = NULL;
 		list *macro_sexpr_cache = region_alloc(ectx->rt_reg, sizeof(list *));
-		*macro_sexpr_cache = nil(ectx->rt_reg);
+		*macro_sexpr_cache = nil;
 		
-		union expression *cont = make_continuation(make_reference(NULL, ct_reg), nil(ct_reg), make_begin(nil(ct_reg), ct_reg),
+		union expression *cont = make_continuation(make_reference(NULL, ct_reg), nil, make_begin(nil, ct_reg),
 			ct_reg), *param = make_reference(NULL, ct_reg), *macro_invocation = make_with(make_reference(NULL, ct_reg),
-			make_begin(nil(ct_reg), ct_reg), ct_reg);
+			make_begin(nil, ct_reg), ct_reg);
 		
 		prepend(param, &cont->continuation.parameters, ct_reg);
 		param->reference.parent = cont;

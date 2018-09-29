@@ -14,7 +14,7 @@ bool is_lst(union sexpr *s) {
 }
 
 list copy_sexpr_list(list l, region r) {
-	list c = nil(r);
+	list c = nil;
 	union sexpr *s;
 	foreach(s, l) {
 		if(is_lst(s)) {
@@ -52,104 +52,22 @@ char_sexpr(p, 'p'); char_sexpr(q, 'q'); char_sexpr(r, 'r'); char_sexpr(s, 's'); 
 char_sexpr(v, 'v'); char_sexpr(w, 'w'); char_sexpr(x, 'x'); char_sexpr(y, 'y'); char_sexpr(z, 'z'); char_sexpr(vertical_bar, '|');
 char_sexpr(tilde, '~');
 
-union sexpr *sexpr_symbols[] = {
-	0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-	&_exclamation_mark_,
-	&_double_quotation_,
-	&_number_sign_,
-	&_dollar_sign_,
-	&_percent_,
-	&_ampersand_,
-	&_apostrophe_,0,0,
-	&_asterisk_,
-	&_plus_sign_,
-	&_comma_,
-	&_hyphen_,
-	&_period_,
-	&_slash_,
-	&_0_,
-	&_1_,
-	&_2_,
-	&_3_,
-	&_4_,
-	&_5_,
-	&_6_,
-	&_7_,
-	&_8_,
-	&_9_,
-	&_colon_,
-	&_semicolon_,
-	&_less_than_sign_,
-	&_equal_sign_,
-	&_greater_than_sign_,
-	&_question_mark_,
-	&_at_sign_,
-	&_A_,
-	&_B_,
-	&_C_,
-	&_D_,
-	&_E_,
-	&_F_,
-	&_G_,
-	&_H_,
-	&_I_,
-	&_J_,
-	&_K_,
-	&_L_,
-	&_M_,
-	&_N_,
-	&_O_,
-	&_P_,
-	&_Q_,
-	&_R_,
-	&_S_,
-	&_T_,
-	&_U_,
-	&_V_,
-	&_W_,
-	&_X_,
-	&_Y_,
-	&_Z_,0,
-	&_backslash_,0,
-	&_caret_,
-	&_underscore_,
-	&_backquote_,
-	&_a_,
-	&_b_,
-	&_c_,
-	&_d_,
-	&_e_,
-	&_f_,
-	&_g_,
-	&_h_,
-	&_i_,
-	&_j_,
-	&_k_,
-	&_l_,
-	&_m_,
-	&_n_,
-	&_o_,
-	&_p_,
-	&_q_,
-	&_r_,
-	&_s_,
-	&_t_,
-	&_u_,
-	&_v_,
-	&_w_,
-	&_x_,
-	&_y_,
-	&_z_,0,
-	&_vertical_bar_,0,
-	&_tilde_
+union sexpr *character_sexprs[] = {
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &_exclamation_mark_,
+	&_double_quotation_, &_number_sign_, &_dollar_sign_, &_percent_, &_ampersand_, &_apostrophe_, 0, 0, &_asterisk_, &_plus_sign_,
+	&_comma_, &_hyphen_, &_period_, &_slash_, &_0_, &_1_, &_2_, &_3_, &_4_, &_5_, &_6_, &_7_, &_8_, &_9_, &_colon_, &_semicolon_,
+	&_less_than_sign_, &_equal_sign_, &_greater_than_sign_, &_question_mark_, &_at_sign_, &_A_, &_B_, &_C_, &_D_, &_E_, &_F_, &_G_,
+	&_H_, &_I_, &_J_, &_K_, &_L_, &_M_, &_N_, &_O_, &_P_, &_Q_, &_R_, &_S_, &_T_, &_U_, &_V_, &_W_, &_X_, &_Y_, &_Z_, 0, &_backslash_,
+	0, &_caret_, &_underscore_, &_backquote_, &_a_, &_b_, &_c_, &_d_, &_e_, &_f_, &_g_, &_h_, &_i_, &_j_, &_k_, &_l_, &_m_, &_n_, &_o_,
+	&_p_, &_q_, &_r_, &_s_, &_t_, &_u_, &_v_, &_w_, &_x_, &_y_, &_z_, 0, &_vertical_bar_, 0, &_tilde_, 0
 };
 
 union sexpr *build_character_sexpr(char d) {
-	return sexpr_symbols[d];
+	return character_sexprs[d];
 }
 
 list build_symbol_sexpr(char *str, region r) {
-	list sexprs = nil(r);
+	list sexprs = nil;
 	for(; *str; str++) {
 		append(build_character_sexpr(*str), &sexprs, r);
 	}
@@ -171,7 +89,7 @@ list build_sigil(char *sigil, char *l2src, int l2src_sz, int *pos, region r, jum
 	if(isspace(d) || d == ')' || d == '}' || d == ']' || d == '(' || d == '{' || d =='[') {
 		return build_symbol_sexpr(sigil, r);
 	} else {
-		list sexprs = nil(r);
+		list sexprs = nil;
 		append(build_symbol_sexpr(sigil, r), &sexprs, r);
 		append(build_expr_list(l2src, l2src_sz, pos, r, handler), &sexprs, r);
 		return sexprs;
@@ -179,7 +97,7 @@ list build_sigil(char *sigil, char *l2src, int l2src_sz, int *pos, region r, jum
 }
 
 list build_list(char *primitive, char delimiter, char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
-	list sexprs = nil(r);
+	list sexprs = nil;
 	append(build_symbol_sexpr(primitive, r), &sexprs, r);
 	
 	while(1) {
@@ -217,7 +135,7 @@ list build_expr_list(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *han
 	} else if(c == '`') {
 		return build_sigil("`", l2src, l2src_sz, pos, r, handler);
 	} else {
-		list l = nil(r);
+		list l = nil;
 		do {
 			append(build_character_sexpr(c), &l, r);
 			if(*pos == l2src_sz) return l;
