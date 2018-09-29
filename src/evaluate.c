@@ -26,22 +26,11 @@ typedef unsigned long int bool;
 Object *load_expressions(union expression *program, struct expansion_context *ectx, list st_binds, region manreg) {
 	store_static_bindings(&program->function.expression, true, st_binds, ectx->rt_reg);
 	store_dynamic_refs(&program->function.expression, true, nil(ectx->rt_reg), manreg);
-	union expression **t;
-	{foreachaddress(t, program->function.expression->begin.expressions) {
-		if((*t)->base.type == function) {
-			generate_np_expressions(t, manreg, ectx);
-		} else {
-			union expression *container = make_function(make_reference(NULL, manreg), nil(manreg), *t, manreg);
-			generate_np_expressions(&container->function.expression, manreg, ectx);
-			*t = container->function.expression;
-			(*t)->base.parent = program->function.expression;
-		}
-	}}
-	
+	generate_np_expressions(&program, manreg, ectx);
+	visit_expressions(vmake_symbols, &program, manreg);
 	visit_expressions(vfind_multiple_definitions, &program, ectx->handler);
 	visit_expressions(vlink_references, &program, (void* []) {ectx->handler, manreg});
 	visit_expressions(vescape_analysis, &program, NULL);
-	visit_expressions(vmake_symbols, &program, manreg);
 	program = use_return_symbol(program, make_symbol(_function, local_scope, defined_state, NULL, manreg), manreg);
 	visit_expressions(vshare_symbols, &program, manreg);
 	visit_expressions(vlayout_frames, &program, manreg);
