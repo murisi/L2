@@ -201,7 +201,7 @@ int main(int argc, char *argv[]) {
 		return err->arguments.type;
 	}
 	
-	object_symbol sexpr_symbols[] = {
+	object_symbol static_bindings_arr[] = {
 		{.name = "-!-", .address = &_exclamation_mark_},
 		{.name = "-\"-", .address = &_double_quotation_},
 		{.name = "-#-", .address = &_number_sign_},
@@ -301,12 +301,12 @@ int main(int argc, char *argv[]) {
 		{.name = "dtr", .address = destroy_region}
 	};
 	
-	list static_bindings = nil;
+	list static_bindings_list = nil;
 	int i;
-	for(i = 0; i < sizeof(sexpr_symbols) / sizeof(object_symbol); i++) {
-		prepend(&sexpr_symbols[i], &static_bindings, evaluate_region);
+	for(i = 0; i < sizeof(static_bindings_arr) / sizeof(object_symbol); i++) {
+		prepend(&static_bindings_arr[i], &static_bindings_list, evaluate_region);
 	}
-	evaluate_files(argc - 1, argv + 1, static_bindings, &evaluate_handler);
+	evaluate_files(argc - 1, argv + 1, static_bindings_list, &evaluate_handler);
 	destroy_region(evaluate_region);
 	return 0;
 }
