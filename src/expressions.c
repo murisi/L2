@@ -495,6 +495,11 @@ void make_program_aux(union expression *expr) {
 			expr->function.reference->reference.symbol->scope = expr->function.parent->base.parent->base.parent ?
 				local_scope : global_scope;
 			break;
+		} case _if: {
+			make_program_aux(expr->_if.condition);
+			make_program_aux(expr->_if.consequent);
+			make_program_aux(expr->_if.alternate);
+			break;
 		}
 	}
 }
