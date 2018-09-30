@@ -98,7 +98,7 @@ void evaluate_files(int srcc, char *srcv[], list bindings, jumpbuf *handler) {
 			int pos = 0;
 			while(after_leading_space(src_buf, src_sz, &pos)) {
 				list sexpr = build_expr_list(src_buf, src_sz, &pos, syntax_tree_region, handler);
-				append(build_syntax_tree(sexpr, syntax_tree_region, handler), &expressions, syntax_tree_region);
+				append(build_expression(sexpr, syntax_tree_region, handler), &expressions, syntax_tree_region);
 			}
 			obj = load_expressions(make_program(expressions, syntax_tree_region), ectx, nil, syntax_tree_region);
 		} else if(dot && !strcmp(dot, ".o")) {

@@ -386,7 +386,7 @@ void (*np_expansion(list (*expander)(list, region, list), list argument, struct 
 	union expression *guest_cont_arg = make_reference(NULL, ct_reg);
 	union expression *macro_cont = make_continuation(make_reference(NULL, ct_reg), macro_cont_params,
 		make_jump1(make_invoke1(make_literal((unsigned long) _get_, ct_reg), guest_cont_arg, ct_reg),
-			build_syntax_tree(expansion, ct_reg, ectx->handler), ct_reg), ct_reg);
+			build_expression(expansion, ct_reg, ectx->handler), ct_reg), ct_reg);
 	refer_reference(guest_cont_arg, guest_cont_param);
 	
 	{foreach(ref_name, dyn_ref_names) {
