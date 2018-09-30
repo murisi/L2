@@ -514,31 +514,31 @@ union expression *make_program(list exprs, region r) {
 	return program;
 }
 
-void print_syntax_tree(union expression *s) {
+void print_expression(union expression *s) {
 	switch(s->base.type) {
 		case begin: {
 			write_str(STDOUT, "(begin ");
 			union expression *t;
 			foreach(t, s->begin.expressions) {
-				print_syntax_tree(t);
+				print_expression(t);
 				write_str(STDOUT, " ");
 			}
 			write_str(STDOUT, "\b)");
 			break;
 		} case with: {
 			write_str(STDOUT, "(with ");
-			print_syntax_tree(s->with.reference);
+			print_expression(s->with.reference);
 			write_str(STDOUT, " ");
-			print_syntax_tree(s->with.expression);
+			print_expression(s->with.expression);
 			write_str(STDOUT, ")");
 			break;
 		} case invoke: case jump: case storage: {
 			write_str(STDOUT, s->base.type == invoke ? "[" : s->base.type == jump ? "{" : "(storage ");
-			print_syntax_tree(s->invoke.reference);
+			print_expression(s->invoke.reference);
 			write_str(STDOUT, " ");
 			union expression *t;
 			foreach(t, s->invoke.arguments) {
-				print_syntax_tree(t);
+				print_expression(t);
 				write_str(STDOUT, " ");
 			}
 			write_str(STDOUT, "\b");
@@ -548,24 +548,24 @@ void print_syntax_tree(union expression *s) {
 			write_str(STDOUT, "(");
 			write_str(STDOUT, s->base.type == function ? "function" : "continuation");
 			write_str(STDOUT, " ");
-			print_syntax_tree(s->function.reference);
+			print_expression(s->function.reference);
 			write_str(STDOUT, " ( ");
 			union expression *t;
 			foreach(t, s->function.parameters) {
-				print_syntax_tree(t);
+				print_expression(t);
 				write_str(STDOUT, " ");
 			}
 			write_str(STDOUT, ") ");
-			print_syntax_tree(s->function.expression);
+			print_expression(s->function.expression);
 			write_str(STDOUT, ")");
 			break;
 		} case _if: {
 			write_str(STDOUT, "(if ");
-			print_syntax_tree(s->_if.condition);
+			print_expression(s->_if.condition);
 			write_str(STDOUT, " ");
-			print_syntax_tree(s->_if.consequent);
+			print_expression(s->_if.consequent);
 			write_str(STDOUT, " ");
-			print_syntax_tree(s->_if.alternate);
+			print_expression(s->_if.alternate);
 			write_str(STDOUT, ")");
 			break;
 		} case reference: {
@@ -584,7 +584,7 @@ void print_syntax_tree(union expression *s) {
 			break;
 		} case non_primitive: {
 			write_str(STDOUT, "(");
-			print_syntax_tree(s->non_primitive.reference);
+			print_expression(s->non_primitive.reference);
 			write_str(STDOUT, " ");
 			print_expr_list(s->non_primitive.argument);
 			write_str(STDOUT, ")");

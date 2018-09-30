@@ -150,9 +150,9 @@ int main(int argc, char *argv[]) {
 		switch(err->arguments.type) {
 			case PARAM_COUNT_MISMATCH: {
 				write_str(STDOUT, "The number of arguments in ");
-				print_syntax_tree(err->param_count_mismatch.src_expression);
+				print_expression(err->param_count_mismatch.src_expression);
 				write_str(STDOUT, " does not match the number of parameters in ");
-				print_syntax_tree(err->param_count_mismatch.dest_expression);
+				print_expression(err->param_count_mismatch.dest_expression);
 				write_str(STDOUT, ".\n");
 				break;
 			} case SPECIAL_FORM: {
