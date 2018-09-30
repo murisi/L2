@@ -27,7 +27,7 @@ Object *load_expressions(union expression *program, struct expansion_context *ec
 	store_static_bindings(&program->function.expression, true, st_binds, ectx->rt_reg);
 	store_dynamic_refs(&program->function.expression, true, nil, manreg);
 	visit_expressions(vgenerate_np_expressions, &program, (void* []) {manreg, ectx});
-	make_program_aux(program->function.expression);
+	repair_program(program);
 	visit_expressions(vfind_multiple_definitions, &program, ectx->handler);
 	visit_expressions(vlink_references, &program, (void* []) {ectx->handler, manreg});
 	visit_expressions(vescape_analysis, &program, NULL);
@@ -58,11 +58,6 @@ Object *load_expressions(union expression *program, struct expansion_context *ec
 			sym->offset += (unsigned long) segment(obj, ".bss");
 		}
 	}}
-	/*{foreach(sym, concat(local_symbols, global_symbols, manreg)) {
-		if(sym->type == static_storage && sym->state == defined_state) {
-			//sym->offset += (unsigned long) segment(obj, ".bss");
-		}
-	}}*/
 	{foreach(l, asms) {
 		if(l->assembly.opcode == LABEL) {
 			union expression *label_ref = l->assembly.arguments->fst;

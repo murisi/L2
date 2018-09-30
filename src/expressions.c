@@ -456,12 +456,12 @@ union expression *make_invoke9(union expression *ref, union expression *arg1, un
 	return u;
 }
 
-void make_program_aux(union expression *expr) {
+void repair_program_aux(union expression *expr) {
 	switch(expr->base.type) {
 		case begin: {
 			union expression *t;
 			foreach(t, expr->begin.expressions) {
-				make_program_aux(t);
+				repair_program_aux(t);
 			}
 			break;
 		} case storage: {
@@ -470,18 +470,18 @@ void make_program_aux(union expression *expr) {
 				local_scope : global_scope;
 			union expression *t;
 			foreach(t, expr->storage.arguments) {
-				make_program_aux(t);
+				repair_program_aux(t);
 			}
 			break;
 		} case jump: case invoke: {
-			make_program_aux(expr->invoke.reference);
+			repair_program_aux(expr->invoke.reference);
 			union expression *t;
 			foreach(t, expr->invoke.arguments) {
-				make_program_aux(t);
+				repair_program_aux(t);
 			}
 			break;
 		} case non_primitive: {
-			make_program_aux(expr->non_primitive.reference);
+			repair_program_aux(expr->non_primitive.reference);
 			break;
 		} case continuation: case with: {
 			expr->continuation.reference->reference.symbol->type = static_storage;
@@ -489,24 +489,28 @@ void make_program_aux(union expression *expr) {
 			foreach(t, expr->continuation.parameters) {
 				t->reference.symbol->type = static_storage;
 			}
-			make_program_aux(expr->continuation.expression);
+			repair_program_aux(expr->continuation.expression);
 			break;
 		} case function: {
 			expr->function.reference->reference.symbol->scope = expr->function.parent->base.parent->base.parent ?
 				local_scope : global_scope;
 			break;
 		} case _if: {
-			make_program_aux(expr->_if.condition);
-			make_program_aux(expr->_if.consequent);
-			make_program_aux(expr->_if.alternate);
+			repair_program_aux(expr->_if.condition);
+			repair_program_aux(expr->_if.consequent);
+			repair_program_aux(expr->_if.alternate);
 			break;
 		}
 	}
 }
 
+void repair_program(union expression *program) {
+	repair_program_aux(program->function.expression);
+}
+
 union expression *make_program(list exprs, region r) {
 	union expression *program = make_function(make_reference(NULL, r), nil, make_begin(exprs, r), r);
-	make_program_aux(program->function.expression);
+	repair_program(program);
 	return program;
 }
 
@@ -528,8 +532,8 @@ void print_syntax_tree(union expression *s) {
 			print_syntax_tree(s->with.expression);
 			write_str(STDOUT, ")");
 			break;
-		} case invoke: case jump: {
-			write_char(STDOUT, s->base.type == invoke ? '[' : s->base.type == jump ? '{' : '(');
+		} case invoke: case jump: case storage: {
+			write_str(STDOUT, s->base.type == invoke ? "[" : s->base.type == jump ? "{" : "(storage ");
 			print_syntax_tree(s->invoke.reference);
 			write_str(STDOUT, " ");
 			union expression *t;
@@ -538,7 +542,7 @@ void print_syntax_tree(union expression *s) {
 				write_str(STDOUT, " ");
 			}
 			write_str(STDOUT, "\b");
-			write_char(STDOUT, s->base.type == invoke ? ']' : s->base.type == jump ? '}' : ')');
+			write_str(STDOUT, s->base.type == invoke ? "]" : s->base.type == jump ? "}" : ")");
 			break;
 		} case function: case continuation: {
 			write_str(STDOUT, "(");
@@ -568,7 +572,9 @@ void print_syntax_tree(union expression *s) {
 			if(s->reference.name) {
 				write_str(STDOUT, s->reference.name);
 			} else {
-				write_str(STDOUT, "()");
+				write_str(STDOUT, "(reference ");
+				write_ulong(STDOUT, (unsigned long) s->reference.symbol);
+				write_str(STDOUT, ")");
 			}
 			break;
 		} case literal: {
