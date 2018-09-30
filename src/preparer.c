@@ -618,3 +618,51 @@ union expression *vgenerate_np_expressions(union expression *s, void *ctx) {
 		return s;
 	}
 }
+
+void classify_program_symbols(union expression *expr) {
+	switch(expr->base.type) {
+		case begin: {
+			union expression *t;
+			foreach(t, expr->begin.expressions) {
+				classify_program_symbols(t);
+			}
+			break;
+		} case storage: {
+			expr->storage.reference->reference.symbol->type = static_storage;
+			expr->storage.reference->reference.symbol->scope = expr->storage.parent->base.parent->base.parent ?
+				local_scope : global_scope;
+			union expression *t;
+			foreach(t, expr->storage.arguments) {
+				classify_program_symbols(t);
+			}
+			break;
+		} case jump: case invoke: {
+			classify_program_symbols(expr->invoke.reference);
+			union expression *t;
+			foreach(t, expr->invoke.arguments) {
+				classify_program_symbols(t);
+			}
+			break;
+		} case non_primitive: {
+			classify_program_symbols(expr->non_primitive.reference);
+			break;
+		} case continuation: case with: {
+			expr->continuation.reference->reference.symbol->type = static_storage;
+			union expression *t;
+			foreach(t, expr->continuation.parameters) {
+				t->reference.symbol->type = static_storage;
+			}
+			classify_program_symbols(expr->continuation.expression);
+			break;
+		} case function: {
+			expr->function.reference->reference.symbol->scope = expr->function.parent->base.parent->base.parent ?
+				local_scope : global_scope;
+			break;
+		} case _if: {
+			classify_program_symbols(expr->_if.condition);
+			classify_program_symbols(expr->_if.consequent);
+			classify_program_symbols(expr->_if.alternate);
+			break;
+		}
+	}
+}

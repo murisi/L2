@@ -456,62 +456,8 @@ union expression *make_invoke9(union expression *ref, union expression *arg1, un
 	return u;
 }
 
-void repair_program_aux(union expression *expr) {
-	switch(expr->base.type) {
-		case begin: {
-			union expression *t;
-			foreach(t, expr->begin.expressions) {
-				repair_program_aux(t);
-			}
-			break;
-		} case storage: {
-			expr->storage.reference->reference.symbol->type = static_storage;
-			expr->storage.reference->reference.symbol->scope = expr->storage.parent->base.parent->base.parent ?
-				local_scope : global_scope;
-			union expression *t;
-			foreach(t, expr->storage.arguments) {
-				repair_program_aux(t);
-			}
-			break;
-		} case jump: case invoke: {
-			repair_program_aux(expr->invoke.reference);
-			union expression *t;
-			foreach(t, expr->invoke.arguments) {
-				repair_program_aux(t);
-			}
-			break;
-		} case non_primitive: {
-			repair_program_aux(expr->non_primitive.reference);
-			break;
-		} case continuation: case with: {
-			expr->continuation.reference->reference.symbol->type = static_storage;
-			union expression *t;
-			foreach(t, expr->continuation.parameters) {
-				t->reference.symbol->type = static_storage;
-			}
-			repair_program_aux(expr->continuation.expression);
-			break;
-		} case function: {
-			expr->function.reference->reference.symbol->scope = expr->function.parent->base.parent->base.parent ?
-				local_scope : global_scope;
-			break;
-		} case _if: {
-			repair_program_aux(expr->_if.condition);
-			repair_program_aux(expr->_if.consequent);
-			repair_program_aux(expr->_if.alternate);
-			break;
-		}
-	}
-}
-
-void repair_program(union expression *program) {
-	repair_program_aux(program->function.expression);
-}
-
 union expression *make_program(list exprs, region r) {
-	union expression *program = make_function(make_reference(NULL, r), nil, make_begin(exprs, r), r);
-	repair_program(program);
-	return program;
+	return make_function(make_reference(NULL, r), nil, make_begin(exprs, r), r);
 }
 
 void print_expression(union expression *s) {
