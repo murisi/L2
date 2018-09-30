@@ -374,7 +374,8 @@ void write_elf(list generated_expressions, list symbols, list parameters, unsign
 			} else {
 				sym_ptr->st_name = 0;
 			}
-			sym_ptr->st_value = 0;
+			sym_ptr->st_value = (sym_ptr - syms - 1) * WORD_SIZE;
+			global_sym->offset = sym_ptr->st_value;
 			sym_ptr->st_size = 0;
 			sym_ptr->st_info = ELF64_ST_INFO(STB_GLOBAL, STT_NOTYPE);
 			sym_ptr->st_other = 0;

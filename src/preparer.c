@@ -215,6 +215,9 @@ struct symbol *make_local(union expression *function, region r) {
 union expression *use_return_symbol(union expression *n, struct symbol *ret_sym, region r) {
 	switch(n->base.type) {
 		case with: {
+			n->with.return_symbol = ret_sym;
+			put(n, with.expression, use_return_symbol(n->with.expression, make_local(get_zeroth_function(n), r), r));
+			return n;
 		} case continuation: {
 			n->continuation.return_symbol = ret_sym;
 			put(n, continuation.expression, use_return_symbol(n->continuation.expression, make_local(get_zeroth_function(n), r), r));
@@ -284,46 +287,6 @@ union expression *vmerge_begins(union expression *n, void *ctx) {
 
 bool is_toplevel(union expression *n) {
 	return n->base.parent && n->base.parent->base.parent && !n->base.parent->base.parent->base.parent;
-}
-
-union expression *vmake_symbols(union expression *n, region r) {
-	switch(n->base.type) {
-		case function: {
-			if(!n->function.reference->reference.symbol) {
-				n->function.reference->reference.symbol = make_symbol(_function, is_toplevel(n) ? global_scope : local_scope,
-					defined_state, n->function.reference->reference.name, r);
-			}
-			union expression *param;
-			foreach(param, n->function.parameters) {
-				if(!param->reference.symbol) {
-					param->reference.symbol = make_symbol(n->function.parent ? dynamic_storage : static_storage, local_scope,
-						defined_state, param->reference.name, r);
-				}
-			}
-			break;
-		} case continuation: case with: {
-			enum symbol_type type = get_zeroth_function(n)->function.parent ? dynamic_storage : static_storage;
-			if(!n->continuation.reference->reference.symbol) {
-				n->continuation.reference->reference.symbol = make_symbol(type, local_scope, defined_state,
-					n->continuation.reference->reference.name, r);
-			}
-			union expression *param;
-			foreach(param, n->continuation.parameters) {
-				if(!param->reference.symbol) {
-					param->reference.symbol = make_symbol(type, local_scope, defined_state, param->reference.name, r);
-				}
-			}
-			break;
-		} case storage: {
-			bool toplevel = is_toplevel(n);
-			if(!n->storage.reference->reference.symbol) {
-				n->storage.reference->reference.symbol = make_symbol(toplevel ? static_storage : dynamic_storage,
-					toplevel ? global_scope : local_scope, defined_state, n->storage.reference->reference.name, r);
-			}
-			break;
-		}
-	}
-	return n;
 }
 
 union expression *vshare_symbols(union expression *n, region r) {

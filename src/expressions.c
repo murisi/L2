@@ -203,6 +203,7 @@ union expression *make_reference(char *name, region reg) {
 
 void refer_reference(union expression *reference, union expression *referent) {
 	reference->reference.symbol = referent->reference.symbol;
+	reference->reference.referent = referent;
 }
 
 union expression *use_symbol(struct symbol *sym, region reg) {
@@ -210,6 +211,7 @@ union expression *use_symbol(struct symbol *sym, region reg) {
 	ref->reference.type = reference;
 	ref->reference.name = sym->name;
 	ref->reference.symbol = sym;
+	ref->reference.referent = NULL;
 	return ref;
 }
 
@@ -490,6 +492,8 @@ void make_program_aux(union expression *expr) {
 			make_program_aux(expr->continuation.expression);
 			break;
 		} case function: {
+			expr->function.reference->reference.symbol->scope = expr->function.parent->base.parent->base.parent ?
+				local_scope : global_scope;
 			break;
 		}
 	}

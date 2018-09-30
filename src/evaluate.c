@@ -52,9 +52,16 @@ Object *load_expressions(union expression *program, struct expansion_context *ec
 	write_elf(reverse(asms, manreg), local_symbols, global_symbols, &objdest, &objdest_sz, manreg);
 	Object *obj = load(objdest, objdest_sz, ectx->rt_reg, ectx->handler);
 	struct symbol *sym;
-	{foreach(sym, local_symbols) {
-		sym->offset += (unsigned long) segment(obj, ".bss");
+	{foreach(sym, concat(local_symbols, global_symbols, manreg)) {
+		if(sym->type == static_storage && sym->state == defined_state) {
+			sym->offset += (unsigned long) segment(obj, ".bss");
+		}
 	}}
+	/*{foreach(sym, concat(local_symbols, global_symbols, manreg)) {
+		if(sym->type == static_storage && sym->state == defined_state) {
+			//sym->offset += (unsigned long) segment(obj, ".bss");
+		}
+	}}*/
 	{foreach(l, asms) {
 		if(l->assembly.opcode == LABEL) {
 			union expression *label_ref = l->assembly.arguments->fst;
