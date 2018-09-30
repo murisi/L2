@@ -74,7 +74,7 @@ union expression *referent_of(union expression *reference) {
 					}
 				}
 				break;
-			} case function: case continuation: case with: {
+			} case function: case continuation: case with: case storage: {
 				if(reference_equals(t->function.reference, reference)) {
 					return t->function.reference;
 				} else if(t->base.type == function || t->base.type == continuation) {

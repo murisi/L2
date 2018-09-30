@@ -10,7 +10,6 @@ typedef unsigned long int bool;
 #include "lexer.c"
 #include "x86_64_object.c"
 #include "expressions.c"
-#include "parser.c"
 #include "preparer.c"
 #include "x86_64_generator.c"
 #include "x86_64_assembler.c"
