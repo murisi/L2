@@ -61,11 +61,7 @@
 
 (function set-cdr (l v) [set [cdr $l] $v])
 
-(function nil (r) (with return
-	(let (l [region-alloc $r (list-struct)]) (begin
-		[set-car $l $l]
-		[set-cdr $l (null)]
-		{return $l}))))
+(storage nil nil (null))
 
 (function nil? (l)
 	(if [= [get-cdr $l] (null)] (true) (false)))
@@ -74,7 +70,7 @@
 	(while (not [nil? $$l]) [set l [cdr $$l]])
 	[set $l [region-alloc $r (list-struct)]]
 	[set-car $$l $data]
-	[set-cdr $$l [nil $r]]
+	[set-cdr $$l nil]
 	{return [car $$l]})))
 
 (function cons (data rest r) (with return
@@ -106,12 +102,12 @@
 	{return (null)})))
 
 (function reverse (l r) (with return
-	(let (ret [nil $r]) (begin
+	(let (ret nil) (begin
 		(foreach (data $l) [prepend $data ret $r])
 		{return $ret}))))
 
 (let (r [create-region &0])
-	(let (l [nil $r]) (begin
+	(let (l nil) (begin
 		[append (" Hello) l $r]
 		[append (" And) l $r]
 		[append (" Then) l $r]

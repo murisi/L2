@@ -457,7 +457,9 @@ union expression *make_invoke9(union expression *ref, union expression *arg1, un
 }
 
 union expression *make_program(list exprs, region r) {
-	return make_function(make_reference(NULL, r), nil, make_begin(exprs, r), r);
+	union expression *program = make_function(make_reference(NULL, r), nil, make_begin(exprs, r), r);
+	program->function.parent = NULL;
+	return program;
 }
 
 void print_expression(union expression *s) {

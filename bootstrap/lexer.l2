@@ -45,7 +45,7 @@
 (char-sexpr w) (char-sexpr x) (char-sexpr y) (char-sexpr z) (char-sexpr |) (char-sexpr ~)
 
 (function build-symbol-sexpr (str r) (with return
-	(let (sexprs [nil $r]) (begin
+	(let (sexprs nil) (begin
 		(while [getb $str] (begin
 			[append [build-character-sexpr [getb $str] $r] sexprs $r]
 			[set str [+ $str &1]]))
@@ -62,13 +62,13 @@
 	(let (d [getb [+ $l2src $$pos]])
 		(if (or [isspace $d] [= $d (rparen)] [= $d (rbrace)] [= $d (rbracket)] [= $d (lparen)] [= $d (lbrace)] [= $d (lbracket)])
 			{return [build-symbol-sexpr $sigil $r]}
-			(let (sexprs [nil $r]) (begin
+			(let (sexprs nil) (begin
 				[append [build-symbol-sexpr $sigil $r] sexprs $r]
 				[append [build-expr-list $l2src $l2src-sz $pos $r $handler] sexprs $r]
 				{return $sexprs})))))))
 
 (function build-list (primitive delimeter l2src l2src-sz pos r handler) (with return
-	(let (sexprs [nil $r]) (begin
+	(let (sexprs nil) (begin
 		[append [build-symbol-sexpr $primitive $r] sexprs $r]
 		(while (true) (begin
 			(let (rem [after-leading-space $l2src $l2src-sz $pos])
@@ -96,7 +96,7 @@
 						((char &) [build-sigil (" &) $l2src $l2src-sz $pos $r $handler])
 						((char ,) [build-sigil (" ,) $l2src $l2src-sz $pos $r $handler])
 						((char `) [build-sigil (" `) $l2src $l2src-sz $pos $r $handler])
-						(let (l [nil $r]) (begin
+						(let (l nil) (begin
 							(do-while (begin
 									[append [build-character-sexpr $c $r] l $r]
 									(if [= $$pos $l2src-sz] {return $l} (begin))
