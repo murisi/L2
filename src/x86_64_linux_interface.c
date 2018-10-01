@@ -142,7 +142,7 @@ void munmap(void *ptr, unsigned long len) {
 	syscall(SYS_MUNMAP, ptr, len);
 }
 
-unsigned long round_size(unsigned long x, unsigned long nearest) {
+unsigned long pad_size(unsigned long x, unsigned long nearest) {
 	unsigned long rem = x % nearest;
 	return x + (rem ? (nearest - rem) : 0);
 }
@@ -150,7 +150,7 @@ unsigned long round_size(unsigned long x, unsigned long nearest) {
 typedef void* region;
 
 region create_region(unsigned long min_capacity) {
-	unsigned long len = round_size(min_capacity + 5 * sizeof(void *), PAGE_SIZE);
+	unsigned long len = pad_size(min_capacity + 5 * sizeof(void *), PAGE_SIZE);
 	region reg = mmap(len);
 	((void **) reg)[0] = NULL;
 	((void **) reg)[1] = reg;
@@ -175,7 +175,7 @@ void check_region_integrity(region reg) {
 void *region_alloc(region reg, unsigned long len) {
 	//check_region_integrity(reg);
 	
-	len = round_size(len, ALIGNMENT);
+	len = pad_size(len, ALIGNMENT);
 	if(((void ***) reg)[1][2] + len > ((void ***) reg)[1][3]) {
 		((void **) reg)[1] = ((void ***) reg)[1][0] = create_region(len + (2*(((void ***) reg)[1][3] - ((void **) reg)[1])));
 	}

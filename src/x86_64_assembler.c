@@ -264,9 +264,9 @@ int strvlen(char *strv) {
 #define SH_COUNT 7
 
 int max_elf_size(list generated_expressions, list local_syms, list global_syms) {
-	return sizeof(Elf64_Ehdr) + (sizeof(Elf64_Shdr) * SH_COUNT) + round_size(strvlen(SHSTRTAB), ALIGNMENT) +
-		round_size(MAX_INSTR_LEN * length(generated_expressions), ALIGNMENT) +
-		round_size(measure_strtab(generated_expressions, local_syms, global_syms), ALIGNMENT) +
+	return sizeof(Elf64_Ehdr) + (sizeof(Elf64_Shdr) * SH_COUNT) + pad_size(strvlen(SHSTRTAB), ALIGNMENT) +
+		pad_size(MAX_INSTR_LEN * length(generated_expressions), ALIGNMENT) +
+		pad_size(measure_strtab(generated_expressions, local_syms, global_syms), ALIGNMENT) +
 		(sizeof(Elf64_Sym) * measure_symtab(generated_expressions, local_syms, global_syms)) +
 		(sizeof(Elf64_Rela) * MAX_INSTR_FIELDS * length(generated_expressions));
 }
@@ -319,7 +319,7 @@ void write_elf(list generated_expressions, list symbols, list parameters, unsign
 	sym_ptr->st_shndx = SHN_UNDEF;
 	sym_ptr++;
 	
-	char strtab[round_size(strtab_len, ALIGNMENT)];
+	char strtab[pad_size(strtab_len, ALIGNMENT)];
 	char *strtabptr = strtab;
 	*(strtabptr++) = '\0';
 	
@@ -343,7 +343,7 @@ void write_elf(list generated_expressions, list symbols, list parameters, unsign
 			sym_ptr->st_shndx = 5;
 			local_sym->context = sym_ptr;
 			sym_ptr++;
-			bss_ptr += round_size(local_sym->size, WORD_SIZE);
+			bss_ptr += pad_size(local_sym->size, WORD_SIZE);
 		}
 	}}
 	union expression *e;
@@ -385,7 +385,7 @@ void write_elf(list generated_expressions, list symbols, list parameters, unsign
 			sym_ptr->st_shndx = 5;
 			global_sym->context = sym_ptr;
 			sym_ptr++;
-			bss_ptr += round_size(global_sym->size, WORD_SIZE);
+			bss_ptr += pad_size(global_sym->size, WORD_SIZE);
 		}
 	}}
 	{foreach(global_sym, all_symbols) {
@@ -426,7 +426,7 @@ void write_elf(list generated_expressions, list symbols, list parameters, unsign
 		}
 	}}
 	
-	int text_len, max_text_sec_len = round_size(MAX_INSTR_LEN * length(generated_expressions), ALIGNMENT),
+	int text_len, max_text_sec_len = pad_size(MAX_INSTR_LEN * length(generated_expressions), ALIGNMENT),
 		max_rela_sec_len = MAX_INSTR_FIELDS * length(generated_expressions) * sizeof(Elf64_Rela);
 	
 	unsigned char *text = region_alloc(temp_reg, max_text_sec_len);
@@ -448,7 +448,7 @@ void write_elf(list generated_expressions, list symbols, list parameters, unsign
 	undef_shdr.sh_entsize = 0;
 	mem_write(*bin, pos, &undef_shdr, sizeof(Elf64_Shdr));
 	
-	char shstrtab_padded[round_size(strvlen(SHSTRTAB), ALIGNMENT)];
+	char shstrtab_padded[pad_size(strvlen(SHSTRTAB), ALIGNMENT)];
 	memcpy(shstrtab_padded, SHSTRTAB, strvlen(SHSTRTAB));
 	
 	Elf64_Shdr shstrtab_shdr;

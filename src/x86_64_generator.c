@@ -61,7 +61,7 @@ union expression *vlayout_frames(union expression *n, region r) {
 			int symbol_offset = 0;
 			struct symbol *u;
 			foreach(u, reverse(n->function.symbols, r)) {
-				symbol_offset -= round_size(u->size, WORD_SIZE);
+				symbol_offset -= pad_size(u->size, WORD_SIZE);
 				u->offset = symbol_offset;
 			}
 			break;
