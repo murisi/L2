@@ -52,7 +52,7 @@ list copy_sexpr_list(list l, region r) {
 	return c;
 }
 
-list build_symbol_sexpr(char *str, region r) {
+list build_symbol(char *str, region r) {
 	list sexprs = nil;
 	for(; *str; str++) {
 		append(_char(*str), &sexprs, r);
@@ -69,14 +69,14 @@ list build_expr_list(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *han
 
 list build_sigil(char *sigil, char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
 	if(l2src_sz == *pos) {
-		return build_symbol_sexpr(sigil, r);
+		return build_symbol(sigil, r);
 	}
 	char d = l2src[*pos];
 	if(isspace(d) || d == ')' || d == '}' || d == ']' || d == '(' || d == '{' || d =='[') {
-		return build_symbol_sexpr(sigil, r);
+		return build_symbol(sigil, r);
 	} else {
 		list sexprs = nil;
-		append(build_symbol_sexpr(sigil, r), &sexprs, r);
+		append(build_symbol(sigil, r), &sexprs, r);
 		append(build_expr_list(l2src, l2src_sz, pos, r, handler), &sexprs, r);
 		return sexprs;
 	}
@@ -84,7 +84,7 @@ list build_sigil(char *sigil, char *l2src, int l2src_sz, int *pos, region r, jum
 
 list build_list(char *primitive, char delimiter, char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
 	list sexprs = nil;
-	append(build_symbol_sexpr(primitive, r), &sexprs, r);
+	append(build_symbol(primitive, r), &sexprs, r);
 	
 	while(1) {
 		int rem = after_leading_space(l2src, l2src_sz, pos);
