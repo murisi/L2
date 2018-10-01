@@ -177,17 +177,12 @@ void visit_expressions(union expression *(*visitor)(union expression *, void *),
 			visit_expressions(visitor, &(*s)->_if.alternate, ctx);
 			break;
 		} case function: case continuation: case with: {
-			if((*s)->base.type == function || (*s)->base.type == continuation) {
-				union expression **t;
-				foreachaddress(t, (*s)->function.parameters) {
-					visit_expressions(visitor, t, ctx);
-				}
-			}
-			visit_expressions(visitor, &(*s)->function.reference, ctx);
 			visit_expressions(visitor, &(*s)->function.expression, ctx);
 			break;
 		} case jump: case invoke: case storage: {
-			visit_expressions(visitor, &(*s)->invoke.reference, ctx);
+			if((*s)->base.type != storage) {
+				visit_expressions(visitor, &(*s)->invoke.reference, ctx);
+			}
 			union expression **t;
 			foreachaddress(t, (*s)->invoke.arguments) {
 				visit_expressions(visitor, t, ctx);
