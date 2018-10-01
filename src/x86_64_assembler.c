@@ -323,6 +323,8 @@ void write_elf(list generated_expressions, list symbols, list parameters, unsign
 	char *strtabptr = strtab;
 	*(strtabptr++) = '\0';
 	
+	unsigned long bss_ptr = 0;
+	
 	struct symbol *local_sym;
 	{foreach(local_sym, all_symbols) {
 		if(local_sym->scope == local_scope) {
@@ -333,14 +335,15 @@ void write_elf(list generated_expressions, list symbols, list parameters, unsign
 			} else {
 				sym_ptr->st_name = 0;
 			}
-			sym_ptr->st_value = (sym_ptr - syms - 1) * WORD_SIZE;
+			sym_ptr->st_value = bss_ptr;
 			local_sym->offset = sym_ptr->st_value;
-			sym_ptr->st_size = 0;
+			sym_ptr->st_size = local_sym->size;
 			sym_ptr->st_info = ELF64_ST_INFO(STB_LOCAL, STT_NOTYPE);
 			sym_ptr->st_other = 0;
 			sym_ptr->st_shndx = 5;
 			local_sym->context = sym_ptr;
 			sym_ptr++;
+			bss_ptr += round_size(local_sym->size, WORD_SIZE);
 		}
 	}}
 	union expression *e;
@@ -374,17 +377,17 @@ void write_elf(list generated_expressions, list symbols, list parameters, unsign
 			} else {
 				sym_ptr->st_name = 0;
 			}
-			sym_ptr->st_value = (sym_ptr - syms - 1) * WORD_SIZE;
+			sym_ptr->st_value = bss_ptr;
 			global_sym->offset = sym_ptr->st_value;
-			sym_ptr->st_size = 0;
+			sym_ptr->st_size = global_sym->size;
 			sym_ptr->st_info = ELF64_ST_INFO(STB_GLOBAL, STT_NOTYPE);
 			sym_ptr->st_other = 0;
 			sym_ptr->st_shndx = 5;
 			global_sym->context = sym_ptr;
 			sym_ptr++;
+			bss_ptr += round_size(global_sym->size, WORD_SIZE);
 		}
 	}}
-	int defined_symbol_count = sym_ptr - syms - 1;
 	{foreach(global_sym, all_symbols) {
 		if(global_sym->scope == global_scope && global_sym->state == undefined_state) {
 			if(global_sym->name) {
@@ -506,7 +509,7 @@ void write_elf(list generated_expressions, list symbols, list parameters, unsign
 	bss_shdr.sh_flags = SHF_WRITE | SHF_ALLOC;
 	bss_shdr.sh_addr = 0;
 	bss_shdr.sh_offset = symtab_shdr.sh_offset + symtab_shdr.sh_size;
-	bss_shdr.sh_size = defined_symbol_count * WORD_SIZE;
+	bss_shdr.sh_size = bss_ptr;
 	bss_shdr.sh_link = SHN_UNDEF;
 	bss_shdr.sh_info = 0;
 	bss_shdr.sh_addralign = WORD_SIZE;

@@ -143,7 +143,8 @@ void munmap(void *ptr, unsigned long len) {
 }
 
 unsigned long round_size(unsigned long x, unsigned long nearest) {
-	return x + (nearest - (x % nearest));
+	unsigned long rem = x % nearest;
+	return x + (rem ? (nearest - rem) : 0);
 }
 
 typedef void* region;

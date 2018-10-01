@@ -208,6 +208,7 @@ void visit_expressions(union expression *(*visitor)(union expression *, void *),
 
 struct symbol *make_local(union expression *function, region r) {
 	struct symbol *sym = make_symbol(function->function.parent ? dynamic_storage : static_storage, local_scope, defined_state, NULL, r);
+	sym->size = WORD_SIZE;
 	prepend(sym, &function->function.symbols, r);
 	return sym;
 }
@@ -233,6 +234,7 @@ union expression *use_return_symbol(union expression *n, struct symbol *ret_sym,
 			if(n->base.type == jump && n->jump.short_circuit && n->jump.reference->base.type == reference) {
 				n->jump.reference->reference.return_symbol = NULL;
 			} else if(n->base.type == storage) {
+				n->storage.return_symbol = ret_sym;
 			} else {
 				struct symbol *ref_ret_sym = make_local(get_zeroth_function(n), r);
 				emit(use_return_symbol(n->invoke.reference, ref_ret_sym, r), r);

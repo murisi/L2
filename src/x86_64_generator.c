@@ -46,6 +46,9 @@
 #define CONT_RBP (0*WORD_SIZE)
 
 union expression *vlayout_frames(union expression *n, region r) {
+	if(n->base.return_symbol) {
+		n->base.return_symbol->size = WORD_SIZE;
+	}
 	switch(n->base.type) {
 		case function: {
 			//Offset of parameters relative to frame pointer is 6 callee saves + return address 
@@ -58,33 +61,24 @@ union expression *vlayout_frames(union expression *n, region r) {
 			int symbol_offset = 0;
 			struct symbol *u;
 			foreach(u, reverse(n->function.symbols, r)) {
-				symbol_offset -= WORD_SIZE;
+				symbol_offset -= round_size(u->size, WORD_SIZE);
 				u->offset = symbol_offset;
 			}
 			break;
 		} case continuation: case with: {
 			if(n->continuation.escapes) {
+				n->continuation.reference->reference.symbol->size = CONT_SIZE;
 				append(n->continuation.reference->reference.symbol, &get_zeroth_function(n)->function.symbols, r);
-				//Make space for the buffer
-				int i;
-				for(i = 1; i < (CONT_SIZE / WORD_SIZE); i++) {
-					append(make_symbol(get_zeroth_function(n)->function.parent ? dynamic_storage : static_storage, local_scope,
-						defined_state, NULL, r), &get_zeroth_function(n)->function.symbols, r);
-				}
 			}
 			union expression *t;
 			foreach(t, n->continuation.parameters) {
+				t->reference.symbol->size = WORD_SIZE;
 				append(t->reference.symbol, &get_zeroth_function(n)->function.symbols, r);
 			}
 			break;
 		} case storage: {
+			n->storage.reference->reference.symbol->size = length(n->storage.arguments) * WORD_SIZE;
 			append(n->storage.reference->reference.symbol, &get_zeroth_function(n)->function.symbols, r);
-			//Make space for the buffer
-			int i;
-			for(i = 1; i < length(n->storage.arguments); i++) {
-				append(make_symbol(get_zeroth_function(n)->function.parent ? dynamic_storage : static_storage, local_scope,
-					defined_state, NULL, r), &get_zeroth_function(n)->function.symbols, r);
-			}
 			break;
 		}
 	}
