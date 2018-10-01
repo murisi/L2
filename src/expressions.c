@@ -459,6 +459,12 @@ union expression *make_invoke9(union expression *ref, union expression *arg1, un
 union expression *make_program(list exprs, region r) {
 	union expression *program = make_function(make_reference(NULL, r), nil, make_begin(exprs, r), r);
 	program->function.parent = NULL;
+	union expression *expr;
+	foreach(expr, exprs) {
+		if(expr->base.type == function || expr->base.type == storage) {
+			expr->function.reference->reference.symbol->scope = global_scope;
+		}
+	}
 	return program;
 }
 

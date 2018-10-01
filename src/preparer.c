@@ -40,10 +40,10 @@ union expression *vfind_multiple_definitions(union expression *e, void *ctx) {
 	return e;
 }
 
-union expression *get_zeroth_function(union expression *n) {
-	while(n && n->base.type != function) {
+union expression *get_parent_function(union expression *n) {
+	do {
 		n = n->base.parent;
-	}
+	} while(n->base.type != function);
 	return n;
 }
 
@@ -201,44 +201,35 @@ void visit_expressions(union expression *(*visitor)(union expression *, void *),
 	_emit_x->base.parent = container; \
 }
 
-struct symbol *make_local(union expression *function, region r) {
-	struct symbol *sym = make_symbol(function->function.parent ? dynamic_storage : static_storage, local_scope, defined_state, NULL, r);
-	sym->size = WORD_SIZE;
-	prepend(sym, &function->function.symbols, r);
-	return sym;
-}
-
 union expression *use_return_symbol(union expression *n, struct symbol *ret_sym, region r) {
 	switch(n->base.type) {
 		case with: {
 			n->with.return_symbol = ret_sym;
-			put(n, with.expression, use_return_symbol(n->with.expression, make_local(get_zeroth_function(n), r), r));
+			put(n, with.expression, use_return_symbol(n->with.expression,
+				make_symbol(dynamic_storage, local_scope, defined_state, NULL, r), r));
 			return n;
 		} case continuation: {
 			n->continuation.return_symbol = ret_sym;
-			put(n, continuation.expression, use_return_symbol(n->continuation.expression, make_local(get_zeroth_function(n), r), r));
+			put(n, continuation.expression, use_return_symbol(n->continuation.expression,
+				make_symbol(dynamic_storage, local_scope, defined_state, NULL, r), r));
 			return n;
 		} case function: {
 			n->function.return_symbol = ret_sym;
-			n->function.expression_return_symbol = make_local(n, r);
+			n->function.expression_return_symbol = make_symbol(dynamic_storage, local_scope, defined_state, NULL, r);
 			put(n, function.expression, use_return_symbol(n->function.expression, n->function.expression_return_symbol, r));
 			return n;
 		} case invoke: case jump: case storage: {
 			union expression *container = make_begin(nil, r);
 			
-			if(n->base.type == jump && n->jump.short_circuit && n->jump.reference->base.type == reference) {
-				n->jump.reference->reference.return_symbol = NULL;
-			} else if(n->base.type == storage) {
-				n->storage.return_symbol = ret_sym;
-			} else {
-				struct symbol *ref_ret_sym = make_local(get_zeroth_function(n), r);
+			if(n->base.type != storage) {
+				struct symbol *ref_ret_sym = make_symbol(dynamic_storage, local_scope, defined_state, NULL, r);
 				emit(use_return_symbol(n->invoke.reference, ref_ret_sym, r), r);
 				n->invoke.reference = use_symbol(ref_ret_sym, r);
 			}
 			
 			union expression **t;
 			foreachaddress(t, n->invoke.arguments) {
-				struct symbol *arg_ret_sym = make_local(get_zeroth_function(n), r);
+				struct symbol *arg_ret_sym = make_symbol(dynamic_storage, local_scope, defined_state, NULL, r);
 				emit(use_return_symbol(*t, arg_ret_sym, r), r);
 				*t = use_symbol(arg_ret_sym, r);
 			}
@@ -251,7 +242,7 @@ union expression *use_return_symbol(union expression *n, struct symbol *ret_sym,
 			put(n, _if.consequent, use_return_symbol(n->_if.consequent, ret_sym, r));
 			put(n, _if.alternate, use_return_symbol(n->_if.alternate, ret_sym, r));
 			
-			struct symbol *cond_ret_sym = make_local(get_zeroth_function(n), r);
+			struct symbol *cond_ret_sym = make_symbol(dynamic_storage, local_scope, defined_state, NULL, r);
 			emit(use_return_symbol(n->_if.condition, cond_ret_sym, r), r);
 			put(n, _if.condition, use_symbol(cond_ret_sym, r));
 			emit(n, r);
@@ -259,7 +250,7 @@ union expression *use_return_symbol(union expression *n, struct symbol *ret_sym,
 		} case begin: {
 			union expression **t;
 			foreachaddress(t, n->begin.expressions) {
-				*t = use_return_symbol(*t, make_local(get_zeroth_function(n), r), r);
+				*t = use_return_symbol(*t, make_symbol(dynamic_storage, local_scope, defined_state, NULL, r), r);
 				(*t)->base.parent = n;
 			}
 			return n;
@@ -280,10 +271,6 @@ union expression *vmerge_begins(union expression *n, void *ctx) {
 		prepend(n, l, r);
 	}
 	return n;
-}
-
-bool is_toplevel(union expression *n) {
-	return n->base.parent && n->base.parent->base.parent && !n->base.parent->base.parent->base.parent;
 }
 
 union expression *vshare_symbols(union expression *n, region r) {
@@ -617,6 +604,9 @@ union expression *vgenerate_np_expressions(union expression *s, void *ctx) {
 }
 
 void classify_program_symbols(union expression *expr) {
+	if(expr->base.return_symbol) {
+		expr->base.return_symbol->type = static_storage;
+	}
 	switch(expr->base.type) {
 		case begin: {
 			union expression *t;
@@ -626,8 +616,6 @@ void classify_program_symbols(union expression *expr) {
 			break;
 		} case storage: {
 			expr->storage.reference->reference.symbol->type = static_storage;
-			expr->storage.reference->reference.symbol->scope = expr->storage.parent->base.parent->base.parent ?
-				local_scope : global_scope;
 			union expression *t;
 			foreach(t, expr->storage.arguments) {
 				classify_program_symbols(t);
@@ -652,8 +640,6 @@ void classify_program_symbols(union expression *expr) {
 			classify_program_symbols(expr->continuation.expression);
 			break;
 		} case function: {
-			expr->function.reference->reference.symbol->scope = expr->function.parent->base.parent->base.parent ?
-				local_scope : global_scope;
 			break;
 		} case _if: {
 			classify_program_symbols(expr->_if.condition);

@@ -48,6 +48,7 @@
 union expression *vlayout_frames(union expression *n, region r) {
 	if(n->base.return_symbol) {
 		n->base.return_symbol->size = WORD_SIZE;
+		prepend(n->base.return_symbol, &get_parent_function(n)->function.symbols, r);
 	}
 	switch(n->base.type) {
 		case function: {
@@ -68,17 +69,17 @@ union expression *vlayout_frames(union expression *n, region r) {
 		} case continuation: case with: {
 			if(n->continuation.escapes) {
 				n->continuation.reference->reference.symbol->size = CONT_SIZE;
-				append(n->continuation.reference->reference.symbol, &get_zeroth_function(n)->function.symbols, r);
+				append(n->continuation.reference->reference.symbol, &get_parent_function(n)->function.symbols, r);
 			}
 			union expression *t;
 			foreach(t, n->continuation.parameters) {
 				t->reference.symbol->size = WORD_SIZE;
-				append(t->reference.symbol, &get_zeroth_function(n)->function.symbols, r);
+				append(t->reference.symbol, &get_parent_function(n)->function.symbols, r);
 			}
 			break;
 		} case storage: {
 			n->storage.reference->reference.symbol->size = length(n->storage.arguments) * WORD_SIZE;
-			append(n->storage.reference->reference.symbol, &get_zeroth_function(n)->function.symbols, r);
+			append(n->storage.reference->reference.symbol, &get_parent_function(n)->function.symbols, r);
 			break;
 		}
 	}
