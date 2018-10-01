@@ -32,34 +32,23 @@ bool char_equals(struct character *a, struct character *b) {
 	return a->character == b->character ? true : false;
 }
 
-#define char_sexpr(str, ch) union sexpr _ ## str ## _ = { .character = { .list_flag = NULL, .character = ch }};
+#define char_sexpr(ch) {{ .character = { .list_flag = NULL, .character = ch }}}
 
-char_sexpr(exclamation_mark, '!'); char_sexpr(double_quotation, '"'); char_sexpr(number_sign, '#'); char_sexpr(dollar_sign, '$');
-char_sexpr(percent, '%'); char_sexpr(ampersand, '&'); char_sexpr(apostrophe, '\''); char_sexpr(asterisk, '*');
-char_sexpr(plus_sign, '+'); char_sexpr(comma, ','); char_sexpr(hyphen, '-'); char_sexpr(period, '.'); char_sexpr(slash, '/');
-char_sexpr(0, '0'); char_sexpr(1, '1'); char_sexpr(2, '2'); char_sexpr(3, '3'); char_sexpr(4, '4'); char_sexpr(5, '5');
-char_sexpr(6, '6'); char_sexpr(7, '7'); char_sexpr(8, '8'); char_sexpr(9, '9'); char_sexpr(colon, ':'); char_sexpr(semicolon, ';');
-char_sexpr(less_than_sign, '<'); char_sexpr(equal_sign, '='); char_sexpr(greater_than_sign, '>'); char_sexpr(question_mark, '?');
-char_sexpr(at_sign, '@'); char_sexpr(A, 'A'); char_sexpr(B, 'B'); char_sexpr(C, 'C'); char_sexpr(D, 'D'); char_sexpr(E, 'E');
-char_sexpr(F, 'F'); char_sexpr(G, 'G'); char_sexpr(H, 'H'); char_sexpr(I, 'I'); char_sexpr(J, 'J'); char_sexpr(K, 'K');
-char_sexpr(L, 'L'); char_sexpr(M, 'M'); char_sexpr(N, 'N'); char_sexpr(O, 'O'); char_sexpr(P, 'P'); char_sexpr(Q, 'Q');
-char_sexpr(R, 'R'); char_sexpr(S, 'S'); char_sexpr(T, 'T'); char_sexpr(U, 'U'); char_sexpr(V, 'V'); char_sexpr(W, 'W');
-char_sexpr(X, 'X'); char_sexpr(Y, 'Y'); char_sexpr(Z, 'Z'); char_sexpr(backslash, '\\'); char_sexpr(caret, '^');
-char_sexpr(underscore, '_'); char_sexpr(backquote, '`'); char_sexpr(a, 'a'); char_sexpr(b, 'b'); char_sexpr(c, 'c');
-char_sexpr(d, 'd'); char_sexpr(e, 'e'); char_sexpr(f, 'f'); char_sexpr(g, 'g'); char_sexpr(h, 'h'); char_sexpr(i, 'i');
-char_sexpr(j, 'j'); char_sexpr(k, 'k'); char_sexpr(l, 'l'); char_sexpr(m, 'm'); char_sexpr(n, 'n'); char_sexpr(o, 'o');
-char_sexpr(p, 'p'); char_sexpr(q, 'q'); char_sexpr(r, 'r'); char_sexpr(s, 's'); char_sexpr(t, 't'); char_sexpr(u, 'u');
-char_sexpr(v, 'v'); char_sexpr(w, 'w'); char_sexpr(x, 'x'); char_sexpr(y, 'y'); char_sexpr(z, 'z'); char_sexpr(vertical_bar, '|');
-char_sexpr(tilde, '~');
-
-union sexpr *character_sexprs[] = {
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &_exclamation_mark_,
-	&_double_quotation_, &_number_sign_, &_dollar_sign_, &_percent_, &_ampersand_, &_apostrophe_, 0, 0, &_asterisk_, &_plus_sign_,
-	&_comma_, &_hyphen_, &_period_, &_slash_, &_0_, &_1_, &_2_, &_3_, &_4_, &_5_, &_6_, &_7_, &_8_, &_9_, &_colon_, &_semicolon_,
-	&_less_than_sign_, &_equal_sign_, &_greater_than_sign_, &_question_mark_, &_at_sign_, &_A_, &_B_, &_C_, &_D_, &_E_, &_F_, &_G_,
-	&_H_, &_I_, &_J_, &_K_, &_L_, &_M_, &_N_, &_O_, &_P_, &_Q_, &_R_, &_S_, &_T_, &_U_, &_V_, &_W_, &_X_, &_Y_, &_Z_, 0, &_backslash_,
-	0, &_caret_, &_underscore_, &_backquote_, &_a_, &_b_, &_c_, &_d_, &_e_, &_f_, &_g_, &_h_, &_i_, &_j_, &_k_, &_l_, &_m_, &_n_, &_o_,
-	&_p_, &_q_, &_r_, &_s_, &_t_, &_u_, &_v_, &_w_, &_x_, &_y_, &_z_, 0, &_vertical_bar_, 0, &_tilde_, 0
+union sexpr character_sexprs[][1] = {
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, char_sexpr('!'),
+	char_sexpr('"'), char_sexpr('#'), char_sexpr('$'), char_sexpr('%'), char_sexpr('&'), char_sexpr('\''), 0, 0, char_sexpr('*'),
+	char_sexpr('+'), char_sexpr(','), char_sexpr('-'), char_sexpr('.'), char_sexpr('/'), char_sexpr('0'), char_sexpr('1'),
+	char_sexpr('2'), char_sexpr('3'), char_sexpr('4'), char_sexpr('5'), char_sexpr('6'), char_sexpr('7'), char_sexpr('8'),
+	char_sexpr('9'), char_sexpr(':'), char_sexpr(';'), char_sexpr('<'), char_sexpr('='), char_sexpr('>'), char_sexpr('?'),
+	char_sexpr('@'), char_sexpr('A'), char_sexpr('B'), char_sexpr('C'), char_sexpr('D'), char_sexpr('E'), char_sexpr('F'),
+	char_sexpr('G'), char_sexpr('H'), char_sexpr('I'), char_sexpr('J'), char_sexpr('K'), char_sexpr('L'), char_sexpr('M'),
+	char_sexpr('N'), char_sexpr('O'), char_sexpr('P'), char_sexpr('Q'), char_sexpr('R'), char_sexpr('S'), char_sexpr('T'),
+	char_sexpr('U'), char_sexpr('V'), char_sexpr('W'), char_sexpr('X'), char_sexpr('Y'), char_sexpr('Z'), 0, char_sexpr('\\'),
+	0, char_sexpr('^'), char_sexpr('_'), char_sexpr('`'), char_sexpr('a'), char_sexpr('b'), char_sexpr('c'), char_sexpr('d'),
+	char_sexpr('e'), char_sexpr('f'), char_sexpr('g'), char_sexpr('h'), char_sexpr('i'), char_sexpr('j'), char_sexpr('k'),
+	char_sexpr('l'), char_sexpr('m'), char_sexpr('n'), char_sexpr('o'), char_sexpr('p'), char_sexpr('q'), char_sexpr('r'),
+	char_sexpr('s'), char_sexpr('t'), char_sexpr('u'), char_sexpr('v'), char_sexpr('w'), char_sexpr('x'), char_sexpr('y'),
+	char_sexpr('z'), 0, char_sexpr('|'), 0, char_sexpr('~'), 0
 };
 
 union sexpr *build_character_sexpr(char d) {
