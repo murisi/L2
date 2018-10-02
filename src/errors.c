@@ -1,11 +1,5 @@
-#define ARGUMENTS 8
-#define PARAM_COUNT_MISMATCH 1
-#define SPECIAL_FORM 2
-#define UNEXPECTED_CHARACTER 3
-#define MULTIPLE_DEFINITION 4
-#define OBJECT 5
-#define MISSING_FILE 6
-#define UNDEFINED_REFERENCE 7
+enum error_type { arguments, param_count_mismatch, special_form, unexpected_character, multiple_definition, object,
+	missing_file, undefined_reference };
 
 struct param_count_mismatch_error {
 	int type;
@@ -61,14 +55,14 @@ union evaluate_error {
 
 void throw_arguments(jumpbuf *jb) {
 	struct arguments_error *err = region_alloc(jb->ctx, sizeof(struct arguments_error));
-	err->type = ARGUMENTS;
+	err->type = arguments;
 	jb->ctx = err;
 	longjump(jb);
 }
 
 void throw_param_count_mismatch(union expression *src_expression, union expression *dest_expression, jumpbuf *jb) {
 	struct param_count_mismatch_error *err = region_alloc(jb->ctx, sizeof(struct param_count_mismatch_error));
-	err->type = PARAM_COUNT_MISMATCH;
+	err->type = param_count_mismatch;
 	err->src_expression = src_expression;
 	err->dest_expression = dest_expression;
 	jb->ctx = err;
@@ -77,7 +71,7 @@ void throw_param_count_mismatch(union expression *src_expression, union expressi
 
 void throw_special_form(list expression_list, list subexpression_list, jumpbuf *jb) {
 	struct special_form_error *err = region_alloc(jb->ctx, sizeof(struct special_form_error));
-	err->type = SPECIAL_FORM;
+	err->type = special_form;
 	err->expression_list = expression_list;
 	err->subexpression_list = subexpression_list;
 	jb->ctx = err;
@@ -86,7 +80,7 @@ void throw_special_form(list expression_list, list subexpression_list, jumpbuf *
 
 void throw_unexpected_character(int character, long int position, jumpbuf *jb) {
 	struct unexpected_character_error *err = region_alloc(jb->ctx, sizeof(struct unexpected_character_error));
-	err->type = UNEXPECTED_CHARACTER;
+	err->type = unexpected_character;
 	err->character = character;
 	err->position = position;
 	jb->ctx = err;
@@ -94,7 +88,7 @@ void throw_unexpected_character(int character, long int position, jumpbuf *jb) {
 }
 void throw_multiple_definition(char *reference_value, jumpbuf *jb) {
 	struct multiple_definition_error *err = region_alloc(jb->ctx, sizeof(struct multiple_definition_error));
-	err->type = MULTIPLE_DEFINITION;
+	err->type = multiple_definition;
 	err->reference_value = reference_value;
 	jb->ctx = err;
 	longjump(jb);
@@ -102,14 +96,14 @@ void throw_multiple_definition(char *reference_value, jumpbuf *jb) {
 
 void throw_object(jumpbuf *jb) {
 	struct object_error *err = region_alloc(jb->ctx, sizeof(struct object_error));
-	err->type = OBJECT;
+	err->type = object;
 	jb->ctx = err;
 	longjump(jb);
 }
 
 void throw_missing_file(char *path, jumpbuf *jb) {
 	struct missing_file_error *err = region_alloc(jb->ctx, sizeof(struct missing_file_error));
-	err->type = MISSING_FILE;
+	err->type = missing_file;
 	err->path = path;
 	jb->ctx = err;
 	longjump(jb);
@@ -117,7 +111,7 @@ void throw_missing_file(char *path, jumpbuf *jb) {
 
 void throw_undefined_reference(char *reference_value, jumpbuf *jb) {
 	struct undefined_reference_error *err = region_alloc(jb->ctx, sizeof(struct undefined_reference_error));
-	err->type = UNDEFINED_REFERENCE;
+	err->type = undefined_reference;
 	err->reference_value = reference_value;
 	jb->ctx = err;
 	longjump(jb);

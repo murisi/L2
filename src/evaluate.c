@@ -6,13 +6,13 @@ typedef unsigned long int bool;
 
 #include "x86_64_linux_interface.c"
 #include "list.c"
+#include "evaluate_errors.c"
 #include "lexer.c"
 #include "x86_64_object.c"
 #include "expressions.c"
 #include "preparer.c"
 #include "x86_64_generator.c"
 #include "x86_64_assembler.c"
-#include "evaluate_errors.c"
 
 /*
  * Makes a new binary file at the path outbin from the list of primitive
@@ -133,14 +133,14 @@ int main(int argc, char *argv[]) {
 		union evaluate_error *err = (union evaluate_error *) evaluate_handler.ctx;
 		write_str(STDOUT, "Error found: ");
 		switch(err->arguments.type) {
-			case PARAM_COUNT_MISMATCH: {
+			case param_count_mismatch: {
 				write_str(STDOUT, "The number of arguments in ");
 				print_expression(err->param_count_mismatch.src_expression);
 				write_str(STDOUT, " does not match the number of parameters in ");
 				print_expression(err->param_count_mismatch.dest_expression);
 				write_str(STDOUT, ".\n");
 				break;
-			} case SPECIAL_FORM: {
+			} case special_form: {
 				if(err->special_form.subexpression_list) {
 					write_str(STDOUT, "The subexpression ");
 					print_expr_list(err->special_form.subexpression_list);
@@ -153,32 +153,32 @@ int main(int argc, char *argv[]) {
 					write_str(STDOUT, " has an incorrect number of subexpressions.\n");
 				}
 				break;
-			} case UNEXPECTED_CHARACTER: {
+			} case unexpected_character: {
 				write_str(STDOUT, "Unexpectedly read ");
 				write_char(STDOUT, err->unexpected_character.character);
 				write_str(STDOUT, " at ");
 				write_ulong(STDOUT, err->unexpected_character.position);
 				write_str(STDOUT, ".\n");
 				break;
-			} case MULTIPLE_DEFINITION: {
+			} case multiple_definition: {
 				write_str(STDOUT, "The definition of ");
 				write_str(STDOUT, err->multiple_definition.reference_value);
 				write_str(STDOUT, " erroneously occured multiple times.\n");
 				break;
-			} case OBJECT: {
+			} case object: {
 				write_str(STDOUT, "Bad object file supplied.\n");
 				break;
-			} case MISSING_FILE: {
+			} case missing_file: {
 				write_str(STDOUT, "There is no file at the path ");
 				write_str(STDOUT, err->missing_file.path);
 				write_str(STDOUT, ".\n");
 				break;
-			} case ARGUMENTS: {
+			} case arguments: {
 				write_str(STDOUT, "Bad command line arguments.\nUsage: l2evaluate (src1.l2 | obj1.o) ...\n"
 					"Outcome: Compiles each L2 file into an object file, links all the object files\n"
 					"together, and then executes each object file in the order they were specified.\n");
 				break;
-			} case UNDEFINED_REFERENCE: {
+			} case undefined_reference: {
 				write_str(STDOUT, "Undefined reference: ");
 				write_str(STDOUT, err->undefined_reference.reference_value);
 				write_str(STDOUT, ".\n");
