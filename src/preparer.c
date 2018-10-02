@@ -63,24 +63,50 @@ bool reference_equals(union expression *a, union expression *b) {
 }
 
 struct symbol *symbol_of(union expression *reference) {
+	bool same_func = true;
 	union expression *t;
-	for(t = reference; t != NULL; t = (t->base.type == function ? get_zeroth_static(t->base.parent) : t->base.parent)) {
+	for(t = reference; t != NULL; t = t->base.parent) {
+		//Goal of following logic is to maximize what is in the scope of a reference without the overhead of access
+		//links.
 		switch(t->base.type) {
 			case begin: {
 				union expression *u;
 				foreach(u, t->begin.expressions) {
-					if((u->base.type == function || u->base.type == storage) && reference_equals(u->function.reference, reference)) {
+					//Either link up to function expression contained in ancestral begin expression or link up to
+					//storage expression in ancestral expression that is (in the same stack-frame as the reference
+					//or has static storage).
+					if((u->base.type == function || (u->base.type == storage && (same_func ||
+							u->storage.reference->reference.symbol->type == static_storage))) &&
+							reference_equals(u->function.reference, reference)) {
 						return u->function.reference->reference.symbol;
 					}
 				}
 				break;
-			} case function: case continuation: case with: case storage: {
+			} case function: {
+				//Either link up to ancestral function expression reference or link up to the parameters of (the
+				//root function or (the function that provides the stack-frame for this reference.) 
 				if(reference_equals(t->function.reference, reference)) {
 					return t->function.reference->reference.symbol;
-				} else if(t->base.type == function || t->base.type == continuation) {
+				}
+				union expression *u;
+				foreach(u, t->function.parameters) {
+					if((same_func || u->reference.symbol->type == static_storage) && reference_equals(u, reference)) {
+						return u->reference.symbol;
+					}
+				}
+				same_func = false;
+				break;
+			} case continuation: case with: case storage: {
+				//Either link up to (the reference of continuation/with/storage expression in the same stack-frame
+				//or the reference of the same with static storage) or link up to the parameters of a non-storage
+				//expression that are either (in the same stack-fram or have static storage).
+				if((same_func || t->continuation.reference->reference.symbol->type == static_storage) &&
+						reference_equals(t->function.reference, reference)) {
+					return t->function.reference->reference.symbol;
+				} else if(t->base.type != storage) {
 					union expression *u;
 					foreach(u, t->function.parameters) {
-						if(reference_equals(u, reference)) {
+						if((same_func || u->reference.symbol->type == static_storage) && reference_equals(u, reference)) {
 							return u->reference.symbol;
 						}
 					}
