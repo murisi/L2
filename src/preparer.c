@@ -47,17 +47,6 @@ union expression *get_parent_function(union expression *n) {
 	return n;
 }
 
-//Get zeroth expression enclosing e that has static storage
-union expression *get_zeroth_static(union expression *e) {
-	union expression *static_expr = e;
-	for(; e; e = e->base.parent) {
-		if(e->base.type == function && e->function.parent) {
-			static_expr = e->function.parent;
-		}
-	}
-	return static_expr;
-}
-
 bool reference_equals(union expression *a, union expression *b) {
 	return a == b || (a->reference.name && b->reference.name && !strcmp(a->reference.name, b->reference.name));
 }
