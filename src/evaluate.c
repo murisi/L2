@@ -6,7 +6,6 @@ typedef unsigned long int bool;
 
 #include "x86_64_linux_interface.c"
 #include "list.c"
-#include "compile_errors.c"
 #include "lexer.c"
 #include "x86_64_object.c"
 #include "expressions.c"

@@ -1,3 +1,4 @@
+#define ARGUMENTS 8
 #define PARAM_COUNT_MISMATCH 1
 #define SPECIAL_FORM 2
 #define UNEXPECTED_CHARACTER 3
@@ -43,7 +44,12 @@ struct undefined_reference_error {
 	char *reference_value;
 };
 
-union compile_error {
+struct arguments_error {
+	int type;
+};
+
+union evaluate_error {
+	struct arguments_error arguments;
 	struct param_count_mismatch_error param_count_mismatch;
 	struct special_form_error special_form;
 	struct unexpected_character_error unexpected_character;
@@ -52,6 +58,13 @@ union compile_error {
 	struct missing_file_error missing_file;
 	struct undefined_reference_error undefined_reference;
 };
+
+void throw_arguments(jumpbuf *jb) {
+	struct arguments_error *err = region_alloc(jb->ctx, sizeof(struct arguments_error));
+	err->type = ARGUMENTS;
+	jb->ctx = err;
+	longjump(jb);
+}
 
 void throw_param_count_mismatch(union expression *src_expression, union expression *dest_expression, jumpbuf *jb) {
 	struct param_count_mismatch_error *err = region_alloc(jb->ctx, sizeof(struct param_count_mismatch_error));
