@@ -6,10 +6,10 @@ typedef unsigned long int bool;
 
 #include "x86_64_linux_interface.c"
 #include "list.c"
-#include "evaluate_errors.c"
+#include "errors.c"
 #include "lexer.c"
-#include "x86_64_object.c"
 #include "expressions.c"
+#include "x86_64_object.c"
 #include "preparer.c"
 #include "x86_64_generator.c"
 #include "x86_64_assembler.c"
@@ -40,7 +40,7 @@ Object *load_expressions(union expression *program, struct expansion_context *ec
 	visit_expressions(vgenerate_storage_expressions, &program, manreg);
 	list symbols = program->function.symbols;
 	union expression *l;
-	{foreach(l, program->function.parameters) { append(l->reference.symbol, &symbols, manreg); }}
+	{foreach(l, program->function.parameters) { prepend(l->reference.symbol, &symbols, manreg); }}
 	program = generate_toplevel(program, manreg);
 	list asms = nil;
 	visit_expressions(vlinearized_expressions, &program, (void* []) {&asms, manreg});
