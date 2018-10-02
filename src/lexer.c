@@ -3,12 +3,6 @@ struct character {
 	char character;
 };
 
-union sexpr {
-	void *list_flag;
-	struct _list_ _list;
-	struct character character;
-};
-
 bool char_equals(struct character *a, struct character *b) {
 	return a->character == b->character;
 }
@@ -116,16 +110,16 @@ list build_fragment(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *hand
 }
 
 bool is_symbol(list d) {
-	return length(d) && ((struct character *) d->fst)->list_flag;
+	return length(d) && !((struct character *) d->fst)->list_flag;
 }
 
 char *to_string(list d, region r) {
 	char *str = region_alloc(r, (length(d) + 1) * sizeof(char));
 	int i = 0;
 	
-	union sexpr *t;
+	struct character *t;
 	foreach(t, d) {
-		str[i++] = t->character.character;
+		str[i++] = t->character;
 	}
 	str[i] = '\0';
 	return str;
@@ -134,14 +128,14 @@ char *to_string(list d, region r) {
 list copy_fragment(list l, region r) {
 	list c = nil;
 	if(is_symbol(l)) {
-		union sexpr *s;
+		struct character *s;
 		foreach(s, l) {
-			append(_char(s->character.character), &c, r);
+			append(_char(s->character), &c, r);
 		}
 	} else {
 		list s;
 		foreach(s, l) {
-			append(copy_fragment((list) s, r), &c, r);
+			append(copy_fragment(s, r), &c, r);
 		}
 	}
 	return c;
