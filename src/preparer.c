@@ -627,7 +627,7 @@ union expression *vgenerate_np_expressions(union expression *s, void *ctx) {
 		union expression *return_with_ref = make_reference(NULL, ct_reg);
 		union expression *return_with = make_with(return_with_ref,
 			make_invoke1(make_invoke8(make_literal((unsigned long) np_expansion, ct_reg),
-				s->non_primitive.reference, make_literal((unsigned long) copy_sexpr_list(s->non_primitive.argument,
+				s->non_primitive.reference, make_literal((unsigned long) copy_fragment(s->non_primitive.argument,
 				ectx->rt_reg), ct_reg), make_literal((unsigned long) ectx, ct_reg),
 				make_literal((unsigned long) s->non_primitive.st_binds, ct_reg),
 				make_literal((unsigned long) param_names_rt, ct_reg),

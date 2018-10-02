@@ -538,7 +538,7 @@ void print_expression(union expression *s) {
 			write_str(STDOUT, "(");
 			print_expression(s->non_primitive.reference);
 			write_str(STDOUT, " ");
-			print_expr_list(s->non_primitive.argument);
+			print_fragment(s->non_primitive.argument);
 			write_str(STDOUT, ")");
 			break;
 		}
@@ -558,12 +558,12 @@ void print_expression(union expression *s) {
  */
 
 union expression *build_expression(list d, region reg, jumpbuf *handler) {
-	if(is_string(d)) {
+	if(is_symbol(d)) {
 		return make_reference(to_string(d, reg), reg);
 	} else if(!strcmp(to_string(d->fst, reg), "with")) {
 		if(length(d) != 3) {
 			throw_special_form(d, NULL, handler);
-		} else if(!is_string(d->frst)) {
+		} else if(!is_symbol(d->frst)) {
 			throw_special_form(d, d->frst, handler);
 		}
 		return make_with(build_expression(d->frst, reg, handler), build_expression(d->frrst, reg, handler), reg);
@@ -584,16 +584,16 @@ union expression *build_expression(list d, region reg, jumpbuf *handler) {
 	} else if(!strcmp(to_string(d->fst, reg), "function") || !strcmp(to_string(d->fst, reg), "continuation")) {
 		if(length(d) != 4) {
 			throw_special_form(d, NULL, handler);
-		} else if(!is_string(d->frst)) {
+		} else if(!is_symbol(d->frst)) {
 			throw_special_form(d, d->frst, handler);
-		} else if(!is_nil(d->frrst) && is_string(d->frrst)) {
+		} else if(!is_nil(d->frrst) && is_symbol(d->frrst)) {
 			throw_special_form(d, d->frrst, handler);
 		}
 		
 		list parameters = nil;
 		list v;
 		foreach(v, d->frrst) {
-			if(!is_string(v)) {
+			if(!is_symbol(v)) {
 				throw_special_form(d, (list) v, handler);
 			}
 			append(build_expression((list) v, reg, handler), &parameters, reg);
@@ -605,7 +605,7 @@ union expression *build_expression(list d, region reg, jumpbuf *handler) {
 		char *str;
 		if(length(d) != 2) {
 			throw_special_form(d, NULL, handler);
-		} else if(!is_string(d->frst) || strlen(str = to_string(d->frst, reg)) != WORD_BIN_LEN) {
+		} else if(!is_symbol(d->frst) || strlen(str = to_string(d->frst, reg)) != WORD_BIN_LEN) {
 			throw_special_form(d, d->frst, handler);
 		}
 		
@@ -624,7 +624,7 @@ union expression *build_expression(list d, region reg, jumpbuf *handler) {
 			!strcmp(to_string(d->fst, reg), "storage")) {
 		if(length(d) == 1) {
 			throw_special_form(d, NULL, handler);
-		} else if(!strcmp(to_string(d->fst, reg), "storage") && !is_string(d->frst)) {
+		} else if(!strcmp(to_string(d->fst, reg), "storage") && !is_symbol(d->frst)) {
 			throw_special_form(d->frst, NULL, handler);
 		}
 	

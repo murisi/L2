@@ -82,8 +82,8 @@ void evaluate_files(int srcc, char *srcv[], list bindings, jumpbuf *handler) {
 			list expressions = nil;
 			int pos = 0;
 			while(after_leading_space(src_buf, src_sz, &pos)) {
-				list sexpr = build_expr_list(src_buf, src_sz, &pos, syntax_tree_region, handler);
-				append(build_expression(sexpr, syntax_tree_region, handler), &expressions, syntax_tree_region);
+				append(build_expression(build_fragment(src_buf, src_sz, &pos, syntax_tree_region, handler), syntax_tree_region,
+					handler), &expressions, syntax_tree_region);
 			}
 			obj = load_expressions(make_program(expressions, syntax_tree_region), ectx, nil, syntax_tree_region);
 		} else if(dot && !strcmp(dot, ".o")) {
@@ -143,13 +143,13 @@ int main(int argc, char *argv[]) {
 			} case special_form: {
 				if(err->special_form.subexpression_list) {
 					write_str(STDOUT, "The subexpression ");
-					print_expr_list(err->special_form.subexpression_list);
+					print_fragment(err->special_form.subexpression_list);
 					write_str(STDOUT, " does not satisfy the requirements of the expression ");
-					print_expr_list(err->special_form.expression_list);
+					print_fragment(err->special_form.expression_list);
 					write_str(STDOUT, ".\n");
 				} else {
 					write_str(STDOUT, "The expression ");
-					print_expr_list(err->special_form.expression_list);
+					print_fragment(err->special_form.expression_list);
 					write_str(STDOUT, " has an incorrect number of subexpressions.\n");
 				}
 				break;
@@ -280,7 +280,7 @@ int main(int argc, char *argv[]) {
 		{.name = "fst", .address = _fst_},
 		{.name = "rst", .address = _rst_},
 		{.name = "lst", .address = lst},
-		{.name = "lst?", .address = is_lst},
+		{.name = "symbol?", .address = is_symbol},
 		{.name = "emt?", .address = is_nil},
 		{.name = "emt", .address = nil},
 		{.name = "char=", .address = char_equals},

@@ -9,10 +9,6 @@ union sexpr {
 	struct character character;
 };
 
-bool is_lst(union sexpr *s) {
-	return s->list_flag ? true : false;
-}
-
 bool char_equals(struct character *a, struct character *b) {
 	return a->character == b->character;
 }
@@ -39,19 +35,6 @@ struct character chars[][1] = {
 
 #define _char(d) (chars[d])
 
-list copy_sexpr_list(list l, region r) {
-	list c = nil;
-	union sexpr *s;
-	foreach(s, l) {
-		if(is_lst(s)) {
-			append(copy_sexpr_list((list) s, r), &c, r);
-		} else {
-			append(_char(s->character.character), &c, r);
-		}
-	}
-	return c;
-}
-
 list build_symbol(char *str, region r) {
 	list sexprs = nil;
 	for(; *str; str++) {
@@ -65,9 +48,9 @@ int after_leading_space(char *l2src, int l2src_sz, int *pos) {
 	return l2src_sz - *pos;
 }
 
-list build_expr_list(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler);
+list build_fragment(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler);
 
-list build_sigil(char *sigil, char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
+list build_sigilled_symbol(char *sigil, char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
 	if(l2src_sz == *pos) {
 		return build_symbol(sigil, r);
 	}
@@ -77,12 +60,12 @@ list build_sigil(char *sigil, char *l2src, int l2src_sz, int *pos, region r, jum
 	} else {
 		list sexprs = nil;
 		append(build_symbol(sigil, r), &sexprs, r);
-		append(build_expr_list(l2src, l2src_sz, pos, r, handler), &sexprs, r);
+		append(build_fragment(l2src, l2src_sz, pos, r, handler), &sexprs, r);
 		return sexprs;
 	}
 }
 
-list build_list(char *primitive, char delimiter, char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
+list build_fragment_list(char *primitive, char delimiter, char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
 	list sexprs = nil;
 	append(build_symbol(primitive, r), &sexprs, r);
 	
@@ -92,12 +75,12 @@ list build_list(char *primitive, char delimiter, char *l2src, int l2src_sz, int 
 			(*pos) ++;
 			break;
 		}
-		append(build_expr_list(l2src, l2src_sz, pos, r, handler), &sexprs, r);
+		append(build_fragment(l2src, l2src_sz, pos, r, handler), &sexprs, r);
 	}
 	return sexprs;
 }
 
-list build_expr_list(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
+list build_fragment(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
 	if(l2src_sz == *pos) {
 		throw_unexpected_character(0, *pos, handler);
 	}
@@ -107,19 +90,19 @@ list build_expr_list(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *han
 	}
 	(*pos)++;
 	if(c == '(') {
-		return build_list("expression", ')', l2src, l2src_sz, pos, r, handler)->rst;
+		return build_fragment_list("expression", ')', l2src, l2src_sz, pos, r, handler)->rst;
 	} else if(c == '{') {
-		return build_list("jump", '}', l2src, l2src_sz, pos, r, handler);
+		return build_fragment_list("jump", '}', l2src, l2src_sz, pos, r, handler);
 	} else if(c == '[') {
-		return build_list("invoke", ']', l2src, l2src_sz, pos, r, handler);
+		return build_fragment_list("invoke", ']', l2src, l2src_sz, pos, r, handler);
 	} else if(c == '$') {
-		return build_sigil("$", l2src, l2src_sz, pos, r, handler);
+		return build_sigilled_symbol("$", l2src, l2src_sz, pos, r, handler);
 	} else if(c == '&') {
-		return build_sigil("&", l2src, l2src_sz, pos, r, handler);
+		return build_sigilled_symbol("&", l2src, l2src_sz, pos, r, handler);
 	} else if(c == ',') {
-		return build_sigil(",", l2src, l2src_sz, pos, r, handler);
+		return build_sigilled_symbol(",", l2src, l2src_sz, pos, r, handler);
 	} else if(c == '`') {
-		return build_sigil("`", l2src, l2src_sz, pos, r, handler);
+		return build_sigilled_symbol("`", l2src, l2src_sz, pos, r, handler);
 	} else {
 		list l = nil;
 		do {
@@ -132,14 +115,8 @@ list build_expr_list(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *han
 	}
 }
 
-bool is_string(list d) {
-	union sexpr *t;
-	foreach(t, d) {
-		if(is_lst(t)) {
-			return false;
-		}
-	}
-	return true;
+bool is_symbol(list d) {
+	return length(d) && ((struct character *) d->fst)->list_flag;
 }
 
 char *to_string(list d, region r) {
@@ -154,17 +131,33 @@ char *to_string(list d, region r) {
 	return str;
 }
 
-void print_expr_list(list d) {
+list copy_fragment(list l, region r) {
+	list c = nil;
+	if(is_symbol(l)) {
+		union sexpr *s;
+		foreach(s, l) {
+			append(_char(s->character.character), &c, r);
+		}
+	} else {
+		list s;
+		foreach(s, l) {
+			append(copy_fragment((list) s, r), &c, r);
+		}
+	}
+	return c;
+}
+
+void print_fragment(list d) {
 	write_str(STDOUT, "(");
 	if(!is_nil(d)) {
-		union sexpr *_fst = d->fst;
-		if(is_lst(_fst)) {
-			print_expr_list((list) _fst);
+		struct character *_fst = d->fst;
+		if(_fst->list_flag) {
+			print_fragment((list) _fst);
 		} else {
-			write_char(STDOUT, _fst->character.character);
+			write_char(STDOUT, _fst->character);
 		}
 		write_str(STDOUT, " . ");
-		print_expr_list(d->rst);
+		print_fragment(d->rst);
 	}
 	write_str(STDOUT, ")");	
 }
