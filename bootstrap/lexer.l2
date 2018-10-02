@@ -16,8 +16,6 @@
 
 (function sexpr-struct (l r p) (use-memo $p (`[* &2(unit)]$r)))
 
-(function i/f:lst? (s) (if (<cs-list-flag $s) (true) (false)))
-
 (++(function char= (a b) (if [= (<cs-character $a) (<cs-character $b)] (true) (false))))
 
 (storage characters
@@ -48,17 +46,17 @@
 			(begin [set $pos [+ $$pos &1]] {loop})
 			{return [- $l2src-sz $$pos]}))}))
 
-(function build-sigil (sigil l2src l2src-sz pos r handler) (with return (begin
+(function build-sigilled-symbol (sigil l2src l2src-sz pos r handler) (with return (begin
 	(if [= $l2src-sz $$pos] {return [build-symbol $sigil $r]} (begin))
 	(let (d [getb [+ $l2src $$pos]])
 		(if (or [isspace $d] [= $d (rparen)] [= $d (rbrace)] [= $d (rbracket)] [= $d (lparen)] [= $d (lbrace)] [= $d (lbracket)])
 			{return [build-symbol $sigil $r]}
 			(let (sexprs nil) (begin
 				[append [build-symbol $sigil $r] sexprs $r]
-				[append [build-expr-list $l2src $l2src-sz $pos $r $handler] sexprs $r]
+				[append [build-fragment $l2src $l2src-sz $pos $r $handler] sexprs $r]
 				{return $sexprs})))))))
 
-(function build-list (primitive delimeter l2src l2src-sz pos r handler) (with return
+(function build-fragment-list (primitive delimeter l2src l2src-sz pos r handler) (with return
 	(let (sexprs nil) (begin
 		[append [build-symbol $primitive $r] sexprs $r]
 		(while (true) (begin
@@ -66,27 +64,27 @@
 				(if (and $rem [= [getb [+ $l2src $$pos]] $delimeter])
 					(begin [set $pos [+ $$pos &1]] {return $sexprs})
 					(begin)))
-			[append [build-expr-list $l2src $l2src-sz $pos $r $handler] sexprs $r]))
+			[append [build-fragment $l2src $l2src-sz $pos $r $handler] sexprs $r]))
 		{return $sexprs}))))
 
 (function unexpected-char (l r) (` &0 $r))
 
-(function build-expr-list (l2src l2src-sz pos r handler) (with return
+(function build-fragment (l2src l2src-sz pos r handler) (with return
 	(if [= $l2src-sz $$pos]
-		{$handler (unexpected-char) build-expr-list &0 $$pos}
+		{$handler (unexpected-char) build-fragment &0 $$pos}
 		(let (c [getb [+ $l2src $$pos]])
 			(if (or [isspace $c] [= $c (rparen)] [= $c (rbrace)] [= $c (rbracket)])
-				{$handler (unexpected-char) build-expr-list $c $$pos}
+				{$handler (unexpected-char) build-fragment $c $$pos}
 				(begin
 					[set $pos [+ $$pos &1]]
 					{return (switch = $c
-						((lparen) [get-cdr [build-list (" expression) (rparen) $l2src $l2src-sz $pos $r $handler]])
-						((lbrace) [build-list (" jump) (rbrace) $l2src $l2src-sz $pos $r $handler])
-						((lbracket) [build-list (" invoke) (rbracket) $l2src $l2src-sz $pos $r $handler])
-						((char $) [build-sigil (" $) $l2src $l2src-sz $pos $r $handler])
-						((char &) [build-sigil (" &) $l2src $l2src-sz $pos $r $handler])
-						((char ,) [build-sigil (" ,) $l2src $l2src-sz $pos $r $handler])
-						((char `) [build-sigil (" `) $l2src $l2src-sz $pos $r $handler])
+						((lparen) [get-cdr [build-fragment-list (" expression) (rparen) $l2src $l2src-sz $pos $r $handler]])
+						((lbrace) [build-fragment-list (" jump) (rbrace) $l2src $l2src-sz $pos $r $handler])
+						((lbracket) [build-fragment-list (" invoke) (rbracket) $l2src $l2src-sz $pos $r $handler])
+						((char $) [build-sigilled-symbol (" $) $l2src $l2src-sz $pos $r $handler])
+						((char &) [build-sigilled-symbol (" &) $l2src $l2src-sz $pos $r $handler])
+						((char ,) [build-sigilled-symbol (" ,) $l2src $l2src-sz $pos $r $handler])
+						((char `) [build-sigilled-symbol (" `) $l2src $l2src-sz $pos $r $handler])
 						(let (l nil) (begin
 							(do-while (begin
 									[append (character $c) l $r]
@@ -98,12 +96,7 @@
 							[set $pos [- $$pos &1]]
 							{return $l})))}))))))
 
-(function string? (d) (with return (begin
-	(foreach (t $d)
-		(if [i/f:lst? $t]
-			{return (false)}
-			(begin)))
-	{return (true)})))
+(++(function symbol? (d) (and [length $d] (not [list-flag [get-car $d]]))))
 
 (function to-string (d r) (with return
 	(let (str [region-alloc $r [+ [length $d] &1]]) (i &0) (begin
@@ -113,16 +106,16 @@
 		[setb [+ $str $i] (null)]
 		{return $str}))))
 
-(function print-expr-list (d) (begin
+(function print-fragment (d) (begin
 	[write-char (stdout) (lparen)]
 	(if [nil? $d] (begin) (begin
-		(if [i/f:lst? [get-car $d]]
-			[print-expr-list [get-car $d]]
-			[write-char (stdout) (<cs-character [get-car $d])])
+		(if [symbol? $d]
+			[write-char (stdout) (<cs-character [get-car $d])]
+			[print-fragment [get-car $d]])
 		[write-char (stdout) (space)]
 		[write-char (stdout) (char .)]
 		[write-char (stdout) (space)]
-		[print-expr-list [get-cdr $d]]))
+		[print-fragment [get-cdr $d]]))
 	[write-char (stdout) (rparen)]))
 
 [write-str (stdout) (" Starting here:(lf))]
@@ -130,7 +123,7 @@
 (let (r [create-region &0]) (pos &0)
 	(do-let (begin
 			[write-str (stdout) (" (lparen)l(lbrace)lokay(rbrace)a(rparen)o)]
-			[print-expr-list [build-expr-list (" (lparen)l(lbrace)lokay(rbrace)a(rparen)o) &18 pos $r $handler]]
+			[print-fragment [build-fragment (" (lparen)l(lbrace)lokay(rbrace)a(rparen)o) &18 pos $r $handler]]
 			[build-symbol (" Hello) $r])
 		(handler (continuation _ (code src character pos) (begin
 			[write-str (stdout) (" Error occured.)]
