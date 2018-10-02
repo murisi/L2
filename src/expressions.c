@@ -13,7 +13,7 @@ enum expression_type {
 	non_primitive
 };
 
-enum symbol_type { static_storage, dynamic_storage, _function };
+enum symbol_type { static_storage, dynamic_storage };
 
 enum symbol_scope { local_scope, global_scope };
 
