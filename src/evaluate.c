@@ -39,20 +39,19 @@ Object *load_expressions(union expression *program, struct expansion_context *ec
 	visit_expressions(vgenerate_ifs, &program, manreg);
 	visit_expressions(vgenerate_function_expressions, &program, manreg);
 	visit_expressions(vgenerate_storage_expressions, &program, manreg);
-	list local_symbols = program->function.symbols;
-	list global_symbols = nil;
+	list symbols = program->function.symbols;
 	union expression *l;
 	{foreach(l, program->function.parameters) {
-		append(l->reference.symbol, &global_symbols, manreg);
+		append(l->reference.symbol, &symbols, manreg);
 	}}
 	program = generate_toplevel(program, manreg);
 	list asms = nil;
-	visit_expressions(vmerge_begins, &program, (void* []) {&asms, manreg});
+	visit_expressions(vlinearized_expressions, &program, (void* []) {&asms, manreg});
 	unsigned char *objdest; int objdest_sz;
-	write_elf(reverse(asms, manreg), local_symbols, global_symbols, &objdest, &objdest_sz, manreg);
+	write_elf(reverse(asms, manreg), symbols, &objdest, &objdest_sz, manreg);
 	Object *obj = load(objdest, objdest_sz, ectx->rt_reg, ectx->handler);
 	struct symbol *sym;
-	{foreach(sym, concat(local_symbols, global_symbols, manreg)) {
+	{foreach(sym, symbols) {
 		if(sym->type == static_storage && sym->state == defined_state) {
 			sym->offset += (unsigned long) segment(obj, ".bss");
 		}

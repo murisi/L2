@@ -210,15 +210,10 @@ void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sy
 	}
 }
 
-int measure_strtab(list generated_expressions, list local_syms, list global_syms) {
+int measure_strtab(list generated_expressions, list symbols) {
 	struct symbol *sym;
 	int strtab_len = 1;
-	{foreach(sym, local_syms) {
-		if(sym->name) {
-			strtab_len += strlen(sym->name) + 1;
-		}
-	}}
-	{foreach(sym, global_syms) {
+	{foreach(sym, symbols) {
 		if(sym->name) {
 			strtab_len += strlen(sym->name) + 1;
 		}
@@ -235,13 +230,10 @@ int measure_strtab(list generated_expressions, list local_syms, list global_syms
 	return strtab_len;
 }
 
-int measure_symtab(list generated_expressions, list local_syms, list global_syms) {
+int measure_symtab(list generated_expressions, list symbols) {
 	int sym_count = 1;
 	struct symbol *sym;
-	{foreach(sym, local_syms) {
-		sym_count++;
-	}}
-	{foreach(sym, global_syms) {
+	{foreach(sym, symbols) {
 		sym_count++;
 	}}
 	union expression *e;
@@ -263,17 +255,17 @@ int strvlen(char *strv) {
 
 #define SH_COUNT 7
 
-int max_elf_size(list generated_expressions, list local_syms, list global_syms) {
+int max_elf_size(list generated_expressions, list symbols) {
 	return sizeof(Elf64_Ehdr) + (sizeof(Elf64_Shdr) * SH_COUNT) + pad_size(strvlen(SHSTRTAB), ALIGNMENT) +
 		pad_size(MAX_INSTR_LEN * length(generated_expressions), ALIGNMENT) +
-		pad_size(measure_strtab(generated_expressions, local_syms, global_syms), ALIGNMENT) +
-		(sizeof(Elf64_Sym) * measure_symtab(generated_expressions, local_syms, global_syms)) +
+		pad_size(measure_strtab(generated_expressions, symbols), ALIGNMENT) +
+		(sizeof(Elf64_Sym) * measure_symtab(generated_expressions, symbols)) +
 		(sizeof(Elf64_Rela) * MAX_INSTR_FIELDS * length(generated_expressions));
 }
 
-void write_elf(list generated_expressions, list symbols, list parameters, unsigned char **bin, int *pos, region elfreg) {
+void write_elf(list generated_expressions, list symbols, unsigned char **bin, int *pos, region elfreg) {
 	*pos = 0;
-	*bin = region_alloc(elfreg, max_elf_size(generated_expressions, symbols, parameters));
+	*bin = region_alloc(elfreg, max_elf_size(generated_expressions, symbols));
 	
 	Elf64_Ehdr ehdr;
 	ehdr.e_ident[EI_MAG0] = ELFMAG0;
@@ -303,10 +295,8 @@ void write_elf(list generated_expressions, list symbols, list parameters, unsign
 	ehdr.e_shstrndx = 1;
 	mem_write(*bin, pos, &ehdr, sizeof(Elf64_Ehdr));
 	
-	region temp_reg = create_region(0);
-	list all_symbols = concat(symbols, parameters, temp_reg);
-	int strtab_len = measure_strtab(generated_expressions, symbols, parameters),
-		sym_count = measure_symtab(generated_expressions, symbols, parameters);
+	int strtab_len = measure_strtab(generated_expressions, symbols),
+		sym_count = measure_symtab(generated_expressions, symbols);
 	
 	Elf64_Sym syms[sym_count];
 	Elf64_Sym *sym_ptr = syms;
@@ -325,25 +315,25 @@ void write_elf(list generated_expressions, list symbols, list parameters, unsign
 	
 	unsigned long bss_ptr = 0;
 	
-	struct symbol *local_sym;
-	{foreach(local_sym, all_symbols) {
-		if(local_sym->scope == local_scope) {
-			if(local_sym->name) {
-				strcpy(strtabptr, local_sym->name);
+	struct symbol *sym;
+	{foreach(sym, symbols) {
+		if(sym->scope == local_scope) {
+			if(sym->name) {
+				strcpy(strtabptr, sym->name);
 				sym_ptr->st_name = strtabptr - strtab;
-				strtabptr += strlen(local_sym->name) + 1;
+				strtabptr += strlen(sym->name) + 1;
 			} else {
 				sym_ptr->st_name = 0;
 			}
 			sym_ptr->st_value = bss_ptr;
-			local_sym->offset = sym_ptr->st_value;
-			sym_ptr->st_size = local_sym->size;
+			sym->offset = sym_ptr->st_value;
+			sym_ptr->st_size = sym->size;
 			sym_ptr->st_info = ELF64_ST_INFO(STB_LOCAL, STT_NOTYPE);
 			sym_ptr->st_other = 0;
 			sym_ptr->st_shndx = 5;
-			local_sym->context = sym_ptr;
+			sym->context = sym_ptr;
 			sym_ptr++;
-			bss_ptr += pad_size(local_sym->size, WORD_SIZE);
+			bss_ptr += pad_size(sym->size, WORD_SIZE);
 		}
 	}}
 	union expression *e;
@@ -367,33 +357,32 @@ void write_elf(list generated_expressions, list symbols, list parameters, unsign
 		}
 	}}
 	int local_symbol_count = sym_ptr - syms;
-	struct symbol *global_sym;
-	{foreach(global_sym, all_symbols) {
-		if(global_sym->scope == global_scope && global_sym->state == defined_state) {
-			if(global_sym->name) {
-				strcpy(strtabptr, global_sym->name);
+	{foreach(sym, symbols) {
+		if(sym->scope == global_scope && sym->state == defined_state) {
+			if(sym->name) {
+				strcpy(strtabptr, sym->name);
 				sym_ptr->st_name = strtabptr - strtab;
-				strtabptr += strlen(global_sym->name) + 1;
+				strtabptr += strlen(sym->name) + 1;
 			} else {
 				sym_ptr->st_name = 0;
 			}
 			sym_ptr->st_value = bss_ptr;
-			global_sym->offset = sym_ptr->st_value;
-			sym_ptr->st_size = global_sym->size;
+			sym->offset = sym_ptr->st_value;
+			sym_ptr->st_size = sym->size;
 			sym_ptr->st_info = ELF64_ST_INFO(STB_GLOBAL, STT_NOTYPE);
 			sym_ptr->st_other = 0;
 			sym_ptr->st_shndx = 5;
-			global_sym->context = sym_ptr;
+			sym->context = sym_ptr;
 			sym_ptr++;
-			bss_ptr += pad_size(global_sym->size, WORD_SIZE);
+			bss_ptr += pad_size(sym->size, WORD_SIZE);
 		}
 	}}
-	{foreach(global_sym, all_symbols) {
-		if(global_sym->scope == global_scope && global_sym->state == undefined_state) {
-			if(global_sym->name) {
-				strcpy(strtabptr, global_sym->name);
+	{foreach(sym, symbols) {
+		if(sym->scope == global_scope && sym->state == undefined_state) {
+			if(sym->name) {
+				strcpy(strtabptr, sym->name);
 				sym_ptr->st_name = strtabptr - strtab;
-				strtabptr += strlen(global_sym->name) + 1;
+				strtabptr += strlen(sym->name) + 1;
 			} else {
 				sym_ptr->st_name = 0;
 			}
@@ -402,7 +391,7 @@ void write_elf(list generated_expressions, list symbols, list parameters, unsign
 			sym_ptr->st_info = ELF64_ST_INFO(STB_GLOBAL, STT_NOTYPE);
 			sym_ptr->st_other = 0;
 			sym_ptr->st_shndx = SHN_UNDEF;
-			global_sym->context = sym_ptr;
+			sym->context = sym_ptr;
 			sym_ptr++;
 		}
 	}}
@@ -429,6 +418,7 @@ void write_elf(list generated_expressions, list symbols, list parameters, unsign
 	int text_len, max_text_sec_len = pad_size(MAX_INSTR_LEN * length(generated_expressions), ALIGNMENT),
 		max_rela_sec_len = MAX_INSTR_FIELDS * length(generated_expressions) * sizeof(Elf64_Rela);
 	
+	region temp_reg = create_region(0);
 	unsigned char *text = region_alloc(temp_reg, max_text_sec_len);
 	Elf64_Rela *relas = region_alloc(temp_reg, max_rela_sec_len);
 	Elf64_Rela *rela_ptr = relas;

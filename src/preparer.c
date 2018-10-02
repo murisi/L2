@@ -280,7 +280,7 @@ union expression *use_return_symbol(union expression *n, struct symbol *ret_sym,
 	}
 }
 
-union expression *vmerge_begins(union expression *n, void *ctx) {
+union expression *vlinearized_expressions(union expression *n, void *ctx) {
 	if(n->base.type != begin) {
 		list *l = ((void **) ctx)[0];
 		region r = ((void **) ctx)[1];
