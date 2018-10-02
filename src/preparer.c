@@ -62,7 +62,7 @@ bool reference_equals(union expression *a, union expression *b) {
 	return a == b || (a->reference.name && b->reference.name && !strcmp(a->reference.name, b->reference.name));
 }
 
-union expression *referent_of(union expression *reference) {
+struct symbol *symbol_of(union expression *reference) {
 	union expression *t;
 	for(t = reference; t != NULL; t = (t->base.type == function ? get_zeroth_static(t->base.parent) : t->base.parent)) {
 		switch(t->base.type) {
@@ -70,18 +70,18 @@ union expression *referent_of(union expression *reference) {
 				union expression *u;
 				foreach(u, t->begin.expressions) {
 					if((u->base.type == function || u->base.type == storage) && reference_equals(u->function.reference, reference)) {
-						return u->function.reference;
+						return u->function.reference->reference.symbol;
 					}
 				}
 				break;
 			} case function: case continuation: case with: case storage: {
 				if(reference_equals(t->function.reference, reference)) {
-					return t->function.reference;
+					return t->function.reference->reference.symbol;
 				} else if(t->base.type == function || t->base.type == continuation) {
 					union expression *u;
 					foreach(u, t->function.parameters) {
 						if(reference_equals(u, reference)) {
-							return u;
+							return u->reference.symbol;
 						}
 					}
 				}
@@ -109,7 +109,7 @@ bool is_function_reference(union expression *s) {
 }
 
 union expression *target_expression(union expression *s) {
-	return s->reference.referent->reference.parent;
+	return s->reference.symbol->definition->reference.parent;
 }
 
 union expression *root_function_of(union expression *s) {
@@ -121,17 +121,18 @@ union expression *vlink_references(union expression *s, void *ctx) {
 	jumpbuf *handler = ((void **) ctx)[0];
 	region r = ((void **) ctx)[1];
 	if(s->base.type == reference) {
-		s->reference.referent = s->reference.referent ? s->reference.referent : referent_of(s);
-		if(s->reference.referent == NULL) {
-			union expression *ref = use_symbol(make_symbol(static_storage, global_scope, undefined_state, s->reference.name, r), r);
+		s->reference.symbol = s->reference.symbol ? s->reference.symbol : symbol_of(s);
+		if(!s->reference.symbol) {
+			union expression *ref = make_reference(s->reference.name, r);
+			struct symbol *sym = make_symbol(static_storage, global_scope, undefined_state, s->reference.name, ref, r);
+			ref->reference.symbol = sym;
 			prepend(ref, &root_function_of(s)->function.parameters, r);
 			ref->reference.parent = root_function_of(s);
-			ref->reference.referent = ref;
-			s->reference.referent = ref;
-		} else if(is_jump_reference(s) && is_c_reference(s->reference.referent) &&
+			s->reference.symbol = sym;
+		} else if(is_jump_reference(s) && is_c_reference(s->reference.symbol->definition) &&
 			length(s->reference.parent->jump.arguments) != length(target_expression(s)->continuation.parameters)) {
 				throw_param_count_mismatch(s->reference.parent, target_expression(s), handler);
-		} else if(is_invoke_reference(s) && is_function_reference(s->reference.referent) &&
+		} else if(is_invoke_reference(s) && is_function_reference(s->reference.symbol->definition) &&
 			length(s->reference.parent->invoke.arguments) != length(target_expression(s)->function.parameters)) {
 				throw_param_count_mismatch(s->reference.parent, target_expression(s), handler);
 		}
@@ -154,7 +155,7 @@ void vescape_analysis_aux(union expression *ref, union expression *target) {
 }
 
 union expression *vescape_analysis(union expression *s, void *ctx) {
-	if(s->base.type == reference && s->reference.referent != s && is_c_reference(s->reference.referent)) {
+	if(s->base.type == reference && s->reference.symbol->definition != s && is_c_reference(s->reference.symbol->definition)) {
 		vescape_analysis_aux(s, target_expression(s));
 	} else if(s->base.type == continuation) {
 		vescape_analysis_aux(s, s);
@@ -206,30 +207,30 @@ union expression *use_return_symbol(union expression *n, struct symbol *ret_sym,
 		case with: {
 			n->with.return_symbol = ret_sym;
 			put(n, with.expression, use_return_symbol(n->with.expression,
-				make_symbol(dynamic_storage, local_scope, defined_state, NULL, r), r));
+				make_symbol(dynamic_storage, local_scope, defined_state, NULL, NULL, r), r));
 			return n;
 		} case continuation: {
 			n->continuation.return_symbol = ret_sym;
 			put(n, continuation.expression, use_return_symbol(n->continuation.expression,
-				make_symbol(dynamic_storage, local_scope, defined_state, NULL, r), r));
+				make_symbol(dynamic_storage, local_scope, defined_state, NULL, NULL, r), r));
 			return n;
 		} case function: {
 			n->function.return_symbol = ret_sym;
-			n->function.expression_return_symbol = make_symbol(dynamic_storage, local_scope, defined_state, NULL, r);
+			n->function.expression_return_symbol = make_symbol(dynamic_storage, local_scope, defined_state, NULL, NULL, r);
 			put(n, function.expression, use_return_symbol(n->function.expression, n->function.expression_return_symbol, r));
 			return n;
 		} case invoke: case jump: case storage: {
 			union expression *container = make_begin(nil, r);
 			
 			if(n->base.type != storage) {
-				struct symbol *ref_ret_sym = make_symbol(dynamic_storage, local_scope, defined_state, NULL, r);
+				struct symbol *ref_ret_sym = make_symbol(dynamic_storage, local_scope, defined_state, NULL, NULL, r);
 				emit(use_return_symbol(n->invoke.reference, ref_ret_sym, r), r);
 				n->invoke.reference = use_symbol(ref_ret_sym, r);
 			}
 			
 			union expression **t;
 			foreachaddress(t, n->invoke.arguments) {
-				struct symbol *arg_ret_sym = make_symbol(dynamic_storage, local_scope, defined_state, NULL, r);
+				struct symbol *arg_ret_sym = make_symbol(dynamic_storage, local_scope, defined_state, NULL, NULL, r);
 				emit(use_return_symbol(*t, arg_ret_sym, r), r);
 				*t = use_symbol(arg_ret_sym, r);
 			}
@@ -242,7 +243,7 @@ union expression *use_return_symbol(union expression *n, struct symbol *ret_sym,
 			put(n, _if.consequent, use_return_symbol(n->_if.consequent, ret_sym, r));
 			put(n, _if.alternate, use_return_symbol(n->_if.alternate, ret_sym, r));
 			
-			struct symbol *cond_ret_sym = make_symbol(dynamic_storage, local_scope, defined_state, NULL, r);
+			struct symbol *cond_ret_sym = make_symbol(dynamic_storage, local_scope, defined_state, NULL, NULL, r);
 			emit(use_return_symbol(n->_if.condition, cond_ret_sym, r), r);
 			put(n, _if.condition, use_symbol(cond_ret_sym, r));
 			emit(n, r);
@@ -250,7 +251,7 @@ union expression *use_return_symbol(union expression *n, struct symbol *ret_sym,
 		} case begin: {
 			union expression **t;
 			foreachaddress(t, n->begin.expressions) {
-				*t = use_return_symbol(*t, make_symbol(dynamic_storage, local_scope, defined_state, NULL, r), r);
+				*t = use_return_symbol(*t, make_symbol(dynamic_storage, local_scope, defined_state, NULL, NULL, r), r);
 				(*t)->base.parent = n;
 			}
 			return n;
@@ -269,13 +270,6 @@ union expression *vmerge_begins(union expression *n, void *ctx) {
 		list *l = ((void **) ctx)[0];
 		region r = ((void **) ctx)[1];
 		prepend(n, l, r);
-	}
-	return n;
-}
-
-union expression *vshare_symbols(union expression *n, region r) {
-	if(n->base.type == reference && !n->reference.symbol) {
-		n->reference.symbol = n->reference.referent->reference.symbol;
 	}
 	return n;
 }

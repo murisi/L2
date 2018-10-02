@@ -31,7 +31,6 @@ Object *load_expressions(union expression *program, struct expansion_context *ec
 	visit_expressions(vescape_analysis, &program, NULL);
 	program = use_return_symbol(program, NULL, manreg);
 	classify_program_symbols(program->function.expression);
-	visit_expressions(vshare_symbols, &program, manreg);
 	visit_expressions(vlayout_frames, &program->function.expression, manreg);
 	visit_expressions(vgenerate_references, &program, manreg);
 	visit_expressions(vgenerate_continuation_expressions, &program, manreg);
