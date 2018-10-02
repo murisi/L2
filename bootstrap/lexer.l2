@@ -1,22 +1,22 @@
-(function char-init (s r p) (use-memo $p (`(storage _ (null) (char (,[<fst $s])))$r)))
+(function char-init (s r p) (use-memo $p (`(storage _ (null) (char (,[@fst $s])))$r)))
 
 (function character-struct (l r p) (use-memo $p (`[* &2(unit)]$r)))
 
-(function cs-list-flag (l r p) (use-memo $p (`[+(,[<fst $l])&0]$r)))
+(function cs-list-flag (l r p) (use-memo $p (`[+(,[@fst $l])&0]$r)))
 
-(function <cs-list-flag (l r p) (use-memo $p (`[get[+(,[<fst $l])&0]]$r)))
+(function @cs-list-flag (l r p) (use-memo $p (`[get[+(,[@fst $l])&0]]$r)))
 
-(function cs-list-flag< (l r p) (use-memo $p (`[set[+(,[<fst $l])&0](,[<frst $l])]$r)))
+(function cs-list-flag< (l r p) (use-memo $p (`[set[+(,[@fst $l])&0](,[@frst $l])]$r)))
 
-(function cs-character (l r p) (use-memo $p (`[+(,[<fst $l])(unit)]$r)))
+(function cs-character (l r p) (use-memo $p (`[+(,[@fst $l])(unit)]$r)))
 
-(function <cs-character (l r p) (use-memo $p (`[get[+(,[<fst $l])(unit)]]$r)))
+(function @cs-character (l r p) (use-memo $p (`[get[+(,[@fst $l])(unit)]]$r)))
 
-(function cs-character< (l r p) (use-memo $p (`[set[+(,[<fst $l])(unit)](,[<frst $l])]$r)))
+(function cs-character< (l r p) (use-memo $p (`[set[+(,[@fst $l])(unit)](,[@frst $l])]$r)))
 
 (function sexpr-struct (l r p) (use-memo $p (`[* &2(unit)]$r)))
 
-(function i/f:char= (a b) [= (<cs-character $a) (<cs-character $b)])
+(function i/f:char= (a b) [= (@cs-character $a) (@cs-character $b)])
 
 (storage characters
 	&0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 (char-init !) (char-init ")
@@ -31,7 +31,7 @@
 	(char-init m) (char-init n) (char-init o) (char-init p) (char-init q) (char-init r) (char-init s) (char-init t) (char-init u)
 	(char-init v) (char-init w) (char-init x) (char-init y) (char-init z) &0 (char-init |) &0 (char-init ~) &0)
 
-(function character (s r p) (use-memo $p (`($(loc characters (,[<fst $s]) (unit)))$r)))
+(function character (s r p) (use-memo $p (`($(loc characters (,[@fst $s]) (unit)))$r)))
 
 (function build-symbol (str r) (with return
 	(let (sexprs nil) (begin
@@ -78,7 +78,7 @@
 				(begin
 					[set $pos [+ $$pos &1]]
 					{return (switch = $c
-						((lparen) [<cdr [build-fragment-list (" expression) (rparen) $l2src $l2src-sz $pos $r $handler]])
+						((lparen) [@cdr [build-fragment-list (" expression) (rparen) $l2src $l2src-sz $pos $r $handler]])
 						((lbrace) [build-fragment-list (" jump) (rbrace) $l2src $l2src-sz $pos $r $handler])
 						((lbracket) [build-fragment-list (" invoke) (rbracket) $l2src $l2src-sz $pos $r $handler])
 						((char $) [build-sigilled-symbol (" $) $l2src $l2src-sz $pos $r $handler])
@@ -96,12 +96,12 @@
 							[set $pos [- $$pos &1]]
 							{return $l})))}))))))
 
-(function i/f:symbol? (d) (and [length $d] (not [list-flag [<car $d]])))
+(function i/f:symbol? (d) (and [length $d] (not [list-flag [@car $d]])))
 
 (function to-string (d r) (with return
 	(let (str [region-alloc $r [+ [length $d] &1]]) (i &0) (begin
 		(foreach (t $d) (begin
-			[setb [+ $str $i] (<cs-character $t)]
+			[setb [+ $str $i] (@cs-character $t)]
 			[set i [+ $i &1]]))
 		[setb [+ $str $i] (null)]
 		{return $str}))))
@@ -110,12 +110,12 @@
 	[write-char (stdout) (lparen)]
 	(if [nil? $d] (begin) (begin
 		(if [symbol? $d]
-			[write-char (stdout) (<cs-character [<car $d])]
-			[print-fragment [<car $d]])
+			[write-char (stdout) (@cs-character [@car $d])]
+			[print-fragment [@car $d]])
 		[write-char (stdout) (space)]
 		[write-char (stdout) (char .)]
 		[write-char (stdout) (space)]
-		[print-fragment [<cdr $d]]))
+		[print-fragment [@cdr $d]]))
 	[write-char (stdout) (rparen)]))
 
 [write-str (stdout) (" Starting here:(lf))]

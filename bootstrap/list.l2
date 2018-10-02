@@ -1,30 +1,30 @@
 (function meta:zip (a b r) (with return
 	{(continuation aux (output a b)
 		(if (not [emt? $a])
-			{aux [lst [llst [<fst $a] [<fst $b] emt $r] $output $r] [<rst $a] [<rst $b]}
+			{aux [lst [llst [@fst $a] [@fst $b] emt $r] $output $r] [@rst $a] [@rst $b]}
 			{return [meta:reverse $output $r]})) emt $a $b}))
 
 (function foreach (s r p) (use-memo $p
-	(let (bindings [meta:reverse [<rst [meta:reverse $s $r]] $r]) (body [<fst [meta:reverse $s $r]])
+	(let (bindings [meta:reverse [@rst [meta:reverse $s $r]] $r]) (body [@fst [meta:reverse $s $r]])
 			(labels (with return {(continuation aux (index-refs ref input-pairs)
 				(if (not [emt? $input-pairs])
 					{aux [lst $ref $index-refs $r]
 						[meta:reverse [lst -1- [meta:reverse $ref $r]$r]$r]
-						[<rst $input-pairs]}
-					{return [meta:reverse $index-refs $r]})) emt (` foreach:v $r) [<rst [meta:reverse $s $r]]}))
+						[@rst $input-pairs]}
+					{return [meta:reverse $index-refs $r]})) emt (` foreach:v $r) [@rst [meta:reverse $s $r]]}))
 		[lst (` let $r) [meta:reverse [lst
 			(`(while (not [emt? $foreach:v]) (,[llst (` begin $r)
-				[lst (` let $r) [meta:reverse [lst $body [meta:map [meta:zip [meta:map $bindings (null) <fst $r] $labels $r]
-						$r (function make-binding (a r) (`((,[<fst $a]) [<car ($(,[<frst $a]))])$r))$r]$r]$r]$r]
-				[meta:map $labels $r (function make-update (a r) (`[set ,$a [<cdr $,$a]]$r))$r]$r]))$r)
-			[meta:zip $labels [meta:map $bindings (null) <frst $r]$r]$r]$r]$r])))
+				[lst (` let $r) [meta:reverse [lst $body [meta:map [meta:zip [meta:map $bindings (null) @fst $r] $labels $r]
+						$r (function make-binding (a r) (`((,[@fst $a]) [@car ($(,[@frst $a]))])$r))$r]$r]$r]$r]
+				[meta:map $labels $r (function make-update (a r) (`[set ,$a [@cdr $,$a]]$r))$r]$r]))$r)
+			[meta:zip $labels [meta:map $bindings (null) @frst $r]$r]$r]$r]$r])))
 
 (function foreach* (s r p) (use-memo $p
-	(let (bindings [meta:reverse [<rst [meta:reverse $s $r]]$r]) (body [<fst [meta:reverse $s $r]])
+	(let (bindings [meta:reverse [@rst [meta:reverse $s $r]]$r]) (body [@fst [meta:reverse $s $r]])
 		[lst (` let $r) [meta:reverse [lst
-			(`(while (not [emt? ($($(,[<ffst $bindings])))]) (,[llst (` begin $r) $body
+			(`(while (not [emt? ($($(,[@ffst $bindings])))]) (,[llst (` begin $r) $body
 				[meta:map $bindings $r (function make-update (a r)
-					(`[set (,[<fst $a]) [cdr ($($(,[<fst $a])))]]$r))$r]$r]))$r)
+					(`[set (,[@fst $a]) [cdr ($($(,[@fst $a])))]]$r))$r]$r]))$r)
 			$bindings $r]$r]$r])))
 
 (function list-struct (l r) (`[* &2(unit)]$r))
@@ -33,29 +33,29 @@
 
 (function cdr (l) [+ $l (unit)])
 
-(function <car (l) ($[car $l]))
+(function @car (l) ($[car $l]))
 
-(function <cdr (l) ($[cdr $l]))
+(function @cdr (l) ($[cdr $l]))
 
-(function <cddr (l) [<cdr [<cdr $l]])
+(function @cddr (l) [@cdr [@cdr $l]])
 
-(function <cdddr (l) [<cdr [<cddr $l]])
+(function @cdddr (l) [@cdr [@cddr $l]])
 
-(function <cddddr (l) [<cdr [<cdddr $l]])
+(function @cddddr (l) [@cdr [@cdddr $l]])
 
-(function <cdddddr (l) [<cdr [<cddddr $l]])
+(function @cdddddr (l) [@cdr [@cddddr $l]])
 
-(function <cddddddr (l) [<cdr [<cdddddr $l]])
+(function @cddddddr (l) [@cdr [@cdddddr $l]])
 
-(function <cadr (l) [<car [<cdr $l]])
+(function @cadr (l) [@car [@cdr $l]])
 
-(function <caddr (l) [<car [<cddr $l]])
+(function @caddr (l) [@car [@cddr $l]])
 
-(function <cadddr (l) [<car [<cdddr $l]])
+(function @cadddr (l) [@car [@cdddr $l]])
 
-(function <caddddr (l) [<car [<cddddr $l]])
+(function @caddddr (l) [@car [@cddddr $l]])
 
-(function <cadddddr (l) [<car [<cdddddr $l]])
+(function @cadddddr (l) [@car [@cdddddr $l]])
 
 (function car< (l v) [set [car $l] $v])
 
@@ -63,7 +63,7 @@
 
 (storage nil nil (null))
 
-(function nil? (l) [= [<cdr $l] (null)])
+(function nil? (l) [= [@cdr $l] (null)])
 
 (function append (data l r) (with return (begin
 	(while (not [nil? $$l]) [set l [cdr $$l]])
@@ -92,12 +92,12 @@
 (function length (l) (with return
 	{(continuation loop (l size)
 		(if (not [nil? $l])
-			{loop [<cdr $l] [+ &1 $size]}
+			{loop [@cdr $l] [+ &1 $size]}
 			{return $size})) $l &0}))
 
 (function find (pred l ctx) (with return (begin
 	(foreach* (s $l)
-		(if [$pred [<fst $$s] $ctx] {return $s} (begin)))
+		(if [$pred [@fst $$s] $ctx] {return $s} (begin)))
 	{return (null)})))
 
 (function reverse (l r) (with return

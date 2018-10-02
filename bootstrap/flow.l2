@@ -6,31 +6,31 @@
 	{(continuation loop (l sexpr)
 			(if [nil? $l]
 				{return $sexpr}
-				{loop [<rst $l] (`(let (or:temp (,[<fst $l])) (if $or:temp $or:temp (, $sexpr $r)))$r)}))
+				{loop [@rst $l] (`(let (or:temp (,[@fst $l])) (if $or:temp $or:temp (, $sexpr $r)))$r)}))
 		[meta:reverse $l $r] (`(false)$r)})))
 
 (function and (l r p) (use-memo $p (with return
 	{(continuation loop (l sexpr)
 			(if [nil? $l]
 				{return $sexpr}
-				{loop [<rst $l] (`(let (and:temp (,[<fst $l])) (if $and:temp (, $sexpr $r) $and:temp))$r)}))
+				{loop [@rst $l] (`(let (and:temp (,[@fst $l])) (if $and:temp (, $sexpr $r) $and:temp))$r)}))
 		[meta:reverse $l $r] (`(true)$r)})))
 
-(function not (l r p) (use-memo $p (`(if (,[<fst $l]) &0 &1)$r)))
+(function not (l r p) (use-memo $p (`(if (,[@fst $l]) &0 &1)$r)))
 
 (function meta:reverse (l r)
 	(with return
 		{(continuation _ (l reversed)
 			(if [emt? $l]
 				{return $reversed}
-				{_ [<rst $l] [lst [<fst $l] $reversed $r]})) $l emt}))
+				{_ [@rst $l] [lst [@fst $l] $reversed $r]})) $l emt}))
 
 (function meta:map (l ctx mapper r)
 	(with return
 		{(continuation aux (in out)
 			(if [emt? $in]
 				{return [meta:reverse $out $r]}
-				{aux [<rst $in] [lst [$mapper [<fst $in] $ctx] $out $r]})) $l emt}))
+				{aux [@rst $in] [lst [$mapper [@fst $in] $ctx] $out $r]})) $l emt}))
 
 (++ The following function implements variable binding by do the following
 	transformation:
@@ -44,8 +44,8 @@
 (function let (l r p) (use-memo $p
 	(`(with let:return
 		(,[llst (` jump $r) (`(continuation let:aux
-			(,[meta:map [<rst [meta:reverse $l $r]] (null) <fst $r])
-			{let:return (,[<fst [meta:reverse $l $r]])}) $r) [meta:map [<rst [meta:reverse $l $r]] (null) <frst $r] $r])) $r)))
+			(,[meta:map [@rst [meta:reverse $l $r]] (null) @fst $r])
+			{let:return (,[@fst [meta:reverse $l $r]])}) $r) [meta:map [@rst [meta:reverse $l $r]] (null) @frst $r] $r])) $r)))
 
 (function do-let (l r p) (use-memo $p [let [meta:reverse $l $r]$r emt]))
 
@@ -65,36 +65,36 @@
 						expr0)))))
 
 (function switch (l r p) (use-memo $p
-	(`(let (switch:= (,[<fst $l])) (switch:val (,[<frst $l]))
+	(`(let (switch:= (,[@fst $l])) (switch:val (,[@frst $l]))
 		(,(with return
 			{(continuation aux (remaining else-clause)
 				(if [emt? $remaining]
 					{return $else-clause}
-					{aux [<rst $remaining]
-						(`(if (,[llllst (` invoke $r) (` $switch:= $r) (` $switch:val $r) [<ffst $remaining] emt $r])
-							(,[<frfst $remaining]) ,$else-clause) $r)}))
-				[<rst [meta:reverse [<rrst $l] $r]] [<fst [meta:reverse $l $r]]})))$r)))
+					{aux [@rst $remaining]
+						(`(if (,[llllst (` invoke $r) (` $switch:= $r) (` $switch:val $r) [@ffst $remaining] emt $r])
+							(,[@frfst $remaining]) ,$else-clause) $r)}))
+				[@rst [meta:reverse [@rrst $l] $r]] [@fst [meta:reverse $l $r]]})))$r)))
 
 (function while (l r p) (use-memo $p
 	(`(with while:return {(continuation while:aux (while:val)
-		(if (,[<fst $l]) {while:aux (,[<frst $l])} {while:return $while:val})) (begin)})$r)))
+		(if (,[@fst $l]) {while:aux (,[@frst $l])} {while:return $while:val})) (begin)})$r)))
 
 (function do-while (l r p) (use-memo $p
 	(`(with do-while:return {(continuation do-while:aux (do-while:val)
-			(if (,[<frst $l]) {do-while:aux (,[<fst $l])} {do-while:return $do-while:val}))
-		(,[<fst $l])})$r)))
+			(if (,[@frst $l]) {do-while:aux (,[@fst $l])} {do-while:return $do-while:val}))
+		(,[@fst $l])})$r)))
 
 (function array (l)
-	(if [emt? [<rrst $l]]
-		(`(with return [allocate [* (,[<fst $l]) (,[<frst $l])] return]))
-		(`(with return [allocate [* (,[<fst $l]) [words]]
+	(if [emt? [@rrst $l]]
+		(`(with return [allocate [* (,[@fst $l]) (,[@frst $l])] return]))
+		(`(with return [allocate [* (,[@fst $l]) [words]]
 			(continuation cont (arg)
 				(begin
-				(for (i &0 (,[<fst $l])) [set (loc $arg $i [words]) (,[array [<rst $l]])])
+				(for (i &0 (,[@fst $l])) [set (loc $arg $i [words]) (,[array [@rst $l]])])
 				{return $arg}))]))))
 
 (function iter (l r p) (use-memo $p
-	(`(with iter:return {(continuation iter:aux ((,[<ffst $l]))
-		(if (,[<frst $l])
+	(`(with iter:return {(continuation iter:aux ((,[@ffst $l]))
+		(if (,[@frst $l])
 			{iter:return (begin)}
-			(begin (,[<frrrst $l]) {iter:aux (,[<frrst $l])}))) (,[<frfst $l])})$r)))
+			(begin (,[@frrrst $l]) {iter:aux (,[@frrst $l])}))) (,[@frfst $l])})$r)))
