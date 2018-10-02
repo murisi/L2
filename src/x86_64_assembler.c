@@ -526,3 +526,19 @@ void write_elf(list generated_expressions, list symbols, unsigned char **bin, in
 	mem_write(*bin, pos, relas, (rela_ptr - relas) * sizeof(Elf64_Rela));
 	destroy_region(temp_reg);
 }
+
+void symbol_offsets_to_addresses(list asms, list symbols, Object *obj) {
+	struct symbol *sym;
+	{foreach(sym, symbols) {
+		if(sym->type == static_storage && sym->state == defined_state) {
+			sym->offset += (unsigned long) segment(obj, ".bss");
+		}
+	}}
+	union expression *l;
+	{foreach(l, asms) {
+		if(l->assembly.opcode == LABEL) {
+			union expression *label_ref = l->assembly.arguments->fst;
+			label_ref->reference.symbol->offset += (unsigned long) segment(obj, ".text");
+		}
+	}}
+}

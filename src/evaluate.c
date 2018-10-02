@@ -47,21 +47,11 @@ Object *load_expressions(union expression *program, struct expansion_context *ec
 	program = generate_toplevel(program, manreg);
 	list asms = nil;
 	visit_expressions(vlinearized_expressions, &program, (void* []) {&asms, manreg});
+	asms = reverse(asms, manreg);
 	unsigned char *objdest; int objdest_sz;
-	write_elf(reverse(asms, manreg), symbols, &objdest, &objdest_sz, manreg);
+	write_elf(asms, symbols, &objdest, &objdest_sz, manreg);
 	Object *obj = load(objdest, objdest_sz, ectx->rt_reg, ectx->handler);
-	struct symbol *sym;
-	{foreach(sym, symbols) {
-		if(sym->type == static_storage && sym->state == defined_state) {
-			sym->offset += (unsigned long) segment(obj, ".bss");
-		}
-	}}
-	{foreach(l, asms) {
-		if(l->assembly.opcode == LABEL) {
-			union expression *label_ref = l->assembly.arguments->fst;
-			label_ref->reference.symbol->offset += (unsigned long) segment(obj, ".text");
-		}
-	}}
+	symbol_offsets_to_addresses(asms, symbols, obj);
 	return obj;
 }
 
