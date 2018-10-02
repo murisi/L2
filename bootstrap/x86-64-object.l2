@@ -12,17 +12,17 @@
 
 (function @segs (l r p) (use-memo $p (`[get[+(,[@fst $l])[* &5(unit)]]]$r)))
 
-(function ehdr< (l r p) (use-memo $p (`[set[+(,[@fst $l])[* &0(unit)]](,[@frst $l])]$r)))
+(function ehdr! (l r p) (use-memo $p (`[set[+(,[@fst $l])[* &0(unit)]](,[@frst $l])]$r)))
 
-(function shdrs< (l r p) (use-memo $p (`[set[+(,[@fst $l])[* &1(unit)]](,[@frst $l])]$r)))
+(function shdrs! (l r p) (use-memo $p (`[set[+(,[@fst $l])[* &1(unit)]](,[@frst $l])]$r)))
 
-(function syms< (l r p) (use-memo $p (`[set[+(,[@fst $l])[* &2(unit)]](,[@frst $l])]$r)))
+(function syms! (l r p) (use-memo $p (`[set[+(,[@fst $l])[* &2(unit)]](,[@frst $l])]$r)))
 
-(function relas< (l r p) (use-memo $p (`[set[+(,[@fst $l])[* &3(unit)]](,[@frst $l])]$r)))
+(function relas! (l r p) (use-memo $p (`[set[+(,[@fst $l])[* &3(unit)]](,[@frst $l])]$r)))
 
-(function addends< (l r p) (use-memo $p (`[set[+(,[@fst $l])[* &4(unit)]](,[@frst $l])]$r)))
+(function addends! (l r p) (use-memo $p (`[set[+(,[@fst $l])[* &4(unit)]](,[@frst $l])]$r)))
 
-(function segs< (l r p) (use-memo $p (`[set[+(,[@fst $l])[* &5(unit)]](,[@frst $l])]$r)))
+(function segs! (l r p) (use-memo $p (`[set[+(,[@fst $l])[* &5(unit)]](,[@frst $l])]$r)))
 
 (function do-relocations (obj handler) (iter (sec-idx &0) [= $sec-idx (@e-shnum(@ehdr $obj))] [+ $sec-idx &1]
 	(let (shdr-buf (loc (@shdrs $obj) $sec-idx (elf64-shdr)))
@@ -82,12 +82,12 @@
 					(iter (rela-idx &0) [= $rela-idx $relanum] [+ $rela-idx &1]
 						(let (rela (loc $relas-buf $rela-idx (elf64-rela)))
 								(target-seg-addr ($(loc (@segs $obj) (@sh-info $shdr-buf) (unit))))
-							(r-offset< $rela [+ $target-seg-addr (@r-offset $rela)]))))
+							(r-offset! $rela [+ $target-seg-addr (@r-offset $rela)]))))
 			(if [= (@sh-type $shdr-buf) (sht-symtab)]
 				(let (symnum [/ (@sh-size $shdr-buf) (@sh-entsize $shdr-buf)]) (syms-buf ($(loc (@syms $obj) $sec-idx (unit))))
 					(iter (sym-idx &0) [= $sym-idx $symnum] [+ $sym-idx &1]
 						(let (sym (loc $syms-buf $sym-idx (elf64-sym)))
-							(st-value< $sym (switch = (@st-shndx $sym)
+							(st-value! $sym (switch = (@st-shndx $sym)
 								((shn-abs) (@st-value $sym))
 								((shn-common) &0)
 								((shn-undef) &0)
@@ -97,13 +97,13 @@
 
 (function read-object (objsrc objsrc-sz reg handler) (with return
 	(let (obj [region-alloc $reg (object)]) (begin
-		(ehdr< $obj [region-alloc $reg (elf64-ehdr)])
+		(ehdr! $obj [region-alloc $reg (elf64-ehdr)])
 		[memcpy (@ehdr $obj) $objsrc (elf64-ehdr)]
-		(shdrs< $obj [region-alloc $reg [* (@e-shnum(@ehdr $obj)) (elf64-shdr)]])
-		(syms< $obj [region-alloc $reg [* (@e-shnum(@ehdr $obj)) (unit)]])
-		(relas< $obj [region-alloc $reg [* (@e-shnum(@ehdr $obj)) (unit)]])
-		(addends< $obj [region-alloc $reg [* (@e-shnum(@ehdr $obj)) (unit)]])
-		(segs< $obj [region-alloc $reg [* (@e-shnum(@ehdr $obj)) (unit)]])
+		(shdrs! $obj [region-alloc $reg [* (@e-shnum(@ehdr $obj)) (elf64-shdr)]])
+		(syms! $obj [region-alloc $reg [* (@e-shnum(@ehdr $obj)) (unit)]])
+		(relas! $obj [region-alloc $reg [* (@e-shnum(@ehdr $obj)) (unit)]])
+		(addends! $obj [region-alloc $reg [* (@e-shnum(@ehdr $obj)) (unit)]])
+		(segs! $obj [region-alloc $reg [* (@e-shnum(@ehdr $obj)) (unit)]])
 		
 		(iter (sec-idx &0) [= $sec-idx (@e-shnum(@ehdr $obj))] [+ $sec-idx &1]
 			(let (shdr-buf (loc (@shdrs $obj) $sec-idx (elf64-shdr))) (seg-buf (loc (@segs $obj) $sec-idx (unit))) (begin
@@ -147,14 +147,14 @@
 
 (function @address (l r p) (use-memo $p (`[get[+(,[@fst $l])[* &1(unit)]]]$r)))
 
-(function name< (l r p) (use-memo $p (`[set[+(,[@fst $l])[* &0(unit)]](,[@frst $l])]$r)))
+(function name! (l r p) (use-memo $p (`[set[+(,[@fst $l])[* &0(unit)]](,[@frst $l])]$r)))
 
-(function address< (l r p) (use-memo $p (`[set[+(,[@fst $l])[* &1(unit)]](,[@frst $l])]$r)))
+(function address! (l r p) (use-memo $p (`[set[+(,[@fst $l])[* &1(unit)]](,[@frst $l])]$r)))
 
 (function make-symbol (name address reg) (with return
 	(let (sym [region-alloc $reg (symbol)]) (begin
-		(name< $sym $name)
-		(address< $sym $address)
+		(name! $sym $name)
+		(address! $sym $address)
 		{return $sym}))))
 
 (function mutate-symbols (obj updates) (begin
@@ -169,7 +169,7 @@
 										(or [= (@st-shndx $sym) (shn-undef)] [= (@st-shndx $sym) (shn-common)])
 										(or [= (elf64-st-bind (@st-info $sym)) (stb-global)]
 											[= (elf64-st-bind (@st-info $sym)) (stb-weak)]))
-									(st-value< $sym (@address $update))
+									(st-value! $sym (@address $update))
 									(begin)))))
 					(begin)))))
 	(++ If $obj was created using load, the following invocation cannot produce an error; hence the (null) handler argument.)
