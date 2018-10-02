@@ -16,7 +16,7 @@
 
 (function sexpr-struct (l r p) (use-memo $p (`[* &2(unit)]$r)))
 
-(++(function char= (a b) (if [= (<cs-character $a) (<cs-character $b)] (true) (false))))
+(function i/f:char= (a b) [= (<cs-character $a) (<cs-character $b)])
 
 (storage characters
 	&0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 (char-init !) (char-init ")
@@ -78,7 +78,7 @@
 				(begin
 					[set $pos [+ $$pos &1]]
 					{return (switch = $c
-						((lparen) [get-cdr [build-fragment-list (" expression) (rparen) $l2src $l2src-sz $pos $r $handler]])
+						((lparen) [<cdr [build-fragment-list (" expression) (rparen) $l2src $l2src-sz $pos $r $handler]])
 						((lbrace) [build-fragment-list (" jump) (rbrace) $l2src $l2src-sz $pos $r $handler])
 						((lbracket) [build-fragment-list (" invoke) (rbracket) $l2src $l2src-sz $pos $r $handler])
 						((char $) [build-sigilled-symbol (" $) $l2src $l2src-sz $pos $r $handler])
@@ -96,7 +96,7 @@
 							[set $pos [- $$pos &1]]
 							{return $l})))}))))))
 
-(function i/f:symbol? (d) (and [length $d] (not [list-flag [get-car $d]])))
+(function i/f:symbol? (d) (and [length $d] (not [list-flag [<car $d]])))
 
 (function to-string (d r) (with return
 	(let (str [region-alloc $r [+ [length $d] &1]]) (i &0) (begin
@@ -110,12 +110,12 @@
 	[write-char (stdout) (lparen)]
 	(if [nil? $d] (begin) (begin
 		(if [symbol? $d]
-			[write-char (stdout) (<cs-character [get-car $d])]
-			[print-fragment [get-car $d]])
+			[write-char (stdout) (<cs-character [<car $d])]
+			[print-fragment [<car $d]])
 		[write-char (stdout) (space)]
 		[write-char (stdout) (char .)]
 		[write-char (stdout) (space)]
-		[print-fragment [get-cdr $d]]))
+		[print-fragment [<cdr $d]]))
 	[write-char (stdout) (rparen)]))
 
 [write-str (stdout) (" Starting here:(lf))]
