@@ -328,4 +328,76 @@
 			
 		(begin)))
 
+(function build-expression-literal-len (l r p) [mk& $l $r $p &64])
+
+(function build-expression (d reg handler)
+	(if [= [length $d] &0] {handler}
+	(if [i/f:symbol? $d] [make-reference [to-string $d $reg] $reg]
+	(switch streq [to-string [@car $d] $reg]
+		((" with)
+			(if (not [= [length $d] &3])
+				{$handler}
+			(if (not [i/f:symbol? [@cadr $d]])
+				{$handler}
+				[make-with [build-expression [@cadr $d] $reg $handler] [build-expression [@caddr $d] $reg $handler] $reg])))
+		
+		((" begin)
+			(with return (let (exprs nil) (begin
+				(foreach (v [@cdr $d]) [append [build-expression $v $reg $handler] exprs $reg])
+				{return [make-begin $exprs $reg]}))))
+		
+		((" if)
+			(if (not [= [length $d] &4])
+				{$handler}
+				[make-if [build-expression [@cadr $d] $reg $handler] [build-expression [@caddr $d] $reg $handler]
+					[build-expression [@cadddr $d] $reg $handler] $reg]))
+		
+		((" function) (" continuation)
+			(if (not [= [length $d] &4])
+				{$handler}
+			(if (not [i/f:symbol? [@cadr $d]])
+				{$handler}
+			(if [i/f:symbol? [@caddr $d]]
+				{$handler}
+				(with return (let (parameters nil) (begin
+					(foreach (v [@caddr $d])
+						(if [i/f:symbol? $v]
+							[append [build-expression $v $reg $handler] parameters $reg]
+							{$handler}))
+					{return [(switch streq [to-string [@car $d] $reg]
+							((" function) make-function)
+							make-continuation)
+						[build-expression [@cadr $d] $reg $handler] $parameters [build-expression [@cadddr $d] $reg $handler]
+							$reg]})))))))
+		
+		((" literal)
+			(if (not [= [length $d] &2])
+				{$handler}
+			(if (or (not [i/f:symbol? [@cadr $d]]) (not [= [length [@cadr $d]] (build-expression-literal-len)]))
+				{$handler}
+				[make-literal (with return
+					{(continuation loop (str i value) (begin
+						[set value [<< $value &1]]
+						(if [= $i &0]
+							{return $value}
+						(if [= [getb $str] (char 1)]
+							{loop [+ $str &1] [- $i &1] [+ $value &1]}
+						(if [= [getb $str] (char 0)]
+							{loop [+ $str &1] [- $i &1] $value}
+							{$handler}))))) [to-string [@cadr $d] $reg] (build-expression-literal-len) &0}) $reg])))
+		
+		[make-non-primitive [build-expression [@car $d] $reg $handler] [@cdr $d] $reg]))))
+
 (let (r [create-region &0]) [print-expression [make-begin [llst [make-reference (" Hellodude) $r] [make-literal &20 $r] nil $r] $r]])
+
+[write-str (stdout) (" Starting here:(lf))]
+
+(let (r [create-region &0]) (pos &0)
+	(do-let (begin
+			[write-str (stdout) (" (lparen)l(lbrace)lokay(rbrace)a(rparen)o)]
+			[print-fragment [build-fragment (" (lparen)l(lbrace)lokay(rbrace)a(rparen)o) &18 pos $r $handler]]
+			[build-symbol (" Hello) $r])
+		(handler (continuation _ (code src character pos) (begin
+			[write-str (stdout) (" Error occured.)]
+			[destroy-region $r]
+			[exit &1])))))

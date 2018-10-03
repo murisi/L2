@@ -558,7 +558,9 @@ void print_expression(union expression *s) {
  */
 
 union expression *build_expression(list d, region reg, jumpbuf *handler) {
-	if(is_symbol(d)) {
+	if(length(d) == 0) {
+		throw_special_form(d, NULL, handler);
+	} else if(is_symbol(d)) {
 		return make_reference(to_string(d, reg), reg);
 	} else if(!strcmp(to_string(d->fst, reg), "with")) {
 		if(length(d) != 3) {
@@ -568,10 +570,9 @@ union expression *build_expression(list d, region reg, jumpbuf *handler) {
 		}
 		return make_with(build_expression(d->frst, reg, handler), build_expression(d->frrst, reg, handler), reg);
 	} else if(!strcmp(to_string(d->fst, reg), "begin")) {
-		list t = d->rst;
 		list v;
 		list exprs = nil;
-		{foreach(v, t) {
+		{foreach(v, d->rst) {
 			append(build_expression(v, reg, handler), &exprs, reg);
 		}}
 		return make_begin(exprs, reg);
@@ -586,7 +587,7 @@ union expression *build_expression(list d, region reg, jumpbuf *handler) {
 			throw_special_form(d, NULL, handler);
 		} else if(!is_symbol(d->frst)) {
 			throw_special_form(d, d->frst, handler);
-		} else if(!is_nil(d->frrst) && is_symbol(d->frrst)) {
+		} else if(is_symbol(d->frrst)) {
 			throw_special_form(d, d->frrst, handler);
 		}
 		
@@ -594,9 +595,9 @@ union expression *build_expression(list d, region reg, jumpbuf *handler) {
 		list v;
 		foreach(v, d->frrst) {
 			if(!is_symbol(v)) {
-				throw_special_form(d, (list) v, handler);
+				throw_special_form(d, v, handler);
 			}
-			append(build_expression((list) v, reg, handler), &parameters, reg);
+			append(build_expression(v, reg, handler), &parameters, reg);
 		}
 		union expression *(*fptr)(union expression *, list, union expression *, region) =
 			!strcmp(to_string(d->fst, reg), "function") ? make_function : make_continuation;
