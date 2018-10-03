@@ -241,4 +241,60 @@
 		(foreach (arg $args) (expr-parent! $arg $u))
 		{return $u}))))
 
-(let (r [create-region &0]) [make-literal &20 $r])
+(function make-program (exprs r) (with return
+	(let (program [make-function [make-reference (null) $r] nil [make-begin $exprs $r] $r]) (begin
+		(expr-parent! $program (null))
+		(foreach (expr $exprs)
+			(if (or [= (@expr-type $expr) (-function-)] [= (@expr-type $expr) (-storage-)])
+				(sym-scope! (@expr-symbol(@expr-reference $expr)) (-global-scope-))
+				(begin)))
+		{return $program}))))
+
+(function print-expression (s)
+	(switch = (@expr-type $s)
+		((-begin-) (begin
+			[write-str (stdout) (" (lparen)begin(space))]
+			(foreach (t (@expr-expressions $s)) (begin
+				[print-expression $t]
+				[write-str (stdout) (" (space))]))
+			[write-str (stdout) (" (bs)(rparen))]))
+		
+		((-with-) (begin
+			[write-str (stdout) (" (lparen)with(space))]
+			[print-expression (@expr-reference $s)]
+			[write-str (stdout) (" (space))]
+			[print-expression (@expr-expression $s)]
+			[write-str (stdout) (" (rparen))]))
+			
+		((-if-) (begin
+			[write-str (stdout) (" (lparen)if(space))]
+			[print-expression (@expr-condition $s)]
+			[write-str (stdout) (" (space))]
+			[print-expression (@expr-consequent $s)]
+			[write-str (stdout) (" (space))]
+			[print-expression (@expr-alternate $s)]
+			[write-str (stdout) (" (rparen))]))
+		
+		((-reference-)
+			(if (@expr-name $s)
+				[write-str (stdout) (@expr-name $s)]
+				(begin
+					[write-str (stdout) (" (lparen)reference(space))]
+					[write-uint (stdout) (@expr-symbol $s)]
+					[write-str (stdout) (" (rparen))])))
+					
+		((-literal-) (begin
+			[write-str (stdout) (" (lparen)literal(space))]
+			[write-uint (stdout) (@expr-value $s)]
+			[write-str (stdout) (" (rparen))]))
+		
+		((-non-primitive-) (begin
+			[write-str (stdout) (" (lparen))]
+			[print-expression (@expr-reference $s)]
+			[write-str (stdout) (" (space))]
+			[print-fragment (@expr-argument $s)]
+			[write-str (stdout) (" (rparen))]))
+			
+		(begin)))
+
+(let (r [create-region &0]) [print-expression [make-begin [llst [make-reference (" Hellodude) $r] [make-literal &20 $r] nil $r] $r]])
