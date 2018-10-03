@@ -1,0 +1,244 @@
+(function -storage- (l r p) [mk& $l $r $p &0])
+(function -function- (l r p) [mk& $l $r $p &1])
+(function -with- (l r p) [mk& $l $r $p &2])
+(function -invoke- (l r p) [mk& $l $r $p &3])
+(function -if- (l r p) [mk& $l $r $p &4])
+(function -begin- (l r p) [mk& $l $r $p &5])
+(function -literal- (l r p) [mk& $l $r $p &6])
+(function -reference- (l r p) [mk& $l $r $p &7])
+(function -jump- (l r p) [mk& $l $r $p &8])
+(function -continuation- (l r p) [mk& $l $r $p &9])
+(function -assembly- (l r p) [mk& $l $r $p &10])
+(function -non-primitive- (l r p) [mk& $l $r $p &11])
+
+(function -static-storage- (l r p) [mk& $l $r $p &0])
+(function -dynamic-storage- (l r p) [mk& $l $r $p &1])
+
+(function -local-scope- (l r p) [mk& $l $r $p &0])
+(function -global-scope- (l r p) [mk& $l $r $p &1])
+
+(function -undefined-state- (l r p) [mk& $l $r $p &0])
+(function -defined-state- (l r p) [mk& $l $r $p &1])
+
+(function symbol (l r p) [mk& $l $r $p &48])
+
+(function @sym-name (l r p) [mk@ $l $r $p &0 &8])
+(function @sym-offset (l r p) [mk@ $l $r $p &8 &8])
+(function @sym-size (l r p) [mk@ $l $r $p &16 &8])
+(function @sym-definition (l r p) [mk@ $l $r $p &24 &8])
+(function @sym-context (l r p) [mk@ $l $r $p &32 &8])
+(function @sym-type (l r p) [mk@ $l $r $p &40 &1])
+(function @sym-scope (l r p) [mk@ $l $r $p &41 &1])
+(function @sym-state (l r p) [mk@ $l $r $p &42 &1])
+
+(function sym-name! (l r p) [mk! $l $r $p &0 &8])
+(function sym-offset! (l r p) [mk! $l $r $p &8 &8])
+(function sym-size! (l r p) [mk! $l $r $p &16 &8])
+(function sym-definition! (l r p) [mk! $l $r $p &24 &8])
+(function sym-context! (l r p) [mk! $l $r $p &32 &8])
+(function sym-type! (l r p) [mk! $l $r $p &40 &1])
+(function sym-scope! (l r p) [mk! $l $r $p &41 &1])
+(function sym-state! (l r p) [mk! $l $r $p &42 &1])
+
+(function make-symbol (type scope state name definition r) (with return
+	(let (sym [region-alloc $r (symbol)]) (begin
+		(sym-type! $sym $type)
+		(sym-scope! $sym $scope)
+		(sym-state! $sym $state)
+		(sym-name! $sym $name)
+		(sym-definition! $sym $definition)
+		{return $sym}))))
+
+(function expression (l r p) [mk& $l $r $p &64])
+(function @expr-type (l r p) [mk@ $l $r $p &0 &8])
+(function @expr-parent (l r p) [mk@ $l $r $p &8 &16])
+(function @expr-return-symbol (l r p) [mk@ $l $r $p &16 &8])
+(++ Only for type(s) (-begin-))
+(function @expr-expressions (l r p) [mk@ $l $r $p &24 &8])
+(++ Only for type(s) (-assembly-))
+(function @expr-opcode (l r p) [mk@ $l $r $p &24 &8])
+(++ Only for type(s) (-assembly-) (-storage-) (-invoke-) (-jump-))
+(function @expr-arguments (l r p) [mk@ $l $r $p &32 &8])
+(++ Only for type(s) (-storage-) (-invoke-) (-jump-) (-function-) (-continuation-) (-with-) (-non-primitive-))
+(function @expr-reference (l r p) [mk@ $l $r $p &24 &8])
+(++ Only for type(s) (-jump-))
+(function @expr-short-circuit (l r p) [mk@ $l $r $p &40 &8])
+(++ Only for type(s) (-if-))
+(function @expr-condition (l r p) [mk@ $l $r $p &24 &8])
+(function @expr-consequent (l r p) [mk@ $l $r $p &32 &8])
+(function @expr-alternate (l r p) [mk@ $l $r $p &40 &8])
+(++ Only for type(s) (-literal-))
+(function @expr-value (l r p) [mk@ $l $r $p &24 &8])
+(++ Only for type(s) (-function-) (-continuation-) (-with-))
+(function @expr-expression (l r p) [mk@ $l $r $p &32 &8])
+(function @expr-parameters (l r p) [mk@ $l $r $p &40 &8])
+(++ Only for type(s) (-function-))
+(function @expr-symbols (l r p) [mk@ $l $r $p &48 &8])
+(function @expr-expression-return-symbol (l r p) [mk@ $l $r $p &56 &8])
+(++ Only for type(s) (-continuation-) (-with-))
+(function @expr-cont-instr-ref (l r p) [mk@ $l $r $p &48 &8])
+(function @expr-escapes (l r p) [mk@ $l $r $p &56 &8])
+(++ Only for type(s) (-reference-))
+(function @expr-name (l r p) [mk@ $l $r $p &24 &8])
+(function @expr-symbol (l r p) [mk@ $l $r $p &32 &8])
+(++ Only for type(s) (-non-primitive-))
+(function @expr-argument (l r p) [mk@ $l $r $p &32 &8])
+(function @expr-indirections (l r p) [mk@ $l $r $p &40 &8])
+(function @expr-st-binds (l r p) [mk@ $l $r $p &48 &8])
+(function @expr-dyn-refs (l r p) [mk@ $l $r $p &56 &8])
+
+(function expr-type! (l r p) [mk! $l $r $p &0 &8])
+(function expr-parent! (l r p) [mk! $l $r $p &8 &16])
+(function expr-return-symbol! (l r p) [mk! $l $r $p &16 &8])
+(function expr-expressions! (l r p) [mk! $l $r $p &24 &8])
+(function expr-opcode! (l r p) [mk! $l $r $p &24 &8])
+(function expr-arguments! (l r p) [mk! $l $r $p &32 &8])
+(function expr-reference! (l r p) [mk! $l $r $p &24 &8])
+(function expr-short-circuit! (l r p) [mk! $l $r $p &40 &8])
+(function expr-condition! (l r p) [mk! $l $r $p &24 &8])
+(function expr-consequent! (l r p) [mk! $l $r $p &32 &8])
+(function expr-alternate! (l r p) [mk! $l $r $p &40 &8])
+(function expr-value! (l r p) [mk! $l $r $p &24 &8])
+(function expr-expression! (l r p) [mk! $l $r $p &32 &8])
+(function expr-parameters! (l r p) [mk! $l $r $p &40 &8])
+(function expr-symbols! (l r p) [mk! $l $r $p &48 &8])
+(function expr-expression-return-symbol! (l r p) [mk! $l $r $p &56 &8])
+(function expr-cont-instr-ref! (l r p) [mk! $l $r $p &48 &8])
+(function expr-escapes! (l r p) [mk! $l $r $p &56 &8])
+(function expr-name! (l r p) [mk! $l $r $p &24 &8])
+(function expr-symbol! (l r p) [mk! $l $r $p &32 &8])
+(function expr-argument! (l r p) [mk! $l $r $p &32 &8])
+(function expr-indirections! (l r p) [mk! $l $r $p &40 &8])
+(function expr-st-binds! (l r p) [mk! $l $r $p &48 &8])
+(function expr-dyn-refs! (l r p) [mk! $l $r $p &56 &8])
+
+(function make-literal (value reg) (with return
+	(let (t [region-alloc $reg (expression)]) (begin
+		(expr-type! $t (-literal-))
+		(expr-value! $t $value)
+		{return $t}))))
+
+(function make-reference (name reg) (with return
+	(let (ref [region-alloc $reg (expression)]) (begin
+		(expr-type! $ref (-reference-))
+		(expr-name! $ref $name)
+		(expr-symbol! $ref (null))
+		{return $ref}))))
+
+(function refer-reference (reference referent) (expr-symbol! $reference (@expr-symbol $referent)))
+
+(function use-symbol (sym reg) (with return
+	(let (ref [region-alloc $reg (expression)]) (begin
+		(expr-type! $ref (-reference-))
+		(expr-name! $ref (@sym-name $sym))
+		(expr-symbol! $ref $sym)
+		{return $ref}))))
+
+(function make-begin (expressions reg) (with return
+	(let (beg [region-alloc $reg (expression)]) (begin
+		(expr-type! $beg (-begin-))
+		(expr-expressions! $beg $expressions)
+		(foreach (expr $expressions) (expr-parent! $expr $beg))
+		{return $beg}))))
+
+(function make-function (ref params expr reg) (with return
+	(let (func [region-alloc $reg (expression)]) (begin
+		(expr-type! $func (-function-))
+		(expr-reference! $func $ref)
+		(expr-parent! $ref $func)
+		(expr-symbol! $ref [make-symbol (-static-storage-) (-local-scope-) (-defined-state-) (@expr-name $ref) $ref $reg])
+		(expr-parameters! $func $params)
+		(foreach (param $params) (begin
+			(expr-parent! $param $func)
+			(expr-symbol! $param [make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (@expr-name $ref) $param $reg])))
+		(expr-symbols! $func nil)
+		(expr-expression! $func $expr)
+		(expr-parent! $expr $func)
+		{return $func}))))
+
+(function make-continuation (ref params expr reg) (with return
+	(let (cont [region-alloc $reg (expression)]) (begin
+		(expr-type! $cont (-continuation-))
+		(expr-reference! $cont $ref)
+		(expr-parent! $ref $cont)
+		(expr-symbol! $ref [make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (@expr-name $ref) $ref $reg])
+		(expr-parameters! $cont $params)
+		(foreach (param $params) (begin
+			(expr-parent! $param $cont)
+			(expr-symbol! $param [make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (@expr-name $ref) $param $reg])))
+		(expr-expression! $cont $expr)
+		(expr-parent! $expr $cont)
+		{return $cont}))))
+
+(function make-with (ref expr reg) (with return
+	(let (wth [region-alloc $reg (expression)]) (begin
+		(expr-type! $wth (-with-))
+		(expr-reference! $wth $ref)
+		(expr-parent! $ref $wth)
+		(expr-symbol! $ref [make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (@expr-name $ref) $ref $reg])
+		(let (param [make-reference (null) $reg]) (begin
+			(expr-parent! $param $wth)
+			(expr-symbol! $param [make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (@expr-name $ref) $param $reg])
+			(expr-parameters! [lst $param nil $reg])))
+		(expr-expression! $wth $expr)
+		{return $wth}))))
+
+(function make-asm (opcode arguments reg) (with return
+	(let (u [region-alloc $reg (expression)]) (begin
+		(expr-type! $u (-assembly-))
+		(expr-opcode! $u $opcode)
+		(expr-arguments! $u $arguments)
+		(foreach (arg $arguments) (expr-parent! $arg $u))
+		{return $u}))))
+
+(function make-jump (ref args reg) (with return
+	(let (u [region-alloc $reg (expression)]) (begin
+		(expr-type! $u (-jump-))
+		(expr-reference! $u $ref)
+		(expr-parent! $ref $u)
+		(expr-arguments! $u $args)
+		(foreach (arg $args) (expr-parent! $arg $u))
+		{return $u}))))
+
+(function make-storage (ref args reg) (with return
+	(let (u [region-alloc $reg (expression)]) (begin
+		(expr-type! $u (-storage-))
+		(expr-reference! $u $ref)
+		(expr-parent! $ref $u)
+		(expr-symbol! $ref [make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (@expr-name $ref) $ref $reg])
+		(expr-arguments! $u $args)
+		(foreach (arg $args) (expr-parent! $arg $u))
+		{return $u}))))
+
+(function make-non-primitive (ref arg reg) (with return
+	(let (u [region-alloc $reg (expression)]) (begin
+		(expr-type! $u (-non-primitive-))
+		(expr-reference! $u $ref)
+		(expr-parent! $ref $u)
+		(expr-argument! $u $arg)
+		(expr-indirections! $u nil)
+		(expr-st-binds! $u nil)
+		(expr-dyn-refs! $u nil)
+		{return $u}))))
+
+(function make-if (condition consequent alternate reg) (with return
+	(let (u [region-alloc $reg (expression)]) (begin
+		(expr-type! $u (-if-))
+		(expr-condition! $u $condition)
+		(expr-parent! $condition $u)
+		(expr-consequent! $u $consequent)
+		(expr-parent! $consequent $u)
+		(expr-alternate! $u $alternate)
+		(expr-parent! $alternate $u)
+		{return $u}))))
+
+(function make-invoke (ref args reg) (with return
+	(let (u [region-alloc $reg (expression)]) (begin
+		(expr-type! $u (-invoke-))
+		(expr-reference! $u $ref)
+		(expr-parent! $ref $u)
+		(expr-arguments! $u $args)
+		(foreach (arg $args) (expr-parent! $arg $u))
+		{return $u}))))
+
+(let (r [create-region &0]) [make-literal &20 $r])

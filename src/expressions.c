@@ -59,7 +59,7 @@ struct assembly_expression {
 	union expression *parent;
 	struct symbol *return_symbol;
 	
-	int opcode;
+	unsigned long opcode;
 	list arguments; // void * = union expression *
 };
 
