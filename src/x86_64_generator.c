@@ -67,10 +67,10 @@ union expression *vlayout_frames(union expression *n, region r) {
 			}
 			break;
 		} case continuation: case with: {
-			if(n->continuation.escapes) {
+			//if(n->continuation.escapes) {
 				n->continuation.reference->reference.symbol->size = CONT_SIZE;
 				append(n->continuation.reference->reference.symbol, &get_parent_function(n)->function.symbols, r);
-			}
+			//}
 			union expression *t;
 			foreach(t, n->continuation.parameters) {
 				t->reference.symbol->size = WORD_SIZE;

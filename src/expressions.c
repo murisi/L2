@@ -168,6 +168,7 @@ struct np_expression {
 	list indirections;
 	list st_binds;
 	list dyn_refs;
+	bool dynamic_context;
 };
 
 union expression {
@@ -240,7 +241,7 @@ union expression *make_function(union expression *ref, list params, union expres
 	union expression *param;
 	foreach(param, params) {
 		param->base.parent = func;
-		param->reference.symbol = make_symbol(dynamic_storage, local_scope, defined_state, ref->reference.name, param, reg);
+		param->reference.symbol = make_symbol(dynamic_storage, local_scope, defined_state, param->reference.name, param, reg);
 	}
 	func->function.symbols = nil;
 	put(func, function.expression, expr);
@@ -256,7 +257,7 @@ union expression *make_continuation(union expression *ref, list params, union ex
 	union expression *param;
 	foreach(param, params) {
 		param->base.parent = cont;
-		param->reference.symbol = make_symbol(dynamic_storage, local_scope, defined_state, ref->reference.name, param, reg);
+		param->reference.symbol = make_symbol(dynamic_storage, local_scope, defined_state, param->reference.name, param, reg);
 	}
 	put(cont, continuation.expression, expr);
 	return cont;
@@ -269,7 +270,7 @@ union expression *make_with(union expression *ref, union expression *expr, regio
 	ref->reference.symbol = make_symbol(dynamic_storage, local_scope, defined_state, ref->reference.name, ref, reg);
 	union expression *param = make_reference(NULL, reg);
 	param->reference.parent = wth;
-	param->reference.symbol = make_symbol(dynamic_storage, local_scope, defined_state, ref->reference.name, param, reg);
+	param->reference.symbol = make_symbol(dynamic_storage, local_scope, defined_state, param->reference.name, param, reg);
 	wth->with.parameter = lst(param, nil, reg);
 	put(wth, with.expression, expr);
 	return wth;
@@ -359,6 +360,7 @@ union expression *make_non_primitive(union expression *ref, list arg, region reg
 	u->non_primitive.indirections = nil;
 	u->non_primitive.st_binds = nil;
 	u->non_primitive.dyn_refs = nil;
+	u->non_primitive.dynamic_context = true;
 	return u;
 }
 
