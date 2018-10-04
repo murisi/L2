@@ -251,6 +251,7 @@ union expression *make_function(union expression *ref, list params, union expres
 union expression *make_continuation(union expression *ref, list params, union expression *expr, region reg) {
 	union expression *cont = region_alloc(reg, sizeof(union expression));
 	cont->continuation.type = continuation;
+	cont->continuation.escapes = true;
 	put(cont, continuation.reference, ref);
 	ref->reference.symbol = make_symbol(dynamic_storage, local_scope, defined_state, ref->reference.name, ref, reg);
 	cont->continuation.parameters = params;
@@ -266,6 +267,7 @@ union expression *make_continuation(union expression *ref, list params, union ex
 union expression *make_with(union expression *ref, union expression *expr, region reg) {
 	union expression *wth = region_alloc(reg, sizeof(union expression));
 	wth->with.type = with;
+	wth->with.escapes = true;
 	put(wth, with.reference, ref);
 	ref->reference.symbol = make_symbol(dynamic_storage, local_scope, defined_state, ref->reference.name, ref, reg);
 	union expression *param = make_reference(NULL, reg);
