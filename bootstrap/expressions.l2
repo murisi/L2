@@ -332,15 +332,17 @@
 
 (function build-expression-literal-len (l r p) [mk& $l $r $p &64])
 
+(storage special-form-error &0)
+
 (function build-expression (d reg handler)
-	(if [= [length $d] &0] {handler}
+	(if [= [length $d] &0] {$handler}
 	(if [i/f:symbol? $d] [make-reference [to-string $d $reg] $reg]
-	(switch streq [to-string [@car $d] $reg]
+	(switch str= [to-string [@car $d] $reg]
 		((" with)
 			(if (not [= [length $d] &3])
-				{$handler}
+				{$handler special-form-error $d (null)}
 			(if (not [i/f:symbol? [@cadr $d]])
-				{$handler}
+				{$handler special-form-error $d [@cadr $d]}
 				[make-with [build-expression [@cadr $d] $reg $handler] [build-expression [@caddr $d] $reg $handler] $reg])))
 		
 		((" begin)
@@ -350,23 +352,23 @@
 		
 		((" if)
 			(if (not [= [length $d] &4])
-				{$handler}
+				{$handler special-form-error $d (null)}
 				[make-if [build-expression [@cadr $d] $reg $handler] [build-expression [@caddr $d] $reg $handler]
 					[build-expression [@cadddr $d] $reg $handler] $reg]))
 		
 		((" function) (" continuation)
 			(if (not [= [length $d] &4])
-				{$handler}
+				{$handler special-form-error $d (null)}
 			(if (not [i/f:symbol? [@cadr $d]])
-				{$handler}
+				{$handler special-form-error $d [@cadr $d]}
 			(if [i/f:symbol? [@caddr $d]]
-				{$handler}
+				{$handler special-form-error $d [@caddr $d]}
 				(with return (let (parameters nil) (begin
 					(foreach (v [@caddr $d])
 						(if [i/f:symbol? $v]
 							[append [build-expression $v $reg $handler] parameters $reg]
-							{$handler}))
-					{return [(switch streq [to-string [@car $d] $reg]
+							{$handler special-form-error $d $v}))
+					{return [(switch str= [to-string [@car $d] $reg]
 							((" function) make-function)
 							make-continuation)
 						[build-expression [@cadr $d] $reg $handler] $parameters [build-expression [@cadddr $d] $reg $handler]
@@ -374,12 +376,12 @@
 		
 		((" invoke) (" jump) (" storage)
 			(if [= [length $d] &1]
-				{$handler}
-			(if (and [streq [to-string [@car $d] $reg] (" storage)] (not [i/f:symbol? [@cadr $d]]))
-				{$handler}
+				{$handler special-form-error $d (null)}
+			(if (and [str= [to-string [@car $d] $reg] (" storage)] (not [i/f:symbol? [@cadr $d]]))
+				{$handler special-form-error $d [@cadr $d]}
 				(with return (let (arguments nil) (begin
 					(foreach (v [@cddr $d]) [append [build-expression $v $reg $handler] arguments $reg])
-					{return [(switch streq [to-string [@car $d] $reg]
+					{return [(switch str= [to-string [@car $d] $reg]
 							((" invoke) make-invoke)
 							((" jump) make-jump)
 							make-storage)
@@ -387,19 +389,20 @@
 		
 		((" literal)
 			(if (not [= [length $d] &2])
-				{$handler}
+				{$handler special-form-error $d (null)}
 			(if (or (not [i/f:symbol? [@cadr $d]]) (not [= [length [@cadr $d]] (build-expression-literal-len)]))
-				{$handler}
+				{$handler special-form-error $d [@cadr $d]}
 				[make-literal (with return
 					{(continuation loop (str i value) (begin
-						[set value [<< $value &1]]
-						(if [= $i &0]
-							{return $value}
-						(if [= [getb $str] (char 1)]
-							{loop [+ $str &1] [- $i &1] [+ $value &1]}
-						(if [= [getb $str] (char 0)]
-							{loop [+ $str &1] [- $i &1] $value}
-							{$handler}))))) [to-string [@cadr $d] $reg] (build-expression-literal-len) &0}) $reg])))
+							[set value [<< $value &1]]
+							(if [= $i &0]
+								{return $value}
+							(if [= [getb $str] (char 1)]
+								{loop [+ $str &1] [- $i &1] [+ $value &1]}
+							(if [= [getb $str] (char 0)]
+								{loop [+ $str &1] [- $i &1] $value}
+								{$handler special-form-error $d [@cadr $d]})))))
+						[to-string [@cadr $d] $reg] (build-expression-literal-len) &0}) $reg])))
 		
 		[make-non-primitive [build-expression [@car $d] $reg $handler] [@cdr $d] $reg]))))
 
@@ -410,10 +413,13 @@
 (let (r [create-region &0]) (pos &0)
 	(do-let (begin
 			[write-str (stdout) (" (lparen)begin(lbrace)lokay(rbrace)a(rparen)o)]
-			[print-expression [build-expression [build-fragment (" (lparen)begin(lbrace)lokay(rbrace)a(rparen)o) &23 pos $r $handler]
-				$r $handler]]
+			[print-expression [build-expression
+				[build-fragment (" (lparen)with(lbrace)lokay(rbrace)a(rparen)o) &22 pos $r $handler] $r $handler]]
 			[build-symbol (" Hello) $r])
-		(handler (continuation _ (code src character pos) (begin
-			[write-str (stdout) (" Error occured.)]
+		(handler (continuation _ (code arg0 arg1 arg2 arg3) (begin
 			[destroy-region $r]
+			(switch = $code
+				(special-form-error [write-str (stdout) (" Okay, it's a special form error(lf))])
+				(unexpected-char-error [write-str (stdout) (" It was an unexpected character!(lf))])
+				[write-str (stdout) (" We do not know what caused this!(lf))])
 			[exit &1])))))

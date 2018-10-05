@@ -630,7 +630,7 @@ union expression *build_expression(list d, region reg, jumpbuf *handler) {
 		if(length(d) == 1) {
 			throw_special_form(d, NULL, handler);
 		} else if(!strcmp(to_string(d->fst, reg), "storage") && !is_symbol(d->frst)) {
-			throw_special_form(d->frst, NULL, handler);
+			throw_special_form(d, d->frst, handler);
 		}
 	
 		list v;

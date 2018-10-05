@@ -67,14 +67,14 @@
 			[append [build-fragment $l2src $l2src-sz $pos $r $handler] sexprs $r]))
 		{return $sexprs}))))
 
-(function unexpected-char (l r) (` &0 $r))
+(storage unexpected-char-error &0)
 
 (function build-fragment (l2src l2src-sz pos r handler) (with return
 	(if [= $l2src-sz $$pos]
-		{$handler (unexpected-char) build-fragment &0 $$pos}
+		{$handler unexpected-char-error &0 $$pos}
 		(let (c [getb [+ $l2src $$pos]])
 			(if (or [isspace $c] [= $c (rparen)] [= $c (rbrace)] [= $c (rbracket)])
-				{$handler (unexpected-char) build-fragment $c $$pos}
+				{$handler unexpected-char-error $c $$pos}
 				(begin
 					[set $pos [+ $$pos &1]]
 					{return (switch = $c
