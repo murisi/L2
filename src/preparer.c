@@ -365,33 +365,43 @@ void cond_prepend_ref(union expression *ref, list *refs, region rt_reg) {
 	}
 }
 
-void store_static_bindings(union expression **s, bool is_static, list st_binds, region rt_reg) {
+void store_lexical_environment(union expression **s, bool is_static, list st_binds, list dyn_refs, region ct_reg, region rt_reg) {
 	switch((*s)->base.type) {
 		case begin: {
 			union expression *expr;
 			{foreach(expr, (*s)->begin.expressions) {
-				if(expr->base.type == function || expr->base.type == storage) {
+				if(expr->base.type == function || (expr->base.type == storage && is_static)) {
 					prepend_binding(expr->function.reference, &st_binds, rt_reg);
+				} else if(expr->base.type == storage) {
+					cond_prepend_ref(expr->storage.reference, &dyn_refs, ct_reg);
 				}
 			}}
 			union expression **exprr;
 			{foreachaddress(exprr, (*s)->begin.expressions) {
-				store_static_bindings(exprr, is_static, st_binds, rt_reg);
+				store_lexical_environment(exprr, is_static, st_binds, dyn_refs, ct_reg, rt_reg);
 			}}
 			break;
 		} case with: {
 			if(is_static) {
 				prepend_binding((*s)->with.reference, &st_binds, rt_reg);
+			} else {
+				cond_prepend_ref((*s)->with.reference, &dyn_refs, ct_reg);
 			}
-			store_static_bindings(&(*s)->with.expression, is_static, st_binds, rt_reg);
+			store_lexical_environment(&(*s)->with.expression, is_static, st_binds, dyn_refs, ct_reg, rt_reg);
 			break;
 		} case _if: {
-			store_static_bindings(&(*s)->_if.condition, is_static, st_binds, rt_reg);
-			store_static_bindings(&(*s)->_if.consequent, is_static, st_binds, rt_reg);
-			store_static_bindings(&(*s)->_if.alternate, is_static, st_binds, rt_reg);
+			store_lexical_environment(&(*s)->_if.condition, is_static, st_binds, dyn_refs, ct_reg, rt_reg);
+			store_lexical_environment(&(*s)->_if.consequent, is_static, st_binds, dyn_refs, ct_reg, rt_reg);
+			store_lexical_environment(&(*s)->_if.alternate, is_static, st_binds, dyn_refs, ct_reg, rt_reg);
 			break;
 		} case function: {
-			store_static_bindings(&(*s)->function.expression, false, st_binds, rt_reg);
+			prepend_binding((*s)->function.reference, &st_binds, rt_reg);
+			dyn_refs = nil;
+			union expression *param;
+			{foreach(param, (*s)->function.parameters) {
+				cond_prepend_ref(param, &dyn_refs, ct_reg);
+			}}
+			store_lexical_environment(&(*s)->function.expression, false, st_binds, dyn_refs, ct_reg, rt_reg);
 			break;
 		} case continuation: {
 			if(is_static) {
@@ -400,91 +410,38 @@ void store_static_bindings(union expression **s, bool is_static, list st_binds, 
 				{foreach(param, (*s)->continuation.parameters) {
 					prepend_binding(param, &st_binds, rt_reg);
 				}}
-			}
-			store_static_bindings(&(*s)->continuation.expression, is_static, st_binds, rt_reg);
-			break;
-		} case storage: {
-			if(is_static) {
-				prepend_binding((*s)->storage.reference, &st_binds, rt_reg);
-			}
-			union expression **arg;
-			{foreachaddress(arg, (*s)->storage.arguments) {
-				store_static_bindings(arg, is_static, st_binds, rt_reg);
-			}}
-			break;
-		} case invoke: case jump: {
-			store_static_bindings(&(*s)->invoke.reference, is_static, st_binds, rt_reg);
-			union expression **arg;
-			{foreachaddress(arg, (*s)->invoke.arguments) {
-				store_static_bindings(arg, is_static, st_binds, rt_reg);
-			}}
-			break;
-		} case non_primitive: {
-			store_static_bindings(&(*s)->non_primitive.reference, is_static, st_binds, rt_reg);
-			(*s)->non_primitive.st_binds = st_binds;
-			(*s)->non_primitive.dynamic_context = !is_static;
-			break;
-		}
-	}
-}
-
-void store_dynamic_refs(union expression **s, bool is_static, list dyn_refs, region ct_reg) {
-	switch((*s)->base.type) {
-		case begin: {
-			union expression **exprr;
-			{foreachaddress(exprr, (*s)->begin.expressions) {
-				store_dynamic_refs(exprr, is_static, dyn_refs, ct_reg);
-			}}
-			break;
-		} case with: {
-			if(!is_static) {
-				cond_prepend_ref((*s)->with.reference, &dyn_refs, ct_reg);
-			}
-			store_dynamic_refs(&(*s)->with.expression, is_static, dyn_refs, ct_reg);
-			break;
-		} case _if: {
-			store_dynamic_refs(&(*s)->_if.condition, is_static, dyn_refs, ct_reg);
-			store_dynamic_refs(&(*s)->_if.consequent, is_static, dyn_refs, ct_reg);
-			store_dynamic_refs(&(*s)->_if.alternate, is_static, dyn_refs, ct_reg);
-			break;
-		} case function: {
-			dyn_refs = nil;
-			union expression *param;
-			{foreach(param, (*s)->function.parameters) {
-				cond_prepend_ref(param, &dyn_refs, ct_reg);
-			}}
-			store_dynamic_refs(&(*s)->function.expression, false, dyn_refs, ct_reg);
-			break;
-		} case continuation: {
-			if(!is_static) {
+			} else {
 				cond_prepend_ref((*s)->continuation.reference, &dyn_refs, ct_reg);
 				union expression *param;
 				{foreach(param, (*s)->continuation.parameters) {
 					cond_prepend_ref(param, &dyn_refs, ct_reg);
 				}}
 			}
-			store_dynamic_refs(&(*s)->continuation.expression, is_static, dyn_refs, ct_reg);
+			store_lexical_environment(&(*s)->continuation.expression, is_static, st_binds, dyn_refs, ct_reg, rt_reg);
 			break;
 		} case storage: {
-			if(!is_static) {
+			if(is_static) {
+				prepend_binding((*s)->storage.reference, &st_binds, rt_reg);
+			} else {
 				cond_prepend_ref((*s)->storage.reference, &dyn_refs, ct_reg);
 			}
 			union expression **arg;
 			{foreachaddress(arg, (*s)->storage.arguments) {
-				store_dynamic_refs(arg, is_static, dyn_refs, ct_reg);
+				store_lexical_environment(arg, is_static, st_binds, dyn_refs, ct_reg, rt_reg);
 			}}
 			break;
 		} case invoke: case jump: {
-			store_dynamic_refs(&(*s)->invoke.reference, is_static, dyn_refs, ct_reg);
+			store_lexical_environment(&(*s)->invoke.reference, is_static, st_binds, dyn_refs, ct_reg, rt_reg);
 			union expression **arg;
 			{foreachaddress(arg, (*s)->invoke.arguments) {
-				store_dynamic_refs(arg, is_static, dyn_refs, ct_reg);
+				store_lexical_environment(arg, is_static, st_binds, dyn_refs, ct_reg, rt_reg);
 			}}
 			break;
 		} case non_primitive: {
-			store_dynamic_refs(&(*s)->non_primitive.reference, is_static, dyn_refs, ct_reg);
+			store_lexical_environment(&(*s)->non_primitive.reference, is_static, dyn_refs, dyn_refs, ct_reg, ct_reg);
 			dyn_refs = reverse(dyn_refs, ct_reg);
-			//(*s)->non_primitive.dynamic_context = !is_static;
+			(*s)->non_primitive.dynamic_context = !is_static;
+			(*s)->non_primitive.st_binds = st_binds;
 			(*s)->non_primitive.dyn_refs = nil;
 			list *dyn_refs_suffix;
 			union expression *dyn_ref;
@@ -547,9 +504,12 @@ void (*dynamic_np_expansion(list (*expander)(list, region, list), list argument,
 	union expression *guest_cont_param = make_reference(NULL, ct_reg);
 	prepend(guest_cont_param, &macro_cont_params, ct_reg);
 	union expression *guest_cont_arg = make_reference(NULL, ct_reg);
+	//Epression is built in runtime region because symbol persistence is required. More specifically, symbols need to
+	//persist if the fragment produced by the macro contains a function becuase then the static function reference needs
+	//to be in the lexical environment of the non-primitive expressions it contains.
 	union expression *macro_cont = make_continuation(make_reference(NULL, ct_reg), macro_cont_params,
 		make_jump1(make_invoke1(make_literal((unsigned long) _get_, ct_reg), guest_cont_arg, ct_reg),
-			build_expression(expansion, ct_reg, ectx->handler), ct_reg), ct_reg);
+			build_expression(expansion, ectx->rt_reg, ectx->handler), ct_reg), ct_reg);
 	refer_reference(guest_cont_arg, guest_cont_param);
 	
 	//The code generated by macro, though existing in a different stack-frame, can pretend that its dynamic references
