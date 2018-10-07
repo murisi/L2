@@ -37,7 +37,7 @@
 (function symbol-of (reference) (with return (begin
 	(let (same-func (true))
 		(until (t $reference) [= $t (null)] (@expr-parent $t)
-			(switch (@expr-type $t)
+			(switch = (@expr-type $t)
 				((-begin-) (foreach (u (@expr-expressions $t))
 					(if (and (or [= (@expr-type $u) (-function-)] (and [= (@expr-type $u) (-storage-)] (or $same-func
 							[= (@sym-type(@expr-symbol(@expr-reference $u))) (-static-storage-)])))
@@ -105,4 +105,54 @@
 						(not [= [length(@expr-arguments(@expr-parent $s))] [length(@expr-parameters[get-target-expression $s])]]))
 					{$handler param-count-mismatch-error (@expr-parent $s) [get-target-expression $s]}
 					(begin)))))
-			(begin))))
+		(if (and (or (and [= (@expr-type $s) (-continuation-)] [jump-reference? $s])
+				(and [= (@expr-type $s) (-function-)] [invoke-reference? $s]))
+				(not [= [length (@expr-arguments(@expr-parent $s))] [length (@expr-parameters $s)]]))
+			{$handler param-count-mismatch-error (@expr-parent $s) $s}
+			(begin)))))
+
+(function vescape-analysis-aux (ref target)
+	(if [jump-reference? $ref]
+		(expr-short-circuit! (@expr-parent $ref) $target)
+		(expr-escapes! $target (true))))
+
+(function vescape-analysis (s ctx) (with return (begin
+	(if (and [= (@expr-type $s) (-reference-)] (not [= (@sym-definition(@expr-symbol $s)) $s])
+			[c-reference? (@sym-definition(@expr-symbol $s))])
+		[vescape-analysis-aux $s [get-target-expression $s]]
+		[vescape-analysis-aux $s $s])
+	{return $s})))
+
+(function visit-expressions (visitor s ctx) (begin
+	(switch = (@expr-type $$s)
+		((-begin-)
+			(until (partial (@expr-expressions $$s)) [nil? $partial] [@cdr $partial]
+				[visit-expressions $visitor [car $partial] $ctx]))
+		
+		((-if-) (begin
+			[visit-expressions $visitor (expr-condition $$s) $ctx]
+			[visit-expressions $visitor (expr-consequent $$s) $ctx]
+			[visit-expressions $visitor (expr-alternate $$s) $ctx]))
+		
+		((-function-) (-continuation-) (-with-)
+			[visit-expressions $visitor (expr-expression $$s) $ctx])
+		
+		((-jump-) (-invoke-) (-storage-) (begin
+			(if [= (@expr-type $$s) (-storage-)] (begin) [visit-expression $visitor (expr-reference $$s) $ctx])
+			(until (partial (@expr-arguments $$s)) [nil? $partial] [@cdr $partial]
+				[visit-expressions $visitor [car $partial] $ctx])))
+		
+		(begin))
+	(let (parent (@expr-parent $$s)) (begin
+		[set $s [$visitor $$s $ctx]]
+		(expr-parent! $$s $parent)))))
+
+(let (fd [open (" test.l2)])
+	(let (src-sz [size $fd]) (r [create-region &0])
+		(let (src-buf [region-alloc $r $src-sz]) (expressions nil) (pos &0) (begin
+			[read $fd $src-buf $src-sz]
+			[close $fd]
+			(while [after-leading-space $src-buf $src-sz pos]
+				[append [build-expression [build-fragment $src-buf $src-sz pos $r (null)] $r (null)] expressions $r])
+			[print-expression [make-begin $expressions $r]]))))
+
