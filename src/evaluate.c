@@ -27,7 +27,7 @@ Object *load_expressions(union expression *program, struct expansion_context *ec
 	visit_expressions(vgenerate_static_np_expressions, &program, (void* []) {manreg, ectx});
 	visit_expressions(vfind_multiple_definitions, &program, ectx->handler);
 	classify_program_symbols(program->function.expression);
-	visit_expressions(vlink_references, &program, (void* []) {ectx->handler, manreg});
+	visit_expressions(vlink_references, &program->function.expression, (void* []) {ectx->handler, manreg});
 	program = use_return_symbol(program, NULL, manreg);
 	classify_program_symbols(program->function.expression);
 	visit_expressions(vlayout_frames, &program->function.expression, manreg);

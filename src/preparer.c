@@ -149,12 +149,10 @@ union expression *vlink_references(union expression *s, void *ctx) {
 			length(s->reference.parent->jump.arguments) != length(target_expression(s)->continuation.parameters)) {
 				throw_param_count_mismatch(s->reference.parent, target_expression(s), handler);
 		}
-	} else if(s->base.type == continuation && is_jump_reference(s) &&
+	} else if(((s->base.type == continuation && is_jump_reference(s)) ||
+		(s->base.type == function && is_invoke_reference(s))) &&
 		length(s->continuation.parent->jump.arguments) != length(s->continuation.parameters)) {
 			throw_param_count_mismatch(s->continuation.parent, s, handler);
-	} else if(s->base.type == function && s->function.parent && s->function.parent->base.type == invoke &&
-		s->function.parent->invoke.reference == s && length(s->function.parent->invoke.arguments) != length(s->function.parameters)) {
-			throw_param_count_mismatch(s->function.parent, s, handler);
 	}
 	return s;
 }
