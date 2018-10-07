@@ -66,3 +66,43 @@
 				
 				(begin))))
 	{return (null)})))
+
+(function jump-reference? (s) (and [= (@expr-type(@expr-parent $s)) (-jump-)] [= (@expr-reference(@expr-parent $s)) $s]))
+
+(function invoke-reference? (s) (and [= (@expr-type(@expr-parent $s)) (-invoke-)] [= (@expr-reference(@expr-parent $s)) $s]))
+
+(function function-reference? (s) (and [= (@expr-type(@expr-parent $s)) (-function-)] [= (@expr-reference(@expr-parent $s)) $s]))
+
+(function c-reference? (s)
+	(and (or [= (@expr-type(@expr-parent $s)) (-continuation-)] [= (@expr-type(@expr-parent $s)) (-with-)])
+		[= (@expr-reference(@expr-parent $s)) $s]))
+
+(function get-target-expression (s) (@expr-parent(@sym-definition(@expr-symbol $s))))
+
+(function get-root-function (s) (with return
+	{(continuation loop (s parent)
+		(if $parent
+			{loop $parent (@expr-parent $parent)}
+			{return $s})) $s (@expr-parent $s)}))
+
+(storage param-count-mismatch-error &0)
+
+(function vlink-references (s ctx)
+	(let (handler ($(loc $ctx &0(unit)))) (r ($(loc $ctx &1(unit))))
+		(if [= (@expr-type $s) (-reference-)]
+			(with return (begin
+				(expr-symbol! $s (if (@expr-symbol $s) (@expr-symbol $s) [symbol-of $s]))
+				(if (not (@expr-symbol $s))
+					(let (ref [make-reference (@expr-name $s) $r]) (rf [get-root-function $s])
+						(let (sym [make-symbol (-static-storage-) (-global-scope-) (-undefined-state-) (@expr-name $s) $ref $r]) (begin
+							(expr-symbol! $ref $sym)
+							(expr-parameters! $rf [cons $ref (@expr-parameters $rf) $r])
+							(expr-parent! $ref $rf)
+							(expr-symbol! $s $sym)
+							{return $s})))
+				(if (and (or (and [jump-reference? $s] [c-reference? (@sym-definition(@expr-symbol $s))])
+						(and [invoke-reference? $s] [function-reference? (@sym-definition(@expr-symbol $s))]))
+						(not [= [length(@expr-arguments(@expr-parent $s))] [length(@expr-parameters[get-target-expression $s])]]))
+					{$handler param-count-mismatch-error (@expr-parent $s) [get-target-expression $s]}
+					(begin)))))
+			(begin))))

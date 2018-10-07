@@ -144,11 +144,9 @@ union expression *vlink_references(union expression *s, void *ctx) {
 			prepend(ref, &root_function_of(s)->function.parameters, r);
 			ref->reference.parent = root_function_of(s);
 			s->reference.symbol = sym;
-		} else if(is_jump_reference(s) && is_c_reference(s->reference.symbol->definition) &&
+		} else if(((is_jump_reference(s) && is_c_reference(s->reference.symbol->definition)) ||
+			(is_invoke_reference(s) && is_function_reference(s->reference.symbol->definition))) &&
 			length(s->reference.parent->jump.arguments) != length(target_expression(s)->continuation.parameters)) {
-				throw_param_count_mismatch(s->reference.parent, target_expression(s), handler);
-		} else if(is_invoke_reference(s) && is_function_reference(s->reference.symbol->definition) &&
-			length(s->reference.parent->invoke.arguments) != length(target_expression(s)->function.parameters)) {
 				throw_param_count_mismatch(s->reference.parent, target_expression(s), handler);
 		}
 	} else if(s->base.type == continuation && is_jump_reference(s) &&
