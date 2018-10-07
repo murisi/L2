@@ -1,6 +1,6 @@
 (function defined-str= (a b) (and $a $b [str= $a $b]))
 
-(function named-ref= (a b) [defined-str (@expr-name $a) (@expr-name $b)])
+(function named-ref= (a b) [defined-str= (@expr-name $a) (@expr-name $b)])
 
 (storage multiple-definition-error &0)
 
@@ -21,12 +21,12 @@
 			(let (ref-with-params [lst (@expr-reference $e) (@expr-parameters $e) $temp-reg])
 				(until (partial $ref-with-params) [nil? $partial] [@cdr $partial]
 					(if [find (function _ (f ctx) [named-ref= $f $ctx]) [cdr $partial] [@car $partial]]
-						{$handler multiple-definition-error (@expr-name $partial)}
+						{$handler multiple-definition-error (@expr-name[@car $partial])}
 						(begin))))
 			[destroy-region $temp-reg]
 			{return $e})))
 		
-		(begin))))
+		{return $e})))
 
 (function get-parent-function (n) (with return
 	{(continuation loop (n)
@@ -138,7 +138,7 @@
 			[visit-expressions $visitor (expr-expression $$s) $ctx])
 		
 		((-jump-) (-invoke-) (-storage-) (begin
-			(if [= (@expr-type $$s) (-storage-)] (begin) [visit-expression $visitor (expr-reference $$s) $ctx])
+			(if [= (@expr-type $$s) (-storage-)] (begin) [visit-expressions $visitor (expr-reference $$s) $ctx])
 			(until (partial (@expr-arguments $$s)) [nil? $partial] [@cdr $partial]
 				[visit-expressions $visitor [car $partial] $ctx])))
 		
@@ -147,6 +147,14 @@
 		[set $s [$visitor $$s $ctx]]
 		(expr-parent! $$s $parent)))))
 
+(function load-expressions (program ectx st-binds ct-reg) (do-let
+		[visit-expressions vfind-multiple-definitions program $handler]
+	(handler (continuation _ (code arg0 arg1 arg2 arg3) (begin
+		(switch = $code
+			(multiple-definition-error [write-str (stdout) (" Multiple definition error.)])
+			(begin))
+		[exit &1])))))
+
 (let (fd [open (" test.l2)])
 	(let (src-sz [size $fd]) (r [create-region &0])
 		(let (src-buf [region-alloc $r $src-sz]) (expressions nil) (pos &0) (begin
@@ -154,5 +162,5 @@
 			[close $fd]
 			(while [after-leading-space $src-buf $src-sz pos]
 				[append [build-expression [build-fragment $src-buf $src-sz pos $r (null)] $r (null)] expressions $r])
-			[print-expression [make-begin $expressions $r]]))))
+			[load-expressions [make-program $expressions $r] nil nil $r]))))
 
