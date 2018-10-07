@@ -58,7 +58,7 @@
 					(if (and (or $same-func [= (@sym-type(@expr-symbol(@expr-reference $t))) (-static-storage-)])
 							[named-ref= (@expr-reference $t) $reference])
 						{return (@expr-symbol(@expr-reference $t))}
-					(if (not [= (@expr-type $t) (-storage-)])
+					(if [= (@expr-type $t) (-storage-)] (begin)
 						(foreach (u (@expr-parameters $t))
 							(if (and (or $same-func [= (@sym-type(@expr-symbol $u)) (-static-storage-)]) [named-ref= $u $reference])
 								{return (@expr-symbol $u)}
@@ -104,12 +104,12 @@
 						(and [invoke-reference? $s] [function-reference? (@sym-definition(@expr-symbol $s))]))
 						(not [= [length(@expr-arguments(@expr-parent $s))] [length(@expr-parameters[get-target-expression $s])]]))
 					{$handler param-count-mismatch-error (@expr-parent $s) [get-target-expression $s]}
-					(begin)))))
+					{return $s}))))
 		(if (and (or (and [= (@expr-type $s) (-continuation-)] [jump-reference? $s])
 				(and [= (@expr-type $s) (-function-)] [invoke-reference? $s]))
 				(not [= [length (@expr-arguments(@expr-parent $s))] [length (@expr-parameters $s)]]))
 			{$handler param-count-mismatch-error (@expr-parent $s) $s}
-			(begin)))))
+			$s))))
 
 (function vescape-analysis-aux (ref target)
 	(if [jump-reference? $ref]
@@ -143,12 +143,14 @@
 				[visit-expressions $visitor [car $partial] $ctx])))
 		
 		(begin))
+		
 	(let (parent (@expr-parent $$s)) (begin
 		[set $s [$visitor $$s $ctx]]
 		(expr-parent! $$s $parent)))))
 
-(function load-expressions (program ectx st-binds ct-reg) (do-let
+(function load-expressions (program ectx st-binds ct-reg) (do-let (begin
 		[visit-expressions vfind-multiple-definitions program $handler]
+		[visit-expressions vlink-references (expr-expression $program) (storage _ $handler $ct-reg)])
 	(handler (continuation _ (code arg0 arg1 arg2 arg3) (begin
 		(switch = $code
 			(multiple-definition-error [write-str (stdout) (" Multiple definition error.)])
