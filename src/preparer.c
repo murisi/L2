@@ -215,12 +215,7 @@ void visit_expressions(union expression *(*visitor)(union expression *, void *),
 
 union expression *use_return_symbol(union expression *n, struct symbol *ret_sym, region r) {
 	switch(n->base.type) {
-		case with: {
-			n->with.return_symbol = ret_sym;
-			put(n, with.expression, use_return_symbol(n->with.expression,
-				make_symbol(dynamic_storage, local_scope, defined_state, NULL, NULL, r), r));
-			return n;
-		} case continuation: {
+		case with: case continuation: {
 			n->continuation.return_symbol = ret_sym;
 			put(n, continuation.expression, use_return_symbol(n->continuation.expression,
 				make_symbol(dynamic_storage, local_scope, defined_state, NULL, NULL, r), r));
@@ -266,11 +261,8 @@ union expression *use_return_symbol(union expression *n, struct symbol *ret_sym,
 				(*t)->base.parent = n;
 			}
 			return n;
-		} case reference: {
+		} case reference: case literal: {
 			n->reference.return_symbol = ret_sym;
-			return n;
-		} case literal: {
-			n->literal.return_symbol = ret_sym;
 			return n;
 		}
 	}

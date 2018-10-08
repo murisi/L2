@@ -148,12 +148,65 @@
 		[set $s [$visitor $$s $ctx]]
 		(expr-parent! $$s $parent)))))
 
+(function use-return-symbol (n ret-sym r) (with return
+	(switch = (@expr-type $n)
+		((-with-) (-continuation-) (begin
+			(expr-return-symbol! $n $ret-sym)
+			[replace-expression (expr-expression $n) [use-return-symbol (@expr-expression $n)
+				[make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (null) (null) $r] $r]]
+			{return $n}))
+		
+		((-function-) (begin
+			(expr-return-symbol! $n $ret-sym)
+			(expr-expression-return-symbol! $n [make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (null) (null) $r])
+			[replace-expression (expr-expression $n) [use-return-symbol (@expr-expression $n) (@expr-expression-return-symbol $n) $r]]
+			{return $n}))
+		
+		((-invoke-) (-jump-) (-storage-)
+			(let (container nil) (begin
+				(if [= (@expr-type $n) (-storage-)] (begin)
+					(let (ref-ret-sym [make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (null) (null) $r]) (begin
+						[append [use-return-symbol (@expr-reference $n) $ref-ret-sym $r] container $r]
+						[replace-expression (expr-reference $n) [use-symbol $ref-ret-sym $r]])))
+						
+				(until (partial (@expr-arguments $n)) [nil? $partial] [@cdr $partial]
+					(let (arg-ret-sym [make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (null) (null) $r]) (begin
+						[append [use-return-symbol [@car $partial] $arg-ret-sym $r] container $r]
+						[replace-expression [car $partial] [use-symbol $arg-ret-sym $r]])))
+				
+				(expr-return-symbol! $n $ret-sym)
+				[append $n container $r]
+				{return [make-begin $container $r]})))
+		
+		((-if-) (let (container nil) (begin
+			[replace-expression (expr-consequent $n) [use-return-symbol (@expr-consequent $n) $ret-sym $r]]
+			[replace-expression (expr-alternate $n) [use-return-symbol (@expr-alternate $n) $ret-sym $r]]
+			(let (cond-ret-sym [make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (null) (null) $r]) (begin
+				[append [use-return-symbol (@expr-condition $n) $cond-ret-sym $r] container $r]
+				[replace-expression (expr-condition $n) [use-symbol $cond-ret-sym $r]]
+				[append $n container $r]))
+			{return $container})))
+		
+		((-begin-) (begin
+			(until (partial (@expr-expressions $n)) [nil? $partial] [@cdr $partial]
+				[replace-expression [car $partial] [use-return-symbol [@car $partial]
+					[make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (null) (null) $r] $r]])
+			{return $n}))
+		
+		((-reference-) (-literal-) (begin
+			(expr-return-symbol! $n $ret-sym)
+			{return $n}))
+		
+		{return $n})))
+
 (function load-expressions (program ectx st-binds ct-reg) (do-let (begin
 		[visit-expressions vfind-multiple-definitions program $handler]
-		[visit-expressions vlink-references (expr-expression $program) (storage _ $handler $ct-reg)])
+		[visit-expressions vlink-references (expr-expression $program) (storage _ $handler $ct-reg)]
+		[use-return-symbol $program (null) $ct-reg])
 	(handler (continuation _ (code arg0 arg1 arg2 arg3) (begin
 		(switch = $code
 			(multiple-definition-error [write-str (stdout) (" Multiple definition error.)])
+			(param-count-mismatch-error [write-str (stdout) (" Parameter count mismatch error.)])
 			(begin))
 		[exit &1])))))
 
