@@ -305,14 +305,6 @@ void store_lexical_environment(union expression *s, bool is_static, list st_bind
 				store_lexical_environment(exprr, is_static, st_binds, dyn_refs, ct_reg, rt_reg);
 			}}
 			break;
-		} case with: {
-			if(is_static) {
-				prepend_binding(s->with.reference, &st_binds, rt_reg);
-			} else {
-				cond_prepend_ref(s->with.reference, &dyn_refs, ct_reg);
-			}
-			store_lexical_environment(s->with.expression, is_static, st_binds, dyn_refs, ct_reg, rt_reg);
-			break;
 		} case _if: {
 			store_lexical_environment(s->_if.condition, is_static, st_binds, dyn_refs, ct_reg, rt_reg);
 			store_lexical_environment(s->_if.consequent, is_static, st_binds, dyn_refs, ct_reg, rt_reg);
@@ -327,7 +319,7 @@ void store_lexical_environment(union expression *s, bool is_static, list st_bind
 			}}
 			store_lexical_environment(s->function.expression, false, st_binds, dyn_refs, ct_reg, rt_reg);
 			break;
-		} case continuation: {
+		} case continuation: case with: {
 			if(is_static) {
 				prepend_binding(s->continuation.reference, &st_binds, rt_reg);
 				union expression *param;
@@ -362,7 +354,7 @@ void store_lexical_environment(union expression *s, bool is_static, list st_bind
 			}}
 			break;
 		} case non_primitive: {
-			store_lexical_environment(s->non_primitive.reference, is_static, dyn_refs, dyn_refs, ct_reg, ct_reg);
+			store_lexical_environment(s->non_primitive.reference, is_static, st_binds, dyn_refs, ct_reg, rt_reg);
 			dyn_refs = reverse(dyn_refs, ct_reg);
 			s->non_primitive.dynamic_context = !is_static;
 			s->non_primitive.st_binds = st_binds;

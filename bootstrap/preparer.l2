@@ -209,7 +209,63 @@
 
 (function cond-prepend-ref (ref refs rt-reg) (if (@expr-name $ref) [prepend $ref $refs $rt-reg] (begin)))
 
+(function store-lexical-environment (s is-static st-binds dyn-refs ct-reg rt-reg)
+	(switch = (@expr-type $s)
+		((-begin-) (begin
+			(foreach (expr (@expr-expressions $s))
+				(if (or [= (@expr-type $expr) (-function-)] (and [= (@expr-type $expr) (-storage-)] $is-static))
+					[prepend-binding (@expr-reference $expr) st-binds $rt-reg]
+				(if [= (@expr-type $expr) (-storage-)]
+					[cond-prepend-ref (@expr-reference $expr) dyn-refs $ct-reg]
+					(begin))))
+			(foreach (exprr (@expr-expressions $s))
+				[store-lexical-environment $exprr $is-static $st-binds $dyn-refs $ct-reg $rt-reg])))
+		
+		((-if-) (begin
+			[store-lexical-environment (@expr-condition $s) $is-static $st-binds $dyn-refs $ct-reg $rt-reg]
+			[store-lexical-environment (@expr-consequent $s) $is-static $st-binds $dyn-refs $ct-reg $rt-reg]
+			[store-lexical-environment (@expr-alternate $s) $is-static $st-binds $dyn-refs $ct-reg $rt-reg]))
+		
+		((-function-) (begin
+			[prepend-binding (@expr-reference $s) st-binds $rt-reg]
+			[set dyn-refs nil]
+			(foreach (param (@expr-parameters $s)) [cond-prepend-ref $param dyn-refs $ct-reg])
+			[store-lexical-environment (@expr-expression $s) (false) $st-binds $dyn-refs $ct-reg $rt-reg]))
+		
+		((-continuation-) (-with-) (begin
+			(if $is-static
+				(begin
+					[prepend-binding (@expr-reference $s) st-binds $rt-reg]
+					(foreach (param (@expr-parameters $s)) [prepend-binding $param st-binds $rt-reg]))
+				(begin
+					[cond-prepend-ref (@expr-reference $s) dyn-refs $ct-reg]
+					(foreach (param (@expr-parameters $s)) [cond-prepend-ref $param dyn-refs $ct-reg])))
+			[store-lexical-environment (@expr-expression $s) $is-static $st-binds $dyn-refs $ct-reg $rt-reg]))
+		
+		((-storage-) (begin
+			(if $is-static
+				[prepend-binding (@expr-reference $s) st-binds $rt-reg]
+				[cond-prepend-ref (@expr-reference $s) dyn-refs $ct-reg])
+			(foreach (arg (@expr-arguments $s)) [store-lexical-environment $arg $is-static $st-binds $dyn-refs $ct-reg $rt-reg])))
+		
+		((-invoke-) (-jump-) (begin
+			[store-lexical-environment (@expr-reference $s) $is-static $st-binds $dyn-refs $ct-reg $rt-reg]
+			(foreach (arg (@expr-arguments $s)) [store-lexical-environment $arg $is-static $st-binds $dyn-refs $ct-reg $rt-reg])))
+		
+		((-non-primitive-) (begin
+			[store-lexical-environment (@expr-reference $s) $is-static $st-binds $dyn-refs $ct-reg $rt-reg]
+			[set dyn-refs [reverse $dyn-refs $ct-reg]]
+			(expr-dynamic-context! $s (not $is-static))
+			(expr-st-binds! $s $st-binds)
+			(expr-dyn-refs! $s nil)
+			(until (dyn-refs-suffix $dyn-refs) [nil? $dyn-refs-suffix] [@cdr $dyn-refs-suffix]
+				(if [find named-ref= [cdr $dyn-refs-suffix] [@car $dyn-refs-suffix]] (begin)
+					[prepend [@car $dyn-refs-suffix] (expr-dyn-refs $s) $ct-reg]))))
+		
+		(begin)))
+
 (function load-expressions (program ectx st-binds ct-reg) (do-let (begin
+		[store-lexical-environment (@expr-expression $program) (true) $st-binds nil $ct-reg $ct-reg]
 		[visit-expressions vfind-multiple-definitions program $handler]
 		[visit-expressions vlink-references (expr-expression $program) (storage _ $handler $ct-reg)]
 		[use-return-symbol $program (null) $ct-reg]
