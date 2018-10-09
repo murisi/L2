@@ -144,9 +144,7 @@
 		
 		(begin))
 		
-	(let (parent (@expr-parent $$s)) (begin
-		[set $s [$visitor $$s $ctx]]
-		(expr-parent! $$s $parent)))))
+	[replace-expression $s [$visitor $$s $ctx]]))
 
 (function use-return-symbol (n ret-sym r) (with return
 	(switch = (@expr-type $n)
@@ -199,10 +197,19 @@
 		
 		{return $n})))
 
+(function vlinearized-expressions (n ctx)
+	(if [= (@expr-type $n) (-begin-)]
+		$n
+		(with return
+			(let (l ($(loc $ctx &0(unit)))) (r ($(loc $ctx &1(unit)))) (begin
+				[prepend $n $l $r]
+				{return $n})))))
+
 (function load-expressions (program ectx st-binds ct-reg) (do-let (begin
 		[visit-expressions vfind-multiple-definitions program $handler]
 		[visit-expressions vlink-references (expr-expression $program) (storage _ $handler $ct-reg)]
-		[use-return-symbol $program (null) $ct-reg])
+		[use-return-symbol $program (null) $ct-reg]
+		(let (asms nil) [visit-expressions vlinearized-expressions program (storage _ asms $ct-reg)]))
 	(handler (continuation _ (code arg0 arg1 arg2 arg3) (begin
 		(switch = $code
 			(multiple-definition-error [write-str (stdout) (" Multiple definition error.)])
