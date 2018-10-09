@@ -277,6 +277,108 @@ union expression *vlinearized_expressions(union expression *n, void *ctx) {
 	return n;
 }
 
+void prepend_binding(union expression *ref, list *binds, region rt_reg) {
+	if(ref->reference.name) {
+		prepend(ref->reference.symbol, binds, rt_reg);
+	}
+}
+
+void cond_prepend_ref(union expression *ref, list *refs, region rt_reg) {
+	if(ref->reference.name) {
+		prepend(ref, refs, rt_reg);
+	}
+}
+
+void store_lexical_environment(union expression *s, bool is_static, list st_binds, list dyn_refs, region ct_reg, region rt_reg) {
+	switch(s->base.type) {
+		case begin: {
+			union expression *expr;
+			{foreach(expr, s->begin.expressions) {
+				if(expr->base.type == function || (expr->base.type == storage && is_static)) {
+					prepend_binding(expr->function.reference, &st_binds, rt_reg);
+				} else if(expr->base.type == storage) {
+					cond_prepend_ref(expr->storage.reference, &dyn_refs, ct_reg);
+				}
+			}}
+			union expression *exprr;
+			{foreach(exprr, s->begin.expressions) {
+				store_lexical_environment(exprr, is_static, st_binds, dyn_refs, ct_reg, rt_reg);
+			}}
+			break;
+		} case with: {
+			if(is_static) {
+				prepend_binding(s->with.reference, &st_binds, rt_reg);
+			} else {
+				cond_prepend_ref(s->with.reference, &dyn_refs, ct_reg);
+			}
+			store_lexical_environment(s->with.expression, is_static, st_binds, dyn_refs, ct_reg, rt_reg);
+			break;
+		} case _if: {
+			store_lexical_environment(s->_if.condition, is_static, st_binds, dyn_refs, ct_reg, rt_reg);
+			store_lexical_environment(s->_if.consequent, is_static, st_binds, dyn_refs, ct_reg, rt_reg);
+			store_lexical_environment(s->_if.alternate, is_static, st_binds, dyn_refs, ct_reg, rt_reg);
+			break;
+		} case function: {
+			prepend_binding(s->function.reference, &st_binds, rt_reg);
+			dyn_refs = nil;
+			union expression *param;
+			{foreach(param, s->function.parameters) {
+				cond_prepend_ref(param, &dyn_refs, ct_reg);
+			}}
+			store_lexical_environment(s->function.expression, false, st_binds, dyn_refs, ct_reg, rt_reg);
+			break;
+		} case continuation: {
+			if(is_static) {
+				prepend_binding(s->continuation.reference, &st_binds, rt_reg);
+				union expression *param;
+				{foreach(param, s->continuation.parameters) {
+					prepend_binding(param, &st_binds, rt_reg);
+				}}
+			} else {
+				cond_prepend_ref(s->continuation.reference, &dyn_refs, ct_reg);
+				union expression *param;
+				{foreach(param, s->continuation.parameters) {
+					cond_prepend_ref(param, &dyn_refs, ct_reg);
+				}}
+			}
+			store_lexical_environment(s->continuation.expression, is_static, st_binds, dyn_refs, ct_reg, rt_reg);
+			break;
+		} case storage: {
+			if(is_static) {
+				prepend_binding(s->storage.reference, &st_binds, rt_reg);
+			} else {
+				cond_prepend_ref(s->storage.reference, &dyn_refs, ct_reg);
+			}
+			union expression *arg;
+			{foreach(arg, s->storage.arguments) {
+				store_lexical_environment(arg, is_static, st_binds, dyn_refs, ct_reg, rt_reg);
+			}}
+			break;
+		} case invoke: case jump: {
+			store_lexical_environment(s->invoke.reference, is_static, st_binds, dyn_refs, ct_reg, rt_reg);
+			union expression *arg;
+			{foreach(arg, s->invoke.arguments) {
+				store_lexical_environment(arg, is_static, st_binds, dyn_refs, ct_reg, rt_reg);
+			}}
+			break;
+		} case non_primitive: {
+			store_lexical_environment(s->non_primitive.reference, is_static, dyn_refs, dyn_refs, ct_reg, ct_reg);
+			dyn_refs = reverse(dyn_refs, ct_reg);
+			s->non_primitive.dynamic_context = !is_static;
+			s->non_primitive.st_binds = st_binds;
+			s->non_primitive.dyn_refs = nil;
+			list *dyn_refs_suffix;
+			union expression *dyn_ref;
+			{foreachlist(dyn_refs_suffix, dyn_ref, &dyn_refs) {
+				if(!exists((bool (*)(void *, void *)) reference_named, &(*dyn_refs_suffix)->rst, dyn_ref->reference.name)) {
+					prepend(dyn_ref, &s->non_primitive.dyn_refs, ct_reg);
+				}
+			}}
+			break;
+		}
+	}
+}
+
 void *_get_(void *ref) {
 	return *((void **) ref);
 }
@@ -337,108 +439,6 @@ union expression *insert_indirections(union expression *expr, char *ref_name, re
 		} case non_primitive: {
 			prepend(ref_name, &expr->non_primitive.indirections, reg);
 			return expr;
-		}
-	}
-}
-
-void prepend_binding(union expression *ref, list *binds, region rt_reg) {
-	if(ref->reference.name) {
-		prepend(ref->reference.symbol, binds, rt_reg);
-	}
-}
-
-void cond_prepend_ref(union expression *ref, list *refs, region rt_reg) {
-	if(ref->reference.name) {
-		prepend(ref, refs, rt_reg);
-	}
-}
-
-void store_lexical_environment(union expression **s, bool is_static, list st_binds, list dyn_refs, region ct_reg, region rt_reg) {
-	switch((*s)->base.type) {
-		case begin: {
-			union expression *expr;
-			{foreach(expr, (*s)->begin.expressions) {
-				if(expr->base.type == function || (expr->base.type == storage && is_static)) {
-					prepend_binding(expr->function.reference, &st_binds, rt_reg);
-				} else if(expr->base.type == storage) {
-					cond_prepend_ref(expr->storage.reference, &dyn_refs, ct_reg);
-				}
-			}}
-			union expression **exprr;
-			{foreachaddress(exprr, (*s)->begin.expressions) {
-				store_lexical_environment(exprr, is_static, st_binds, dyn_refs, ct_reg, rt_reg);
-			}}
-			break;
-		} case with: {
-			if(is_static) {
-				prepend_binding((*s)->with.reference, &st_binds, rt_reg);
-			} else {
-				cond_prepend_ref((*s)->with.reference, &dyn_refs, ct_reg);
-			}
-			store_lexical_environment(&(*s)->with.expression, is_static, st_binds, dyn_refs, ct_reg, rt_reg);
-			break;
-		} case _if: {
-			store_lexical_environment(&(*s)->_if.condition, is_static, st_binds, dyn_refs, ct_reg, rt_reg);
-			store_lexical_environment(&(*s)->_if.consequent, is_static, st_binds, dyn_refs, ct_reg, rt_reg);
-			store_lexical_environment(&(*s)->_if.alternate, is_static, st_binds, dyn_refs, ct_reg, rt_reg);
-			break;
-		} case function: {
-			prepend_binding((*s)->function.reference, &st_binds, rt_reg);
-			dyn_refs = nil;
-			union expression *param;
-			{foreach(param, (*s)->function.parameters) {
-				cond_prepend_ref(param, &dyn_refs, ct_reg);
-			}}
-			store_lexical_environment(&(*s)->function.expression, false, st_binds, dyn_refs, ct_reg, rt_reg);
-			break;
-		} case continuation: {
-			if(is_static) {
-				prepend_binding((*s)->continuation.reference, &st_binds, rt_reg);
-				union expression *param;
-				{foreach(param, (*s)->continuation.parameters) {
-					prepend_binding(param, &st_binds, rt_reg);
-				}}
-			} else {
-				cond_prepend_ref((*s)->continuation.reference, &dyn_refs, ct_reg);
-				union expression *param;
-				{foreach(param, (*s)->continuation.parameters) {
-					cond_prepend_ref(param, &dyn_refs, ct_reg);
-				}}
-			}
-			store_lexical_environment(&(*s)->continuation.expression, is_static, st_binds, dyn_refs, ct_reg, rt_reg);
-			break;
-		} case storage: {
-			if(is_static) {
-				prepend_binding((*s)->storage.reference, &st_binds, rt_reg);
-			} else {
-				cond_prepend_ref((*s)->storage.reference, &dyn_refs, ct_reg);
-			}
-			union expression **arg;
-			{foreachaddress(arg, (*s)->storage.arguments) {
-				store_lexical_environment(arg, is_static, st_binds, dyn_refs, ct_reg, rt_reg);
-			}}
-			break;
-		} case invoke: case jump: {
-			store_lexical_environment(&(*s)->invoke.reference, is_static, st_binds, dyn_refs, ct_reg, rt_reg);
-			union expression **arg;
-			{foreachaddress(arg, (*s)->invoke.arguments) {
-				store_lexical_environment(arg, is_static, st_binds, dyn_refs, ct_reg, rt_reg);
-			}}
-			break;
-		} case non_primitive: {
-			store_lexical_environment(&(*s)->non_primitive.reference, is_static, dyn_refs, dyn_refs, ct_reg, ct_reg);
-			dyn_refs = reverse(dyn_refs, ct_reg);
-			(*s)->non_primitive.dynamic_context = !is_static;
-			(*s)->non_primitive.st_binds = st_binds;
-			(*s)->non_primitive.dyn_refs = nil;
-			list *dyn_refs_suffix;
-			union expression *dyn_ref;
-			{foreachlist(dyn_refs_suffix, dyn_ref, &dyn_refs) {
-				if(!exists((bool (*)(void *, void *)) reference_named, &(*dyn_refs_suffix)->rst, dyn_ref->reference.name)) {
-					prepend(dyn_ref, &(*s)->non_primitive.dyn_refs, ct_reg);
-				}
-			}}
-			break;
 		}
 	}
 }
