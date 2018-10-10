@@ -281,9 +281,12 @@
 				(begin)))
 		{return $program}))))
 
-(function replace-expression (orig repl) (begin
-	(expr-parent! $repl (@expr-parent $$orig))
-	[set $orig $repl]))
+(function replace-expression (l r p) (use-memo $p
+	(`(let (replace-expression:orig (,[@fst $l]))
+		(let (replace-expression:parent (@expr-parent $$replace-expression:orig))
+			(let (replace-expression:repl (,[@frst $l])) (begin
+				(expr-parent! $replace-expression:repl $replace-expression:parent)
+				[set $replace-expression:orig $replace-expression:repl]))))$r)))
 
 (function print-expression (s)
 	(switch = (@expr-type $s)
