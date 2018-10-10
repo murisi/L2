@@ -485,12 +485,12 @@ struct expansion_context {
 	jumpbuf *handler;
 };
 
-Object *load_expressions(union expression *program, struct expansion_context *ectx, list st_binds, region ct_reg);
-union expression *build_syntax_tree(list d, region reg, jumpbuf *handler);
-
 bool symbol_equals(object_symbol *sym1, object_symbol *sym2) {
 	return !strcmp(sym1->name, sym2->name);
 }
+
+Object *load_expressions(union expression *program, struct expansion_context *ectx, list st_binds, region ct_reg);
+union expression *build_syntax_tree(list d, region reg, jumpbuf *handler);
 
 /*
  * This function is called whenever a macro is invoked by L2 code. The basic idea is to call the macro with the

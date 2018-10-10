@@ -333,8 +333,10 @@
 (function load-expressions (program ectx st-binds ct-reg) (do-let (begin
 		[store-lexical-environment (@expr-expression $program) (true) $st-binds nil $ct-reg $ct-reg]
 		[visit-expressions vfind-multiple-definitions program $handler]
+		[classify-program-symbols (@expr-expression $program)]
 		[visit-expressions vlink-references (expr-expression $program) (storage _ $handler $ct-reg)]
-		[use-return-symbol $program (null) $ct-reg]
+		[set program [use-return-symbol $program (null) $ct-reg]]
+		[classify-program-symbols (@expr-expression $program)]
 		(let (asms nil) [visit-expressions vlinearized-expressions program (storage _ asms $ct-reg)]))
 	(handler (continuation _ (code arg0 arg1 arg2 arg3) (begin
 		(switch = $code
