@@ -79,3 +79,25 @@
 		(begin))
 	
 	{return $n})))
+
+(function make-load (sym offset dest-reg scratch-reg r) (with return
+	(let (container nil) (begin
+		(if [= (@sym-type $sym) (-dynamic-storage-)]
+			(let (op1 [make-literal [+ (@sym-offset $sym) $offset] $r])
+				[append [make-asm (-movq-mdb-to-reg-) (list $op1 [make-asm (-rbp-) nil $r] $dest-reg $r) $r] container $r])
+			(begin
+				(let (op1 [make-asm (-stval-add-off-to-ref-) (list [use-symbol $sym $r] [make-literal $offset $r] $r) $r])
+					[append [make-asm (-movq-imm-to-reg-) (list $op1 $scratch-reg $r) $r] container $r])
+				[append [make-asm (-movq-mdb-to-reg-) (list [make-literal &0 $r] $scratch-reg $dest-reg $r) $r] container $r]))
+		{return [make-begin $container $r]}))))
+
+(function make-store (src-reg sym offset scratch-reg r) (with return
+	(let (container nil) (begin
+		(if [= (@sym-type $sym) (-dynamic-storage-)]
+			(let (op2 [make-literal [+ (@sym-offset $sym) $offset] $r])
+				[append [make-asm (-movq-from-reg-into-mdb-) (list $src-reg $op2 [make-asm (-rbp-) nil $r] $r) $r] container $r])
+			(begin
+				(let (op1 [make-asm (-stval-add-off-to-ref-) (list [use-symbol $sym $r] [make-literal $offset $r] $r) $r])
+					[append [make-asm (-movq-imm-to-reg-) (list $op1 $scratch-reg $r) $r] container $r])
+				[append [make-asm (-movq-from-reg-into-mdb-) (list $src-reg [make-literal &0 $r] $scratch-reg $r) $r] container $r]))
+		{return [make-begin $container $r]}))))
