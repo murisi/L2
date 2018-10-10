@@ -27,14 +27,14 @@
 #define POPQ_REG 25
 #define LEAVE 26
 #define RET 27
-#define JMP_TO_REG 29
-#define JE_REL 30
-#define ORQ_REG_TO_REG 31
-#define MOVQ_IMM_TO_REG 32
-#define CALL_REG 34
-#define LABEL 36
-#define STVAL_ADD_OFF_TO_REF 43
-#define STVAL_SUB_RIP_FROM_REF 44
+#define JMP_TO_REG 28
+#define JE_REL 29
+#define ORQ_REG_TO_REG 30
+#define MOVQ_IMM_TO_REG 31
+#define CALL_REG 32
+#define LABEL 33
+#define STVAL_ADD_OFF_TO_REF 34
+#define STVAL_SUB_RIP_FROM_REF 35
 
 #define CONT_SIZE (7*WORD_SIZE)
 #define CONT_R15 (6*WORD_SIZE)
