@@ -126,4 +126,24 @@
 			(let (op1 [make-literal (@sym-offset $sym) $r])
 				[append [make-asm (-leaq-of-mdb-into-reg-) (list $op1 [make-asm (-rbp-) nil $r] $dest-reg $r) $r] c $r])
 			[append [make-asm (-movq-imm-to-reg-) (list [use-symbol $sym $r] $dest-reg $r) $r] c $r])
-		{return $c}))))
+		{return [make-begin $c $]}))))
+
+(function vgenerate-storage-expressions (n r)
+	(if [= (@expr-type $n) (-storage-)]
+		(with return (let (c nil) (offset &0) (begin
+			(foreach (t (@expr-arguments $n)) (begin
+				[append [make-load (@expr-symbol $t) &0 [make-asm (-r10-) nil $r] [make-asm (-r13-) nil $r] $r] c $r]
+				[append [make-store [make-asm(-r10-) nil $r] (@expr-symbol(@expr-reference $n)) $offset [make-asm(-r13-) nil $r] $r] c $r]
+				[set offset [+ $offset (-word-size-)]]))
+			[append [make-load-address (@expr-symbol(@expr-reference $n)) [make-asm (-r11-) nil $r] $r] c $r]
+			[append [make-store [make-asm (-r11-) nil $r] (@expr-return-symbol $n) &0 [make-asm (-r10-) nil $r] $r] c $r]
+			{return [make-begin $c $r]})))
+		$n))
+
+(function vgenerate-references (n r)
+	(if (and [= (@expr-type $n) (-reference-)] (@expr-return-symbol $n))
+		(with return (let (c nil) (begin
+			[append [make-load-address (@expr-symbol $n) [make-asm (-r11-) nil $r] $r] c $r]
+			[append [make-store [make-asm (-r11-) nil $r] (@expr-return-symbol $n) &0 [make-asm (-r10-) nil $r] $r] c $r]
+			{return [make-begin $c $r]})))
+		$n))
