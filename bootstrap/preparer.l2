@@ -264,6 +264,31 @@
 		
 		(begin)))
 
+(function classify-program-symbols (expr) (begin
+	(if (@expr-return-symbol $expr) (sym-type! (@expr-return-symbol $expr) (-static-storage-)) (begin))
+	(switch = (@expr-type $expr)
+		((-begin-) (foreach (t (@expr-expressions $expr)) [classify-program-symbols $t]))
+		
+		((-storage-) (-jump-) (-invoke-) (begin
+			(if [= (@expr-type $expr) (-storage-)]
+				(sym-type! (@expr-symbol(@expr-reference $expr)) (-static-storage-))
+				[classify-program-symbols (@expr-reference $expr)])
+			(foreach (t (@expr-arguments $expr)) [classify-program-symbols $t])))
+		
+		((-non-primitive-) [classify-program-symbols (@expr-reference $expr)])
+		
+		((-continuation-) (-with-) (begin
+			(sym-type! (@expr-symbol(@expr-reference $expr)) (-static-storage-))
+			(foreach (t (@expr-parameters $expr)) (sym-type! (@expr-symbol $t) (-static-storage-)))
+			[classify-program-symbols (@expr-expression $expr)]))
+		
+		((-if-) (begin
+			[classify-program-symbols (@expr-condition $expr)]
+			[classify-program-symbols (@expr-consequent $expr)]
+			[classify-program-symbols (@expr-alternate $expr)]))
+		
+		(begin))))
+
 (function insert-indirections (expr ref-name reg) (with return
 	(switch = (@expr-type $expr)
 		((-reference-)

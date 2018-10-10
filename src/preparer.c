@@ -371,6 +371,50 @@ void store_lexical_environment(union expression *s, bool is_static, list st_bind
 	}
 }
 
+void classify_program_symbols(union expression *expr) {
+	if(expr->base.return_symbol) {
+		expr->base.return_symbol->type = static_storage;
+	}
+	switch(expr->base.type) {
+		case begin: {
+			union expression *t;
+			foreach(t, expr->begin.expressions) {
+				classify_program_symbols(t);
+			}
+			break;
+		} case storage: case jump: case invoke: {
+			if(expr->base.type == storage) {
+				expr->storage.reference->reference.symbol->type = static_storage;
+			} else {
+				classify_program_symbols(expr->invoke.reference);
+			}
+			union expression *t;
+			foreach(t, expr->storage.arguments) {
+				classify_program_symbols(t);
+			}
+			break;
+		} case non_primitive: {
+			classify_program_symbols(expr->non_primitive.reference);
+			break;
+		} case continuation: case with: {
+			expr->continuation.reference->reference.symbol->type = static_storage;
+			union expression *t;
+			foreach(t, expr->continuation.parameters) {
+				t->reference.symbol->type = static_storage;
+			}
+			classify_program_symbols(expr->continuation.expression);
+			break;
+		} case function: {
+			break;
+		} case _if: {
+			classify_program_symbols(expr->_if.condition);
+			classify_program_symbols(expr->_if.consequent);
+			classify_program_symbols(expr->_if.alternate);
+			break;
+		}
+	}
+}
+
 void *_get_(void *ref) {
 	return *((void **) ref);
 }
@@ -651,52 +695,5 @@ union expression *vgenerate_static_np_expressions(union expression *s, void *ctx
 		return return_with;
 	} else {
 		return s;
-	}
-}
-
-void classify_program_symbols(union expression *expr) {
-	if(expr->base.return_symbol) {
-		expr->base.return_symbol->type = static_storage;
-	}
-	switch(expr->base.type) {
-		case begin: {
-			union expression *t;
-			foreach(t, expr->begin.expressions) {
-				classify_program_symbols(t);
-			}
-			break;
-		} case storage: {
-			expr->storage.reference->reference.symbol->type = static_storage;
-			union expression *t;
-			foreach(t, expr->storage.arguments) {
-				classify_program_symbols(t);
-			}
-			break;
-		} case jump: case invoke: {
-			classify_program_symbols(expr->invoke.reference);
-			union expression *t;
-			foreach(t, expr->invoke.arguments) {
-				classify_program_symbols(t);
-			}
-			break;
-		} case non_primitive: {
-			classify_program_symbols(expr->non_primitive.reference);
-			break;
-		} case continuation: case with: {
-			expr->continuation.reference->reference.symbol->type = static_storage;
-			union expression *t;
-			foreach(t, expr->continuation.parameters) {
-				t->reference.symbol->type = static_storage;
-			}
-			classify_program_symbols(expr->continuation.expression);
-			break;
-		} case function: {
-			break;
-		} case _if: {
-			classify_program_symbols(expr->_if.condition);
-			classify_program_symbols(expr->_if.consequent);
-			classify_program_symbols(expr->_if.alternate);
-			break;
-		}
 	}
 }
