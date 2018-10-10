@@ -183,7 +183,7 @@
 				[append [use-return-symbol (@expr-condition $n) $cond-ret-sym $r] container $r]
 				[replace-expression (expr-condition $n) [use-symbol $cond-ret-sym $r]]
 				[append $n container $r]))
-			{return $container})))
+			{return [make-begin $container $r]})))
 		
 		((-begin-) (begin
 			(until (partial (@expr-expressions $n)) [nil? $partial] [@cdr $partial]
@@ -263,6 +263,47 @@
 					[prepend [@car $dyn-refs-suffix] (expr-dyn-refs $s) $ct-reg]))))
 		
 		(begin)))
+
+(function insert-indirections (expr ref-name reg) (with return
+	(switch = (@expr-type $expr)
+		((-reference-)
+			{return (if [defined-ref= (@expr-name $expr) $ref-name]
+				[make-invoke [make-literal get $reg] (list $expr $reg) $reg]
+				$expr)})
+		
+		((-if-) (begin
+			[replace-expression (expr-condition $expr) [insert-indirections (@expr-condition $expr) $ref-name $reg]]
+			[replace-expression (expr-consequent $expr) [insert-indirections (@expr-consequent $expr) $ref-name $reg]]
+			[replace-expression (expr-alternate $expr) [insert-indirections (@expr-alternate $expr) $ref-name $reg]]
+			{return $expr}))
+		
+		((-begin-) (begin
+			(foreach (f (@expr-expressions $expr))
+				(if (and (or [= (@expr-type $f) (-function-)] [= (@expr-type $f) (-storage-)])
+					[defined-str= (@expr-name(@expr-reference $f)) $ref-name]) {return $expr} (begin)))
+			(until (partial (@expr-expressions $expr)) [nil? $partial] [@cdr $partial]
+				[replace-expression [car $partial] [insert-indirections [@car $partial] $ref-name $reg]])
+			{return $expr}))
+		
+		((-continuation-) (-with-) (begin
+			(if [defined-str= (@expr-name(@expr-reference $expr)) $ref-name] {return $expr} (begin))
+			(foreach (e (@expr-parameters $expr))
+				(if [defined-str= (@expr-name $e) $ref-name] {return $expr} (begin)))
+			[replace-expression (expr-expression $expr) [insert-indirections (@expr-expression $expr) $ref-name $reg]]
+			{return $expr}))
+		
+		((-invoke-) (-jump-) (-storage-) (begin
+			(if [= (@expr-type $expr) (-storage-)] (begin)
+				[replace-expression (expr-reference $expr) [insert-indirections (@expr-reference $expr) $ref-name $reg]])
+			(until (partial (@expr-arguments $expr)) [nil? $partial] [@cdr $partial]
+				[replace-expression [car $partial] [insert-indirections [@car $partial] $ref-name $reg]])
+			{return $expr}))
+		
+		((-non-primitive-) (begin
+			[prepend $ref-name (expr-indirections $expr) $reg]
+			{return $expr}))
+		
+		{return $expr})))
 
 (function load-expressions (program ectx st-binds ct-reg) (do-let (begin
 		[store-lexical-environment (@expr-expression $program) (true) $st-binds nil $ct-reg $ct-reg]
