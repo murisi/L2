@@ -70,8 +70,8 @@
 			[(function aux (s t r)
 				(if [emt? $s] [lllst -e- -m- -t- emt $r]
 		
-				(if (if [emt? $s] &0 (if [symbol? $s] &0 (if [emt? [@fst $s]]
-					&0 (if [char= [@ffst $s] -,-] [emt? [@rfst $s]] &0))))
+				(if (if [emt? $s] #0 (if [symbol? $s] #0 (if [emt? [@fst $s]]
+					#0 (if [char= [@ffst $s] -,-] [emt? [@rfst $s]] #0))))
 							[@frst $s]
 		
 				[lllllst [llllllst -i- -n- -v- -o- -k- -e- emt $r]
@@ -134,18 +134,18 @@
 
 (++ The following function is a macro for getting the address of a field of a struct.
 	The macro expands into a macro invocation of the supplied field (the second
-	item in the fragment $l), passing into it ~-aux (the macro that will generate
+	item in the fragment $l), passing into it &-aux (the macro that will generate
 	the actual invocation that calculates the address of the field) and the address of
 	the struct (the first item in the fragment $l).)
 
-(function ~ (l r p) (use-memo $p (`((,[@frst $l]) ~-aux (,[@fst $l]))$r)))
+(function & (l r p) (use-memo $p (`((,[@frst $l]) &-aux (,[@fst $l]))$r)))
 
 (++ This function is not to be called directly. It generates the actual
 	invocation to calculate the address of the field. When macro-called, it
 	adds the offset (the first item in the fragment $l) to the base
 	(the fifth item in the fragment $l).)
 	
-(function ~-aux (l r p) (use-memo $p (`[+ (,[@frrrrst $l]) (,[@fst $l])]$r)))
+(function &-aux (l r p) (use-memo $p (`[+ (,[@frrrrst $l]) (,[@fst $l])]$r)))
 
 (++ The following function is a macro for getting the field of a struct. The
 	macro expands into a macro invocation of the supplied field (the second
@@ -188,8 +188,8 @@
 
 (function mk-field (l r p offset size)
 	(use-memo $p [lllllst [@fst $l] [binary->base2sexpr $offset $r] [binary->base2sexpr $size $r]
-		(switch = $size (&1 (` get1b $r)) (&2 (` get2b $r)) (&4 (` get4b $r)) (&8 (` get8b $r)) (null))
-		(switch = $size (&1 (` set1b $r)) (&2 (` set2b $r)) (&4 (` set4b $r)) (&8 (` set8b $r)) (null))
+		(switch = $size (#1 (` get1b $r)) (#2 (` get2b $r)) (#4 (` get4b $r)) (#8 (` get8b $r)) (null))
+		(switch = $size (#1 (` set1b $r)) (#2 (` set2b $r)) (#4 (` set4b $r)) (#8 (` set8b $r)) (null))
 		[@rst $l] $r]))
 
 (++ The following function provides another method for commenting L2 code. It
@@ -202,7 +202,7 @@
 (** dude guy (begin))
 [write-str (stdout) $hey]
 
-(** Now things are working: (let (d &5)
-	(until (i &5) [= $i &23] [+ $i &1] (begin
+(** Now things are working: (let (d #5)
+	(until (i #5) [= $i #23] [+ $i #1] (begin
 		[write-str (stdout) (" Hello(lf))]
 		[write-uint (stdout) [* $d $i]]))))

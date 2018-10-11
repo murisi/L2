@@ -1,40 +1,40 @@
-(function sys-read (l r p) (use-memo $p (` &0 $r)))
-(function sys-write (l r p) (use-memo $p (` &1 $r)))
-(function sys-open (l r p) (use-memo $p (` &2 $r)))
-(function sys-close (l r p) (use-memo $p (` &3 $r)))
-(function sys-fstat (l r p) (use-memo $p (` &5 $r)))
-(function sys-mmap (l r p) (use-memo $p (` &9 $r)))
-(function sys-munmap (l r p) (use-memo $p (` &11 $r)))
-(function sys-exit (l r p) (use-memo $p (` &60 $r)))
-(function sys-clock-gettime (l r p) (use-memo $p (` &228 $r)))
-(function o-rdonly (l r p) (use-memo $p (` &0 $r)))
-(function o-rdwr (l r p) (use-memo $p (` &2 $r)))
-(function o-creat (l r p) (use-memo $p (` &64 $r)))
-(function s-irwxu (l r p) (use-memo $p (` &448 $r)))
-(function s-irwxg (l r p) (use-memo $p (` &56 $r)))
-(function s-irwxo (l r p) (use-memo $p (` &7 $r)))
-(function prot-read (l r p) (use-memo $p (` &1 $r)))
-(function prot-write (l r p) (use-memo $p (` &2 $r)))
-(function prot-exec (l r p) (use-memo $p (` &4 $r)))
-(function prot-none (l r p) (use-memo $p (` &0 $r)))
-(function map-private (l r p) (use-memo $p (` &2 $r)))
-(function map-anonymous (l r p) (use-memo $p (` &32 $r)))
-(function page-size (l r p) (use-memo $p (` &4096 $r)))
+(function sys-read (l r p) (use-memo $p (` #0 $r)))
+(function sys-write (l r p) (use-memo $p (` #1 $r)))
+(function sys-open (l r p) (use-memo $p (` #2 $r)))
+(function sys-close (l r p) (use-memo $p (` #3 $r)))
+(function sys-fstat (l r p) (use-memo $p (` #5 $r)))
+(function sys-mmap (l r p) (use-memo $p (` #9 $r)))
+(function sys-munmap (l r p) (use-memo $p (` #11 $r)))
+(function sys-exit (l r p) (use-memo $p (` #60 $r)))
+(function sys-clock-gettime (l r p) (use-memo $p (` #228 $r)))
+(function o-rdonly (l r p) (use-memo $p (` #0 $r)))
+(function o-rdwr (l r p) (use-memo $p (` #2 $r)))
+(function o-creat (l r p) (use-memo $p (` #64 $r)))
+(function s-irwxu (l r p) (use-memo $p (` #448 $r)))
+(function s-irwxg (l r p) (use-memo $p (` #56 $r)))
+(function s-irwxo (l r p) (use-memo $p (` #7 $r)))
+(function prot-read (l r p) (use-memo $p (` #1 $r)))
+(function prot-write (l r p) (use-memo $p (` #2 $r)))
+(function prot-exec (l r p) (use-memo $p (` #4 $r)))
+(function prot-none (l r p) (use-memo $p (` #0 $r)))
+(function map-private (l r p) (use-memo $p (` #2 $r)))
+(function map-anonymous (l r p) (use-memo $p (` #32 $r)))
+(function page-size (l r p) (use-memo $p (` #4096 $r)))
 (function arg-max (l r p) (use-memo $p (`(page-size)$r)))
-(function clock-process-cputime-id (l r p) (use-memo $p (` &2 $r)))
-(function stdin (l r p) (use-memo $p (` &0 $r)))
-(function stdout (l r p) (use-memo $p (` &1 $r)))
-(function null (l r p) (use-memo $p (` &0 $r)))
-(function unit (l r p) (use-memo $p (` &8 $r)))
-(function alloc-alignment (l r p) (use-memo $p (` &8 $r)))
+(function clock-process-cputime-id (l r p) (use-memo $p (` #2 $r)))
+(function stdin (l r p) (use-memo $p (` #0 $r)))
+(function stdout (l r p) (use-memo $p (` #1 $r)))
+(function null (l r p) (use-memo $p (` #0 $r)))
+(function unit (l r p) (use-memo $p (` #8 $r)))
+(function alloc-alignment (l r p) (use-memo $p (` #8 $r)))
 
 (function exit (code) [syscall (sys-exit) $code])
 
 (function strlen (str) (with return
 	{(continuation loop (i)
 		(if [getb [+ $str $i]]
-			{loop [+ $i &1]}
-			{return $i})) &0}))
+			{loop [+ $i #1]}
+			{return $i})) #0}))
 
 (function strrchr (s c) (with return
 	(let (t [+ $s [strlen $s]]) (begin
@@ -43,12 +43,12 @@
 				{return $t}
 			(if [= $t $s]
 				{return (null)}
-				{loop [- $t &1]}))) $t}))))
+				{loop [- $t #1]}))) $t}))))
 
 (function strcmp (s1 s2) (with return
 	{(continuation loop (s1 s2)
 		(if (and [getb $s1] [getb $s2] [= [getb $s1] [getb $s2]])
-			{loop [+ $s1 &1] [+ $s2 &1]}
+			{loop [+ $s1 #1] [+ $s2 #1]}
 			{return [- [getb $s1] [getb $s2]]})) $s1 $s2}))
 
 (function str= (s1 s2) (not [strcmp $s1 $s2]))
@@ -57,7 +57,7 @@
 	{(continuation loop (dest src) (begin
 		[setb $dest [getb $src]]
 		(if [getb $dest]
-			{loop [+ $dest &1] [+ $src &1]}
+			{loop [+ $dest #1] [+ $src #1]}
 			{return (begin)}))) $dest $src}))
 
 (function memcpy (dest src n) (with return
@@ -65,7 +65,7 @@
 		(if $n
 			(begin
 				[setb $dest [getb $src]]
-				{loop [+ $dest &1] [+ $src &1] [- $n &1]})
+				{loop [+ $dest #1] [+ $src #1] [- $n #1]})
 			{return (begin)})) $dest $src $n}))
 
 (function memset (s c n) (with return
@@ -73,7 +73,7 @@
 		(if $n
 			(begin
 				[setb $s [getb c]]
-				{loop [+ $s &1] [- $n &1]})
+				{loop [+ $s #1] [- $n #1]})
 			{return (begin)})) $s $n}))
 
 (function isspace (c) (switch = [getb c]
@@ -91,24 +91,24 @@
 
 (function write-str (fd str) [write $fd $str [strlen $str]])
 
-(function write-char (fd ch) [write $fd ch &1])
+(function write-char (fd ch) [write $fd ch #1])
 
 (function write-uint (fd i) (with return
-	[allocate &20 (continuation _ (str) (let (j &19) (begin
-		(until (i $i) [= $i &0] [/ $i &10] (begin
-			[setb [+ $str $j] (switch = [rem $i &10]
-				(&9 (char 9))
-				(&8 (char 8))
-				(&7 (char 7))
-				(&6 (char 6))
-				(&5 (char 5))
-				(&4 (char 4))
-				(&3 (char 3))
-				(&2 (char 2))
-				(&1 (char 1))
+	[allocate #20 (continuation _ (str) (let (j #19) (begin
+		(until (i $i) [= $i #0] [/ $i #10] (begin
+			[setb [+ $str $j] (switch = [rem $i #10]
+				(#9 (char 9))
+				(#8 (char 8))
+				(#7 (char 7))
+				(#6 (char 6))
+				(#5 (char 5))
+				(#4 (char 4))
+				(#3 (char 3))
+				(#2 (char 2))
+				(#1 (char 1))
 				(char 0))]
-			[set j [- $j &1]]))
-		[write $fd [+ $str [+ $j &1]] [- &19 $j]]
+			[set j [- $j #1]]))
+		[write $fd [+ $str [+ $j #1]] [- #19 $j]]
 		{return (begin)})))]))
 
 (function read (fd buf cnt) [syscall (sys-read) $fd $buf $cnt])
@@ -116,23 +116,23 @@
 (function close (fd) [syscall (sys-close) $fd])
 
 (function size (fd) (with return
-	[allocate &144 (continuation _ (statbuf) (begin
+	[allocate #144 (continuation _ (statbuf) (begin
 		[syscall (sys-fstat) $fd $statbuf]
-		{return [get [+ $statbuf &48]]}))]))
+		{return [get [+ $statbuf #48]]}))]))
 
 (++ Creates a new virtual address mapping of the size in bytes given at len.)
 
-(function mmap (len) [syscall (sys-mmap) (null) $len [lor (prot-read) (prot-write)] [lor (map-private) (map-anonymous)] [lnot &0] &0])
+(function mmap (len) [syscall (sys-mmap) (null) $len [lor (prot-read) (prot-write)] [lor (map-private) (map-anonymous)] [lnot #0] #0])
 
 (++ Deletes virtual address mappings coinciding with the range starting with the
 	value at ptr and having an extent of the value given at len.)
 
 (function munmap (ptr len) [syscall (sys-munmap) $ptr $len])
 
-(function pad-size (x nearest) (let (r [rem $x $nearest]) [+ $x (if $r [- $nearest $r] &0)]))
+(function pad-size (x nearest) (let (r [rem $x $nearest]) [+ $x (if $r [- $nearest $r] #0)]))
 
 (++ A macro to produce the address of an element of a multi-dimensional array.
-	For example, (loc $arr &2 &5 &4(unit)) gets the address at offset 2 units
+	For example, (loc $arr #2 #5 #4(unit)) gets the address at offset 2 units
 	from $arr, and then gets the address at offset 5 units from that, and then
 	gets the address at offset 4 units from that.)
 
@@ -145,13 +145,13 @@
 	min-capacity.)
 
 (function create-region (min-capacity) (with return
-	(let (len [pad-size [+ $min-capacity [* &5(unit)]] (page-size)])
+	(let (len [pad-size [+ $min-capacity [* #5(unit)]] (page-size)])
 		(let (reg [mmap $len]) (begin
-			[set (loc $reg &0(unit)) (null)]
-			[set (loc $reg &1(unit)) $reg]
-			[set (loc $reg &2(unit)) [+ $reg [* &5(unit)]]]
-			[set (loc $reg &3(unit)) [+ $reg $len]]
-			[set (loc $reg &4(unit)) &16045690984833335023]
+			[set (loc $reg #0(unit)) (null)]
+			[set (loc $reg #1(unit)) $reg]
+			[set (loc $reg #2(unit)) [+ $reg [* #5(unit)]]]
+			[set (loc $reg #3(unit)) [+ $reg $len]]
+			[set (loc $reg #4(unit)) #16045690984833335023]
 			{return $reg})))))
 
 (++ Allocates memory in the region at reg of an amount in bytes equal to the
@@ -160,21 +160,21 @@
 
 (function region-alloc (reg len) (with return (begin
 	[set len [pad-size $len (alloc-alignment)]]
-	(if [> [+($(loc $reg &1 &2(unit)))$len] ($(loc $reg &1 &3(unit)))]
+	(if [> [+($(loc $reg #1 #2(unit)))$len] ($(loc $reg #1 #3(unit)))]
 		(begin
-			[set (loc $reg &1 &0(unit)) [create-region [+ $len [* &2[-($(loc $reg &1 &3(unit)))($(loc $reg &1(unit)))]]]]]
-			[set (loc $reg &1(unit)) ($(loc $reg &1 &0(unit)))])
+			[set (loc $reg #1 #0(unit)) [create-region [+ $len [* #2[-($(loc $reg #1 #3(unit)))($(loc $reg #1(unit)))]]]]]
+			[set (loc $reg #1(unit)) ($(loc $reg #1 #0(unit)))])
 		(begin))
-	[set (loc $reg &1 &2(unit)) [+($(loc $reg &1 &2(unit)))$len]]
-	{return [-($(loc $reg &1 &2(unit)))$len]})))
+	[set (loc $reg #1 #2(unit)) [+($(loc $reg #1 #2(unit)))$len]]
+	{return [-($(loc $reg #1 #2(unit)))$len]})))
 
 (++ Releases the memory associated with the region reg. After a call to this
 	function, it is invalid to read or write data to the memory allocated on
 	this region.)
 
 (function destroy-region (reg) (do-while
-	(let (next-reg ($(loc $reg &0(unit)))) (begin
-		[munmap $reg [- ($(loc $reg &3(unit))) $reg]]
+	(let (next-reg ($(loc $reg #0(unit)))) (begin
+		[munmap $reg [- ($(loc $reg #3(unit))) $reg]]
 		[set reg $next-reg]))
 	$reg))
 
@@ -182,7 +182,7 @@
 	its dependencies will all reside in the region reg.)
 
 (function rstrcpy (src reg) (with return
-	(let (dest [region-alloc $reg [+[strlen $src]&1]]) (begin
+	(let (dest [region-alloc $reg [+[strlen $src]#1]]) (begin
 		[strcpy $dest $src]
 		{return $dest}))))
 
@@ -195,5 +195,5 @@
 			[close $f]
 			{(continuation loop (buf bytes-rem args)
 				(if $bytes-rem
-					{loop [+ $buf [+ [strlen $buf] &1]] [- $bytes-rem [+ [strlen $buf] &1]] [cons $buf $args $reg]}
+					{loop [+ $buf [+ [strlen $buf] #1]] [- $bytes-rem [+ [strlen $buf] #1]] [cons $buf $args $reg]}
 					{return [reverse $args $reg]})) $buf $bytes-rem nil})))))

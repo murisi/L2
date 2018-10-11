@@ -91,8 +91,8 @@ list build_fragment(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *hand
 		return build_fragment_list("invoke", ']', l2src, l2src_sz, pos, r, handler);
 	} else if(c == '$') {
 		return build_sigilled_symbol("$", l2src, l2src_sz, pos, r, handler);
-	} else if(c == '&') {
-		return build_sigilled_symbol("&", l2src, l2src_sz, pos, r, handler);
+	} else if(c == '#') {
+		return build_sigilled_symbol("#", l2src, l2src_sz, pos, r, handler);
 	} else if(c == ',') {
 		return build_sigilled_symbol(",", l2src, l2src_sz, pos, r, handler);
 	} else if(c == '`') {

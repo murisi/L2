@@ -2,11 +2,11 @@
 
 (function named-ref= (a b) [defined-str= (@ $a expr-name) (@ $b expr-name)])
 
-(storage multiple-definition-error &0)
+(storage multiple-definition-error #0)
 
 (function vfind-multiple-definitions (e handler) (with return
 	(switch = (@ $e expr-type)
-		((-begin-) (let (temp-reg [create-region &0]) (begin
+		((-begin-) (let (temp-reg [create-region #0]) (begin
 			(let (definitions [filter (function _ (f) (or [= (@ $f expr-type) (-storage-)] [= (@ $f expr-type) (-function-)]))
 					(@ $e expr-expressions) $temp-reg])
 				(until (partial $definitions) [nil? $partial] [@cdr $partial]
@@ -17,7 +17,7 @@
 			[destroy-region $temp-reg]
 			{return $e})))
 		
-		((-continuation-) (-function-) (let (temp-reg [create-region &0]) (begin
+		((-continuation-) (-function-) (let (temp-reg [create-region #0]) (begin
 			(let (ref-with-params [lst (@ $e expr-reference) (@ $e expr-parameters) $temp-reg])
 				(until (partial $ref-with-params) [nil? $partial] [@cdr $partial]
 					(if [find (function _ (f ctx) [named-ref= $f $ctx]) [cdr $partial] [@car $partial]]
@@ -85,10 +85,10 @@
 			{loop $parent (@ $parent expr-parent)}
 			{return $s})) $s (@ $s expr-parent)}))
 
-(storage param-count-mismatch-error &0)
+(storage param-count-mismatch-error #0)
 
 (function vlink-references (s ctx)
-	(let (handler ($(loc $ctx &0(unit)))) (r ($(loc $ctx &1(unit))))
+	(let (handler ($(loc $ctx #0(unit)))) (r ($(loc $ctx #1(unit))))
 		(if [= (@ $s expr-type) (-reference-)]
 			(with return (begin
 				(! $s expr-symbol (if (@ $s expr-symbol) (@ $s expr-symbol) [symbol-of $s]))
@@ -130,15 +130,15 @@
 				[visit-expressions $visitor [car $partial] $ctx]))
 		
 		((-if-) (begin
-			[visit-expressions $visitor (~ $$s expr-condition) $ctx]
-			[visit-expressions $visitor (~ $$s expr-consequent) $ctx]
-			[visit-expressions $visitor (~ $$s expr-alternate) $ctx]))
+			[visit-expressions $visitor (& $$s expr-condition) $ctx]
+			[visit-expressions $visitor (& $$s expr-consequent) $ctx]
+			[visit-expressions $visitor (& $$s expr-alternate) $ctx]))
 		
 		((-function-) (-continuation-) (-with-)
-			[visit-expressions $visitor (~ $$s expr-expression) $ctx])
+			[visit-expressions $visitor (& $$s expr-expression) $ctx])
 		
 		((-jump-) (-invoke-) (-storage-) (begin
-			(if [= (@ $$s expr-type) (-storage-)] (begin) [visit-expressions $visitor (~ $$s expr-reference) $ctx])
+			(if [= (@ $$s expr-type) (-storage-)] (begin) [visit-expressions $visitor (& $$s expr-reference) $ctx])
 			(until (partial (@ $$s expr-arguments)) [nil? $partial] [@cdr $partial]
 				[visit-expressions $visitor [car $partial] $ctx])))
 		
@@ -150,14 +150,14 @@
 	(switch = (@ $n expr-type)
 		((-with-) (-continuation-) (begin
 			(! $n expr-return-symbol $ret-sym)
-			(replace-expression (~ $n expr-expression) [use-return-symbol (@ $n expr-expression)
+			(replace-expression (& $n expr-expression) [use-return-symbol (@ $n expr-expression)
 				[make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (null) (null) $r] $r])
 			{return $n}))
 		
 		((-function-) (begin
 			(! $n expr-return-symbol $ret-sym)
 			(! $n expr-expression-return-symbol [make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (null) (null) $r])
-			(replace-expression (~ $n expr-expression) [use-return-symbol (@ $n expr-expression) (@ $n expr-expression-return-symbol) $r])
+			(replace-expression (& $n expr-expression) [use-return-symbol (@ $n expr-expression) (@ $n expr-expression-return-symbol) $r])
 			{return $n}))
 		
 		((-invoke-) (-jump-) (-storage-)
@@ -165,7 +165,7 @@
 				(if [= (@ $n expr-type) (-storage-)] (begin)
 					(let (ref-ret-sym [make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (null) (null) $r]) (begin
 						[append [use-return-symbol (@ $n expr-reference) $ref-ret-sym $r] container $r]
-						(replace-expression (~ $n expr-reference) [use-symbol $ref-ret-sym $r]))))
+						(replace-expression (& $n expr-reference) [use-symbol $ref-ret-sym $r]))))
 						
 				(until (partial (@ $n expr-arguments)) [nil? $partial] [@cdr $partial]
 					(let (arg-ret-sym [make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (null) (null) $r]) (begin
@@ -177,11 +177,11 @@
 				{return [make-begin $container $r]})))
 		
 		((-if-) (let (container nil) (begin
-			(replace-expression (~ $n expr-consequent) [use-return-symbol (@ $n expr-consequent) $ret-sym $r])
-			(replace-expression (~ $n expr-alternate) [use-return-symbol (@ $n expr-alternate) $ret-sym $r])
+			(replace-expression (& $n expr-consequent) [use-return-symbol (@ $n expr-consequent) $ret-sym $r])
+			(replace-expression (& $n expr-alternate) [use-return-symbol (@ $n expr-alternate) $ret-sym $r])
 			(let (cond-ret-sym [make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (null) (null) $r]) (begin
 				[append [use-return-symbol (@ $n expr-condition) $cond-ret-sym $r] container $r]
-				(replace-expression (~ $n expr-condition) [use-symbol $cond-ret-sym $r])
+				(replace-expression (& $n expr-condition) [use-symbol $cond-ret-sym $r])
 				[append $n container $r]))
 			{return [make-begin $container $r]})))
 		
@@ -201,7 +201,7 @@
 	(if [= (@ $n expr-type) (-begin-)]
 		$n
 		(with return
-			(let (l ($(loc $ctx &0(unit)))) (r ($(loc $ctx &1(unit)))) (begin
+			(let (l ($(loc $ctx #0(unit)))) (r ($(loc $ctx #1(unit)))) (begin
 				[prepend $n $l $r]
 				{return $n})))))
 
@@ -260,7 +260,7 @@
 			(! $s expr-dyn-refs nil)
 			(until (dyn-refs-suffix $dyn-refs) [nil? $dyn-refs-suffix] [@cdr $dyn-refs-suffix]
 				(if [find named-ref= [cdr $dyn-refs-suffix] [@car $dyn-refs-suffix]] (begin)
-					[prepend [@car $dyn-refs-suffix] (~ $s expr-dyn-refs) $ct-reg]))))
+					[prepend [@car $dyn-refs-suffix] (& $s expr-dyn-refs) $ct-reg]))))
 		
 		(begin)))
 
@@ -297,9 +297,9 @@
 				$expr)})
 		
 		((-if-) (begin
-			(replace-expression (~ $expr expr-condition) [insert-indirections (@ $expr expr-condition) $ref-name $reg])
-			(replace-expression (~ $expr expr-consequent) [insert-indirections (@ $expr expr-consequent) $ref-name $reg])
-			(replace-expression (~ $expr expr-alternate) [insert-indirections (@ $expr expr-alternate) $ref-name $reg])
+			(replace-expression (& $expr expr-condition) [insert-indirections (@ $expr expr-condition) $ref-name $reg])
+			(replace-expression (& $expr expr-consequent) [insert-indirections (@ $expr expr-consequent) $ref-name $reg])
+			(replace-expression (& $expr expr-alternate) [insert-indirections (@ $expr expr-alternate) $ref-name $reg])
 			{return $expr}))
 		
 		((-begin-) (begin
@@ -314,18 +314,18 @@
 			(if [defined-str= (@(@ $expr expr-reference)expr-name) $ref-name] {return $expr} (begin))
 			(foreach (e (@ $expr expr-parameters))
 				(if [defined-str= (@ $e expr-name) $ref-name] {return $expr} (begin)))
-			(replace-expression (~ $expr expr-expression) [insert-indirections (@ $expr expr-expression) $ref-name $reg])
+			(replace-expression (& $expr expr-expression) [insert-indirections (@ $expr expr-expression) $ref-name $reg])
 			{return $expr}))
 		
 		((-invoke-) (-jump-) (-storage-) (begin
 			(if [= (@ $expr expr-type) (-storage-)] (begin)
-				(replace-expression (~ $expr expr-reference) [insert-indirections (@ $expr expr-reference) $ref-name $reg]))
+				(replace-expression (& $expr expr-reference) [insert-indirections (@ $expr expr-reference) $ref-name $reg]))
 			(until (partial (@ $expr expr-arguments)) [nil? $partial] [@cdr $partial]
 				(replace-expression [car $partial] [insert-indirections [@car $partial] $ref-name $reg]))
 			{return $expr}))
 		
 		((-non-primitive-) (begin
-			[prepend $ref-name (~ $expr expr-indirections) $reg]
+			[prepend $ref-name (& $expr expr-indirections) $reg]
 			{return $expr}))
 		
 		{return $expr})))
@@ -334,10 +334,10 @@
 		[store-lexical-environment (@ $program expr-expression) (true) $st-binds nil $ct-reg $ct-reg]
 		[visit-expressions vfind-multiple-definitions program $handler]
 		[classify-program-symbols (@ $program expr-expression)]
-		[visit-expressions vlink-references (~ $program expr-expression) (storage _ $handler $ct-reg)]
+		[visit-expressions vlink-references (& $program expr-expression) (storage _ $handler $ct-reg)]
 		[set program [use-return-symbol $program (null) $ct-reg]]
 		[classify-program-symbols (@ $program expr-expression)]
-		[visit-expressions vlayout-frames (~ $program expr-expression) $ct-reg]
+		[visit-expressions vlayout-frames (& $program expr-expression) $ct-reg]
 		[visit-expressions vgenerate-references program $ct-reg]
 		(let (asms nil) [visit-expressions vlinearized-expressions program (storage _ asms $ct-reg)]))
 	(handler (continuation _ (code arg0 arg1 arg2 arg3) (begin
@@ -345,11 +345,11 @@
 			(multiple-definition-error [write-str (stdout) (" Multiple definition error.)])
 			(param-count-mismatch-error [write-str (stdout) (" Parameter count mismatch error.)])
 			(begin))
-		[exit &1])))))
+		[exit #1])))))
 
 (let (fd [open (" test.l2)])
-	(let (src-sz [size $fd]) (r [create-region &0])
-		(let (src-buf [region-alloc $r $src-sz]) (expressions nil) (pos &0) (begin
+	(let (src-sz [size $fd]) (r [create-region #0])
+		(let (src-buf [region-alloc $r $src-sz]) (expressions nil) (pos #0) (begin
 			[read $fd $src-buf $src-sz]
 			[close $fd]
 			(while [after-leading-space $src-buf $src-sz pos]
