@@ -2,21 +2,13 @@
 
 (function character-struct (l r p) (use-memo $p (`[* &2(unit)]$r)))
 
-(function cs-list-flag (l r p) (use-memo $p (`[+(,[@fst $l])&0]$r)))
+(function cs-list-flag (l r p) [mk-field $l $r $p &0 &8])
 
-(function @cs-list-flag (l r p) (use-memo $p (`[get[+(,[@fst $l])&0]]$r)))
-
-(function cs-list-flag! (l r p) (use-memo $p (`[set[+(,[@fst $l])&0](,[@frst $l])]$r)))
-
-(function cs-character (l r p) (use-memo $p (`[+(,[@fst $l])(unit)]$r)))
-
-(function @cs-character (l r p) (use-memo $p (`[get[+(,[@fst $l])(unit)]]$r)))
-
-(function cs-character! (l r p) (use-memo $p (`[set[+(,[@fst $l])(unit)](,[@frst $l])]$r)))
+(function cs-character (l r p) [mk-field $l $r $p &8 &8])
 
 (function sexpr-struct (l r p) (use-memo $p (`[* &2(unit)]$r)))
 
-(function i/f:char= (a b) [= (@cs-character $a) (@cs-character $b)])
+(function i/f:char= (a b) [= (@ $a cs-character) (@ $b cs-character)])
 
 (storage characters
 	&0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 &0 (char-init !) (char-init ")
@@ -96,12 +88,12 @@
 							[set $pos [- $$pos &1]]
 							{return $l})))}))))))
 
-(function i/f:symbol? (d) (and [length $d] (not (@cs-list-flag [@car $d]))))
+(function i/f:symbol? (d) (and [length $d] (not (@[@car $d]cs-list-flag))))
 
 (function to-string (d r) (with return
 	(let (str [region-alloc $r [+ [length $d] &1]]) (i &0) (begin
 		(foreach (t $d) (begin
-			[setb [+ $str $i] (@cs-character $t)]
+			[setb [+ $str $i] (@ $t cs-character)]
 			[set i [+ $i &1]]))
 		[setb [+ $str $i] (null)]
 		{return $str}))))
@@ -110,12 +102,11 @@
 	[write-char (stdout) (lparen)]
 	(if [nil? $d] (begin) (begin
 		(if [symbol? $d]
-			[write-char (stdout) (@cs-character [@car $d])]
+			[write-char (stdout) (@[@car $d]cs-character)]
 			[print-fragment [@car $d]])
 		[write-char (stdout) (space)]
 		[write-char (stdout) (char .)]
 		[write-char (stdout) (space)]
 		[print-fragment [@cdr $d]]))
 	[write-char (stdout) (rparen)]))
-
 
