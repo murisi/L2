@@ -95,8 +95,19 @@
 
 (function !-aux (l r p) (use-memo $p (`[(,[@frrrst $l]) [+ (,[@frrrrst $l]) (,[@fst $l])] (,[@frrrrrst $l])]$r)))
 
-(function field (l r p offset size getter setter)
-	(use-memo $p [lllllst [@fst $l] [binary->base2sexpr $offset $r] [binary->base2sexpr $size $r] $getter $setter [@rst $l] $r]))
+(function field (l r p offset size)
+	(use-memo $p [lllllst [@fst $l] [binary->base2sexpr $offset $r] [binary->base2sexpr $size $r]
+		(switch = $size
+			(&1 (` get1b $r))
+			(&2 (` get2b $r))
+			(&4 (` get4b $r))
+			(` get8b $r))
+		(switch = $size
+			(&1 (` set1b $r))
+			(&2 (` set2b $r))
+			(&4 (` set4b $r))
+			(` set8b $r))
+		[@rst $l] $r]))
 
 (++ The following function provides another method for commenting L2 code. It
 	implements the transformation (++ expr1 ...) -> (begin). It is being used
