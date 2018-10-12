@@ -33,11 +33,11 @@
 
 (function make-symbol (type scope state name definition r) (with return
 	(let (sym [region-alloc $r (symbol)]) (begin
-		(! $sym sym-type $type)
-		(! $sym sym-scope $scope)
-		(! $sym sym-state $state)
-		(! $sym sym-name $name)
-		(! $sym sym-definition $definition)
+		(setf $sym sym-type $type)
+		(setf $sym sym-scope $scope)
+		(setf $sym sym-state $state)
+		(setf $sym sym-name $name)
+		(setf $sym sym-definition $definition)
 		{return $sym}))))
 
 (function expression (l r p) [mk# $l $r $p #72])
@@ -82,141 +82,141 @@
 
 (function make-literal (value reg) (with return
 	(let (t [region-alloc $reg (expression)]) (begin
-		(! $t expr-type (-literal-))
-		(! $t expr-value $value)
+		(setf $t expr-type (-literal-))
+		(setf $t expr-value $value)
 		{return $t}))))
 
 (function make-reference (name reg) (with return
 	(let (ref [region-alloc $reg (expression)]) (begin
-		(! $ref expr-type (-reference-))
-		(! $ref expr-name $name)
-		(! $ref expr-symbol (null))
+		(setf $ref expr-type (-reference-))
+		(setf $ref expr-name $name)
+		(setf $ref expr-symbol (null))
 		{return $ref}))))
 
-(function refer-reference (reference referent) (! $reference expr-symbol (@ $referent expr-symbol)))
+(function refer-reference (reference referent) (setf $reference expr-symbol (@ $referent expr-symbol)))
 
 (function use-symbol (sym reg) (with return
 	(let (ref [region-alloc $reg (expression)]) (begin
-		(! $ref expr-type (-reference-))
-		(! $ref expr-name (@ $sym sym-name))
-		(! $ref expr-symbol $sym)
+		(setf $ref expr-type (-reference-))
+		(setf $ref expr-name (@ $sym sym-name))
+		(setf $ref expr-symbol $sym)
 		{return $ref}))))
 
 (function make-begin (expressions reg) (with return
 	(let (beg [region-alloc $reg (expression)]) (begin
-		(! $beg expr-type (-begin-))
-		(! $beg expr-expressions $expressions)
-		(foreach (expr $expressions) (! $expr expr-parent $beg))
+		(setf $beg expr-type (-begin-))
+		(setf $beg expr-expressions $expressions)
+		(foreach (expr $expressions) (setf $expr expr-parent $beg))
 		{return $beg}))))
 
 (function make-function (ref params expr reg) (with return
 	(let (func [region-alloc $reg (expression)]) (begin
-		(! $func expr-type (-function-))
-		(! $func expr-reference $ref)
-		(! $ref expr-parent $func)
-		(! $ref expr-symbol [make-symbol (-static-storage-) (-local-scope-) (-defined-state-) (@ $ref expr-name) $ref $reg])
-		(! $func expr-parameters $params)
+		(setf $func expr-type (-function-))
+		(setf $func expr-reference $ref)
+		(setf $ref expr-parent $func)
+		(setf $ref expr-symbol [make-symbol (-static-storage-) (-local-scope-) (-defined-state-) (@ $ref expr-name) $ref $reg])
+		(setf $func expr-parameters $params)
 		(foreach (param $params) (begin
-			(! $param expr-parent $func)
-			(! $param expr-symbol [make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (@ $param expr-name) $param $reg])))
-		(! $func expr-symbols nil)
-		(! $func expr-expression $expr)
-		(! $expr expr-parent $func)
+			(setf $param expr-parent $func)
+			(setf $param expr-symbol [make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (@ $param expr-name) $param $reg])))
+		(setf $func expr-symbols nil)
+		(setf $func expr-expression $expr)
+		(setf $expr expr-parent $func)
 		{return $func}))))
 
 (function make-continuation (ref params expr reg) (with return
 	(let (cont [region-alloc $reg (expression)]) (begin
-		(! $cont expr-type (-continuation-))
-		(! $cont expr-reference $ref)
-		(! $ref expr-parent $cont)
-		(! $ref expr-symbol [make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (@ $ref expr-name) $ref $reg])
-		(! $cont expr-parameters $params)
+		(setf $cont expr-type (-continuation-))
+		(setf $cont expr-reference $ref)
+		(setf $ref expr-parent $cont)
+		(setf $ref expr-symbol [make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (@ $ref expr-name) $ref $reg])
+		(setf $cont expr-parameters $params)
 		(foreach (param $params) (begin
-			(! $param expr-parent $cont)
-			(! $param expr-symbol [make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (@ $param expr-name) $param $reg])))
-		(! $cont expr-escapes (true))
-		(! $cont expr-expression $expr)
-		(! $expr expr-parent $cont)
+			(setf $param expr-parent $cont)
+			(setf $param expr-symbol [make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (@ $param expr-name) $param $reg])))
+		(setf $cont expr-escapes (true))
+		(setf $cont expr-expression $expr)
+		(setf $expr expr-parent $cont)
 		{return $cont}))))
 
 (function make-with (ref expr reg) (with return
 	(let (wth [region-alloc $reg (expression)]) (begin
-		(! $wth expr-type (-with-))
-		(! $wth expr-reference $ref)
-		(! $ref expr-parent $wth)
-		(! $ref expr-symbol [make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (@ $ref expr-name) $ref $reg])
+		(setf $wth expr-type (-with-))
+		(setf $wth expr-reference $ref)
+		(setf $ref expr-parent $wth)
+		(setf $ref expr-symbol [make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (@ $ref expr-name) $ref $reg])
 		(let (param [make-reference (null) $reg]) (begin
-			(! $param expr-parent $wth)
-			(! $param expr-symbol [make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (@ $param expr-name) $param $reg])
-			(! $wth expr-parameters [lst $param nil $reg])))
-		(! $wth expr-escapes (true))
-		(! $wth expr-expression $expr)
+			(setf $param expr-parent $wth)
+			(setf $param expr-symbol [make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (@ $param expr-name) $param $reg])
+			(setf $wth expr-parameters [lst $param nil $reg])))
+		(setf $wth expr-escapes (true))
+		(setf $wth expr-expression $expr)
 		{return $wth}))))
 
 (function make-asm (opcode arguments reg) (with return
 	(let (u [region-alloc $reg (expression)]) (begin
-		(! $u expr-type (-assembly-))
-		(! $u expr-opcode $opcode)
-		(! $u expr-arguments $arguments)
-		(foreach (arg $arguments) (! $arg expr-parent $u))
+		(setf $u expr-type (-assembly-))
+		(setf $u expr-opcode $opcode)
+		(setf $u expr-arguments $arguments)
+		(foreach (arg $arguments) (setf $arg expr-parent $u))
 		{return $u}))))
 
 (function make-jump (ref args reg) (with return
 	(let (u [region-alloc $reg (expression)]) (begin
-		(! $u expr-type (-jump-))
-		(! $u expr-reference $ref)
-		(! $ref expr-parent $u)
-		(! $u expr-arguments $args)
-		(foreach (arg $args) (! $arg expr-parent $u))
+		(setf $u expr-type (-jump-))
+		(setf $u expr-reference $ref)
+		(setf $ref expr-parent $u)
+		(setf $u expr-arguments $args)
+		(foreach (arg $args) (setf $arg expr-parent $u))
 		{return $u}))))
 
 (function make-storage (ref args reg) (with return
 	(let (u [region-alloc $reg (expression)]) (begin
-		(! $u expr-type (-storage-))
-		(! $u expr-reference $ref)
-		(! $ref expr-parent $u)
-		(! $ref expr-symbol [make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (@ $ref expr-name) $ref $reg])
-		(! $u expr-arguments $args)
-		(foreach (arg $args) (! $arg expr-parent $u))
+		(setf $u expr-type (-storage-))
+		(setf $u expr-reference $ref)
+		(setf $ref expr-parent $u)
+		(setf $ref expr-symbol [make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (@ $ref expr-name) $ref $reg])
+		(setf $u expr-arguments $args)
+		(foreach (arg $args) (setf $arg expr-parent $u))
 		{return $u}))))
 
 (function make-non-primitive (ref arg reg) (with return
 	(let (u [region-alloc $reg (expression)]) (begin
-		(! $u expr-type (-non-primitive-))
-		(! $u expr-reference $ref)
-		(! $ref expr-parent $u)
-		(! $u expr-argument $arg)
-		(! $u expr-indirections nil)
-		(! $u expr-st-binds nil)
-		(! $u expr-dyn-refs nil)
+		(setf $u expr-type (-non-primitive-))
+		(setf $u expr-reference $ref)
+		(setf $ref expr-parent $u)
+		(setf $u expr-argument $arg)
+		(setf $u expr-indirections nil)
+		(setf $u expr-st-binds nil)
+		(setf $u expr-dyn-refs nil)
 		{return $u}))))
 
 (function make-if (condition consequent alternate reg) (with return
 	(let (u [region-alloc $reg (expression)]) (begin
-		(! $u expr-type (-if-))
-		(! $u expr-condition $condition)
-		(! $condition expr-parent $u)
-		(! $u expr-consequent $consequent)
-		(! $consequent expr-parent $u)
-		(! $u expr-alternate $alternate)
-		(! $alternate expr-parent $u)
+		(setf $u expr-type (-if-))
+		(setf $u expr-condition $condition)
+		(setf $condition expr-parent $u)
+		(setf $u expr-consequent $consequent)
+		(setf $consequent expr-parent $u)
+		(setf $u expr-alternate $alternate)
+		(setf $alternate expr-parent $u)
 		{return $u}))))
 
 (function make-invoke (ref args reg) (with return
 	(let (u [region-alloc $reg (expression)]) (begin
-		(! $u expr-type (-invoke-))
-		(! $u expr-reference $ref)
-		(! $ref expr-parent $u)
-		(! $u expr-arguments $args)
-		(foreach (arg $args) (! $arg expr-parent $u))
+		(setf $u expr-type (-invoke-))
+		(setf $u expr-reference $ref)
+		(setf $ref expr-parent $u)
+		(setf $u expr-arguments $args)
+		(foreach (arg $args) (setf $arg expr-parent $u))
 		{return $u}))))
 
 (function make-program (exprs r) (with return
 	(let (program [make-function [make-reference (null) $r] nil [make-begin $exprs $r] $r]) (begin
-		(! $program expr-parent (null))
+		(setf $program expr-parent (null))
 		(foreach (expr $exprs)
 			(if (or [= (@ $expr expr-type) (-function-)] [= (@ $expr expr-type) (-storage-)])
-				(! (@(@ $expr expr-reference)expr-symbol) sym-scope (-global-scope-))
+				(setf (@(@ $expr expr-reference)expr-symbol) sym-scope (-global-scope-))
 				(begin)))
 		{return $program}))))
 
@@ -224,7 +224,7 @@
 	(`(let (replace-expression:orig (,[@fst $l]))
 		(let (replace-expression:parent (@ $$replace-expression:orig expr-parent))
 			(let (replace-expression:repl (,[@frst $l])) (begin
-				(! $replace-expression:repl expr-parent $replace-expression:parent)
+				(setf $replace-expression:repl expr-parent $replace-expression:parent)
 				[set $replace-expression:orig $replace-expression:repl]))))$r)))
 
 (function print-expression (s)
