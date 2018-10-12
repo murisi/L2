@@ -81,26 +81,26 @@
 	{return $n})))
 
 (function make-load (sym offset dest-reg scratch-reg r) (with return
-	(let (container nil) (begin
+	(let (c nil) (begin
 		(if [= (@ $sym sym-type) (-dynamic-storage-)]
 			(let (op1 [make-literal [+ (@ $sym sym-offset) $offset] $r])
-				[append (make-asmN (-movq-mdb-to-reg-) ($op1 (make-asmN(-rbp-)()$r) $dest-reg) $r) container $r])
+				[append (make-asmN (-movq-mdb-to-reg-) ($op1 (make-asmN(-rbp-)()$r) $dest-reg) $r) c $r])
 			(begin
 				(let (op1 (make-asmN (-stval-add-off-to-ref-) ([use-symbol $sym $r] [make-literal $offset $r]) $r))
-					[append (make-asmN (-movq-imm-to-reg-) ($op1 $scratch-reg) $r) container $r])
-				[append (make-asmN (-movq-mdb-to-reg-) ([make-literal #0 $r] $scratch-reg $dest-reg) $r) container $r]))
-		{return [make-begin $container $r]}))))
+					[append (make-asmN (-movq-imm-to-reg-) ($op1 $scratch-reg) $r) c $r])
+				[append (make-asmN (-movq-mdb-to-reg-) ([make-literal #0 $r] $scratch-reg $dest-reg) $r) c $r]))
+		{return [make-begin $c $r]}))))
 
 (function make-store (src-reg sym offset scratch-reg r) (with return
-	(let (container nil) (begin
+	(let (c nil) (begin
 		(if [= (@ $sym sym-type) (-dynamic-storage-)]
 			(let (op2 [make-literal [+ (@ $sym sym-offset) $offset] $r])
-				[append (make-asmN (-movq-from-reg-into-mdb-) ($src-reg $op2 (make-asmN(-rbp-)()$r)) $r) container $r])
+				[append (make-asmN (-movq-from-reg-into-mdb-) ($src-reg $op2 (make-asmN(-rbp-)()$r)) $r) c $r])
 			(begin
 				(let (op1 (make-asmN (-stval-add-off-to-ref-) ([use-symbol $sym $r] [make-literal $offset $r]) $r))
-					[append (make-asmN (-movq-imm-to-reg-) ($op1 $scratch-reg) $r) container $r])
-				[append (make-asmN (-movq-from-reg-into-mdb-) ($src-reg [make-literal #0 $r] $scratch-reg) $r) container $r]))
-		{return [make-begin $container $r]}))))
+					[append (make-asmN (-movq-imm-to-reg-) ($op1 $scratch-reg) $r) c $r])
+				[append (make-asmN (-movq-from-reg-into-mdb-) ($src-reg [make-literal #0 $r] $scratch-reg) $r) c $r]))
+		{return [make-begin $c $r]}))))
 
 (function vgenerate-ifs (n r)
 	(if [= (@ $n expr-type) (-if-)]
