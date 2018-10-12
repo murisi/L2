@@ -144,7 +144,7 @@
 (++ Creates a new region with a minimum capacity in bytes given by the value at
 	min-capacity.)
 
-(function create-region (min-capacity) (with return
+(function create-buffer (min-capacity) (with return
 	(let (len [pad-size [+ $min-capacity [* #5(unit)]] (page-size)])
 		(let (reg [mmap $len]) (begin
 			[set (loc $reg #0(unit)) (null)]
@@ -158,11 +158,11 @@
 	integer at len. The only way to deallocate this memory is destroy the entire
 	region at reg.)
 
-(function region-alloc (reg len) (with return (begin
+(function buffer-alloc (reg len) (with return (begin
 	[set len [pad-size $len (alloc-alignment)]]
 	(if [> [+($(loc $reg #1 #2(unit)))$len] ($(loc $reg #1 #3(unit)))]
 		(begin
-			[set (loc $reg #1 #0(unit)) [create-region [+ $len [* #2[-($(loc $reg #1 #3(unit)))($(loc $reg #1(unit)))]]]]]
+			[set (loc $reg #1 #0(unit)) [create-buffer [+ $len [* #2[-($(loc $reg #1 #3(unit)))($(loc $reg #1(unit)))]]]]]
 			[set (loc $reg #1(unit)) ($(loc $reg #1 #0(unit)))])
 		(begin))
 	[set (loc $reg #1 #2(unit)) [+($(loc $reg #1 #2(unit)))$len]]
@@ -172,7 +172,7 @@
 	function, it is invalid to read or write data to the memory allocated on
 	this region.)
 
-(function destroy-region (reg) (do-while
+(function destroy-buffer (reg) (do-while
 	(let (next-reg ($(loc $reg #0(unit)))) (begin
 		[munmap $reg [- ($(loc $reg #3(unit))) $reg]]
 		[set reg $next-reg]))
@@ -182,7 +182,7 @@
 	its dependencies will all reside in the region reg.)
 
 (function rstrcpy (src reg) (with return
-	(let (dest [region-alloc $reg [+[strlen $src]#1]]) (begin
+	(let (dest [buffer-alloc $reg [+[strlen $src]#1]]) (begin
 		[strcpy $dest $src]
 		{return $dest}))))
 
@@ -190,7 +190,7 @@
 	and its dependencies will all reside in the region reg.)
 
 (function argv (reg) (with return
-	(let (f [open (" /proc/self/cmdline)]) (buf [region-alloc $reg (arg-max)])
+	(let (f [open (" /proc/self/cmdline)]) (buf [buffer-alloc $reg (arg-max)])
 		(let (bytes-rem [read $f $buf (arg-max)]) (begin
 			[close $f]
 			{(continuation loop (buf bytes-rem args)

@@ -114,7 +114,7 @@ bool is_symbol(list d) {
 }
 
 char *to_string(list d, region r) {
-	char *str = region_alloc(r, (length(d) + 1) * sizeof(char));
+	char *str = buffer_alloc(r, (length(d) + 1) * sizeof(char));
 	int i = 0;
 	
 	struct character *t;

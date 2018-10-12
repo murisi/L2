@@ -43,14 +43,14 @@ void *append(void *data, list *l, region reg) {
 	while(!is_nil(*l)) {
 		l = &((*l)->rst);
 	}
-	*l = region_alloc(reg, sizeof(struct _list_));
+	*l = buffer_alloc(reg, sizeof(struct _list_));
 	(*l)->fst = data;
 	(*l)->rst = nil;
 	return &(*l)->fst;
 }
 
 list lst(void *data, list l, region reg) {
-	list ret = region_alloc(reg, sizeof(struct _list_));
+	list ret = buffer_alloc(reg, sizeof(struct _list_));
 	ret->fst = data;
 	ret->rst = l;
 	return ret;
@@ -64,7 +64,7 @@ void append_list(list *fst, list snd) {
 }
 
 void prepend(void *data, list *l, region reg) {
-	list ret = region_alloc(reg, sizeof(struct _list_));
+	list ret = buffer_alloc(reg, sizeof(struct _list_));
 	ret->fst = data;
 	ret->rst = *l;
 	*l = ret;

@@ -149,7 +149,7 @@ unsigned long pad_size(unsigned long x, unsigned long nearest) {
 
 typedef void* region;
 
-region create_region(unsigned long min_capacity) {
+region create_buffer(unsigned long min_capacity) {
 	unsigned long len = pad_size(min_capacity + 5 * sizeof(void *), PAGE_SIZE);
 	region reg = mmap(len);
 	((void **) reg)[0] = NULL;
@@ -172,19 +172,19 @@ void check_region_integrity(region reg) {
 	} while(reg);
 }
 
-void *region_alloc(region reg, unsigned long len) {
+void *buffer_alloc(region reg, unsigned long len) {
 	//check_region_integrity(reg);
 	
 	len = pad_size(len, ALIGNMENT);
 	if(((void ***) reg)[1][2] + len > ((void ***) reg)[1][3]) {
-		((void **) reg)[1] = ((void ***) reg)[1][0] = create_region(len + (2*(((void ***) reg)[1][3] - ((void **) reg)[1])));
+		((void **) reg)[1] = ((void ***) reg)[1][0] = create_buffer(len + (2*(((void ***) reg)[1][3] - ((void **) reg)[1])));
 	}
 	void *mem = ((void ***) reg)[1][2];
 	((void ***) reg)[1][2] += len;
 	return mem;
 }
 
-void destroy_region(region reg) {
+void destroy_buffer(region reg) {
 	//check_region_integrity(reg);
 	
 	do {
@@ -195,7 +195,7 @@ void destroy_region(region reg) {
 }
 
 char *rstrcpy(const char *src, region reg) {
-	char *dest = region_alloc(reg, strlen(src) + 1);
+	char *dest = buffer_alloc(reg, strlen(src) + 1);
 	unsigned long i;
 	for(i = 0; src[i]; i++) {
 		dest[i] = src[i];

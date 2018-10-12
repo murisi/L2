@@ -59,9 +59,9 @@ Object *load_expressions(union expression *program, struct expansion_context *ec
  */
 
 void evaluate_files(int srcc, char *srcv[], list bindings, jumpbuf *handler) {
-	region syntax_tree_region = create_region(0);
+	region syntax_tree_region = create_buffer(0);
 	list objects = nil;
-	struct expansion_context *ectx = region_alloc(syntax_tree_region, sizeof(struct expansion_context));
+	struct expansion_context *ectx = buffer_alloc(syntax_tree_region, sizeof(struct expansion_context));
 	ectx->rt_reg = syntax_tree_region;
 	ectx->handler = handler;
 	ectx->ext_binds = bindings;
@@ -74,7 +74,7 @@ void evaluate_files(int srcc, char *srcv[], list bindings, jumpbuf *handler) {
 		if(dot && !strcmp(dot, ".l2")) {
 			int fd = open(srcv[i]);
 			long int src_sz = size(fd);
-			unsigned char *src_buf = region_alloc(syntax_tree_region, src_sz);
+			unsigned char *src_buf = buffer_alloc(syntax_tree_region, src_sz);
 			read(fd, src_buf, src_sz);
 			close(fd);
 			
@@ -88,7 +88,7 @@ void evaluate_files(int srcc, char *srcv[], list bindings, jumpbuf *handler) {
 		} else if(dot && !strcmp(dot, ".o")) {
 			int obj_fd = open(srcv[i]);
 			long int obj_sz = size(obj_fd);
-			unsigned char *obj_buf = region_alloc(syntax_tree_region, obj_sz);
+			unsigned char *obj_buf = buffer_alloc(syntax_tree_region, obj_sz);
 			read(obj_fd, obj_buf, obj_sz);
 			close(obj_fd);
 			
@@ -105,7 +105,7 @@ void evaluate_files(int srcc, char *srcv[], list bindings, jumpbuf *handler) {
 	{foreach(obj, objects) {
 		((void (*)()) segment(obj, ".text"))();
 	}}
-	destroy_region(syntax_tree_region);
+	destroy_buffer(syntax_tree_region);
 }
 
 //The following functions form the interface provided to loaded L2 files
@@ -119,13 +119,13 @@ list _rst_(list l) {
 }
 
 void *_buf_() {
-	return create_region(0);
+	return create_buffer(0);
 }
 
 int main(int argc, char *argv[]) {
 	//Initialize the error handler
 	jumpbuf evaluate_handler;
-	region evaluate_region = evaluate_handler.ctx = create_region(0);
+	region evaluate_region = evaluate_handler.ctx = create_buffer(0);
 	setjump(&evaluate_handler);
 	
 	if(evaluate_handler.ctx != evaluate_region) {
@@ -284,7 +284,7 @@ int main(int argc, char *argv[]) {
 		{.name = "emt", .address = nil},
 		{.name = "char=", .address = char_equals},
 		{.name = "buf", .address = _buf_},
-		{.name = "dtr", .address = destroy_region}
+		{.name = "dtr", .address = destroy_buffer}
 	};
 	
 	list static_bindings_list = nil;
@@ -293,6 +293,6 @@ int main(int argc, char *argv[]) {
 		prepend(&static_bindings_arr[i], &static_bindings_list, evaluate_region);
 	}
 	evaluate_files(argc - 1, argv + 1, static_bindings_list, &evaluate_handler);
-	destroy_region(evaluate_region);
+	destroy_buffer(evaluate_region);
 	return 0;
 }

@@ -32,7 +32,7 @@
 (function sym-state (l r p) [mk-field $l $r $p #42 #1])
 
 (function make-symbol (type scope state name definition r) (with return
-	(let (sym [region-alloc $r (symbol)]) (begin
+	(let (sym [buffer-alloc $r (symbol)]) (begin
 		(setf $sym sym-type $type)
 		(setf $sym sym-scope $scope)
 		(setf $sym sym-state $state)
@@ -81,13 +81,13 @@
 (function expr-dynamic-context (l r p) [mk-field $l $r $p #64 #8])
 
 (function make-literal (value reg) (with return
-	(let (t [region-alloc $reg (expression)]) (begin
+	(let (t [buffer-alloc $reg (expression)]) (begin
 		(setf $t expr-type (-literal-))
 		(setf $t expr-value $value)
 		{return $t}))))
 
 (function make-reference (name reg) (with return
-	(let (ref [region-alloc $reg (expression)]) (begin
+	(let (ref [buffer-alloc $reg (expression)]) (begin
 		(setf $ref expr-type (-reference-))
 		(setf $ref expr-name $name)
 		(setf $ref expr-symbol (null))
@@ -96,21 +96,21 @@
 (function refer-reference (reference referent) (setf $reference expr-symbol (@ $referent expr-symbol)))
 
 (function use-symbol (sym reg) (with return
-	(let (ref [region-alloc $reg (expression)]) (begin
+	(let (ref [buffer-alloc $reg (expression)]) (begin
 		(setf $ref expr-type (-reference-))
 		(setf $ref expr-name (@ $sym sym-name))
 		(setf $ref expr-symbol $sym)
 		{return $ref}))))
 
 (function make-begin (expressions reg) (with return
-	(let (beg [region-alloc $reg (expression)]) (begin
+	(let (beg [buffer-alloc $reg (expression)]) (begin
 		(setf $beg expr-type (-begin-))
 		(setf $beg expr-expressions $expressions)
 		(foreach (expr $expressions) (setf $expr expr-parent $beg))
 		{return $beg}))))
 
 (function make-function (ref params expr reg) (with return
-	(let (func [region-alloc $reg (expression)]) (begin
+	(let (func [buffer-alloc $reg (expression)]) (begin
 		(setf $func expr-type (-function-))
 		(setf $func expr-reference $ref)
 		(setf $ref expr-parent $func)
@@ -125,7 +125,7 @@
 		{return $func}))))
 
 (function make-continuation (ref params expr reg) (with return
-	(let (cont [region-alloc $reg (expression)]) (begin
+	(let (cont [buffer-alloc $reg (expression)]) (begin
 		(setf $cont expr-type (-continuation-))
 		(setf $cont expr-reference $ref)
 		(setf $ref expr-parent $cont)
@@ -141,7 +141,7 @@
 		{return $cont}))))
 
 (function make-with (ref expr reg) (with return
-	(let (wth [region-alloc $reg (expression)]) (begin
+	(let (wth [buffer-alloc $reg (expression)]) (begin
 		(setf $wth expr-type (-with-))
 		(setf $wth expr-reference $ref)
 		(setf $ref expr-parent $wth)
@@ -156,7 +156,7 @@
 		{return $wth}))))
 
 (function make-asm (opcode arguments reg) (with return
-	(let (u [region-alloc $reg (expression)]) (begin
+	(let (u [buffer-alloc $reg (expression)]) (begin
 		(setf $u expr-type (-assembly-))
 		(setf $u expr-opcode $opcode)
 		(setf $u expr-arguments $arguments)
@@ -164,7 +164,7 @@
 		{return $u}))))
 
 (function make-jump (ref args reg) (with return
-	(let (u [region-alloc $reg (expression)]) (begin
+	(let (u [buffer-alloc $reg (expression)]) (begin
 		(setf $u expr-type (-jump-))
 		(setf $u expr-reference $ref)
 		(setf $ref expr-parent $u)
@@ -173,7 +173,7 @@
 		{return $u}))))
 
 (function make-storage (ref args reg) (with return
-	(let (u [region-alloc $reg (expression)]) (begin
+	(let (u [buffer-alloc $reg (expression)]) (begin
 		(setf $u expr-type (-storage-))
 		(setf $u expr-reference $ref)
 		(setf $ref expr-parent $u)
@@ -183,7 +183,7 @@
 		{return $u}))))
 
 (function make-non-primitive (ref arg reg) (with return
-	(let (u [region-alloc $reg (expression)]) (begin
+	(let (u [buffer-alloc $reg (expression)]) (begin
 		(setf $u expr-type (-non-primitive-))
 		(setf $u expr-reference $ref)
 		(setf $ref expr-parent $u)
@@ -194,7 +194,7 @@
 		{return $u}))))
 
 (function make-if (condition consequent alternate reg) (with return
-	(let (u [region-alloc $reg (expression)]) (begin
+	(let (u [buffer-alloc $reg (expression)]) (begin
 		(setf $u expr-type (-if-))
 		(setf $u expr-condition $condition)
 		(setf $condition expr-parent $u)
@@ -205,7 +205,7 @@
 		{return $u}))))
 
 (function make-invoke (ref args reg) (with return
-	(let (u [region-alloc $reg (expression)]) (begin
+	(let (u [buffer-alloc $reg (expression)]) (begin
 		(setf $u expr-type (-invoke-))
 		(setf $u expr-reference $ref)
 		(setf $ref expr-parent $u)
@@ -383,18 +383,18 @@
 		
 		[make-non-primitive [build-expression [@car $d] $reg $handler] [@cdr $d] $reg]))))
 
-(let (r [create-region #0]) [print-expression [make-begin [llst [make-reference (" Hellodude) $r] [make-literal #20 $r] nil $r] $r]])
+(let (r [create-buffer #0]) [print-expression [make-begin [llst [make-reference (" Hellodude) $r] [make-literal #20 $r] nil $r] $r]])
 
 [write-str (stdout) (" Starting here:(lf))]
 
-(++(let (r [create-region #0]) (pos #0)
+(++(let (r [create-buffer #0]) (pos #0)
 	(do-let (begin
 			[write-str (stdout) (" (lparen)begin(lbrace)lokay(rbrace)a(rparen)o)]
 			[print-expression [build-expression
 				[build-fragment (" (lparen)with(lbrace)lokay(rbrace)a(rparen)o) #22 pos $r $handler] $r $handler]]
 			[build-symbol (" Hello) $r])
 		(handler (continuation _ (code arg0 arg1 arg2 arg3) (begin
-			[destroy-region $r]
+			[destroy-buffer $r]
 			(switch = $code
 				(special-form-error [write-str (stdout) (" Okay, it's a special form error(lf))])
 				(unexpected-char-error [write-str (stdout) (" It was an unexpected character!(lf))])

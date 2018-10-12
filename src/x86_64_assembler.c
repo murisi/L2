@@ -265,7 +265,7 @@ int max_elf_size(list generated_expressions, list symbols) {
 
 void write_elf(list generated_expressions, list symbols, unsigned char **bin, int *pos, region elfreg) {
 	*pos = 0;
-	*bin = region_alloc(elfreg, max_elf_size(generated_expressions, symbols));
+	*bin = buffer_alloc(elfreg, max_elf_size(generated_expressions, symbols));
 	
 	Elf64_Ehdr ehdr;
 	ehdr.e_ident[EI_MAG0] = ELFMAG0;
@@ -418,9 +418,9 @@ void write_elf(list generated_expressions, list symbols, unsigned char **bin, in
 	int text_len, max_text_sec_len = pad_size(MAX_INSTR_LEN * length(generated_expressions), ALIGNMENT),
 		max_rela_sec_len = MAX_INSTR_FIELDS * length(generated_expressions) * sizeof(Elf64_Rela);
 	
-	region temp_reg = create_region(0);
-	unsigned char *text = region_alloc(temp_reg, max_text_sec_len);
-	Elf64_Rela *relas = region_alloc(temp_reg, max_rela_sec_len);
+	region temp_reg = create_buffer(0);
+	unsigned char *text = buffer_alloc(temp_reg, max_text_sec_len);
+	Elf64_Rela *relas = buffer_alloc(temp_reg, max_rela_sec_len);
 	Elf64_Rela *rela_ptr = relas;
 	assemble(generated_expressions, text, &text_len, syms, &rela_ptr);
 	
@@ -524,7 +524,7 @@ void write_elf(list generated_expressions, list symbols, unsigned char **bin, in
 	mem_write(*bin, pos, strtab, sizeof(strtab));
 	mem_write(*bin, pos, syms, sizeof(syms));
 	mem_write(*bin, pos, relas, (rela_ptr - relas) * sizeof(Elf64_Rela));
-	destroy_region(temp_reg);
+	destroy_buffer(temp_reg);
 }
 
 void symbol_offsets_to_addresses(list asms, list symbols, Object *obj) {

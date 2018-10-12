@@ -6,7 +6,7 @@
 
 (function vfind-multiple-definitions (e handler) (with return
 	(switch = (@ $e expr-type)
-		((-begin-) (let (temp-reg [create-region #0]) (begin
+		((-begin-) (let (temp-reg [create-buffer #0]) (begin
 			(let (definitions [filter (function _ (f) (or [= (@ $f expr-type) (-storage-)] [= (@ $f expr-type) (-function-)]))
 					(@ $e expr-expressions) $temp-reg])
 				(until (partial $definitions) [nil? $partial] [@cdr $partial]
@@ -14,16 +14,16 @@
 							(& $partial cdr) [@car $partial]]
 						{$handler multiple-definition-error (@(@[@car $partial]expr-reference)expr-name)}
 						(begin))))
-			[destroy-region $temp-reg]
+			[destroy-buffer $temp-reg]
 			{return $e})))
 		
-		((-continuation-) (-function-) (let (temp-reg [create-region #0]) (begin
+		((-continuation-) (-function-) (let (temp-reg [create-buffer #0]) (begin
 			(let (ref-with-params [lst (@ $e expr-reference) (@ $e expr-parameters) $temp-reg])
 				(until (partial $ref-with-params) [nil? $partial] [@cdr $partial]
 					(if [find (function _ (f ctx) [named-ref= $f $ctx]) (& $partial cdr) [@car $partial]]
 						{$handler multiple-definition-error (@[@car $partial]expr-name)}
 						(begin))))
-			[destroy-region $temp-reg]
+			[destroy-buffer $temp-reg]
 			{return $e})))
 		
 		{return $e})))
@@ -348,8 +348,8 @@
 		[exit #1])))))
 
 (let (fd [open (" test.l2)])
-	(let (src-sz [size $fd]) (r [create-region #0])
-		(let (src-buf [region-alloc $r $src-sz]) (expressions nil) (pos #0) (begin
+	(let (src-sz [size $fd]) (r [create-buffer #0])
+		(let (src-buf [buffer-alloc $r $src-sz]) (expressions nil) (pos #0) (begin
 			[read $fd $src-buf $src-sz]
 			[close $fd]
 			(while [after-leading-space $src-buf $src-sz pos]

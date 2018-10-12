@@ -31,7 +31,7 @@ struct symbol {
 };
 
 struct symbol *make_symbol(enum symbol_type type, enum symbol_scope scope, enum symbol_state state, char *name, union expression *definition, region r) {
-	struct symbol *sym = region_alloc(r, sizeof(struct symbol));
+	struct symbol *sym = buffer_alloc(r, sizeof(struct symbol));
 	sym->type = type;
 	sym->scope = scope;
 	sym->state = state;
@@ -188,14 +188,14 @@ union expression {
 };
 
 union expression *make_literal(unsigned long value, region reg) {
-	union expression *t = region_alloc(reg, sizeof(union expression));
+	union expression *t = buffer_alloc(reg, sizeof(union expression));
 	t->literal.type = literal;
 	t->literal.value = value;
 	return t;
 }
 
 union expression *make_reference(char *name, region reg) {
-	union expression *ref = region_alloc(reg, sizeof(union expression));
+	union expression *ref = buffer_alloc(reg, sizeof(union expression));
 	ref->reference.type = reference;
 	ref->reference.name = name;
 	ref->reference.symbol = NULL;
@@ -207,7 +207,7 @@ void refer_reference(union expression *reference, union expression *referent) {
 }
 
 union expression *use_symbol(struct symbol *sym, region reg) {
-	union expression *ref = region_alloc(reg, sizeof(union expression));
+	union expression *ref = buffer_alloc(reg, sizeof(union expression));
 	ref->reference.type = reference;
 	ref->reference.name = sym->name;
 	ref->reference.symbol = sym;
@@ -215,7 +215,7 @@ union expression *use_symbol(struct symbol *sym, region reg) {
 }
 
 union expression *make_begin(list expressions, region reg) {
-	union expression *beg = region_alloc(reg, sizeof(union expression));
+	union expression *beg = buffer_alloc(reg, sizeof(union expression));
 	beg->begin.type = begin;
 	beg->begin.expressions = expressions;
 	union expression *expr;
@@ -233,7 +233,7 @@ union expression *make_begin(list expressions, region reg) {
 }
 
 union expression *make_function(union expression *ref, list params, union expression *expr, region reg) {
-	union expression *func = region_alloc(reg, sizeof(union expression));
+	union expression *func = buffer_alloc(reg, sizeof(union expression));
 	func->function.type = function;
 	put(func, function.reference, ref);
 	ref->reference.symbol = make_symbol(static_storage, local_scope, defined_state, ref->reference.name, ref, reg);
@@ -249,7 +249,7 @@ union expression *make_function(union expression *ref, list params, union expres
 }
 
 union expression *make_continuation(union expression *ref, list params, union expression *expr, region reg) {
-	union expression *cont = region_alloc(reg, sizeof(union expression));
+	union expression *cont = buffer_alloc(reg, sizeof(union expression));
 	cont->continuation.type = continuation;
 	cont->continuation.escapes = true;
 	put(cont, continuation.reference, ref);
@@ -265,7 +265,7 @@ union expression *make_continuation(union expression *ref, list params, union ex
 }
 
 union expression *make_with(union expression *ref, union expression *expr, region reg) {
-	union expression *wth = region_alloc(reg, sizeof(union expression));
+	union expression *wth = buffer_alloc(reg, sizeof(union expression));
 	wth->with.type = with;
 	wth->with.escapes = true;
 	put(wth, with.reference, ref);
@@ -279,7 +279,7 @@ union expression *make_with(union expression *ref, union expression *expr, regio
 }
 
 union expression *make_asm0(int opcode, region reg) {
-	union expression *u = region_alloc(reg, sizeof(union expression));
+	union expression *u = buffer_alloc(reg, sizeof(union expression));
 	u->assembly.type = assembly;
 	u->assembly.opcode = opcode;
 	u->assembly.arguments = nil;
@@ -308,7 +308,7 @@ union expression *make_asm3(int opcode, union expression *arg1, union expression
 }
 
 union expression *make_jump(union expression *ref, list args, region reg) {
-	union expression *u = region_alloc(reg, sizeof(union expression));
+	union expression *u = buffer_alloc(reg, sizeof(union expression));
 	u->jump.type = jump;
 	put(u, jump.reference, ref);
 	u->jump.arguments = args;
@@ -320,7 +320,7 @@ union expression *make_jump(union expression *ref, list args, region reg) {
 }
 
 union expression *make_jump0(union expression *ref, region reg) {
-	union expression *u = region_alloc(reg, sizeof(union expression));
+	union expression *u = buffer_alloc(reg, sizeof(union expression));
 	u->jump.type = jump;
 	put(u, jump.reference, ref);
 	u->jump.arguments = nil;
@@ -342,7 +342,7 @@ union expression *make_jump2(union expression *ref, union expression *arg1, unio
 }
 
 union expression *make_storage(union expression *ref, list args, region reg) {
-	union expression *u = region_alloc(reg, sizeof(union expression));
+	union expression *u = buffer_alloc(reg, sizeof(union expression));
 	u->storage.type = storage;
 	put(u, storage.reference, ref);
 	ref->reference.symbol = make_symbol(dynamic_storage, local_scope, defined_state, ref->reference.name, ref, reg);
@@ -355,7 +355,7 @@ union expression *make_storage(union expression *ref, list args, region reg) {
 }
 
 union expression *make_non_primitive(union expression *ref, list arg, region reg) {
-	union expression *u = region_alloc(reg, sizeof(union expression));
+	union expression *u = buffer_alloc(reg, sizeof(union expression));
 	u->non_primitive.type = non_primitive;
 	put(u, non_primitive.reference, ref);
 	u->non_primitive.argument = arg;
@@ -367,7 +367,7 @@ union expression *make_non_primitive(union expression *ref, list arg, region reg
 }
 
 union expression *make_if(union expression *condition, union expression *consequent, union expression *alternate, region reg) {
-	union expression *u = region_alloc(reg, sizeof(union expression));
+	union expression *u = buffer_alloc(reg, sizeof(union expression));
 	u->_if.type = _if;
 	put(u, _if.condition, condition);
 	put(u, _if.consequent, consequent);
@@ -376,7 +376,7 @@ union expression *make_if(union expression *condition, union expression *consequ
 }
 
 union expression *make_invoke(union expression *ref, list args, region reg) {
-	union expression *u = region_alloc(reg, sizeof(union expression));
+	union expression *u = buffer_alloc(reg, sizeof(union expression));
 	u->invoke.type = invoke;
 	put(u, invoke.reference, ref);
 	u->invoke.arguments = args;
@@ -388,7 +388,7 @@ union expression *make_invoke(union expression *ref, list args, region reg) {
 }
 
 union expression *make_invoke0(union expression *ref, region reg) {
-	union expression *u = region_alloc(reg, sizeof(union expression));
+	union expression *u = buffer_alloc(reg, sizeof(union expression));
 	u->invoke.type = invoke;
 	put(u, invoke.reference, ref);
 	u->invoke.arguments = nil;
