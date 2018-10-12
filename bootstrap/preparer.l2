@@ -11,7 +11,7 @@
 					(@ $e expr-expressions) $temp-reg])
 				(until (partial $definitions) [nil? $partial] [@cdr $partial]
 					(if [find (function _ (f ctx) [named-ref= (@ $f expr-reference) (@ $ctx expr-reference)])
-							[cdr $partial] [@car $partial]]
+							(& $partial cdr) [@car $partial]]
 						{$handler multiple-definition-error (@(@[@car $partial]expr-reference)expr-name)}
 						(begin))))
 			[destroy-region $temp-reg]
@@ -20,7 +20,7 @@
 		((-continuation-) (-function-) (let (temp-reg [create-region #0]) (begin
 			(let (ref-with-params [lst (@ $e expr-reference) (@ $e expr-parameters) $temp-reg])
 				(until (partial $ref-with-params) [nil? $partial] [@cdr $partial]
-					(if [find (function _ (f ctx) [named-ref= $f $ctx]) [cdr $partial] [@car $partial]]
+					(if [find (function _ (f ctx) [named-ref= $f $ctx]) (& $partial cdr) [@car $partial]]
 						{$handler multiple-definition-error (@[@car $partial]expr-name)}
 						(begin))))
 			[destroy-region $temp-reg]
@@ -127,7 +127,7 @@
 	(switch = (@ $$s expr-type)
 		((-begin-)
 			(until (partial (@ $$s expr-expressions)) [nil? $partial] [@cdr $partial]
-				[visit-expressions $visitor [car $partial] $ctx]))
+				[visit-expressions $visitor (& $partial car) $ctx]))
 		
 		((-if-) (begin
 			[visit-expressions $visitor (& $$s expr-condition) $ctx]
@@ -140,7 +140,7 @@
 		((-jump-) (-invoke-) (-storage-) (begin
 			(if [= (@ $$s expr-type) (-storage-)] (begin) [visit-expressions $visitor (& $$s expr-reference) $ctx])
 			(until (partial (@ $$s expr-arguments)) [nil? $partial] [@cdr $partial]
-				[visit-expressions $visitor [car $partial] $ctx])))
+				[visit-expressions $visitor (& $partial car) $ctx])))
 		
 		(begin))
 		
@@ -170,7 +170,7 @@
 				(until (partial (@ $n expr-arguments)) [nil? $partial] [@cdr $partial]
 					(let (arg-ret-sym [make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (null) (null) $r]) (begin
 						[append [use-return-symbol [@car $partial] $arg-ret-sym $r] container $r]
-						(replace-expression [car $partial] [use-symbol $arg-ret-sym $r]))))
+						(replace-expression (& $partial car) [use-symbol $arg-ret-sym $r]))))
 				
 				(setf $n expr-return-symbol $ret-sym)
 				[append $n container $r]
@@ -187,7 +187,7 @@
 		
 		((-begin-) (begin
 			(until (partial (@ $n expr-expressions)) [nil? $partial] [@cdr $partial]
-				(replace-expression [car $partial] [use-return-symbol [@car $partial]
+				(replace-expression (& $partial car) [use-return-symbol [@car $partial]
 					[make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (null) (null) $r] $r]))
 			{return $n}))
 		
@@ -259,7 +259,7 @@
 			(setf $s expr-st-binds $st-binds)
 			(setf $s expr-dyn-refs nil)
 			(until (dyn-refs-suffix $dyn-refs) [nil? $dyn-refs-suffix] [@cdr $dyn-refs-suffix]
-				(if [find named-ref= [cdr $dyn-refs-suffix] [@car $dyn-refs-suffix]] (begin)
+				(if [find named-ref= (& $dyn-refs-suffix cdr) [@car $dyn-refs-suffix]] (begin)
 					[prepend [@car $dyn-refs-suffix] (& $s expr-dyn-refs) $ct-reg]))))
 		
 		(begin)))
@@ -307,7 +307,7 @@
 				(if (and (or [= (@ $f expr-type) (-function-)] [= (@ $f expr-type) (-storage-)])
 					[defined-str= (@(@ $f expr-reference)expr-name) $ref-name]) {return $expr} (begin)))
 			(until (partial (@ $expr expr-expressions)) [nil? $partial] [@cdr $partial]
-				(replace-expression [car $partial] [insert-indirections [@car $partial] $ref-name $reg]))
+				(replace-expression (& $partial car) [insert-indirections [@car $partial] $ref-name $reg]))
 			{return $expr}))
 		
 		((-continuation-) (-with-) (begin
@@ -321,7 +321,7 @@
 			(if [= (@ $expr expr-type) (-storage-)] (begin)
 				(replace-expression (& $expr expr-reference) [insert-indirections (@ $expr expr-reference) $ref-name $reg]))
 			(until (partial (@ $expr expr-arguments)) [nil? $partial] [@cdr $partial]
-				(replace-expression [car $partial] [insert-indirections [@car $partial] $ref-name $reg]))
+				(replace-expression (& $partial car) [insert-indirections [@car $partial] $ref-name $reg]))
 			{return $expr}))
 		
 		((-non-primitive-) (begin

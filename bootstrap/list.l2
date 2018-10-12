@@ -24,7 +24,7 @@
 		[lst (` let $r) [meta:reverse [lst
 			(`(while (not [emt? ($($(,[@ffst $bindings])))]) (,[llst (` begin $r) $body
 				[meta:map $bindings $r (function make-update (a r)
-					(`[set (,[@fst $a]) [cdr ($($(,[@fst $a])))]]$r))$r]$r]))$r)
+					(`[set (,[@fst $a]) (& ($($(,[@fst $a]))) cdr)]$r))$r]$r]))$r)
 			$bindings $r]$r]$r])))
 
 (function list (l r p) (use-memo $p
@@ -36,13 +36,13 @@
 
 (function list-struct (l r p) (use-memo $p (`[* #2(unit)]$r)))
 
-(function car (l) $l)
+(function car (l r p) [mk-field $l $r $p #0 #8])
 
-(function cdr (l) [+ $l (unit)])
+(function cdr (l r p) [mk-field $l $r $p #8 #8])
 
-(function @car (l) ($[car $l]))
+(function @car (l) (@ $l car))
 
-(function @cdr (l) ($[cdr $l]))
+(function @cdr (l) (@ $l cdr))
 
 (function @cddr (l) [@cdr [@cdr $l]])
 
@@ -64,36 +64,32 @@
 
 (function @cadddddr (l) [@car [@cdddddr $l]])
 
-(function car! (l v) [set [car $l] $v])
-
-(function cdr! (l v) [set [cdr $l] $v])
-
 (storage nil nil (null))
 
 (function nil? (l) [= [@cdr $l] (null)])
 
 (function append (data l r) (with return (begin
-	(while (not [nil? $$l]) [set l [cdr $$l]])
+	(while (not [nil? $$l]) [set l (& $$l cdr)])
 	[set $l [region-alloc $r (list-struct)]]
-	[car! $$l $data]
-	[cdr! $$l nil]
-	{return [car $$l]})))
+	(setf $$l car $data)
+	(setf $$l cdr nil)
+	{return (& $$l car)})))
 
 (function cons (data rest r) (with return
 	(let (l [region-alloc $r (list-struct)]) (begin
-		[car! $l $data]
-		[cdr! $l $rest]
+		(setf $l car $data)
+		(setf $l cdr $rest)
 		{return $l}))))
 
 (function append-list (fst-ref snd) (begin
 	(while (not [nil? $$fst-ref])
-		[set fst-ref [cdr $$fst-ref]])
+		[set fst-ref (& $$fst-ref cdr)])
 	[set $fst-ref $snd]))
 
 (function prepend (data l-ref r)
 	(let (ret [region-alloc $r (list-struct)]) (begin
-		[car! $ret $data]
-		[cdr! $ret $$l-ref]
+		(setf $ret car $data)
+		(setf $ret cdr $$l-ref)
 		[set $l-ref $ret])))
 
 (function length (l) (with return
