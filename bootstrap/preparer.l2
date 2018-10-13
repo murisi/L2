@@ -40,7 +40,7 @@
 			(switch = (@ $t expr-type)
 				((-begin-) (foreach (u (@ $t expr-expressions))
 					(if (and (or [= (@ $u expr-type) (-function-)] (and [= (@ $u expr-type) (-storage-)] (or $same-func
-							[= (@(@(@ $u expr-reference)expr-symbol)sym-type) (-static-storage-)])))
+							[= (@(@(@ $u expr-reference)expr-symbol)sym-type) (static-storage)])))
 							[named-ref= (@ $u expr-reference) $reference])
 						{return (@(@ $u expr-reference)expr-symbol)}
 						(begin))))
@@ -49,18 +49,18 @@
 					(if [named-ref= (@ $t expr-reference) $reference]
 						{return (@(@ $t expr-reference)expr-symbol)}
 						(foreach (u (@ $t expr-parameters))
-							(if (and (or $same-func [= (@(@ $u expr-symbol)sym-type) (-static-storage-)]) [named-ref= $u $reference])
+							(if (and (or $same-func [= (@(@ $u expr-symbol)sym-type) (static-storage)]) [named-ref= $u $reference])
 								{return (@ $u expr-symbol)}
 								(begin))))
 					[set same-func (false)]))
 				
 				((-continuation-) (-with-) (-storage-)
-					(if (and (or $same-func [= (@(@(@ $t expr-reference)expr-symbol)sym-type) (-static-storage-)])
+					(if (and (or $same-func [= (@(@(@ $t expr-reference)expr-symbol)sym-type) (static-storage)])
 							[named-ref= (@ $t expr-reference) $reference])
 						{return (@(@ $t expr-reference))}
 					(if [= (@ $t expr-type) (-storage-)] (begin)
 						(foreach (u (@ $t expr-parameters))
-							(if (and (or $same-func [= (@(@ $u expr-symbol)sym-type) (-static-storage-)]) [named-ref= $u $reference])
+							(if (and (or $same-func [= (@(@ $u expr-symbol)sym-type) (static-storage)]) [named-ref= $u $reference])
 								{return (@ $u expr-symbol)}
 								(begin))))))
 				
@@ -94,7 +94,7 @@
 				(setf $s expr-symbol (if (@ $s expr-symbol) (@ $s expr-symbol) [symbol-of $s]))
 				(if (not (@ $s expr-symbol))
 					(let (ref [make-reference (@ $s expr-name) $r]) (rf [get-root-function $s])
-						(let (sym [make-symbol (-static-storage-) (-global-scope-) (-undefined-state-) (@ $s expr-name) $ref $r]) (begin
+						(let (sym [make-symbol (static-storage) (global-scope) (undefined-state) (@ $s expr-name) $ref $r]) (begin
 							(setf $ref expr-symbol $sym)
 							(setf $rf expr-parameters [cons $ref (@ $rf expr-parameters) $r])
 							(setf $ref expr-parent $rf)
@@ -151,24 +151,24 @@
 		((-with-) (-continuation-) (begin
 			(setf $n expr-return-symbol $ret-sym)
 			(replace-expression (& $n expr-expression) [use-return-symbol (@ $n expr-expression)
-				[make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (null) (null) $r] $r])
+				[make-symbol (dynamic-storage) (local-scope) (defined-state) (null) (null) $r] $r])
 			{return $n}))
 		
 		((-function-) (begin
 			(setf $n expr-return-symbol $ret-sym)
-			(setf $n expr-expression-return-symbol [make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (null) (null) $r])
+			(setf $n expr-expression-return-symbol [make-symbol (dynamic-storage) (local-scope) (defined-state) (null) (null) $r])
 			(replace-expression (& $n expr-expression) [use-return-symbol (@ $n expr-expression) (@ $n expr-expression-return-symbol) $r])
 			{return $n}))
 		
 		((-invoke-) (-jump-) (-storage-)
 			(let (container nil) (begin
 				(if [= (@ $n expr-type) (-storage-)] (begin)
-					(let (ref-ret-sym [make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (null) (null) $r]) (begin
+					(let (ref-ret-sym [make-symbol (dynamic-storage) (local-scope) (defined-state) (null) (null) $r]) (begin
 						[append [use-return-symbol (@ $n expr-reference) $ref-ret-sym $r] container $r]
 						(replace-expression (& $n expr-reference) [use-symbol $ref-ret-sym $r]))))
 						
 				(until (partial (@ $n expr-arguments)) [nil? $partial] [@cdr $partial]
-					(let (arg-ret-sym [make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (null) (null) $r]) (begin
+					(let (arg-ret-sym [make-symbol (dynamic-storage) (local-scope) (defined-state) (null) (null) $r]) (begin
 						[append [use-return-symbol [@car $partial] $arg-ret-sym $r] container $r]
 						(replace-expression (& $partial car) [use-symbol $arg-ret-sym $r]))))
 				
@@ -179,7 +179,7 @@
 		((-if-) (let (container nil) (begin
 			(replace-expression (& $n expr-consequent) [use-return-symbol (@ $n expr-consequent) $ret-sym $r])
 			(replace-expression (& $n expr-alternate) [use-return-symbol (@ $n expr-alternate) $ret-sym $r])
-			(let (cond-ret-sym [make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (null) (null) $r]) (begin
+			(let (cond-ret-sym [make-symbol (dynamic-storage) (local-scope) (defined-state) (null) (null) $r]) (begin
 				[append [use-return-symbol (@ $n expr-condition) $cond-ret-sym $r] container $r]
 				(replace-expression (& $n expr-condition) [use-symbol $cond-ret-sym $r])
 				[append $n container $r]))
@@ -188,7 +188,7 @@
 		((-begin-) (begin
 			(until (partial (@ $n expr-expressions)) [nil? $partial] [@cdr $partial]
 				(replace-expression (& $partial car) [use-return-symbol [@car $partial]
-					[make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (null) (null) $r] $r]))
+					[make-symbol (dynamic-storage) (local-scope) (defined-state) (null) (null) $r] $r]))
 			{return $n}))
 		
 		((-reference-) (-literal-) (begin
@@ -265,21 +265,21 @@
 		(begin)))
 
 (function classify-program-symbols (expr) (begin
-	(if (@ $expr expr-return-symbol) (setf (@ $expr expr-return-symbol) sym-type (-static-storage-)) (begin))
+	(if (@ $expr expr-return-symbol) (setf (@ $expr expr-return-symbol) sym-type (static-storage)) (begin))
 	(switch = (@ $expr expr-type)
 		((-begin-) (foreach (t (@ $expr expr-expressions)) [classify-program-symbols $t]))
 		
 		((-storage-) (-jump-) (-invoke-) (begin
 			(if [= (@ $expr expr-type) (-storage-)]
-				(setf (@(@ $expr expr-reference)expr-symbol) sym-type (-static-storage-))
+				(setf (@(@ $expr expr-reference)expr-symbol) sym-type (static-storage))
 				[classify-program-symbols (@ $expr expr-reference)])
 			(foreach (t (@ $expr expr-arguments)) [classify-program-symbols $t])))
 		
 		((-non-primitive-) [classify-program-symbols (@ $expr expr-reference)])
 		
 		((-continuation-) (-with-) (begin
-			(setf (@(@ $expr expr-reference)expr-symbol) sym-type (-static-storage-))
-			(foreach (t (@ $expr expr-parameters)) (setf (@ $t expr-symbol) sym-type (-static-storage-)))
+			(setf (@(@ $expr expr-reference)expr-symbol) sym-type (static-storage))
+			(foreach (t (@ $expr expr-parameters)) (setf (@ $t expr-symbol) sym-type (static-storage)))
 			[classify-program-symbols (@ $expr expr-expression)]))
 		
 		((-if-) (begin
@@ -339,6 +339,7 @@
 		[classify-program-symbols (@ $program expr-expression)]
 		[visit-expressions vlayout-frames (& $program expr-expression) $ct-reg]
 		[visit-expressions vgenerate-references program $ct-reg]
+		[visit-expressions vgenerate-continuation-expressions program $ct-reg]
 		(let (asms nil) [visit-expressions vlinearized-expressions program (storage _ asms $ct-reg)]))
 	(handler (continuation _ (code arg0 arg1 arg2 arg3) (begin
 		(switch = $code

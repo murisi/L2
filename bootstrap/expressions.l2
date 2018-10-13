@@ -11,14 +11,14 @@
 (function -assembly- (l r p) [mk# $l $r $p #10])
 (function -non-primitive- (l r p) [mk# $l $r $p #11])
 
-(function -static-storage- (l r p) [mk# $l $r $p #0])
-(function -dynamic-storage- (l r p) [mk# $l $r $p #1])
+(function static-storage (l r p) [mk# $l $r $p #0])
+(function dynamic-storage (l r p) [mk# $l $r $p #1])
 
-(function -local-scope- (l r p) [mk# $l $r $p #0])
-(function -global-scope- (l r p) [mk# $l $r $p #1])
+(function local-scope (l r p) [mk# $l $r $p #0])
+(function global-scope (l r p) [mk# $l $r $p #1])
 
-(function -undefined-state- (l r p) [mk# $l $r $p #0])
-(function -defined-state- (l r p) [mk# $l $r $p #1])
+(function undefined-state (l r p) [mk# $l $r $p #0])
+(function defined-state (l r p) [mk# $l $r $p #1])
 
 (function symbol (l r p) [mk# $l $r $p #48])
 
@@ -114,11 +114,11 @@
 		(setf $func expr-type (-function-))
 		(setf $func expr-reference $ref)
 		(setf $ref expr-parent $func)
-		(setf $ref expr-symbol [make-symbol (-static-storage-) (-local-scope-) (-defined-state-) (@ $ref expr-name) $ref $reg])
+		(setf $ref expr-symbol [make-symbol (static-storage) (local-scope) (defined-state) (@ $ref expr-name) $ref $reg])
 		(setf $func expr-parameters $params)
 		(foreach (param $params) (begin
 			(setf $param expr-parent $func)
-			(setf $param expr-symbol [make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (@ $param expr-name) $param $reg])))
+			(setf $param expr-symbol [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ $param expr-name) $param $reg])))
 		(setf $func expr-symbols nil)
 		(setf $func expr-expression $expr)
 		(setf $expr expr-parent $func)
@@ -129,11 +129,11 @@
 		(setf $cont expr-type (-continuation-))
 		(setf $cont expr-reference $ref)
 		(setf $ref expr-parent $cont)
-		(setf $ref expr-symbol [make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (@ $ref expr-name) $ref $reg])
+		(setf $ref expr-symbol [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ $ref expr-name) $ref $reg])
 		(setf $cont expr-parameters $params)
 		(foreach (param $params) (begin
 			(setf $param expr-parent $cont)
-			(setf $param expr-symbol [make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (@ $param expr-name) $param
+			(setf $param expr-symbol [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ $param expr-name) $param
 				$reg])))
 		(setf $cont expr-escapes (true))
 		(setf $cont expr-expression $expr)
@@ -145,10 +145,10 @@
 		(setf $wth expr-type (-with-))
 		(setf $wth expr-reference $ref)
 		(setf $ref expr-parent $wth)
-		(setf $ref expr-symbol [make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (@ $ref expr-name) $ref $reg])
+		(setf $ref expr-symbol [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ $ref expr-name) $ref $reg])
 		(let (param [make-reference (null) $reg]) (begin
 			(setf $param expr-parent $wth)
-			(setf $param expr-symbol [make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (@ $param expr-name) $param
+			(setf $param expr-symbol [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ $param expr-name) $param
 				$reg])
 			(setf $wth expr-parameters [lst $param nil $reg])))
 		(setf $wth expr-escapes (true))
@@ -181,7 +181,7 @@
 		(setf $u expr-type (-storage-))
 		(setf $u expr-reference $ref)
 		(setf $ref expr-parent $u)
-		(setf $ref expr-symbol [make-symbol (-dynamic-storage-) (-local-scope-) (-defined-state-) (@ $ref expr-name) $ref $reg])
+		(setf $ref expr-symbol [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ $ref expr-name) $ref $reg])
 		(setf $u expr-arguments $args)
 		(foreach (arg $args) (setf $arg expr-parent $u))
 		{return $u}))))
@@ -222,7 +222,7 @@
 		(setf $program expr-parent (null))
 		(foreach (expr $exprs)
 			(if (or [= (@ $expr expr-type) (-function-)] [= (@ $expr expr-type) (-storage-)])
-				(setf (@(@ $expr expr-reference)expr-symbol) sym-scope (-global-scope-))
+				(setf (@(@ $expr expr-reference)expr-symbol) sym-scope (global-scope))
 				(begin)))
 		{return $program}))))
 
