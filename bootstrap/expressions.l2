@@ -93,12 +93,12 @@
 		(setf expr-symbol $ref (null))
 		{return $ref}))))
 
-(function refer-reference (reference referent) (setf expr-symbol $reference (@ $referent expr-symbol)))
+(function refer-reference (reference referent) (setf expr-symbol $reference (@ expr-symbol $referent)))
 
 (function use-symbol (sym reg) (with return
 	(let (ref [buffer-alloc $reg (expression)]) (begin
 		(setf expr-type $ref (-reference-))
-		(setf expr-name $ref (@ $sym sym-name))
+		(setf expr-name $ref (@ sym-name $sym))
 		(setf expr-symbol $ref $sym)
 		{return $ref}))))
 
@@ -114,11 +114,11 @@
 		(setf expr-type $func (-function-))
 		(setf expr-reference $func $ref)
 		(setf expr-parent $ref $func)
-		(setf expr-symbol $ref [make-symbol (static-storage) (local-scope) (defined-state) (@ $ref expr-name) $ref $reg])
+		(setf expr-symbol $ref [make-symbol (static-storage) (local-scope) (defined-state) (@ expr-name $ref) $ref $reg])
 		(setf expr-parameters $func $params)
 		(foreach (param $params) (begin
 			(setf expr-parent $param $func)
-			(setf expr-symbol $param [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ $param expr-name) $param $reg])))
+			(setf expr-symbol $param [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ expr-name $param) $param $reg])))
 		(setf expr-symbols $func nil)
 		(setf expr-expression $func $expr)
 		(setf expr-parent $expr $func)
@@ -129,11 +129,11 @@
 		(setf expr-type $cont (-continuation-))
 		(setf expr-reference $cont $ref)
 		(setf expr-parent $ref $cont)
-		(setf expr-symbol $ref [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ $ref expr-name) $ref $reg])
+		(setf expr-symbol $ref [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ expr-name $ref) $ref $reg])
 		(setf expr-parameters $cont $params)
 		(foreach (param $params) (begin
 			(setf expr-parent $param $cont)
-			(setf expr-symbol $param [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ $param expr-name) $param
+			(setf expr-symbol $param [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ expr-name $param) $param
 				$reg])))
 		(setf expr-escapes $cont (true))
 		(setf expr-expression $cont $expr)
@@ -145,10 +145,10 @@
 		(setf expr-type $wth (-with-))
 		(setf expr-reference $wth $ref)
 		(setf expr-parent $ref $wth)
-		(setf expr-symbol $ref [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ $ref expr-name) $ref $reg])
+		(setf expr-symbol $ref [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ expr-name $ref) $ref $reg])
 		(let (param [make-reference (null) $reg]) (begin
 			(setf expr-parent $param $wth)
-			(setf expr-symbol $param [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ $param expr-name) $param
+			(setf expr-symbol $param [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ expr-name $param) $param
 				$reg])
 			(setf expr-parameters $wth [lst $param nil $reg])))
 		(setf expr-escapes $wth (true))
@@ -181,7 +181,7 @@
 		(setf expr-type $u (-storage-))
 		(setf expr-reference $u $ref)
 		(setf expr-parent $ref $u)
-		(setf expr-symbol $ref [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ $ref expr-name) $ref $reg])
+		(setf expr-symbol $ref [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ expr-name $ref) $ref $reg])
 		(setf expr-arguments $u $args)
 		(foreach (arg $args) (setf expr-parent $arg $u))
 		{return $u}))))
@@ -221,92 +221,92 @@
 	(let (program [make-function [make-reference (null) $r] nil [make-begin $exprs $r] $r]) (begin
 		(setf expr-parent $program (null))
 		(foreach (expr $exprs)
-			(if (or [= (@ $expr expr-type) (-function-)] [= (@ $expr expr-type) (-storage-)])
-				(setf sym-scope (@(@ $expr expr-reference)expr-symbol) (global-scope))
+			(if (or [= (@ expr-type $expr) (-function-)] [= (@ expr-type $expr) (-storage-)])
+				(setf sym-scope (@(@ expr-reference $expr)expr-symbol) (global-scope))
 				(begin)))
 		{return $program}))))
 
 (function replace-expression (l r p) (use-memo $p
 	(`(let (replace-expression:orig (,[@fst $l]))
-		(let (replace-expression:parent (@ $$replace-expression:orig expr-parent))
+		(let (replace-expression:parent (@ expr-parent $$replace-expression:orig))
 			(let (replace-expression:repl (,[@frst $l])) (begin
 				(setf expr-parent $replace-expression:repl $replace-expression:parent)
 				[set $replace-expression:orig $replace-expression:repl]))))$r)))
 
 (function print-expression (s)
-	(switch = (@ $s expr-type)
+	(switch = (@ expr-type $s)
 		((-begin-) (begin
 			[write-str (stdout) (" (lparen)begin(space))]
-			(foreach (t (@ $s expr-expressions)) (begin
+			(foreach (t (@ expr-expressions $s)) (begin
 				[print-expression $t]
 				[write-str (stdout) (" (space))]))
 			[write-str (stdout) (" (bs)(rparen))]))
 		
 		((-with-) (begin
 			[write-str (stdout) (" (lparen)with(space))]
-			[print-expression (@ $s expr-reference)]
+			[print-expression (@ expr-reference $s)]
 			[write-str (stdout) (" (space))]
-			[print-expression (@ $s expr-expression)]
+			[print-expression (@ expr-expression $s)]
 			[write-str (stdout) (" (rparen))]))
 		
 		((-invoke-) (-jump-) (-storage-) (begin
-			[write-str (stdout) (switch = (@ $s expr-type)
+			[write-str (stdout) (switch = (@ expr-type $s)
 				((-invoke-) (" (lbracket)))
 				((-jump-) (" (lbrace)))
 				(" (lparen)storage(space)))]
-			[print-expression (@ $s expr-reference)]
+			[print-expression (@ expr-reference $s)]
 			[write-str (stdout) (" (space))]
-			(foreach (t (@ $s expr-arguments)) (begin
+			(foreach (t (@ expr-arguments $s)) (begin
 				[print-expression $t]
 				[write-str (stdout) (" (space))]))
 			[write-str (stdout) (" (bs))]
-			[write-str (stdout) (switch = (@ $s expr-type)
+			[write-str (stdout) (switch = (@ expr-type $s)
 				((-invoke-) (" (rbracket)))
 				((-jump-) (" (rbrace)))
 				(" (rbracket)))]))
 		
 		((-function-) (-continuation-) (begin
 			[write-str (stdout) (" (lparen))]
-			[write-str (stdout) (switch = (@ $s expr-type)
+			[write-str (stdout) (switch = (@ expr-type $s)
 				((-function-) (" function))
 				(" continuation))]
 			[write-str (stdout) (" (space))]
-			[print-expression (@ $s expr-reference)]
+			[print-expression (@ expr-reference $s)]
 			[write-str (stdout) (" (space)(lparen)(space))]
-			(foreach (t (@ $s expr-parameters)) (begin
+			(foreach (t (@ expr-parameters $s)) (begin
 				[print-expression $t]
 				[write-str (stdout) (" (space))]))
 			[write-str (stdout) (" (rparen)(space))]
-			[print-expression (@ $s expr-expression)]
+			[print-expression (@ expr-expression $s)]
 			[write-str (stdout) (" (rparen))]))
 			
 		((-if-) (begin
 			[write-str (stdout) (" (lparen)if(space))]
-			[print-expression (@ $s expr-condition)]
+			[print-expression (@ expr-condition $s)]
 			[write-str (stdout) (" (space))]
-			[print-expression (@ $s expr-consequent)]
+			[print-expression (@ expr-consequent $s)]
 			[write-str (stdout) (" (space))]
-			[print-expression (@ $s expr-alternate)]
+			[print-expression (@ expr-alternate $s)]
 			[write-str (stdout) (" (rparen))]))
 		
 		((-reference-)
-			(if (@ $s expr-name)
-				[write-str (stdout) (@ $s expr-name)]
+			(if (@ expr-name $s)
+				[write-str (stdout) (@ expr-name $s)]
 				(begin
 					[write-str (stdout) (" (lparen)reference(space))]
-					[write-uint (stdout) (@ $s expr-symbol)]
+					[write-uint (stdout) (@ expr-symbol $s)]
 					[write-str (stdout) (" (rparen))])))
 					
 		((-literal-) (begin
 			[write-str (stdout) (" (lparen)literal(space))]
-			[write-uint (stdout) (@ $s expr-value)]
+			[write-uint (stdout) (@ expr-value $s)]
 			[write-str (stdout) (" (rparen))]))
 		
 		((-non-primitive-) (begin
 			[write-str (stdout) (" (lparen))]
-			[print-expression (@ $s expr-reference)]
+			[print-expression (@ expr-reference $s)]
 			[write-str (stdout) (" (space))]
-			[print-fragment (@ $s expr-argument)]
+			[print-fragment (@ expr-argument $s)]
 			[write-str (stdout) (" (rparen))]))
 			
 		(begin)))

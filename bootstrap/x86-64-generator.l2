@@ -47,34 +47,34 @@
 (function cont-rbp (l r p) [mk# $l $r $p [* #0 (word-size)]])
 
 (function vlayout-frames (n r) (with return (begin
-	(if (@ $n expr-return-symbol) (begin
-		(setf sym-size (@ $n expr-return-symbol) (word-size))
-		[prepend (@ $n expr-return-symbol) (&[get-parent-function $n]expr-symbols) $r])
+	(if (@ expr-return-symbol $n) (begin
+		(setf sym-size (@ expr-return-symbol $n) (word-size))
+		[prepend (@ expr-return-symbol $n) (&[get-parent-function $n]expr-symbols) $r])
 		(begin))
 		
-	(switch = (@ $n expr-type)
+	(switch = (@ expr-type $n)
 		((-function-) (begin
 			(let (parameter-offset [* #7 (word-size)])
-				(foreach (t (@ $n expr-parameters)) (begin
-					(setf sym-offset (@ $t expr-symbol) $parameter-offset)
+				(foreach (t (@ expr-parameters $n)) (begin
+					(setf sym-offset (@ expr-symbol $t) $parameter-offset)
 					[set parameter-offset [+ $parameter-offset (word-size)]])))
 			(let (symbol-offset #0)
-				(foreach (u [reverse (@ $n expr-symbols) $r]) (begin
-					[set symbol-offset [- $symbol-offset [pad-size (@ $u sym-size) (word-size)]]]
+				(foreach (u [reverse (@ expr-symbols $n) $r]) (begin
+					[set symbol-offset [- $symbol-offset [pad-size (@ sym-size $u) (word-size)]]]
 					(setf sym-offset $u $symbol-offset))))))
 		
 		((-continuation-) (-with-) (begin
-			(if (@ $n expr-escapes) (begin
-				(setf sym-size (@(@ $n expr-reference)expr-symbol) (cont-size))
-				[append (@(@ $n expr-reference)expr-symbol) (&[get-parent-function $n]expr-symbols) $r])
+			(if (@ expr-escapes $n) (begin
+				(setf sym-size (@(@ expr-reference $n)expr-symbol) (cont-size))
+				[append (@(@ expr-reference $n)expr-symbol) (&[get-parent-function $n]expr-symbols) $r])
 				(begin))
-			(foreach (t (@ $n expr-parameters)) (begin
-				(setf sym-size (@ $t expr-symbol) (word-size))
-				[append (@ $t expr-symbol) (&[get-parent-function $n]expr-symbols) $r]))))
+			(foreach (t (@ expr-parameters $n)) (begin
+				(setf sym-size (@ expr-symbol $t) (word-size))
+				[append (@ expr-symbol $t) (&[get-parent-function $n]expr-symbols) $r]))))
 		
 		((-storage-) (begin
-			(setf sym-size (@(@ $n expr-reference)expr-symbol) [* [length (@ $n expr-arguments)] (word-size)])
-			[append (@(@ $n expr-reference)expr-symbol) (&[get-parent-function $n]expr-symbols) $r]))
+			(setf sym-size (@(@ expr-reference $n)expr-symbol) [* [length (@ expr-arguments $n)] (word-size)])
+			[append (@(@ expr-reference $n)expr-symbol) (&[get-parent-function $n]expr-symbols) $r]))
 		
 		(begin))
 	
@@ -82,8 +82,8 @@
 
 (function make-load (sym offset dest-reg scratch-reg r) (with return
 	(let (c nil) (begin
-		(if [= (@ $sym sym-type) (dynamic-storage)]
-			(let (op1 [make-literal [+ (@ $sym sym-offset) $offset] $r])
+		(if [= (@ sym-type $sym) (dynamic-storage)]
+			(let (op1 [make-literal [+ (@ sym-offset $sym) $offset] $r])
 				[append (make-asmN (movq-mdb-to-reg) ($op1 (make-asmN(rbp)()$r) $dest-reg) $r) c $r])
 			(begin
 				(let (op1 (make-asmN (stval-add-off-to-ref) ([use-symbol $sym $r] [make-literal $offset $r]) $r))
@@ -93,8 +93,8 @@
 
 (function make-store (src-reg sym offset scratch-reg r) (with return
 	(let (c nil) (begin
-		(if [= (@ $sym sym-type) (dynamic-storage)]
-			(let (op2 [make-literal [+ (@ $sym sym-offset) $offset] $r])
+		(if [= (@ sym-type $sym) (dynamic-storage)]
+			(let (op2 [make-literal [+ (@ sym-offset $sym) $offset] $r])
 				[append (make-asmN (movq-from-reg-into-mdb) ($src-reg $op2 (make-asmN(rbp)()$r)) $r) c $r])
 			(begin
 				(let (op1 (make-asmN (stval-add-off-to-ref) ([use-symbol $sym $r] [make-literal $offset $r]) $r))
@@ -103,110 +103,110 @@
 		{return [make-begin $c $r]}))))
 
 (function vgenerate-ifs (n r)
-	(if [= (@ $n expr-type) (-if-)]
+	(if [= (@ expr-type $n) (-if-)]
 		(with return (let (c nil) (begin
-			[append [make-load (@(@ $n expr-condition)expr-symbol) #0 (make-asmN(r10)()$r) (make-asmN(r13)()$r) $r] c $r]
+			[append [make-load (@(@ expr-condition $n)expr-symbol) #0 (make-asmN(r10)()$r) (make-asmN(r13)()$r) $r] c $r]
 			[append (make-asmN (orq-reg-to-reg) ((make-asmN(r10)()$r) (make-asmN(r10)()$r)) $r) c $r]
 			(storage alternate-symbol [make-symbol (static-storage) (local-scope) (defined-state) (null) (null) $r])
 			(let (op1 (make-asmN (stval-sub-rip-from-ref) ([use-symbol $alternate-symbol $r]) $r))
 				[append (make-asmN (je-rel) ($op1) $r) c $r])
-			[append (@ $n expr-consequent) c $r]
+			[append (@ expr-consequent $n) c $r]
 			(storage end-symbol [make-symbol (static-storage) (local-scope) (defined-state) (null) (null) $r])
 			(let (op1 (make-asmN (stval-sub-rip-from-ref) ([use-symbol $end-symbol $r]) $r))
 				[append (make-asmN (jmp-rel) ($op1) $r) c $r])
 			[append (make-asmN (label) ([use-symbol $alternate-symbol $r]) $r) c $r]
-			[append (@ $n expr-alternate) c $r]
+			[append (@ expr-alternate $n) c $r]
 			[append (make-asmN (label) ([use-symbol $end-symbol $r]) $r) c $r]
 			{return [make-begin $c $r]})))
 		$n))
 
 (function make-load-address (sym dest-reg r) (with return
 	(let (c nil) (begin
-		(if [= (@ $sym sym-type) (dynamic-storage)]
-			(let (op1 [make-literal (@ $sym sym-offset) $r])
+		(if [= (@ sym-type $sym) (dynamic-storage)]
+			(let (op1 [make-literal (@ sym-offset $sym) $r])
 				[append (make-asmN (leaq-of-mdb-into-reg) ($op1 (make-asmN(rbp)()) $dest-reg) $r) c $r])
 			[append (make-asmN (movq-imm-to-reg) ([use-symbol $sym $r] $dest-reg) $r) c $r])
 		{return [make-begin $c $r]}))))
 
 (function vgenerate-storage-expressions (n r)
-	(if [= (@ $n expr-type) (-storage-)]
+	(if [= (@ expr-type $n) (-storage-)]
 		(with return (let (c nil) (offset #0) (begin
-			(foreach (t (@ $n expr-arguments)) (begin
-				[append [make-load (@ $t expr-symbol) #0 (make-asmN(r10)()$r) (make-asmN(r13)()$r) $r] c $r]
-				[append [make-store (make-asmN(r10)()$r) (@(@ $n expr-reference)expr-symbol) $offset (make-asmN(r13)()$r) $r] c $r]
+			(foreach (t (@ expr-arguments $n)) (begin
+				[append [make-load (@ expr-symbol $t) #0 (make-asmN(r10)()$r) (make-asmN(r13)()$r) $r] c $r]
+				[append [make-store (make-asmN(r10)()$r) (@(@ expr-reference $n)expr-symbol) $offset (make-asmN(r13)()$r) $r] c $r]
 				[set offset [+ $offset (word-size)]]))
-			[append [make-load-address (@(@ $n expr-reference)expr-symbol) (make-asmN(r11)()$r) $r] c $r]
-			[append [make-store (make-asmN(r11)()$r) (@ $n expr-return-symbol) #0 (make-asmN(r10)()$r) $r] c $r]
+			[append [make-load-address (@(@ expr-reference $n)expr-symbol) (make-asmN(r11)()$r) $r] c $r]
+			[append [make-store (make-asmN(r11)()$r) (@ expr-return-symbol $n) #0 (make-asmN(r10)()$r) $r] c $r]
 			{return [make-begin $c $r]})))
 		$n))
 
 (function vgenerate-references (n r)
-	(if (and [= (@ $n expr-type) (-reference-)] (@ $n expr-return-symbol))
+	(if (and [= (@ expr-type $n) (-reference-)] (@ expr-return-symbol $n))
 		(with return (let (c nil) (begin
-			[append [make-load-address (@ $n expr-symbol) (make-asmN(r11)()$r) $r] c $r]
-			[append [make-store (make-asmN(r11)()$r) (@ $n expr-return-symbol) #0 (make-asmN(r10)()$r) $r] c $r]
+			[append [make-load-address (@ expr-symbol $n) (make-asmN(r11)()$r) $r] c $r]
+			[append [make-store (make-asmN(r11)()$r) (@ expr-return-symbol $n) #0 (make-asmN(r10)()$r) $r] c $r]
 			{return [make-begin $c $r]})))
 		$n))
 
 (function cont-instr-ref (n r) (with return (begin
-	(if (@ $n expr-cont-instr-ref) (begin)
+	(if (@ expr-cont-instr-ref $n) (begin)
 		(setf expr-cont-instr-ref $n
 			[use-symbol [make-symbol (static-storage) (local-scope) (defined-state) (nul) (null) $r] $r]))
-	{return (@ $n expr-cont-instr-ref)})))
+	{return (@ expr-cont-instr-ref $n)})))
 
 (function make-store-continuation (n r) (with return (let (c nil) (begin
-	[append [make-store (make-asmN(rbx)()$r) (@(@ $n expr-reference)expr-symbol) (cont-rbx) (make-asmN(r11)()$r) $r] c $r]
-	[append [make-store (make-asmN(r12)()$r) (@(@ $n expr-reference)expr-symbol) (cont-r12) (make-asmN(r11)()$r) $r] c $r]
-	[append [make-store (make-asmN(r13)()$r) (@(@ $n expr-reference)expr-symbol) (cont-r13) (make-asmN(r11)()$r) $r] c $r]
-	[append [make-store (make-asmN(r14)()$r) (@(@ $n expr-reference)expr-symbol) (cont-r14) (make-asmN(r11)()$r) $r] c $r]
-	[append [make-store (make-asmN(r15)()$r) (@(@ $n expr-reference)expr-symbol) (cont-r15) (make-asmN(r11)()$r) $r] c $r]
+	[append [make-store (make-asmN(rbx)()$r) (@(@ expr-reference $n)expr-symbol) (cont-rbx) (make-asmN(r11)()$r) $r] c $r]
+	[append [make-store (make-asmN(r12)()$r) (@(@ expr-reference $n)expr-symbol) (cont-r12) (make-asmN(r11)()$r) $r] c $r]
+	[append [make-store (make-asmN(r13)()$r) (@(@ expr-reference $n)expr-symbol) (cont-r13) (make-asmN(r11)()$r) $r] c $r]
+	[append [make-store (make-asmN(r14)()$r) (@(@ expr-reference $n)expr-symbol) (cont-r14) (make-asmN(r11)()$r) $r] c $r]
+	[append [make-store (make-asmN(r15)()$r) (@(@ expr-reference $n)expr-symbol) (cont-r15) (make-asmN(r11)()$r) $r] c $r]
 	[append [make-load-address (@[cont-instr-ref $n $r]expr-symbol) (make-asmN(r10)()$r) $r] c $r]
-	[append [make-store (make-asmN(r10)()$r) (@(@ $n expr-reference)expr-symbol) (cont-cir) (make-asmN(r11)()$r) $r] c $r]
-	[append [make-store (make-asmN(rbp)()$r) (@(@ $n expr-reference)expr-symbol) (cont-rbp) (make-asmN(r11)()$r) $r] c $r]
+	[append [make-store (make-asmN(r10)()$r) (@(@ expr-reference $n)expr-symbol) (cont-cir) (make-asmN(r11)()$r) $r] c $r]
+	[append [make-store (make-asmN(rbp)()$r) (@(@ expr-reference $n)expr-symbol) (cont-rbp) (make-asmN(r11)()$r) $r] c $r]
 	{return [make-begin $c $r]}))))
 
 (function move-arguments (n offset r) (with return (let (c nil) (begin
-	(foreach (t (@ $n expr-arguments)) (begin
-		[append [make-load (@ $t expr-symbol) #0 (make-asmN(r10)()$r) (make-asmN(r13)()$r) $r] c $r]
+	(foreach (t (@ expr-arguments $n)) (begin
+		[append [make-load (@ expr-symbol $t) #0 (make-asmN(r10)()$r) (make-asmN(r13)()$r) $r] c $r]
 		[append (make-asmN (movq-from-reg-into-mdb)
 			((make-asmN(r10)()$r) [make-literal $offset $r] (make-asmN(r11)()$r)) $r) c $r]
 		[set offset [+ $offset (word-size)]]))
 	{return [make-begin $c $r]}))))
 
 (function vgenerate-continuation-expressions (n r) (with return (let (c nil)
-	(switch = (@ $n expr-type)
+	(switch = (@ expr-type $n)
 		((-continuation-) (begin
-			[append [make-load-address (if (@ $n expr-escapes) (@(@ $n expr-reference)expr-symbol) [cont-instr-ref $n $r])
+			[append [make-load-address (if (@ expr-escapes $n) (@(@ expr-reference $n)expr-symbol) [cont-instr-ref $n $r])
 				(make-asmN(r11)()$r) $r] c $r]
-			[append [make-store (make-asmN(r11)()$r) (@ $n expr-return-symbol) #0 (make-asmN(r10)()$r) $r] c $r]
-			(if (@ $n expr-escapes) [append [make-store-continuation $n $r] c $r] (begin))
+			[append [make-store (make-asmN(r11)()$r) (@ expr-return-symbol $n) #0 (make-asmN(r10)()$r) $r] c $r]
+			(if (@ expr-escapes $n) [append [make-store-continuation $n $r] c $r] (begin))
 			(storage after-symbol [make-symbol (static-storage) (local-scope) (defined-state) (nul) (null) $r])
 			[append (make-asmN (jmp-rel) ((make-asmN (stval-sub-rip-from-ref) ([use-symbol $after-symbol $r]) $r)) $r) c $r]
 			[append (make-asmN (label) ([cont-instr-ref $n $r]) $) c $r]
-			[append (@ $n expr-expression) c $r]
+			[append (@ expr-expression $n) c $r]
 			[append (make-asmN (label) ([use-symbol $after-symbol $r]) $r) c $r]
 			{return [make-begin $c $r]}))
 		
 		((-with-) (begin
-			(if (@ $n expr-escapes) [append [make-store-continuation $n $r] c $r] (begin))
-			[append (@ $n expr-expression) c $r]
+			(if (@ expr-escapes $n) [append [make-store-continuation $n $r] c $r] (begin))
+			[append (@ expr-expression $n) c $r]
 			[append (make-asmN (label) ([cont-instr-ref $n $r]) $r) c $r]
-			[append [make-load (@[@fst(@ $n expr-parameters)]expr-symbol) #0 (make-asmN(r11)()$r) (make-asmN(r10)()$r) $r] c $r]
-			[append [make-store (make-asmN(r11)()$r) (@ $n expr-return-symbol) #0 (make-asmN(r10)()$r) $r] c $r]
+			[append [make-load (@[@fst(@ expr-parameters $n)]expr-symbol) #0 (make-asmN(r11)()$r) (make-asmN(r10)()$r) $r] c $r]
+			[append [make-store (make-asmN(r11)()$r) (@ expr-return-symbol $n) #0 (make-asmN(r10)()$r) $r] c $r]
 			{return [make-begin $c $r]}))
 		
 		((-jump-) (begin
-			(if (@ $n expr-short-circuit)
+			(if (@ expr-short-circuit $n)
 			(begin
-				(if [length (@(@ $n expr-short-circuit)expr-parameters)] (begin
-					[append [make-load-address (@ [@fst (@ (@ $n expr-short-circuit) expr-parameters)] expr-symbol)
+				(if [length (@(@ expr-short-circuit $n)expr-parameters)] (begin
+					[append [make-load-address (@ [@fst (@ (@ expr-short-circuit $n) expr-parameters)] expr-symbol)
 						(make-asmN(r11)()$r) $r] c $r]
 					[append [move-arguments $n #0 $r] c $r])
 					(begin))
 				[append (make-asmN (jmp-rel) ((make-asmN (stval-sub-rip-from-ref)
-					([cont-instr-ref (@ $n expr-short-circuit) $r]) $r)) $r) c $r])
+					([cont-instr-ref (@ expr-short-circuit $n) $r]) $r)) $r) c $r])
 			(begin
-				[append [make-load (@(@ $n expr-reference) expr-symbol) #0 (make-asmN(r11)()$r) (make-asmN(r10)()$r) $r] c $r]
+				[append [make-load (@(@ expr-reference $n) expr-symbol) #0 (make-asmN(r11)()$r) (make-asmN(r10)()$r) $r] c $r]
 				[append [move-arguments $n (cont-size) $r] c $r]
 				[append (make-asmN(movq-mdb-to-reg)([make-literal(cont-rbx)$r] (make-asmN(r11)()$r) (make-asmN(rbx)()$r))$r) c $r]
 				[append (make-asmN(movq-mdb-to-reg)([make-literal(cont-r12)$r] (make-asmN(r11)()$r) (make-asmN(r12)()$r))$r) c $r]
