@@ -124,6 +124,10 @@
 		(setf expr-parent $expr $func)
 		{return $func}))))
 
+(function make-functionN (l r p)
+	(use-memo $p (`[make-function (,[@fst $l])
+		(,[list [meta:reverse [lst [@frrrst $l] [meta:reverse [@frst $l] $r] $r] $r] $r emt]) (,[@frrst $l]) (,[@frrrst $l])]$r)))
+
 (function make-continuation (ref params expr reg) (with return
 	(let (cont [buffer-alloc $reg (expression)]) (begin
 		(setf expr-type $cont (-continuation-))
@@ -139,6 +143,10 @@
 		(setf expr-expression $cont $expr)
 		(setf expr-parent $expr $cont)
 		{return $cont}))))
+
+(function make-continuationN (l r p)
+	(use-memo $p (`[make-continuation (,[@fst $l])
+		(,[list [meta:reverse [lst [@frrrst $l] [meta:reverse [@frst $l] $r] $r] $r] $r emt]) (,[@frrst $l]) (,[@frrrst $l])]$r)))
 
 (function make-with (ref expr reg) (with return
 	(let (wth [buffer-alloc $reg (expression)]) (begin
@@ -175,6 +183,10 @@
 		(setf expr-arguments $u $args)
 		(foreach (arg $args) (setf expr-parent $arg $u))
 		{return $u}))))
+
+(function make-jumpN (l r p)
+	(use-memo $p (`[make-jump (,[@fst $l]) (,[list [meta:reverse [lst [@frrst $l] [meta:reverse [@frst $l] $r] $r] $r] $r emt])
+		(,[@frrst $l])]$r)))
 
 (function make-storage (ref args reg) (with return
 	(let (u [buffer-alloc $reg (expression)]) (begin
@@ -216,6 +228,10 @@
 		(setf expr-arguments $u $args)
 		(foreach (arg $args) (setf expr-parent $arg $u))
 		{return $u}))))
+
+(function make-invokeN (l r p)
+	(use-memo $p (`[make-invoke (,[@fst $l]) (,[list [meta:reverse [lst [@frrst $l] [meta:reverse [@frst $l] $r] $r] $r] $r emt])
+		(,[@frrst $l])]$r)))
 
 (function make-program (exprs r) (with return
 	(let (program [make-function [make-reference (null) $r] nil [make-begin $exprs $r] $r]) (begin
