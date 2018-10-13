@@ -67,12 +67,12 @@
 					(until (rela-idx #0) [= $rela-idx $relanum] [+ $rela-idx #1]
 						(let (rela (loc $relas-buf $rela-idx (elf64-rela)))
 								(target-seg-addr ($(loc (@ $obj obj-segs) (@ $shdr-buf sh-info) (unit))))
-							(setf $rela r-offset [+ $target-seg-addr (@ $rela r-offset)]))))
+							(setf r-offset $rela [+ $target-seg-addr (@ $rela r-offset)]))))
 			(if [= (@ $shdr-buf sh-type) (sht-symtab)]
 				(let (symnum [/ (@ $shdr-buf sh-size) (@ $shdr-buf sh-entsize)]) (syms-buf ($(loc (@ $obj obj-syms) $sec-idx (unit))))
 					(until (sym-idx #0) [= $sym-idx $symnum] [+ $sym-idx #1]
 						(let (sym (loc $syms-buf $sym-idx (elf64-sym)))
-							(setf $sym st-value (switch = (@ $sym st-shndx)
+							(setf st-value $sym (switch = (@ $sym st-shndx)
 								((shn-abs) (@ $sym st-value))
 								((shn-common) #0)
 								((shn-undef) #0)
@@ -82,13 +82,13 @@
 
 (function read-object (objsrc objsrc-sz reg handler) (with return
 	(let (obj [buffer-alloc $reg (object)]) (begin
-		(setf $obj obj-ehdr [buffer-alloc $reg (elf64-ehdr)])
+		(setf obj-ehdr $obj [buffer-alloc $reg (elf64-ehdr)])
 		[memcpy (@ $obj obj-ehdr) $objsrc (elf64-ehdr)]
-		(setf $obj obj-shdrs [buffer-alloc $reg [* (@(@ $obj obj-ehdr)e-shnum) (elf64-shdr)]])
-		(setf $obj obj-syms [buffer-alloc $reg [* (@(@ $obj obj-ehdr)e-shnum) (unit)]])
-		(setf $obj obj-relas [buffer-alloc $reg [* (@(@ $obj obj-ehdr)e-shnum) (unit)]])
-		(setf $obj obj-addends [buffer-alloc $reg [* (@(@ $obj obj-ehdr)e-shnum) (unit)]])
-		(setf $obj obj-segs [buffer-alloc $reg [* (@(@ $obj obj-ehdr)e-shnum) (unit)]])
+		(setf obj-shdrs $obj [buffer-alloc $reg [* (@(@ $obj obj-ehdr)e-shnum) (elf64-shdr)]])
+		(setf obj-syms $obj [buffer-alloc $reg [* (@(@ $obj obj-ehdr)e-shnum) (unit)]])
+		(setf obj-relas $obj [buffer-alloc $reg [* (@(@ $obj obj-ehdr)e-shnum) (unit)]])
+		(setf obj-addends $obj [buffer-alloc $reg [* (@(@ $obj obj-ehdr)e-shnum) (unit)]])
+		(setf obj-segs $obj [buffer-alloc $reg [* (@(@ $obj obj-ehdr)e-shnum) (unit)]])
 		
 		(until (sec-idx #0) [= $sec-idx (@(@ $obj obj-ehdr)e-shnum)] [+ $sec-idx #1]
 			(let (shdr-buf (loc (@ $obj obj-shdrs) $sec-idx (elf64-shdr))) (seg-buf (loc (@ $obj obj-segs) $sec-idx (unit))) (begin
@@ -131,8 +131,8 @@
 
 (function make-symbol (name address reg) (with return
 	(let (sym [buffer-alloc $reg (symbol)]) (begin
-		(setf $sym sym-name $name)
-		(setf $sym sym-offset $address)
+		(setf sym-name $sym $name)
+		(setf sym-offset $sym $address)
 		{return $sym}))))
 
 (function mutate-symbols (obj updates) (begin
@@ -148,7 +148,7 @@
 										(or [= (@ $sym st-shndx) (shn-undef)] [= (@ $sym st-shndx) (shn-common)])
 										(or [= (elf64-st-bind (@ $sym st-info)) (stb-global)]
 											[= (elf64-st-bind (@ $sym st-info)) (stb-weak)]))
-									(setf $sym st-value (@ $update sym-offset))
+									(setf st-value $sym (@ $update sym-offset))
 									(begin)))))
 					(begin)))))
 	(++ If $obj was created using load, the following invocation cannot produce an error; hence the (null) handler argument.)

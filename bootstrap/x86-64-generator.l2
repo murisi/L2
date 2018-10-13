@@ -48,7 +48,7 @@
 
 (function vlayout-frames (n r) (with return (begin
 	(if (@ $n expr-return-symbol) (begin
-		(setf (@ $n expr-return-symbol) sym-size (word-size))
+		(setf sym-size (@ $n expr-return-symbol) (word-size))
 		[prepend (@ $n expr-return-symbol) (&[get-parent-function $n]expr-symbols) $r])
 		(begin))
 		
@@ -56,24 +56,24 @@
 		((-function-) (begin
 			(let (parameter-offset [* #7 (word-size)])
 				(foreach (t (@ $n expr-parameters)) (begin
-					(setf (@ $t expr-symbol) sym-offset $parameter-offset)
+					(setf sym-offset (@ $t expr-symbol) $parameter-offset)
 					[set parameter-offset [+ $parameter-offset (word-size)]])))
 			(let (symbol-offset #0)
 				(foreach (u [reverse (@ $n expr-symbols) $r]) (begin
 					[set symbol-offset [- $symbol-offset [pad-size (@ $u sym-size) (word-size)]]]
-					(setf $u sym-offset $symbol-offset))))))
+					(setf sym-offset $u $symbol-offset))))))
 		
 		((-continuation-) (-with-) (begin
 			(if (@ $n expr-escapes) (begin
-				(setf (@(@ $n expr-reference)expr-symbol) sym-size (cont-size))
+				(setf sym-size (@(@ $n expr-reference)expr-symbol) (cont-size))
 				[append (@(@ $n expr-reference)expr-symbol) (&[get-parent-function $n]expr-symbols) $r])
 				(begin))
 			(foreach (t (@ $n expr-parameters)) (begin
-				(setf (@ $t expr-symbol) sym-size (word-size))
+				(setf sym-size (@ $t expr-symbol) (word-size))
 				[append (@ $t expr-symbol) (&[get-parent-function $n]expr-symbols) $r]))))
 		
 		((-storage-) (begin
-			(setf (@(@ $n expr-reference)expr-symbol) sym-size [* [length (@ $n expr-arguments)] (word-size)])
+			(setf sym-size (@(@ $n expr-reference)expr-symbol) [* [length (@ $n expr-arguments)] (word-size)])
 			[append (@(@ $n expr-reference)expr-symbol) (&[get-parent-function $n]expr-symbols) $r]))
 		
 		(begin))
@@ -150,7 +150,7 @@
 
 (function cont-instr-ref (n r) (with return (begin
 	(if (@ $n expr-cont-instr-ref) (begin)
-		(setf $n expr-cont-instr-ref
+		(setf expr-cont-instr-ref $n
 			[use-symbol [make-symbol (static-storage) (local-scope) (defined-state) (nul) (null) $r] $r]))
 	{return (@ $n expr-cont-instr-ref)})))
 
