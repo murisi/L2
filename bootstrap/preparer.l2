@@ -12,7 +12,7 @@
 				(until (partial $definitions) [nil? $partial] [@cdr $partial]
 					(if [find (function _ (f ctx) [named-ref= (@ expr-reference $f) (@ expr-reference $ctx)])
 							(& cdr $partial) [@car $partial]]
-						{$handler multiple-definition-error (@(@[@car $partial]expr-reference)expr-name)}
+						{$handler multiple-definition-error (@ expr-name(@ expr-reference[@car $partial]))}
 						(begin))))
 			[destroy-buffer $temp-reg]
 			{return $e})))
@@ -21,7 +21,7 @@
 			(let (ref-with-params [lst (@ expr-reference $e) (@ expr-parameters $e) $temp-reg])
 				(until (partial $ref-with-params) [nil? $partial] [@cdr $partial]
 					(if [find (function _ (f ctx) [named-ref= $f $ctx]) (& cdr $partial) [@car $partial]]
-						{$handler multiple-definition-error (@[@car $partial]expr-name)}
+						{$handler multiple-definition-error (@ expr-name[@car $partial])}
 						(begin))))
 			[destroy-buffer $temp-reg]
 			{return $e})))
@@ -40,44 +40,44 @@
 			(switch = (@ expr-type $t)
 				((-begin-) (foreach (u (@ expr-expressions $t))
 					(if (and (or [= (@ expr-type $u) (-function-)] (and [= (@ expr-type $u) (-storage-)] (or $same-func
-							[= (@(@(@ expr-reference $u)expr-symbol)sym-type) (static-storage)])))
+							[= (@ sym-type(@ expr-symbol(@ expr-reference $u))) (static-storage)])))
 							[named-ref= (@ expr-reference $u) $reference])
-						{return (@(@ expr-reference $u)expr-symbol)}
+						{return (@ expr-symbol(@ expr-reference $u))}
 						(begin))))
 				
 				((-function-) (begin
 					(if [named-ref= (@ expr-reference $t) $reference]
-						{return (@(@ expr-reference $t)expr-symbol)}
+						{return (@ expr-symbol(@ expr-reference $t))}
 						(foreach (u (@ expr-parameters $t))
-							(if (and (or $same-func [= (@(@ expr-symbol $u)sym-type) (static-storage)]) [named-ref= $u $reference])
+							(if (and (or $same-func [= (@ sym-type(@ expr-symbol $u)) (static-storage)]) [named-ref= $u $reference])
 								{return (@ expr-symbol $u)}
 								(begin))))
 					[set same-func (false)]))
 				
 				((-continuation-) (-with-) (-storage-)
-					(if (and (or $same-func [= (@(@(@ expr-reference $t)expr-symbol)sym-type) (static-storage)])
+					(if (and (or $same-func [= (@ sym-type(@ expr-symbol(@ expr-reference $t))) (static-storage)])
 							[named-ref= (@ expr-reference $t) $reference])
 						{return (@(@ expr-reference $t))}
 					(if [= (@ expr-type $t) (-storage-)] (begin)
 						(foreach (u (@ expr-parameters $t))
-							(if (and (or $same-func [= (@(@ expr-symbol $u)sym-type) (static-storage)]) [named-ref= $u $reference])
+							(if (and (or $same-func [= (@ sym-type(@ expr-symbol $u)) (static-storage)]) [named-ref= $u $reference])
 								{return (@ expr-symbol $u)}
 								(begin))))))
 				
 				(begin))))
 	{return (null)})))
 
-(function jump-reference? (s) (and [= (@(@ expr-parent $s)expr-type) (-jump-)] [= (@(@ expr-parent $s)expr-reference) $s]))
+(function jump-reference? (s) (and [= (@ expr-type(@ expr-parent $s)) (-jump-)] [= (@ expr-reference(@ expr-parent $s)) $s]))
 
-(function invoke-reference? (s) (and [= (@(@ expr-parent $s)expr-type) (-invoke-)] [= (@(@ expr-parent $s)expr-reference) $s]))
+(function invoke-reference? (s) (and [= (@ expr-type(@ expr-parent $s)) (-invoke-)] [= (@ expr-reference(@ expr-parent $s)) $s]))
 
-(function function-reference? (s) (and [= (@(@ expr-parent $s)expr-type) (-function-)] [= (@(@ expr-parent $s)expr-reference) $s]))
+(function function-reference? (s) (and [= (@ expr-type(@ expr-parent $s)) (-function-)] [= (@ expr-reference(@ expr-parent $s)) $s]))
 
 (function c-reference? (s)
-	(and (or [= (@(@ expr-parent $s)expr-type) (-continuation-)] [= (@(@ expr-parent $s)expr-type) (-with-)])
-		[= (@(@ expr-parent $s)expr-reference) $s]))
+	(and (or [= (@ expr-type(@ expr-parent $s)) (-continuation-)] [= (@ expr-type(@ expr-parent $s)) (-with-)])
+		[= (@ expr-reference(@ expr-parent $s)) $s]))
 
-(function get-target-expression (s) (@(@(@ expr-symbol $s)sym-definition)expr-parent))
+(function get-target-expression (s) (@ expr-parent(@ sym-definition(@ expr-symbol $s))))
 
 (function get-root-function (s) (with return
 	{(continuation loop (s parent)
@@ -100,14 +100,14 @@
 							(setf expr-parent $ref $rf)
 							(setf expr-symbol $s $sym)
 							{return $s})))
-				(if (and (or (and [jump-reference? $s] [c-reference? (@(@ expr-symbol $s)sym-definition)])
-						(and [invoke-reference? $s] [function-reference? (@(@ expr-symbol $s)sym-definition)]))
-						(not [= [length(@(@ expr-parent $s)expr-arguments)] [length(@[get-target-expression $s]expr-parameters)]]))
+				(if (and (or (and [jump-reference? $s] [c-reference? (@ sym-definition(@ expr-symbol $s))])
+						(and [invoke-reference? $s] [function-reference? (@ sym-definition(@ expr-symbol $s))]))
+						(not [= [length(@ expr-arguments(@ expr-parent $s))] [length(@ expr-parameters[get-target-expression $s])]]))
 					{$handler param-count-mismatch-error (@ expr-parent $s) [get-target-expression $s]}
 					{return $s}))))
 		(if (and (or (and [= (@ expr-type $s) (-continuation-)] [jump-reference? $s])
 				(and [= (@ expr-type $s) (-function-)] [invoke-reference? $s]))
-				(not [= [length (@(@ expr-parent $s)expr-arguments)] [length (@ expr-parameters $s)]]))
+				(not [= [length (@ expr-arguments(@ expr-parent $s))] [length (@ expr-parameters $s)]]))
 			{$handler param-count-mismatch-error (@ expr-parent $s) $s}
 			$s))))
 
@@ -117,8 +117,8 @@
 		(setf expr-escapes $target (true))))
 
 (function vescape-analysis (s ctx) (with return (begin
-	(if (and [= (@ expr-type $s) (-reference-)] (not [= (@(@ expr-symbol $s)sym-definition) $s])
-			[c-reference? (@(@ expr-symbol $s)sym-definition)])
+	(if (and [= (@ expr-type $s) (-reference-)] (not [= (@ sym-definition(@ expr-symbol $s)) $s])
+			[c-reference? (@ sym-definition(@ expr-symbol $s))])
 		[vescape-analysis-aux $s [get-target-expression $s]]
 		[vescape-analysis-aux $s $s])
 	{return $s})))
@@ -271,14 +271,14 @@
 		
 		((-storage-) (-jump-) (-invoke-) (begin
 			(if [= (@ expr-type $expr) (-storage-)]
-				(setf sym-type (@(@ expr-reference $expr)expr-symbol) (static-storage))
+				(setf sym-type (@ expr-symbol(@ expr-reference $expr)) (static-storage))
 				[classify-program-symbols (@ expr-reference $expr)])
 			(foreach (t (@ expr-arguments $expr)) [classify-program-symbols $t])))
 		
 		((-non-primitive-) [classify-program-symbols (@ expr-reference $expr)])
 		
 		((-continuation-) (-with-) (begin
-			(setf sym-type (@(@ expr-reference $expr)expr-symbol) (static-storage))
+			(setf sym-type (@ expr-symbol(@ expr-reference $expr)) (static-storage))
 			(foreach (t (@ expr-parameters $expr)) (setf sym-type (@ expr-symbol $t) (static-storage)))
 			[classify-program-symbols (@ expr-expression $expr)]))
 		
@@ -305,13 +305,13 @@
 		((-begin-) (begin
 			(foreach (f (@ expr-expressions $expr))
 				(if (and (or [= (@ expr-type $f) (-function-)] [= (@ expr-type $f) (-storage-)])
-					[defined-str= (@(@ expr-reference $f)expr-name) $ref-name]) {return $expr} (begin)))
+					[defined-str= (@ expr-name(@ expr-reference $f)) $ref-name]) {return $expr} (begin)))
 			(until (partial (@ expr-expressions $expr)) [nil? $partial] [@cdr $partial]
 				(replace-expression (& car $partial) [insert-indirections [@car $partial] $ref-name $reg]))
 			{return $expr}))
 		
 		((-continuation-) (-with-) (begin
-			(if [defined-str= (@(@ expr-reference $expr)expr-name) $ref-name] {return $expr} (begin))
+			(if [defined-str= (@ expr-name(@ expr-reference $expr)) $ref-name] {return $expr} (begin))
 			(foreach (e (@ expr-parameters $expr))
 				(if [defined-str= (@ expr-name $e) $ref-name] {return $expr} (begin)))
 			(replace-expression (& expr-expression $expr) [insert-indirections (@ expr-expression $expr) $ref-name $reg])
