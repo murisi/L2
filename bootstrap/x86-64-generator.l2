@@ -124,7 +124,7 @@
 	(let (c nil) (begin
 		(if [= (@ sym-type $sym) (dynamic-storage)]
 			(let (op1 [make-literal (@ sym-offset $sym) $r])
-				[append (make-asmN (leaq-of-mdb-into-reg) ($op1 (make-asmN(rbp)()) $dest-reg) $r) c $r])
+				[append (make-asmN (leaq-of-mdb-into-reg) ($op1 (make-asmN(rbp)()$r) $dest-reg) $r) c $r])
 			[append (make-asmN (movq-imm-to-reg) ([use-symbol $sym $r] $dest-reg) $r) c $r])
 		{return [make-begin $c $r]}))))
 
@@ -182,7 +182,7 @@
 			(if (@ expr-escapes $n) [append [make-store-continuation $n $r] c $r] (begin))
 			(storage after-symbol [make-symbol (static-storage) (local-scope) (defined-state) (nul) (null) $r])
 			[append (make-asmN (jmp-rel) ((make-asmN (stval-sub-rip-from-ref) ([use-symbol $after-symbol $r]) $r)) $r) c $r]
-			[append (make-asmN (label) ([cont-instr-ref $n $r]) $) c $r]
+			[append (make-asmN (label) ([cont-instr-ref $n $r]) $r) c $r]
 			[append (@ expr-expression $n) c $r]
 			[append (make-asmN (label) ([use-symbol $after-symbol $r]) $r) c $r]
 			{return [make-begin $c $r]}))
@@ -304,7 +304,7 @@
 		
 	(if [= (@ expr-type $n) (-invoke-)] (begin
 		(if [> [length (@ expr-arguments $n)] #6]
-			(foreach (t [reverse [@cddddddr(@ expr-arguments $n)]]) (begin
+			(foreach (t [reverse [@cddddddr(@ expr-arguments $n)] $r]) (begin
 				[append [make-load (@ expr-symbol $t) #0 (make-asmN(r11)()$r) (make-asmN(r10)()$r) $r] c $r]
 				[append (make-asmN(pushq-reg)((make-asmN(r11)()$r))$r) c $r]))
 			(begin))
