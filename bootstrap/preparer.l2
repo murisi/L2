@@ -372,9 +372,32 @@
 		{return $return-with}))
 	$s))
 
+(function static-np-expansion () (begin))
+
+(function vgenerate-static-np-expressions (s ctx)
+	(if (and [= (@ expr-type $s) (-non-primitive-)] (not(@ expr-dynamic-context $s))) (with return (begin
+		(storage ct-reg ($(loc $ctx #0(unit))))
+		(storage ectx ($(loc $ctx #1(unit))))
+		(storage rt-reg (@ ectx-rt-reg $ectx))
+		
+		(storage macro-cache [buffer-alloc $rt-reg (unit)])
+		(storage macro-fragment-cache [buffer-alloc $rt-reg (unit)])
+		[set macro-fragment-cache nil]
+		
+		(storage return-with-ref-arg [make-reference (null) $ct-reg])
+		(storage return-with-ref [make-reference (null) $ct-reg])
+		(storage return-with [make-with $return-with-ref (make-jumpN (make-invokeN [make-literal static-np-expansion $ct-reg]
+			((@ expr-reference $s) [make-literal [copy-fragment (@ expr-argument $s) $rt-reg] $ct-reg] [make-literal $ectx $ct-reg]
+			[make-literal (@ expr-st-binds $s) $ct-reg] [make-literal $macro-cache $ct-reg]
+			[make-literal $macro-fragment-cache $ct-reg]) $ct-reg) ($return-with-ref-arg) $ct-reg) $ct-reg])
+		[refer-reference $return-with-ref-arg $return-with-ref]
+		{return $return-with}))
+	$s))
+
 (function load-expressions (program ectx st-binds ct-reg) (do-let (begin
 		[store-lexical-environment (@ expr-expression $program) (true) $st-binds nil $ct-reg $ct-reg]
 		[visit-expressions vgenerate-dynamic-np-expressions program (storage _ $ct-reg (storage _ nil $ct-reg (null)))]
+		[visit-expressions vgenerate-static-np-expressions program (storage _ $ct-reg (storage _ nil $ct-reg (null)))]
 		[visit-expressions vfind-multiple-definitions program $handler]
 		[classify-program-symbols (@ expr-expression $program)]
 		[visit-expressions vlink-references (& expr-expression $program) (storage _ $handler $ct-reg)]
@@ -386,7 +409,6 @@
 		[visit-expressions vgenerate-literals program $ct-reg]
 		[visit-expressions vgenerate-ifs program $ct-reg]
 		[visit-expressions vgenerate-function-expressions program $ct-reg]
-		[write-str (stdout) (" Made it work.)]
 		[set program [generate-toplevel $program $ct-reg]]
 		(let (asms nil) [visit-expressions vlinearized-expressions program (storage _ asms $ct-reg)]))
 	(handler (continuation _ (code arg0 arg1 arg2 arg3) (begin
