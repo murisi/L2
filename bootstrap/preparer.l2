@@ -409,8 +409,15 @@
 		[visit-expressions vgenerate-literals program $ct-reg]
 		[visit-expressions vgenerate-ifs program $ct-reg]
 		[visit-expressions vgenerate-function-expressions program $ct-reg]
+		[visit-expressions vgenerate-storage-expressions program $ct-reg]
+		(storage symbols (@ expr-symbols $program))
+		(foreach (l (@ expr-parameters $program)) [prepend (@ expr-symbol $l) symbols $ct-reg])
 		[set program [generate-toplevel $program $ct-reg]]
-		(let (asms nil) [visit-expressions vlinearized-expressions program (storage _ asms $ct-reg)]))
+		(storage asms nil)
+		[visit-expressions vlinearized-expressions program (storage _ asms $ct-reg)]
+		(++[set asms [reverse $asms $ct-reg]])
+		[write-str (stdout) (" Checksum)]
+		[write-uint (stdout) [length $asms]])
 	(handler (continuation _ (code arg0 arg1 arg2 arg3) (begin
 		(switch = $code
 			(multiple-definition-error [write-str (stdout) (" Multiple definition error.)])

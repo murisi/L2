@@ -154,11 +154,19 @@
 			[set (loc $reg #4(unit)) #16045690984833335023]
 			{return $reg})))))
 
+(function check-buffer-integrity (reg)
+	(do-while (begin
+			(if [= ($(loc $reg #4(unit))) #16045690984833335023] (begin) [exit #11])
+			[set reg ($(loc $reg #0(unit)))])
+		$reg))
+		
+
 (++ Allocates memory in the region at reg of an amount in bytes equal to the
 	integer at len. The only way to deallocate this memory is destroy the entire
 	region at reg.)
 
 (function buffer-alloc (reg len) (with return (begin
+	(++[check-buffer-integrity $reg])
 	[set len [pad-size $len (alloc-alignment)]]
 	(if [> [+($(loc $reg #1 #2(unit)))$len] ($(loc $reg #1 #3(unit)))]
 		(begin
@@ -172,11 +180,13 @@
 	function, it is invalid to read or write data to the memory allocated on
 	this region.)
 
-(function destroy-buffer (reg) (do-while
-	(let (next-reg ($(loc $reg #0(unit)))) (begin
-		[munmap $reg [- ($(loc $reg #3(unit))) $reg]]
-		[set reg $next-reg]))
-	$reg))
+(function destroy-buffer (reg) (begin
+	(++[check-buffer-integrity $reg])
+	(do-while
+			(let (next-reg ($(loc $reg #0(unit)))) (begin
+				[munmap $reg [- ($(loc $reg #3(unit))) $reg]]
+				[set reg $next-reg]))
+		$reg)))
 
 (++ Returns a C-string that is a copy of the one at src. The returned string and
 	its dependencies will all reside in the region reg.)
