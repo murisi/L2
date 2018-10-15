@@ -493,9 +493,8 @@ Object *load_expressions(union expression *program, struct expansion_context *ec
 union expression *build_syntax_tree(list d, region reg, jumpbuf *handler);
 
 void *static_np_expansion(list (*expander)(list, region, list), list argument, struct expansion_context *ectx, list st_binds,
-		void (*(*macro_cache))(void *), list *macro_sexpr_cache) {
-	list expansion = expander(argument, ectx->rt_reg, *macro_sexpr_cache);
-	if(expansion == *macro_sexpr_cache) {
+		void (*(*macro_cache))(void *)) {
+	if(*macro_cache) {
 		return *macro_cache;
 	}
 	
@@ -509,7 +508,7 @@ void *static_np_expansion(list (*expander)(list, region, list), list argument, s
 	union expression *macro_cont_ref = make_reference(NULL, ct_reg);
 	union expression *macro_cont = make_continuation(macro_cont_ref, lst(guest_cont_param, nil, ct_reg),
 		make_jump1(make_invoke1(make_literal((unsigned long) _get_, ct_reg), guest_cont_arg, ct_reg),
-			build_expression(expansion, ectx->rt_reg, ectx->handler), ct_reg), ct_reg);
+			build_expression(expander(argument, ectx->rt_reg, nil), ectx->rt_reg, ectx->handler), ct_reg), ct_reg);
 	refer_reference(guest_cont_arg, guest_cont_param);
 	
 	Object *obj = load_expressions(make_program(lst(macro_cont, nil, ct_reg), ct_reg), ectx, st_binds, ct_reg);
@@ -528,7 +527,6 @@ void *static_np_expansion(list (*expander)(list, region, list), list argument, s
 	((void (*)()) segment(obj, ".text"))();
 	//Get the address in memory of the continuation
 	*macro_cache = (void *) macro_cont_ref->reference.symbol->offset;
-	*macro_sexpr_cache = expansion;
 	destroy_buffer(ct_reg);
 	return *macro_cache;
 }
@@ -550,11 +548,11 @@ union expression *vgenerate_static_np_expressions(union expression *s, void *ctx
 		union expression *return_with_ref_arg = make_reference(NULL, ct_reg);
 		union expression *return_with_ref = make_reference(NULL, ct_reg);
 		union expression *return_with = make_with(return_with_ref,
-			make_jump1(make_invoke6(make_literal((unsigned long) static_np_expansion, ct_reg),
+			make_jump1(make_invoke5(make_literal((unsigned long) static_np_expansion, ct_reg),
 				s->non_primitive.reference, make_literal((unsigned long) copy_fragment(s->non_primitive.argument,
 				ectx->rt_reg), ct_reg), make_literal((unsigned long) ectx, ct_reg),
 				make_literal((unsigned long) s->non_primitive.st_binds, ct_reg), make_literal((unsigned long) macro_cache, ct_reg),
-					make_literal((unsigned long) macro_sexpr_cache, ct_reg), ct_reg), return_with_ref_arg, ct_reg), ct_reg);
+					ct_reg), return_with_ref_arg, ct_reg), ct_reg);
 		refer_reference(return_with_ref_arg, return_with_ref);
 		return return_with;
 	} else {
