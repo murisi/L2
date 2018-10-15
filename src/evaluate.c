@@ -23,17 +23,8 @@ typedef unsigned long int bool;
 
 Object *load_expressions(union expression *program, struct expansion_context *ectx, list st_binds, region manreg) {
 	store_lexical_environment(program->function.expression, true, st_binds, nil, manreg, ectx->rt_reg);
-	union expression **t;
-	{foreachaddress(t, program->function.expression->begin.expressions) {
-		if((*t)->base.type == function) {
-			generate_np_expressions(t, manreg, ectx);
-		} else {
-			union expression *container = make_function(make_reference(NULL, manreg), nil, *t, manreg);
-			generate_np_expressions(&container->function.expression, manreg, ectx);
-			*t = container->function.expression;
-			(*t)->base.parent = program->function.expression;
-		}
-	}}
+	visit_expressions(vgenerate_static_np_expressions, &program, (void* []) {manreg, ectx});
+	generate_dynamic_np_expressions(&program, manreg, ectx);
 	visit_expressions(vfind_multiple_definitions, &program, ectx->handler);
 	classify_program_symbols(program->function.expression);
 	visit_expressions(vlink_references, &program->function.expression, (void* []) {ectx->handler, manreg});
