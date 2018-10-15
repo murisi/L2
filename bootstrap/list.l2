@@ -4,7 +4,7 @@
 			{aux [lst [llst [@fst $a] [@fst $b] emt $r] $output $r] [@rst $a] [@rst $b]}
 			{return [meta:reverse $output $r]})) emt $a $b}))
 
-(function foreach (s r p) (use-memo $p
+(function foreach (s r)
 	(let (bindings [meta:reverse [@rst [meta:reverse $s $r]] $r]) (body [@fst [meta:reverse $s $r]])
 			(labels (with return {(continuation aux (index-refs ref input-pairs)
 				(if (not [emt? $input-pairs])
@@ -17,28 +17,28 @@
 				[lst (` let $r) [meta:reverse [lst $body [meta:map [meta:zip [meta:map $bindings (null) @fst $r] $labels $r]
 						$r (function make-binding (a r) (`((,[@fst $a]) [@car ($(,[@frst $a]))])$r))$r]$r]$r]$r]
 				[meta:map $labels $r (function make-update (a r) (`[set ,$a [@cdr $,$a]]$r))$r]$r]))$r)
-			[meta:zip $labels [meta:map $bindings (null) @frst $r]$r]$r]$r]$r])))
+			[meta:zip $labels [meta:map $bindings (null) @frst $r]$r]$r]$r]$r]))
 
-(function foreach* (s r p) (use-memo $p
+(function foreach* (s r)
 	(let (bindings [meta:reverse [@rst [meta:reverse $s $r]]$r]) (body [@fst [meta:reverse $s $r]])
 		[lst (` let $r) [meta:reverse [lst
 			(`(while (not [emt? ($($(,[@ffst $bindings])))]) (,[llst (` begin $r) $body
 				[meta:map $bindings $r (function make-update (a r)
 					(`[set (,[@fst $a]) (& cdr ($($(,[@fst $a]))))]$r))$r]$r]))$r)
-			$bindings $r]$r]$r])))
+			$bindings $r]$r]$r]))
 
-(function list (l r p) (use-memo $p
+(function list (l r)
 	(with return (let (l [meta:reverse $l $r])
 		{(continuation loop (out in)
 			(if [emt? $in]
 				{return $out}
-				{loop [lllllst (` invoke $r) (` cons $r) [@fst $in] $out [@fst $l] emt $r] [@rst $in]})) (` nil $r) [@rst $l]}))))
+				{loop [lllllst (` invoke $r) (` cons $r) [@fst $in] $out [@fst $l] emt $r] [@rst $in]})) (` nil $r) [@rst $l]})))
 
-(function list-struct (l r p) (use-memo $p (`[* #2(unit)]$r)))
+(function list-struct (l r) (`[* #2(unit)]$r))
 
-(function car (l r p) [mk-field $l $r $p #0 #8])
+(function car (l r) [mk-field $l $r #0 #8])
 
-(function cdr (l r p) [mk-field $l $r $p #8 #8])
+(function cdr (l r) [mk-field $l $r #8 #8])
 
 (function @car (l) (@ car $l))
 

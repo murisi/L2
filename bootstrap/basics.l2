@@ -42,60 +42,45 @@
 (++ The following function provides an abbreviation for getting a value from a
 	memory address. It implements the transformation $a -> [get a].)
 
-(function $ (var r p)
-	(if [emt? [get p]] [llst
-			[llllllst -i- -n- -v- -o- -k- -e- emt [get r]]
-			[lllst -g- -e- -t- emt [get r]]
-			[get var][get r]]
-		[get p]))
+(function $ (var r)
+	[llst
+		[llllllst -i- -n- -v- -o- -k- -e- emt [get r]]
+		[lllst -g- -e- -t- emt [get r]]
+		[get var][get r]])
 
 (++ The following function provides a method for commenting L2 code. It
 	implements the transformation (** expr1 ... exprN) -> exprN.)
 
-(function ** (l r p)
-	(if [emt? $p]
-		(with return
-			{(continuation find (first last)
-				(if [emt? $last]
-					{return $first}
-					{find [@fst $last] [@rst $last]})) [@fst $l] [@rst $l]})
-		$p))
+(function ** (l r)
+	(with return
+		{(continuation find (first last)
+			(if [emt? $last]
+				{return $first}
+				{find [@fst $last] [@rst $last]})) [@fst $l] [@rst $l]}))
 
 (++ The following function generates the L2 code to generate an s-expression
 	corresponding to the supplied s-expression. Known as backquote in other
 	languages.)
 
-(function ` (l r p)
-	(if [emt? $p]
-			[(function aux (s t r)
-				(if [emt? $s] [lllst -e- -m- -t- emt $r]
-		
-				(if (if [emt? $s] #0 (if [symbol? $s] #0 (if [emt? [@fst $s]]
-					#0 (if [char= [@ffst $s] -,-] [emt? [@rfst $s]] #0))))
-							[@frst $s]
-		
-				[lllllst [llllllst -i- -n- -v- -o- -k- -e- emt $r]
-					[lllst -l- -s- -t- emt $r]
-						(if [symbol? $s]
-								[lllst --- [@fst $s] --- emt $r]
-								[aux [@fst $s] $t $r])
-							[aux [@rst $s] $t $r] $t emt $r]))) [@fst $l] [@frst $l] $r]
-		$p))
+(function ` (l r)
+	[(function aux (s t r)
+		(if [emt? $s] [lllst -e- -m- -t- emt $r]
 
-(++ The following macro is defined for use in macros using memoization.
-	All it does is produce code to short-circuit the construction of the
-	fragment by using the supplied fragment (first item in fragment $l)
-	if it is non-nil. Incidentally, the macro itself uses memoization too.)
+		(if (if [emt? $s] #0 (if [symbol? $s] #0 (if [emt? [@fst $s]]
+			#0 (if [char= [@ffst $s] -,-] [emt? [@rfst $s]] #0))))
+					[@frst $s]
 
-(function use-memo (l r p)
-	(if [emt? $p]
-		(`(if [emt? (,[@fst $l])] (,[@frst $l]) (,[@fst $l]))$r)
-		$p))
+		[lllllst [llllllst -i- -n- -v- -o- -k- -e- emt $r]
+			[lllst -l- -s- -t- emt $r]
+				(if [symbol? $s]
+						[lllst --- [@fst $s] --- emt $r]
+						[aux [@fst $s] $t $r])
+					[aux [@rst $s] $t $r] $t emt $r]))) [@fst $l] [@frst $l] $r])
 
 (++ The following function is a helper function for macros defining constants.
 	It produces a literal from the binary value given at value.)
 
-(function mk# (l r p value) (use-memo $p [binary->base2sexpr $value $r]))
+(function mk# (l r value) [binary->base2sexpr $value $r])
 
 (++ A set of macros to provide struct functionality in L2. The most naive way
 	to do structs in L2 would be to create a getter function, setter function,
@@ -113,24 +98,24 @@
 	item in the fragment $l), passing into it offset-aux (the macro that actually
 	produces the offset of the field).)
 
-(function offset-of (l r p) (use-memo $p (`((,[@fst $l]) offset-of-aux)$r)))
+(function offset-of (l r) (`((,[@fst $l]) offset-of-aux)$r))
 
 (++ This function is not to be called directly. It returns a fragment representing
 	the offset of the field. That is, it returns the first item in the fragment $l.)
 	
-(function offset-of-aux (l r p) (use-memo $p [@fst $l]))
+(function offset-of-aux (l r) [@fst $l])
 
-(function size-of (l r p) (use-memo $p (`((,[@fst $l]) size-of-aux)$r)))
+(function size-of (l r) (`((,[@fst $l]) size-of-aux)$r))
 
-(function size-of-aux (l r p) (use-memo $p [@frst $l]))
+(function size-of-aux (l r) [@frst $l])
 
-(function getter-of (l r p) (use-memo $p (`((,[@fst $l]) getter-of-aux)$r)))
+(function getter-of (l r) (`((,[@fst $l]) getter-of-aux)$r))
 
-(function getter-of-aux (l r p) (use-memo $p [@frrst $l]))
+(function getter-of-aux (l r) [@frrst $l])
 
-(function setter-of (l r p) (use-memo $p (`((,[@fst $l]) setter-of-aux)$r)))
+(function setter-of (l r) (`((,[@fst $l]) setter-of-aux)$r))
 
-(function setter-of-aux (l r p) (use-memo $p [@frrrst $l]))
+(function setter-of-aux (l r) [@frrrst $l])
 
 (++ The following function is a macro for getting the address of a field of a struct.
 	The macro expands into a macro invocation of the supplied field (the second
@@ -138,14 +123,14 @@
 	the actual invocation that calculates the address of the field) and the address of
 	the struct (the first item in the fragment $l).)
 
-(function & (l r p) (use-memo $p (`((,[@fst $l]) &-aux (,[@frst $l]))$r)))
+(function & (l r) (`((,[@fst $l]) &-aux (,[@frst $l]))$r))
 
 (++ This function is not to be called directly. It generates the actual
 	invocation to calculate the address of the field. When macro-called, it
 	adds the offset (the first item in the fragment $l) to the base
 	(the fifth item in the fragment $l).)
 	
-(function &-aux (l r p) (use-memo $p (`[+ (,[@frrrrst $l]) (,[@fst $l])]$r)))
+(function &-aux (l r) (`[+ (,[@frrrrst $l]) (,[@fst $l])]$r))
 
 (++ The following function is a macro for getting the field of a struct. The
 	macro expands into a macro invocation of the supplied field (the second
@@ -153,7 +138,7 @@
 	the actual invocation that gets the field) and the address of the struct (the
 	first item in the fragment $l).)
 	
-(function @ (l r p) (use-memo $p (`((,[@fst $l]) @-aux (,[@frst $l]))$r)))
+(function @ (l r) (`((,[@fst $l]) @-aux (,[@frst $l]))$r))
 
 (++ This function is not to be called directly. It generates the actual
 	invocation to get the field. When macro-called, it invokes the getter
@@ -161,7 +146,7 @@
 	adding the offset (the first item in the fragment $l) to the base
 	(the fifth item in the fragment $l).)
 
-(function @-aux (l r p) (use-memo $p (`[(,[@frrst $l]) [+ (,[@frrrrst $l]) (,[@fst $l])]]$r)))
+(function @-aux (l r) (`[(,[@frrst $l]) [+ (,[@frrrrst $l]) (,[@fst $l])]]$r))
 
 (++ The following function is a macro for setting the field of a struct. The
 	macro expands into a macro invocation of the supplied field (the second
@@ -170,7 +155,7 @@
 	first item in the fragment $l), and the new value of the field (the third
 	item in the fragment $l).)
 
-(function setf (l r p) (use-memo $p (`((,[@fst $l]) setf-aux (,[@frst $l]) (,[@frrst $l]))$r)))
+(function setf (l r) (`((,[@fst $l]) setf-aux (,[@frst $l]) (,[@frrst $l]))$r))
 
 (++ This function is not to be called directly. It generates the actual
 	invocation to set the field. When macro-called, it invokes the setter
@@ -179,24 +164,24 @@
 	(the fifth item in the fragment $l) and a value (the sixth item in the
 	fragment $l).)
 
-(function setf-aux (l r p) (use-memo $p (`[(,[@frrrst $l]) [+ (,[@frrrrst $l]) (,[@fst $l])] (,[@frrrrrst $l])]$r)))
+(function setf-aux (l r) (`[(,[@frrrst $l]) [+ (,[@frrrrst $l]) (,[@fst $l])] (,[@frrrrrst $l])]$r))
 
 (++ The following function is a helper function for generating the fields of
 	structs. All that it does is create a macro invocation on the first reference
 	in the fragment $l supplying to it the offset, size, getter, and setter of
 	the field in addition to the rest of the fragment $l.)
 
-(function mk-field (l r p offset size)
-	(use-memo $p [lllllst [@fst $l] [binary->base2sexpr $offset $r] [binary->base2sexpr $size $r]
+(function mk-field (l r offset size)
+	[lllllst [@fst $l] [binary->base2sexpr $offset $r] [binary->base2sexpr $size $r]
 		(switch = $size (#1 (` get1b $r)) (#2 (` get2b $r)) (#4 (` get4b $r)) (#8 (` get8b $r)) (null))
 		(switch = $size (#1 (` set1b $r)) (#2 (` set2b $r)) (#4 (` set4b $r)) (#8 (` set8b $r)) (null))
-		[@rst $l] $r]))
+		[@rst $l] $r])
 
 (++ The following function provides another method for commenting L2 code. It
 	implements the transformation (++ expr1 ...) -> (begin). It is being used
 	for this comment to work.)
 
-(function ++ (l r p) (use-memo $p (`(begin)$r)))
+(function ++ (l r) (`(begin)$r))
 
 (storage hey (" Helao))
 (** dude guy (begin))

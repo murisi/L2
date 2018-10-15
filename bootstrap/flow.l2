@@ -1,22 +1,22 @@
-(function false (l r p) (use-memo $p (` #0 $r)))
+(function false (l r) (` #0 $r))
 
-(function true (l r p) (use-memo $p (` #1 $r)))
+(function true (l r) (` #1 $r))
 
-(function or (l r p) (use-memo $p (with return
+(function or (l r) (with return
 	{(continuation loop (l sexpr)
 			(if [emt? $l]
 				{return $sexpr}
 				{loop [@rst $l] (`(let (or:temp (,[@fst $l])) (if $or:temp $or:temp (, $sexpr $r)))$r)}))
-		[meta:reverse $l $r] (`(false)$r)})))
+		[meta:reverse $l $r] (`(false)$r)}))
 
-(function and (l r p) (use-memo $p (with return
+(function and (l r) (with return
 	{(continuation loop (l sexpr)
 			(if [emt? $l]
 				{return $sexpr}
 				{loop [@rst $l] (`(let (and:temp (,[@fst $l])) (if $and:temp (, $sexpr $r) $and:temp))$r)}))
-		[meta:reverse $l $r] (`(true)$r)})))
+		[meta:reverse $l $r] (`(true)$r)}))
 
-(function not (l r p) (use-memo $p (`(if (,[@fst $l]) #0 #1)$r)))
+(function not (l r) (`(if (,[@fst $l]) #0 #1)$r))
 
 (function meta:reverse (l r)
 	(with return
@@ -41,13 +41,13 @@
 		{(continuation templet0 (params ...)
 			{return expr0}) vals ...}))
 
-(function let (l r p) (use-memo $p
+(function let (l r)
 	(`(with let:return
 		(,[llst (` jump $r) (`(continuation let:aux
 			(,[meta:map [@rst [meta:reverse $l $r]] (null) @fst $r])
-			{let:return (,[@fst [meta:reverse $l $r]])}) $r) [meta:map [@rst [meta:reverse $l $r]] (null) @frst $r] $r])) $r)))
+			{let:return (,[@fst [meta:reverse $l $r]])}) $r) [meta:map [@rst [meta:reverse $l $r]] (null) @frst $r] $r])) $r))
 
-(function do-let (l r p) (use-memo $p [let [meta:reverse $l $r]$r emt]))
+(function do-let (l r) [let [meta:reverse $l $r]$r])
 
 (++ The following function implements the switch expression by doing the
 	following transformation:
@@ -64,7 +64,7 @@
 						exprsN
 						expr0)))))
 
-(function switch (l r p) (use-memo $p
+(function switch (l r)
 	(`(let (switch:= (,[@fst $l])) (switch:val (,[@frst $l]))
 		(,(with return
 			{(continuation aux (remaining else-clause)
@@ -74,16 +74,16 @@
 						(`(if (,[lst (` or $r) [meta:map [@rst [meta:reverse [@fst $remaining] $r]] $r
 								(function _ (e r) [llllst (` invoke $r) (` $switch:= $r) (` $switch:val $r) $e emt $r]) $r] $r])
 							(,[@fst [meta:reverse [@fst $remaining] $r]]) ,$else-clause) $r)}))
-				[@rst [meta:reverse [@rrst $l] $r]] [@fst [meta:reverse $l $r]]})))$r)))
+				[@rst [meta:reverse [@rrst $l] $r]] [@fst [meta:reverse $l $r]]})))$r))
 
-(function while (l r p) (use-memo $p
+(function while (l r)
 	(`(with while:return {(continuation while:aux (while:val)
-		(if (,[@fst $l]) {while:aux (,[@frst $l])} {while:return $while:val})) (begin)})$r)))
+		(if (,[@fst $l]) {while:aux (,[@frst $l])} {while:return $while:val})) (begin)})$r))
 
-(function do-while (l r p) (use-memo $p
+(function do-while (l r)
 	(`(with do-while:return {(continuation do-while:aux (do-while:val)
 			(if (,[@frst $l]) {do-while:aux (,[@fst $l])} {do-while:return $do-while:val}))
-		(,[@fst $l])})$r)))
+		(,[@fst $l])})$r))
 
 (function array (l)
 	(if [emt? [@rrst $l]]
@@ -94,9 +94,9 @@
 				(for (i #0 (,[@fst $l])) [set (loc $arg $i [words]) (,[array [@rst $l]])])
 				{return $arg}))]))))
 
-(function until (l r p) (use-memo $p
+(function until (l r)
 	(`(with until:return {(continuation until:aux ((,[@ffst $l]))
 		(if (,[@frst $l])
 			{until:return (begin)}
-			(begin (,[@frrrst $l]) {until:aux (,[@frrst $l])}))) (,[@frfst $l])})$r)))
+			(begin (,[@frrrst $l]) {until:aux (,[@frrst $l])}))) (,[@frfst $l])})$r))
 
