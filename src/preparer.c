@@ -697,3 +697,152 @@ union expression *vgenerate_static_np_expressions(union expression *s, void *ctx
 		return s;
 	}
 }
+
+void (*np_expansion(list (*expander)(list, region, list), list argument, struct expansion_context *ectx, list st_binds, list dyn_ref_names, list indirections, void (*(*macro_cache))(void *)))(void *) {
+	if(*macro_cache) {
+		return *macro_cache;
+	}
+	
+	region ct_reg = create_buffer(0);
+	list cont_params = nil;
+	char *ref_name;
+	{foreach(ref_name, reverse(dyn_ref_names, ct_reg)) {
+		union expression *param = make_reference(NULL, ct_reg);
+		param->reference.name = ref_name;
+		prepend(param, &cont_params, ct_reg);
+	}}
+	union expression *guest_cont_param = make_reference(NULL, ct_reg);
+	prepend(guest_cont_param, &cont_params, ct_reg);
+	union expression *guest_cont_arg = make_reference(NULL, ct_reg);
+	union expression *cont = make_continuation(make_reference(NULL, ct_reg), cont_params,
+		make_jump1(make_invoke1(make_literal((unsigned long) _get_, ct_reg), guest_cont_arg, ct_reg),
+		build_expression(expander(argument, ct_reg, nil), ectx->rt_reg, ectx->handler), ct_reg), ct_reg);
+	refer_reference(guest_cont_arg, guest_cont_param);
+	{foreach(ref_name, dyn_ref_names) {
+		put(cont, continuation.expression, insert_indirections(cont->continuation.expression, ref_name, ct_reg));
+	}}
+	{foreach(ref_name, indirections) {
+		put(cont, continuation.expression, insert_indirections(cont->continuation.expression, ref_name, ct_reg));
+	}}
+	union expression *host_cont_arg = make_reference(NULL, ct_reg);
+	union expression *host_cont_param = make_reference(NULL, ct_reg);
+	union expression *func = make_function(make_reference(NULL, ct_reg), lst(host_cont_param, nil, ct_reg),
+		make_jump1(make_invoke1(make_literal((unsigned long) _get_, ct_reg), host_cont_arg, ct_reg), cont, ct_reg), ct_reg);
+	refer_reference(host_cont_arg, host_cont_param);
+	
+	Object *obj = load_expressions(make_program(lst(func, nil, ectx->rt_reg), ectx->rt_reg), ectx, st_binds, ct_reg);
+	list ms = mutable_symbols(obj, ct_reg);
+	object_symbol *mutable_sym;
+	{foreach(mutable_sym, ms) {
+		bool found = false;
+		object_symbol *bind_sym;
+		{foreach(bind_sym, ectx->ext_binds) {
+			if(!strcmp(mutable_sym->name, bind_sym->name)) {
+				found = true;
+				break;
+			}
+		}}
+		{foreach(bind_sym, st_binds) {
+			if(!strcmp(mutable_sym->name, bind_sym->name)) {
+				found = true;
+				break;
+			}
+		}}
+		if(!found) {
+			throw_undefined_reference(mutable_sym->name, ectx->handler);
+		}
+	}}
+	mutate_symbols(obj, ectx->ext_binds);
+	mutate_symbols(obj, st_binds);
+	/*object_symbol *sym;
+	{foreach(sym, st_binds) {
+		write_str(STDOUT, sym->name);
+		write_str(STDOUT, " : ");
+		write_ulong(STDOUT, (unsigned long) sym->address);
+		write_char(STDOUT, '\n');
+	}}*/
+	//There is only one immutable symbol: our annonymous function
+	*macro_cache = ((object_symbol *) immutable_symbols(obj, ct_reg)->fst)->address;
+	destroy_buffer(ct_reg);
+	return *macro_cache;
+}
+
+void generate_np_expressions(union expression **s, region ct_reg, struct expansion_context *ectx) {
+	switch((*s)->base.type) {
+		case begin: {
+			union expression **exprr;
+			{foreachaddress(exprr, (*s)->begin.expressions) {
+				generate_np_expressions(exprr, ct_reg, ectx);
+			}}
+			break;
+		} case with: {
+			generate_np_expressions(&(*s)->with.expression, ct_reg, ectx);
+			break;
+		} case _if: {
+			generate_np_expressions(&(*s)->_if.condition, ct_reg, ectx);
+			generate_np_expressions(&(*s)->_if.consequent, ct_reg, ectx);
+			generate_np_expressions(&(*s)->_if.alternate, ct_reg, ectx);
+			break;
+		} case function: {
+			generate_np_expressions(&(*s)->function.expression, ct_reg, ectx);
+			break;
+		} case continuation: {
+			generate_np_expressions(&(*s)->continuation.expression, ct_reg, ectx);
+			break;
+		} case invoke: case jump: case storage: {
+			if((*s)->base.type != storage) {
+				generate_np_expressions(&(*s)->invoke.reference, ct_reg, ectx);
+			}
+			union expression **arg;
+			{foreachaddress(arg, (*s)->invoke.arguments) {
+				generate_np_expressions(arg, ct_reg, ectx);
+			}}
+			break;
+		} case non_primitive: {
+			generate_np_expressions(&(*s)->non_primitive.reference, ct_reg, ectx);
+			
+			list param_names_rt = nil, args_ct = nil;
+			union expression *dyn_ref;
+			{foreach(dyn_ref, (*s)->non_primitive.dyn_refs) {
+				prepend(rstrcpy(dyn_ref->reference.name, ectx->rt_reg), &param_names_rt, ectx->rt_reg);
+				union expression *arg = make_reference(dyn_ref->reference.name, ct_reg);
+				refer_reference(arg, dyn_ref);
+				prepend(arg, &args_ct, ct_reg);
+			}}
+			void (*(*macro_cache))(void *) = buffer_alloc(ectx->rt_reg, sizeof(void (*)(void *)));
+			*macro_cache = NULL;
+			
+			union expression *callee_cont_param = make_reference(NULL, ct_reg);
+			union expression *cont = make_continuation(make_reference(NULL, ct_reg), lst(callee_cont_param, nil, ct_reg),
+				make_begin(nil, ct_reg), ct_reg);
+			union expression *wth = make_with(make_reference(NULL, ct_reg),
+				make_invoke1(make_invoke7(make_literal((unsigned long) np_expansion, ct_reg),
+					(*s)->non_primitive.reference, make_literal((unsigned long) copy_fragment((*s)->non_primitive.argument,
+					ectx->rt_reg), ct_reg), make_literal((unsigned long) ectx, ct_reg),
+					make_literal((unsigned long) (*s)->non_primitive.st_binds, ct_reg),
+					make_literal((unsigned long) param_names_rt, ct_reg),
+					make_literal((unsigned long) map((*s)->non_primitive.indirections, ectx->rt_reg,
+					(void *(*)(void *, void *)) rstrcpy, ectx->rt_reg), ct_reg),
+					make_literal((unsigned long) macro_cache, ct_reg), ct_reg), cont, ct_reg), ct_reg);
+			
+			union expression *macro_invocation = make_with(make_reference(NULL, ct_reg), make_begin(nil, ct_reg), ct_reg);
+			macro_invocation->with.parent = (*s)->non_primitive.parent;
+			union expression *invoke_return_with_ref_arg = make_reference(NULL, ct_reg);
+			refer_reference(invoke_return_with_ref_arg, macro_invocation->with.reference);
+			prepend(invoke_return_with_ref_arg, &args_ct, ct_reg);
+			union expression *callee_cont_arg = make_reference(NULL, ct_reg);
+			refer_reference(callee_cont_arg, callee_cont_param);
+			put(macro_invocation, with.expression, make_jump(make_invoke1(make_literal((unsigned long) _get_, ct_reg),
+				callee_cont_arg, ct_reg), args_ct, ct_reg));
+			union expression *parent_function = get_parent_function(*s);
+			*s = macro_invocation;
+			
+			union expression *return_with_ref_arg = make_reference(NULL, ct_reg);
+			refer_reference(return_with_ref_arg, wth->with.reference);
+			put(cont, continuation.expression, make_jump1(return_with_ref_arg, parent_function->function.expression, ct_reg));
+			put(parent_function, function.expression, wth);
+			break;
+		}
+	}
+}
+
