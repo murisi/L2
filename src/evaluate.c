@@ -23,8 +23,7 @@ typedef unsigned long int bool;
 
 Object *load_expressions(union expression *program, struct expansion_context *ectx, list st_binds, region manreg) {
 	store_lexical_environment(program->function.expression, true, st_binds, nil, manreg, ectx->rt_reg);
-	generate_static_np_expressions(&program, manreg, ectx);
-	generate_dynamic_np_expressions(&program, manreg, ectx);
+	generate_np_expressions(&program, manreg, ectx);
 	visit_expressions(vfind_multiple_definitions, &program, ectx->handler);
 	classify_program_symbols(program->function.expression);
 	visit_expressions(vlink_references, &program->function.expression, (void* []) {ectx->handler, manreg});
