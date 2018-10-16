@@ -489,8 +489,7 @@ bool symbol_equals(object_symbol *sym1, object_symbol *sym2) {
 	return !strcmp(sym1->name, sym2->name);
 }
 
-Object *load_expressions(union expression *program, struct expansion_context *ectx, list st_binds, region ct_reg);
-union expression *build_syntax_tree(list d, region reg, jumpbuf *handler);
+Object *load_program(union expression *program, struct expansion_context *ectx, list st_binds, region ct_reg);
 
 void *static_np_expansion(list (*expander)(list, region), list argument, struct expansion_context *ectx, list st_binds,
 		void (*(*macro_cache))(void *)) {
@@ -511,7 +510,7 @@ void *static_np_expansion(list (*expander)(list, region), list argument, struct 
 			build_expression(expander(argument, ectx->rt_reg), ectx->rt_reg, ectx->handler), ct_reg), ct_reg);
 	refer_reference(guest_cont_arg, guest_cont_param);
 	
-	Object *obj = load_expressions(make_program(lst(macro_cont, nil, ct_reg), ct_reg), ectx, st_binds, ct_reg);
+	Object *obj = load_program(make_program(lst(macro_cont, nil, ct_reg), ct_reg), ectx, st_binds, ct_reg);
 	list is = concat(ectx->ext_binds, st_binds, ct_reg);
 	
 	//Make sure that the generated code has no undefined bindings
@@ -587,7 +586,7 @@ void (*dynamic_np_expansion(list (*expander)(list, region), list argument, struc
 		make_jump1(make_invoke1(make_literal((unsigned long) _get_, ct_reg), host_cont_arg, ct_reg), cont, ct_reg), ct_reg);
 	refer_reference(host_cont_arg, host_cont_param);
 	
-	Object *obj = load_expressions(make_program(lst(func, nil, ectx->rt_reg), ectx->rt_reg), ectx, st_binds, ct_reg);
+	Object *obj = load_program(make_program(lst(func, nil, ectx->rt_reg), ectx->rt_reg), ectx, st_binds, ct_reg);
 	list is = concat(ectx->ext_binds, st_binds, ct_reg);
 	
 	//Make sure that the generated code has no undefined bindings
@@ -665,8 +664,6 @@ void generate_np_expressions(union expression **s, region ct_reg, struct expansi
 						make_literal((unsigned long) map((*s)->non_primitive.indirections, ectx->rt_reg,
 						(void *(*)(void *, void *)) rstrcpy, ectx->rt_reg), ct_reg),
 						make_literal((unsigned long) macro_cache, ct_reg), ct_reg), cont, ct_reg), ct_reg);
-			
-				
 			} else {
 				wth = make_with(make_reference(NULL, ct_reg),
 					make_jump1(cont, make_invoke5(make_literal((unsigned long) static_np_expansion, ct_reg),

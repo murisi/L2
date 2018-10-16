@@ -21,7 +21,7 @@ typedef unsigned long int bool;
  * executable that it is embedded in.
  */
 
-Object *load_expressions(union expression *program, struct expansion_context *ectx, list st_binds, region manreg) {
+Object *load_program(union expression *program, struct expansion_context *ectx, list st_binds, region manreg) {
 	store_lexical_environment(program->function.expression, true, st_binds, nil, manreg, ectx->rt_reg);
 	generate_np_expressions(&program, manreg, ectx);
 	visit_expressions(vfind_multiple_definitions, &program, ectx->handler);
@@ -83,7 +83,7 @@ void evaluate_files(int srcc, char *srcv[], list bindings, jumpbuf *handler) {
 				append(build_expression(build_fragment(src_buf, src_sz, &pos, syntax_tree_region, handler), syntax_tree_region,
 					handler), &expressions, syntax_tree_region);
 			}
-			obj = load_expressions(make_program(expressions, syntax_tree_region), ectx, nil, syntax_tree_region);
+			obj = load_program(make_program(expressions, syntax_tree_region), ectx, nil, syntax_tree_region);
 		} else if(dot && !strcmp(dot, ".o")) {
 			int obj_fd = open(srcv[i]);
 			long int obj_sz = size(obj_fd);
