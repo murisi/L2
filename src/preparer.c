@@ -314,27 +314,15 @@ void store_lexical_environment(union expression *s, bool is_static, list st_bind
 			store_lexical_environment(s->function.expression, false, st_binds, dyn_syms, rt_reg);
 			break;
 		} case continuation: case with: {
-			if(is_static) {
-				prepend_binding(s->continuation.reference, &st_binds, rt_reg);
-				union expression *param;
-				{foreach(param, s->continuation.parameters) {
-					prepend_binding(param, &st_binds, rt_reg);
-				}}
-			} else {
-				prepend_binding(s->continuation.reference, &dyn_syms, rt_reg);
-				union expression *param;
-				{foreach(param, s->continuation.parameters) {
-					prepend_binding(param, &dyn_syms, rt_reg);
-				}}
-			}
+			prepend_binding(s->continuation.reference, is_static ? &st_binds : &dyn_syms, rt_reg);
+			union expression *param;
+			{foreach(param, s->continuation.parameters) {
+				prepend_binding(param, is_static ? &st_binds : &dyn_syms, rt_reg);
+			}}
 			store_lexical_environment(s->continuation.expression, is_static, st_binds, dyn_syms, rt_reg);
 			break;
 		} case storage: {
-			if(is_static) {
-				prepend_binding(s->storage.reference, &st_binds, rt_reg);
-			} else {
-				prepend_binding(s->storage.reference, &dyn_syms, rt_reg);
-			}
+			prepend_binding(s->storage.reference, is_static ? &st_binds : &dyn_syms, rt_reg);
 			union expression *arg;
 			{foreach(arg, s->storage.arguments) {
 				store_lexical_environment(arg, is_static, st_binds, dyn_syms, rt_reg);
