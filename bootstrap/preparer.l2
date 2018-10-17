@@ -337,67 +337,85 @@
 
 (function dynamic-np-expansion () (begin))
 
-(function vgenerate-dynamic-np-expressions (s ctx)
-	(if (and [= (@ expr-type $s) (-non-primitive-)] (@ expr-dynamic-context $s)) (with return (begin
-		(storage ct-reg ($(loc $ctx #0(unit))))
-		(storage ectx ($(loc $ctx #1(unit))))
-		(storage rt-reg (@ ectx-rt-reg $ectx))
-		(storage param-names-rt nil)
-		(storage args-ct nil)
-		
-		(foreach (dyn-ref (@ expr-dyn-refs $s)) (begin
-			[prepend [rstrcpy (@ expr-name $dyn-ref) $rt-reg] param-names-rt $rt-reg]
-			(let (arg [make-reference (@ expr-name $dyn-ref) $ct-reg]) (begin
-				[refer-reference $arg $dyn-ref]
-				[prepend $arg args-ct $ct-reg]))))
-		
-		(storage macro-cache [buffer-alloc $rt-reg (unit)])
-		(storage macro-fragment-cache [buffer-alloc $rt-reg (unit)])
-		[set macro-fragment-cache nil]
-		
-		(storage return-with-ref-arg [make-reference (null) $ct-reg])
-		[prepend $return-with-ref-arg args-ct $ct-reg]
-		(storage callee-cont-arg [make-reference (null) $ct-reg])
-		(storage call-jump [make-jump (make-invokeN [make-literal get $ct-reg] ($callee-cont-arg) $ct-reg) $args-ct $ct-reg])
-		(storage callee-cont-param [make-reference (null) $ct-reg])
-		(storage calling-cont (make-continuationN [make-reference (null) $ct-reg] ($callee-cont-param) $call-jump $ct-reg))
-		[refer-reference $callee-cont-arg $callee-cont-param]
-		(storage return-with-ref [make-reference (null) $ct-reg])
-		(storage return-with [make-with $return-with-ref (make-invokeN (make-invokeN [make-literal dynamic-np-expansion $ct-reg]
-			((@ expr-reference $s) [make-literal [copy-fragment (@ expr-argument $s) $rt-reg] $ct-reg] [make-literal $ectx $ct-reg]
-			[make-literal (@ expr-st-binds $s) $ct-reg] [make-literal $param-names-rt $ct-reg]
-			[make-literal [map (@ expr-indirections $s) $rt-reg rstrcpy $rt-reg] $ct-reg] [make-literal $macro-cache $ct-reg]
-			[make-literal $macro-fragment-cache $ct-reg]) $ct-reg) ($calling-cont) $ct-reg) $ct-reg])
-		[refer-reference $return-with-ref-arg $return-with-ref]
-		{return $return-with}))
-	$s))
-
 (function static-np-expansion () (begin))
 
-(function vgenerate-static-np-expressions (s ctx)
-	(if (and [= (@ expr-type $s) (-non-primitive-)] (not(@ expr-dynamic-context $s))) (with return (begin
-		(storage ct-reg ($(loc $ctx #0(unit))))
-		(storage ectx ($(loc $ctx #1(unit))))
-		(storage rt-reg (@ ectx-rt-reg $ectx))
+(function generate-np-expressions (s ct-reg ectx)
+	(switch = (@ expr-type $$s)
+		((-begin-)
+			(until (partial (@ expr-expressions $$s)) [nil? $partial] [@cdr $partial]
+				[generate-np-expressions (& car $partial) $ct-reg $ectx]))
+				
+		((-with-) (-function-) (-continuation-)
+			[generate-np-expressions (& expr-expression $$s) $ct-reg $ectx])
+			
+		((-if-) (begin
+			[generate-np-expressions (& expr-condition $$s) $ct-reg $ectx]
+			[generate-np-expressions (& expr-consequent $$s) $ct-reg $ectx]
+			[generate-np-expressions (& expr-alternate $$s) $ct-reg $ectx]))
 		
-		(storage macro-cache [buffer-alloc $rt-reg (unit)])
-		(storage macro-fragment-cache [buffer-alloc $rt-reg (unit)])
-		[set macro-fragment-cache nil]
+		((-invoke-) (-jump-) (-storage-) (begin
+			(if [= (@ expr-type $$s) (-storage-)] (begin)
+				[generate-np-expressions (& expr-reference $$s) $ct-reg $ectx])
+			(until (partial (@ expr-arguments $$s)) [nil? $partial] [@cdr $partial]
+				[generate-np-expressions (& car $partial) $ct-reg $ectx])))
 		
-		(storage return-with-ref-arg [make-reference (null) $ct-reg])
-		(storage return-with-ref [make-reference (null) $ct-reg])
-		(storage return-with [make-with $return-with-ref (make-jumpN (make-invokeN [make-literal static-np-expansion $ct-reg]
-			((@ expr-reference $s) [make-literal [copy-fragment (@ expr-argument $s) $rt-reg] $ct-reg] [make-literal $ectx $ct-reg]
-			[make-literal (@ expr-st-binds $s) $ct-reg] [make-literal $macro-cache $ct-reg]
-			[make-literal $macro-fragment-cache $ct-reg]) $ct-reg) ($return-with-ref-arg) $ct-reg) $ct-reg])
-		[refer-reference $return-with-ref-arg $return-with-ref]
-		{return $return-with}))
-	$s))
+		((-non-primitive-) (begin
+			[generate-np-expressions (& expr-reference $$s) $ct-reg $ectx]
+			(storage rt-reg (@ ectx-rt-reg $ectx))
+			(storage macro-cache [buffer-alloc $rt-reg (unit)])
+			[set $macro-cache (null)]
+			(storage callee-cont-param [make-reference (null) $ct-reg])
+			(storage cont (make-continuationN [make-reference (null) $ct-reg] ($callee-cont-param) [make-begin nil $ct-reg] $ct-reg))
+			(storage wth (null))
+			(storage param-names-rt nil)
+			(storage args-ct nil)
+			
+			(if (@ expr-dynamic-context $$s)
+				(begin
+					(foreach (dyn-ref (@ expr-dyn-refs $$s)) (begin
+						[prepend [rstrcpy (@ expr-name $dyn-ref) $rt-reg] param-names-rt $rt-reg]
+						(storage arg [make-reference (@ expr-name $dyn-ref) $ct-reg])
+						[refer-reference $arg $dyn-ref]
+						[prepend $arg args-ct $ct-reg]))
+				
+					[set wth [make-with [make-reference (null) $ct-reg] (make-invokeN
+						(make-invokeN [make-literal dynamic-np-expansion $ct-reg] ((@ expr-reference $$s)
+						[make-literal [copy-fragment (@ expr-argument $$s) $rt-reg] $ct-reg] [make-literal $ectx $ct-reg]
+						[make-literal (@ expr-st-binds $$s) $ct-reg] [make-literal $param-names-rt $ct-reg]
+						[make-literal [map (@ expr-indirections $$s) $rt-reg rstrcpy $rt-reg] $ct-reg]
+						[make-literal $macro-cache $ct-reg]) $ct-reg) ($cont) $ct-reg) $ct-reg]])
+				
+				[set wth [make-with [make-reference (null) $ct-reg] (make-jumpN $cont ((make-invokeN
+					[make-literal static-np-expansion $ct-reg] ((@ expr-reference $$s)
+					[make-literal [copy-fragment (@ expr-argument $$s) $rt-reg] $ct-reg] [make-literal $ectx $ct-reg]
+					[make-literal (@ expr-st-binds $$s) $ct-reg] [make-literal $macro-cache $ct-reg]) $ct-reg)) $ct-reg) $ct-reg]])
+			
+			(storage macro-invocation [make-with [make-reference (null) $ct-reg] [make-begin nil $ct-reg] $ct-reg])
+			(setf expr-parent $macro-invocation (@ expr-parent $$s))
+			(storage invoke-return-with-ref-arg [make-reference (null) $ct-reg])
+			[refer-reference $invoke-return-with-ref-arg (@ expr-reference $macro-invocation)]
+			[prepend $invoke-return-with-ref-arg args-ct $ct-reg]
+			(storage callee-cont-arg [make-reference (null) $ct-reg])
+			[refer-reference $callee-cont-arg $callee-cont-param]
+			(setf expr-expression $macro-invocation
+				[make-jump (make-invokeN [make-literal get $ct-reg] ($callee-cont-arg) $ct-reg) $args-ct $ct-reg])
+			(setf expr-parent (@ expr-expression $macro-invocation) $macro-invocation)
+			(storage parent-function [get-parent-function $$s])
+			[set $s $macro-invocation]
+			
+			(storage return-with-ref-arg [make-reference (null) $ct-reg])
+			[refer-reference $return-with-ref-arg (@ expr-reference $wth)]
+			(setf expr-expression $cont (make-jumpN $return-with-ref-arg ((@ expr-expression $parent-function)) $ct-reg))
+			(setf expr-parent (@ expr-expression $cont) $cont)
+			(setf expr-expression $parent-function $wth)
+			(setf expr-parent $wth $parent-function)
+			))
+		
+		(begin)))
 
 (function load-expressions (program ectx st-binds ct-reg) (do-let (begin
 		[store-lexical-environment (@ expr-expression $program) (true) $st-binds nil $ct-reg $ct-reg]
-		[visit-expressions vgenerate-dynamic-np-expressions program (storage _ $ct-reg (storage _ nil $ct-reg (null)))]
-		[visit-expressions vgenerate-static-np-expressions program (storage _ $ct-reg (storage _ nil $ct-reg (null)))]
+		[generate-np-expressions program $ct-reg (storage _ nil $ct-reg (null))]
 		[visit-expressions vfind-multiple-definitions program $handler]
 		[classify-program-symbols (@ expr-expression $program)]
 		[visit-expressions vlink-references (& expr-expression $program) (storage _ $handler $ct-reg)]

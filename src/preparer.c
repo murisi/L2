@@ -613,19 +613,13 @@ void generate_np_expressions(union expression **s, region ct_reg, struct expansi
 				generate_np_expressions(exprr, ct_reg, ectx);
 			}}
 			break;
-		} case with: {
+		} case with: case function: case continuation: {
 			generate_np_expressions(&(*s)->with.expression, ct_reg, ectx);
 			break;
 		} case _if: {
 			generate_np_expressions(&(*s)->_if.condition, ct_reg, ectx);
 			generate_np_expressions(&(*s)->_if.consequent, ct_reg, ectx);
 			generate_np_expressions(&(*s)->_if.alternate, ct_reg, ectx);
-			break;
-		} case function: {
-			generate_np_expressions(&(*s)->function.expression, ct_reg, ectx);
-			break;
-		} case continuation: {
-			generate_np_expressions(&(*s)->continuation.expression, ct_reg, ectx);
 			break;
 		} case invoke: case jump: case storage: {
 			if((*s)->base.type != storage) {
