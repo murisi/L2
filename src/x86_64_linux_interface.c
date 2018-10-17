@@ -27,6 +27,10 @@
 
 long int syscall(long int syscall_num, ...);
 
+unsigned long fpoffset();
+
+unsigned long addfp(unsigned long val);
+
 unsigned long strlen(const char *str) {
 	unsigned long i;
 	for(i = 0; str[i]; i++);

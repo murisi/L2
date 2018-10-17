@@ -121,6 +121,9 @@ struct function_expression {
 	
 	list symbols;
 	struct symbol *expression_return_symbol;
+	
+	union expression *dynamic_parent;
+	unsigned long offset;
 };
 
 struct continuation_expression {
@@ -165,9 +168,8 @@ struct np_expression {
 	
 	union expression *reference;
 	list argument;
-	list indirections;
 	list st_binds;
-	list dyn_refs;
+	list dyn_binds;
 	bool dynamic_context;
 };
 
@@ -225,6 +227,18 @@ union expression *make_begin(list expressions, region reg) {
 	return beg;
 }
 
+union expression *make_begin0(region reg) {
+	return make_begin(nil, reg);
+}
+
+union expression *make_begin1(union expression *expr1, region reg) {
+	return make_begin(lst(expr1, nil, reg), reg);
+}
+
+union expression *make_begin2(union expression *expr1, union expression *expr2, region reg) {
+	return make_begin(lst(expr1, lst(expr2, nil, reg), reg), reg);
+}
+
 #define put(expr, part, val) { \
 	union expression *_set_expr = expr; \
 	union expression *_set_val = val; \
@@ -245,6 +259,8 @@ union expression *make_function(union expression *ref, list params, union expres
 	}
 	func->function.symbols = nil;
 	put(func, function.expression, expr);
+	func->function.dynamic_parent = NULL;
+	func->function.offset = 0;
 	return func;
 }
 
@@ -320,11 +336,7 @@ union expression *make_jump(union expression *ref, list args, region reg) {
 }
 
 union expression *make_jump0(union expression *ref, region reg) {
-	union expression *u = buffer_alloc(reg, sizeof(union expression));
-	u->jump.type = jump;
-	put(u, jump.reference, ref);
-	u->jump.arguments = nil;
-	return u;
+	return make_jump(ref, nil, reg);
 }
 
 union expression *make_jump1(union expression *ref, union expression *arg1, region reg) {
@@ -359,9 +371,8 @@ union expression *make_non_primitive(union expression *ref, list arg, region reg
 	u->non_primitive.type = non_primitive;
 	put(u, non_primitive.reference, ref);
 	u->non_primitive.argument = arg;
-	u->non_primitive.indirections = nil;
 	u->non_primitive.st_binds = nil;
-	u->non_primitive.dyn_refs = nil;
+	u->non_primitive.dyn_binds = nil;
 	u->non_primitive.dynamic_context = true;
 	return u;
 }
