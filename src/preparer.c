@@ -409,42 +409,53 @@ void _set_(unsigned long *ref, unsigned long val) {
 	*ref = val;
 }
 
-unsigned long symbol_offset(union expression *expansion_container_func, struct symbol *the_sym) {
+unsigned long symbol_offset(union expression *expansion_container_func, struct symbol *the_sym, bool *cached, unsigned long *offset_cache) {
+	if(*cached) {
+		return *offset_cache;
+	}
 	union expression *dyn_ancestor;
 	unsigned long offset = expansion_container_func->function.offset;
 	for(dyn_ancestor = expansion_container_func->function.dynamic_parent; ; dyn_ancestor = dyn_ancestor->function.dynamic_parent) {
 		struct symbol *sym;
 		{foreach(sym, dyn_ancestor->function.symbols) {
 			if(sym == the_sym) {
-				return offset + sym->offset;
+				*cached = true;
+				*offset_cache = offset + sym->offset;
+				return *offset_cache;
 			}
 		}}
 		union expression *param;
 		foreach(param, dyn_ancestor->function.parameters) {
 			if(param->reference.symbol == the_sym) {
-				return offset + param->reference.symbol->offset;
+				*cached = true;
+				*offset_cache = offset + param->reference.symbol->offset;
+				return *offset_cache;
 			}
 		}
 		offset += dyn_ancestor->function.offset;
 	}
 }
 
-union expression *insert_indirections(union expression *expr, struct symbol *sym, region reg) {
+union expression *resolve_dyn_refs(union expression *expr, struct symbol *sym, region reg) {
 	switch(expr->base.type) {
 		case literal: case function: {
 			return expr;
 		} case reference: {
 			if(defined_string_equals(expr->reference.name, sym->name)) {
+				bool *cached = buffer_alloc(reg, sizeof(bool));
+				*cached = false;
+				unsigned long *offset_cache = buffer_alloc(reg, sizeof(unsigned long));
 				return make_invoke1(make_literal((unsigned long) addfp, reg),
-					make_invoke2(make_literal((unsigned long) symbol_offset, reg),
-					make_literal((unsigned long) get_parent_function(expr), reg), make_literal((unsigned long) sym, reg), reg), reg);
+					make_invoke4(make_literal((unsigned long) symbol_offset, reg),
+					make_literal((unsigned long) get_parent_function(expr), reg), make_literal((unsigned long) sym, reg),
+					make_literal((unsigned long) cached, reg), make_literal((unsigned long) offset_cache, reg), reg), reg);
 			} else {
 				return expr;
 			}
 		} case _if: {
-			put(expr, _if.condition, insert_indirections(expr->_if.condition, sym, reg));
-			put(expr, _if.consequent, insert_indirections(expr->_if.consequent, sym, reg));
-			put(expr, _if.alternate, insert_indirections(expr->_if.alternate, sym, reg));
+			put(expr, _if.condition, resolve_dyn_refs(expr->_if.condition, sym, reg));
+			put(expr, _if.consequent, resolve_dyn_refs(expr->_if.consequent, sym, reg));
+			put(expr, _if.alternate, resolve_dyn_refs(expr->_if.alternate, sym, reg));
 			return expr;
 		} case begin: {
 			union expression *f;
@@ -456,7 +467,7 @@ union expression *insert_indirections(union expression *expr, struct symbol *sym
 			}}
 			union expression **e;
 			{foreachaddress(e, expr->begin.expressions) {
-				*e = insert_indirections(*e, sym, reg);
+				*e = resolve_dyn_refs(*e, sym, reg);
 				(*e)->base.parent = expr;
 			}}
 			return expr;
@@ -470,15 +481,15 @@ union expression *insert_indirections(union expression *expr, struct symbol *sym
 					return expr;
 				}
 			}
-			put(expr, continuation.expression, insert_indirections(expr->continuation.expression, sym, reg));
+			put(expr, continuation.expression, resolve_dyn_refs(expr->continuation.expression, sym, reg));
 			return expr;
 		} case invoke: case jump: case storage: {
 			if(expr->base.type != storage) {
-				put(expr, invoke.reference, insert_indirections(expr->invoke.reference, sym, reg));
+				put(expr, invoke.reference, resolve_dyn_refs(expr->invoke.reference, sym, reg));
 			}
 			union expression **e;
 			foreachaddress(e, expr->invoke.arguments) {
-				*e = insert_indirections(*e, sym, reg);
+				*e = resolve_dyn_refs(*e, sym, reg);
 				(*e)->base.parent = expr;
 			}
 			return expr;
@@ -588,7 +599,7 @@ void (*dynamic_np_expansion(list (*expander)(list, region), list argument, struc
 	//are those present at the site of expansion because we insert indirections on certain usages of references.
 	struct symbol *sym;
 	{foreach(sym, dyn_syms) {
-		put(cont, continuation.expression, insert_indirections(cont->continuation.expression, sym, ectx->rt_reg));
+		put(cont, continuation.expression, resolve_dyn_refs(cont->continuation.expression, sym, ectx->rt_reg));
 	}}
 	
 	Object *obj = load_program(make_program(lst(func, nil, ectx->rt_reg), ectx->rt_reg), ectx, st_binds, ectx->rt_reg);
