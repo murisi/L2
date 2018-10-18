@@ -125,7 +125,7 @@ struct function_expression {
 	struct symbol *expression_return_symbol;
 	
 	union expression *dynamic_parent;
-	unsigned long offset;
+	unsigned long frame_offset;
 };
 
 struct continuation_expression {
@@ -262,7 +262,7 @@ union expression *make_function(union expression *ref, list params, union expres
 	func->function.symbols = nil;
 	put(func, function.expression, expr);
 	func->function.dynamic_parent = NULL;
-	func->function.offset = 0;
+	func->function.frame_offset = 0;
 	return func;
 }
 
