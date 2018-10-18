@@ -283,7 +283,8 @@ int main(int argc, char *argv[]) {
 		{.name = "emt", .address = nil},
 		{.name = "char=", .address = char_equals},
 		{.name = "buf", .address = _buf_},
-		{.name = "dtr", .address = destroy_buffer}
+		{.name = "dtr", .address = destroy_buffer},
+		{.name = "print_expression", .address = print_expression}
 	};
 	
 	list static_bindings_list = nil;

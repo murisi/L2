@@ -397,14 +397,14 @@ void _set_(unsigned long *ref, unsigned long val) {
 	*ref = val;
 }
 
-unsigned long symbol_offset(union expression *expansion_container_func, struct symbol *the_sym) {
+unsigned long symbol_offset(union expression *expansion_container_func, struct symbol *sym) {
 	unsigned long offset = expansion_container_func->function.frame_offset;
 	union expression *dyn_ancestor;
-	for(dyn_ancestor = expansion_container_func->function.dynamic_parent; dyn_ancestor != the_sym->function;
+	for(dyn_ancestor = expansion_container_func->function.dynamic_parent; dyn_ancestor != sym->function;
 		dyn_ancestor = dyn_ancestor->function.dynamic_parent) {
 			offset += dyn_ancestor->function.frame_offset;
 	}
-	return offset + the_sym->offset;
+	return offset + sym->offset;
 }
 
 union expression *resolve_dyn_refs(union expression *expr, struct symbol *sym, region reg) {
@@ -622,21 +622,19 @@ void generate_np_expressions(union expression **s, region ct_reg, struct expansi
 			union expression *cont = make_continuation(make_reference(NULL, ct_reg), lst(callee_cont_param, nil, ct_reg),
 				make_begin(nil, ct_reg), ct_reg);
 			union expression *parent_function = get_parent_function(*s);
-			union expression *wth = (*s)->non_primitive.dynamic_context ?
-				make_with(make_reference(NULL, ct_reg),
-					make_invoke1(make_invoke7(make_literal((unsigned long) dynamic_np_expansion, ct_reg),
-						(*s)->non_primitive.reference, make_literal((unsigned long) copy_fragment((*s)->non_primitive.argument,
-						ectx->rt_reg), ct_reg), make_literal((unsigned long) ectx, ct_reg),
-						make_literal((unsigned long) (*s)->non_primitive.static_symbols, ct_reg),
-						make_literal((unsigned long) parent_function, ct_reg),
-						make_literal((unsigned long) (*s)->non_primitive.dynamic_symbols, ct_reg),
-						make_literal((unsigned long) macro_cache, ct_reg), ct_reg), cont, ct_reg), ct_reg) :
-				make_with(make_reference(NULL, ct_reg),
-					make_jump1(cont, make_invoke5(make_literal((unsigned long) static_np_expansion, ct_reg),
-						(*s)->non_primitive.reference, make_literal((unsigned long) copy_fragment((*s)->non_primitive.argument,
-						ectx->rt_reg), ct_reg), make_literal((unsigned long) ectx, ct_reg),
-						make_literal((unsigned long) (*s)->non_primitive.static_symbols, ct_reg),
-						make_literal((unsigned long) macro_cache, ct_reg), ct_reg), ct_reg), ct_reg);
+			union expression *wth = make_with(make_reference(NULL, ct_reg), ((*s)->non_primitive.dynamic_context ?
+				make_invoke1(make_invoke7(make_literal((unsigned long) dynamic_np_expansion, ct_reg),
+					(*s)->non_primitive.reference, make_literal((unsigned long) copy_fragment((*s)->non_primitive.argument,
+					ectx->rt_reg), ct_reg), make_literal((unsigned long) ectx, ct_reg),
+					make_literal((unsigned long) (*s)->non_primitive.static_symbols, ct_reg),
+					make_literal((unsigned long) parent_function, ct_reg),
+					make_literal((unsigned long) (*s)->non_primitive.dynamic_symbols, ct_reg),
+					make_literal((unsigned long) macro_cache, ct_reg), ct_reg), cont, ct_reg) :
+				make_jump1(cont, make_invoke5(make_literal((unsigned long) static_np_expansion, ct_reg),
+					(*s)->non_primitive.reference, make_literal((unsigned long) copy_fragment((*s)->non_primitive.argument,
+					ectx->rt_reg), ct_reg), make_literal((unsigned long) ectx, ct_reg),
+					make_literal((unsigned long) (*s)->non_primitive.static_symbols, ct_reg),
+					make_literal((unsigned long) macro_cache, ct_reg), ct_reg), ct_reg)), ct_reg);
 			
 			union expression *macro_invocation = make_with(make_reference(NULL, ct_reg), make_begin(nil, ct_reg), ct_reg);
 			macro_invocation->with.parent = (*s)->non_primitive.parent;
