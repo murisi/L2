@@ -397,31 +397,14 @@ void _set_(unsigned long *ref, unsigned long val) {
 	*ref = val;
 }
 
-unsigned long symbol_offset(union expression *expansion_container_func, struct symbol *the_sym, bool *cached, unsigned long *offset_cache) {
-	if(*cached) {
-		return *offset_cache;
-	}
-	union expression *dyn_ancestor;
+unsigned long symbol_offset(union expression *expansion_container_func, struct symbol *the_sym) {
 	unsigned long offset = expansion_container_func->function.offset;
-	for(dyn_ancestor = expansion_container_func->function.dynamic_parent; ; dyn_ancestor = dyn_ancestor->function.dynamic_parent) {
-		struct symbol *sym;
-		{foreach(sym, dyn_ancestor->function.symbols) {
-			if(sym == the_sym) {
-				*cached = true;
-				*offset_cache = offset + sym->offset;
-				return *offset_cache;
-			}
-		}}
-		union expression *param;
-		foreach(param, dyn_ancestor->function.parameters) {
-			if(param->reference.symbol == the_sym) {
-				*cached = true;
-				*offset_cache = offset + param->reference.symbol->offset;
-				return *offset_cache;
-			}
-		}
-		offset += dyn_ancestor->function.offset;
+	union expression *dyn_ancestor;
+	for(dyn_ancestor = expansion_container_func->function.dynamic_parent; dyn_ancestor != the_sym->function;
+		dyn_ancestor = dyn_ancestor->function.dynamic_parent) {
+			offset += dyn_ancestor->function.offset;
 	}
+	return offset + the_sym->offset;
 }
 
 union expression *resolve_dyn_refs(union expression *expr, struct symbol *sym, region reg) {
@@ -430,13 +413,9 @@ union expression *resolve_dyn_refs(union expression *expr, struct symbol *sym, r
 			return expr;
 		} case reference: {
 			if(defined_string_equals(expr->reference.name, sym->name)) {
-				bool *cached = buffer_alloc(reg, sizeof(bool));
-				*cached = false;
-				unsigned long *offset_cache = buffer_alloc(reg, sizeof(unsigned long));
 				return make_invoke1(make_literal((unsigned long) addfp, reg),
-					make_invoke4(make_literal((unsigned long) symbol_offset, reg),
-					make_literal((unsigned long) get_parent_function(expr), reg), make_literal((unsigned long) sym, reg),
-					make_literal((unsigned long) cached, reg), make_literal((unsigned long) offset_cache, reg), reg), reg);
+					make_invoke2(make_literal((unsigned long) symbol_offset, reg),
+					make_literal((unsigned long) get_parent_function(expr), reg), make_literal((unsigned long) sym, reg), reg), reg);
 			} else {
 				return expr;
 			}
