@@ -143,21 +143,20 @@
 				[visit-expressions $visitor (& car $partial) $ctx])))
 		
 		(begin))
-		
 	(replace-expression $s [$visitor $$s $ctx])))
 
 (function use-return-symbol (n ret-sym r) (with return
 	(switch = (@ expr-type $n)
 		((-with-) (-continuation-) (begin
 			(setf expr-return-symbol $n $ret-sym)
-			(replace-expression (& expr-expression $n) [use-return-symbol (@ expr-expression $n)
+			(put expr-expression $n [use-return-symbol (@ expr-expression $n)
 				[make-symbol (dynamic-storage) (local-scope) (defined-state) (null) (null) $r] $r])
 			{return $n}))
 		
 		((-function-) (begin
 			(setf expr-return-symbol $n $ret-sym)
 			(setf expr-expression-return-symbol $n [make-symbol (dynamic-storage) (local-scope) (defined-state) (null) (null) $r])
-			(replace-expression (& expr-expression $n) [use-return-symbol (@ expr-expression $n) (@ expr-expression-return-symbol $n) $r])
+			(put expr-expression $n [use-return-symbol (@ expr-expression $n) (@ expr-expression-return-symbol $n) $r])
 			{return $n}))
 		
 		((-invoke-) (-jump-) (-storage-)
@@ -165,7 +164,7 @@
 				(if [= (@ expr-type $n) (-storage-)] (begin)
 					(let (ref-ret-sym [make-symbol (dynamic-storage) (local-scope) (defined-state) (null) (null) $r]) (begin
 						[append [use-return-symbol (@ expr-reference $n) $ref-ret-sym $r] container $r]
-						(replace-expression (& expr-reference $n) [use-symbol $ref-ret-sym $r]))))
+						(put expr-reference $n [use-symbol $ref-ret-sym $r]))))
 						
 				(until (partial (@ expr-arguments $n)) [nil? $partial] [@cdr $partial]
 					(let (arg-ret-sym [make-symbol (dynamic-storage) (local-scope) (defined-state) (null) (null) $r]) (begin
@@ -177,11 +176,11 @@
 				{return [make-begin $container $r]})))
 		
 		((-if-) (let (container nil) (begin
-			(replace-expression (& expr-consequent $n) [use-return-symbol (@ expr-consequent $n) $ret-sym $r])
-			(replace-expression (& expr-alternate $n) [use-return-symbol (@ expr-alternate $n) $ret-sym $r])
+			(put expr-consequent $n [use-return-symbol (@ expr-consequent $n) $ret-sym $r])
+			(put expr-alternate $n [use-return-symbol (@ expr-alternate $n) $ret-sym $r])
 			(let (cond-ret-sym [make-symbol (dynamic-storage) (local-scope) (defined-state) (null) (null) $r]) (begin
 				[append [use-return-symbol (@ expr-condition $n) $cond-ret-sym $r] container $r]
-				(replace-expression (& expr-condition $n) [use-symbol $cond-ret-sym $r])
+				(put expr-condition $n [use-symbol $cond-ret-sym $r])
 				[append $n container $r]))
 			{return [make-begin $container $r]})))
 		
@@ -297,9 +296,9 @@
 				$expr)})
 		
 		((-if-) (begin
-			(replace-expression (& expr-condition $expr) [insert-indirections (@ expr-condition $expr) $ref-name $reg])
-			(replace-expression (& expr-consequent $expr) [insert-indirections (@ expr-consequent $expr) $ref-name $reg])
-			(replace-expression (& expr-alternate $expr) [insert-indirections (@ expr-alternate $expr) $ref-name $reg])
+			(put expr-condition $expr [insert-indirections (@ expr-condition $expr) $ref-name $reg])
+			(put expr-consequent $expr [insert-indirections (@ expr-consequent $expr) $ref-name $reg])
+			(put expr-alternate $expr [insert-indirections (@ expr-alternate $expr) $ref-name $reg])
 			{return $expr}))
 		
 		((-begin-) (begin
@@ -314,12 +313,12 @@
 			(if [defined-str= (@ expr-name(@ expr-reference $expr)) $ref-name] {return $expr} (begin))
 			(foreach (e (@ expr-parameters $expr))
 				(if [defined-str= (@ expr-name $e) $ref-name] {return $expr} (begin)))
-			(replace-expression (& expr-expression $expr) [insert-indirections (@ expr-expression $expr) $ref-name $reg])
+			(put expr-expression $expr [insert-indirections (@ expr-expression $expr) $ref-name $reg])
 			{return $expr}))
 		
 		((-invoke-) (-jump-) (-storage-) (begin
 			(if [= (@ expr-type $expr) (-storage-)] (begin)
-				(replace-expression (& expr-reference $expr) [insert-indirections (@ expr-reference $expr) $ref-name $reg]))
+				(put expr-reference $expr [insert-indirections (@ expr-reference $expr) $ref-name $reg]))
 			(until (partial (@ expr-arguments $expr)) [nil? $partial] [@cdr $partial]
 				(replace-expression (& car $partial) [insert-indirections [@car $partial] $ref-name $reg]))
 			{return $expr}))
@@ -405,11 +404,8 @@
 			
 			(storage return-with-ref-arg [make-reference (null) $ct-reg])
 			[refer-reference $return-with-ref-arg (@ expr-reference $wth)]
-			(setf expr-expression $cont (make-jumpN $return-with-ref-arg ((@ expr-expression $parent-function)) $ct-reg))
-			(setf expr-parent (@ expr-expression $cont) $cont)
-			(setf expr-expression $parent-function $wth)
-			(setf expr-parent $wth $parent-function)
-			))
+			(put expr-expression $cont (make-jumpN $return-with-ref-arg ((@ expr-expression $parent-function)) $ct-reg))
+			(put expr-expression $parent-function $wth)))
 		
 		(begin)))
 
