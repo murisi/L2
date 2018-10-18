@@ -283,63 +283,63 @@ void prepend_binding(union expression *ref, list *binds, region rt_reg) {
 	}
 }
 
-void store_lexical_environment(union expression *s, bool is_static, list st_binds, list dyn_syms, region rt_reg) {
+void store_lexical_environment(union expression *s, bool is_static, list static_symbols, list dynamic_symbols, region rt_reg) {
 	switch(s->base.type) {
 		case begin: {
 			union expression *expr;
 			{foreach(expr, s->begin.expressions) {
 				if(expr->base.type == function || (expr->base.type == storage && is_static)) {
-					prepend_binding(expr->function.reference, &st_binds, rt_reg);
+					prepend_binding(expr->function.reference, &static_symbols, rt_reg);
 				} else if(expr->base.type == storage) {
-					prepend_binding(expr->storage.reference, &dyn_syms, rt_reg);
+					prepend_binding(expr->storage.reference, &dynamic_symbols, rt_reg);
 				}
 			}}
 			union expression *exprr;
 			{foreach(exprr, s->begin.expressions) {
-				store_lexical_environment(exprr, is_static, st_binds, dyn_syms, rt_reg);
+				store_lexical_environment(exprr, is_static, static_symbols, dynamic_symbols, rt_reg);
 			}}
 			break;
 		} case _if: {
-			store_lexical_environment(s->_if.condition, is_static, st_binds, dyn_syms, rt_reg);
-			store_lexical_environment(s->_if.consequent, is_static, st_binds, dyn_syms, rt_reg);
-			store_lexical_environment(s->_if.alternate, is_static, st_binds, dyn_syms, rt_reg);
+			store_lexical_environment(s->_if.condition, is_static, static_symbols, dynamic_symbols, rt_reg);
+			store_lexical_environment(s->_if.consequent, is_static, static_symbols, dynamic_symbols, rt_reg);
+			store_lexical_environment(s->_if.alternate, is_static, static_symbols, dynamic_symbols, rt_reg);
 			break;
 		} case function: {
-			prepend_binding(s->function.reference, &st_binds, rt_reg);
-			dyn_syms = nil;
+			prepend_binding(s->function.reference, &static_symbols, rt_reg);
+			dynamic_symbols = nil;
 			union expression *param;
 			{foreach(param, s->function.parameters) {
-				prepend_binding(param, &dyn_syms, rt_reg);
+				prepend_binding(param, &dynamic_symbols, rt_reg);
 			}}
-			store_lexical_environment(s->function.expression, false, st_binds, dyn_syms, rt_reg);
+			store_lexical_environment(s->function.expression, false, static_symbols, dynamic_symbols, rt_reg);
 			break;
 		} case continuation: case with: {
-			prepend_binding(s->continuation.reference, is_static ? &st_binds : &dyn_syms, rt_reg);
+			prepend_binding(s->continuation.reference, is_static ? &static_symbols : &dynamic_symbols, rt_reg);
 			union expression *param;
 			{foreach(param, s->continuation.parameters) {
-				prepend_binding(param, is_static ? &st_binds : &dyn_syms, rt_reg);
+				prepend_binding(param, is_static ? &static_symbols : &dynamic_symbols, rt_reg);
 			}}
-			store_lexical_environment(s->continuation.expression, is_static, st_binds, dyn_syms, rt_reg);
+			store_lexical_environment(s->continuation.expression, is_static, static_symbols, dynamic_symbols, rt_reg);
 			break;
 		} case storage: {
-			prepend_binding(s->storage.reference, is_static ? &st_binds : &dyn_syms, rt_reg);
+			prepend_binding(s->storage.reference, is_static ? &static_symbols : &dynamic_symbols, rt_reg);
 			union expression *arg;
 			{foreach(arg, s->storage.arguments) {
-				store_lexical_environment(arg, is_static, st_binds, dyn_syms, rt_reg);
+				store_lexical_environment(arg, is_static, static_symbols, dynamic_symbols, rt_reg);
 			}}
 			break;
 		} case invoke: case jump: {
-			store_lexical_environment(s->invoke.reference, is_static, st_binds, dyn_syms, rt_reg);
+			store_lexical_environment(s->invoke.reference, is_static, static_symbols, dynamic_symbols, rt_reg);
 			union expression *arg;
 			{foreach(arg, s->invoke.arguments) {
-				store_lexical_environment(arg, is_static, st_binds, dyn_syms, rt_reg);
+				store_lexical_environment(arg, is_static, static_symbols, dynamic_symbols, rt_reg);
 			}}
 			break;
 		} case non_primitive: {
-			store_lexical_environment(s->non_primitive.reference, is_static, st_binds, dyn_syms, rt_reg);
+			store_lexical_environment(s->non_primitive.reference, is_static, static_symbols, dynamic_symbols, rt_reg);
 			s->non_primitive.dynamic_context = !is_static;
-			s->non_primitive.st_binds = st_binds;
-			s->non_primitive.dyn_binds = concat(dyn_syms, s->non_primitive.dyn_binds, rt_reg);
+			s->non_primitive.static_symbols = static_symbols;
+			s->non_primitive.dynamic_symbols = concat(dynamic_symbols, s->non_primitive.dynamic_symbols, rt_reg);
 			break;
 		}
 	}
@@ -461,7 +461,7 @@ union expression *resolve_dyn_refs(union expression *expr, struct symbol *sym, r
 			}
 			return expr;
 		} case non_primitive: {
-			append(sym, &expr->non_primitive.dyn_binds, reg);
+			append(sym, &expr->non_primitive.dynamic_symbols, reg);
 			return expr;
 		}
 	}
@@ -477,9 +477,9 @@ bool symbol_equals(object_symbol *sym1, object_symbol *sym2) {
 	return !strcmp(sym1->name, sym2->name);
 }
 
-Object *load_program(union expression *program, struct expansion_context *ectx, list st_binds, region ct_reg);
+Object *load_program(union expression *program, struct expansion_context *ectx, list static_symbols, region ct_reg);
 
-void *static_np_expansion(list (*expander)(list, region), list argument, struct expansion_context *ectx, list st_binds,
+void *static_np_expansion(list (*expander)(list, region), list argument, struct expansion_context *ectx, list static_symbols,
 		void (*(*macro_cache))(void *)) {
 	if(*macro_cache) {
 		return *macro_cache;
@@ -498,8 +498,8 @@ void *static_np_expansion(list (*expander)(list, region), list argument, struct 
 			build_expression(expander(argument, ectx->rt_reg), ectx->rt_reg, ectx->handler), ct_reg), ct_reg);
 	refer_reference(guest_cont_arg, guest_cont_param);
 	
-	Object *obj = load_program(make_program(lst(macro_cont, nil, ct_reg), ct_reg), ectx, st_binds, ct_reg);
-	list is = concat(ectx->ext_binds, st_binds, ct_reg);
+	Object *obj = load_program(make_program(lst(macro_cont, nil, ct_reg), ct_reg), ectx, static_symbols, ct_reg);
+	list is = concat(ectx->ext_binds, static_symbols, ct_reg);
 	
 	//Make sure that the generated code has no undefined bindings
 	list ms = mutable_symbols(obj, ct_reg);
@@ -526,7 +526,7 @@ void *static_np_expansion(list (*expander)(list, region), list argument, struct 
  * caching that will enable the code macro invocations after the first to be fast.
  */
 
-void (*dynamic_np_expansion(list (*expander)(list, region), list argument, struct expansion_context *ectx, list st_binds, union expression *dyn_parent, list dyn_syms, void (*(*macro_cache))(void *)))(void *) {
+void (*dynamic_np_expansion(list (*expander)(list, region), list argument, struct expansion_context *ectx, list static_symbols, union expression *dyn_parent, list dynamic_symbols, void (*(*macro_cache))(void *)))(void *) {
 	//Re-executing the macro and recompiling the code generated by a macro everytime a macro is used is far too slow, so
 	//a compromise was made in the language design: provide as an argument to the macro, the s-expression it previously
 	//produced. If the macro returns exactly this argument, then we can use the function that we compiled from the code
@@ -566,12 +566,12 @@ void (*dynamic_np_expansion(list (*expander)(list, region), list argument, struc
 	//are those present at the site of expansion because the relative distance between the frame of the generated code
 	//and the frame of the site of expansion is a runtime constant.
 	struct symbol *sym;
-	{foreach(sym, dyn_syms) {
+	{foreach(sym, dynamic_symbols) {
 		put(cont, continuation.expression, resolve_dyn_refs(cont->continuation.expression, sym, ectx->rt_reg));
 	}}
 	
-	Object *obj = load_program(make_program(lst(func, nil, ectx->rt_reg), ectx->rt_reg), ectx, st_binds, ectx->rt_reg);
-	list is = concat(ectx->ext_binds, st_binds, ct_reg);
+	Object *obj = load_program(make_program(lst(func, nil, ectx->rt_reg), ectx->rt_reg), ectx, static_symbols, ectx->rt_reg);
+	list is = concat(ectx->ext_binds, static_symbols, ct_reg);
 	
 	//Make sure that the generated code has no undefined bindings
 	list ms = mutable_symbols(obj, ct_reg);
@@ -627,15 +627,15 @@ void generate_np_expressions(union expression **s, region ct_reg, struct expansi
 					make_invoke1(make_invoke7(make_literal((unsigned long) dynamic_np_expansion, ct_reg),
 						(*s)->non_primitive.reference, make_literal((unsigned long) copy_fragment((*s)->non_primitive.argument,
 						ectx->rt_reg), ct_reg), make_literal((unsigned long) ectx, ct_reg),
-						make_literal((unsigned long) (*s)->non_primitive.st_binds, ct_reg),
+						make_literal((unsigned long) (*s)->non_primitive.static_symbols, ct_reg),
 						make_literal((unsigned long) parent_function, ct_reg),
-						make_literal((unsigned long) (*s)->non_primitive.dyn_binds, ct_reg),
+						make_literal((unsigned long) (*s)->non_primitive.dynamic_symbols, ct_reg),
 						make_literal((unsigned long) macro_cache, ct_reg), ct_reg), cont, ct_reg), ct_reg) :
 				make_with(make_reference(NULL, ct_reg),
 					make_jump1(cont, make_invoke5(make_literal((unsigned long) static_np_expansion, ct_reg),
 						(*s)->non_primitive.reference, make_literal((unsigned long) copy_fragment((*s)->non_primitive.argument,
 						ectx->rt_reg), ct_reg), make_literal((unsigned long) ectx, ct_reg),
-						make_literal((unsigned long) (*s)->non_primitive.st_binds, ct_reg),
+						make_literal((unsigned long) (*s)->non_primitive.static_symbols, ct_reg),
 						make_literal((unsigned long) macro_cache, ct_reg), ct_reg), ct_reg), ct_reg);
 			
 			union expression *macro_invocation = make_with(make_reference(NULL, ct_reg), make_begin(nil, ct_reg), ct_reg);

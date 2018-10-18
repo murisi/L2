@@ -170,8 +170,8 @@ struct np_expression {
 	
 	union expression *reference;
 	list argument;
-	list st_binds;
-	list dyn_binds;
+	list static_symbols;
+	list dynamic_symbols;
 	bool dynamic_context;
 };
 
@@ -373,8 +373,8 @@ union expression *make_non_primitive(union expression *ref, list arg, region reg
 	u->non_primitive.type = non_primitive;
 	put(u, non_primitive.reference, ref);
 	u->non_primitive.argument = arg;
-	u->non_primitive.st_binds = nil;
-	u->non_primitive.dyn_binds = nil;
+	u->non_primitive.static_symbols = nil;
+	u->non_primitive.dynamic_symbols = nil;
 	u->non_primitive.dynamic_context = true;
 	return u;
 }
