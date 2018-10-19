@@ -453,6 +453,7 @@ union expression *vgenerate_metas(union expression *s, void *ctx) {
 					ectx->handler), ctx);
 			}
 		}
+		throw_undefined_reference(s->meta.reference->reference.name, ectx->handler);
 	} else {
 		return s;
 	}
