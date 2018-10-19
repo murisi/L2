@@ -56,7 +56,6 @@ union expression *vlayout_frames(union expression *n, region r) {
 			int parameter_offset = 7*WORD_SIZE;
 			union expression *t;
 			{foreach(t, n->function.parameters) {
-				t->reference.symbol->function = n;
 				t->reference.symbol->offset = parameter_offset;
 				parameter_offset += WORD_SIZE;
 			}}
@@ -72,20 +71,17 @@ union expression *vlayout_frames(union expression *n, region r) {
 			if(n->continuation.escapes) {
 				n->continuation.reference->reference.symbol->size = CONT_SIZE;
 				append(n->continuation.reference->reference.symbol, &parent_function->function.symbols, r);
-				n->continuation.reference->reference.symbol->function = parent_function;
 			}
 			union expression *t;
 			foreach(t, n->continuation.parameters) {
 				t->reference.symbol->size = WORD_SIZE;
 				append(t->reference.symbol, &parent_function->function.symbols, r);
-				t->reference.symbol->function = parent_function;
 			}
 			break;
 		} case storage: {
 			n->storage.reference->reference.symbol->size = length(n->storage.arguments) * WORD_SIZE;
 			union expression *parent_function = get_parent_function(n);
 			append(n->storage.reference->reference.symbol, &parent_function->function.symbols, r);
-			n->storage.reference->reference.symbol->function = parent_function;
 			break;
 		}
 	}

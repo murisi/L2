@@ -27,7 +27,6 @@ struct symbol {
 	enum symbol_scope scope;
 	enum symbol_state state;
 	union expression *definition;
-	union expression *function;
 	void *context;
 };
 
@@ -38,7 +37,6 @@ struct symbol *make_symbol(enum symbol_type type, enum symbol_scope scope, enum 
 	sym->state = state;
 	sym->name = name;
 	sym->definition = definition;
-	sym->function = NULL;
 	return sym;
 }
 
