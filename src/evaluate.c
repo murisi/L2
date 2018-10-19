@@ -116,10 +116,6 @@ list _rst_(list l) {
 	return l->rst;
 }
 
-void *_buf_() {
-	return create_buffer(0);
-}
-
 int main(int argc, char *argv[]) {
 	//Initialize the error handler
 	jumpbuf evaluate_handler;
@@ -280,10 +276,7 @@ int main(int argc, char *argv[]) {
 		{.name = "symbol?", .address = is_symbol},
 		{.name = "emt?", .address = is_nil},
 		{.name = "emt", .address = nil},
-		{.name = "char=", .address = char_equals},
-		{.name = "buf", .address = _buf_},
-		{.name = "dtr", .address = destroy_buffer},
-		{.name = "print_expression", .address = print_expression}
+		{.name = "char=", .address = char_equals}
 	};
 	
 	list static_bindings_list = nil;
