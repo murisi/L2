@@ -204,52 +204,6 @@
 				[prepend $n $l $r]
 				{return $n})))))
 
-(function prepend-binding (ref binds rt-reg) (if (@ expr-name $ref) [prepend (@ expr-symbol $ref) $binds $rt-reg] (begin)))
-
-(function store-lexical-environment (s is-static static-symbols dynamic-symbols rt-reg)
-	(switch = (@ expr-type $s)
-		((-begin-) (begin
-			(foreach (expr (@ expr-expressions $s))
-				(if (or [= (@ expr-type $expr) (-function-)] (and [= (@ expr-type $expr) (-storage-)] $is-static))
-					[prepend-binding (@ expr-reference $expr) static-symbols $rt-reg]
-				(if [= (@ expr-type $expr) (-storage-)]
-					[prepend-binding (@ expr-reference $expr) dynamic-symbols $rt-reg]
-					(begin))))
-			(foreach (exprr (@ expr-expressions $s))
-				[store-lexical-environment $exprr $is-static $static-symbols $dynamic-symbols $rt-reg])))
-		
-		((-if-) (begin
-			[store-lexical-environment (@ expr-condition $s) $is-static $static-symbols $dynamic-symbols $rt-reg]
-			[store-lexical-environment (@ expr-consequent $s) $is-static $static-symbols $dynamic-symbols $rt-reg]
-			[store-lexical-environment (@ expr-alternate $s) $is-static $static-symbols $dynamic-symbols $rt-reg]))
-		
-		((-function-) (begin
-			[prepend-binding (@ expr-reference $s) static-symbols $rt-reg]
-			[set dynamic-symbols nil]
-			(foreach (param (@ expr-parameters $s)) [prepend-binding $param dynamic-symbols $rt-reg])
-			[store-lexical-environment (@ expr-expression $s) (false) $static-symbols $dynamic-symbols $rt-reg]))
-		
-		((-continuation-) (-with-) (begin
-			[prepend-binding (@ expr-reference $s) (if $is-static static-symbols dynamic-symbols) $rt-reg]
-			(foreach (param (@ expr-parameters $s)) [prepend-binding $param (if $is-static static-symbols dynamic-symbols) $rt-reg])
-			[store-lexical-environment (@ expr-expression $s) $is-static $static-symbols $dynamic-symbols $rt-reg]))
-		
-		((-storage-) (begin
-			[prepend-binding (@ expr-reference $s) (if $is-static static-symbols dynamic-symbols) $rt-reg]
-			(foreach (arg (@ expr-arguments $s)) [store-lexical-environment $arg $is-static $static-symbols $dynamic-symbols $rt-reg])))
-		
-		((-invoke-) (-jump-) (begin
-			[store-lexical-environment (@ expr-reference $s) $is-static $static-symbols $dynamic-symbols $rt-reg]
-			(foreach (arg (@ expr-arguments $s)) [store-lexical-environment $arg $is-static $static-symbols $dynamic-symbols $rt-reg])))
-		
-		((-non-primitive-) (begin
-			[store-lexical-environment (@ expr-reference $s) $is-static $static-symbols $dynamic-symbols $rt-reg]
-			(setf expr-dynamic-context $s (not $is-static))
-			(setf expr-static-symbols $s $static-symbols)
-			(setf expr-dynamic-symbols $s [concat $dynamic-symbols (@ expr-dynamic-symbols $s) $rt-reg])))
-		
-		(begin)))
-
 (function classify-program-symbols (expr) (begin
 	(if (@ expr-return-symbol $expr) (setf sym-type (@ expr-return-symbol $expr) (static-storage)) (begin))
 	(switch = (@ expr-type $expr)
@@ -275,124 +229,12 @@
 		
 		(begin))))
 
-(function symbol-offset (expansion-container-func sym) (with return
-	{(continuation loop (dyn-ancestor offset)
-			(if [= $dyn-ancestor (@ sym-function $sym)]
-				{return [+ $offset (@ sym-offset $sym)]}
-				{loop (@ expr-dynamic-parent $dyn-ancestor) [+ $offset (@ expr-frame-offset $dyn-ancestor)]}))
-		(@ expr-dynamic-parent $expansion-container-func) (@ expr-frame-offset $expansion-container-func)}))
-
-(function resolve-dynamic-refs (expr sym reg) (with return
-	(switch = (@ expr-type $expr)
-		((-reference-)
-			{return (if [defined-str= (@ expr-name $expr) (@ sym-name $sym)]
-				(make-invokeN [make-literal addfp $reg] ((make-invokeN [make-literal symbol-offset $reg]
-					([make-literal [get-parent-function $expr] $reg] [make-literal $sym $reg]) $reg)) $reg)
-				$expr)})
-		
-		((-if-) (begin
-			(put expr-condition $expr [resolve-dynamic-refs (@ expr-condition $expr) $sym $reg])
-			(put expr-consequent $expr [resolve-dynamic-refs (@ expr-consequent $expr) $sym $reg])
-			(put expr-alternate $expr [resolve-dynamic-refs (@ expr-alternate $expr) $sym $reg])
-			{return $expr}))
-		
-		((-begin-) (begin
-			(foreach (f (@ expr-expressions $expr))
-				(if (and (or [= (@ expr-type $f) (-function-)] [= (@ expr-type $f) (-storage-)])
-					[defined-str= (@ expr-name(@ expr-reference $f)) (@ sym-name $sym)]) {return $expr} (begin)))
-			(until (partial (@ expr-expressions $expr)) [nil? $partial] [@cdr $partial]
-				(replace-expression (& car $partial) [resolve-dynamic-refs [@car $partial] $sym $reg]))
-			{return $expr}))
-		
-		((-continuation-) (-with-) (begin
-			(if [defined-str= (@ expr-name(@ expr-reference $expr)) (@ sym-name $sym)] {return $expr} (begin))
-			(foreach (e (@ expr-parameters $expr))
-				(if [defined-str= (@ expr-name $e) (@ sym-name $sym)] {return $expr} (begin)))
-			(put expr-expression $expr [resolve-dynamic-refs (@ expr-expression $expr) $sym $reg])
-			{return $expr}))
-		
-		((-invoke-) (-jump-) (-storage-) (begin
-			(if [= (@ expr-type $expr) (-storage-)] (begin)
-				(put expr-reference $expr [resolve-dynamic-refs (@ expr-reference $expr) $sym $reg]))
-			(until (partial (@ expr-arguments $expr)) [nil? $partial] [@cdr $partial]
-				(replace-expression (& car $partial) [resolve-dynamic-refs [@car $partial] $sym $reg]))
-			{return $expr}))
-		
-		((-non-primitive-) (begin
-			[prepend $sym (& expr-dynamic-symbols $expr) $reg]
-			{return $expr}))
-		
-		{return $expr})))
-
 (function expansion-context (l r) [mk# $l $r #24])
 (function ectx-ext-binds (l r) [mk-field $l $r #0 #8])
 (function ectx-rt-reg (l r) [mk-field $l $r #8 #8])
 (function ectx-ext-handler (l r) [mk-field $l $r #16 #8])
 
-(function dynamic-np-expansion () (begin))
-
-(function static-np-expansion () (begin))
-
-(function generate-np-expressions (s ct-reg ectx)
-	(switch = (@ expr-type $$s)
-		((-begin-)
-			(until (partial (@ expr-expressions $$s)) [nil? $partial] [@cdr $partial]
-				[generate-np-expressions (& car $partial) $ct-reg $ectx]))
-				
-		((-with-) (-function-) (-continuation-)
-			[generate-np-expressions (& expr-expression $$s) $ct-reg $ectx])
-			
-		((-if-) (begin
-			[generate-np-expressions (& expr-condition $$s) $ct-reg $ectx]
-			[generate-np-expressions (& expr-consequent $$s) $ct-reg $ectx]
-			[generate-np-expressions (& expr-alternate $$s) $ct-reg $ectx]))
-		
-		((-invoke-) (-jump-) (-storage-) (begin
-			(if [= (@ expr-type $$s) (-storage-)] (begin)
-				[generate-np-expressions (& expr-reference $$s) $ct-reg $ectx])
-			(until (partial (@ expr-arguments $$s)) [nil? $partial] [@cdr $partial]
-				[generate-np-expressions (& car $partial) $ct-reg $ectx])))
-		
-		((-non-primitive-) (begin
-			[generate-np-expressions (& expr-reference $$s) $ct-reg $ectx]
-			(storage rt-reg (@ ectx-rt-reg $ectx))
-			(storage macro-cache [buffer-alloc $rt-reg (unit)])
-			[set $macro-cache (null)]
-			(storage callee-cont-param [make-reference (null) $ct-reg])
-			(storage cont (make-continuationN [make-reference (null) $ct-reg] ($callee-cont-param) [make-begin nil $ct-reg] $ct-reg))
-			(storage parent-function [get-parent-function $$s])
-			
-			(storage wth [make-with [make-reference (null) $ct-reg] (if (@ expr-dynamic-context $$s)
-				(make-invokeN (make-invokeN [make-literal dynamic-np-expansion $ct-reg] ((@ expr-reference $$s)
-					[make-literal [copy-fragment (@ expr-argument $$s) $rt-reg] $ct-reg] [make-literal $ectx $ct-reg]
-					[make-literal (@ expr-static-symbols $$s) $ct-reg] [make-literal parent-function $ct-reg]
-					[make-literal (@ expr-dynamic-symbols $$s) $ct-reg] [make-literal $macro-cache $ct-reg]) $ct-reg) ($cont) $ct-reg)
-				(make-jumpN $cont ((make-invokeN
-					[make-literal static-np-expansion $ct-reg] ((@ expr-reference $$s)
-					[make-literal [copy-fragment (@ expr-argument $$s) $rt-reg] $ct-reg] [make-literal $ectx $ct-reg]
-					[make-literal (@ expr-static-symbols $$s) $ct-reg] [make-literal $macro-cache $ct-reg]) $ct-reg)) $ct-reg))
-				$ct-reg])
-			
-			(storage macro-invocation [make-with [make-reference (null) $ct-reg] [make-begin nil $ct-reg] $ct-reg])
-			(setf expr-parent $macro-invocation (@ expr-parent $$s))
-			(storage invoke-return-with-ref-arg [make-reference (null) $ct-reg])
-			[refer-reference $invoke-return-with-ref-arg (@ expr-reference $macro-invocation)]
-			(storage callee-cont-arg [make-reference (null) $ct-reg])
-			[refer-reference $callee-cont-arg $callee-cont-param]
-			(put expr-expression $macro-invocation (make-jumpN (make-invokeN [make-literal get $ct-reg] ($callee-cont-arg) $ct-reg)
-				($invoke-return-with-ref-arg) $ct-reg))
-			[set $s $macro-invocation]
-			
-			(storage return-with-ref-arg [make-reference (null) $ct-reg])
-			[refer-reference $return-with-ref-arg (@ expr-reference $wth)]
-			(put expr-expression $cont (make-jumpN $return-with-ref-arg ((@ expr-expression $parent-function)) $ct-reg))
-			(put expr-expression $parent-function $wth)))
-		
-		(begin)))
-
 (function load-expressions (program ectx static-symbols ct-reg) (do-let (begin
-		[store-lexical-environment (@ expr-expression $program) (true) $static-symbols nil $ct-reg]
-		[generate-np-expressions program $ct-reg (storage _ nil $ct-reg (null))]
 		[visit-expressions vfind-multiple-definitions program $handler]
 		[classify-program-symbols (@ expr-expression $program)]
 		[visit-expressions vlink-references (& expr-expression $program) (storage _ $handler $ct-reg)]
