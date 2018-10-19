@@ -56,13 +56,12 @@ Object *load_program(union expression *program, struct expansion_context *ectx) 
  */
 
 void evaluate_files(int srcc, char *srcv[], list bindings, jumpbuf *handler) {
-	region syntax_tree_region = create_buffer(0);
 	list objects = nil;
-	struct expansion_context *ectx = buffer_alloc(syntax_tree_region, sizeof(struct expansion_context));
-	ectx->obj_buf = syntax_tree_region;
-	ectx->expr_buf = syntax_tree_region;
-	ectx->handler = handler;
-	ectx->symbols = bindings;
+	struct expansion_context ectx;
+	ectx.obj_buf = create_buffer(0);
+	ectx.expr_buf = create_buffer(0);
+	ectx.handler = handler;
+	ectx.symbols = bindings;
 	
 	int i;
 	for(i = 0; i < srcc; i++) {
@@ -72,38 +71,39 @@ void evaluate_files(int srcc, char *srcv[], list bindings, jumpbuf *handler) {
 		if(dot && !strcmp(dot, ".l2")) {
 			int fd = open(srcv[i]);
 			long int src_sz = size(fd);
-			unsigned char *src_buf = buffer_alloc(syntax_tree_region, src_sz);
+			unsigned char *src_buf = buffer_alloc(ectx.expr_buf, src_sz);
 			read(fd, src_buf, src_sz);
 			close(fd);
 			
 			list expressions = nil;
 			int pos = 0;
 			while(after_leading_space(src_buf, src_sz, &pos)) {
-				append(build_expression(build_fragment(src_buf, src_sz, &pos, syntax_tree_region, handler), syntax_tree_region,
-					handler), &expressions, syntax_tree_region);
+				append(build_expression(build_fragment(src_buf, src_sz, &pos, ectx.expr_buf, handler), ectx.expr_buf, handler),
+					&expressions, ectx.expr_buf);
 			}
-			obj = load_program(generate_metaprogram(make_program(expressions, syntax_tree_region), ectx), ectx);
+			obj = load_program(generate_metaprogram(make_program(expressions, ectx.expr_buf), &ectx), &ectx);
 		} else if(dot && !strcmp(dot, ".o")) {
 			int obj_fd = open(srcv[i]);
 			long int obj_sz = size(obj_fd);
-			unsigned char *obj_buf = buffer_alloc(syntax_tree_region, obj_sz);
+			unsigned char *obj_buf = buffer_alloc(ectx.obj_buf, obj_sz);
 			read(obj_fd, obj_buf, obj_sz);
 			close(obj_fd);
 			
-			obj = load(obj_buf, obj_sz, syntax_tree_region, handler);
+			obj = load(obj_buf, obj_sz, ectx.obj_buf, handler);
 		}
-		append(obj, &objects, syntax_tree_region);
-		append_list(&ectx->symbols, immutable_symbols(obj, syntax_tree_region));
+		append(obj, &objects, ectx.obj_buf);
+		append_list(&ectx.symbols, immutable_symbols(obj, ectx.obj_buf));
 	}
 	
 	Object *obj;
 	{foreach(obj, objects) {
-		mutate_symbols(obj, ectx->symbols);
+		mutate_symbols(obj, ectx.symbols);
 	}}
 	{foreach(obj, objects) {
 		((void (*)()) segment(obj, ".text"))();
 	}}
-	destroy_buffer(syntax_tree_region);
+	destroy_buffer(ectx.expr_buf);
+	destroy_buffer(ectx.obj_buf);
 }
 
 //The following functions form the interface provided to loaded L2 files
