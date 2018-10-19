@@ -433,8 +433,8 @@ void *init_expression(union expression *expr, struct expansion_context *ectx, vo
 	}
 }
 
-union expression *generate_metaprogram(union expression *program, region ct_reg, struct expansion_context *ectx) {
-	union expression *s, *container = make_begin(nil, ct_reg);
+union expression *generate_metaprogram(union expression *program, struct expansion_context *ectx) {
+	union expression *s, *container = make_begin(nil, ectx->expr_buf);
 	foreach(s, program->function.expression->begin.expressions) {
 		void **cache = buffer_alloc(ectx->obj_buf, sizeof(void *));
 		*cache = NULL;
@@ -442,36 +442,37 @@ union expression *generate_metaprogram(union expression *program, region ct_reg,
 			list args = nil;
 			int i;
 			for(i = 0; i < length(s->storage.arguments); i++) {
-				prepend(make_begin(nil, ct_reg), &args, ct_reg);
+				prepend(make_begin(nil, ectx->expr_buf), &args, ectx->expr_buf);
 			}
-			union expression *storage_ref = make_reference(s->storage.reference->reference.name, ct_reg);
-			emit(make_storage(storage_ref, args, ct_reg), ct_reg);
-			union expression *storage_ref_arg = make_reference(NULL, ct_reg);
+			union expression *storage_ref = make_reference(s->storage.reference->reference.name, ectx->expr_buf);
+			emit(make_storage(storage_ref, args, ectx->expr_buf), ectx->expr_buf);
+			union expression *storage_ref_arg = make_reference(NULL, ectx->expr_buf);
 			refer_reference(storage_ref_arg, storage_ref);
-			emit(make_invoke0(make_invoke4(make_literal((unsigned long) init_storage, ct_reg), storage_ref_arg,
-				make_literal((unsigned long) s, ct_reg), make_literal((unsigned long) ectx, ct_reg),
-				make_literal((unsigned long) cache, ct_reg), ct_reg), ct_reg), ct_reg);
+			emit(make_invoke0(make_invoke4(make_literal((unsigned long) init_storage, ectx->expr_buf), storage_ref_arg,
+				make_literal((unsigned long) s, ectx->expr_buf), make_literal((unsigned long) ectx, ectx->expr_buf),
+				make_literal((unsigned long) cache, ectx->expr_buf), ectx->expr_buf), ectx->expr_buf), ectx->expr_buf);
 		} else if(s->base.type == function) {
 			list params = nil, args = nil;
 			int i;
 			for(i = 0; i < length(s->function.parameters); i++) {
-				prepend(make_reference(NULL, ct_reg), &params, ct_reg);
-				prepend(make_invoke1(make_literal((unsigned long) _get_, ct_reg), make_reference(NULL, ct_reg), ct_reg), &args,
-					ct_reg);
+				prepend(make_reference(NULL, ectx->expr_buf), &params, ectx->expr_buf);
+				prepend(make_invoke1(make_literal((unsigned long) _get_, ectx->expr_buf), make_reference(NULL, ectx->expr_buf),
+					ectx->expr_buf), &args, ectx->expr_buf);
 			}
-			emit(make_function(make_reference(s->function.reference->reference.name, ct_reg), params,
-				make_invoke(make_invoke3(make_literal((unsigned long) init_function, ct_reg), make_literal((unsigned long) s, ct_reg),
-				make_literal((unsigned long) ectx, ct_reg), make_literal((unsigned long) cache, ct_reg), ct_reg), args, ct_reg),
-				ct_reg), ct_reg);
+			emit(make_function(make_reference(s->function.reference->reference.name, ectx->expr_buf), params,
+				make_invoke(make_invoke3(make_literal((unsigned long) init_function, ectx->expr_buf),
+					make_literal((unsigned long) s, ectx->expr_buf), make_literal((unsigned long) ectx, ectx->expr_buf),
+					make_literal((unsigned long) cache, ectx->expr_buf), ectx->expr_buf), args, ectx->expr_buf), ectx->expr_buf),
+					ectx->expr_buf);
 			union expression *a, *t;
 			foreachzipped(a, t, params, args) {
 				refer_reference(t->invoke.arguments->fst, a);
 			}
 		} else {
-			emit(make_invoke0(make_invoke3(make_literal((unsigned long) init_expression, ct_reg),
-				make_literal((unsigned long) s, ct_reg), make_literal((unsigned long) ectx, ct_reg),
-				make_literal((unsigned long) cache, ct_reg), ct_reg), ct_reg), ct_reg);
+			emit(make_invoke0(make_invoke3(make_literal((unsigned long) init_expression, ectx->expr_buf),
+				make_literal((unsigned long) s, ectx->expr_buf), make_literal((unsigned long) ectx, ectx->expr_buf),
+				make_literal((unsigned long) cache, ectx->expr_buf), ectx->expr_buf), ectx->expr_buf), ectx->expr_buf);
 		}
 	}
-	return make_program(container->begin.expressions, ct_reg);
+	return make_program(container->begin.expressions, ectx->expr_buf);
 }

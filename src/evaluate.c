@@ -82,7 +82,7 @@ void evaluate_files(int srcc, char *srcv[], list bindings, jumpbuf *handler) {
 				append(build_expression(build_fragment(src_buf, src_sz, &pos, syntax_tree_region, handler), syntax_tree_region,
 					handler), &expressions, syntax_tree_region);
 			}
-			obj = load_program(generate_metaprogram(make_program(expressions, syntax_tree_region), syntax_tree_region, ectx), ectx);
+			obj = load_program(generate_metaprogram(make_program(expressions, syntax_tree_region), ectx), ectx);
 		} else if(dot && !strcmp(dot, ".o")) {
 			int obj_fd = open(srcv[i]);
 			long int obj_sz = size(obj_fd);
