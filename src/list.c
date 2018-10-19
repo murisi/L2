@@ -96,6 +96,16 @@ list *exists(bool (*pred)(void *, void *), list *l, void *ctx) {
 	return NULL;
 }
 
+void *not_in(bool (*pred)(void *, void *), list a, list b) {
+	void *d;
+	foreach(d, a) {
+		if(!exists(pred, &b, d)) {
+			return d;
+		}
+	}
+	return NULL;
+}
+
 list map(list l, void *ctx, void* (*mapper)(void *, void *), region reg) {
 	list ret = nil;
 	void *e;

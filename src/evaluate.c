@@ -49,6 +49,19 @@ Object *load_program(union expression *program, struct expansion_context *ectx) 
 	return obj;
 }
 
+Object *load_program_and_mutate(union expression *program, struct expansion_context *ectx) {
+	Object *obj = load_program(program, ectx);
+	region temp_reg = create_buffer(0);
+	list ms = mutable_symbols(obj, temp_reg);
+	struct symbol *missing_sym = not_in((bool (*)(void *, void *))symbol_equals, ms, ectx->symbols);
+	if(missing_sym) {
+		throw_undefined_reference(missing_sym->name, ectx->handler);
+	}
+	destroy_buffer(temp_reg);
+	mutate_symbols(obj, ectx->symbols);
+	return obj;
+}
+
 /*
  * Makes a new binary file at the path outbin from the L2 file at the path inl2.
  * The resulting binary file executes the L2 source file from top to bottom and

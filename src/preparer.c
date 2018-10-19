@@ -373,7 +373,7 @@ bool symbol_equals(object_symbol *sym1, object_symbol *sym2) {
 	return !strcmp(sym1->name, sym2->name);
 }
 
-Object *load_program(union expression *program, struct expansion_context *ectx);
+Object *load_program_and_mutate(union expression *program, struct expansion_context *ectx);
 
 union expression *vgenerate_metas(union expression *s, void *ctx) {
 	struct expansion_context *ectx = ctx;
@@ -402,8 +402,7 @@ void *init_storage(unsigned long *data, union expression *storage_expr, struct e
 			append(make_invoke2(make_literal((unsigned long) _set_, ectx->expr_buf),
 				make_literal((unsigned long) data++, ectx->expr_buf), arg, ectx->expr_buf), &sets, ectx->expr_buf);
 		}
-		Object *obj = load_program(make_program(sets, ectx->expr_buf), ectx);
-		mutate_symbols(obj, ectx->symbols);
+		Object *obj = load_program_and_mutate(make_program(sets, ectx->expr_buf), ectx);
 		*cache = segment(obj, ".text");
 		return *cache;
 	}
@@ -414,8 +413,7 @@ void *init_function(union expression *function_expr, struct expansion_context *e
 		return *cache;
 	} else {
 		pre_visit_expressions(vgenerate_metas, &function_expr, ectx);
-		Object *obj = load_program(make_program(lst(function_expr, nil, ectx->expr_buf), ectx->expr_buf), ectx);
-		mutate_symbols(obj, ectx->symbols);
+		Object *obj = load_program_and_mutate(make_program(lst(function_expr, nil, ectx->expr_buf), ectx->expr_buf), ectx);
 		*cache = (void *) function_expr->function.reference->reference.symbol->offset;
 		return *cache;
 	}
@@ -426,8 +424,7 @@ void *init_expression(union expression *expr, struct expansion_context *ectx, vo
 		return *cache;
 	} else {
 		pre_visit_expressions(vgenerate_metas, &expr, ectx);
-		Object *obj = load_program(make_program(lst(expr, nil, ectx->expr_buf), ectx->expr_buf), ectx);
-		mutate_symbols(obj, ectx->symbols);
+		Object *obj = load_program_and_mutate(make_program(lst(expr, nil, ectx->expr_buf), ectx->expr_buf), ectx);
 		*cache = segment(obj, ".text");
 		return *cache;
 	}
