@@ -25,6 +25,7 @@ Object *load_program(union expression *program, struct expansion_context *ectx) 
 	visit_expressions(vfind_multiple_definitions, &program, ectx->handler);
 	classify_program_symbols(program->function.expression);
 	visit_expressions(vlink_references, &program->function.expression, (void* []) {ectx->handler, ectx->expr_buf});
+	visit_expressions(vescape_analysis, &program, NULL);
 	program = use_return_symbol(program, NULL, ectx->expr_buf);
 	classify_program_symbols(program->function.expression);
 	visit_expressions(vlayout_frames, &program->function.expression, ectx->expr_buf);
