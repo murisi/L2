@@ -145,6 +145,28 @@
 		(begin))
 	(replace-expression $s [$visitor $$s $ctx])))
 
+(function pre-visit-expressions (visitor s ctx) (begin
+	(replace-expression $s [$visitor $$s $ctx])
+	(switch = (@ expr-type $$s)
+		((-begin-)
+			(until (partial (@ expr-expressions $$s)) [nil? $partial] [@cdr $partial]
+				[pre-visit-expressions $visitor (& car $partial) $ctx]))
+		
+		((-if-) (begin
+			[pre-visit-expressions $visitor (& expr-condition $$s) $ctx]
+			[pre-visit-expressions $visitor (& expr-consequent $$s) $ctx]
+			[pre-visit-expressions $visitor (& expr-alternate $$s) $ctx]))
+		
+		((-function-) (-continuation-) (-with-)
+			[pre-visit-expressions $visitor (& expr-expression $$s) $ctx])
+		
+		((-jump-) (-invoke-) (-storage-) (begin
+			(if [= (@ expr-type $$s) (-storage-)] (begin) [pre-visit-expressions $visitor (& expr-reference $$s) $ctx])
+			(until (partial (@ expr-arguments $$s)) [nil? $partial] [@cdr $partial]
+				[pre-visit-expressions $visitor (& car $partial) $ctx])))
+		
+		(begin))))
+
 (function use-return-symbol (n ret-sym r) (with return
 	(switch = (@ expr-type $n)
 		((-with-) (-continuation-) (begin
@@ -279,14 +301,14 @@
 		[set $cache (null)]
 		(if [= (@ expr-type $s) (-storage-)] (begin
 			(storage args nil)
-			(foreach (_ (@ expr-arguments $s)) [prepend [make_begin nil $expr-buf] args $expr-buf])
+			(foreach (_ (@ expr-arguments $s)) [prepend [make-begin nil $expr-buf] args $expr-buf])
 			(storage storage-ref [make-reference (@ expr-name (@ expr-reference $s)) $expr-buf])
-			[append [make-storage $storage-ref $args $expr-bug] c $expr-buf]
+			[append [make-storage $storage-ref $args $expr-buf] c $expr-buf]
 			(storage storage-ref-arg [make-reference (null) $expr-buf])
 			[refer-reference $storage-ref-arg $storage-ref]
 			[append (make-invokeN (make-invokeN [make-literal init-storage $expr-buf] ($storage-ref-arg [make-literal $s $expr-buf]
 				[make-literal $ectx $expr-buf] [make-literal $cache $expr-buf]) $expr-buf) () $expr-buf) c $expr-buf])
-		(if [= (@expr-type $s) (-function-)] (begin
+		(if [= (@ expr-type $s) (-function-)] (begin
 			(storage params nil)
 			(storage args nil)
 			(foreach (_ (@ expr-parameters $s)) (begin
@@ -337,5 +359,6 @@
 			[close $fd]
 			(while [after-leading-space $src-buf $src-sz pos]
 				[append [build-expression [build-fragment $src-buf $src-sz pos $r (null)] $r (null)] expressions $r])
-			[load-expressions [make-program $expressions $r] (storage _ nil $r (null) $r)]))))
+			(storage ectx nil $r (null) $r)
+			[load-expressions [generate-metaprogram [make-program $expressions $r] ectx] ectx]))))
 
