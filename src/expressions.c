@@ -10,7 +10,7 @@ enum expression_type {
 	jump,
 	continuation,
 	assembly,
-	non_primitive
+	meta
 };
 
 enum symbol_type { static_storage, dynamic_storage };
@@ -163,7 +163,7 @@ struct reference_expression {
 	struct symbol *symbol;
 };
 
-struct np_expression {
+struct meta_expression {
 	enum expression_type type;
 	union expression *parent;
 	struct symbol *return_symbol;
@@ -187,7 +187,7 @@ union expression {
 	struct if_expression _if;
 	struct literal_expression literal;
 	struct reference_expression reference;
-	struct np_expression non_primitive;
+	struct meta_expression meta;
 	struct assembly_expression assembly;
 };
 
@@ -368,14 +368,14 @@ union expression *make_storage(union expression *ref, list args, region reg) {
 	return u;
 }
 
-union expression *make_non_primitive(union expression *ref, list arg, region reg) {
+union expression *make_meta(union expression *ref, list arg, region reg) {
 	union expression *u = buffer_alloc(reg, sizeof(union expression));
-	u->non_primitive.type = non_primitive;
-	put(u, non_primitive.reference, ref);
-	u->non_primitive.argument = arg;
-	u->non_primitive.static_symbols = nil;
-	u->non_primitive.dynamic_symbols = nil;
-	u->non_primitive.dynamic_context = true;
+	u->meta.type = meta;
+	put(u, meta.reference, ref);
+	u->meta.argument = arg;
+	u->meta.static_symbols = nil;
+	u->meta.dynamic_symbols = nil;
+	u->meta.dynamic_context = true;
 	return u;
 }
 
@@ -551,11 +551,11 @@ void print_expression(union expression *s) {
 			write_ulong(STDOUT, s->literal.value);
 			write_str(STDOUT, ")");
 			break;
-		} case non_primitive: {
+		} case meta: {
 			write_str(STDOUT, "(");
-			print_expression(s->non_primitive.reference);
+			print_expression(s->meta.reference);
 			write_str(STDOUT, " ");
-			print_fragment(s->non_primitive.argument);
+			print_fragment(s->meta.argument);
 			write_str(STDOUT, ")");
 			break;
 		}
@@ -655,7 +655,7 @@ union expression *build_expression(list d, region reg, jumpbuf *handler) {
 			(!strcmp(to_string(d->fst, reg), "jump") ? make_jump : make_storage);
 		return fptr(build_expression(d->frst, reg, handler), arguments, reg);
 	} else {
-		return make_non_primitive(build_expression(d->fst, reg, handler), d->rst, reg);
+		return make_meta(build_expression(d->fst, reg, handler), d->rst, reg);
 	}
 }
 

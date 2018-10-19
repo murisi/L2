@@ -335,11 +335,11 @@ void store_lexical_environment(union expression *s, bool is_static, list static_
 				store_lexical_environment(arg, is_static, static_symbols, dynamic_symbols, rt_reg);
 			}}
 			break;
-		} case non_primitive: {
-			store_lexical_environment(s->non_primitive.reference, is_static, static_symbols, dynamic_symbols, rt_reg);
-			s->non_primitive.dynamic_context = !is_static;
-			s->non_primitive.static_symbols = static_symbols;
-			s->non_primitive.dynamic_symbols = concat(dynamic_symbols, s->non_primitive.dynamic_symbols, rt_reg);
+		} case meta: {
+			store_lexical_environment(s->meta.reference, is_static, static_symbols, dynamic_symbols, rt_reg);
+			s->meta.dynamic_context = !is_static;
+			s->meta.static_symbols = static_symbols;
+			s->meta.dynamic_symbols = concat(dynamic_symbols, s->meta.dynamic_symbols, rt_reg);
 			break;
 		}
 	}
@@ -367,8 +367,8 @@ void classify_program_symbols(union expression *expr) {
 				classify_program_symbols(t);
 			}
 			break;
-		} case non_primitive: {
-			classify_program_symbols(expr->non_primitive.reference);
+		} case meta: {
+			classify_program_symbols(expr->meta.reference);
 			break;
 		} case continuation: case with: {
 			expr->continuation.reference->reference.symbol->type = static_storage;
@@ -460,8 +460,8 @@ union expression *resolve_dyn_refs(union expression *expr, struct symbol *sym, r
 				(*e)->base.parent = expr;
 			}
 			return expr;
-		} case non_primitive: {
-			append(sym, &expr->non_primitive.dynamic_symbols, reg);
+		} case meta: {
+			append(sym, &expr->meta.dynamic_symbols, reg);
 			return expr;
 		}
 	}
@@ -614,30 +614,30 @@ void generate_np_expressions(union expression **s, region ct_reg, struct expansi
 				generate_np_expressions(arg, ct_reg, ectx);
 			}}
 			break;
-		} case non_primitive: {
-			generate_np_expressions(&(*s)->non_primitive.reference, ct_reg, ectx);
+		} case meta: {
+			generate_np_expressions(&(*s)->meta.reference, ct_reg, ectx);
 			void (*(*macro_cache))(void *) = buffer_alloc(ectx->rt_reg, sizeof(void (*)(void *)));
 			*macro_cache = NULL;
 			union expression *callee_cont_param = make_reference(NULL, ct_reg);
 			union expression *cont = make_continuation(make_reference(NULL, ct_reg), lst(callee_cont_param, nil, ct_reg),
 				make_begin(nil, ct_reg), ct_reg);
 			union expression *parent_function = get_parent_function(*s);
-			union expression *wth = make_with(make_reference(NULL, ct_reg), ((*s)->non_primitive.dynamic_context ?
+			union expression *wth = make_with(make_reference(NULL, ct_reg), ((*s)->meta.dynamic_context ?
 				make_invoke1(make_invoke7(make_literal((unsigned long) dynamic_np_expansion, ct_reg),
-					(*s)->non_primitive.reference, make_literal((unsigned long) copy_fragment((*s)->non_primitive.argument,
+					(*s)->meta.reference, make_literal((unsigned long) copy_fragment((*s)->meta.argument,
 					ectx->rt_reg), ct_reg), make_literal((unsigned long) ectx, ct_reg),
-					make_literal((unsigned long) (*s)->non_primitive.static_symbols, ct_reg),
+					make_literal((unsigned long) (*s)->meta.static_symbols, ct_reg),
 					make_literal((unsigned long) parent_function, ct_reg),
-					make_literal((unsigned long) (*s)->non_primitive.dynamic_symbols, ct_reg),
+					make_literal((unsigned long) (*s)->meta.dynamic_symbols, ct_reg),
 					make_literal((unsigned long) macro_cache, ct_reg), ct_reg), cont, ct_reg) :
 				make_jump1(cont, make_invoke5(make_literal((unsigned long) static_np_expansion, ct_reg),
-					(*s)->non_primitive.reference, make_literal((unsigned long) copy_fragment((*s)->non_primitive.argument,
+					(*s)->meta.reference, make_literal((unsigned long) copy_fragment((*s)->meta.argument,
 					ectx->rt_reg), ct_reg), make_literal((unsigned long) ectx, ct_reg),
-					make_literal((unsigned long) (*s)->non_primitive.static_symbols, ct_reg),
+					make_literal((unsigned long) (*s)->meta.static_symbols, ct_reg),
 					make_literal((unsigned long) macro_cache, ct_reg), ct_reg), ct_reg)), ct_reg);
 			
 			union expression *macro_invocation = make_with(make_reference(NULL, ct_reg), make_begin(nil, ct_reg), ct_reg);
-			macro_invocation->with.parent = (*s)->non_primitive.parent;
+			macro_invocation->with.parent = (*s)->meta.parent;
 			union expression *invoke_return_with_ref_arg = make_reference(NULL, ct_reg);
 			refer_reference(invoke_return_with_ref_arg, macro_invocation->with.reference);
 			union expression *callee_cont_arg = make_reference(NULL, ct_reg);
