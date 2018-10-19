@@ -227,12 +227,44 @@
 		
 		(begin))))
 
-(function expansion-context (l r) [mk# $l $r #24])
-(function ectx-ext-binds (l r) [mk-field $l $r #0 #8])
-(function ectx-rt-reg (l r) [mk-field $l $r #8 #8])
-(function ectx-ext-handler (l r) [mk-field $l $r #16 #8])
+(function expansion-context (l r) [mk# $l $r #32])
+(function ectx-symbols (l r) [mk-field $l $r #0 #8])
+(function ectx-obj-buf (l r) [mk-field $l $r #8 #8])
+(function ectx-handler (l r) [mk-field $l $r #16 #8])
+(function ectx-expr-buf (l r) [mk-field $l $r #24 #8])
 
-(function load-expressions (program ectx static-symbols ct-reg) (do-let (begin
+(function generate-metaprogram (program ectx) (with return (begin
+	(storage c nil)
+	(storage expr-buf (@ ectx-expr-buf $ectx))
+	(foreach (s (@ expr-expressions (@ expr-expression $program))) (begin
+		(storage cache [buffer-alloc (@ ectx-obj-buf $ectx) (unit)])
+		[set $cache (null)]
+		(if [= (@ expr-type $s) (-storage-)] (begin
+			(storage args nil)
+			(foreach (_ (@ expr-arguments $s)) [prepend [make_begin nil $expr-buf] args $expr-buf])
+			(storage storage-ref [make-reference (@ expr-name (@ expr-reference $s)) $expr-buf])
+			[append [make-storage $storage-ref $args $expr-bug] c $expr-buf]
+			(storage storage-ref-arg [make-reference (null) $expr-buf])
+			[refer-reference $storage-ref-arg $storage-ref]
+			[append (make-invokeN (make-invokeN [make-literal init-storage $expr-buf] ($storage-ref-arg [make-literal $s $expr-buf]
+				[make-literal $ectx $expr-buf] [make-literal $cache $expr-buf]) $expr-buf) () $expr-buf) c $expr-buf])
+		(if [= (@expr-type $s) (-function-)] (begin
+			(storage params nil)
+			(storage args nil)
+			(foreach (_ (@ expr-parameters $s)) (begin
+				[prepend [make-reference (null) $expr-buf] params $expr-buf]
+				[prepend (make-invokeN [make-literal get $expr-buf] ([make-reference (null) $expr-buf]) $expr-buf) args $expr-buf]))
+			[append [make-function [make-reference (@ expr-name (@ expr-reference $s)) $expr-buf] $params
+				[make-invoke (make-invokeN [make-literal init-function $expr-buf] ([make-literal $s $expr-buf]
+				[make-literal $ectx $expr-buf] [make-literal $cache $expr-buf]) $expr-buf) $args $expr-buf] $expr-buf] c $expr-buf]
+			(foreach (a $params) (t $args) [refer-reference [@fst(@ expr-arguments $t)] $a]))
+		(begin
+			[append (make-invokeN (make-invokeN [make-literal init-expression $expr-buf] ([make-literal $s $expr-buf]
+				[make-literal $ectx $expr-buf] [make-literal $cache $expr-buf]) $expr-buf) () $expr-buf) c $expr-buf])))))
+	{return [make-program $c $expr-buf]})))
+
+(function load-expressions (program ectx) (do-let (begin
+		(storage ct-reg (@ ectx-expr-buf $ectx))
 		[visit-expressions vfind-multiple-definitions program $handler]
 		[classify-program-symbols (@ expr-expression $program)]
 		[visit-expressions vlink-references (& expr-expression $program) (storage _ $handler $ct-reg)]
@@ -250,7 +282,7 @@
 		[set program [generate-toplevel $program $ct-reg]]
 		(storage asms nil)
 		[visit-expressions vlinearized-expressions program (storage _ asms $ct-reg)]
-		(++[set asms [reverse $asms $ct-reg]])
+		[set asms [reverse $asms $ct-reg]]
 		[write-str (stdout) (" Checksum)]
 		[write-uint (stdout) [length $asms]])
 	(handler (continuation _ (code arg0 arg1 arg2 arg3) (begin
@@ -267,5 +299,5 @@
 			[close $fd]
 			(while [after-leading-space $src-buf $src-sz pos]
 				[append [build-expression [build-fragment $src-buf $src-sz pos $r (null)] $r (null)] expressions $r])
-			[load-expressions [make-program $expressions $r] nil nil $r]))))
+			[load-expressions [make-program $expressions $r] (storage _ nil $r (null) $r)]))))
 
