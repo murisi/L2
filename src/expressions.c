@@ -121,9 +121,6 @@ struct function_expression {
 	
 	list symbols;
 	struct symbol *expression_return_symbol;
-	
-	union expression *dynamic_parent;
-	unsigned long frame_offset;
 };
 
 struct continuation_expression {
@@ -168,9 +165,6 @@ struct meta_expression {
 	
 	union expression *reference;
 	list argument;
-	list static_symbols;
-	list dynamic_symbols;
-	bool dynamic_context;
 };
 
 union expression {
@@ -259,8 +253,6 @@ union expression *make_function(union expression *ref, list params, union expres
 	}
 	func->function.symbols = nil;
 	put(func, function.expression, expr);
-	func->function.dynamic_parent = NULL;
-	func->function.frame_offset = 0;
 	return func;
 }
 
@@ -371,9 +363,6 @@ union expression *make_meta(union expression *ref, list arg, region reg) {
 	u->meta.type = meta;
 	put(u, meta.reference, ref);
 	u->meta.argument = arg;
-	u->meta.static_symbols = nil;
-	u->meta.dynamic_symbols = nil;
-	u->meta.dynamic_context = true;
 	return u;
 }
 
