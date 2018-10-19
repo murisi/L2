@@ -363,7 +363,7 @@ void _set_(unsigned long *ref, unsigned long val) {
 }
 
 struct expansion_context {
-	list ext_binds;
+	list symbols;
 	region expr_buf;
 	region obj_buf;
 	jumpbuf *handler;
@@ -379,7 +379,7 @@ union expression *vgenerate_metas(union expression *s, void *ctx) {
 	struct expansion_context *ectx = ctx;
 	if(s->base.type == meta) {
 		object_symbol *sym;
-		foreach(sym, ectx->ext_binds) {
+		foreach(sym, ectx->symbols) {
 			if(!strcmp(sym->name, s->meta.reference->reference.name)) {
 				return vgenerate_metas(build_expression(((list (*)(list, region)) sym->address)(s->meta.argument, ectx->expr_buf),
 					ectx->expr_buf, ectx->handler), ctx);
@@ -403,7 +403,7 @@ void *init_storage(unsigned long *data, union expression *storage_expr, struct e
 				make_literal((unsigned long) data++, ectx->expr_buf), arg, ectx->expr_buf), &sets, ectx->expr_buf);
 		}
 		Object *obj = load_program(make_program(sets, ectx->expr_buf), ectx);
-		mutate_symbols(obj, ectx->ext_binds);
+		mutate_symbols(obj, ectx->symbols);
 		*cache = segment(obj, ".text");
 		return *cache;
 	}
@@ -415,7 +415,7 @@ void *init_function(union expression *function_expr, struct expansion_context *e
 	} else {
 		pre_visit_expressions(vgenerate_metas, &function_expr, ectx);
 		Object *obj = load_program(make_program(lst(function_expr, nil, ectx->expr_buf), ectx->expr_buf), ectx);
-		mutate_symbols(obj, ectx->ext_binds);
+		mutate_symbols(obj, ectx->symbols);
 		*cache = (void *) function_expr->function.reference->reference.symbol->offset;
 		return *cache;
 	}
@@ -427,7 +427,7 @@ void *init_expression(union expression *expr, struct expansion_context *ectx, vo
 	} else {
 		pre_visit_expressions(vgenerate_metas, &expr, ectx);
 		Object *obj = load_program(make_program(lst(expr, nil, ectx->expr_buf), ectx->expr_buf), ectx);
-		mutate_symbols(obj, ectx->ext_binds);
+		mutate_symbols(obj, ectx->symbols);
 		*cache = segment(obj, ".text");
 		return *cache;
 	}

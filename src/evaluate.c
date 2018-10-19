@@ -62,7 +62,7 @@ void evaluate_files(int srcc, char *srcv[], list bindings, jumpbuf *handler) {
 	ectx->obj_buf = syntax_tree_region;
 	ectx->expr_buf = syntax_tree_region;
 	ectx->handler = handler;
-	ectx->ext_binds = bindings;
+	ectx->symbols = bindings;
 	
 	int i;
 	for(i = 0; i < srcc; i++) {
@@ -93,12 +93,12 @@ void evaluate_files(int srcc, char *srcv[], list bindings, jumpbuf *handler) {
 			obj = load(obj_buf, obj_sz, syntax_tree_region, handler);
 		}
 		append(obj, &objects, syntax_tree_region);
-		append_list(&ectx->ext_binds, immutable_symbols(obj, syntax_tree_region));
+		append_list(&ectx->symbols, immutable_symbols(obj, syntax_tree_region));
 	}
 	
 	Object *obj;
 	{foreach(obj, objects) {
-		mutate_symbols(obj, ectx->ext_binds);
+		mutate_symbols(obj, ectx->symbols);
 	}}
 	{foreach(obj, objects) {
 		((void (*)()) segment(obj, ".text"))();
