@@ -21,30 +21,29 @@ typedef unsigned long int bool;
  * executable that it is embedded in.
  */
 
-Object *load_program(union expression *program, struct expansion_context *ectx, region manreg) {
-	//store_lexical_environment(program->function.expression, true, st_binds, nil, ectx->rt_reg);
+Object *load_program(union expression *program, struct expansion_context *ectx) {
 	visit_expressions(vfind_multiple_definitions, &program, ectx->handler);
 	classify_program_symbols(program->function.expression);
-	visit_expressions(vlink_references, &program->function.expression, (void* []) {ectx->handler, manreg});
-	program = use_return_symbol(program, NULL, manreg);
+	visit_expressions(vlink_references, &program->function.expression, (void* []) {ectx->handler, ectx->expr_buf});
+	program = use_return_symbol(program, NULL, ectx->expr_buf);
 	classify_program_symbols(program->function.expression);
-	visit_expressions(vlayout_frames, &program->function.expression, manreg);
-	visit_expressions(vgenerate_references, &program, manreg);
-	visit_expressions(vgenerate_continuation_expressions, &program, manreg);
-	visit_expressions(vgenerate_literals, &program, manreg);
-	visit_expressions(vgenerate_ifs, &program, manreg);
-	visit_expressions(vgenerate_function_expressions, &program, manreg);
-	visit_expressions(vgenerate_storage_expressions, &program, manreg);
+	visit_expressions(vlayout_frames, &program->function.expression, ectx->expr_buf);
+	visit_expressions(vgenerate_references, &program, ectx->expr_buf);
+	visit_expressions(vgenerate_continuation_expressions, &program, ectx->expr_buf);
+	visit_expressions(vgenerate_literals, &program, ectx->expr_buf);
+	visit_expressions(vgenerate_ifs, &program, ectx->expr_buf);
+	visit_expressions(vgenerate_function_expressions, &program, ectx->expr_buf);
+	visit_expressions(vgenerate_storage_expressions, &program, ectx->expr_buf);
 	list symbols = program->function.symbols;
 	union expression *l;
-	{foreach(l, program->function.parameters) { prepend(l->reference.symbol, &symbols, manreg); }}
-	program = generate_toplevel(program, manreg);
+	{foreach(l, program->function.parameters) { prepend(l->reference.symbol, &symbols, ectx->expr_buf); }}
+	program = generate_toplevel(program, ectx->expr_buf);
 	list asms = nil;
-	visit_expressions(vlinearized_expressions, &program, (void* []) {&asms, manreg});
-	asms = reverse(asms, manreg);
+	visit_expressions(vlinearized_expressions, &program, (void* []) {&asms, ectx->expr_buf});
+	asms = reverse(asms, ectx->expr_buf);
 	unsigned char *objdest; int objdest_sz;
-	write_elf(asms, symbols, &objdest, &objdest_sz, manreg);
-	Object *obj = load(objdest, objdest_sz, ectx->rt_reg, ectx->handler);
+	write_elf(asms, symbols, &objdest, &objdest_sz, ectx->expr_buf);
+	Object *obj = load(objdest, objdest_sz, ectx->obj_buf, ectx->handler);
 	symbol_offsets_to_addresses(asms, symbols, obj);
 	return obj;
 }
@@ -60,7 +59,8 @@ void evaluate_files(int srcc, char *srcv[], list bindings, jumpbuf *handler) {
 	region syntax_tree_region = create_buffer(0);
 	list objects = nil;
 	struct expansion_context *ectx = buffer_alloc(syntax_tree_region, sizeof(struct expansion_context));
-	ectx->rt_reg = syntax_tree_region;
+	ectx->obj_buf = syntax_tree_region;
+	ectx->expr_buf = syntax_tree_region;
 	ectx->handler = handler;
 	ectx->ext_binds = bindings;
 	
@@ -82,8 +82,7 @@ void evaluate_files(int srcc, char *srcv[], list bindings, jumpbuf *handler) {
 				append(build_expression(build_fragment(src_buf, src_sz, &pos, syntax_tree_region, handler), syntax_tree_region,
 					handler), &expressions, syntax_tree_region);
 			}
-			obj = load_program(generate_metaprogram(make_program(expressions, syntax_tree_region), syntax_tree_region, ectx), ectx,
-				syntax_tree_region);
+			obj = load_program(generate_metaprogram(make_program(expressions, syntax_tree_region), syntax_tree_region, ectx), ectx);
 		} else if(dot && !strcmp(dot, ".o")) {
 			int obj_fd = open(srcv[i]);
 			long int obj_sz = size(obj_fd);

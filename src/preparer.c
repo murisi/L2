@@ -432,7 +432,8 @@ void _set_(unsigned long *ref, unsigned long val) {
 
 struct expansion_context {
 	list ext_binds;
-	region rt_reg;
+	region expr_buf;
+	region obj_buf;
 	jumpbuf *handler;
 };
 
@@ -440,17 +441,16 @@ bool symbol_equals(object_symbol *sym1, object_symbol *sym2) {
 	return !strcmp(sym1->name, sym2->name);
 }
 
-Object *load_program(union expression *program, struct expansion_context *ectx, region ct_reg);
+Object *load_program(union expression *program, struct expansion_context *ectx);
 
 union expression *vgenerate_metas(union expression *s, void *ctx) {
-	region ct_reg = ((void **) ctx)[0];
-	struct expansion_context *ectx = ((void **) ctx)[1];
+	struct expansion_context *ectx = ctx;
 	if(s->base.type == meta) {
 		object_symbol *sym;
 		foreach(sym, ectx->ext_binds) {
 			if(!strcmp(sym->name, s->meta.reference->reference.name)) {
-				return vgenerate_metas(build_expression(((list (*)(list, region)) sym->address)(s->meta.argument, ct_reg), ct_reg,
-					ectx->handler), ctx);
+				return vgenerate_metas(build_expression(((list (*)(list, region)) sym->address)(s->meta.argument, ectx->expr_buf),
+					ectx->expr_buf, ectx->handler), ctx);
 			}
 		}
 		throw_undefined_reference(s->meta.reference->reference.name, ectx->handler);
@@ -463,17 +463,15 @@ void *init_storage(unsigned long *data, union expression *storage_expr, struct e
 	if(*cache) {
 		return *cache;
 	} else {
-		region ct_reg = create_buffer(0);
 		list sets = nil;
 		union expression *arg;
 		foreach(arg, storage_expr->storage.arguments) {
-			pre_visit_expressions(vgenerate_metas, &arg, (void*[]) {ct_reg, ectx});
-			append(make_invoke2(make_literal((unsigned long) _set_, ct_reg), make_literal((unsigned long) data++, ct_reg), arg,
-				ct_reg), &sets, ct_reg);
+			pre_visit_expressions(vgenerate_metas, &arg, ectx);
+			append(make_invoke2(make_literal((unsigned long) _set_, ectx->expr_buf),
+				make_literal((unsigned long) data++, ectx->expr_buf), arg, ectx->expr_buf), &sets, ectx->expr_buf);
 		}
-		Object *obj = load_program(make_program(sets, ct_reg), ectx, ct_reg);
+		Object *obj = load_program(make_program(sets, ectx->expr_buf), ectx);
 		mutate_symbols(obj, ectx->ext_binds);
-		//destroy_buffer(ct_reg);
 		*cache = segment(obj, ".text");
 		return *cache;
 	}
@@ -483,11 +481,9 @@ void *init_function(union expression *function_expr, struct expansion_context *e
 	if(*cache) {
 		return *cache;
 	} else {
-		region ct_reg = create_buffer(0);
-		pre_visit_expressions(vgenerate_metas, &function_expr, (void*[]) {ct_reg, ectx});
-		Object *obj = load_program(make_program(lst(function_expr, nil, ct_reg), ct_reg), ectx, ct_reg);
+		pre_visit_expressions(vgenerate_metas, &function_expr, ectx);
+		Object *obj = load_program(make_program(lst(function_expr, nil, ectx->expr_buf), ectx->expr_buf), ectx);
 		mutate_symbols(obj, ectx->ext_binds);
-		//destroy_buffer(ct_reg);
 		*cache = (void *) function_expr->function.reference->reference.symbol->offset;
 		return *cache;
 	}
@@ -497,11 +493,9 @@ void *init_expression(union expression *expr, struct expansion_context *ectx, vo
 	if(*cache) {
 		return *cache;
 	} else {
-		region ct_reg = create_buffer(0);
-		pre_visit_expressions(vgenerate_metas, &expr, (void*[]) {ct_reg, ectx});
-		Object *obj = load_program(make_program(lst(expr, nil, ct_reg), ct_reg), ectx, ct_reg);
+		pre_visit_expressions(vgenerate_metas, &expr, ectx);
+		Object *obj = load_program(make_program(lst(expr, nil, ectx->expr_buf), ectx->expr_buf), ectx);
 		mutate_symbols(obj, ectx->ext_binds);
-		//destroy_buffer(ct_reg);
 		*cache = segment(obj, ".text");
 		return *cache;
 	}
@@ -510,7 +504,7 @@ void *init_expression(union expression *expr, struct expansion_context *ectx, vo
 union expression *generate_metaprogram(union expression *program, region ct_reg, struct expansion_context *ectx) {
 	union expression *s, *container = make_begin(nil, ct_reg);
 	foreach(s, program->function.expression->begin.expressions) {
-		void **cache = buffer_alloc(ectx->rt_reg, sizeof(void *));
+		void **cache = buffer_alloc(ectx->obj_buf, sizeof(void *));
 		*cache = NULL;
 		if(s->base.type == storage) {
 			list args = nil;
