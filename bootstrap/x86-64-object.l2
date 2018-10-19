@@ -127,10 +127,10 @@
 	(let (seg-buf ($(loc (@ obj-segs $obj) (@ sh-link $shdr) (unit))))
 		[+ $seg-buf (@ st-name $sym)]))
 
-(function symbol (l r) (`[* #2(unit)]$r))
+(function object-symbol (l r) (`[* #2(unit)]$r))
 
-(function make-symbol (name address reg) (with return
-	(let (sym [buffer-alloc $reg (symbol)]) (begin
+(function make-object-symbol (name address reg) (with return
+	(let (sym [buffer-alloc $reg (object-symbol)]) (begin
 		(setf sym-name $sym $name)
 		(setf sym-offset $sym $address)
 		{return $sym}))))
@@ -166,7 +166,7 @@
 								(if (and [= (or [= (@ st-shndx $sym) (shn-undef)] [= (@ st-shndx $sym) (shn-common)]) $flag]
 										(or [= (elf64-st-bind (@ st-info $sym)) (stb-global)]
 											[= (elf64-st-bind (@ st-info $sym)) (stb-weak)]))
-									[prepend [make-symbol [name-of $obj $shdr-buf $sym] (@ st-value $sym) $reg] syms $reg]
+									[prepend [make-object-symbol [name-of $obj $shdr-buf $sym] (@ st-value $sym) $reg] syms $reg]
 									(begin)))))
 				(begin))))
 		{return $syms}))))
