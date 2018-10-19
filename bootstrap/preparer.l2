@@ -233,6 +233,32 @@
 (function ectx-handler (l r) [mk-field $l $r #16 #8])
 (function ectx-expr-buf (l r) [mk-field $l $r #24 #8])
 
+(function init-storage (data storage-expr ectx cache)
+	(if $$cache $$cache (with return (begin
+		(storage expr-buf (@ ectx-expr-buf $ectx))
+		(storage sets nil)
+		(foreach (arg (@ expr-arguments $storage-expr)) (begin
+			[pre-visit-expressions vgenerate-metas arg $ectx]
+			[append (make-invokeN [make-literal set $expr-buf] ([make-literal $data $expr-buf] $arg) $expr-buf) sets $expr-buf]
+			[set data [+ $data (unit)]]))
+		[set $cache [segment [load-program-and-mutate [make-program $sets $expr-buf] $ectx] (" .text)]]
+		{return $$cache}))))
+
+(function init-function (function-expr ectx cache)
+	(if $$cache $$cache (with return (begin
+		[pre-visit-expressions vgenerate_metas function_expr $ectx]
+		(storage expr-buf (@ ectx-expr-buf $ectx))
+		[load-program-and-mutate [make-program [lst $function-expr nil $expr-buf] $expr-buf] $ectx]
+		[set $cache (@ sym-offset (@ expr-symbol (@ expr-reference function-expr)))]
+		{return $$cache}))))
+
+(function init-expression (expr ectx cache)
+	(if $$cache $$cache (with return (begin
+		[pre-visit-expressions vgenerate_metas expr $ectx]
+		(storage expr-buf (@ ectx-expr-buf $ectx))
+		[set $cache [segment [load-program-and-mutate [make-program [lst $expr nil $expr-buf] $expr-buf] $ectx] (" .text)]]
+		{return $$cache}))))
+
 (function generate-metaprogram (program ectx) (with return (begin
 	(storage c nil)
 	(storage expr-buf (@ ectx-expr-buf $ectx))

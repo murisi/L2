@@ -399,8 +399,7 @@ void *init_storage(unsigned long *data, union expression *storage_expr, struct e
 			append(make_invoke2(make_literal((unsigned long) _set_, ectx->expr_buf),
 				make_literal((unsigned long) data++, ectx->expr_buf), arg, ectx->expr_buf), &sets, ectx->expr_buf);
 		}
-		Object *obj = load_program_and_mutate(make_program(sets, ectx->expr_buf), ectx);
-		*cache = segment(obj, ".text");
+		*cache = segment(load_program_and_mutate(make_program(sets, ectx->expr_buf), ectx), ".text");
 		return *cache;
 	}
 }
@@ -410,7 +409,7 @@ void *init_function(union expression *function_expr, struct expansion_context *e
 		return *cache;
 	} else {
 		pre_visit_expressions(vgenerate_metas, &function_expr, ectx);
-		Object *obj = load_program_and_mutate(make_program(lst(function_expr, nil, ectx->expr_buf), ectx->expr_buf), ectx);
+		load_program_and_mutate(make_program(lst(function_expr, nil, ectx->expr_buf), ectx->expr_buf), ectx);
 		*cache = (void *) function_expr->function.reference->reference.symbol->offset;
 		return *cache;
 	}
@@ -421,8 +420,7 @@ void *init_expression(union expression *expr, struct expansion_context *ectx, vo
 		return *cache;
 	} else {
 		pre_visit_expressions(vgenerate_metas, &expr, ectx);
-		Object *obj = load_program_and_mutate(make_program(lst(expr, nil, ectx->expr_buf), ectx->expr_buf), ectx);
-		*cache = segment(obj, ".text");
+		*cache = segment(load_program_and_mutate(make_program(lst(expr, nil, ectx->expr_buf), ectx->expr_buf), ectx), ".text");
 		return *cache;
 	}
 }
