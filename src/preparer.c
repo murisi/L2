@@ -332,9 +332,6 @@ void classify_program_symbols(union expression *expr) {
 				classify_program_symbols(t);
 			}
 			break;
-		} case meta: {
-			classify_program_symbols(expr->meta.reference);
-			break;
 		} case continuation: case with: {
 			expr->continuation.reference->reference.symbol->type = static_storage;
 			union expression *t;

@@ -9,7 +9,7 @@
 (function -jump- (l r) [mk# $l $r #8])
 (function -continuation- (l r) [mk# $l $r #9])
 (function -assembly- (l r) [mk# $l $r #10])
-(function -non-primitive- (l r) [mk# $l $r #11])
+(function -meta- (l r) [mk# $l $r #11])
 
 (function static-storage (l r) [mk# $l $r #0])
 (function dynamic-storage (l r) [mk# $l $r #1])
@@ -20,17 +20,16 @@
 (function undefined-state (l r) [mk# $l $r #0])
 (function defined-state (l r) [mk# $l $r #1])
 
-(function symbol (l r) [mk# $l $r #56])
+(function symbol (l r) [mk# $l $r #48])
 
 (function sym-name (l r) [mk-field $l $r #0 #8])
 (function sym-offset (l r) [mk-field $l $r #8 #8])
 (function sym-size (l r) [mk-field $l $r #16 #8])
 (function sym-definition (l r) [mk-field $l $r #24 #8])
-(function sym-function (l r) [mk-field $l $r #32 #8])
-(function sym-context (l r) [mk-field $l $r #40 #8])
-(function sym-type (l r) [mk-field $l $r #48 #1])
-(function sym-scope (l r) [mk-field $l $r #49 #1])
-(function sym-state (l r) [mk-field $l $r #50 #1])
+(function sym-context (l r) [mk-field $l $r #32 #8])
+(function sym-type (l r) [mk-field $l $r #40 #1])
+(function sym-scope (l r) [mk-field $l $r #41 #1])
+(function sym-state (l r) [mk-field $l $r #42 #1])
 
 (function make-symbol (type scope state name definition r) (with return
 	(let (sym [buffer-alloc $r (symbol)]) (begin
@@ -39,10 +38,9 @@
 		(setf sym-state $sym $state)
 		(setf sym-name $sym $name)
 		(setf sym-definition $sym $definition)
-		(setf sym-function $sym (null))
 		{return $sym}))))
 
-(function expression (l r) [mk# $l $r #80])
+(function expression (l r) [mk# $l $r #64])
 
 (function expr-type (l r) [mk-field $l $r #0 #8])
 (function expr-parent (l r) [mk-field $l $r #8 #8])
@@ -53,7 +51,7 @@
 (function expr-opcode (l r) [mk-field $l $r #24 #8])
 (++ Only for type(s) (-assembly-) (-storage-) (-invoke-) (-jump-))
 (function expr-arguments (l r) [mk-field $l $r #32 #8])
-(++ Only for type(s) (-storage-) (-invoke-) (-jump-) (-function-) (-continuation-) (-with-) (-non-primitive-))
+(++ Only for type(s) (-storage-) (-invoke-) (-jump-) (-function-) (-continuation-) (-with-) (-meta-))
 (function expr-reference (l r) [mk-field $l $r #24 #8])
 (++ Only for type(s) (-jump-))
 (function expr-short-circuit (l r) [mk-field $l $r #40 #8])
@@ -69,19 +67,14 @@
 (++ Only for type(s) (-function-))
 (function expr-symbols (l r) [mk-field $l $r #48 #8])
 (function expr-expression-return-symbol (l r) [mk-field $l $r #56 #8])
-(function expr-dynamic-parent (l r) [mk-field $l $r #64 #8])
-(function expr-frame-offset (l r) [mk-field $l $r #72 #8])
 (++ Only for type(s) (-continuation-) (-with-))
 (function expr-cont-instr-ref (l r) [mk-field $l $r #48 #8])
 (function expr-escapes (l r) [mk-field $l $r #56 #8])
 (++ Only for type(s) (-reference-))
 (function expr-name (l r) [mk-field $l $r #24 #8])
 (function expr-symbol (l r) [mk-field $l $r #32 #8])
-(++ Only for type(s) (-non-primitive-))
+(++ Only for type(s) (-meta-))
 (function expr-argument (l r) [mk-field $l $r #32 #8])
-(function expr-static-symbols (l r) [mk-field $l $r #40 #8])
-(function expr-dynamic-symbols (l r) [mk-field $l $r #48 #8])
-(function expr-dynamic-context (l r) [mk-field $l $r #56 #8])
 
 (function make-literal (value reg) (with return
 	(let (t [buffer-alloc $reg (expression)]) (begin
@@ -125,8 +118,6 @@
 		(setf expr-symbols $func nil)
 		(setf expr-expression $func $expr)
 		(setf expr-parent $expr $func)
-		(setf expr-dynamic-parent $expr (null))
-		(setf expr-frame-offset $expr #0)
 		{return $func}))))
 
 (function make-functionN (l r)
@@ -204,15 +195,12 @@
 		(foreach (arg $args) (setf expr-parent $arg $u))
 		{return $u}))))
 
-(function make-non-primitive (ref arg reg) (with return
+(function make-meta (ref arg reg) (with return
 	(let (u [buffer-alloc $reg (expression)]) (begin
-		(setf expr-type $u (-non-primitive-))
+		(setf expr-type $u (-meta-))
 		(setf expr-reference $u $ref)
 		(setf expr-parent $ref $u)
 		(setf expr-argument $u $arg)
-		(setf expr-dynamic-context $u (true))
-		(setf expr-static-symbols $u nil)
-		(setf expr-dynamic-symbols $u nil)
 		{return $u}))))
 
 (function make-if (condition consequent alternate reg) (with return
@@ -329,7 +317,7 @@
 			[write-uint (stdout) (@ expr-value $s)]
 			[write-str (stdout) (" (rparen))]))
 		
-		((-non-primitive-) (begin
+		((-meta-) (begin
 			[write-str (stdout) (" (lparen))]
 			[print-expression (@ expr-reference $s)]
 			[write-str (stdout) (" (space))]
@@ -412,7 +400,7 @@
 								{$handler special-form-error $d [@cadr $d]})))))
 						[to-string [@cadr $d] $reg] (build-expression-literal-len) #0}) $reg])))
 		
-		[make-non-primitive [build-expression [@car $d] $reg $handler] [@cdr $d] $reg]))))
+		[make-meta [build-expression [@car $d] $reg $handler] [@cdr $d] $reg]))))
 
 (let (r [create-buffer #0]) [print-expression [make-begin [llst [make-reference (" Hellodude) $r] [make-literal #20 $r] nil $r] $r]])
 
