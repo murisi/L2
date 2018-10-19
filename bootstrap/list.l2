@@ -19,14 +19,6 @@
 				[meta:map $labels $r (function make-update (a r) (`[set ,$a [@cdr $,$a]]$r))$r]$r]))$r)
 			[meta:zip $labels [meta:map $bindings (null) @frst $r]$r]$r]$r]$r]))
 
-(function foreach* (s r)
-	(let (bindings [meta:reverse [@rst [meta:reverse $s $r]]$r]) (body [@fst [meta:reverse $s $r]])
-		[lst (` let $r) [meta:reverse [lst
-			(`(while (not [emt? ($($(,[@ffst $bindings])))]) (,[llst (` begin $r) $body
-				[meta:map $bindings $r (function make-update (a r)
-					(`[set (,[@fst $a]) (& cdr ($($(,[@fst $a]))))]$r))$r]$r]))$r)
-			$bindings $r]$r]$r]))
-
 (function list (l r)
 	(with return (let (l [meta:reverse $l $r])
 		{(continuation loop (out in)
@@ -99,7 +91,7 @@
 			{loop [@cdr $l] [+ #1 $size]})) $l #0}))
 
 (function find (pred l ctx) (with return (begin
-	(foreach* (s $l)
+	(until (s $l) [nil? $$s] (& cdr $$s)
 		(if [$pred [@fst $$s] $ctx] {return $s} (begin)))
 	{return (null)})))
 
