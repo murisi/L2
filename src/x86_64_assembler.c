@@ -13,7 +13,7 @@
 #define ALIGNMENT 8
 
 void mem_write(char *mem, int *idx, void *bytes, int cnt) {
-	int i, end = *idx + cnt;
+	int end = *idx + cnt;
 	for(; *idx != end; (*idx)++, bytes++) {
 		mem[*idx] = *((unsigned char *) bytes);
 	}

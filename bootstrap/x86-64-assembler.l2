@@ -1,3 +1,13 @@
+(function mem-write (mem idx bytes cnt) (with return
+	(let (end [+ $$idx $cnt])
+		{(continuation loop (bytes)
+			(if [= $$idx $end]
+				{return (begin)}
+				(begin
+					[setb [+ $mem $$idx] [getb $bytes]]
+					[set+ $idx #1]
+					{loop [+ $bytes #1]}))) $bytes})))
+
 (function assemble (generated-expressions bin pos symtab relas) (begin
 	[set $pos #0]
 	(foreach (n $generated-expressions)
@@ -138,7 +148,7 @@
 
 (function write-elf (generated-expressions symbols bin pos elfreg) (begin
 	[set $pos #0]
-	[set $bin [buffer-alloc $elfreg [max-elf-size $generate-expressions $symbols]]]
+	[set $bin [buffer-alloc $elfreg [max-elf-size $generated-expressions $symbols]]]
 	(storage temp-buf [create-buffer #0])
 	
 	(storage ehdr [buffer-alloc $temp-buf (elf64-ehdr)])
@@ -210,7 +220,7 @@
 			[set+ bss-ptr [pad-size (@ sym-size $sym) (word-size)]])
 			(begin)))
 	
-	(foreach (e $generate-expressions)
+	(foreach (e $generated-expressions)
 		(if (and [= (@ expr-opcode $e) (label)] [= (@ sym-scope(@ expr-symbol[@fst(@ expr-arguments $e)])) (local-scope)]) (begin
 			(storage ref [@fst(@ expr-arguments $e)])
 			(if (@ expr-name $ref)
@@ -269,7 +279,7 @@
 			[set+ sym-ptr #1])
 			(begin)))
 	
-	(foreach (e $generate-expressions)
+	(foreach (e $generated-expressions)
 		(if (and [= (@ expr-opcode $e) (label)] [= (@ sym-scope(@ expr-symbol[@fst(@ expr-arguments $e)])) (global-scope)]) (begin
 			(storage ref [@fst(@ expr-arguments $e)])
 			(if (@ expr-name $ref)
