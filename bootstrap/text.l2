@@ -32,22 +32,26 @@
 						(with return {(continuation _ (phs num)
 							(if $num
 								{_ [lst (` #0 $r) $phs $r] [- $num #1]}
-								{return $phs})) emt [+[/ $index (unit)]#1]}) $r] [meta:reverse [llst
-					(`{dquote:return dquote:str}$r)
-					(`[setb [+ dquote:str (,[value->literal [- $index #1]$r])] #0]$r)
-					$instrs $r]$r]$r]))$r)}
+								{return $phs})) emt [+[/ $index (unit)]#1]}) $r]
+					[meta:reverse [lst (`{dquote:return dquote:str}$r) $instrs $r]$r]$r]))$r)}
+		
+		(if (and [nil? [@fst $str]] [nil? [@rst $str]])
+			{add-word [@rst $str] [+ $index #1]
+				[lst (`[setb [+ dquote:str (,[value->literal $index $r])] #0]$r) $instrs $r]}
+				
+		(if (and [nil? [@fst $str]] [symbol? [@frst $str]])
+			{add-word [@rst $str] [+ $index #1]
+				[lst (`[setb [+ dquote:str (,[value->literal $index $r])] #32]$r) $instrs $r]}
+		
+		(if [nil? [@fst $str]] {add-word [@rst $str] $index $instrs}
+				
+		(if [symbol? [@fst $str]]
+			{add-word [lst [@rfst $str] [@rst $str] $r] [+ $index #1]
+				[lst (`[setb [+ dquote:str (,[value->literal $index $r])]
+					(,[char [lst [lst [@ffst $str] emt $r] emt $r]$r emt])]$r) $instrs $r]}
 			
-			{(continuation add-char (word index instrs)
-					(if [emt? $word]
-						{add-word [@rst $str] [+ $index #1]
-							[lst (`[setb [+ dquote:str (,[value->literal $index $r])] #32]$r) $instrs $r]}
-						(if [symbol? $word]
-							{add-char [@rst $word] [+ $index #1]
-								[lst (`[setb [+ dquote:str (,[value->literal $index $r])]
-									(,[char [lst [lst [@fst $word] emt $r] emt $r]$r emt])]$r) $instrs $r]}
-							{add-char emt [+ $index #1]
-								[lst (`[setb [+ dquote:str (,[value->literal $index $r])] ,$word]$r) $instrs $r]})))
-				[@fst $str] $index $instrs})) $l #0 emt}))
+			{add-word [@rst $str] [+ $index #1]
+				[lst (`[setb [+ dquote:str (,[value->literal $index $r])] (,[@fst $str])]$r) $instrs $r]})))))) $l #0 emt}))
 
 (++ The following functions implement ASCII control characters. These can be
 	embedded into uses of the quote function above. So for example, the L2

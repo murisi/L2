@@ -1,4 +1,7 @@
 (function sh-count (l r) [mk# $l $r #7])
+(function write-elf-alignment (l r) [mk# $l $r #8])
+(function write-elf-max-instr-len (l r) [mk# $l $r #15])
+(function write-elf-max-instr-fields (l r) [mk# $l $r #2])
 
 (function write-elf (generated-expressions symbols bin pos elfreg) (begin
 	[set $pos #0]
@@ -6,15 +9,15 @@
 	(storage temp-buf [create-buffer #0])
 	
 	(storage ehdr [buffer-alloc $temp-buf (elf64-ehdr)])
-	(setf ei-mag0 (@ e-ident $ehdr) (elfmag0))
-	(setf ei-mag1 (@ e-ident $ehdr) (elfmag1))
-	(setf ei-mag2 (@ e-ident $ehdr) (elfmag2))
-	(setf ei-mag3 (@ e-ident $ehdr) (elfmag3))
-	(setf ei-class (@ e-ident $ehdr) (elfclass64))
-	(setf ei-data (@ e-ident $ehdr) (elfdata2lsb))
-	(setf ei-version (@ e-ident $ehdr) #1)
-	(setf ei-osabi (@ e-ident $ehdr) (elfosabi-sysv))
-	(setf ei-abiversion (@ e-ident $ehdr) #0)
+	(setf ei-mag0 (& e-ident $ehdr) (elfmag0))
+	(setf ei-mag1 (& e-ident $ehdr) (elfmag1))
+	(setf ei-mag2 (& e-ident $ehdr) (elfmag2))
+	(setf ei-mag3 (& e-ident $ehdr) (elfmag3))
+	(setf ei-class (& e-ident $ehdr) (elfclass64))
+	(setf ei-data (& e-ident $ehdr) (elfdata2lsb))
+	(setf ei-version (& e-ident $ehdr) #1)
+	(setf ei-osabi (& e-ident $ehdr) (elfosabi-sysv))
+	(setf ei-abiversion (& e-ident $ehdr) #0)
 	
 	(until (i #7) [= $i (ei-nident)] [+ $i #1] [setb (loc(& e-ident $ehdr)$i(byte)) #0])
 	
@@ -25,7 +28,7 @@
 	(setf e-phoff $ehdr #0)
 	(setf e-shoff $ehdr (elf64-ehdr))
 	(setf e-ehsize $ehdr (elf64-ehdr))
-	(setf e-phentsize $ehdr (elf64-phdr))
+	(setf e-phentsize $ehdr #0)
 	(setf e-phnum $ehdr #0)
 	(setf e-shentsize $ehdr (elf64-shdr))
 	(setf e-shnum $ehdr (sh-count))
@@ -46,7 +49,7 @@
 	(setf st-shndx $sym-ptr (shn-undef))
 	[set+ sym-ptr (elf64-sym)]
 	
-	(storage strtab-padded-len [pad-size $strtab-len (alignment)])
+	(storage strtab-padded-len [pad-size $strtab-len (write-elf-alignment)])
 	(storage strtab [buffer-alloc $temp-reg $strtab-padded-len])
 	(storage strtabptr $strtab)
 	[setb $strtabptr #0]
@@ -153,8 +156,8 @@
 			(begin)))
 	
 	(storage text-len (begin))
-	(storage max-text-sec-len [pad-size [* (max-instr-len) [length $generated-expressions]] (alignment)])
-	(storage max-rela-sec-len [* (max-instr-fields) [* [length $generated-expressions] (elf64-rela)]])
+	(storage max-text-sec-len [pad-size [* (write-elf-max-instr-len) [length $generated-expressions]] (write-elf-alignment)])
+	(storage max-rela-sec-len [* (write-elf-max-instr-fields) [* [length $generated-expressions] (elf64-rela)]])
 	
 	(storage text [buffer-alloc $temp-reg $max-text-sec-len])
 	(storage relas [buffer-alloc $temp-reg $max-rela-sec-len])
@@ -175,7 +178,7 @@
 	(setf sh-entsize $undef-shdr #0)
 	[mem-write $$bin $pos $undef-shdr (elf64-shdr)]
 	
-	(storage shstrtab-padded-len [pad-size [strvlen(shstrtab)] (alignment)])
+	(storage shstrtab-padded-len [pad-size [strvlen(shstrtab)] (write-elf-alignment)])
 	(storage shstrtab-padded [buffer-alloc $temp-reg $shstrtab-padded-len])
 	[memcpy $shstrtab-padded (shstrtab) [strvlen(shstrtab)]]
 	
