@@ -488,3 +488,15 @@
 	[mem-write $$bin $pos $syms [* $sym-count (elf64-sym)]]
 	[mem-write $$bin $pos $relas [- $rela-ptr $relas]]
 	[destroy-buffer $temp-buf]))
+
+(function symbol-offsets-to-addresses (asms symbols obj) (begin
+	(foreach (sym $symbols)
+		(if (and [= (@ sym-type $sym) (static-storage)] [= (@ sym-state $sym) (defined-state)])
+			(setf sym-offset $sym [+ (@ sym-offset $sym) [segment $obj (" .bss)]])
+			(begin)))
+	
+	(foreach (l $asms)
+		(if [= (@ expr-opcode $l) (label)]
+			(let (sym (@ expr-symbol[@fst(@ expr-arguments $l)]))
+				(setf sym-offset $sym [+ (@ sym-offset $sym) [segment $obj (" .text)]]))
+			(begin)))))
