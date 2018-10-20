@@ -1,3 +1,9 @@
+(function instr-mod (l r) [mk# $l $r #6])
+(function instr-reg (l r) [mk# $l $r #3])
+(function instr-rm (l r) [mk# $l $r #0])
+(function instr-base (l r) [mk# $l $r #0])
+(function instr-index (l r) [mk# $l $r #3])
+(function instr-ss (l r) [mk# $l $r #6])
 (function rex-w (l r) [mk# $l $r #3])
 (function rex-r (l r) [mk# $l $r #2])
 (function rex-x (l r) [mk# $l $r #1])
@@ -13,6 +19,22 @@
 					[set+ $idx #1]
 					{loop [+ $bytes #1]}))) $bytes})))
 
+(function write-mr-instr (bin pos opcode reg rm m rexw) (begin
+	(storage mod (if $m #2 #3))
+	(storage modrm [lor [<< $mod (instr-mod)] [lor [<< [land $reg (hex 7)] (instr-reg)] [<< [land $rm (hex 7)] (instr-rm)]]])
+	(storage has-sib (and $m (or [= $rm (rsp)] [= $rm (r12)])))
+	(storage sib (begin))
+	(if $has-sib [set sib [lor [<< #4 (instr-index)] [lor [<< [land $rm (hex 7)] (instr-base)] [<< #0 (instr-ss)]]]] (begin))
+	(storage rex [<< #4 #4])
+	(if $rexw [set rex [lor $rex [<< #1 (rex-w)]]] (begin))
+	(if [land $reg (hex 8)] [set rex [lor $rex [<< #1 (rex-r)]]] (begin))
+	[set rex [lor $rex [<< #0 (rex-x)]]]
+	(if [land $rm (hex 8)] [set rex [lor $rex [<< #1 (rex-b)]]] (begin))
+	[mem-write $bin $pos rex #1]
+	[mem-write $bin $pos opcode #1]
+	[mem-write $bin $pos modrm #1]
+	(if $has-sib [mem-write $bin $pos sib #1] (begin))))
+
 (function write-static-value (bin pos expr bytes symtab relas) (begin
 	(storage val #0)
 	
@@ -25,7 +47,7 @@
 		(setf r-addend $$relas #0)
 		[set+ $relas (elf64-rela)])
 		
-	(if (and [= (@ expr-type $expr) (assembly)] [= (@ expr-opcode $expr) (stval-add-off-to-ref)] [= $bytes #8]) (begin
+	(if (and [= (@ expr-type $expr) (-assembly-)] [= (@ expr-opcode $expr) (stval-add-off-to-ref)] [= $bytes #8]) (begin
 		(storage ref [@fst(@ expr-arguments $expr)])
 		(storage offset [@frst(@ expr-arguments $expr)])
 		(setf r-offset $$relas $$pos)
@@ -33,7 +55,7 @@
 		(setf r-addend $$relas (@ expr-value $offset))
 		[set+ $relas (elf64-rela)])
 		
-	(if (and [= (@ expr-type $expr) (assembly)] [= (@ expr-opcode $expr) (stval-sub-rip-from-ref)] [= $byes #4]) (begin
+	(if (and [= (@ expr-type $expr) (-assembly-)] [= (@ expr-opcode $expr) (stval-sub-rip-from-ref)] [= $bytes #4]) (begin
 		(storage ref [@fst(@ expr-arguments $expr)])
 		(setf r-offset $$relas $$pos)
 		(setf r-info $$relas (elf64-r-info [- (@ sym-context(@ expr-symbol $ref)) $symtab] (r-x86-64-pc32)))
