@@ -1,8 +1,6 @@
 .globl syscall
 .globl setjump
 .globl longjump
-.globl fpoffset
-.globl addfp
 .globl _start
 .text
 /*
@@ -42,16 +40,6 @@ longjump:
 	movq 48(%rdi), %r15
 	movq 56(%rdi), %rsp
 	jmp *8(%rdi)
-
-fpoffset:
-	movq 0(%rbp), %rax
-	subq %rbp, %rax
-	ret
-
-addfp:
-	movq %rdi, %rax
-	addq %rbp, %rax
-	ret
 
 _start:
 	movq 0(%rsp), %rdi
