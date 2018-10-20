@@ -37,6 +37,12 @@ unsigned long strlen(const char *str) {
 	return i;
 }
 
+int strvlen(char *strv) {
+	int i;
+	for(i = 1; strv[i - 1] || strv[i]; i++);
+	return i;
+}
+
 char *strrchr(const char *s, int c) {
 	const char *t = s + strlen(s);
 	for(; t >= s; t--) {

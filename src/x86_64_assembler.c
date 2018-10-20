@@ -94,9 +94,7 @@ void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sy
 			case LABEL: {
 				union expression *label_ref = (union expression *) n->assembly.arguments->fst;
 				Elf64_Sym *sym = label_ref->reference.symbol->context;
-				if(label_ref->reference.symbol) {
-					label_ref->reference.symbol->offset = (unsigned long) *pos;
-				}
+				label_ref->reference.symbol->offset = (unsigned long) *pos;
 				sym->st_value = *pos;
 				break;
 			} case LEAQ_OF_MDB_INTO_REG: {
@@ -243,12 +241,6 @@ int measure_symtab(list generated_expressions, list symbols) {
 		}
 	}}
 	return sym_count;
-}
-
-int strvlen(char *strv) {
-	int i;
-	for(i = 1; strv[i - 1] || strv[i]; i++);
-	return i;
 }
 
 #define SHSTRTAB "\0.shstrtab\0.text\0.strtab\0.symtab\0.bss\0.rela.text\0"

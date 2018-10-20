@@ -1,4 +1,115 @@
-(function sh-count (l r) [mk# $l $r #7])
+(function assemble (generated-expressions bin pos symtab relas) (begin
+	[set $pos #0]
+	(foreach (n $generated-expressions)
+		(switch = (@ expr-opcode $n)
+			((label) (begin
+				(storage label-ref [@fst(@ expr-arguments $n)])
+				(setf sym-offset (@ expr-symbol $label-ref) $$pos)
+				(setf st-value (@ sym-context(@ expr-symbol $label-ref)) $$pos)))
+				
+			((leaq-of-mdb-into-reg) (begin
+				(storage opcode (hex 8D))
+				(storage reg (@ expr-opcode [@frrst (@ expr-arguments $n)])) (++ Dest)
+				(storage rm (@ expr-opcode [@frst (@ expr-arguments $n)])) (++ Src)
+				[write-mr-instr $bin $pos $opcode $reg $rm (true) (true)]
+				[write-static-value $bin $pos [@fst (@ expr-arguments $n)] #4 $symtab $relas]))
+				
+			((movq-from-reg-into-mdb) (begin
+				(storage opcode (hex 89))
+				(storage reg (@ expr-opcode [@fst (@ expr-arguments $n)])) (++ Src)
+				(storage rm (@ expr-opcode [@frrst (@ expr-arguments $n)])) (++ Dest)
+				[write-mr-instr $bin $pos $opcode $reg $rm (true) (true)]
+				[write-static-value $bin $pos [@frst (@ expr-arguments $n)] #4 $symtab $relas]))
+				
+			((jmp-rel) (begin
+				(storage opcode (hex E9))
+				[mem-write $bin $pos opcode #1]
+				[write-static-value $bin $pos [@fst (@ expr-arguments $n)] #4 $symtab $relas]))
+				
+			((movq-mdb-to-reg) (begin
+				(storage opcode (hex 8B))
+				(storage reg (@ expr-opcode [@frrst (@ expr-arguments $n)])) (++ Dest)
+				(storage rm (@ expr-opcode [@frst (@ expr-arguments $n)])) (++ Src)
+				[write-mr-instr $bin $pos $opcode $reg $rm (true) (true)]
+				[write-static-value $bin $pos [@fst (@ expr-arguments $n)] #4 $symtab $relas]))
+				
+			((pushq-reg) (begin
+				(storage opcode (hex 50))
+				(storage reg (@ expr-opcode [@fst (@ expr-arguments $n)])) (++ Dest)
+				[write-o-instr $bin $pos $opcode $reg]))
+				
+			((movq-reg-to-reg) (begin
+				(storage opcode (hex 8B))
+				(storage reg (@ expr-opcode [@frst (@ expr-arguments $n)])) (++ Dest)
+				(storage rm (@ expr-opcode [@fst (@ expr-arguments $n)])) (++ Src)
+				[write-mr-instr $bin $pos $opcode $reg $rm (false) (true)]))
+				
+			((subq-imm-from-reg) (begin
+				(storage opcode (hex 81))
+				(storage reg #5)
+				(storage rm (@ expr-opcode [@frst (@ expr-arguments $n)])) (++ Dest)
+				[write-mr-instr $bin $pos $opcode $reg $rm (false) (true)]
+				[mem-write $bin $pos (& expr-value [@fst (@ expr-arguments $n)]) #4]))
+				
+			((addq-imm-to-reg) (begin
+				(storage opcode (hex 81))
+				(storage reg #0)
+				(storage rm (@ expr-opcode [@frst (@ expr-arguments $n)])) (++ Dest)
+				[write-mr-instr $bin $pos $opcode $reg $rm (false) (true)]
+				[mem-write $bin $pos (& expr-value [@fst (@ expr-arguments $n)]) #4]))
+				
+			((popq-reg) (begin
+				(storage opcode (hex 58))
+				(storage reg (@ expr-opcode [@fst (@ expr-arguments $n)])) (++ Dest)
+				[write-o-instr $bin $pos $opcode $reg]))
+				
+			((leave) [mem-write $bin $pos (storage opcode (hex C9)) #1])
+				
+			((ret) [mem-write $bin $pos (storage opcode (hex C3)) #1])
+				
+			((jmp-to-reg) (begin
+				(storage opcode (hex FF))
+				(storage reg #4)
+				(storage rm (@ expr-opcode [@fst (@ expr-arguments $n)]))
+				[write-mr-instr $bin $pos $opcode $reg $rm (false) (false)]))
+				
+			((je-rel) (begin
+				(storage opcode1 (hex 0F))
+				(storage opcode2 (hex 84))
+				[mem-write $bin $pos opcode1 #1]
+				[mem-write $bin $pos opcode2 #1]
+				[write-static-value $bin $pos [@fst (@ expr-arguments $n)] #4 $symtab $relas]))
+				
+			((orq-reg-to-reg) (begin
+				(storage opcode (hex 0B))
+				(storage reg (@ expr-opcode [@frst (@ expr-arguments $n)])) (++ Dest)
+				(storage rm (@ expr-opcode [@fst (@ expr-arguments $n)])) (++ Src)
+				[write-mr-instr $bin $pos $opcode $reg $rm (false) (true)]))
+				
+			((movq-imm-to-reg) (begin
+				(storage opcode (hex B8))
+				(storage imm-expr [@fst (@ expr-arguments $n)])
+				(storage reg (@ expr-opcode [@frst (@ expr-arguments $n)])) (++ Dest)
+				(storage rd [land (hex 7) $reg])
+				(storage opcoderd [+ $opcode $rd])
+				(storage rex [<< #4 #4])
+				[set rex [lor $rex [<< #1 (rex-w)]]]
+				[set rex [lor $rex [<< #0 (rex-r)]]]
+				[set rex [lor $rex [<< #0 (rex-x)]]]
+				(if [land $reg (hex 8)] [set rex [lor $rex [<< #1 (rex-b)]]] (begin))
+				[mem-write $bin $pos rex #1]
+				[mem-write $bin $pos opcoderd #1]
+				[write-static-value $bin $pos $imm-expr #8 $symtab $relas]))
+				
+			((call-reg) (begin
+				(storage opcode (hex FF))
+				(storage reg #2)
+				(storage rm (@ expr-opcode [@fst (@ expr-arguments $n)]))
+				[write-mr-instr $bin $pos $opcode $reg $rm (false) (false)]))
+			
+			(begin)))))
+
+(function write-elf-sh-count (l r) [mk# $l $r #7])
 (function write-elf-alignment (l r) [mk# $l $r #8])
 (function write-elf-max-instr-len (l r) [mk# $l $r #15])
 (function write-elf-max-instr-fields (l r) [mk# $l $r #2])
@@ -31,7 +142,7 @@
 	(setf e-phentsize $ehdr #0)
 	(setf e-phnum $ehdr #0)
 	(setf e-shentsize $ehdr (elf64-shdr))
-	(setf e-shnum $ehdr (sh-count))
+	(setf e-shnum $ehdr (write-elf-sh-count))
 	(setf e-shstrndx $ehdr #1)
 	[mem-write $$bin $pos $ehdr (elf64-ehdr)]
 	
@@ -178,17 +289,18 @@
 	(setf sh-entsize $undef-shdr #0)
 	[mem-write $$bin $pos $undef-shdr (elf64-shdr)]
 	
-	(storage shstrtab-padded-len [pad-size [strvlen(shstrtab)] (write-elf-alignment)])
+	(storage shstrtab ("(nul).shstrtab(nul).text(nul).strtab(nul).symtab(nul).bss(nul).rela.text(nul)))
+	(storage shstrtab-padded-len [pad-size [strvlen $shstrtab] (write-elf-alignment)])
 	(storage shstrtab-padded [buffer-alloc $temp-reg $shstrtab-padded-len])
-	[memcpy $shstrtab-padded (shstrtab) [strvlen(shstrtab)]]
+	[memcpy $shstrtab-padded $shstrtab [strvlen $shstrtab]]
 	
 	(storage shstrtab-shdr [buffer-alloc $temp-reg (elf64-shdr)])
 	(setf sh-name $shstrtab-shdr #1)
 	(setf sh-type $shstrtab-shdr (sht-strtab))
 	(setf sh-flags $shstrtab-shdr #0)
 	(setf sh-addr $shstrtab-shdr #0)
-	(setf sh-offset $shstrtab-shdr [+ (elf64-ehdr) [* (sh-count) (elf64-shdr)]])
-	(setf sh-size $shstrtab-shdr [strvlen(shstrtab)])
+	(setf sh-offset $shstrtab-shdr [+ (elf64-ehdr) [* (write-elf-sh-count) (elf64-shdr)]])
+	(setf sh-size $shstrtab-shdr [strvlen $shstrtab])
 	(setf sh-link $shstrtab-shdr (shn-undef))
 	(setf sh-info $shstrtab-shdr #0)
 	(setf sh-addralign $shstrtab-shdr #0)
@@ -260,7 +372,7 @@
 	(setf sh-entsize $rela-shdr (elf64-rela))
 	[mem-write $$bin $pos $rela-shdr (elf64-shdr)]
 	
-	[mem-write $$bin $pos $shstrtab-padded $shdtrtab-padded-len]
+	[mem-write $$bin $pos $shstrtab-padded $shstrtab-padded-len]
 	[mem-write $$bin $pos $text $max-text-sec-len]
 	[mem-write $$bin $pos $strtab $strtab-padded-len]
 	[mem-write $$bin $pos $syms [* $sym-count (elf64-sym)]]
