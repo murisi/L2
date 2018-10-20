@@ -1,3 +1,8 @@
+(function rex-w (l r) [mk# $l $r #3])
+(function rex-r (l r) [mk# $l $r #2])
+(function rex-x (l r) [mk# $l $r #1])
+(function rex-b (l r) [mk# $l $r #0])
+
 (function mem-write (mem idx bytes cnt) (with return
 	(let (end [+ $$idx $cnt])
 		{(continuation loop (bytes)
@@ -7,6 +12,21 @@
 					[setb [+ $mem $$idx] [getb $bytes]]
 					[set+ $idx #1]
 					{loop [+ $bytes #1]}))) $bytes})))
+
+
+
+(function write-o-instr (bin pos opcode reg) (begin
+	(storage rd [land (hex 7) $reg])
+	(storage opcoderd [+ $opcode $rd])
+	(storage rex [<< #4 #4])
+	[set rex [lor $rex [<< #0 (rex-w)]]]
+	[set rex [lor $rex [<< #0 (rex-r)]]]
+	[set rex [lor $rex [<< #0 (rex-x)]]]
+	(if [land $reg (hex 8)] (begin
+		[set rex [lor $rex [<< #1 (rex-b)]]]
+		[mem-write $bin $pos rex #1])
+		(begin))
+	[mem-write $bin $pos opcoderd #1]))
 
 (function assemble (generated-expressions bin pos symtab relas) (begin
 	[set $pos #0]
@@ -119,6 +139,12 @@
 			
 			(begin)))))
 
+(storage shstrtab ("(nul).shstrtab(nul).text(nul).strtab(nul).symtab(nul).bss(nul).rela.text(nul)))
+(function write-elf-sh-count (l r) [mk# $l $r #7])
+(function write-elf-alignment (l r) [mk# $l $r #8])
+(function write-elf-max-instr-len (l r) [mk# $l $r #15])
+(function write-elf-max-instr-fields (l r) [mk# $l $r #2])
+
 (function measure-strtab (generated-expressions symbols) (with return (begin
 	(storage strtab-len #1)
 	
@@ -130,7 +156,7 @@
 	(foreach (e $generated-expressions)
 		(if [= (@ expr-opcode $e) (label)]
 			(let (label-str (@ expr-name [@fst (@ expr-arguments $e)]))
-				(if $label_str [set strtab-len [+ [strlen $label-str] #1]] (begin)))
+				(if $label-str [set strtab-len [+ [strlen $label-str] #1]] (begin)))
 			(begin)))
 	
 	{return $strtab-len})))
@@ -138,13 +164,15 @@
 (function measure-symtab (generated-expressions symbols) (with return (begin
 	(storage sym-count #1)
 	(foreach (sym $symbols) [set+ sym-count #1])
-	(foreach (e $generated_expressions) (if [= (@ expr-opcode $e) (label)] [set+ sym-count #1] (begin)))
+	(foreach (e $generated-expressions) (if [= (@ expr-opcode $e) (label)] [set+ sym-count #1] (begin)))
 	{return $sym-count})))
 
-(function write-elf-sh-count (l r) [mk# $l $r #7])
-(function write-elf-alignment (l r) [mk# $l $r #8])
-(function write-elf-max-instr-len (l r) [mk# $l $r #15])
-(function write-elf-max-instr-fields (l r) [mk# $l $r #2])
+(function max-elf-size (generated-expressions symbols)
+	[+ (elf64-ehdr) [+ [* (elf64-shdr) (write-elf-sh-count)] [+ [pad-size [strvlen $shstrtab] (write-elf-alignment)]
+		[+ [pad-size [* (write-elf-max-instr-len) [length $generated-expressions]] (write-elf-alignment)]
+		[+ [pad-size [measure-strtab $generated-expressions $symbols] (write-elf-alignment)]
+		[+ [* (elf64-sym) [measure-symtab $generated-expressions $symbols]]
+		[* (elf64-rela) [* (write-elf-max-instr-fields) [length $generated-expressions]]]]]]]]])
 
 (function write-elf (generated-expressions symbols bin pos elfreg) (begin
 	[set $pos #0]
@@ -321,7 +349,6 @@
 	(setf sh-entsize $undef-shdr #0)
 	[mem-write $$bin $pos $undef-shdr (elf64-shdr)]
 	
-	(storage shstrtab ("(nul).shstrtab(nul).text(nul).strtab(nul).symtab(nul).bss(nul).rela.text(nul)))
 	(storage shstrtab-padded-len [pad-size [strvlen $shstrtab] (write-elf-alignment)])
 	(storage shstrtab-padded [buffer-alloc $temp-buf $shstrtab-padded-len])
 	[memcpy $shstrtab-padded $shstrtab [strvlen $shstrtab]]
