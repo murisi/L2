@@ -346,7 +346,15 @@
 		[set asms [reverse $asms $ct-reg]]
 		(storage objdest (begin))
 		(storage objdest-sz (begin))
-		[write-elf $asms $symbols objdest objdest-sz $ct-reg])
+		[write-elf $asms $symbols objdest objdest-sz $ct-reg]
+		(storage obj [load $objdest $objdest-sz (@ ectx-obj-buf $ectx) (@ ectx-handler $ectx)])
+		(storage thefile [myopen (" thetestingfile.o)])
+		[write $thefile $objdest $objdest-sz]
+		[close $thefile]
+		(storage mytesting [immutable-symbols $obj $ct-reg])
+		[write-str (stdout) (" Made it here!)]
+		[write-uint (stdout) [length $mytesting]]
+		(foreach (okay $mytesting) [write-str (stdout) (@ sym-name $okay)]))
 	(handler (continuation _ (code arg0 arg1 arg2 arg3) (begin
 		(switch = $code
 			(multiple-definition-error [write-str (stdout) (" Multiple definition error.)])
