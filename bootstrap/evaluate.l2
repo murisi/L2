@@ -1,4 +1,4 @@
-(function load-expressions (program ectx) (with return (begin
+(function load-program (program ectx) (with return (begin
 	(storage ct-reg (@ ectx-expr-buf $ectx))
 	[visit-expressions vfind-multiple-definitions program (@ ectx-handler $ectx)]
 	[classify-program-symbols (@ expr-expression $program)]
@@ -47,7 +47,7 @@
 			(while [after-leading-space $src-buf $src-sz pos]
 				[append [build-expression [build-fragment $src-buf $src-sz pos $expr-buf $handler] $expr-buf $handler]
 					expressions $expr-buf])
-			[set obj [load-expressions [generate-metaprogram [make-program $expressions $expr-buf] ectx] ectx]])
+			[set obj [load-program [generate-metaprogram [make-program $expressions $expr-buf] ectx] ectx]])
 			
 		(if (and $dot [str= $dot (" .o)]) (begin
 			(storage obj-fd [open $src])
@@ -60,9 +60,9 @@
 			(begin)))
 		
 		[append $obj objects $obj-buf]
-		[append-list (& ectx-symbols $ectx) [immutable-symbols $obj $obj-buf]]))
+		[append-list (& ectx-symbols ectx) [immutable-symbols $obj $obj-buf]]))
 	
-	(foreach (obj $objects) [mutate-symbols $obj (@ ectx-symbols $ectx)])
+	(foreach (obj $objects) [mutate-symbols $obj (@ ectx-symbols ectx)])
 	(foreach (obj $objects) [[segment $obj (" .text)]])
 	
 	[destroy-buffer $expr-buf]
@@ -74,7 +74,7 @@
 	(storage ms [mutable-symbols $obj $temp-reg])
 	(storage missing-sym [not-subset (function symbol= (sym1 sym2) [str= (@ sym-name $sym1) (@ sym-name $sym2)]) $ms
 		(@ ectx-symbols $ectx)])
-	(if $missing-sym {(@ ectx-handler $ectx) (@ sym-name $missing-sym)} (begin))
+	(if $missing-sym {(@ ectx-handler $ectx) undefined-reference-error (@ sym-name $missing-sym)} (begin))
 	[destroy-buffer $temp-reg]
 	[mutate-symbols $obj (@ ectx-symbols $ectx)]
 	{return $obj})))
@@ -83,7 +83,7 @@
 	(do-let
 			[evaluate-files [@cdr[argv $r]] nil $handler]
 		(handler (continuation _ (code arg0 arg1 arg2 arg3) (begin
-			[write-str (stdout) (" Again made it here!)]
+			
 			(switch = $code
 				(multiple-definition-error [write-str (stdout) (" Multiple definition error.)])
 				(param-count-mismatch-error [write-str (stdout) (" Parameter count mismatch error.)])
