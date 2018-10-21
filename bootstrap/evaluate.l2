@@ -58,10 +58,10 @@
 		(if (and $dot [str= $dot (" .o)]) (begin
 			(storage obj-fd [open $src])
 			(storage obj-sz [size $obj-fd])
-			(storage obj-buf [buffer-alloc $obj-buf $obj-sz])
-			[read $obj-fd $obj-buf $obj-sz]
+			(storage buf [buffer-alloc $obj-buf $obj-sz])
+			[read $obj-fd $buf $obj-sz]
 			[close $obj-fd]
-			[set obj [load $obj-buf $obj-sz $obj-buf $handler]])
+			[set obj [load $buf $obj-sz $obj-buf $handler]])
 			
 			(begin)))
 		
@@ -70,20 +70,9 @@
 	
 	(foreach (obj $objects) [mutate-symbols $obj (@ ectx-symbols $ectx)])
 	(foreach (obj $objects) [[segment $obj (" .text)]])
+	
 	[destroy-buffer $expr-buf]
 	[destroy-buffer $obj-buf]))
 
-(let (fd [open (" test.l2)])
-	(let (src-sz [size $fd]) (r [create-buffer #0])
-		(let (src-buf [buffer-alloc $r $src-sz]) (expressions nil) (pos #0) (begin
-			[read $fd $src-buf $src-sz]
-			[close $fd]
-			(while [after-leading-space $src-buf $src-sz pos]
-				[append [build-expression [build-fragment $src-buf $src-sz pos $r (null)] $r (null)] expressions $r])
-			(storage ectx nil $r (null) $r)
-			[load-expressions [generate-metaprogram [make-program $expressions $r] ectx] ectx]))))
-
 (let (r [create-buffer #0])
-	(foreach (arg [argv $r]) (begin
-		[write-str (stdout) $arg]
-		[write-char (stdout) (lf)])))
+	[evaluate-files [@cdr[argv $r]] nil (null)])
