@@ -265,6 +265,7 @@
 				(if [str= (@ sym-name $sym) (@ expr-name (@ expr-reference $s))]
 					{return [vgenerate-metas [build-expression [(@ sym-offset $sym) (@ expr-argument $s) (@ ectx-expr-buf $ectx)]
 						(@ ectx-expr-buf $ectx) (@ ectx-handler $ectx)] $ectx]} (begin)))
+			[write-str (stdout) (" Again made it here!)]
 			{(@ ectx-handler $ectx) undefined-reference-error (@ expr-name (@ expr-reference $s))}))
 		$s))
 
@@ -281,7 +282,7 @@
 
 (function init-function (function-expr ectx cache)
 	(if $$cache $$cache (with return (begin
-		[pre-visit-expressions vgenerate_metas function_expr $ectx]
+		[pre-visit-expressions vgenerate-metas function-expr $ectx]
 		(storage expr-buf (@ ectx-expr-buf $ectx))
 		[load-program-and-mutate [make-program [lst $function-expr nil $expr-buf] $expr-buf] $ectx]
 		[set $cache (@ sym-offset (@ expr-symbol (@ expr-reference function-expr)))]
@@ -289,7 +290,7 @@
 
 (function init-expression (expr ectx cache)
 	(if $$cache $$cache (with return (begin
-		[pre-visit-expressions vgenerate_metas expr $ectx]
+		[pre-visit-expressions vgenerate-metas expr $ectx]
 		(storage expr-buf (@ ectx-expr-buf $ectx))
 		[set $cache [segment [load-program-and-mutate [make-program [lst $expr nil $expr-buf] $expr-buf] $ectx] (" .text)]]
 		{return $$cache}))))

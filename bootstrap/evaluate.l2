@@ -1,35 +1,29 @@
-(function load-expressions (program ectx) (do-let (with return (begin
-		(storage ct-reg (@ ectx-expr-buf $ectx))
-		[visit-expressions vfind-multiple-definitions program $handler]
-		[classify-program-symbols (@ expr-expression $program)]
-		[visit-expressions vlink-references (& expr-expression $program) (storage _ $handler $ct-reg)]
-		[set program [use-return-symbol $program (null) $ct-reg]]
-		[classify-program-symbols (@ expr-expression $program)]
-		[visit-expressions vlayout-frames (& expr-expression $program) $ct-reg]
-		[visit-expressions vgenerate-references program $ct-reg]
-		[visit-expressions vgenerate-continuation-expressions program $ct-reg]
-		[visit-expressions vgenerate-literals program $ct-reg]
-		[visit-expressions vgenerate-ifs program $ct-reg]
-		[visit-expressions vgenerate-function-expressions program $ct-reg]
-		[visit-expressions vgenerate-storage-expressions program $ct-reg]
-		(storage symbols (@ expr-symbols $program))
-		(foreach (l (@ expr-parameters $program)) [prepend (@ expr-symbol $l) symbols $ct-reg])
-		[set program [generate-toplevel $program $ct-reg]]
-		(storage asms nil)
-		[visit-expressions vlinearized-expressions program (storage _ asms $ct-reg)]
-		[set asms [reverse $asms $ct-reg]]
-		(storage objdest (begin))
-		(storage objdest-sz (begin))
-		[write-elf $asms $symbols objdest objdest-sz $ct-reg]
-		(storage obj [load $objdest $objdest-sz (@ ectx-obj-buf $ectx) (@ ectx-handler $ectx)])
-		[symbol-offsets-to-addresses $asms $symbols $obj]
-		{return $obj}))
-	(handler (continuation _ (code arg0 arg1 arg2 arg3) (begin
-		(switch = $code
-			(multiple-definition-error [write-str (stdout) (" Multiple definition error.)])
-			(param-count-mismatch-error [write-str (stdout) (" Parameter count mismatch error.)])
-			(begin))
-		[exit #1])))))
+(function load-expressions (program ectx) (with return (begin
+	(storage ct-reg (@ ectx-expr-buf $ectx))
+	[visit-expressions vfind-multiple-definitions program (@ ectx-handler $ectx)]
+	[classify-program-symbols (@ expr-expression $program)]
+	[visit-expressions vlink-references (& expr-expression $program) (storage _ (@ ectx-handler $ectx) $ct-reg)]
+	[set program [use-return-symbol $program (null) $ct-reg]]
+	[classify-program-symbols (@ expr-expression $program)]
+	[visit-expressions vlayout-frames (& expr-expression $program) $ct-reg]
+	[visit-expressions vgenerate-references program $ct-reg]
+	[visit-expressions vgenerate-continuation-expressions program $ct-reg]
+	[visit-expressions vgenerate-literals program $ct-reg]
+	[visit-expressions vgenerate-ifs program $ct-reg]
+	[visit-expressions vgenerate-function-expressions program $ct-reg]
+	[visit-expressions vgenerate-storage-expressions program $ct-reg]
+	(storage symbols (@ expr-symbols $program))
+	(foreach (l (@ expr-parameters $program)) [prepend (@ expr-symbol $l) symbols $ct-reg])
+	[set program [generate-toplevel $program $ct-reg]]
+	(storage asms nil)
+	[visit-expressions vlinearized-expressions program (storage _ asms $ct-reg)]
+	[set asms [reverse $asms $ct-reg]]
+	(storage objdest (begin))
+	(storage objdest-sz (begin))
+	[write-elf $asms $symbols objdest objdest-sz $ct-reg]
+	(storage obj [load $objdest $objdest-sz (@ ectx-obj-buf $ectx) (@ ectx-handler $ectx)])
+	[symbol-offsets-to-addresses $asms $symbols $obj]
+	{return $obj})))
 
 (function evaluate-files (srcv bindings handler) (begin
 	(storage objects nil)
@@ -86,4 +80,13 @@
 	{return $obj})))
 
 (let (r [create-buffer #0])
-	[evaluate-files [@cdr[argv $r]] nil (null)])
+	(do-let
+			[evaluate-files [@cdr[argv $r]] nil $handler]
+		(handler (continuation _ (code arg0 arg1 arg2 arg3) (begin
+			[write-str (stdout) (" Again made it here!)]
+			(switch = $code
+				(multiple-definition-error [write-str (stdout) (" Multiple definition error.)])
+				(param-count-mismatch-error [write-str (stdout) (" Parameter count mismatch error.)])
+				(undefined-reference-error [write-str (stdout) $arg0])
+				(begin))
+			[exit #1])))))
