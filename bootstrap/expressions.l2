@@ -389,15 +389,14 @@
 			(if (or (not [i/f:symbol? [@cadr $d]]) (not [= [length [@cadr $d]] (build-expression-literal-len)]))
 				{$handler special-form-error $d [@cadr $d]}
 				[make-literal (with return
-					{(continuation loop (str i value) (begin
-							[set value [<< $value #1]]
+					{(continuation loop (str i value)
 							(if [= $i #0]
 								{return $value}
 							(if [= [getb $str] (char 1)]
-								{loop [+ $str #1] [- $i #1] [+ $value #1]}
+								{loop [+ $str #1] [- $i #1] [+ [<< $value #1] #1]}
 							(if [= [getb $str] (char 0)]
-								{loop [+ $str #1] [- $i #1] $value}
-								{$handler special-form-error $d [@cadr $d]})))))
+								{loop [+ $str #1] [- $i #1] [<< $value #1]}
+								{$handler special-form-error $d [@cadr $d]}))))
 						[to-string [@cadr $d] $reg] (build-expression-literal-len) #0}) $reg])))
 		
 		[make-meta [build-expression [@car $d] $reg $handler] [@cdr $d] $reg]))))
