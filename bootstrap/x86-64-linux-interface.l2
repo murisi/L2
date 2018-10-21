@@ -8,6 +8,7 @@
 (function sys-exit (l r) [mk# $l $r #60])
 (function sys-clock-gettime (l r) [mk# $l $r #228])
 (function o-rdonly (l r) [mk# $l $r #0])
+(function o-wronly (l r) [mk# $l $r #1])
 (function o-rdwr (l r) [mk# $l $r #2])
 (function o-creat (l r) [mk# $l $r #64])
 (function s-irwxu (l r) [mk# $l $r #448])
@@ -94,7 +95,13 @@
 	((vt) (true))
 	(false)))
 
-(function open (path) [syscall (sys-open) $path [lor (o-rdonly) (o-creat)] [lor (s-irwxu) [lor (s-irwxg) (s-irwxo)]]])
+(storage file-access-error (begin))
+
+(function open (path handler)
+	(let (ret [syscall (sys-open) $path (o-rdonly)])
+		(if (and (or [< [- #0 #4095] $ret] [= [- #0 #4095] $ret]) (or [< $ret [- #0 #1]] [= $ret [- #0 #1]]))
+			{$handler file-access-error $path}
+			$ret)))
 
 (function myopen (path) [syscall (sys-open) $path [lor (o-rdwr) (o-creat)] [lor (s-irwxu) [lor (s-irwxg) (s-irwxo)]]])
 

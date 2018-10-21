@@ -8,6 +8,8 @@
 #define SYS_MUNMAP 11
 #define SYS_EXIT 60
 #define SYS_CLOCK_GETTIME 228
+#define O_RDONLY 00
+#define O_WRONLY 01
 #define O_RDWR 02
 #define O_CREAT	0100
 #define S_IRWXU 00700
@@ -25,11 +27,20 @@
 #define STDIN 0
 #define STDOUT 1
 
+typedef struct {
+	void *rbp;
+	void *cir;
+	void *rsi;
+	void *r14;
+	void *r13;
+	void *rbx;
+	void *r12;
+	void *r15;
+	void *rsp;
+	void *ctx; //For data that you want to transfer through jumps
+} jumpbuf;
+
 long int syscall(long int syscall_num, ...);
-
-unsigned long fpoffset();
-
-unsigned long addfp(unsigned long val);
 
 unsigned long strlen(const char *str) {
 	unsigned long i;
@@ -86,8 +97,24 @@ int isspace(int c) {
 	return c == ' ' || c == '\f' || c == '\n' || c == '\r' || c == '\t' || c == '\v';
 }
 
-int open(char *path) {
-	return (int) syscall(SYS_OPEN, path, O_RDWR | O_CREAT, S_IRWXU | S_IRWXG | S_IRWXO);
+void throw_missing_file(char *path, jumpbuf *jb);
+
+int open(char *path, jumpbuf *jb) {
+	int ret = syscall(SYS_OPEN, path, O_RDONLY);
+	if(-4095 <= ret && ret < 0) {
+		throw_missing_file(path, jb);
+	} else {
+		return ret;
+	}
+}
+
+int create(char *path, jumpbuf *jb) {
+	int ret = syscall(SYS_OPEN, path, O_WRONLY | O_CREAT, S_IRWXU | S_IRWXG | S_IRWXO);
+	if(-4095 <= ret && ret < 0) {
+		throw_missing_file(path, jb);
+	} else {
+		return ret;
+	}
 }
 
 void write(int fd, void *d, int len) {
@@ -213,19 +240,6 @@ char *rstrcpy(const char *src, region reg) {
 	dest[i] = '\0';
 	return dest;
 }
-
-typedef struct {
-	void *rbp;
-	void *cir;
-	void *rsi;
-	void *r14;
-	void *r13;
-	void *rbx;
-	void *r12;
-	void *r15;
-	void *rsp;
-	void *ctx; //For data that you want to transfer through jumps
-} jumpbuf;
 
 struct timer {
 	long seconds;

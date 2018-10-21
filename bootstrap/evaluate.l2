@@ -37,7 +37,7 @@
 		(storage dot [strrchr $src (char .)])
 		
 		(if (and $dot [str= $dot (" .l2)]) (begin
-			(storage fd [open $src])
+			(storage fd [open $src $handler])
 			(storage src-sz [size $fd])
 			(storage src-buf [buffer-alloc $expr-buf $src-sz])
 			[read $fd $src-buf $src-sz]
@@ -51,7 +51,7 @@
 			[set obj [load-program [generate-metaprogram [make-program $expressions $expr-buf] ectx] ectx]])
 			
 		(if (and $dot [str= $dot (" .o)]) (begin
-			(storage obj-fd [open $src])
+			(storage obj-fd [open $src $handler])
 			(storage obj-sz [size $obj-fd])
 			(storage buf [buffer-alloc $obj-buf $obj-sz])
 			[read $obj-fd $buf $obj-sz]
@@ -81,7 +81,7 @@
 	{return $obj})))
 
 (let (r [create-buffer #0])
-	(do-let [evaluate-files (list (" test.l2)$r) (list
+	(do-let [evaluate-files [@cdr[argv $r]] (list
 			[make-object-symbol (" -!-)(character(char !)) $r]
 			[make-object-symbol (" -!-)(character(char !)) $r]
 			[make-object-symbol (" -"-)(character(char ")) $r]
@@ -184,12 +184,12 @@
 				(multiple-definition-error (begin
 					[write-str (stdout) (" The definition of(space))]
 					[write-str (stdout) $arg0]
-					[write-str (stdout) ("(space)erroneously occured multiple times.(lf))]))
+					[write-str (stdout) (" (space)erroneously occured multiple times.(lf))]))
 					
 				(param-count-mismatch-error (begin
 					[write-str (stdout) (" The number of arguments in(space))]
 					[print-expression $arg0]
-					[write-str (stdout) ("(space)does not match the number of parameters in(space))]
+					[write-str (stdout) (" (space)does not match the number of parameters in(space))]
 					[print-expression $arg1]
 					[write-str (stdout) (" .(lf))]))
 				
@@ -202,13 +202,13 @@
 					(begin
 						[write-str (stdout) (" The subexpression(space))]
 						[print-fragment $arg1]
-						[write-str (stdout) ("(space)does not satisfy the requirements of the expression(space))]
+						[write-str (stdout) (" (space)does not satisfy the requirements of the expression(space))]
 						[print-fragment $arg0]
 						[write-str (stdout) (" .(lf))])
 					(begin
 						[write-str (stdout) (" The expression(space))]
 						[print-fragment $arg0]
-						[write-str (stdout) ("(space)has an incorrect number of subexpressions.(lf))])))
+						[write-str (stdout) (" (space)has an incorrect number of subexpressions.(lf))])))
 				
 				(unexpected-char-error (begin
 					[write-str (stdout) (" Unexpectedly read(space))]
@@ -217,5 +217,10 @@
 					[write-uint (stdout) $arg1]
 					[write-str (stdout) (" .(lf))]))
 				
+				(file-access-error (begin
+					[write-str (stdout) (" Inaccessable file:(space))]
+					[write-str (stdout) $arg0]
+					[write-str (stdout) (" .(lf))]))
+					
 				(begin))
 			[exit #1])))))

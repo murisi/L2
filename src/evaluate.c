@@ -83,7 +83,7 @@ void evaluate_files(int srcc, char *srcv[], list bindings, jumpbuf *handler) {
 		char *dot = strrchr(srcv[i], '.');
 		
 		if(dot && !strcmp(dot, ".l2")) {
-			int fd = open(srcv[i]);
+			int fd = open(srcv[i], handler);
 			long int src_sz = size(fd);
 			unsigned char *src_buf = buffer_alloc(ectx.expr_buf, src_sz);
 			read(fd, src_buf, src_sz);
@@ -97,7 +97,7 @@ void evaluate_files(int srcc, char *srcv[], list bindings, jumpbuf *handler) {
 			}
 			obj = load_program(generate_metaprogram(make_program(expressions, ectx.expr_buf), &ectx), &ectx);
 		} else if(dot && !strcmp(dot, ".o")) {
-			int obj_fd = open(srcv[i]);
+			int obj_fd = open(srcv[i], handler);
 			long int obj_sz = size(obj_fd);
 			unsigned char *obj_buf = buffer_alloc(ectx.obj_buf, obj_sz);
 			read(obj_fd, obj_buf, obj_sz);
