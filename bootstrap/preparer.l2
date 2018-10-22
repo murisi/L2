@@ -4,9 +4,9 @@
 
 (storage multiple-definition-error #0)
 
-(function vfind-multiple-definitions (e ectx) (with return (begin
-	(storage handler (@ ectx-handler $ectx))
-	(storage err (@ ectx-error $ectx))
+(function vfind-multiple-definitions (e ctx) (with return (begin
+	(storage handler [@0 $ctx])
+	(storage err [@1 $ctx])
 	
 	(switch = (@ expr-type $e)
 		((-begin-) (let (temp-reg [create-buffer #0]) (begin
@@ -90,10 +90,10 @@
 
 (storage param-count-mismatch-error #0)
 
-(function vlink-references (s ectx) (with return (begin
-	(storage handler (@ ectx-handler $ectx))
-	(storage r (@ ectx-expr-buf $ectx))
-	(storage err (@ ectx-error $ectx))
+(function vlink-references (s ctx) (with return (begin
+	(storage handler [@1 $ctx])
+	(storage r (@ ectx-expr-buf [@0 $ctx]))
+	(storage err [@2 $ctx])
 	
 	(if [= (@ expr-type $s) (-reference-)]
 		(begin
@@ -258,56 +258,56 @@
 		
 		(begin))))
 
-(function expansion-context (l r) [mk# $l $r #40])
+(function expansion-context (l r) [mk# $l $r #24])
 (function ectx-symbols (l r) [mk-field $l $r #0 #8])
 (function ectx-obj-buf (l r) [mk-field $l $r #8 #8])
-(function ectx-handler (l r) [mk-field $l $r #16 #8])
-(function ectx-expr-buf (l r) [mk-field $l $r #24 #8])
-(function ectx-error (l r) [mk-field $l $r #32 #8])
+(function ectx-expr-buf (l r) [mk-field $l $r #16 #8])
 
 (storage undefined-reference-error)
 
-(function vgenerate-metas (s ectx)
+(function vgenerate-metas (s ctx)
 	(if [= (@ expr-type $s) (-meta-)]
 		(with return (begin
-			(storage handler (@ ectx-handler $ectx))
-			(storage err (@ ectx-error $ectx))
+			(storage handler [@1 $ctx])
+			(storage err [@2 $ctx])
+			(storage ectx [@0 $ctx])
 			(storage expr-buf (@ ectx-expr-buf $ectx))
 			
 			(foreach (sym (@ ectx-symbols $ectx))
 				(if [str= (@ sym-name $sym) (@ expr-name (@ expr-reference $s))]
 					{return [vgenerate-metas [build-expression [(@ sym-offset $sym) (@ expr-argument $s) $expr-buf]
-						$expr-buf $handler $err] $ectx]} (begin)))
+						$expr-buf $handler $err] $ctx]} (begin)))
 			{$handler (set-storage $err undefined-reference-error (@ expr-name (@ expr-reference $s)))}))
 		$s))
 
-(function init-storage (data storage-expr ectx cache)
+(function init-storage (data storage-expr ectx handler err cache)
 	(if $$cache $$cache (with return (begin
 		(storage expr-buf (@ ectx-expr-buf $ectx))
 		(storage sets nil)
 		(foreach (arg (@ expr-arguments $storage-expr)) (begin
-			[pre-visit-expressions vgenerate-metas arg $ectx]
+			[pre-visit-expressions vgenerate-metas arg (storage _ $ectx $handler $err)]
 			[append (make-invokeN [make-literal set $expr-buf] ([make-literal $data $expr-buf] $arg) $expr-buf) sets $expr-buf]
 			[set data [+ $data (unit)]]))
-		[set $cache [segment [load-program-and-mutate [make-program $sets $expr-buf] $ectx] (" .text)]]
+		[set $cache [segment [load-program-and-mutate [make-program $sets $expr-buf] $ectx $handler $err] (" .text)]]
 		{return $$cache}))))
 
-(function init-function (function-expr ectx cache)
+(function init-function (function-expr ectx handler err cache)
 	(if $$cache $$cache (with return (begin
-		[pre-visit-expressions vgenerate-metas function-expr $ectx]
+		[pre-visit-expressions vgenerate-metas function-expr (storage _ $ectx $handler $err)]
 		(storage expr-buf (@ ectx-expr-buf $ectx))
-		[load-program-and-mutate [make-program [lst $function-expr nil $expr-buf] $expr-buf] $ectx]
+		[load-program-and-mutate [make-program [lst $function-expr nil $expr-buf] $expr-buf] $ectx $handler $err]
 		[set $cache (@ sym-offset (@ expr-symbol (@ expr-reference $function-expr)))]
 		{return $$cache}))))
 
-(function init-expression (expr ectx cache)
+(function init-expression (expr ectx handler err cache)
 	(if $$cache $$cache (with return (begin
-		[pre-visit-expressions vgenerate-metas expr $ectx]
+		[pre-visit-expressions vgenerate-metas expr (storage _ $ectx $handler $err)]
 		(storage expr-buf (@ ectx-expr-buf $ectx))
-		[set $cache [segment [load-program-and-mutate [make-program [lst $expr nil $expr-buf] $expr-buf] $ectx] (" .text)]]
+		[set $cache [segment [load-program-and-mutate [make-program [lst $expr nil $expr-buf] $expr-buf] $ectx $handler $err]
+			(" .text)]]
 		{return $$cache}))))
 
-(function generate-metaprogram (program ectx) (with return (begin
+(function generate-metaprogram (program ectx handler err) (with return (begin
 	(storage c nil)
 	(storage expr-buf (@ ectx-expr-buf $ectx))
 	(foreach (s (@ expr-expressions (@ expr-expression $program))) (begin
@@ -321,7 +321,8 @@
 			(storage storage-ref-arg [make-reference (null) $expr-buf])
 			[refer-reference $storage-ref-arg $storage-ref]
 			[append (make-invokeN (make-invokeN [make-literal init-storage $expr-buf] ($storage-ref-arg [make-literal $s $expr-buf]
-				[make-literal $ectx $expr-buf] [make-literal $cache $expr-buf]) $expr-buf) () $expr-buf) c $expr-buf])
+				[make-literal $ectx $expr-buf] [make-literal $handler $expr-buf] [make-literal $err $expr-buf]
+				[make-literal $cache $expr-buf]) $expr-buf) () $expr-buf) c $expr-buf])
 				
 		(if [= (@ expr-type $s) (-function-)] (begin
 			(storage params nil)
@@ -331,11 +332,13 @@
 				[prepend (make-invokeN [make-literal get $expr-buf] ([make-reference (null) $expr-buf]) $expr-buf) args $expr-buf]))
 			[append [make-function [make-reference (@ expr-name (@ expr-reference $s)) $expr-buf] $params
 				[make-invoke (make-invokeN [make-literal init-function $expr-buf] ([make-literal $s $expr-buf]
-				[make-literal $ectx $expr-buf] [make-literal $cache $expr-buf]) $expr-buf) $args $expr-buf] $expr-buf] c $expr-buf]
+				[make-literal $ectx $expr-buf] [make-literal $handler $expr-buf] [make-literal $err $expr-buf]
+				[make-literal $cache $expr-buf]) $expr-buf) $args $expr-buf] $expr-buf] c $expr-buf]
 			(foreach (a $params) (t $args) [refer-reference [@fst(@ expr-arguments $t)] $a]))
 			
 		(begin
 			[append (make-invokeN (make-invokeN [make-literal init-expression $expr-buf] ([make-literal $s $expr-buf]
-				[make-literal $ectx $expr-buf] [make-literal $cache $expr-buf]) $expr-buf) () $expr-buf) c $expr-buf])))))
+				[make-literal $ectx $expr-buf] [make-literal $handler $expr-buf] [make-literal $err $expr-buf]
+				[make-literal $cache $expr-buf]) $expr-buf) () $expr-buf) c $expr-buf])))))
 	{return [make-program $c $expr-buf]})))
 
