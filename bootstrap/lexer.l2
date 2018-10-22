@@ -38,17 +38,17 @@
 			(begin [set $pos [+ $$pos #1]] {loop})
 			{return [- $l2src-sz $$pos]}))}))
 
-(function build-sigilled-symbol (sigil l2src l2src-sz pos r handler) (with return (begin
+(function build-sigilled-symbol (sigil l2src l2src-sz pos r handler err) (with return (begin
 	(if [= $l2src-sz $$pos] {return [build-symbol $sigil $r]} (begin))
 	(let (d [getb [+ $l2src $$pos]])
 		(if (or [isspace $d] [= $d (rparen)] [= $d (rbrace)] [= $d (rbracket)] [= $d (lparen)] [= $d (lbrace)] [= $d (lbracket)])
 			{return [build-symbol $sigil $r]}
 			(let (sexprs nil) (begin
 				[append [build-symbol $sigil $r] sexprs $r]
-				[append [build-fragment $l2src $l2src-sz $pos $r $handler] sexprs $r]
+				[append [build-fragment $l2src $l2src-sz $pos $r $handler $err] sexprs $r]
 				{return $sexprs})))))))
 
-(function build-fragment-list (primitive delimeter l2src l2src-sz pos r handler) (with return
+(function build-fragment-list (primitive delimeter l2src l2src-sz pos r handler err) (with return
 	(let (sexprs nil) (begin
 		[append [build-symbol $primitive $r] sexprs $r]
 		(while (true) (begin
@@ -56,27 +56,27 @@
 				(if (and $rem [= [getb [+ $l2src $$pos]] $delimeter])
 					(begin [set $pos [+ $$pos #1]] {return $sexprs})
 					(begin)))
-			[append [build-fragment $l2src $l2src-sz $pos $r $handler] sexprs $r]))
+			[append [build-fragment $l2src $l2src-sz $pos $r $handler $err] sexprs $r]))
 		{return $sexprs}))))
 
 (storage unexpected-char-error #0)
 
-(function build-fragment (l2src l2src-sz pos r handler) (with return
+(function build-fragment (l2src l2src-sz pos r handler err) (with return
 	(if [= $l2src-sz $$pos]
-		{$handler unexpected-char-error #0 $$pos}
+		{$handler (set-storage $err unexpected-char-error #0 $$pos)}
 		(let (c [getb [+ $l2src $$pos]])
 			(if (or [isspace $c] [= $c (rparen)] [= $c (rbrace)] [= $c (rbracket)])
-				{$handler unexpected-char-error $c $$pos}
+				{$handler (set-storage $err unexpected-char-error $c $$pos)}
 				(begin
 					[set $pos [+ $$pos #1]]
 					{return (switch = $c
-						((lparen) [@cdr [build-fragment-list (" expression) (rparen) $l2src $l2src-sz $pos $r $handler]])
-						((lbrace) [build-fragment-list (" jump) (rbrace) $l2src $l2src-sz $pos $r $handler])
-						((lbracket) [build-fragment-list (" invoke) (rbracket) $l2src $l2src-sz $pos $r $handler])
-						((char $) [build-sigilled-symbol (" $) $l2src $l2src-sz $pos $r $handler])
-						((char #) [build-sigilled-symbol (" #) $l2src $l2src-sz $pos $r $handler])
-						((char ,) [build-sigilled-symbol (" ,) $l2src $l2src-sz $pos $r $handler])
-						((char `) [build-sigilled-symbol (" `) $l2src $l2src-sz $pos $r $handler])
+						((lparen) [@cdr [build-fragment-list (" expression) (rparen) $l2src $l2src-sz $pos $r $handler $err]])
+						((lbrace) [build-fragment-list (" jump) (rbrace) $l2src $l2src-sz $pos $r $handler $err])
+						((lbracket) [build-fragment-list (" invoke) (rbracket) $l2src $l2src-sz $pos $r $handler $err])
+						((char $) [build-sigilled-symbol (" $) $l2src $l2src-sz $pos $r $handler $err])
+						((char #) [build-sigilled-symbol (" #) $l2src $l2src-sz $pos $r $handler $err])
+						((char ,) [build-sigilled-symbol (" ,) $l2src $l2src-sz $pos $r $handler $err])
+						((char `) [build-sigilled-symbol (" `) $l2src $l2src-sz $pos $r $handler $err])
 						(let (l nil) (begin
 							(do-while (begin
 									[append (character $c) l $r]

@@ -97,10 +97,10 @@
 
 (storage file-access-error (begin))
 
-(function open (path handler)
+(function open (path handler err)
 	(let (ret [syscall (sys-open) $path (o-rdonly)])
 		(if (and (or [< [- #0 #4095] $ret] [= [- #0 #4095] $ret]) (or [< $ret [- #0 #1]] [= $ret [- #0 #1]]))
-			{$handler file-access-error $path}
+			{$handler (set-storage $err file-access-error $path)}
 			$ret)))
 
 (function myopen (path) [syscall (sys-open) $path [lor (o-rdwr) (o-creat)] [lor (s-irwxu) [lor (s-irwxg) (s-irwxo)]]])

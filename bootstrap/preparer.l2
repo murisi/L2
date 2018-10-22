@@ -4,7 +4,10 @@
 
 (storage multiple-definition-error #0)
 
-(function vfind-multiple-definitions (e handler) (with return
+(function vfind-multiple-definitions (e ectx) (with return (begin
+	(storage handler (@ ectx-handler $ectx))
+	(storage err (@ ectx-error $ectx))
+	
 	(switch = (@ expr-type $e)
 		((-begin-) (let (temp-reg [create-buffer #0]) (begin
 			(let (definitions [filter (function _ (f) (or [= (@ expr-type $f) (-storage-)] [= (@ expr-type $f) (-function-)]))
@@ -12,7 +15,7 @@
 				(until (partial $definitions) [nil? $partial] [@cdr $partial]
 					(if [find (function _ (f ctx) [named-ref= (@ expr-reference $f) (@ expr-reference $ctx)])
 							(& cdr $partial) [@car $partial]]
-						{$handler multiple-definition-error (@ expr-name(@ expr-reference[@car $partial]))}
+						{$handler (set-storage $err multiple-definition-error (@ expr-name(@ expr-reference[@car $partial])))}
 						(begin))))
 			[destroy-buffer $temp-reg]
 			{return $e})))
@@ -21,12 +24,12 @@
 			(let (ref-with-params [lst (@ expr-reference $e) (@ expr-parameters $e) $temp-reg])
 				(until (partial $ref-with-params) [nil? $partial] [@cdr $partial]
 					(if [find (function _ (f ctx) [named-ref= $f $ctx]) (& cdr $partial) [@car $partial]]
-						{$handler multiple-definition-error (@ expr-name[@car $partial])}
+						{$handler (set-storage $err multiple-definition-error (@ expr-name[@car $partial]))}
 						(begin))))
 			[destroy-buffer $temp-reg]
 			{return $e})))
 		
-		{return $e})))
+		{return $e}))))
 
 (function get-parent-function (n) (with return
 	{(continuation loop (n)
@@ -87,29 +90,32 @@
 
 (storage param-count-mismatch-error #0)
 
-(function vlink-references (s ctx)
-	(let (handler ($(loc $ctx #0(unit)))) (r ($(loc $ctx #1(unit))))
-		(if [= (@ expr-type $s) (-reference-)]
-			(with return (begin
-				(setf expr-symbol $s (if (@ expr-symbol $s) (@ expr-symbol $s) [symbol-of $s]))
-				(if (not (@ expr-symbol $s))
-					(let (ref [make-reference (@ expr-name $s) $r]) (rf [get-root-function $s])
-						(let (sym [make-symbol (static-storage) (global-scope) (undefined-state) (@ expr-name $s) $ref $r]) (begin
-							(setf expr-symbol $ref $sym)
-							(setf expr-parameters $rf [cons $ref (@ expr-parameters $rf) $r])
-							(setf expr-parent $ref $rf)
-							(setf expr-symbol $s $sym)
-							{return $s})))
-				(if (and (or (and [jump-reference? $s] [c-reference? (@ sym-definition(@ expr-symbol $s))])
-						(and [invoke-reference? $s] [function-reference? (@ sym-definition(@ expr-symbol $s))]))
-						(not [= [length(@ expr-arguments(@ expr-parent $s))] [length(@ expr-parameters[get-target-expression $s])]]))
-					{$handler param-count-mismatch-error (@ expr-parent $s) [get-target-expression $s]}
-					{return $s}))))
-		(if (and (or (and [= (@ expr-type $s) (-continuation-)] [jump-reference? $s])
-				(and [= (@ expr-type $s) (-function-)] [invoke-reference? $s]))
-				(not [= [length (@ expr-arguments(@ expr-parent $s))] [length (@ expr-parameters $s)]]))
-			{$handler param-count-mismatch-error (@ expr-parent $s) $s}
-			$s))))
+(function vlink-references (s ectx) (with return (begin
+	(storage handler (@ ectx-handler $ectx))
+	(storage r (@ ectx-expr-buf $ectx))
+	(storage err (@ ectx-error $ectx))
+	
+	(if [= (@ expr-type $s) (-reference-)]
+		(begin
+			(setf expr-symbol $s (if (@ expr-symbol $s) (@ expr-symbol $s) [symbol-of $s]))
+			(if (not (@ expr-symbol $s))
+				(let (ref [make-reference (@ expr-name $s) $r]) (rf [get-root-function $s])
+					(let (sym [make-symbol (static-storage) (global-scope) (undefined-state) (@ expr-name $s) $ref $r]) (begin
+						(setf expr-symbol $ref $sym)
+						(setf expr-parameters $rf [cons $ref (@ expr-parameters $rf) $r])
+						(setf expr-parent $ref $rf)
+						(setf expr-symbol $s $sym)
+						{return $s})))
+			(if (and (or (and [jump-reference? $s] [c-reference? (@ sym-definition(@ expr-symbol $s))])
+					(and [invoke-reference? $s] [function-reference? (@ sym-definition(@ expr-symbol $s))]))
+					(not [= [length(@ expr-arguments(@ expr-parent $s))] [length(@ expr-parameters[get-target-expression $s])]]))
+				{$handler (set-storage $err param-count-mismatch-error (@ expr-parent $s) [get-target-expression $s])}
+				{return $s})))
+	(if (and (or (and [= (@ expr-type $s) (-continuation-)] [jump-reference? $s])
+			(and [= (@ expr-type $s) (-function-)] [invoke-reference? $s]))
+			(not [= [length (@ expr-arguments(@ expr-parent $s))] [length (@ expr-parameters $s)]]))
+		{$handler (set-storage $err param-count-mismatch-error (@ expr-parent $s) $s)}
+		{return $s})))))
 
 (function vescape-analysis-aux (ref target)
 	(if [jump-reference? $ref]
@@ -252,22 +258,27 @@
 		
 		(begin))))
 
-(function expansion-context (l r) [mk# $l $r #32])
+(function expansion-context (l r) [mk# $l $r #40])
 (function ectx-symbols (l r) [mk-field $l $r #0 #8])
 (function ectx-obj-buf (l r) [mk-field $l $r #8 #8])
 (function ectx-handler (l r) [mk-field $l $r #16 #8])
 (function ectx-expr-buf (l r) [mk-field $l $r #24 #8])
+(function ectx-error (l r) [mk-field $l $r #32 #8])
 
 (storage undefined-reference-error)
 
 (function vgenerate-metas (s ectx)
 	(if [= (@ expr-type $s) (-meta-)]
 		(with return (begin
+			(storage handler (@ ectx-handler $ectx))
+			(storage err (@ ectx-error $ectx))
+			(storage expr-buf (@ ectx-expr-buf $ectx))
+			
 			(foreach (sym (@ ectx-symbols $ectx))
 				(if [str= (@ sym-name $sym) (@ expr-name (@ expr-reference $s))]
-					{return [vgenerate-metas [build-expression [(@ sym-offset $sym) (@ expr-argument $s) (@ ectx-expr-buf $ectx)]
-						(@ ectx-expr-buf $ectx) (@ ectx-handler $ectx)] $ectx]} (begin)))
-			{(@ ectx-handler $ectx) undefined-reference-error (@ expr-name (@ expr-reference $s))}))
+					{return [vgenerate-metas [build-expression [(@ sym-offset $sym) (@ expr-argument $s) $expr-buf]
+						$expr-buf $handler $err] $ectx]} (begin)))
+			{$handler (set-storage $err undefined-reference-error (@ expr-name (@ expr-reference $s)))}))
 		$s))
 
 (function init-storage (data storage-expr ectx cache)

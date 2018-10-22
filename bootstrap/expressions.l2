@@ -330,64 +330,64 @@
 
 (storage special-form-error #0)
 
-(function build-expression (d reg handler)
+(function build-expression (d reg handler err)
 	(if [= [length $d] #0] {$handler}
 	(if [i/f:symbol? $d] [make-reference [to-string $d $reg] $reg]
 	(switch str= [to-string [@car $d] $reg]
 		((" with)
 			(if (not [= [length $d] #3])
-				{$handler special-form-error $d (null)}
+				{$handler (set-storage $err special-form-error $d (null))}
 			(if (not [i/f:symbol? [@cadr $d]])
-				{$handler special-form-error $d [@cadr $d]}
-				[make-with [build-expression [@cadr $d] $reg $handler] [build-expression [@caddr $d] $reg $handler] $reg])))
+				{$handler (set-storage $err special-form-error $d [@cadr $d])}
+				[make-with [build-expression [@cadr $d] $reg $handler $err] [build-expression [@caddr $d] $reg $handler $err] $reg])))
 		
 		((" begin)
 			(with return (let (exprs nil) (begin
-				(foreach (v [@cdr $d]) [append [build-expression $v $reg $handler] exprs $reg])
+				(foreach (v [@cdr $d]) [append [build-expression $v $reg $handler $err] exprs $reg])
 				{return [make-begin $exprs $reg]}))))
 		
 		((" if)
 			(if (not [= [length $d] #4])
-				{$handler special-form-error $d (null)}
-				[make-if [build-expression [@cadr $d] $reg $handler] [build-expression [@caddr $d] $reg $handler]
-					[build-expression [@cadddr $d] $reg $handler] $reg]))
+				{$handler (set-storage $err special-form-error $d (null))}
+				[make-if [build-expression [@cadr $d] $reg $handler $err] [build-expression [@caddr $d] $reg $handler $err]
+					[build-expression [@cadddr $d] $reg $handler $err] $reg]))
 		
 		((" function) (" continuation)
 			(if (not [= [length $d] #4])
-				{$handler special-form-error $d (null)}
+				{$handler (set-storage $err special-form-error $d (null))}
 			(if (not [i/f:symbol? [@cadr $d]])
-				{$handler special-form-error $d [@cadr $d]}
+				{$handler (set-storage $err special-form-error $d [@cadr $d])}
 			(if [i/f:symbol? [@caddr $d]]
-				{$handler special-form-error $d [@caddr $d]}
+				{$handler (set-storage $err special-form-error $d [@caddr $d])}
 				(with return (let (parameters nil) (begin
 					(foreach (v [@caddr $d])
 						(if [i/f:symbol? $v]
-							[append [build-expression $v $reg $handler] parameters $reg]
-							{$handler special-form-error $d $v}))
+							[append [build-expression $v $reg $handler $err] parameters $reg]
+							{$handler (set-storage $err special-form-error $d $v)}))
 					{return [(switch str= [to-string [@car $d] $reg]
 							((" function) make-function)
 							make-continuation)
-						[build-expression [@cadr $d] $reg $handler] $parameters [build-expression [@cadddr $d] $reg $handler]
+						[build-expression [@cadr $d] $reg $handler $err] $parameters [build-expression [@cadddr $d] $reg $handler $err]
 							$reg]})))))))
 		
 		((" invoke) (" jump) (" storage)
 			(if [= [length $d] #1]
-				{$handler special-form-error $d (null)}
+				{$handler (set-storage $err special-form-error $d (null))}
 			(if (and [str= [to-string [@car $d] $reg] (" storage)] (not [i/f:symbol? [@cadr $d]]))
-				{$handler special-form-error $d [@cadr $d]}
+				{$handler (set-storage $err special-form-error $d [@cadr $d])}
 				(with return (let (arguments nil) (begin
-					(foreach (v [@cddr $d]) [append [build-expression $v $reg $handler] arguments $reg])
+					(foreach (v [@cddr $d]) [append [build-expression $v $reg $handler $err] arguments $reg])
 					{return [(switch str= [to-string [@car $d] $reg]
 							((" invoke) make-invoke)
 							((" jump) make-jump)
 							make-storage)
-						[build-expression [@cadr $d] $reg $handler] $arguments $reg]}))))))
+						[build-expression [@cadr $d] $reg $handler $err] $arguments $reg]}))))))
 		
 		((" literal)
 			(if (not [= [length $d] #2])
-				{$handler special-form-error $d (null)}
+				{$handler (set-storage $err special-form-error $d (null))}
 			(if (or (not [i/f:symbol? [@cadr $d]]) (not [= [length [@cadr $d]] (build-expression-literal-len)]))
-				{$handler special-form-error $d [@cadr $d]}
+				{$handler (set-storage $err special-form-error $d [@cadr $d])}
 				[make-literal (with return
 					{(continuation loop (str i value)
 							(if [= $i #0]
@@ -396,7 +396,7 @@
 								{loop [+ $str #1] [- $i #1] [+ [<< $value #1] #1]}
 							(if [= [getb $str] (char 0)]
 								{loop [+ $str #1] [- $i #1] [<< $value #1]}
-								{$handler special-form-error $d [@cadr $d]}))))
+								{$handler (set-storage $err special-form-error $d [@cadr $d])}))))
 						[to-string [@cadr $d] $reg] (build-expression-literal-len) #0}) $reg])))
 		
-		[make-meta [build-expression [@car $d] $reg $handler] [@cdr $d] $reg]))))
+		[make-meta [build-expression [@car $d] $reg $handler $err] [@cdr $d] $reg]))))

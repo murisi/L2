@@ -1,8 +1,8 @@
 (function load-program (program ectx) (with return (begin
 	(storage ct-reg (@ ectx-expr-buf $ectx))
-	[visit-expressions vfind-multiple-definitions program (@ ectx-handler $ectx)]
+	[visit-expressions vfind-multiple-definitions program $ectx]
 	[classify-program-symbols (@ expr-expression $program)]
-	[visit-expressions vlink-references (& expr-expression $program) (storage _ (@ ectx-handler $ectx) $ct-reg)]
+	[visit-expressions vlink-references (& expr-expression $program) $ectx]
 	[visit-expressions vescape-analysis program (null)]
 	[set program [use-return-symbol $program (null) $ct-reg]]
 	[classify-program-symbols (@ expr-expression $program)]
@@ -26,18 +26,18 @@
 	[symbol-offsets-to-addresses $asms $symbols $obj]
 	{return $obj})))
 
-(function evaluate-files (srcv bindings handler) (begin
+(function evaluate-files (srcv bindings handler err) (begin
 	(storage objects nil)
 	(storage obj-buf [create-buffer #0])
 	(storage expr-buf [create-buffer #0])
-	(storage ectx $bindings $obj-buf $handler $expr-buf)
+	(storage ectx $bindings $obj-buf $handler $expr-buf $err)
 	
 	(foreach (src $srcv) (begin
 		(storage obj (begin))
 		(storage dot [strrchr $src (char .)])
 		
 		(if (and $dot [str= $dot (" .l2)]) (begin
-			(storage fd [open $src $handler])
+			(storage fd [open $src $handler $err])
 			(storage src-sz [size $fd])
 			(storage src-buf [buffer-alloc $expr-buf $src-sz])
 			[read $fd $src-buf $src-sz]
@@ -46,12 +46,12 @@
 			(storage expressions nil)
 			(storage pos #0)
 			(while [after-leading-space $src-buf $src-sz pos]
-				[append [build-expression [build-fragment $src-buf $src-sz pos $expr-buf $handler] $expr-buf $handler]
+				[append [build-expression [build-fragment $src-buf $src-sz pos $expr-buf $handler $err] $expr-buf $handler $err]
 					expressions $expr-buf])
 			[set obj [load-program [generate-metaprogram [make-program $expressions $expr-buf] ectx] ectx]])
 			
 		(if (and $dot [str= $dot (" .o)]) (begin
-			(storage obj-fd [open $src $handler])
+			(storage obj-fd [open $src $handler $err])
 			(storage obj-sz [size $obj-fd])
 			(storage buf [buffer-alloc $obj-buf $obj-sz])
 			[read $obj-fd $buf $obj-sz]
@@ -80,8 +80,12 @@
 	[mutate-symbols $obj (@ ectx-symbols $ectx)]
 	{return $obj})))
 
+(storage no-error (begin))
+
+(storage err no-error (begin) (begin) (begin) (begin))
+
 (let (r [create-buffer #0])
-	(do-let [evaluate-files [@cdr[argv $r]] (list
+	(fallthrough [evaluate-files (list (" test.l2) $r) (list
 			[make-object-symbol (" -!-)(character(char !)) $r]
 			[make-object-symbol (" -!-)(character(char !)) $r]
 			[make-object-symbol (" -"-)(character(char ")) $r]
@@ -177,9 +181,15 @@
 			[make-object-symbol (" symbol?) i/f:symbol? $r]
 			[make-object-symbol (" emt?) nil? $r]
 			[make-object-symbol (" emt) nil $r]
-			[make-object-symbol (" char=) i/f:char= $r] $r) $handler]
+			[make-object-symbol (" char=) i/f:char= $r] $r) handler err]
 			
-		(handler (continuation _ (code arg0 arg1 arg2 arg3) (begin
+		(handler (begin
+			(storage code ($(loc err #0(unit))))
+			(storage arg0 ($(loc err #1(unit))))
+			(storage arg1 ($(loc err #2(unit))))
+			(storage arg2 ($(loc err #3(unit))))
+			(storage arg3 ($(loc err #4(unit))))
+			
 			(switch = $code
 				(multiple-definition-error (begin
 					[write-str (stdout) (" The definition of(space))]
@@ -223,4 +233,4 @@
 					[write-str (stdout) (" .(lf))]))
 					
 				(begin))
-			[exit #1])))))
+			[exit #1]))))
