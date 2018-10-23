@@ -23,12 +23,12 @@
 	(char-init m) (char-init n) (char-init o) (char-init p) (char-init q) (char-init r) (char-init s) (char-init t) (char-init u)
 	(char-init v) (char-init w) (char-init x) (char-init y) (char-init z) #0 (char-init |) #0 (char-init ~) #0)
 
-(function character (s r) (`($(loc characters (,[@fst $s]) (unit)))$r))
+(function sym-char (s r) (`($(loc characters (,[@fst $s]) (unit)))$r))
 
 (function build-symbol (str r) (with return
 	(let (sexprs nil) (begin
 		(while [getb $str] (begin
-			[append (character [getb $str]) sexprs $r]
+			[append (sym-char [getb $str]) sexprs $r]
 			[set str [+ $str #1]]))
 		{return $sexprs}))))
 
@@ -79,7 +79,7 @@
 						((char `) [build-sigilled-symbol (" `) $l2src $l2src-sz $pos $r $handler $err])
 						(let (l nil) (begin
 							(do-while (begin
-									[append (character $c) l $r]
+									[append (sym-char $c) l $r]
 									(if [= $$pos $l2src-sz] {return $l} (begin))
 									[set c [getb [+ $l2src $$pos]]]
 									[set $pos [+ $$pos #1]])
@@ -101,7 +101,7 @@
 (function copy-fragment (l r) (with return
 	(let (c nil) (begin
 		(if [i/f:symbol? $l]
-			(foreach (s $l) [append (character (@ cs-character $s)) c $r])
+			(foreach (s $l) [append (sym-char (@ cs-character $s)) c $r])
 			(foreach (s $l) [append [copy-fragment $s $r] c $r]))
 		{return $c}))))
 
