@@ -33,6 +33,18 @@
 
 (storage unsupported-ext-error #0)
 
+(function read-expressions (fd expr-buf handler err) (with return (begin
+	(storage src-sz [size $fd $handler $err])
+	(storage src-buf [buffer-alloc $expr-buf $src-sz])
+	[read $fd $src-buf $src-sz $handler $err]
+
+	(storage expressions nil)
+	(storage pos #0)
+	(while [after-leading-space $src-buf $src-sz pos]
+		[append [build-expression [build-fragment $src-buf $src-sz pos $expr-buf $handler $err] $expr-buf $handler $err] expressions
+			$expr-buf])
+	{return $expressions})))
+
 (function evaluate-files (srcv bindings obj-buf expr-buf handler err) (begin
 	(storage objects nil)
 	(storage ectx $bindings $obj-buf $expr-buf)
@@ -45,18 +57,9 @@
 				(storage obj (begin))
 				(storage dot [strrchr $src (char .)])
 		
-				(if (and $dot [str= $dot (" .l2)]) (begin
-					(storage src-sz [size $fd close-files $err])
-					(storage src-buf [buffer-alloc $expr-buf $src-sz])
-					[read $fd $src-buf $src-sz close-files $err]
-			
-					(storage expressions nil)
-					(storage pos #0)
-					(while [after-leading-space $src-buf $src-sz pos]
-						[append [build-expression [build-fragment $src-buf $src-sz pos $expr-buf close-files $err] $expr-buf
-							close-files $err] expressions $expr-buf])
-					[set obj [load-program [generate-metaprogram [make-program $expressions $expr-buf] ectx close-files $err]
-						ectx close-files $err]])
+				(if (and $dot [str= $dot (" .l2)])
+					[set obj [load-program [generate-metaprogram [make-program [read-expressions $fd $expr-buf close-files $err]
+						$expr-buf] ectx close-files $err] ectx close-files $err]]
 			
 				(if (and $dot [str= $dot (" .o)]) (begin
 					(storage obj-sz [size $fd close-files $err])
