@@ -105,15 +105,13 @@
 			(foreach (s $l) [append [copy-fragment $s $r] c $r]))
 		{return $c}))))
 
-(function print-fragment (d) (begin
-	[print-char (stdout) (lparen)]
+(function print-fragment (d hdl err) (begin
+	[print-char (stdout) (lparen) $hdl $err]
 	(if [nil? $d] (begin) (begin
 		(if [symbol? $d]
-			[print-char (stdout) (@ cs-character[@car $d])]
-			[print-fragment [@car $d]])
-		[print-char (stdout) (space)]
-		[print-char (stdout) (char .)]
-		[print-char (stdout) (space)]
-		[print-fragment [@cdr $d]]))
-	[print-char (stdout) (rparen)]))
+			[print-char (stdout) (@ cs-character[@car $d]) $hdl $err]
+			[print-fragment [@car $d] $hdl $err])
+		[print-str (stdout) ("(space).(space)) $hdl $err]
+		[print-fragment [@cdr $d] $hdl $err]))
+	[print-char (stdout) (rparen) $hdl $err]))
 
