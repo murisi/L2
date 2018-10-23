@@ -14,14 +14,7 @@ typedef unsigned long int bool;
 #include "x86_64_generator.c"
 #include "x86_64_assembler.c"
 
-/*
- * Makes a new binary file at the path outbin from the list of primitive
- * expressions, exprs. The resulting binary file executes the list from top to
- * bottom and then makes all the top-level functions visible to the rest of the
- * executable that it is embedded in.
- */
-
-Object *load_program(union expression *program, struct expansion_context *ectx) {
+list compile_program(union expression *program, struct expansion_context *ectx, list *symbols) {
 	visit_expressions(vfind_multiple_definitions, &program, ectx->handler);
 	classify_program_symbols(program->function.expression);
 	visit_expressions(vlink_references, &program->function.expression, (void* []) {ectx->handler, ectx->expr_buf});
@@ -35,15 +28,20 @@ Object *load_program(union expression *program, struct expansion_context *ectx) 
 	visit_expressions(vgenerate_ifs, &program, ectx->expr_buf);
 	visit_expressions(vgenerate_function_expressions, &program, ectx->expr_buf);
 	visit_expressions(vgenerate_storage_expressions, &program, ectx->expr_buf);
-	list symbols = program->function.symbols;
+	*symbols = program->function.symbols;
 	union expression *l;
-	{foreach(l, program->function.parameters) { prepend(l->reference.symbol, &symbols, ectx->expr_buf); }}
+	{foreach(l, program->function.parameters) { prepend(l->reference.symbol, symbols, ectx->expr_buf); }}
 	program = generate_toplevel(program, ectx->expr_buf);
 	list asms = nil;
 	visit_expressions(vlinearized_expressions, &program, (void* []) {&asms, ectx->expr_buf});
-	asms = reverse(asms, ectx->expr_buf);
+	return reverse(asms, ectx->expr_buf);
+}
+
+Object *load_program(union expression *program, struct expansion_context *ectx) {
+	list symbols;
+	list asms = compile_program(program, ectx, &symbols);
 	unsigned char *objdest; int objdest_sz;
-	write_elf(asms, symbols, &objdest, &objdest_sz, ectx->expr_buf);
+	write_elf(asms, symbols, &objdest, &objdest_sz, ectx->obj_buf);
 	Object *obj = load(objdest, objdest_sz, ectx->obj_buf, ectx->handler);
 	symbol_offsets_to_addresses(asms, symbols, obj);
 	return obj;
@@ -62,62 +60,73 @@ Object *load_program_and_mutate(union expression *program, struct expansion_cont
 	return obj;
 }
 
-/*
- * Makes a new binary file at the path outbin from the L2 file at the path inl2.
- * The resulting binary file executes the L2 source file from top to bottom and
- * then makes all the top-level functions visible to the rest of the executable
- * that it is embedded in.
- */
-
-void evaluate_files(int srcc, char *srcv[], list bindings, jumpbuf *handler) {
-	list objects = nil;
-	struct expansion_context ectx;
-	ectx.obj_buf = create_buffer(0);
-	ectx.expr_buf = create_buffer(0);
-	ectx.handler = handler;
-	ectx.symbols = bindings;
+list read_expressions(unsigned char *src, region expr_buf, jumpbuf *handler) {
+	int fd = open(src, handler);
+	long int src_sz = size(fd);
+	unsigned char *src_buf = buffer_alloc(expr_buf, src_sz);
+	read(fd, src_buf, src_sz);
+	close(fd);
 	
-	int i;
-	for(i = 0; i < srcc; i++) {
+	list expressions = nil;
+	int pos = 0;
+	while(after_leading_space(src_buf, src_sz, &pos)) {
+		append(build_expression(build_fragment(src_buf, src_sz, &pos, expr_buf, handler), expr_buf, handler), &expressions, expr_buf);
+	}
+	return expressions;
+}
+
+void evaluate_files(list metaprograms, struct expansion_context *ectx, jumpbuf *handler) {
+	list objects = nil;
+	char *fn;
+	foreach(fn, metaprograms) {
 		Object *obj;
-		char *dot = strrchr(srcv[i], '.');
+		char *dot = strrchr(fn, '.');
 		
 		if(dot && !strcmp(dot, ".l2")) {
-			int fd = open(srcv[i], handler);
-			long int src_sz = size(fd);
-			unsigned char *src_buf = buffer_alloc(ectx.expr_buf, src_sz);
-			read(fd, src_buf, src_sz);
-			close(fd);
-			
-			list expressions = nil;
-			int pos = 0;
-			while(after_leading_space(src_buf, src_sz, &pos)) {
-				append(build_expression(build_fragment(src_buf, src_sz, &pos, ectx.expr_buf, handler), ectx.expr_buf, handler),
-					&expressions, ectx.expr_buf);
-			}
-			obj = load_program(generate_metaprogram(make_program(expressions, ectx.expr_buf), &ectx), &ectx);
+			obj = load_program(generate_metaprogram(make_program(read_expressions(fn, ectx->expr_buf, handler), ectx->expr_buf),
+				ectx), ectx);
 		} else if(dot && !strcmp(dot, ".o")) {
-			int obj_fd = open(srcv[i], handler);
+			int obj_fd = open(fn, handler);
 			long int obj_sz = size(obj_fd);
-			unsigned char *obj_buf = buffer_alloc(ectx.obj_buf, obj_sz);
+			unsigned char *obj_buf = buffer_alloc(ectx->obj_buf, obj_sz);
 			read(obj_fd, obj_buf, obj_sz);
 			close(obj_fd);
 			
-			obj = load(obj_buf, obj_sz, ectx.obj_buf, handler);
+			obj = load(obj_buf, obj_sz, ectx->obj_buf, handler);
 		}
-		append(obj, &objects, ectx.obj_buf);
-		append_list(&ectx.symbols, immutable_symbols(obj, ectx.obj_buf));
+		append(obj, &objects, ectx->obj_buf);
+		append_list(&ectx->symbols, immutable_symbols(obj, ectx->obj_buf));
 	}
 	
 	Object *obj;
 	{foreach(obj, objects) {
-		mutate_symbols(obj, ectx.symbols);
+		mutate_symbols(obj, ectx->symbols);
 	}}
 	{foreach(obj, objects) {
 		((void (*)()) segment(obj, ".text"))();
 	}}
-	destroy_buffer(ectx.expr_buf);
-	destroy_buffer(ectx.obj_buf);
+}
+
+void compile_files(list programs, struct expansion_context *ectx, jumpbuf *handler) {
+	char *infn;
+	foreach(infn, programs) {
+		char *dot = strrchr(infn, '.');
+		if(dot && !strcmp(dot, ".l2")) {
+			union expression *program = make_program(read_expressions(infn, ectx->expr_buf, handler), ectx->expr_buf);
+			pre_visit_expressions(vgenerate_metas, &program, ectx);
+			list symbols;
+			list asms = compile_program(program, ectx, &symbols);
+			unsigned char *objdest; int objdest_sz;
+			write_elf(asms, symbols, &objdest, &objdest_sz, ectx->obj_buf);
+			char *outfn = buffer_alloc(ectx->obj_buf, strlen(infn) + 1);
+			strcpy(outfn, infn);
+			char *dot = strrchr(outfn, '.');
+			strcpy(dot, ".o");
+			int fd = create(outfn, handler);
+			write(fd, objdest, objdest_sz);
+			close(fd);
+		}
+	}
 }
 
 //The following functions form the interface provided to loaded L2 files
@@ -181,9 +190,11 @@ int main(int argc, char *argv[]) {
 				write_str(STDOUT, ".\n");
 				break;
 			} case arguments: {
-				write_str(STDOUT, "Bad command line arguments.\nUsage: l2evaluate (src1.l2 | obj1.o) ...\n"
-					"Outcome: Compiles each L2 file into an object file, links all the object files\n"
-					"together, and then executes each object file in the order they were specified.\n");
+				write_str(STDOUT, "Bad command line arguments.\nUsage: l2evaluate (src1.l2 | obj1.o) ... - src1.l2 ...\n"
+					"Outcome: Compiles each L2 file before the dash into an object file, then links all the object files\n"
+					"before the dash together, and then executes each object file before the dash in the order they were\n"
+					"specified. L2 files after the dash are then compiled using the global functions defined before the\n"
+					"dash as macros.\n");
 				break;
 			} case undefined_reference: {
 				write_str(STDOUT, "Undefined reference: ");
@@ -293,12 +304,38 @@ int main(int argc, char *argv[]) {
 		{.name = "char=", .address = char_equals}
 	};
 	
-	list static_bindings_list = nil;
+	struct expansion_context ectx;
+	ectx.obj_buf = create_buffer(0);
+	ectx.expr_buf = create_buffer(0);
+	ectx.handler = &evaluate_handler;
+	ectx.symbols = nil;
+	
 	int i;
 	for(i = 0; i < sizeof(static_bindings_arr) / sizeof(object_symbol); i++) {
-		prepend(&static_bindings_arr[i], &static_bindings_list, evaluate_region);
+		prepend(&static_bindings_arr[i], &ectx.symbols, ectx.obj_buf);
 	}
-	evaluate_files(argc - 1, argv + 1, static_bindings_list, &evaluate_handler);
-	destroy_buffer(evaluate_region);
+	for(i = 1; i < argc; i++) {
+		if(!strcmp(argv[i], "-")) {
+			break;
+		}
+	}
+	if(i == argc) {
+		throw_arguments(ectx.handler);
+	}
+	list metaprograms = nil;
+	for(i = 1; strcmp(argv[i], "-"); i++) {
+		append(argv[i], &metaprograms, evaluate_region);
+	}
+	
+	evaluate_files(metaprograms, &ectx, &evaluate_handler);
+	
+	list programs = nil;
+	for(i++; i < argc; i++) {
+		append(argv[i], &programs, evaluate_region);
+	}
+	compile_files(programs, &ectx, &evaluate_handler);
+	
+	destroy_buffer(ectx.expr_buf);
+	destroy_buffer(ectx.obj_buf);
 	return 0;
 }
