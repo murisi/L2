@@ -103,17 +103,17 @@
 			{$handler (set-storage $err file-access-error $path)}
 			$ret)))
 
-(function write (fd d len handler err)
+(function print (fd d len handler err)
 	(let (ret [syscall (sys-write) $fd $d $len])
 		(if (and [<= [- #0 #4095] $ret] [<= $ret [- #0 #1]])
 			{$handler (set-storage $err file-access-error (null))}
 			$ret)))
 
-(function write-str (fd str handler err) [write $fd $str [strlen $str] $handler $err])
+(function print-str (fd str handler err) [print $fd $str [strlen $str] $handler $err])
 
-(function write-char (fd ch handler err) [write $fd ch #1 $handler $err])
+(function print-char (fd ch handler err) [print $fd ch #1 $handler $err])
 
-(function write-uint (fd i handler err) (with return
+(function print-uint (fd i handler err) (with return
 	[allocate #20 (continuation _ (str) (let (j #19) (begin
 		(until (i $i) [= $i #0] [/ $i #10] (begin
 			[setb [+ $str $j] (switch = [rem $i #10]
@@ -128,7 +128,7 @@
 				(#1 (char 1))
 				(char 0))]
 			[set j [- $j #1]]))
-		[write $fd [+ $str [+ $j #1]] [- #19 $j] $handler $err]
+		[print $fd [+ $str [+ $j #1]] [- #19 $j] $handler $err]
 		{return (begin)})))]))
 
 (function read (fd buf cnt handler err)
