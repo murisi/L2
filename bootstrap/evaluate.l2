@@ -26,49 +26,50 @@
 	[symbol-offsets-to-addresses $asms $symbols $obj]
 	{return $obj})))
 
-(function evaluate-files (srcv bindings handler err) (begin
+(storage unsupported-ext-error #0)
+
+(function evaluate-files (srcv bindings obj-buf expr-buf handler err) (begin
 	(storage objects nil)
-	(storage obj-buf [create-buffer #0])
-	(storage expr-buf [create-buffer #0])
 	(storage ectx $bindings $obj-buf $expr-buf)
+	(storage fds nil)
 	
-	(foreach (src $srcv) (begin
-		(storage obj (begin))
-		(storage dot [strrchr $src (char .)])
+	(fallthrough
+		(begin
+			(foreach (src $srcv) [append [open $src close-files $err] fds $expr-buf])
+			(foreach (src $srcv) (fd $fds) (begin
+				(storage obj (begin))
+				(storage dot [strrchr $src (char .)])
 		
-		(if (and $dot [str= $dot (" .l2)]) (begin
-			(storage fd [open $src $handler $err])
-			(storage src-sz [size $fd])
-			(storage src-buf [buffer-alloc $expr-buf $src-sz])
-			[read $fd $src-buf $src-sz]
-			[close $fd]
+				(if (and $dot [str= $dot (" .l2)]) (begin
+					(storage src-sz [size $fd close-files $err])
+					(storage src-buf [buffer-alloc $expr-buf $src-sz])
+					[read $fd $src-buf $src-sz close-files $err]
 			
-			(storage expressions nil)
-			(storage pos #0)
-			(while [after-leading-space $src-buf $src-sz pos]
-				[append [build-expression [build-fragment $src-buf $src-sz pos $expr-buf $handler $err] $expr-buf $handler $err]
-					expressions $expr-buf])
-			[set obj [load-program [generate-metaprogram [make-program $expressions $expr-buf] ectx $handler $err]
-				ectx $handler $err]])
+					(storage expressions nil)
+					(storage pos #0)
+					(while [after-leading-space $src-buf $src-sz pos]
+						[append [build-expression [build-fragment $src-buf $src-sz pos $expr-buf close-files $err] $expr-buf
+							close-files $err] expressions $expr-buf])
+					[set obj [load-program [generate-metaprogram [make-program $expressions $expr-buf] ectx close-files $err]
+						ectx close-files $err]])
 			
-		(if (and $dot [str= $dot (" .o)]) (begin
-			(storage obj-fd [open $src $handler $err])
-			(storage obj-sz [size $obj-fd])
-			(storage buf [buffer-alloc $obj-buf $obj-sz])
-			[read $obj-fd $buf $obj-sz]
-			[close $obj-fd]
-			[set obj [load $buf $obj-sz $obj-buf $handler]])
+				(if (and $dot [str= $dot (" .o)]) (begin
+					(storage obj-sz [size $fd close-files $err])
+					(storage buf [buffer-alloc $obj-buf $obj-sz])
+					[read $fd $buf $obj-sz close-files $err]
+					[set obj [load $buf $obj-sz $obj-buf close-files]])
 			
-			(begin)))
+					{close-files (set-storage $err unsupported-ext-error $src)}))
 		
-		[append $obj objects $obj-buf]
-		[append-list (& ectx-symbols ectx) [immutable-symbols $obj $obj-buf]]))
+				[append $obj objects $obj-buf]
+				[append-list (& ectx-symbols ectx) [immutable-symbols $obj $obj-buf]]))
 	
-	(foreach (obj $objects) [mutate-symbols $obj (@ ectx-symbols ectx)])
-	(foreach (obj $objects) [[segment $obj (" .text)]])
-	
-	[destroy-buffer $expr-buf]
-	[destroy-buffer $obj-buf]))
+			(foreach (obj $objects) [mutate-symbols $obj (@ ectx-symbols ectx)])
+			(foreach (obj $objects) [[segment $obj (" .text)]]))
+		
+		(close-files (begin
+			(foreach (fd $fds) [close $fd (null) (null)])
+			(if [= [@0 $err] no-error] (begin) {$handler (begin)}))))))
 
 (function load-program-and-mutate (program ectx handler err) (with return (begin
 	(storage obj [load-program $program $ectx $handler $err])
@@ -85,153 +86,164 @@
 
 (storage err no-error (begin) (begin) (begin) (begin))
 
-(let (r [create-buffer #0])
-	(fallthrough [evaluate-files [@cdr[argv $r]] (list
-			[make-object-symbol (" -!-)(character(char !)) $r]
-			[make-object-symbol (" -!-)(character(char !)) $r]
-			[make-object-symbol (" -"-)(character(char ")) $r]
-			[make-object-symbol (" -#-)(character(char #)) $r]
-			[make-object-symbol (" -$-)(character(char $)) $r]
-			[make-object-symbol (" -%-)(character(char %)) $r]
-			[make-object-symbol (" -&-)(character(char &)) $r]
-			[make-object-symbol (" -'-)(character(char ')) $r]
-			[make-object-symbol (" -*-)(character(char *)) $r]
-			[make-object-symbol (" -+-)(character(char +)) $r]
-			[make-object-symbol (" -,-)(character(char ,)) $r]
-			[make-object-symbol (" ---)(character(char -)) $r]
-			[make-object-symbol (" -.-)(character(char .)) $r]
-			[make-object-symbol (" -/-)(character(char /)) $r]
-			[make-object-symbol (" -0-)(character(char 0)) $r]
-			[make-object-symbol (" -1-)(character(char 1)) $r]
-			[make-object-symbol (" -2-)(character(char 2)) $r]
-			[make-object-symbol (" -3-)(character(char 3)) $r]
-			[make-object-symbol (" -4-)(character(char 4)) $r]
-			[make-object-symbol (" -5-)(character(char 5)) $r]
-			[make-object-symbol (" -6-)(character(char 6)) $r]
-			[make-object-symbol (" -7-)(character(char 7)) $r]
-			[make-object-symbol (" -8-)(character(char 8)) $r]
-			[make-object-symbol (" -9-)(character(char 9)) $r]
-			[make-object-symbol (" -:-)(character(char :)) $r]
-			[make-object-symbol (" -;-)(character(char ;)) $r]
-			[make-object-symbol (" -<-)(character(char <)) $r]
-			[make-object-symbol (" -=-)(character(char =)) $r]
-			[make-object-symbol (" ->-)(character(char >)) $r]
-			[make-object-symbol (" -?-)(character(char ?)) $r]
-			[make-object-symbol (" -@-)(character(char @)) $r]
-			[make-object-symbol (" -A-)(character(char A)) $r]
-			[make-object-symbol (" -B-)(character(char B)) $r]
-			[make-object-symbol (" -C-)(character(char C)) $r]
-			[make-object-symbol (" -D-)(character(char D)) $r]
-			[make-object-symbol (" -E-)(character(char E)) $r]
-			[make-object-symbol (" -F-)(character(char F)) $r]
-			[make-object-symbol (" -G-)(character(char G)) $r]
-			[make-object-symbol (" -H-)(character(char H)) $r]
-			[make-object-symbol (" -I-)(character(char I)) $r]
-			[make-object-symbol (" -J-)(character(char J)) $r]
-			[make-object-symbol (" -K-)(character(char K)) $r]
-			[make-object-symbol (" -L-)(character(char L)) $r]
-			[make-object-symbol (" -M-)(character(char M)) $r]
-			[make-object-symbol (" -N-)(character(char N)) $r]
-			[make-object-symbol (" -O-)(character(char O)) $r]
-			[make-object-symbol (" -P-)(character(char P)) $r]
-			[make-object-symbol (" -Q-)(character(char Q)) $r]
-			[make-object-symbol (" -R-)(character(char R)) $r]
-			[make-object-symbol (" -S-)(character(char S)) $r]
-			[make-object-symbol (" -T-)(character(char T)) $r]
-			[make-object-symbol (" -U-)(character(char U)) $r]
-			[make-object-symbol (" -V-)(character(char V)) $r]
-			[make-object-symbol (" -W-)(character(char W)) $r]
-			[make-object-symbol (" -X-)(character(char X)) $r]
-			[make-object-symbol (" -Y-)(character(char Y)) $r]
-			[make-object-symbol (" -Z-)(character(char Z)) $r]
-			[make-object-symbol (" -\-)(character(char \)) $r]
-			[make-object-symbol (" -^-)(character(char ^)) $r]
-			[make-object-symbol (" -_-)(character(char _)) $r]
-			[make-object-symbol (" -`-)(character(char `)) $r]
-			[make-object-symbol (" -a-)(character(char a)) $r]
-			[make-object-symbol (" -b-)(character(char b)) $r]
-			[make-object-symbol (" -c-)(character(char c)) $r]
-			[make-object-symbol (" -d-)(character(char d)) $r]
-			[make-object-symbol (" -e-)(character(char e)) $r]
-			[make-object-symbol (" -f-)(character(char f)) $r]
-			[make-object-symbol (" -g-)(character(char g)) $r]
-			[make-object-symbol (" -h-)(character(char h)) $r]
-			[make-object-symbol (" -i-)(character(char i)) $r]
-			[make-object-symbol (" -j-)(character(char j)) $r]
-			[make-object-symbol (" -k-)(character(char k)) $r]
-			[make-object-symbol (" -l-)(character(char l)) $r]
-			[make-object-symbol (" -m-)(character(char m)) $r]
-			[make-object-symbol (" -n-)(character(char n)) $r]
-			[make-object-symbol (" -o-)(character(char o)) $r]
-			[make-object-symbol (" -p-)(character(char p)) $r]
-			[make-object-symbol (" -q-)(character(char q)) $r]
-			[make-object-symbol (" -r-)(character(char r)) $r]
-			[make-object-symbol (" -s-)(character(char s)) $r]
-			[make-object-symbol (" -t-)(character(char t)) $r]
-			[make-object-symbol (" -u-)(character(char u)) $r]
-			[make-object-symbol (" -v-)(character(char v)) $r]
-			[make-object-symbol (" -w-)(character(char w)) $r]
-			[make-object-symbol (" -x-)(character(char x)) $r]
-			[make-object-symbol (" -y-)(character(char y)) $r]
-			[make-object-symbol (" -z-)(character(char z)) $r]
-			[make-object-symbol (" -|-)(character(char |)) $r]
-			[make-object-symbol (" -~-)(character(char ~)) $r]
-			[make-object-symbol (" @fst) @car $r]
-			[make-object-symbol (" @rst) @cdr $r]
-			[make-object-symbol (" lst) cons $r]
-			[make-object-symbol (" symbol?) i/f:symbol? $r]
-			[make-object-symbol (" emt?) nil? $r]
-			[make-object-symbol (" emt) nil $r]
-			[make-object-symbol (" char=) i/f:char= $r] $r) handler err]
+(let (obj-buf (begin)) (expr-buf (begin))
+	(fallthrough
+		(begin
+			[set obj-buf [create-buffer #0]]
+			[set expr-buf [create-buffer #0]]
 			
-		(handler (begin
-			(storage code ($(loc err #0(unit))))
-			(storage arg0 ($(loc err #1(unit))))
-			(storage arg1 ($(loc err #2(unit))))
-			(storage arg2 ($(loc err #3(unit))))
-			(storage arg3 ($(loc err #4(unit))))
+			[evaluate-files (list(" test.l2)$obj-buf) (list
+				[make-object-symbol (" -!-)(character(char !)) $obj-buf]
+				[make-object-symbol (" -!-)(character(char !)) $obj-buf]
+				[make-object-symbol (" -"-)(character(char ")) $obj-buf]
+				[make-object-symbol (" -#-)(character(char #)) $obj-buf]
+				[make-object-symbol (" -$-)(character(char $)) $obj-buf]
+				[make-object-symbol (" -%-)(character(char %)) $obj-buf]
+				[make-object-symbol (" -&-)(character(char &)) $obj-buf]
+				[make-object-symbol (" -'-)(character(char ')) $obj-buf]
+				[make-object-symbol (" -*-)(character(char *)) $obj-buf]
+				[make-object-symbol (" -+-)(character(char +)) $obj-buf]
+				[make-object-symbol (" -,-)(character(char ,)) $obj-buf]
+				[make-object-symbol (" ---)(character(char -)) $obj-buf]
+				[make-object-symbol (" -.-)(character(char .)) $obj-buf]
+				[make-object-symbol (" -/-)(character(char /)) $obj-buf]
+				[make-object-symbol (" -0-)(character(char 0)) $obj-buf]
+				[make-object-symbol (" -1-)(character(char 1)) $obj-buf]
+				[make-object-symbol (" -2-)(character(char 2)) $obj-buf]
+				[make-object-symbol (" -3-)(character(char 3)) $obj-buf]
+				[make-object-symbol (" -4-)(character(char 4)) $obj-buf]
+				[make-object-symbol (" -5-)(character(char 5)) $obj-buf]
+				[make-object-symbol (" -6-)(character(char 6)) $obj-buf]
+				[make-object-symbol (" -7-)(character(char 7)) $obj-buf]
+				[make-object-symbol (" -8-)(character(char 8)) $obj-buf]
+				[make-object-symbol (" -9-)(character(char 9)) $obj-buf]
+				[make-object-symbol (" -:-)(character(char :)) $obj-buf]
+				[make-object-symbol (" -;-)(character(char ;)) $obj-buf]
+				[make-object-symbol (" -<-)(character(char <)) $obj-buf]
+				[make-object-symbol (" -=-)(character(char =)) $obj-buf]
+				[make-object-symbol (" ->-)(character(char >)) $obj-buf]
+				[make-object-symbol (" -?-)(character(char ?)) $obj-buf]
+				[make-object-symbol (" -@-)(character(char @)) $obj-buf]
+				[make-object-symbol (" -A-)(character(char A)) $obj-buf]
+				[make-object-symbol (" -B-)(character(char B)) $obj-buf]
+				[make-object-symbol (" -C-)(character(char C)) $obj-buf]
+				[make-object-symbol (" -D-)(character(char D)) $obj-buf]
+				[make-object-symbol (" -E-)(character(char E)) $obj-buf]
+				[make-object-symbol (" -F-)(character(char F)) $obj-buf]
+				[make-object-symbol (" -G-)(character(char G)) $obj-buf]
+				[make-object-symbol (" -H-)(character(char H)) $obj-buf]
+				[make-object-symbol (" -I-)(character(char I)) $obj-buf]
+				[make-object-symbol (" -J-)(character(char J)) $obj-buf]
+				[make-object-symbol (" -K-)(character(char K)) $obj-buf]
+				[make-object-symbol (" -L-)(character(char L)) $obj-buf]
+				[make-object-symbol (" -M-)(character(char M)) $obj-buf]
+				[make-object-symbol (" -N-)(character(char N)) $obj-buf]
+				[make-object-symbol (" -O-)(character(char O)) $obj-buf]
+				[make-object-symbol (" -P-)(character(char P)) $obj-buf]
+				[make-object-symbol (" -Q-)(character(char Q)) $obj-buf]
+				[make-object-symbol (" -R-)(character(char R)) $obj-buf]
+				[make-object-symbol (" -S-)(character(char S)) $obj-buf]
+				[make-object-symbol (" -T-)(character(char T)) $obj-buf]
+				[make-object-symbol (" -U-)(character(char U)) $obj-buf]
+				[make-object-symbol (" -V-)(character(char V)) $obj-buf]
+				[make-object-symbol (" -W-)(character(char W)) $obj-buf]
+				[make-object-symbol (" -X-)(character(char X)) $obj-buf]
+				[make-object-symbol (" -Y-)(character(char Y)) $obj-buf]
+				[make-object-symbol (" -Z-)(character(char Z)) $obj-buf]
+				[make-object-symbol (" -\-)(character(char \)) $obj-buf]
+				[make-object-symbol (" -^-)(character(char ^)) $obj-buf]
+				[make-object-symbol (" -_-)(character(char _)) $obj-buf]
+				[make-object-symbol (" -`-)(character(char `)) $obj-buf]
+				[make-object-symbol (" -a-)(character(char a)) $obj-buf]
+				[make-object-symbol (" -b-)(character(char b)) $obj-buf]
+				[make-object-symbol (" -c-)(character(char c)) $obj-buf]
+				[make-object-symbol (" -d-)(character(char d)) $obj-buf]
+				[make-object-symbol (" -e-)(character(char e)) $obj-buf]
+				[make-object-symbol (" -f-)(character(char f)) $obj-buf]
+				[make-object-symbol (" -g-)(character(char g)) $obj-buf]
+				[make-object-symbol (" -h-)(character(char h)) $obj-buf]
+				[make-object-symbol (" -i-)(character(char i)) $obj-buf]
+				[make-object-symbol (" -j-)(character(char j)) $obj-buf]
+				[make-object-symbol (" -k-)(character(char k)) $obj-buf]
+				[make-object-symbol (" -l-)(character(char l)) $obj-buf]
+				[make-object-symbol (" -m-)(character(char m)) $obj-buf]
+				[make-object-symbol (" -n-)(character(char n)) $obj-buf]
+				[make-object-symbol (" -o-)(character(char o)) $obj-buf]
+				[make-object-symbol (" -p-)(character(char p)) $obj-buf]
+				[make-object-symbol (" -q-)(character(char q)) $obj-buf]
+				[make-object-symbol (" -r-)(character(char r)) $obj-buf]
+				[make-object-symbol (" -s-)(character(char s)) $obj-buf]
+				[make-object-symbol (" -t-)(character(char t)) $obj-buf]
+				[make-object-symbol (" -u-)(character(char u)) $obj-buf]
+				[make-object-symbol (" -v-)(character(char v)) $obj-buf]
+				[make-object-symbol (" -w-)(character(char w)) $obj-buf]
+				[make-object-symbol (" -x-)(character(char x)) $obj-buf]
+				[make-object-symbol (" -y-)(character(char y)) $obj-buf]
+				[make-object-symbol (" -z-)(character(char z)) $obj-buf]
+				[make-object-symbol (" -|-)(character(char |)) $obj-buf]
+				[make-object-symbol (" -~-)(character(char ~)) $obj-buf]
+				[make-object-symbol (" @fst) @car $obj-buf]
+				[make-object-symbol (" @rst) @cdr $obj-buf]
+				[make-object-symbol (" lst) cons $obj-buf]
+				[make-object-symbol (" symbol?) i/f:symbol? $obj-buf]
+				[make-object-symbol (" emt?) nil? $obj-buf]
+				[make-object-symbol (" emt) nil $obj-buf]
+				[make-object-symbol (" char=) i/f:char= $obj-buf] $obj-buf) $obj-buf $expr-buf handler err])
 			
-			(switch = $code
+		(handler
+			(switch = [@0 err]
 				(multiple-definition-error (begin
 					[write-str (stdout) (" The definition of(space))]
-					[write-str (stdout) $arg0]
+					[write-str (stdout) [@1 err]]
 					[write-str (stdout) (" (space)erroneously occured multiple times.(lf))]))
 					
 				(param-count-mismatch-error (begin
 					[write-str (stdout) (" The number of arguments in(space))]
-					[print-expression $arg0]
+					[print-expression [@1 err]]
 					[write-str (stdout) (" (space)does not match the number of parameters in(space))]
-					[print-expression $arg1]
+					[print-expression [@2 err]]
 					[write-str (stdout) (" .(lf))]))
 				
 				(undefined-reference-error (begin
 					[write-str (stdout) (" Undefined reference:(space))]
-					[write-str (stdout) $arg0]
+					[write-str (stdout) [@1 err]]
 					[write-str (stdout) (" .(lf))]))
 				
-				(special-form-error (if $arg1
+				(special-form-error (if [@2 err]
 					(begin
 						[write-str (stdout) (" The subexpression(space))]
-						[print-fragment $arg1]
+						[print-fragment [@2 err]]
 						[write-str (stdout) (" (space)does not satisfy the requirements of the expression(space))]
-						[print-fragment $arg0]
+						[print-fragment [@1 err]]
 						[write-str (stdout) (" .(lf))])
 					(begin
 						[write-str (stdout) (" The expression(space))]
-						[print-fragment $arg0]
+						[print-fragment [@1 err]]
 						[write-str (stdout) (" (space)has an incorrect number of subexpressions.(lf))])))
 				
 				(unexpected-char-error (begin
 					[write-str (stdout) (" Unexpectedly read(space))]
-					[write-char (stdout) $arg0]
+					[write-char (stdout) [@1 err]]
 					[write-str (stdout) (" (space)at(space))]
-					[write-uint (stdout) $arg1]
+					[write-uint (stdout) [@2 err]]
 					[write-str (stdout) (" .(lf))]))
 				
-				(file-access-error (begin
-					[write-str (stdout) (" Inaccessable file:(space))]
-					[write-str (stdout) $arg0]
+				(file-access-error (if [@1 err]
+					(begin
+						[write-str (stdout) (" Inaccessable file:(space))]
+						[write-str (stdout) [@1 err]]
+						[write-str (stdout) (" .(lf))])
+					[write-str (stdout) (" Inaccessable file.)]))
+				
+				(unsupported-ext-error (begin
+					[write-str (stdout) (" File has unsupported extension:(space))]
+					[write-str (stdout) [@1 err]]
 					[write-str (stdout) (" .(lf))]))
 					
-				(begin))
-			[exit #1]))))
+				(begin)))
+			
+			(cleanup-expr-buf [destroy-buffer $expr-buf])
+			
+			(cleanup-obj-buf [destroy-buffer $obj-buf])
+			
+			(_ [exit (if [= [@0 err] no-error] #0 #1)])))

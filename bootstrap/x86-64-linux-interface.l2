@@ -99,19 +99,23 @@
 
 (function open (path handler err)
 	(let (ret [syscall (sys-open) $path (o-rdonly)])
-		(if (and (or [< [- #0 #4095] $ret] [= [- #0 #4095] $ret]) (or [< $ret [- #0 #1]] [= $ret [- #0 #1]]))
+		(if (and [<= [- #0 #4095] $ret] [<= $ret [- #0 #1]])
 			{$handler (set-storage $err file-access-error $path)}
 			$ret)))
 
 (function myopen (path) [syscall (sys-open) $path [lor (o-rdwr) (o-creat)] [lor (s-irwxu) [lor (s-irwxg) (s-irwxo)]]])
 
-(function write (fd d len) [syscall (sys-write) $fd $d $len])
+(function write (fd d len handler err)
+	(let (ret [syscall (sys-write) $fd $d $len])
+		(if (and [<= [- #0 #4095] $ret] [<= $ret [- #0 #1]] $handler)
+			{$handler (set-storage $err file-access-error (null))}
+			$ret)))
 
-(function write-str (fd str) [write $fd $str [strlen $str]])
+(function write-str (fd str handler err) [write $fd $str [strlen $str] $handler $err])
 
-(function write-char (fd ch) [write $fd ch #1])
+(function write-char (fd ch handler err) [write $fd ch #1 $handler $err])
 
-(function write-uint (fd i) (with return
+(function write-uint (fd i handler err) (with return
 	[allocate #20 (continuation _ (str) (let (j #19) (begin
 		(until (i $i) [= $i #0] [/ $i #10] (begin
 			[setb [+ $str $j] (switch = [rem $i #10]
@@ -126,17 +130,28 @@
 				(#1 (char 1))
 				(char 0))]
 			[set j [- $j #1]]))
-		[write $fd [+ $str [+ $j #1]] [- #19 $j]]
+		[write $fd [+ $str [+ $j #1]] [- #19 $j] $handler $err]
 		{return (begin)})))]))
 
-(function read (fd buf cnt) [syscall (sys-read) $fd $buf $cnt])
+(function read (fd buf cnt handler err)
+	(let (ret [syscall (sys-read) $fd $buf $cnt])
+		(if (and [<= [- #0 #4095] $ret] [<= $ret [- #0 #1]] $handler)
+			{$handler (set-storage $err file-access-error (null))}
+			$ret)))
 
-(function close (fd) [syscall (sys-close) $fd])
+(function close (fd handler err)
+	(let (ret [syscall (sys-close) $fd])
+		(if (and [<= [- #0 #4095] $ret] [<= $ret [- #0 #1]] $handler)
+			{$handler (set-storage $err file-access-error (null))}
+			$ret)))
 
-(function size (fd) (with return
-	[allocate #144 (continuation _ (statbuf) (begin
-		[syscall (sys-fstat) $fd $statbuf]
-		{return [get [+ $statbuf #48]]}))]))
+(function size (fd handler err) (with return (begin
+	(storage statbuf (begin)(begin)(begin)(begin)(begin)(begin)(begin)(begin)(begin)(begin)(begin)(begin)(begin)(begin)(begin)(begin)
+		(begin)(begin))
+	(let (ret [syscall (sys-fstat) $fd statbuf])
+		(if (and [<= [- #0 #4095] $ret] [<= $ret [- #0 #1]] $handler)
+			{$handler (set-storage $err file-access-error (null))}
+			{return [get [+ statbuf #48]]})))))
 
 (++ Creates a new virtual address mapping of the size in bytes given at len.)
 
@@ -164,6 +179,10 @@
 (function @1 (tuple) ($[+ $tuple [* #1(unit)]]))
 
 (function @2 (tuple) ($[+ $tuple [* #2(unit)]]))
+
+(function @3 (tuple) ($[+ $tuple [* #3(unit)]]))
+
+(function @4 (tuple) ($[+ $tuple [* #4(unit)]]))
 
 (++ Creates a new region with a minimum capacity in bytes given by the value at
 	min-capacity.)
