@@ -1,4 +1,4 @@
-(function load-program (program ectx handler err) (with return (begin
+(function compile-program (program symbols ectx handler err) (with return (begin
 	(storage ct-reg (@ ectx-expr-buf $ectx))
 	[visit-expressions vfind-multiple-definitions program (storage _ $handler $err)]
 	[classify-program-symbols (@ expr-expression $program)]
@@ -13,12 +13,17 @@
 	[visit-expressions vgenerate-ifs program $ct-reg]
 	[visit-expressions vgenerate-function-expressions program $ct-reg]
 	[visit-expressions vgenerate-storage-expressions program $ct-reg]
-	(storage symbols (@ expr-symbols $program))
-	(foreach (l (@ expr-parameters $program)) [prepend (@ expr-symbol $l) symbols $ct-reg])
+	[set $symbols (@ expr-symbols $program)]
+	(foreach (l (@ expr-parameters $program)) [prepend (@ expr-symbol $l) $symbols $ct-reg])
 	[set program [generate-toplevel $program $ct-reg]]
 	(storage asms nil)
 	[visit-expressions vlinearized-expressions program (storage _ asms $ct-reg)]
-	[set asms [reverse $asms $ct-reg]]
+	{return [reverse $asms $ct-reg]})))
+
+(function load-program (program ectx handler err) (with return (begin
+	(storage ct-reg (@ ectx-expr-buf $ectx))
+	(storage symbols (begin))
+	(storage asms [compile-program $program symbols $ectx $handler $err])
 	(storage objdest (begin))
 	(storage objdest-sz (begin))
 	[write-elf $asms $symbols objdest objdest-sz $ct-reg]
