@@ -103,6 +103,12 @@
 			{$handler (set-storage $err file-access-error $path)}
 			$ret)))
 
+(function create (path handler err)
+	(let (ret [syscall (sys-open) $path [lor (o-wronly) (o-creat)] [lor (s-irwxu) [lor (s-irwxg) (s-irwxo)]]])
+		(if (and [<= [- #0 #4095] $ret] [<= $ret [- #0 #1]])
+			{$handler (set-storage $err file-access-error $path)}
+			$ret)))
+
 (function print (fd d len handler err)
 	(let (ret [syscall (sys-write) $fd $d $len])
 		(if (and [<= [- #0 #4095] $ret] [<= $ret [- #0 #1]])

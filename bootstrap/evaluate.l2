@@ -45,9 +45,11 @@
 			$expr-buf])
 	{return $expressions})))
 
-(function evaluate-files (srcv bindings obj-buf expr-buf handler err) (begin
+(function evaluate-files (srcv ectx handler err) (with return (begin
 	(storage objects nil)
-	(storage ectx $bindings $obj-buf $expr-buf)
+	(storage obj-buf (@ ectx-obj-buf $ectx))
+	(storage expr-buf (@ ectx-expr-buf $ectx))
+	(storage bindings (@ ectx-symbols $ectx))
 	(storage fds nil)
 	
 	(fallthrough
@@ -59,7 +61,7 @@
 		
 				(if (and $dot [str= $dot (" .l2)])
 					[set obj [load-program [generate-metaprogram [make-program [read-expressions $fd $expr-buf close-files $err]
-						$expr-buf] ectx close-files $err] ectx close-files $err]]
+						$expr-buf] $ectx close-files $err] $ectx close-files $err]]
 			
 				(if (and $dot [str= $dot (" .o)]) (begin
 					(storage obj-sz [size $fd close-files $err])
@@ -70,14 +72,14 @@
 					{close-files (set-storage $err unsupported-ext-error $src)}))
 		
 				[append $obj objects $obj-buf]
-				[append-list (& ectx-symbols ectx) [immutable-symbols $obj $obj-buf]]))
+				[append-list (& ectx-symbols $ectx) [immutable-symbols $obj $obj-buf]]))
 	
-			(foreach (obj $objects) [mutate-symbols $obj (@ ectx-symbols ectx)])
+			(foreach (obj $objects) [mutate-symbols $obj (@ ectx-symbols $ectx)])
 			(foreach (obj $objects) [[segment $obj (" .text)]]))
 		
 		(close-files (begin
 			(foreach (fd $fds) [close $fd (null) (null)])
-			(if [= [@0 $err] no-error] (begin) {$handler (begin)}))))))
+			(if [= [@0 $err] no-error] {return (@ ectx-symbols $ectx)} {$handler (begin)})))))))
 
 (function load-program-and-mutate (program ectx handler err) (with return (begin
 	(storage obj [load-program $program $ectx $handler $err])
@@ -90,7 +92,32 @@
 	[mutate-symbols $obj (@ ectx-symbols $ectx)]
 	{return $obj})))
 
+(function compile-files (programs ectx handler err) (begin
+	(storage expr-buf (@ ectx-expr-buf $ectx))
+	(storage obj-buf (@ ectx-obj-buf $ectx))
+	
+	(foreach (infn $programs) (begin
+		(storage dot [strrchr $infn (char .)])
+		(if (and $dot [str= $dot (" .l2)]) (begin
+			(storage program [make-program [read-expressions [open $infn] $expr-buf $handler $err] $expr-buf])
+			[pre-visit-expressions vgenerate-metas program (storage _ $ectx $handler $err)]
+			(storage symbols (begin))
+			(storage asms [compile-program $program symbols $ectx $handler $err])
+			(storage objdest (begin))
+			(storage objdest-sz (begin))
+			[write-elf $asms $symbols objdest objdest-sz $obj-buf]
+			(storage outfn [buffer-alloc $obj-buf [+ [strlen $infn] #1]])
+			[strcpy $outfn $infn]
+			(storage dot [strrchr $outfn (char .)])
+			[strcpy $dot (" .o2)]
+			(storage fd [create $outfn $handler $err])
+			[print $fd $objdest $objdest-sz]
+			[close $fd])
+			(begin))))))
+
 (storage no-error (begin))
+
+(storage arguments-error (begin))
 
 (storage err no-error (begin) (begin) (begin) (begin))
 
@@ -100,7 +127,20 @@
 			[set obj-buf [create-buffer #0]]
 			[set expr-buf [create-buffer #0]]
 			
-			[evaluate-files (list(" test.l2)$obj-buf) (list
+			(storage args [@cdr[argv $obj-buf]])
+			(storage dash-list [find str= args (" -)])
+			(if $dash-list (begin) {handler (set-storage $err arguments-error)})
+			
+			(storage metaprograms nil)
+			(with break (foreach (fn $args)
+				(if [str= $fn (" -)]
+					{break (begin)}
+					[append $fn metaprograms $obj-buf])))
+			
+			(storage programs nil)
+			(foreach (fn [@cdr $$dash-list]) [append $fn programs $obj-buf])
+			
+			(storage ectx (list
 				[make-sym (" -!-)(sym-char(char !)) $obj-buf]
 				[make-sym (" -!-)(sym-char(char !)) $obj-buf]
 				[make-sym (" -"-)(sym-char(char ")) $obj-buf]
@@ -196,7 +236,9 @@
 				[make-sym (" symbol?) i/f:symbol? $obj-buf]
 				[make-sym (" emt?) nil? $obj-buf]
 				[make-sym (" emt) nil $obj-buf]
-				[make-sym (" char=) i/f:char= $obj-buf] $obj-buf) $obj-buf $expr-buf handler err])
+				[make-sym (" char=) i/f:char= $obj-buf] $obj-buf) $obj-buf $expr-buf)
+			
+			(storage metaprogram-symbols [evaluate-files $metaprograms ectx handler err]))
 			
 		(handler
 			(switch = [@0 err]
