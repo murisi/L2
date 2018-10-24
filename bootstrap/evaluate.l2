@@ -19,26 +19,24 @@
 	[visit-expressions vlinearized-expressions program (storage _ asms $expr-buf)]
 	{return [reverse $asms $expr-buf]})))
 
-(function load-program (program ectx handler err) (with return (begin
-	(storage ct-reg (@ ectx-expr-buf $ectx))
+(function load-program (program expr-buf obj-buf handler err) (with return (begin
 	(storage symbols (begin))
-	(storage asms [compile-program $program symbols $ct-reg $handler $err])
+	(storage asms [compile-program $program symbols $expr-buf $handler $err])
 	(storage objdest (begin))
 	(storage objdest-sz (begin))
-	[write-elf $asms $symbols objdest objdest-sz $ct-reg]
-	(storage obj [load $objdest $objdest-sz (@ ectx-obj-buf $ectx) $handler $err])
+	[write-elf $asms $symbols objdest objdest-sz $obj-buf]
+	(storage obj [load $objdest $objdest-sz $obj-buf $handler $err])
 	[symbol-offsets-to-addresses $asms $symbols $obj]
 	{return $obj})))
 
-(function load-program-and-mutate (program ectx handler err) (with return (begin
-	(storage obj [load-program $program $ectx $handler $err])
+(function load-program-and-mutate (program syms expr-buf obj-buf handler err) (with return (begin
+	(storage obj [load-program $program $expr-buf $obj-buf $handler $err])
 	(storage temp-reg [create-buffer #0])
 	(storage ms [mutable-symbols $obj $temp-reg])
-	(storage missing-sym [not-subset (function symbol= (sym1 sym2) [str= (@ sym-name $sym1) (@ sym-name $sym2)]) $ms
-		(@ ectx-symbols $ectx)])
+	(storage missing-sym [not-subset (function symbol= (sym1 sym2) [str= (@ sym-name $sym1) (@ sym-name $sym2)]) $ms $syms])
 	(if $missing-sym {$handler (set-storage $err undefined-reference-error (@ sym-name $missing-sym))} (begin))
 	[destroy-buffer $temp-reg]
-	[mutate-symbols $obj (@ ectx-symbols $ectx)]
+	[mutate-symbols $obj $syms]
 	{return $obj})))
 	
 (function read-to-buffer (fn expr-buf size-out handler err) (with return (begin
@@ -70,11 +68,8 @@
 
 (storage unsupported-ext-error (begin))
 
-(function evaluate-files (srcv ectx handler err) (begin
+(function evaluate-files (srcv symbols expr-buf obj-buf handler err) (begin
 	(storage objects nil)
-	(storage obj-buf (@ ectx-obj-buf $ectx))
-	(storage expr-buf (@ ectx-expr-buf $ectx))
-	(storage bindings (@ ectx-symbols $ectx))
 	
 	(foreach (src $srcv) (begin
 		(storage obj (begin))
@@ -82,7 +77,7 @@
 
 		(if (and $dot [str= $dot (" .l2)])
 			[set obj [load-program [generate-metaprogram [make-program [read-expressions $src $expr-buf $handler $err]
-				$expr-buf] $ectx $handler $err] $ectx $handler $err]]
+				$expr-buf] $symbols $expr-buf $obj-buf $handler $err] $expr-buf $obj-buf $handler $err]]
 	
 		(if (and $dot [str= $dot (" .o)]) (begin
 			(storage obj-sz (begin))
@@ -92,20 +87,17 @@
 			{$handler (set-storage $err unsupported-ext-error $src)}))
 
 		[append $obj objects $obj-buf]
-		[append-list (& ectx-symbols $ectx) [immutable-symbols $obj $obj-buf]]))
+		[append-list $symbols [immutable-symbols $obj $obj-buf]]))
 
-	(foreach (obj $objects) [mutate-symbols $obj (@ ectx-symbols $ectx)])
+	(foreach (obj $objects) [mutate-symbols $obj $$symbols])
 	(foreach (obj $objects) [[segment $obj (" .text)]])))
 
-(function compile-files (programs ectx handler err) (begin
-	(storage expr-buf (@ ectx-expr-buf $ectx))
-	(storage obj-buf (@ ectx-obj-buf $ectx))
-	
+(function compile-files (programs syms expr-buf obj-buf handler err)
 	(foreach (infn $programs) (begin
 		(storage dot [strrchr $infn (char .)])
 		(if (and $dot [str= $dot (" .l2)]) (begin
 			(storage program [make-program [read-expressions $infn $expr-buf $handler $err] $expr-buf])
-			[pre-visit-expressions vgenerate-metas program (storage _ $ectx $handler $err)]
+			[pre-visit-expressions vgenerate-metas program (storage _ $syms $expr-buf $handler $err)]
 			(storage symbols (begin))
 			(storage asms [compile-program $program symbols $expr-buf $handler $err])
 			(storage objdest (begin))
@@ -113,12 +105,11 @@
 			[write-elf $asms $symbols objdest objdest-sz $obj-buf]
 			(storage outfn [buffer-alloc $obj-buf [+ [strlen $infn] #1]])
 			[strcpy $outfn $infn]
-			(storage dot [strrchr $outfn (char .)])
-			[strcpy $dot (" .o2)]
+			[strcpy [strrchr $outfn (char .)] (" .o2)]
 			(storage fd [create $outfn $handler $err])
 			[print $fd $objdest $objdest-sz]
 			[close $fd])
-			(begin))))))
+			(begin)))))
 
 (storage arguments-error (begin))
 
@@ -145,7 +136,7 @@
 			(storage programs nil)
 			(foreach (fn [@cdr $$dash-list]) [append $fn programs $obj-buf])
 			
-			(storage ectx (list
+			(storage syms (list
 				[make-sym (" -!-)(sym-char(char !)) $obj-buf]
 				[make-sym (" -!-)(sym-char(char !)) $obj-buf]
 				[make-sym (" -"-)(sym-char(char ")) $obj-buf]
@@ -241,10 +232,10 @@
 				[make-sym (" symbol?) i/f:symbol? $obj-buf]
 				[make-sym (" emt?) nil? $obj-buf]
 				[make-sym (" emt) nil $obj-buf]
-				[make-sym (" char=) i/f:char= $obj-buf] $obj-buf) $obj-buf $expr-buf)
+				[make-sym (" char=) i/f:char= $obj-buf] $obj-buf))
 			
-			[evaluate-files $metaprograms ectx handler err]
-			[compile-files $programs ectx handler err])
+			[evaluate-files $metaprograms syms $expr-buf $obj-buf handler err]
+			[compile-files $programs $syms $expr-buf $obj-buf handler err])
 			
 		(handler
 			(switch = (@0 err)
