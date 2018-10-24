@@ -45,7 +45,7 @@
 			$expr-buf])
 	{return $expressions})))
 
-(function evaluate-files (srcv ectx handler err) (with return (begin
+(function evaluate-files (srcv ectx handler err) (begin
 	(storage objects nil)
 	(storage obj-buf (@ ectx-obj-buf $ectx))
 	(storage expr-buf (@ ectx-expr-buf $ectx))
@@ -79,7 +79,7 @@
 		
 		(close-files (begin
 			(foreach (fd $fds) [close $fd (null) (null)])
-			(if [= [@0 $err] no-error] {return (@ ectx-symbols $ectx)} {$handler (begin)})))))))
+			(if [= [@0 $err] no-error] (begin) {$handler (begin)}))))))
 
 (function load-program-and-mutate (program ectx handler err) (with return (begin
 	(storage obj [load-program $program $ectx $handler $err])
@@ -238,7 +238,8 @@
 				[make-sym (" emt) nil $obj-buf]
 				[make-sym (" char=) i/f:char= $obj-buf] $obj-buf) $obj-buf $expr-buf)
 			
-			(storage metaprogram-symbols [evaluate-files $metaprograms ectx handler err]))
+			[evaluate-files $metaprograms ectx handler err]
+			[compile-files $programs ectx handler err])
 			
 		(handler
 			(switch = [@0 err]
