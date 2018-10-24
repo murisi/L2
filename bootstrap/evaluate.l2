@@ -1,29 +1,28 @@
-(function compile-program (program symbols ectx handler err) (with return (begin
-	(storage ct-reg (@ ectx-expr-buf $ectx))
+(function compile-program (program symbols expr-buf handler err) (with return (begin
 	[visit-expressions vfind-multiple-definitions program (storage _ $handler $err)]
 	[classify-program-symbols (@ expr-expression $program)]
-	[visit-expressions vlink-references (& expr-expression $program) (storage _ $ectx $handler $err)]
+	[visit-expressions vlink-references (& expr-expression $program) (storage _ $expr-buf $handler $err)]
 	[visit-expressions vescape-analysis program (null)]
-	[set program [use-return-symbol $program (null) $ct-reg]]
+	[set program [use-return-symbol $program (null) $expr-buf]]
 	[classify-program-symbols (@ expr-expression $program)]
-	[visit-expressions vlayout-frames (& expr-expression $program) $ct-reg]
-	[visit-expressions vgenerate-references program $ct-reg]
-	[visit-expressions vgenerate-continuation-expressions program $ct-reg]
-	[visit-expressions vgenerate-literals program $ct-reg]
-	[visit-expressions vgenerate-ifs program $ct-reg]
-	[visit-expressions vgenerate-function-expressions program $ct-reg]
-	[visit-expressions vgenerate-storage-expressions program $ct-reg]
+	[visit-expressions vlayout-frames (& expr-expression $program) $expr-buf]
+	[visit-expressions vgenerate-references program $expr-buf]
+	[visit-expressions vgenerate-continuation-expressions program $expr-buf]
+	[visit-expressions vgenerate-literals program $expr-buf]
+	[visit-expressions vgenerate-ifs program $expr-buf]
+	[visit-expressions vgenerate-function-expressions program $expr-buf]
+	[visit-expressions vgenerate-storage-expressions program $expr-buf]
 	[set $symbols (@ expr-symbols $program)]
-	(foreach (l (@ expr-parameters $program)) [prepend (@ expr-symbol $l) $symbols $ct-reg])
-	[set program [generate-toplevel $program $ct-reg]]
+	(foreach (l (@ expr-parameters $program)) [prepend (@ expr-symbol $l) $symbols $expr-buf])
+	[set program [generate-toplevel $program $expr-buf]]
 	(storage asms nil)
-	[visit-expressions vlinearized-expressions program (storage _ asms $ct-reg)]
-	{return [reverse $asms $ct-reg]})))
+	[visit-expressions vlinearized-expressions program (storage _ asms $expr-buf)]
+	{return [reverse $asms $expr-buf]})))
 
 (function load-program (program ectx handler err) (with return (begin
 	(storage ct-reg (@ ectx-expr-buf $ectx))
 	(storage symbols (begin))
-	(storage asms [compile-program $program symbols $ectx $handler $err])
+	(storage asms [compile-program $program symbols $ct-reg $handler $err])
 	(storage objdest (begin))
 	(storage objdest-sz (begin))
 	[write-elf $asms $symbols objdest objdest-sz $ct-reg]
@@ -69,7 +68,7 @@
 	
 	{return $expressions})))
 
-(storage unsupported-ext-error #0)
+(storage unsupported-ext-error (begin))
 
 (function evaluate-files (srcv ectx handler err) (begin
 	(storage objects nil)
@@ -108,7 +107,7 @@
 			(storage program [make-program [read-expressions $infn $expr-buf $handler $err] $expr-buf])
 			[pre-visit-expressions vgenerate-metas program (storage _ $ectx $handler $err)]
 			(storage symbols (begin))
-			(storage asms [compile-program $program symbols $ectx $handler $err])
+			(storage asms [compile-program $program symbols $expr-buf $handler $err])
 			(storage objdest (begin))
 			(storage objdest-sz (begin))
 			[write-elf $asms $symbols objdest objdest-sz $obj-buf]
