@@ -2,12 +2,20 @@
 
 (function true (l r) (` #1 $r))
 
+(;; The following macro returns the first non-zero argument supplied to
+	it leaving the rest unevaluated. If all the arguments are zero, then
+	it returns (false).)
+
 (function or (l r) (with return
 	{(continuation loop (l sexpr)
 			(if [emt? $l]
 				{return $sexpr}
 				{loop [@rst $l] (`(let (or:temp (,[@fst $l])) (if $or:temp $or:temp (, $sexpr $r)))$r)}))
 		[meta:reverse $l $r] (`(false)$r)}))
+
+(;; The following macro returns the first zero argument supplied to it
+	leaving the rest unevaluated. If all the arguments are non-zero, then
+	it returns (true).)
 
 (function and (l r) (with return
 	{(continuation loop (l sexpr)
@@ -16,7 +24,10 @@
 				{loop [@rst $l] (`(let (and:temp (,[@fst $l])) (if $and:temp (, $sexpr $r) $and:temp))$r)}))
 		[meta:reverse $l $r] (`(true)$r)}))
 
-(function not (l r) (`(if (,[@fst $l]) #0 #1)$r))
+(;; The following macro returns (false) if the single argument supplied to it
+	is non-zero. Otherwise it returns (true).)
+
+(function not (l r) (`(if (,[@fst $l]) (false) (true))$r))
 
 (function meta:reverse (l r)
 	(with return
@@ -89,7 +100,9 @@
 			{until:return (begin)}
 			(begin (,[@frrrst $l]) {until:aux (,[@frrst $l])}))) (,[@frfst $l])})$r))
 
-(;; (fallthrough expr (labels exprs) ...)
+(;; The following function implements the following transformation:
+	
+	(fallthrough expr (labels exprs) ...)
 	->
 	(begin (with labelN ... (begin (with label0
 		expr) expr0) ... ) exprN))
