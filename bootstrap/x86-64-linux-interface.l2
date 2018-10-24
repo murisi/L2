@@ -119,23 +119,23 @@
 
 (function print-char (fd ch handler err) [print $fd ch #1 $handler $err])
 
-(function print-uint (fd i handler err) (with return
-	[allocate #20 (continuation _ (str) (let (j #19) (begin
-		(until (i $i) [= $i #0] [/ $i #10] (begin
-			[setb [+ $str $j] (switch = [rem $i #10]
-				(#9 (char 9))
-				(#8 (char 8))
-				(#7 (char 7))
-				(#6 (char 6))
-				(#5 (char 5))
-				(#4 (char 4))
-				(#3 (char 3))
-				(#2 (char 2))
-				(#1 (char 1))
-				(char 0))]
-			[set j [- $j #1]]))
-		[print $fd [+ $str [+ $j #1]] [- #19 $j] $handler $err]
-		{return (begin)})))]))
+(function print-uint (fd i handler err) (begin
+	(storage j #19)
+	(storage str (begin) (begin) (begin))
+	(until (i $i) [= $i #0] [/ $i #10] (begin
+		[setb [+ str $j] (switch = [rem $i #10]
+			(#9 (char 9))
+			(#8 (char 8))
+			(#7 (char 7))
+			(#6 (char 6))
+			(#5 (char 5))
+			(#4 (char 4))
+			(#3 (char 3))
+			(#2 (char 2))
+			(#1 (char 1))
+			(char 0))]
+		[set j [- $j #1]]))
+	[print $fd [+ str [+ $j #1]] [- #19 $j] $handler $err]))
 
 (function read (fd buf cnt handler err)
 	(let (ret [syscall (sys-read) $fd $buf $cnt])
