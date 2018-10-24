@@ -31,6 +31,17 @@
 	[symbol-offsets-to-addresses $asms $symbols $obj]
 	{return $obj})))
 
+(function load-program-and-mutate (program ectx handler err) (with return (begin
+	(storage obj [load-program $program $ectx $handler $err])
+	(storage temp-reg [create-buffer #0])
+	(storage ms [mutable-symbols $obj $temp-reg])
+	(storage missing-sym [not-subset (function symbol= (sym1 sym2) [str= (@ sym-name $sym1) (@ sym-name $sym2)]) $ms
+		(@ ectx-symbols $ectx)])
+	(if $missing-sym {$handler (set-storage $err undefined-reference-error (@ sym-name $missing-sym))} (begin))
+	[destroy-buffer $temp-reg]
+	[mutate-symbols $obj (@ ectx-symbols $ectx)]
+	{return $obj})))
+	
 (function read-to-buffer (fn expr-buf size-out handler err) (with return (begin
 	(storage fd (begin))
 	(storage src-buf (begin))
@@ -86,17 +97,6 @@
 
 	(foreach (obj $objects) [mutate-symbols $obj (@ ectx-symbols $ectx)])
 	(foreach (obj $objects) [[segment $obj (" .text)]])))
-
-(function load-program-and-mutate (program ectx handler err) (with return (begin
-	(storage obj [load-program $program $ectx $handler $err])
-	(storage temp-reg [create-buffer #0])
-	(storage ms [mutable-symbols $obj $temp-reg])
-	(storage missing-sym [not-subset (function symbol= (sym1 sym2) [str= (@ sym-name $sym1) (@ sym-name $sym2)]) $ms
-		(@ ectx-symbols $ectx)])
-	(if $missing-sym {$handler (set-storage $err undefined-reference-error (@ sym-name $missing-sym))} (begin))
-	[destroy-buffer $temp-reg]
-	[mutate-symbols $obj (@ ectx-symbols $ectx)]
-	{return $obj})))
 
 (function compile-files (programs ectx handler err) (begin
 	(storage expr-buf (@ ectx-expr-buf $ectx))
