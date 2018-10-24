@@ -80,8 +80,9 @@
 									[+ $base-seg-addr (@ st-value $sym)]))))))
 			(begin))))))
 
-(function read-object (objsrc objsrc-sz reg handler) (with return
+(function read-object (objsrc objsrc-sz reg handler err) (with return
 	(let (obj [buffer-alloc $reg (object)]) (begin
+		(if [< $objsrc-sz (elf64-ehdr)] {$handler (set-storage $err object-error)} (begin))
 		(setf obj-ehdr $obj [buffer-alloc $reg (elf64-ehdr)])
 		[memcpy (@ obj-ehdr $obj) $objsrc (elf64-ehdr)]
 		(setf obj-shdrs $obj [buffer-alloc $reg [* (@ e-shnum(@ obj-ehdr $obj)) (elf64-shdr)]])
@@ -116,8 +117,10 @@
 				(begin))))))
 		{return $obj}))))
 
-(function load (objsrc objsrc-sz reg handler) (with return
-	(let (obj [read-object $objsrc $objsrc-sz $reg $handler]) (begin
+(storage object-error (begin))
+
+(function load (objsrc objsrc-sz reg handler err) (with return
+	(let (obj [read-object $objsrc $objsrc-sz $reg $handler $err]) (begin
 			[offsets-to-addresses $obj]
 			[store-addends $obj $reg $handler]
 			[do-relocations $obj $handler]

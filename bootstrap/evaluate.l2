@@ -27,7 +27,7 @@
 	(storage objdest (begin))
 	(storage objdest-sz (begin))
 	[write-elf $asms $symbols objdest objdest-sz $ct-reg]
-	(storage obj [load $objdest $objdest-sz (@ ectx-obj-buf $ectx) $handler])
+	(storage obj [load $objdest $objdest-sz (@ ectx-obj-buf $ectx) $handler $err])
 	[symbol-offsets-to-addresses $asms $symbols $obj]
 	{return $obj})))
 
@@ -88,7 +88,7 @@
 		(if (and $dot [str= $dot (" .o)]) (begin
 			(storage obj-sz (begin))
 			(storage buf [read-to-buffer $src $obj-buf obj-sz $handler $err])
-			[set obj [load $buf $obj-sz $obj-buf $handler]])
+			[set obj [load $buf $obj-sz $obj-buf $handler $err]])
 	
 			{$handler (set-storage $err unsupported-ext-error $src)}))
 
@@ -303,6 +303,8 @@
 					before the dash together, and then executes each object file before the dash in the order they were(lf)
 					specified. L2 files after the dash are then compiled using the global functions defined before the(lf)
 					dash as macros.(lf))])
+				
+				(object-error [print-str (stdout) (" Bad object file supplied.(lf))])
 					
 				(begin)))
 			
