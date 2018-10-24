@@ -237,71 +237,70 @@
 			[evaluate-files $metaprograms syms $expr-buf $obj-buf handler err]
 			[compile-files $programs $syms $expr-buf $obj-buf handler err])
 			
-		(handler
-			(switch = (@0 err)
-				(multiple-definition-error (begin
-					[print-str (stdout) (" The definition of(space)) cleanup err]
+		(handler (switch = (@0 err)
+			(multiple-definition-error (begin
+				[print-str (stdout) (" The definition of(space)) cleanup err]
+				[print-str (stdout) (@1 err) cleanup err]
+				[print-str (stdout) (" (space)erroneously occured multiple times.(lf)) cleanup err]))
+				
+			(param-count-mismatch-error (begin
+				[print-str (stdout) (" The number of arguments in(space)) cleanup err]
+				[print-expression (@1 err) cleanup err]
+				[print-str (stdout) (" (space)does not match the number of parameters in(space)) cleanup err]
+				[print-expression (@2 err) cleanup err]
+				[print-str (stdout) (" .(lf)) cleanup err]))
+			
+			(undefined-reference-error (begin
+				[print-str (stdout) (" Undefined reference:(space)) cleanup err]
+				[print-str (stdout) (@1 err) cleanup err]
+				[print-str (stdout) (" .(lf)) cleanup err]))
+			
+			(special-form-error (if (@2 err)
+				(begin
+					[print-str (stdout) (" The subexpression(space)) cleanup err]
+					[print-fragment (@2 err) cleanup err]
+					[print-str (stdout) (" (space)does not satisfy the requirements of the expression(space)) cleanup err]
+					[print-fragment (@1 err) cleanup err]
+					[print-str (stdout) (" .(lf)) cleanup err])
+				(begin
+					[print-str (stdout) (" The expression(space)) cleanup err]
+					[print-fragment (@1 err) cleanup err]
+					[print-str (stdout) (" (space)has an incorrect number of subexpressions.(lf)) cleanup err])))
+			
+			(unexpected-char-error (begin
+				[print-str (stdout) (" Unexpectedly read(space)) cleanup err]
+				[print-char (stdout) (@1 err) cleanup err]
+				[print-str (stdout) (" (space)at(space)) cleanup err]
+				[print-uint (stdout) (@2 err) cleanup err]
+				[print-str (stdout) (" .(lf)) cleanup err]))
+			
+			(file-access-error (if (@1 err)
+				(begin
+					[print-str (stdout) (" Inaccessable file:(space)) cleanup err]
 					[print-str (stdout) (@1 err) cleanup err]
-					[print-str (stdout) (" (space)erroneously occured multiple times.(lf)) cleanup err]))
-					
-				(param-count-mismatch-error (begin
-					[print-str (stdout) (" The number of arguments in(space)) cleanup err]
-					[print-expression (@1 err) cleanup err]
-					[print-str (stdout) (" (space)does not match the number of parameters in(space)) cleanup err]
-					[print-expression (@2 err) cleanup err]
-					[print-str (stdout) (" .(lf)) cleanup err]))
-				
-				(undefined-reference-error (begin
-					[print-str (stdout) (" Undefined reference:(space)) cleanup err]
-					[print-str (stdout) (@1 err) cleanup err]
-					[print-str (stdout) (" .(lf)) cleanup err]))
-				
-				(special-form-error (if (@2 err)
-					(begin
-						[print-str (stdout) (" The subexpression(space)) cleanup err]
-						[print-fragment (@2 err) cleanup err]
-						[print-str (stdout) (" (space)does not satisfy the requirements of the expression(space)) cleanup err]
-						[print-fragment (@1 err) cleanup err]
-						[print-str (stdout) (" .(lf)) cleanup err])
-					(begin
-						[print-str (stdout) (" The expression(space)) cleanup err]
-						[print-fragment (@1 err) cleanup err]
-						[print-str (stdout) (" (space)has an incorrect number of subexpressions.(lf)) cleanup err])))
-				
-				(unexpected-char-error (begin
-					[print-str (stdout) (" Unexpectedly read(space)) cleanup err]
-					[print-char (stdout) (@1 err) cleanup err]
-					[print-str (stdout) (" (space)at(space)) cleanup err]
-					[print-uint (stdout) (@2 err) cleanup err]
-					[print-str (stdout) (" .(lf)) cleanup err]))
-				
-				(file-access-error (if (@1 err)
-					(begin
-						[print-str (stdout) (" Inaccessable file:(space)) cleanup err]
-						[print-str (stdout) (@1 err) cleanup err]
-						[print-str (stdout) (" .(lf)) cleanup err])
-					[print-str (stdout) (" Inaccessable file.) cleanup err]))
-				
-				(unsupported-ext-error (begin
-					[print-str (stdout) (" File has unsupported extension:(space)) cleanup err]
-					[print-str (stdout) (@1 err) cleanup err]
-					[print-str (stdout) (" .(lf)) cleanup err]))
-				
-				(arguments-error [print-str (stdout)
-					(" Bad command line arguments.(lf)Usage: l2evaluate (lparen)src1.l2 | obj1.o(rparen) ... - src1.l2 ...(lf)
-					Outcome: Compiles each L2 file before the dash into an object file, then links all the object files(lf)
-					before the dash together, and then executes each object file before the dash in the order they were(lf)
-					specified. L2 files after the dash are then compiled using the global functions defined before the(lf)
-					dash as macros.(lf))])
-				
-				(object-error [print-str (stdout) (" Bad object file supplied.(lf))])
-					
-				(begin)))
+					[print-str (stdout) (" .(lf)) cleanup err])
+				[print-str (stdout) (" Inaccessable file.) cleanup err]))
 			
-			(cleanup (begin))
+			(unsupported-ext-error (begin
+				[print-str (stdout) (" File has unsupported extension:(space)) cleanup err]
+				[print-str (stdout) (@1 err) cleanup err]
+				[print-str (stdout) (" .(lf)) cleanup err]))
 			
-			(cleanup-expr-buf [destroy-buffer $expr-buf])
+			(arguments-error [print-str (stdout)
+				(" Bad command line arguments.(lf)Usage: l2evaluate (lparen)src1.l2 | obj1.o(rparen) ... - src1.l2 ...(lf)
+				Outcome: Compiles each L2 file before the dash into an object file, then links all the object files(lf)
+				before the dash together, and then executes each object file before the dash in the order they were(lf)
+				specified. L2 files after the dash are then compiled using the global functions defined before the(lf)
+				dash as macros.(lf))])
 			
-			(cleanup-obj-buf [destroy-buffer $obj-buf])
-			
-			(_ [exit (if [= (@0 err) no-error] #0 #1)])))
+			(object-error [print-str (stdout) (" Bad object file supplied.(lf))])
+				
+			(begin)))
+		
+		(cleanup (begin))
+		
+		(cleanup-expr-buf [destroy-buffer $expr-buf])
+		
+		(cleanup-obj-buf [destroy-buffer $obj-buf])
+		
+		(_ [exit (if [= (@0 err) no-error] #0 #1)])))
