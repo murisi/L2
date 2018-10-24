@@ -31,55 +31,61 @@
 	[symbol-offsets-to-addresses $asms $symbols $obj]
 	{return $obj})))
 
-(storage unsupported-ext-error #0)
-
-(function read-expressions (fd expr-buf handler err) (with return (begin
-	(storage src-sz [size $fd $handler $err])
-	(storage src-buf [buffer-alloc $expr-buf $src-sz])
-	[read $fd $src-buf $src-sz $handler $err]
-
+(function read-to-buffer (fn expr-buf size-out handler err) (with return (begin
+	(storage fd (begin))
+	(storage src-buf (begin))
+	
+	(fallthrough
+		(begin
+			[set fd [open $fn $handler $err]]
+			[set $size-out [size $fd close-file $err]]
+			[set src-buf [buffer-alloc $expr-buf $$size-out]]
+			[read $fd $src-buf $$size-out close-file $err])
+			
+		(close-file (begin
+			[close $fd $handler $err]
+			(if [= [@0 $err] no-error] {return $src-buf} {$handler (begin)})))))))
+			
+(function read-expressions (fn expr-buf handler err) (with return (begin
+	(storage src-sz (begin))
+	(storage src-buf [read-to-buffer $fn $expr-buf src-sz $handler $err])
 	(storage expressions nil)
 	(storage pos #0)
+	
 	(while [after-leading-space $src-buf $src-sz pos]
-		[append [build-expression [build-fragment $src-buf $src-sz pos $expr-buf $handler $err] $expr-buf $handler $err] expressions
-			$expr-buf])
+		[append [build-expression [build-fragment $src-buf $src-sz pos $expr-buf $handler $err] $expr-buf $handler $err]
+			expressions $expr-buf])
+	
 	{return $expressions})))
+
+(storage unsupported-ext-error #0)
 
 (function evaluate-files (srcv ectx handler err) (begin
 	(storage objects nil)
 	(storage obj-buf (@ ectx-obj-buf $ectx))
 	(storage expr-buf (@ ectx-expr-buf $ectx))
 	(storage bindings (@ ectx-symbols $ectx))
-	(storage fds nil)
 	
-	(fallthrough
-		(begin
-			(foreach (src $srcv) [append [open $src close-files $err] fds $expr-buf])
-			(foreach (src $srcv) (fd $fds) (begin
-				(storage obj (begin))
-				(storage dot [strrchr $src (char .)])
-		
-				(if (and $dot [str= $dot (" .l2)])
-					[set obj [load-program [generate-metaprogram [make-program [read-expressions $fd $expr-buf close-files $err]
-						$expr-buf] $ectx close-files $err] $ectx close-files $err]]
-			
-				(if (and $dot [str= $dot (" .o)]) (begin
-					(storage obj-sz [size $fd close-files $err])
-					(storage buf [buffer-alloc $obj-buf $obj-sz])
-					[read $fd $buf $obj-sz close-files $err]
-					[set obj [load $buf $obj-sz $obj-buf close-files]])
-			
-					{close-files (set-storage $err unsupported-ext-error $src)}))
-		
-				[append $obj objects $obj-buf]
-				[append-list (& ectx-symbols $ectx) [immutable-symbols $obj $obj-buf]]))
+	(foreach (src $srcv) (begin
+		(storage obj (begin))
+		(storage dot [strrchr $src (char .)])
+
+		(if (and $dot [str= $dot (" .l2)])
+			[set obj [load-program [generate-metaprogram [make-program [read-expressions $src $expr-buf $handler $err]
+				$expr-buf] $ectx $handler $err] $ectx $handler $err]]
 	
-			(foreach (obj $objects) [mutate-symbols $obj (@ ectx-symbols $ectx)])
-			(foreach (obj $objects) [[segment $obj (" .text)]]))
-		
-		(close-files (begin
-			(foreach (fd $fds) [close $fd (null) (null)])
-			(if [= [@0 $err] no-error] (begin) {$handler (begin)}))))))
+		(if (and $dot [str= $dot (" .o)]) (begin
+			(storage obj-sz (begin))
+			(storage buf [read-to-buffer $src $obj-buf obj-sz $handler $err])
+			[set obj [load $buf $obj-sz $obj-buf $handler]])
+	
+			{$handler (set-storage $err unsupported-ext-error $src)}))
+
+		[append $obj objects $obj-buf]
+		[append-list (& ectx-symbols $ectx) [immutable-symbols $obj $obj-buf]]))
+
+	(foreach (obj $objects) [mutate-symbols $obj (@ ectx-symbols $ectx)])
+	(foreach (obj $objects) [[segment $obj (" .text)]])))
 
 (function load-program-and-mutate (program ectx handler err) (with return (begin
 	(storage obj [load-program $program $ectx $handler $err])
@@ -99,7 +105,7 @@
 	(foreach (infn $programs) (begin
 		(storage dot [strrchr $infn (char .)])
 		(if (and $dot [str= $dot (" .l2)]) (begin
-			(storage program [make-program [read-expressions [open $infn] $expr-buf $handler $err] $expr-buf])
+			(storage program [make-program [read-expressions $infn $expr-buf $handler $err] $expr-buf])
 			[pre-visit-expressions vgenerate-metas program (storage _ $ectx $handler $err)]
 			(storage symbols (begin))
 			(storage asms [compile-program $program symbols $ectx $handler $err])
