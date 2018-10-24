@@ -90,15 +90,15 @@
 				
 			((leaq-of-mdb-into-reg) (begin
 				(storage opcode (hex 8D))
-				(storage reg (@ expr-opcode [@frrst (@ expr-arguments $n)])) (++ Dest)
-				(storage rm (@ expr-opcode [@frst (@ expr-arguments $n)])) (++ Src)
+				(storage reg (@ expr-opcode [@frrst (@ expr-arguments $n)])) (;; Dest)
+				(storage rm (@ expr-opcode [@frst (@ expr-arguments $n)])) (;; Src)
 				[write-mr-instr $bin $pos $opcode $reg $rm (true) (true)]
 				[write-static-value $bin $pos [@fst (@ expr-arguments $n)] #4 $symtab $relas]))
 				
 			((movq-from-reg-into-mdb) (begin
 				(storage opcode (hex 89))
-				(storage reg (@ expr-opcode [@fst (@ expr-arguments $n)])) (++ Src)
-				(storage rm (@ expr-opcode [@frrst (@ expr-arguments $n)])) (++ Dest)
+				(storage reg (@ expr-opcode [@fst (@ expr-arguments $n)])) (;; Src)
+				(storage rm (@ expr-opcode [@frrst (@ expr-arguments $n)])) (;; Dest)
 				[write-mr-instr $bin $pos $opcode $reg $rm (true) (true)]
 				[write-static-value $bin $pos [@frst (@ expr-arguments $n)] #4 $symtab $relas]))
 				
@@ -109,39 +109,39 @@
 				
 			((movq-mdb-to-reg) (begin
 				(storage opcode (hex 8B))
-				(storage reg (@ expr-opcode [@frrst (@ expr-arguments $n)])) (++ Dest)
-				(storage rm (@ expr-opcode [@frst (@ expr-arguments $n)])) (++ Src)
+				(storage reg (@ expr-opcode [@frrst (@ expr-arguments $n)])) (;; Dest)
+				(storage rm (@ expr-opcode [@frst (@ expr-arguments $n)])) (;; Src)
 				[write-mr-instr $bin $pos $opcode $reg $rm (true) (true)]
 				[write-static-value $bin $pos [@fst (@ expr-arguments $n)] #4 $symtab $relas]))
 				
 			((pushq-reg) (begin
 				(storage opcode (hex 50))
-				(storage reg (@ expr-opcode [@fst (@ expr-arguments $n)])) (++ Dest)
+				(storage reg (@ expr-opcode [@fst (@ expr-arguments $n)])) (;; Dest)
 				[write-o-instr $bin $pos $opcode $reg]))
 				
 			((movq-reg-to-reg) (begin
 				(storage opcode (hex 8B))
-				(storage reg (@ expr-opcode [@frst (@ expr-arguments $n)])) (++ Dest)
-				(storage rm (@ expr-opcode [@fst (@ expr-arguments $n)])) (++ Src)
+				(storage reg (@ expr-opcode [@frst (@ expr-arguments $n)])) (;; Dest)
+				(storage rm (@ expr-opcode [@fst (@ expr-arguments $n)])) (;; Src)
 				[write-mr-instr $bin $pos $opcode $reg $rm (false) (true)]))
 				
 			((subq-imm-from-reg) (begin
 				(storage opcode (hex 81))
 				(storage reg #5)
-				(storage rm (@ expr-opcode [@frst (@ expr-arguments $n)])) (++ Dest)
+				(storage rm (@ expr-opcode [@frst (@ expr-arguments $n)])) (;; Dest)
 				[write-mr-instr $bin $pos $opcode $reg $rm (false) (true)]
 				[mem-write $bin $pos (& expr-value [@fst (@ expr-arguments $n)]) #4]))
 				
 			((addq-imm-to-reg) (begin
 				(storage opcode (hex 81))
 				(storage reg #0)
-				(storage rm (@ expr-opcode [@frst (@ expr-arguments $n)])) (++ Dest)
+				(storage rm (@ expr-opcode [@frst (@ expr-arguments $n)])) (;; Dest)
 				[write-mr-instr $bin $pos $opcode $reg $rm (false) (true)]
 				[mem-write $bin $pos (& expr-value [@fst (@ expr-arguments $n)]) #4]))
 				
 			((popq-reg) (begin
 				(storage opcode (hex 58))
-				(storage reg (@ expr-opcode [@fst (@ expr-arguments $n)])) (++ Dest)
+				(storage reg (@ expr-opcode [@fst (@ expr-arguments $n)])) (;; Dest)
 				[write-o-instr $bin $pos $opcode $reg]))
 				
 			((leave) [mem-write $bin $pos (storage opcode (hex C9)) #1])
@@ -163,14 +163,14 @@
 				
 			((orq-reg-to-reg) (begin
 				(storage opcode (hex 0B))
-				(storage reg (@ expr-opcode [@frst (@ expr-arguments $n)])) (++ Dest)
-				(storage rm (@ expr-opcode [@fst (@ expr-arguments $n)])) (++ Src)
+				(storage reg (@ expr-opcode [@frst (@ expr-arguments $n)])) (;; Dest)
+				(storage rm (@ expr-opcode [@fst (@ expr-arguments $n)])) (;; Src)
 				[write-mr-instr $bin $pos $opcode $reg $rm (false) (true)]))
 				
 			((movq-imm-to-reg) (begin
 				(storage opcode (hex B8))
 				(storage imm-expr [@fst (@ expr-arguments $n)])
-				(storage reg (@ expr-opcode [@frst (@ expr-arguments $n)])) (++ Dest)
+				(storage reg (@ expr-opcode [@frst (@ expr-arguments $n)])) (;; Dest)
 				(storage rd [land (hex 7) $reg])
 				(storage opcoderd [+ $opcode $rd])
 				(storage rex [<< #4 #4])
@@ -263,7 +263,7 @@
 	
 	(storage syms [buffer-alloc $temp-buf [* $sym-count (elf64-sym)]])
 	(storage sym-ptr $syms)
-	(++ Mandatory undefined symbol)
+	(;; Mandatory undefined symbol)
 	(setf st-name $sym-ptr #0)
 	(setf st-value $sym-ptr #0)
 	(setf st-size $sym-ptr #0)
@@ -387,7 +387,7 @@
 	(storage rela-ptr $relas)
 	[assemble $generated-expressions $text text-len $syms rela-ptr]
 	
-	(++ Mandatory undefined section)
+	(;; Mandatory undefined section)
 	(storage undef-shdr [buffer-alloc $temp-buf (elf64-shdr)])
 	(setf sh-name $undef-shdr #0)
 	(setf sh-type $undef-shdr (sht-null))

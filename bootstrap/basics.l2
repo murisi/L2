@@ -1,4 +1,4 @@
-(++ The following functions are abbreviations of sequences of list operations
+(;; The following functions are abbreviations of sequences of list operations
 	that are frequently useful when working with s-expressions.)
 
 (function @frst (l) [@fst [@rst [get l]]])
@@ -39,7 +39,7 @@
 
 (function lllllllst (a b c d e f g h r) [lst [get a] [llllllst [get b] [get c] [get d] [get e] [get f] [get g] [get h] [get r]] [get r]])
 
-(++ The following function provides an abbreviation for getting a value from a
+(;; The following function provides an abbreviation for getting a value from a
 	memory address. It implements the transformation $a -> [get a].)
 
 (function $ (var r)
@@ -48,7 +48,7 @@
 		[lllst -g- -e- -t- emt [get r]]
 		[get var][get r]])
 
-(++ The following function provides a method for commenting L2 code. It
+(;; The following function provides a method for commenting L2 code. It
 	implements the transformation (** expr1 ... exprN) -> exprN.)
 
 (function ** (l r)
@@ -58,7 +58,7 @@
 				{return $first}
 				{find [@fst $last] [@rst $last]})) [@fst $l] [@rst $l]}))
 
-(++ The following function generates the L2 code to generate an s-expression
+(;; The following function generates the L2 code to generate an s-expression
 	corresponding to the supplied s-expression. Known as backquote in other
 	languages.)
 
@@ -77,12 +77,12 @@
 						[aux [@fst $s] $t $r])
 					[aux [@rst $s] $t $r] $t emt $r]))) [@fst $l] [@frst $l] $r])
 
-(++ The following function is a helper function for macros defining constants.
+(;; The following function is a helper function for macros defining constants.
 	It produces a literal from the binary value given at value.)
 
 (function mk# (l r value) [value->literal $value $r])
 
-(++ A set of macros to provide struct functionality in L2. The most naive way
+(;; A set of macros to provide struct functionality in L2. The most naive way
 	to do structs in L2 would be to create a getter function, setter function,
 	and offset calculation function for every field where these functions
 	simply access the desired memory locations. However this solution is
@@ -93,14 +93,14 @@
 	getter, setter, address-of, offset-of, and sizeof functions can be defined
 	once and used on any field.)
 
-(++ The following function is a macro for getting the offset of a field of a struct.
+(;; The following function is a macro for getting the offset of a field of a struct.
 	The macro expands into a macro invocation of the supplied field (the second
 	item in the fragment $l), passing into it offset-aux (the macro that actually
 	produces the offset of the field).)
 
 (function offset-of (l r) (`((,[@fst $l]) offset-of-aux)$r))
 
-(++ This function is not to be called directly. It returns a fragment representing
+(;; This function is not to be called directly. It returns a fragment representing
 	the offset of the field. That is, it returns the first item in the fragment $l.)
 	
 (function offset-of-aux (l r) [@fst $l])
@@ -117,7 +117,7 @@
 
 (function setter-of-aux (l r) [@frrrst $l])
 
-(++ The following function is a macro for getting the address of a field of a struct.
+(;; The following function is a macro for getting the address of a field of a struct.
 	The macro expands into a macro invocation of the supplied field (the second
 	item in the fragment $l), passing into it &-aux (the macro that will generate
 	the actual invocation that calculates the address of the field) and the address of
@@ -125,14 +125,14 @@
 
 (function & (l r) (`((,[@fst $l]) &-aux (,[@frst $l]))$r))
 
-(++ This function is not to be called directly. It generates the actual
+(;; This function is not to be called directly. It generates the actual
 	invocation to calculate the address of the field. When macro-called, it
 	adds the offset (the first item in the fragment $l) to the base
 	(the fifth item in the fragment $l).)
 	
 (function &-aux (l r) (`[+ (,[@frrrrst $l]) (,[@fst $l])]$r))
 
-(++ The following function is a macro for getting the field of a struct. The
+(;; The following function is a macro for getting the field of a struct. The
 	macro expands into a macro invocation of the supplied field (the second
 	item in the fragment $l), passing into it @-aux (the macro that will generate
 	the actual invocation that gets the field) and the address of the struct (the
@@ -140,7 +140,7 @@
 	
 (function @ (l r) (`((,[@fst $l]) @-aux (,[@frst $l]))$r))
 
-(++ This function is not to be called directly. It generates the actual
+(;; This function is not to be called directly. It generates the actual
 	invocation to get the field. When macro-called, it invokes the getter
 	function (the fourth item in the fragment $l) with an address formed by
 	adding the offset (the first item in the fragment $l) to the base
@@ -148,7 +148,7 @@
 
 (function @-aux (l r) (`[(,[@frrst $l]) [+ (,[@frrrrst $l]) (,[@fst $l])]]$r))
 
-(++ The following function is a macro for setting the field of a struct. The
+(;; The following function is a macro for setting the field of a struct. The
 	macro expands into a macro invocation of the supplied field (the second
 	item in the fragment $l), passing into it setf-aux (the macro that will generate
 	the actual invocation that sets the field), the address of the struct (the
@@ -157,7 +157,7 @@
 
 (function setf (l r) (`((,[@fst $l]) setf-aux (,[@frst $l]) (,[@frrst $l]))$r))
 
-(++ This function is not to be called directly. It generates the actual
+(;; This function is not to be called directly. It generates the actual
 	invocation to set the field. When macro-called, it invokes the setter
 	function (the fourth item in the fragment $l) with an address formed by
 	adding the offset (the first item in the fragment $l) to the base
@@ -166,7 +166,7 @@
 
 (function setf-aux (l r) (`[(,[@frrrst $l]) [+ (,[@frrrrst $l]) (,[@fst $l])] (,[@frrrrrst $l])]$r))
 
-(++ The following function is a helper function for generating the fields of
+(;; The following function is a helper function for generating the fields of
 	structs. All that it does is create a macro invocation on the first reference
 	in the fragment $l supplying to it the offset, size, getter, and setter of
 	the field in addition to the rest of the fragment $l.)
@@ -177,11 +177,11 @@
 		(switch = $size (#1 (` set1b $r)) (#2 (` set2b $r)) (#4 (` set4b $r)) (#8 (` set8b $r)) (`(null)$r))
 		[@rst $l] $r])
 
-(++ The following function provides another method for commenting L2 code. It
-	implements the transformation (++ expr1 ...) -> (begin). It is being used
+(;; The following function provides another method for commenting L2 code. It
+	implements the transformation (;; expr1 ...) -> (begin). It is being used
 	for this comment to work.)
 
-(function ++ (l r) (`(begin)$r))
+(function ;; (l r) [lst [lllllst -b- -e- -g- -i- -n- emt $r] emt $r])
 
 (function @0 (l r) (`($[+ (,[@fst $l]) [* #0(unit)]])$r))
 

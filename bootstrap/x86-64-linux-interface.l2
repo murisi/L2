@@ -157,18 +157,18 @@
 			{$handler (set-storage $err file-access-error (null))}
 			{return [get [+ statbuf #48]]})))))
 
-(++ Creates a new virtual address mapping of the size in bytes given at len.)
+(;; Creates a new virtual address mapping of the size in bytes given at len.)
 
 (function mmap (len) [syscall (sys-mmap) (null) $len [lor (prot-read) (prot-write)] [lor (map-private) (map-anonymous)] [lnot #0] #0])
 
-(++ Deletes virtual address mappings coinciding with the range starting with the
+(;; Deletes virtual address mappings coinciding with the range starting with the
 	value at ptr and having an extent of the value given at len.)
 
 (function munmap (ptr len) [syscall (sys-munmap) $ptr $len])
 
 (function pad-size (x nearest) (let (r [rem $x $nearest]) [+ $x (if $r [- $nearest $r] #0)]))
 
-(++ A macro to produce the address of an element of a multi-dimensional array.
+(;; A macro to produce the address of an element of a multi-dimensional array.
 	For example, (loc $arr #2 #5 #4(unit)) gets the address at offset 2 units
 	from $arr, and then gets the address at offset 5 units from that, and then
 	gets the address at offset 4 units from that.)
@@ -178,7 +178,7 @@
 		(`[+ (,[@fst $l]) [* (,[@frst $l]) (,[@frrst $l])]]$r)
 		[loc [lst (`($[+ (,[@fst $l]) [*(,[@frst $l])(unit)]])$r) [@rrst $l] $r] $r]))
 
-(++ Creates a new region with a minimum capacity in bytes given by the value at
+(;; Creates a new region with a minimum capacity in bytes given by the value at
 	min-capacity.)
 
 (function create-buffer (min-capacity) (with return
@@ -198,12 +198,12 @@
 		$reg))
 		
 
-(++ Allocates memory in the region at reg of an amount in bytes equal to the
+(;; Allocates memory in the region at reg of an amount in bytes equal to the
 	integer at len. The only way to deallocate this memory is destroy the entire
 	region at reg.)
 
 (function buffer-alloc (reg len) (with return (begin
-	(++[check-buffer-integrity $reg])
+	(;;[check-buffer-integrity $reg])
 	[set len [pad-size $len (alloc-alignment)]]
 	(if [> [+($(loc $reg #1 #2(unit)))$len] ($(loc $reg #1 #3(unit)))]
 		(begin
@@ -213,19 +213,19 @@
 	[set (loc $reg #1 #2(unit)) [+($(loc $reg #1 #2(unit)))$len]]
 	{return [-($(loc $reg #1 #2(unit)))$len]})))
 
-(++ Releases the memory associated with the region reg. After a call to this
+(;; Releases the memory associated with the region reg. After a call to this
 	function, it is invalid to read or write data to the memory allocated on
 	this region.)
 
 (function destroy-buffer (reg) (begin
-	(++[check-buffer-integrity $reg])
+	(;;[check-buffer-integrity $reg])
 	(do-while
 			(let (next-reg ($(loc $reg #0(unit)))) (begin
 				[munmap $reg [- ($(loc $reg #3(unit))) $reg]]
 				[set reg $next-reg]))
 		$reg)))
 
-(++ Returns a C-string that is a copy of the one at src. The returned string and
+(;; Returns a C-string that is a copy of the one at src. The returned string and
 	its dependencies will all reside in the region reg.)
 
 (function rstrcpy (src reg) (with return
@@ -233,7 +233,7 @@
 		[strcpy $dest $src]
 		{return $dest}))))
 
-(++ Returns a list containing the the command line arguments. The returned list
+(;; Returns a list containing the the command line arguments. The returned list
 	and its dependencies will all reside in the region reg.)
 
 (function argv (reg) (with return
