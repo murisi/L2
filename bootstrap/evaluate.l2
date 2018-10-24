@@ -55,7 +55,7 @@
 			
 		(close-file (begin
 			[close $fd $handler $err]
-			(if [= [@0 $err] no-error] {return $src-buf} {$handler (begin)})))))))
+			(if [= (@0 $err) no-error] {return $src-buf} {$handler (begin)})))))))
 			
 (function read-expressions (fn expr-buf handler err) (with return (begin
 	(storage src-sz (begin))
@@ -121,9 +121,9 @@
 			[close $fd])
 			(begin))))))
 
-(storage no-error (begin))
-
 (storage arguments-error (begin))
+
+(storage no-error (begin))
 
 (storage err no-error (begin) (begin) (begin) (begin))
 
@@ -248,53 +248,53 @@
 			[compile-files $programs ectx handler err])
 			
 		(handler
-			(switch = [@0 err]
+			(switch = (@0 err)
 				(multiple-definition-error (begin
 					[print-str (stdout) (" The definition of(space)) cleanup err]
-					[print-str (stdout) [@1 err] cleanup err]
+					[print-str (stdout) (@1 err) cleanup err]
 					[print-str (stdout) (" (space)erroneously occured multiple times.(lf)) cleanup err]))
 					
 				(param-count-mismatch-error (begin
 					[print-str (stdout) (" The number of arguments in(space)) cleanup err]
-					[print-expression [@1 err] cleanup err]
+					[print-expression (@1 err) cleanup err]
 					[print-str (stdout) (" (space)does not match the number of parameters in(space)) cleanup err]
-					[print-expression [@2 err] cleanup err]
+					[print-expression (@2 err) cleanup err]
 					[print-str (stdout) (" .(lf)) cleanup err]))
 				
 				(undefined-reference-error (begin
 					[print-str (stdout) (" Undefined reference:(space)) cleanup err]
-					[print-str (stdout) [@1 err] cleanup err]
+					[print-str (stdout) (@1 err) cleanup err]
 					[print-str (stdout) (" .(lf)) cleanup err]))
 				
-				(special-form-error (if [@2 err]
+				(special-form-error (if (@2 err)
 					(begin
 						[print-str (stdout) (" The subexpression(space)) cleanup err]
-						[print-fragment [@2 err] cleanup err]
+						[print-fragment (@2 err) cleanup err]
 						[print-str (stdout) (" (space)does not satisfy the requirements of the expression(space)) cleanup err]
-						[print-fragment [@1 err] cleanup err]
+						[print-fragment (@1 err) cleanup err]
 						[print-str (stdout) (" .(lf)) cleanup err])
 					(begin
 						[print-str (stdout) (" The expression(space)) cleanup err]
-						[print-fragment [@1 err] cleanup err]
+						[print-fragment (@1 err) cleanup err]
 						[print-str (stdout) (" (space)has an incorrect number of subexpressions.(lf)) cleanup err])))
 				
 				(unexpected-char-error (begin
 					[print-str (stdout) (" Unexpectedly read(space)) cleanup err]
-					[print-char (stdout) [@1 err] cleanup err]
+					[print-char (stdout) (@1 err) cleanup err]
 					[print-str (stdout) (" (space)at(space)) cleanup err]
-					[print-uint (stdout) [@2 err] cleanup err]
+					[print-uint (stdout) (@2 err) cleanup err]
 					[print-str (stdout) (" .(lf)) cleanup err]))
 				
-				(file-access-error (if [@1 err]
+				(file-access-error (if (@1 err)
 					(begin
 						[print-str (stdout) (" Inaccessable file:(space)) cleanup err]
-						[print-str (stdout) [@1 err] cleanup err]
+						[print-str (stdout) (@1 err) cleanup err]
 						[print-str (stdout) (" .(lf)) cleanup err])
 					[print-str (stdout) (" Inaccessable file.) cleanup err]))
 				
 				(unsupported-ext-error (begin
 					[print-str (stdout) (" File has unsupported extension:(space)) cleanup err]
-					[print-str (stdout) [@1 err] cleanup err]
+					[print-str (stdout) (@1 err) cleanup err]
 					[print-str (stdout) (" .(lf)) cleanup err]))
 					
 				(begin)))
@@ -305,4 +305,4 @@
 			
 			(cleanup-obj-buf [destroy-buffer $obj-buf])
 			
-			(_ [exit (if [= [@0 err] no-error] #0 #1)])))
+			(_ [exit (if [= (@0 err) no-error] #0 #1)])))
