@@ -279,6 +279,7 @@ void write_elf(list generated_expressions, list symbols, unsigned char **bin, in
 	ehdr.e_entry = 0;
 	ehdr.e_phoff = 0;
 	ehdr.e_shoff = sizeof(Elf64_Ehdr);
+	ehdr.e_flags = 0;
 	ehdr.e_ehsize = sizeof(Elf64_Ehdr);
 	ehdr.e_phentsize = sizeof(Elf64_Phdr);
 	ehdr.e_phnum = 0;
