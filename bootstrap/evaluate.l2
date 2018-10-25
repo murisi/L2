@@ -105,7 +105,7 @@
 			[write-elf $asms $symbols objdest objdest-sz $obj-buf]
 			(storage outfn [buffer-alloc $obj-buf [+ [strlen $infn] #1]])
 			[strcpy $outfn $infn]
-			[strcpy [strrchr $outfn (char .)] (" .o2)]
+			[strcpy [strrchr $outfn (char .)] (" .o)]
 			(storage fd [create $outfn $handler $err])
 			[print $fd $objdest $objdest-sz]
 			[close $fd $handler $err])
@@ -114,48 +114,6 @@
 (storage arguments-error (begin))
 
 (storage no-error (begin))
-
-(storage mytest (" mytest0) (" mytest1) (" mytest2))
-[print-str (stdout) ($(loc mytest #0(unit)))]
-[print-str (stdout) ($(loc mytest #1(unit)))]
-[print-str (stdout) ($(loc mytest #2(unit)))]
-(set-storage mytest (" mytest3) (" mytest4) (" mytest5))
-[print-str (stdout) ($(loc mytest #0(unit)))]
-[print-str (stdout) ($(loc mytest #1(unit)))]
-[print-str (stdout) ($(loc mytest #2(unit)))]
-
-(fallthrough
-		(begin [print-str (stdout) (" Hello)] {label2 (begin)})
-	(label1 [print-str (stdout) (" Label1)])
-	(label2 (begin [print-str (stdout) (" Label2)] {label4 (begin)}))
-	(label3 [print-str (stdout) (" Label3)])
-	(label4 [print-str (stdout) (" Label4)])
-	(label5 [print-str (stdout) (" Label5)])
-	(label6 [print-str (stdout) (" Label6)]))
-
-[print-str (stdout) (" (lf))]
-
-(storage hey (" Helao))
-
-[print-str (stdout) $hey]
-
-(;; Now things are working)
-
-(let (d #5)
-	(until (i #5) [= $i #23] [+ $i #1] (begin
-		[print-str (stdout) (" Hello(lf))]
-		[print-uint (stdout) [* $d $i]])))
-
-(let (f [open (" ../bin/x86_64.o)]) (reg [create-buffer #0])
-	(let (buf [buffer-alloc $reg [size $f]]) (begin
-		[read $f $buf [size $f]]
-		(let (obj [load $buf [size $f] $reg (null)]) (begin
-			(foreach (j [immutable-symbols $obj $reg])
-				(if (not [strcmp (@ sym-name $j) (" syscall)])
-					(let (hdl (@ sym-offset $j))
-						[$hdl (sys-write) (stdout) (" Hellopeople) #6])
-					(begin [mutate-symbols $obj nil])))
-			[[segment $obj (" .text)]])))))
 
 (begin
 	(;; The buffer into which object code and syms are put)
