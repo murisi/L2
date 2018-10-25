@@ -194,10 +194,10 @@
 (;; Returns a list containing the the command line arguments. The returned list
 	and its dependencies will all reside in the region reg.)
 
-(function argv (reg) (with return
-	(let (f [open (" /proc/self/cmdline)]) (buf [buffer-alloc $reg (arg-max)])
-		(let (bytes-rem [read $f $buf (arg-max)]) (begin
-			[close $f]
+(function argv (reg handler err) (with return
+	(let (f [open (" /proc/self/cmdline) $handler $err]) (buf [buffer-alloc $reg (arg-max)])
+		(let (bytes-rem [read $f $buf (arg-max) $handler $err]) (begin
+			[close $f $handler $err]
 			{(continuation loop (buf bytes-rem args)
 				(if $bytes-rem
 					{loop [+ $buf [+ [strlen $buf] #1]] [- $bytes-rem [+ [strlen $buf] #1]] [cons $buf $args $reg]}

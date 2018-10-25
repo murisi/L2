@@ -176,15 +176,3 @@
 					(let (shdr-buf (loc (@ obj-shdrs $obj) $sec-idx (elf64-shdr)))
 						(if [strcmp (loc $shstrseg-buf (@ sh-name $shdr-buf) #1) $name] (begin)
 							{return ($(loc (@ obj-segs $obj) $sec-idx (unit)))})))))))
-
-(let (f [open (" ../bin/x86_64.o)]) (reg [create-buffer #0])
-	(let (buf [buffer-alloc $reg [size $f]]) (begin
-		[read $f $buf [size $f]]
-		(let (obj [load $buf [size $f] $reg (null)]) (begin
-			(foreach (j [immutable-symbols $obj $reg])
-				(if (not [strcmp (@ sym-name $j) (" syscall)])
-					(let (hdl (@ sym-offset $j))
-						[$hdl (sys-write) (stdout) (" Hellopeople) #6])
-					(begin [mutate-symbols $obj nil])))
-			[[segment $obj (" .text)]])))))
-
