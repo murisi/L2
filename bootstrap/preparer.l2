@@ -21,7 +21,7 @@
 			{return $e})))
 		
 		((-continuation-) (-function-) (let (temp-reg [create-buffer #0]) (begin
-			(let (ref-with-params [lst (@ expr-reference $e) (@ expr-parameters $e) $temp-reg])
+			(let (ref-with-params [cons (@ expr-reference $e) (@ expr-parameters $e) $temp-reg])
 				(until (partial $ref-with-params) [nil? $partial] [@cdr $partial]
 					(if [find (function _ (f ctx) [named-ref= $f $ctx]) (& cdr $partial) [@car $partial]]
 						{$handler (set-storage $err multiple-definition-error (@ expr-name[@car $partial]))}
@@ -289,7 +289,7 @@
 (function init-function (function-expr symbols expr-buf obj-buf handler err cache)
 	(if $$cache $$cache (with return (begin
 		[pre-visit-expressions vgenerate-metas function-expr (storage _ $$symbols $expr-buf $handler $err)]
-		[load-program-and-mutate [make-program [lst $function-expr nil $expr-buf] $expr-buf] $$symbols $expr-buf $obj-buf
+		[load-program-and-mutate [make-program [cons $function-expr nil $expr-buf] $expr-buf] $$symbols $expr-buf $obj-buf
 			$handler $err]
 		[set $cache (@ sym-offset (@ expr-symbol (@ expr-reference $function-expr)))]
 		{return $$cache}))))
@@ -297,7 +297,7 @@
 (function init-expression (expr symbols expr-buf obj-buf handler err cache)
 	(if $$cache $$cache (with return (begin
 		[pre-visit-expressions vgenerate-metas expr (storage _ $$symbols $expr-buf $handler $err)]
-		[set $cache [segment [load-program-and-mutate [make-program [lst $expr nil $expr-buf] $expr-buf] $$symbols $expr-buf $obj-buf
+		[set $cache [segment [load-program-and-mutate [make-program [cons $expr nil $expr-buf] $expr-buf] $$symbols $expr-buf $obj-buf
 			$handler $err] (" .text)]]
 		{return $$cache}))))
 
@@ -329,7 +329,7 @@
 				[make-literal $symbols $expr-buf] [make-literal $expr-buf $expr-buf] [make-literal $obj-buf $expr-buf]
 				[make-literal $handler $expr-buf] [make-literal $err $expr-buf] [make-literal $cache $expr-buf]) $expr-buf) $args
 				$expr-buf] $expr-buf] c $expr-buf]
-			(foreach (a $params) (t $args) [refer-reference [@fst(@ expr-arguments $t)] $a]))
+			(foreach (a $params) (t $args) [refer-reference [@car(@ expr-arguments $t)] $a]))
 			
 		(begin
 			[append (make-invokeN (make-invokeN [make-literal init-expression $expr-buf] ([make-literal $s $expr-buf]

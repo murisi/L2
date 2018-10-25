@@ -37,15 +37,15 @@
 		[set+ $relas (elf64-rela)])
 		
 	(if (and [= (@ expr-type $expr) (-assembly-)] [= (@ expr-opcode $expr) (stval-add-off-to-ref)] [= $bytes #8]) (begin
-		(storage ref [@fst(@ expr-arguments $expr)])
-		(storage offset [@frst(@ expr-arguments $expr)])
+		(storage ref [@car(@ expr-arguments $expr)])
+		(storage offset [@cadr(@ expr-arguments $expr)])
 		(setf r-offset $$relas $$pos)
 		(setf r-info $$relas (elf64-r-info [/[- (@ sym-context(@ expr-symbol $ref)) $symtab](elf64-sym)] (r-x86-64-64)))
 		(setf r-addend $$relas (@ expr-value $offset))
 		[set+ $relas (elf64-rela)])
 		
 	(if (and [= (@ expr-type $expr) (-assembly-)] [= (@ expr-opcode $expr) (stval-sub-rip-from-ref)] [= $bytes #4]) (begin
-		(storage ref [@fst(@ expr-arguments $expr)])
+		(storage ref [@car(@ expr-arguments $expr)])
 		(setf r-offset $$relas $$pos)
 		(setf r-info $$relas (elf64-r-info [/[- (@ sym-context(@ expr-symbol $ref)) $symtab](elf64-sym)] (r-x86-64-pc32)))
 		(setf r-addend $$relas [- #0 $bytes])
@@ -73,64 +73,64 @@
 	(foreach (n $generated-expressions)
 		(switch = (@ expr-opcode $n)
 			((label) (begin
-				(storage label-ref [@fst(@ expr-arguments $n)])
+				(storage label-ref [@car(@ expr-arguments $n)])
 				(setf sym-offset (@ expr-symbol $label-ref) $$pos)
 				(setf st-value (@ sym-context(@ expr-symbol $label-ref)) $$pos)))
 				
 			((leaq-of-mdb-into-reg) (begin
 				(storage opcode (hex 8D))
-				(storage reg (@ expr-opcode [@frrst (@ expr-arguments $n)])) (;; Dest)
-				(storage rm (@ expr-opcode [@frst (@ expr-arguments $n)])) (;; Src)
+				(storage reg (@ expr-opcode [@caddr (@ expr-arguments $n)])) (;; Dest)
+				(storage rm (@ expr-opcode [@cadr (@ expr-arguments $n)])) (;; Src)
 				[write-mr-instr $bin $pos $opcode $reg $rm (true) (true)]
-				[write-static-value $bin $pos [@fst (@ expr-arguments $n)] #4 $symtab $relas]))
+				[write-static-value $bin $pos [@car (@ expr-arguments $n)] #4 $symtab $relas]))
 				
 			((movq-from-reg-into-mdb) (begin
 				(storage opcode (hex 89))
-				(storage reg (@ expr-opcode [@fst (@ expr-arguments $n)])) (;; Src)
-				(storage rm (@ expr-opcode [@frrst (@ expr-arguments $n)])) (;; Dest)
+				(storage reg (@ expr-opcode [@car (@ expr-arguments $n)])) (;; Src)
+				(storage rm (@ expr-opcode [@caddr (@ expr-arguments $n)])) (;; Dest)
 				[write-mr-instr $bin $pos $opcode $reg $rm (true) (true)]
-				[write-static-value $bin $pos [@frst (@ expr-arguments $n)] #4 $symtab $relas]))
+				[write-static-value $bin $pos [@cadr (@ expr-arguments $n)] #4 $symtab $relas]))
 				
 			((jmp-rel) (begin
 				(storage opcode (hex E9))
 				[mem-write $bin $pos opcode #1]
-				[write-static-value $bin $pos [@fst (@ expr-arguments $n)] #4 $symtab $relas]))
+				[write-static-value $bin $pos [@car (@ expr-arguments $n)] #4 $symtab $relas]))
 				
 			((movq-mdb-to-reg) (begin
 				(storage opcode (hex 8B))
-				(storage reg (@ expr-opcode [@frrst (@ expr-arguments $n)])) (;; Dest)
-				(storage rm (@ expr-opcode [@frst (@ expr-arguments $n)])) (;; Src)
+				(storage reg (@ expr-opcode [@caddr (@ expr-arguments $n)])) (;; Dest)
+				(storage rm (@ expr-opcode [@cadr (@ expr-arguments $n)])) (;; Src)
 				[write-mr-instr $bin $pos $opcode $reg $rm (true) (true)]
-				[write-static-value $bin $pos [@fst (@ expr-arguments $n)] #4 $symtab $relas]))
+				[write-static-value $bin $pos [@car (@ expr-arguments $n)] #4 $symtab $relas]))
 				
 			((pushq-reg) (begin
 				(storage opcode (hex 50))
-				(storage reg (@ expr-opcode [@fst (@ expr-arguments $n)])) (;; Dest)
+				(storage reg (@ expr-opcode [@car (@ expr-arguments $n)])) (;; Dest)
 				[write-o-instr $bin $pos $opcode $reg]))
 				
 			((movq-reg-to-reg) (begin
 				(storage opcode (hex 8B))
-				(storage reg (@ expr-opcode [@frst (@ expr-arguments $n)])) (;; Dest)
-				(storage rm (@ expr-opcode [@fst (@ expr-arguments $n)])) (;; Src)
+				(storage reg (@ expr-opcode [@cadr (@ expr-arguments $n)])) (;; Dest)
+				(storage rm (@ expr-opcode [@car (@ expr-arguments $n)])) (;; Src)
 				[write-mr-instr $bin $pos $opcode $reg $rm (false) (true)]))
 				
 			((subq-imm-from-reg) (begin
 				(storage opcode (hex 81))
 				(storage reg #5)
-				(storage rm (@ expr-opcode [@frst (@ expr-arguments $n)])) (;; Dest)
+				(storage rm (@ expr-opcode [@cadr (@ expr-arguments $n)])) (;; Dest)
 				[write-mr-instr $bin $pos $opcode $reg $rm (false) (true)]
-				[mem-write $bin $pos (& expr-value [@fst (@ expr-arguments $n)]) #4]))
+				[mem-write $bin $pos (& expr-value [@car (@ expr-arguments $n)]) #4]))
 				
 			((addq-imm-to-reg) (begin
 				(storage opcode (hex 81))
 				(storage reg #0)
-				(storage rm (@ expr-opcode [@frst (@ expr-arguments $n)])) (;; Dest)
+				(storage rm (@ expr-opcode [@cadr (@ expr-arguments $n)])) (;; Dest)
 				[write-mr-instr $bin $pos $opcode $reg $rm (false) (true)]
-				[mem-write $bin $pos (& expr-value [@fst (@ expr-arguments $n)]) #4]))
+				[mem-write $bin $pos (& expr-value [@car (@ expr-arguments $n)]) #4]))
 				
 			((popq-reg) (begin
 				(storage opcode (hex 58))
-				(storage reg (@ expr-opcode [@fst (@ expr-arguments $n)])) (;; Dest)
+				(storage reg (@ expr-opcode [@car (@ expr-arguments $n)])) (;; Dest)
 				[write-o-instr $bin $pos $opcode $reg]))
 				
 			((leave) [mem-write $bin $pos (storage opcode (hex C9)) #1])
@@ -140,7 +140,7 @@
 			((jmp-to-reg) (begin
 				(storage opcode (hex FF))
 				(storage reg #4)
-				(storage rm (@ expr-opcode [@fst (@ expr-arguments $n)]))
+				(storage rm (@ expr-opcode [@car (@ expr-arguments $n)]))
 				[write-mr-instr $bin $pos $opcode $reg $rm (false) (false)]))
 				
 			((je-rel) (begin
@@ -148,18 +148,18 @@
 				(storage opcode2 (hex 84))
 				[mem-write $bin $pos opcode1 #1]
 				[mem-write $bin $pos opcode2 #1]
-				[write-static-value $bin $pos [@fst (@ expr-arguments $n)] #4 $symtab $relas]))
+				[write-static-value $bin $pos [@car (@ expr-arguments $n)] #4 $symtab $relas]))
 				
 			((orq-reg-to-reg) (begin
 				(storage opcode (hex 0B))
-				(storage reg (@ expr-opcode [@frst (@ expr-arguments $n)])) (;; Dest)
-				(storage rm (@ expr-opcode [@fst (@ expr-arguments $n)])) (;; Src)
+				(storage reg (@ expr-opcode [@cadr (@ expr-arguments $n)])) (;; Dest)
+				(storage rm (@ expr-opcode [@car (@ expr-arguments $n)])) (;; Src)
 				[write-mr-instr $bin $pos $opcode $reg $rm (false) (true)]))
 				
 			((movq-imm-to-reg) (begin
 				(storage opcode (hex B8))
-				(storage imm-expr [@fst (@ expr-arguments $n)])
-				(storage reg (@ expr-opcode [@frst (@ expr-arguments $n)])) (;; Dest)
+				(storage imm-expr [@car (@ expr-arguments $n)])
+				(storage reg (@ expr-opcode [@cadr (@ expr-arguments $n)])) (;; Dest)
 				(storage rd [land (hex 7) $reg])
 				(storage opcoderd [+ $opcode $rd])
 				(storage rex [<< #4 #4])
@@ -174,7 +174,7 @@
 			((call-reg) (begin
 				(storage opcode (hex FF))
 				(storage reg #2)
-				(storage rm (@ expr-opcode [@fst (@ expr-arguments $n)]))
+				(storage rm (@ expr-opcode [@car (@ expr-arguments $n)]))
 				[write-mr-instr $bin $pos $opcode $reg $rm (false) (false)]))
 			
 			(begin)))))
@@ -191,7 +191,7 @@
 	
 	(foreach (e $generated-expressions)
 		(if [= (@ expr-opcode $e) (label)]
-			(let (label-str (@ expr-name [@fst (@ expr-arguments $e)]))
+			(let (label-str (@ expr-name [@car (@ expr-arguments $e)]))
 				(if $label-str [set+ strtab-len [+ [strlen $label-str] #1]] (begin)))
 			(begin)))
 	
@@ -286,8 +286,8 @@
 			(begin)))
 	
 	(foreach (e $generated-expressions)
-		(if (and [= (@ expr-opcode $e) (label)] [= (@ sym-scope(@ expr-symbol[@fst(@ expr-arguments $e)])) (local-scope)]) (begin
-			(storage ref [@fst(@ expr-arguments $e)])
+		(if (and [= (@ expr-opcode $e) (label)] [= (@ sym-scope(@ expr-symbol[@car(@ expr-arguments $e)])) (local-scope)]) (begin
+			(storage ref [@car(@ expr-arguments $e)])
 			(if (@ expr-name $ref)
 				(begin
 					[strcpy $strtabptr (@ expr-name $ref)]
@@ -345,8 +345,8 @@
 			(begin)))
 	
 	(foreach (e $generated-expressions)
-		(if (and [= (@ expr-opcode $e) (label)] [= (@ sym-scope(@ expr-symbol[@fst(@ expr-arguments $e)])) (global-scope)]) (begin
-			(storage ref [@fst(@ expr-arguments $e)])
+		(if (and [= (@ expr-opcode $e) (label)] [= (@ sym-scope(@ expr-symbol[@car(@ expr-arguments $e)])) (global-scope)]) (begin
+			(storage ref [@car(@ expr-arguments $e)])
 			(if (@ expr-name $ref)
 				(begin
 					[strcpy $strtabptr (@ expr-name $ref)]
@@ -483,6 +483,6 @@
 	
 	(foreach (l $asms)
 		(if [= (@ expr-opcode $l) (label)]
-			(let (sym (@ expr-symbol[@fst(@ expr-arguments $l)]))
+			(let (sym (@ expr-symbol[@car(@ expr-arguments $l)]))
 				(setf sym-offset $sym [+ (@ sym-offset $sym) [segment $obj (" .text)]]))
 			(begin)))))
