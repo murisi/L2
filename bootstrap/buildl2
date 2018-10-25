@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 
-../bin/l2evaluate core-meta.l2 64-numbers-meta.l2 text-meta.l2 flow-meta.l2 list-meta.l2 ../bin/x86_64.o x86-64-linux-interface-meta.l2 lexer-meta.l2 elf-meta.l2 x86-64-object-meta.l2 expressions-meta.l2 x86-64-assembler-meta.l2 x86-64-generator-meta.l2 - x86-64-linux-interface.l2 lexer.l2 x86-64-object.l2 expressions.l2 x86-64-assembler.l2 preparer.l2 x86-64-generator.l2 evaluate.l2 list.l2 64-numbers.l2
+# Compile L2 program source into object files
+
+../bin/l2compile core-meta.l2 64-numbers-meta.l2 text-meta.l2 flow-meta.l2 list-meta.l2 ../bin/x86_64.o x86-64-linux-interface-meta.l2 lexer-meta.l2 elf-meta.l2 x86-64-object-meta.l2 expressions-meta.l2 x86-64-assembler-meta.l2 x86-64-generator-meta.l2 - x86-64-linux-interface.l2 lexer.l2 x86-64-object.l2 expressions.l2 x86-64-assembler.l2 preparer.l2 x86-64-generator.l2 compile.l2 list.l2 64-numbers.l2
+
+# Each produced object file is wrapped in an anonymous function to initialize it. Hence print out labels for them:
 
 echo $'.globl x8664linuxinterfaceo\n.text\nx8664linuxinterfaceo:\n' > "x86-64-linux-interface.s"
 
@@ -16,14 +20,20 @@ echo $'.globl preparero\n.text\npreparero:\n' > "preparer.s"
 
 echo $'.globl x8664generatoro\n.text\nx8664generatoro:\n' > "x86-64-generator.s"
 
-echo $'.globl evaluateo\n.text\nevaluateo:\n' > "evaluate.s"
+echo $'.globl compileo\n.text\ncompileo:\n' > "compile.s"
 
 echo $'.globl listo\n.text\nlisto:\n' > "list.s"
 
 echo $'.globl numbers64o\n.text\nnumbers64o:\n' > "64-numbers.s"
 
-echo $'.globl _start\n.text\n_start:\ncall x8664linuxinterfaceo\ncall lexero\ncall x8664objecto\ncall expressionso\ncall x8664assemblero\ncall preparero\ncall x8664generatoro\ncall evaluateo\ncall listo\ncall numbers64o\n' > "start.s"
+# Print out some assembly to call each initializer one by one
 
-gcc -nostdlib x86-64-linux-interface.s x86-64-linux-interface.o lexer.s lexer.o x86-64-object.s x86-64-object.o expressions.s expressions.o x86-64-assembler.s x86-64-assembler.o preparer.s preparer.o x86-64-generator.s x86-64-generator.o evaluate.s evaluate.o list.s list.o 64-numbers.s 64-numbers.o ../bin/x86_64.o start.s -o ../bin/bootstrapped_l2compile
+echo $'.globl _start\n.text\n_start:\ncall x8664linuxinterfaceo\ncall lexero\ncall x8664objecto\ncall expressionso\ncall x8664assemblero\ncall preparero\ncall x8664generatoro\ncall compileo\ncall listo\ncall numbers64o\n' > "start.s"
 
-rm "x86-64-linux-interface.s" "lexer.s" "x86-64-object.s" "expressions.s" "x86-64-assembler.s" "preparer.s" "x86-64-generator.s" "evaluate.s" "list.s" "64-numbers.s" "x86-64-linux-interface.o" "lexer.o" "x86-64-object.o" "expressions.o" "x86-64-assembler.o" "preparer.o" "x86-64-generator.o" "evaluate.o" "list.o" "64-numbers.o" "start.s"
+# Link everything together, including x86_64.o which contains system interface
+
+gcc -nostdlib x86-64-linux-interface.s x86-64-linux-interface.o lexer.s lexer.o x86-64-object.s x86-64-object.o expressions.s expressions.o x86-64-assembler.s x86-64-assembler.o preparer.s preparer.o x86-64-generator.s x86-64-generator.o compile.s compile.o list.s list.o 64-numbers.s 64-numbers.o ../bin/x86_64.o start.s -o ../bin/bootstrapped_l2compile
+
+# Remove the scaffolding
+
+rm "x86-64-linux-interface.s" "lexer.s" "x86-64-object.s" "expressions.s" "x86-64-assembler.s" "preparer.s" "x86-64-generator.s" "compile.s" "list.s" "64-numbers.s" "x86-64-linux-interface.o" "lexer.o" "x86-64-object.o" "expressions.o" "x86-64-assembler.o" "preparer.o" "x86-64-generator.o" "compile.o" "list.o" "64-numbers.o" "start.s"
