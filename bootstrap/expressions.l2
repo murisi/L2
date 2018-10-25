@@ -1,36 +1,3 @@
-(function -storage- (l r) [mk# $r #0])
-(function -function- (l r) [mk# $r #1])
-(function -with- (l r) [mk# $r #2])
-(function -invoke- (l r) [mk# $r #3])
-(function -if- (l r) [mk# $r #4])
-(function -begin- (l r) [mk# $r #5])
-(function -literal- (l r) [mk# $r #6])
-(function -reference- (l r) [mk# $r #7])
-(function -jump- (l r) [mk# $r #8])
-(function -continuation- (l r) [mk# $r #9])
-(function -assembly- (l r) [mk# $r #10])
-(function -meta- (l r) [mk# $r #11])
-
-(function static-storage (l r) [mk# $r #0])
-(function dynamic-storage (l r) [mk# $r #1])
-
-(function local-scope (l r) [mk# $r #0])
-(function global-scope (l r) [mk# $r #1])
-
-(function undefined-state (l r) [mk# $r #0])
-(function defined-state (l r) [mk# $r #1])
-
-(function symbol (l r) [mk# $r #48])
-
-(function sym-name (l r) [mk-field $l $r #0 #8])
-(function sym-offset (l r) [mk-field $l $r #8 #8])
-(function sym-size (l r) [mk-field $l $r #16 #8])
-(function sym-definition (l r) [mk-field $l $r #24 #8])
-(function sym-context (l r) [mk-field $l $r #32 #8])
-(function sym-type (l r) [mk-field $l $r #40 #1])
-(function sym-scope (l r) [mk-field $l $r #41 #1])
-(function sym-state (l r) [mk-field $l $r #42 #1])
-
 (function make-symbol (type scope state name definition r) (with return
 	(let (sym [buffer-alloc $r (symbol)]) (begin
 		(setf sym-type $sym $type)
@@ -39,42 +6,6 @@
 		(setf sym-name $sym $name)
 		(setf sym-definition $sym $definition)
 		{return $sym}))))
-
-(function expression (l r) [mk# $r #64])
-
-(function expr-type (l r) [mk-field $l $r #0 #8])
-(function expr-parent (l r) [mk-field $l $r #8 #8])
-(function expr-return-symbol (l r) [mk-field $l $r #16 #8])
-(;; Only for type(s) (-begin-))
-(function expr-expressions (l r) [mk-field $l $r #24 #8])
-(;; Only for type(s) (-assembly-))
-(function expr-opcode (l r) [mk-field $l $r #24 #8])
-(;; Only for type(s) (-assembly-) (-storage-) (-invoke-) (-jump-))
-(function expr-arguments (l r) [mk-field $l $r #32 #8])
-(;; Only for type(s) (-storage-) (-invoke-) (-jump-) (-function-) (-continuation-) (-with-) (-meta-))
-(function expr-reference (l r) [mk-field $l $r #24 #8])
-(;; Only for type(s) (-jump-))
-(function expr-short-circuit (l r) [mk-field $l $r #40 #8])
-(;; Only for type(s) (-if-))
-(function expr-condition (l r) [mk-field $l $r #24 #8])
-(function expr-consequent (l r) [mk-field $l $r #32 #8])
-(function expr-alternate (l r) [mk-field $l $r #40 #8])
-(;; Only for type(s) (-literal-))
-(function expr-value (l r) [mk-field $l $r #24 #8])
-(;; Only for type(s) (-function-) (-continuation-) (-with-))
-(function expr-expression (l r) [mk-field $l $r #32 #8])
-(function expr-parameters (l r) [mk-field $l $r #40 #8])
-(;; Only for type(s) (-function-))
-(function expr-symbols (l r) [mk-field $l $r #48 #8])
-(function expr-expression-return-symbol (l r) [mk-field $l $r #56 #8])
-(;; Only for type(s) (-continuation-) (-with-))
-(function expr-cont-instr-ref (l r) [mk-field $l $r #48 #8])
-(function expr-escapes (l r) [mk-field $l $r #56 #8])
-(;; Only for type(s) (-reference-))
-(function expr-name (l r) [mk-field $l $r #24 #8])
-(function expr-symbol (l r) [mk-field $l $r #32 #8])
-(;; Only for type(s) (-meta-))
-(function expr-argument (l r) [mk-field $l $r #32 #8])
 
 (function make-literal (value reg) (with return
 	(let (t [buffer-alloc $reg (expression)]) (begin
@@ -120,10 +51,6 @@
 		(setf expr-parent $expr $func)
 		{return $func}))))
 
-(function make-functionN (l r)
-	(`[make-function (,[@fst $l])
-		(,[list [meta:reverse [lst [@frrrst $l] [meta:reverse [@frst $l] $r] $r] $r] $r emt]) (,[@frrst $l]) (,[@frrrst $l])]$r))
-
 (function make-continuation (ref params expr reg) (with return
 	(let (cont [buffer-alloc $reg (expression)]) (begin
 		(setf expr-type $cont (-continuation-))
@@ -139,10 +66,6 @@
 		(setf expr-expression $cont $expr)
 		(setf expr-parent $expr $cont)
 		{return $cont}))))
-
-(function make-continuationN (l r)
-	(`[make-continuation (,[@fst $l])
-		(,[list [meta:reverse [lst [@frrrst $l] [meta:reverse [@frst $l] $r] $r] $r] $r emt]) (,[@frrst $l]) (,[@frrrst $l])]$r))
 
 (function make-with (ref expr reg) (with return
 	(let (wth [buffer-alloc $reg (expression)]) (begin
@@ -168,10 +91,6 @@
 		(foreach (arg $arguments) (setf expr-parent $arg $u))
 		{return $u}))))
 
-(function make-asmN (l r)
-	(`[make-asm (,[@fst $l]) (,[list [meta:reverse [lst [@frrst $l] [meta:reverse [@frst $l] $r] $r] $r] $r emt])
-		(,[@frrst $l])]$r))
-
 (function make-jump (ref args reg) (with return
 	(let (u [buffer-alloc $reg (expression)]) (begin
 		(setf expr-type $u (-jump-))
@@ -180,10 +99,6 @@
 		(setf expr-arguments $u $args)
 		(foreach (arg $args) (setf expr-parent $arg $u))
 		{return $u}))))
-
-(function make-jumpN (l r)
-	(`[make-jump (,[@fst $l]) (,[list [meta:reverse [lst [@frrst $l] [meta:reverse [@frst $l] $r] $r] $r] $r emt])
-		(,[@frrst $l])]$r))
 
 (function make-storage (ref args reg) (with return
 	(let (u [buffer-alloc $reg (expression)]) (begin
@@ -223,10 +138,6 @@
 		(foreach (arg $args) (setf expr-parent $arg $u))
 		{return $u}))))
 
-(function make-invokeN (l r)
-	(`[make-invoke (,[@fst $l]) (,[list [meta:reverse [lst [@frrst $l] [meta:reverse [@frst $l] $r] $r] $r] $r emt])
-		(,[@frrst $l])]$r))
-
 (function make-program (exprs r) (with return
 	(let (program [make-function [make-reference (null) $r] nil [make-begin $exprs $r] $r]) (begin
 		(setf expr-parent $program (null))
@@ -235,18 +146,6 @@
 				(setf sym-scope (@ expr-symbol(@ expr-reference $expr)) (global-scope))
 				(begin)))
 		{return $program}))))
-
-(function replace-expression (l r)
-	(`(let (replace-expression:orig (,[@fst $l]))
-		(let (replace-expression:parent (@ expr-parent $$replace-expression:orig))
-			(let (replace-expression:repl (,[@frst $l])) (begin
-				(setf expr-parent $replace-expression:repl $replace-expression:parent)
-				[set $replace-expression:orig $replace-expression:repl]))))$r))
-
-(function put (l r)
-	(`(let (put:parent (,[@frst $l])) (put:repl (,[@frrst $l])) (begin
-		(setf (,[@fst $l]) $put:parent $put:repl)
-		(setf expr-parent $put:repl $put:parent)))$r))
 
 (function print-expression (s hdl err)
 	(switch = (@ expr-type $s)
@@ -325,8 +224,6 @@
 			[print-str (stdout) (" (rparen)) $hdl $err]))
 			
 		(begin)))
-
-(function build-expression-literal-len (l r) [mk# $r #64])
 
 (storage special-form-error #0)
 

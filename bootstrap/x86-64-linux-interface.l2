@@ -1,35 +1,3 @@
-(function sys-read (l r) [mk# $r #0])
-(function sys-write (l r) [mk# $r #1])
-(function sys-open (l r) [mk# $r #2])
-(function sys-close (l r) [mk# $r #3])
-(function sys-fstat (l r) [mk# $r #5])
-(function sys-mmap (l r) [mk# $r #9])
-(function sys-munmap (l r) [mk# $r #11])
-(function sys-exit (l r) [mk# $r #60])
-(function sys-clock-gettime (l r) [mk# $r #228])
-(function o-rdonly (l r) [mk# $r #0])
-(function o-wronly (l r) [mk# $r #1])
-(function o-rdwr (l r) [mk# $r #2])
-(function o-creat (l r) [mk# $r #64])
-(function s-irwxu (l r) [mk# $r #448])
-(function s-irwxg (l r) [mk# $r #56])
-(function s-irwxo (l r) [mk# $r #7])
-(function prot-read (l r) [mk# $r #1])
-(function prot-write (l r) [mk# $r #2])
-(function prot-exec (l r) [mk# $r #4])
-(function prot-none (l r) [mk# $r #0])
-(function map-private (l r) [mk# $r #2])
-(function map-anonymous (l r) [mk# $r #32])
-(function page-size (l r) [mk# $r #4096])
-(function arg-max (l r) (`(page-size)$r))
-(function clock-process-cputime-id (l r) [mk# $r #2])
-(function stdin (l r) [mk# $r #0])
-(function stdout (l r) [mk# $r #1])
-(function null (l r) [mk# $r #0])
-(function byte (l r) [mk# $r #1])
-(function unit (l r) [mk# $r #8])
-(function alloc-alignment (l r) [mk# $r #8])
-
 (function exit (code) [syscall (sys-exit) $code])
 
 (function strlen (str) (with return
@@ -167,16 +135,6 @@
 (function munmap (ptr len) [syscall (sys-munmap) $ptr $len])
 
 (function pad-size (x nearest) (let (r [rem $x $nearest]) [+ $x (if $r [- $nearest $r] #0)]))
-
-(;; A macro to produce the address of an element of a multi-dimensional array.
-	For example, (loc $arr #2 #5 #4(unit)) gets the address at offset 2 units
-	from $arr, and then gets the address at offset 5 units from that, and then
-	gets the address at offset 4 units from that.)
-
-(function loc (l r)
-	(if [emt? [@rrrst $l]]
-		(`[+ (,[@fst $l]) [* (,[@frst $l]) (,[@frrst $l])]]$r)
-		[loc [lst (`($[+ (,[@fst $l]) [*(,[@frst $l])(unit)]])$r) [@rrst $l] $r] $r]))
 
 (;; Creates a new region with a minimum capacity in bytes given by the value at
 	min-capacity.)

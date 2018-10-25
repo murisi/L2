@@ -1,37 +1,3 @@
-(function meta:zip (a b r) (with return
-	{(continuation aux (output a b)
-		(if (not [emt? $a])
-			{aux [lst [llst [@fst $a] [@fst $b] emt $r] $output $r] [@rst $a] [@rst $b]}
-			{return [meta:reverse $output $r]})) emt $a $b}))
-
-(function foreach (s r)
-	(let (bindings [meta:reverse [@rst [meta:reverse $s $r]] $r]) (body [@fst [meta:reverse $s $r]])
-			(labels (with return {(continuation aux (index-refs ref input-pairs)
-				(if (not [emt? $input-pairs])
-					{aux [lst $ref $index-refs $r]
-						[meta:reverse [lst -1- [meta:reverse $ref $r]$r]$r]
-						[@rst $input-pairs]}
-					{return [meta:reverse $index-refs $r]})) emt (` foreach:v $r) [@rst [meta:reverse $s $r]]}))
-		[lst (` let $r) [meta:reverse [lst
-			(`(while (not [emt? $foreach:v]) (,[llst (` begin $r)
-				[lst (` let $r) [meta:reverse [lst $body [meta:map [meta:zip [meta:map $bindings (null) @fst $r] $labels $r]
-						$r (function make-binding (a r) (`((,[@fst $a]) [@car ($(,[@frst $a]))])$r))$r]$r]$r]$r]
-				[meta:map $labels $r (function make-update (a r) (`[set ,$a [@cdr $,$a]]$r))$r]$r]))$r)
-			[meta:zip $labels [meta:map $bindings (null) @frst $r]$r]$r]$r]$r]))
-
-(function list (l r)
-	(with return (let (l [meta:reverse $l $r])
-		{(continuation loop (out in)
-			(if [emt? $in]
-				{return $out}
-				{loop [lllllst (` invoke $r) (` cons $r) [@fst $in] $out [@fst $l] emt $r] [@rst $in]})) (` nil $r) [@rst $l]})))
-
-(function list-struct (l r) (`[* #2(unit)]$r))
-
-(function car (l r) [mk-field $l $r #0 #8])
-
-(function cdr (l r) [mk-field $l $r #8 #8])
-
 (function @car (l) (@ car $l))
 
 (function @cdr (l) (@ cdr $l))
