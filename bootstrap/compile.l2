@@ -1,41 +1,42 @@
-(function compile-program (program symbols expr-buf handler err) (with return (begin
-	[visit-expressions vfind-multiple-definitions program (storage _ $handler $err)]
-	[classify-program-symbols (@ expr-expression $program)]
-	[visit-expressions vlink-references (& expr-expression $program) (storage _ $expr-buf $handler $err)]
-	[visit-expressions vescape-analysis program (null)]
-	[set program [use-return-symbol $program (null) $expr-buf]]
-	[classify-program-symbols (@ expr-expression $program)]
-	[visit-expressions vlayout-frames (& expr-expression $program) $expr-buf]
-	[visit-expressions vgenerate-references program $expr-buf]
-	[visit-expressions vgenerate-continuation-expressions program $expr-buf]
-	[visit-expressions vgenerate-literals program $expr-buf]
-	[visit-expressions vgenerate-ifs program $expr-buf]
-	[visit-expressions vgenerate-function-expressions program $expr-buf]
-	[visit-expressions vgenerate-storage-expressions program $expr-buf]
-	[set $symbols (@ expr-symbols $program)]
-	(foreach (l (@ expr-parameters $program)) [prepend (@ expr-symbol $l) $symbols $expr-buf])
-	[set program [generate-toplevel $program $expr-buf]]
-	(storage asms nil)
-	[visit-expressions vlinearized-expressions program (storage _ asms $expr-buf)]
-	{return [reverse $asms $expr-buf]})))
+(function compile-program (program symbols expr-buf handler err)
+	(with return (substitute (.. $expr-buf $handler $err) (begin
+		[visit-expressions vfind-multiple-definitions program (storage _ $handler $err)]
+		[classify-program-symbols (@ expr-expression $program)]
+		[visit-expressions vlink-references (& expr-expression $program) (storage _ ..)]
+		[visit-expressions vescape-analysis program (null)]
+		[set program [use-return-symbol $program (null) ..]]
+		[classify-program-symbols (@ expr-expression $program)]
+		[visit-expressions vlayout-frames (& expr-expression $program) (storage _ ..)]
+		[visit-expressions vgenerate-references program (storage _ ..)]
+		[visit-expressions vgenerate-continuation-expressions program (storage _ ..)]
+		[visit-expressions vgenerate-literals program (storage _ ..)]
+		[visit-expressions vgenerate-ifs program (storage _ ..)]
+		[visit-expressions vgenerate-function-expressions program (storage _ ..)]
+		[visit-expressions vgenerate-storage-expressions program (storage _ ..)]
+		[set $symbols (@ expr-symbols $program)]
+		(foreach (l (@ expr-parameters $program)) [prepend (@ expr-symbol $l) $symbols ..])
+		[set program [generate-toplevel $program ..]]
+		(storage asms nil)
+		[visit-expressions vlinearized-expressions program (storage _ asms ..)]
+		{return [reverse $asms ..]}))))
 
 (function load-program (program expr-buf obj-buf handler err) (with return (begin
 	(storage symbols (begin))
 	(storage asms [compile-program $program symbols $expr-buf $handler $err])
 	(storage objdest (begin))
 	(storage objdest-sz (begin))
-	[write-elf $asms $symbols objdest objdest-sz $obj-buf]
+	[write-elf $asms $symbols objdest objdest-sz $obj-buf $handler $err]
 	(storage obj [load $objdest $objdest-sz $obj-buf $handler $err])
 	[symbol-offsets-to-addresses $asms $symbols $obj]
 	{return $obj})))
 
 (function load-program-and-mutate (program syms expr-buf obj-buf handler err) (with return (begin
 	(storage obj [load-program $program $expr-buf $obj-buf $handler $err])
-	(storage temp-reg [create-buffer #0])
-	(storage ms [mutable-symbols $obj $temp-reg])
+	(storage temp-reg [create-buffer #0 $handler $err])
+	(storage ms [mutable-symbols $obj $temp-reg $handler $err])
 	(storage missing-sym [not-subset (function symbol= (sym1 sym2) [str= (@ sym-name $sym1) (@ sym-name $sym2)]) $ms $syms])
 	(if $missing-sym {$handler (set-storage $err undefined-reference-error (@ sym-name $missing-sym))} (begin))
-	[destroy-buffer $temp-reg]
+	[destroy-buffer $temp-reg $handler $err]
 	[mutate-symbols $obj $syms]
 	{return $obj})))
 	
@@ -76,7 +77,7 @@
 
 		(if (and $dot [str= $dot (" .l2)])
 			[set obj [load-program [generate-metaprogram [make-program [read-expressions $src $expr-buf $handler $err]
-				$expr-buf] $symbols $expr-buf $obj-buf $handler $err] $expr-buf $obj-buf $handler $err]]
+				$expr-buf $handler $err] $symbols $expr-buf $obj-buf $handler $err] $expr-buf $obj-buf $handler $err]]
 	
 		(if (and $dot [str= $dot (" .o)]) (begin
 			(storage obj-sz (begin))
@@ -85,8 +86,8 @@
 	
 			{$handler (set-storage $err unsupported-ext-error $src)}))
 
-		[append $obj objects $obj-buf]
-		[append-list $symbols [immutable-symbols $obj $obj-buf]]))
+		[append $obj objects $obj-buf $handler $err]
+		[append-list $symbols [immutable-symbols $obj $obj-buf $handler $err]]))
 
 	(foreach (obj $objects) [mutate-symbols $obj $$symbols])
 	(foreach (obj $objects) [[segment $obj (" .text)]])))
@@ -95,13 +96,13 @@
 	(foreach (infn $programs) (begin
 		(storage dot [strrchr $infn (char .)])
 		(if (and $dot [str= $dot (" .l2)]) (begin
-			(storage program [make-program [read-expressions $infn $expr-buf $handler $err] $expr-buf])
+			(storage program [make-program [read-expressions $infn $expr-buf $handler $err] $expr-buf $handler $err])
 			[pre-visit-expressions vgenerate-metas program (storage _ $syms $expr-buf $handler $err)]
 			(storage symbols (begin))
 			(storage asms [compile-program $program symbols $expr-buf $handler $err])
 			(storage objdest (begin))
 			(storage objdest-sz (begin))
-			[write-elf $asms $symbols objdest objdest-sz $obj-buf]
+			[write-elf $asms $symbols objdest objdest-sz $obj-buf $handler $err]
 			(storage outfn [buffer-alloc [+ [strlen $infn] #1] $obj-buf $handler $err])
 			[strcpy $outfn $infn]
 			[strcpy [strrchr $outfn (char .)] (" .o)]
