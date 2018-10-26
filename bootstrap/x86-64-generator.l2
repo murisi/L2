@@ -1,7 +1,7 @@
-(function vlayout-frames (n r) (with return (begin
+(function vlayout-frames (n r) (with return (substitute (.. (@0 $r) (@1 $r) (@2 $r)) (begin
 	(if (@ expr-return-symbol $n) (begin
 		(setf sym-size (@ expr-return-symbol $n) (word-size))
-		[prepend (@ expr-return-symbol $n) (& expr-symbols[get-parent-function $n]) $r])
+		[prepend (@ expr-return-symbol $n) (& expr-symbols[get-parent-function $n]) ..])
 		(begin))
 		
 	(switch = (@ expr-type $n)
@@ -11,26 +11,26 @@
 					(setf sym-offset (@ expr-symbol $t) $parameter-offset)
 					[set parameter-offset [+ $parameter-offset (word-size)]])))
 			(let (symbol-offset #0)
-				(foreach (u [reverse (@ expr-symbols $n) $r]) (begin
+				(foreach (u [reverse (@ expr-symbols $n) ..]) (begin
 					[set symbol-offset [- $symbol-offset [pad-size (@ sym-size $u) (word-size)]]]
 					(setf sym-offset $u $symbol-offset))))))
 		
 		((-continuation-) (-with-) (begin
 			(if (@ expr-escapes $n) (begin
 				(setf sym-size (@ expr-symbol(@ expr-reference $n)) (cont-size))
-				[append (@ expr-symbol(@ expr-reference $n)) (& expr-symbols[get-parent-function $n]) $r])
+				[append (@ expr-symbol(@ expr-reference $n)) (& expr-symbols[get-parent-function $n]) ..])
 				(begin))
 			(foreach (t (@ expr-parameters $n)) (begin
 				(setf sym-size (@ expr-symbol $t) (word-size))
-				[append (@ expr-symbol $t) (& expr-symbols[get-parent-function $n]) $r]))))
+				[append (@ expr-symbol $t) (& expr-symbols[get-parent-function $n]) ..]))))
 		
 		((-storage-) (begin
 			(setf sym-size (@ expr-symbol(@ expr-reference $n)) [* [length (@ expr-arguments $n)] (word-size)])
-			[append (@ expr-symbol(@ expr-reference $n)) (& expr-symbols[get-parent-function $n]) $r]))
+			[append (@ expr-symbol(@ expr-reference $n)) (& expr-symbols[get-parent-function $n]) ..]))
 		
 		(begin))
 	
-	{return $n})))
+	{return $n}))))
 
 (function make-load (sym offset dest-reg scratch-reg r handler err) (with return
 	(let (c nil) (substitute (.. $r $handler $err) (begin
