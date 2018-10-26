@@ -125,23 +125,33 @@
 			{$handler (set-storage $err file-access-error (null))}
 			{return [get [+ statbuf #48]]})))))
 
+(storage memory-access-error (begin))
+
 (;; Creates a new virtual address mapping of the size in bytes given at len.)
 
-(function mmap (len) [syscall (sys-mmap) (null) $len [lor (prot-read) (prot-write)] [lor (map-private) (map-anonymous)] [lnot #0] #0])
+(function mmap (len handler err)
+	(let (ret [syscall (sys-mmap) (null) $len [lor (prot-read) (prot-write)] [lor (map-private) (map-anonymous)] [lnot #0] #0])
+		(if (and [<= [- #0 #4095] $ret] [<= $ret [- #0 #1]])
+			{$handler (set-storage $err memory-access-error)}
+			$ret)))
 
 (;; Deletes virtual address mappings coinciding with the range starting with the
 	value at ptr and having an extent of the value given at len.)
 
-(function munmap (ptr len) [syscall (sys-munmap) $ptr $len])
+(function munmap (ptr len handler err)
+	(let (ret [syscall (sys-munmap) $ptr $len])
+		(if (and [<= [- #0 #4095] $ret] [<= $ret [- #0 #1]])
+			{$handler (set-storage $err memory-access-error)}
+			$ret)))
 
 (function pad-size (x nearest) (let (r [rem $x $nearest]) [+ $x (if $r [- $nearest $r] #0)]))
 
 (;; Creates a new region with a minimum capacity in bytes given by the value at
 	min-capacity.)
 
-(function create-buffer (min-capacity) (with return
+(function create-buffer (min-capacity handler err) (with return
 	(let (len [pad-size [+ $min-capacity (buffer-element)] (page-size)])
-		(let (reg [mmap $len]) (begin
+		(let (reg [mmap $len $handler $err]) (begin
 			(setf buf-next-elt $reg (null))
 			(setf buf-last-elt $reg $reg)
 			(setf buf-curr-pos $reg [+ $reg (buffer-element)])
@@ -160,13 +170,13 @@
 	integer at len. The only way to deallocate this memory is destroy the entire
 	region at reg.)
 
-(function buffer-alloc (reg len) (with return
+(function buffer-alloc (len reg handler err) (with return
 	(let (last-elt (@ buf-last-elt $reg)) (begin
 		(;;[check-buffer-integrity $reg])
 		[set len [pad-size $len (alloc-alignment)]]
 		(if [> [+(@ buf-curr-pos $last-elt)$len] (@ buf-end-pos $last-elt)]
 			(begin
-				(setf buf-next-elt $last-elt [create-buffer [+ $len [* #2[-(@ buf-end-pos $last-elt) $last-elt]]]])
+				(setf buf-next-elt $last-elt [create-buffer [+ $len [* #2[-(@ buf-end-pos $last-elt) $last-elt]]] $handler $err])
 				(setf buf-last-elt $reg (@ buf-next-elt $last-elt))
 				[set last-elt (@ buf-next-elt $last-elt)])
 			(begin))
@@ -178,19 +188,19 @@
 	function, it is invalid to read or write data to the memory allocated on
 	this region.)
 
-(function destroy-buffer (reg) (begin
+(function destroy-buffer (reg handler err) (begin
 	(;;[check-buffer-integrity $reg])
 	(do-while
 			(let (next-reg (@ buf-next-elt $reg)) (begin
-				[munmap $reg [- (@ buf-end-pos $reg) $reg]]
+				[munmap $reg [- (@ buf-end-pos $reg) $reg] $handler $err]
 				[set reg $next-reg]))
 		$reg)))
 
 (;; Returns a C-string that is a copy of the one at src. The returned string and
 	its dependencies will all reside in the region reg.)
 
-(function rstrcpy (src reg) (with return
-	(let (dest [buffer-alloc $reg [+[strlen $src]#1]]) (begin
+(function rstrcpy (src reg handler err) (with return
+	(let (dest [buffer-alloc [+[strlen $src]#1] $reg $handler $err]) (begin
 		[strcpy $dest $src]
 		{return $dest}))))
 
@@ -198,7 +208,7 @@
 	and its dependencies will all reside in the region reg.)
 
 (function argv (reg handler err) (with return
-	(let (f [open (" /proc/self/cmdline) $handler $err]) (buf [buffer-alloc $reg (arg-max)])
+	(let (f [open (" /proc/self/cmdline) $handler $err]) (buf [buffer-alloc (arg-max) $reg $handler $err])
 		(let (bytes-rem [read $f $buf (arg-max) $handler $err]) (begin
 			[close $f $handler $err]
 			{(continuation loop (buf bytes-rem args)
