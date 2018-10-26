@@ -177,56 +177,56 @@
 		
 		(begin))))
 
-(function use-return-symbol (n ret-sym r) (with return
-	(switch = (@ expr-type $n)
+(function use-return-symbol (n ret-sym r handler err) (with return
+	(substitute (.. $r $handler $err) (switch = (@ expr-type $n)
 		((-with-) (-continuation-) (begin
 			(setf expr-return-symbol $n $ret-sym)
 			(put expr-expression $n [use-return-symbol (@ expr-expression $n)
-				[make-symbol (dynamic-storage) (local-scope) (defined-state) (null) (null) $r] $r])
+				[make-symbol (dynamic-storage) (local-scope) (defined-state) (null) (null) ..] ..])
 			{return $n}))
 		
 		((-function-) (begin
 			(setf expr-return-symbol $n $ret-sym)
-			(setf expr-expression-return-symbol $n [make-symbol (dynamic-storage) (local-scope) (defined-state) (null) (null) $r])
-			(put expr-expression $n [use-return-symbol (@ expr-expression $n) (@ expr-expression-return-symbol $n) $r])
+			(setf expr-expression-return-symbol $n [make-symbol (dynamic-storage) (local-scope) (defined-state) (null) (null) ..])
+			(put expr-expression $n [use-return-symbol (@ expr-expression $n) (@ expr-expression-return-symbol $n) ..])
 			{return $n}))
 		
 		((-invoke-) (-jump-) (-storage-)
 			(let (container nil) (begin
 				(if [= (@ expr-type $n) (-storage-)] (begin)
-					(let (ref-ret-sym [make-symbol (dynamic-storage) (local-scope) (defined-state) (null) (null) $r]) (begin
-						[append [use-return-symbol (@ expr-reference $n) $ref-ret-sym $r] container $r]
-						(put expr-reference $n [use-symbol $ref-ret-sym $r]))))
+					(let (ref-ret-sym [make-symbol (dynamic-storage) (local-scope) (defined-state) (null) (null) ..]) (begin
+						[append [use-return-symbol (@ expr-reference $n) $ref-ret-sym ..] container ..]
+						(put expr-reference $n [use-symbol $ref-ret-sym ..]))))
 						
 				(until (partial (@ expr-arguments $n)) [nil? $partial] [@cdr $partial]
-					(let (arg-ret-sym [make-symbol (dynamic-storage) (local-scope) (defined-state) (null) (null) $r]) (begin
-						[append [use-return-symbol [@car $partial] $arg-ret-sym $r] container $r]
-						(replace-expression (& car $partial) [use-symbol $arg-ret-sym $r]))))
+					(let (arg-ret-sym [make-symbol (dynamic-storage) (local-scope) (defined-state) (null) (null) ..]) (begin
+						[append [use-return-symbol [@car $partial] $arg-ret-sym ..] container ..]
+						(replace-expression (& car $partial) [use-symbol $arg-ret-sym ..]))))
 				
 				(setf expr-return-symbol $n $ret-sym)
-				[append $n container $r]
-				{return [make-begin $container $r]})))
+				[append $n container ..]
+				{return [make-begin $container ..]})))
 		
 		((-if-) (let (container nil) (begin
-			(put expr-consequent $n [use-return-symbol (@ expr-consequent $n) $ret-sym $r])
-			(put expr-alternate $n [use-return-symbol (@ expr-alternate $n) $ret-sym $r])
-			(let (cond-ret-sym [make-symbol (dynamic-storage) (local-scope) (defined-state) (null) (null) $r]) (begin
-				[append [use-return-symbol (@ expr-condition $n) $cond-ret-sym $r] container $r]
-				(put expr-condition $n [use-symbol $cond-ret-sym $r])
-				[append $n container $r]))
-			{return [make-begin $container $r]})))
+			(put expr-consequent $n [use-return-symbol (@ expr-consequent $n) $ret-sym ..])
+			(put expr-alternate $n [use-return-symbol (@ expr-alternate $n) $ret-sym ..])
+			(let (cond-ret-sym [make-symbol (dynamic-storage) (local-scope) (defined-state) (null) (null) ..]) (begin
+				[append [use-return-symbol (@ expr-condition $n) $cond-ret-sym ..] container ..]
+				(put expr-condition $n [use-symbol $cond-ret-sym ..])
+				[append $n container ..]))
+			{return [make-begin $container ..]})))
 		
 		((-begin-) (begin
 			(until (partial (@ expr-expressions $n)) [nil? $partial] [@cdr $partial]
 				(replace-expression (& car $partial) [use-return-symbol [@car $partial]
-					[make-symbol (dynamic-storage) (local-scope) (defined-state) (null) (null) $r] $r]))
+					[make-symbol (dynamic-storage) (local-scope) (defined-state) (null) (null) ..] ..]))
 			{return $n}))
 		
 		((-reference-) (-literal-) (begin
 			(setf expr-return-symbol $n $ret-sym)
 			{return $n}))
 		
-		{return $n})))
+		{return $n}))))
 
 (function vlinearized-expressions (n ctx)
 	(if [= (@ expr-type $n) (-begin-)]
