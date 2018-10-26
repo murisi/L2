@@ -39,7 +39,7 @@
 	[mutate-symbols $obj $syms]
 	{return $obj})))
 	
-(function read-to-buffer (fn expr-buf size-out handler err) (with return (begin
+(function read-to-buffer (fn size-out expr-buf handler err) (with return (begin
 	(storage fd (begin))
 	(storage src-buf (begin))
 	
@@ -54,17 +54,16 @@
 			[close $fd $handler $err]
 			(if [= (@0 $err) no-error] {return $src-buf} {$handler (begin)})))))))
 			
-(function read-expressions (fn expr-buf handler err) (with return (begin
+(function read-expressions (fn expr-buf handler err) (with return (substitute (.. $expr-buf $handler $err) (begin
 	(storage src-sz (begin))
-	(storage src-buf [read-to-buffer $fn $expr-buf src-sz $handler $err])
+	(storage src-buf [read-to-buffer $fn src-sz ..])
 	(storage expressions nil)
 	(storage pos #0)
 	
 	(while [after-leading-space $src-buf $src-sz pos]
-		[append [build-expression [build-fragment $src-buf $src-sz pos $expr-buf $handler $err] $expr-buf $handler $err]
-			expressions $expr-buf])
+		[append [build-expression [build-fragment $src-buf $src-sz pos ..] ..] expressions ..])
 	
-	{return $expressions})))
+	{return $expressions}))))
 
 (storage unsupported-ext-error (begin))
 
@@ -81,7 +80,7 @@
 	
 		(if (and $dot [str= $dot (" .o)]) (begin
 			(storage obj-sz (begin))
-			(storage buf [read-to-buffer $src $obj-buf obj-sz $handler $err])
+			(storage buf [read-to-buffer $src obj-sz $obj-buf $handler $err])
 			[set obj [load $buf $obj-sz $obj-buf $handler $err]])
 	
 			{$handler (set-storage $err unsupported-ext-error $src)}))
