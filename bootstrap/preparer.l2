@@ -99,13 +99,14 @@
 		(begin
 			(setf expr-symbol $s (if (@ expr-symbol $s) (@ expr-symbol $s) [symbol-of $s]))
 			(if (not (@ expr-symbol $s))
-				(let (ref [make-reference (@ expr-name $s) $r]) (rf [get-root-function $s])
-					(let (sym [make-symbol (static-storage) (global-scope) (undefined-state) (@ expr-name $s) $ref $r]) (begin
-						(setf expr-symbol $ref $sym)
-						(setf expr-parameters $rf [cons $ref (@ expr-parameters $rf) $r])
-						(setf expr-parent $ref $rf)
-						(setf expr-symbol $s $sym)
-						{return $s})))
+				(let (ref [make-reference (@ expr-name $s) $r $handler $err]) (rf [get-root-function $s])
+					(let (sym [make-symbol (static-storage) (global-scope) (undefined-state) (@ expr-name $s) $ref $r $handler $err])
+						(begin
+							(setf expr-symbol $ref $sym)
+							(setf expr-parameters $rf [cons $ref (@ expr-parameters $rf) $r $handler $err])
+							(setf expr-parent $ref $rf)
+							(setf expr-symbol $s $sym)
+							{return $s})))
 			(if (and (or (and [jump-reference? $s] [c-reference? (@ sym-definition(@ expr-symbol $s))])
 					(and [invoke-reference? $s] [function-reference? (@ sym-definition(@ expr-symbol $s))]))
 					(not [= [length(@ expr-arguments(@ expr-parent $s))] [length(@ expr-parameters[get-target-expression $s])]]))
