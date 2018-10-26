@@ -210,12 +210,12 @@
 		[+ [* (elf64-sym) [measure-symtab $generated-expressions $symbols]]
 		[* (elf64-rela) [* (write-elf-max-instr-fields) [length $generated-expressions]]]]]]]]])
 
-(function write-elf (generated-expressions symbols bin pos elfreg) (begin
+(function write-elf (generated-expressions symbols bin pos elfreg handler err) (begin
 	[set $pos #0]
-	[set $bin [buffer-alloc $elfreg [max-elf-size $generated-expressions $symbols]]]
-	(storage temp-buf [create-buffer #0])
+	[set $bin [buffer-alloc [max-elf-size $generated-expressions $symbols] $elfreg $handler $err]]
+	(storage temp-buf [create-buffer #0 $handler $err])
 	
-	(storage ehdr [buffer-alloc $temp-buf (elf64-ehdr)])
+	(storage ehdr [buffer-alloc (elf64-ehdr) $temp-buf $handler $err])
 	(setf ei-mag0 (& e-ident $ehdr) (elfmag0))
 	(setf ei-mag1 (& e-ident $ehdr) (elfmag1))
 	(setf ei-mag2 (& e-ident $ehdr) (elfmag2))
@@ -246,7 +246,7 @@
 	(storage strtab-len [measure-strtab $generated-expressions $symbols])
 	(storage sym-count [measure-symtab $generated-expressions $symbols])
 	
-	(storage syms [buffer-alloc $temp-buf [* $sym-count (elf64-sym)]])
+	(storage syms [buffer-alloc [* $sym-count (elf64-sym)] $temp-buf $handler $err])
 	(storage sym-ptr $syms)
 	(;; Mandatory undefined symbol)
 	(setf st-name $sym-ptr #0)
@@ -258,7 +258,7 @@
 	[set+ sym-ptr (elf64-sym)]
 	
 	(storage strtab-padded-len [pad-size $strtab-len (write-elf-alignment)])
-	(storage strtab [buffer-alloc $temp-buf $strtab-padded-len])
+	(storage strtab [buffer-alloc $strtab-padded-len $temp-buf $handler $err])
 	(storage strtabptr $strtab)
 	[setb $strtabptr #0]
 	[set+ strtabptr #1]
@@ -367,13 +367,13 @@
 	(storage max-text-sec-len [pad-size [* (write-elf-max-instr-len) [length $generated-expressions]] (write-elf-alignment)])
 	(storage max-rela-sec-len [* (write-elf-max-instr-fields) [* [length $generated-expressions] (elf64-rela)]])
 	
-	(storage text [buffer-alloc $temp-buf $max-text-sec-len])
-	(storage relas [buffer-alloc $temp-buf $max-rela-sec-len])
+	(storage text [buffer-alloc $max-text-sec-len $temp-buf $handler $err])
+	(storage relas [buffer-alloc $max-rela-sec-len $temp-buf $handler $err])
 	(storage rela-ptr $relas)
 	[assemble $generated-expressions $text text-len $syms rela-ptr]
 	
 	(;; Mandatory undefined section)
-	(storage undef-shdr [buffer-alloc $temp-buf (elf64-shdr)])
+	(storage undef-shdr [buffer-alloc (elf64-shdr) $temp-buf $handler $err])
 	(setf sh-name $undef-shdr #0)
 	(setf sh-type $undef-shdr (sht-null))
 	(setf sh-flags $undef-shdr #0)
@@ -387,10 +387,10 @@
 	[mem-write $$bin $pos $undef-shdr (elf64-shdr)]
 	
 	(storage shstrtab-padded-len [pad-size [strvlen $shstrtab] (write-elf-alignment)])
-	(storage shstrtab-padded [buffer-alloc $temp-buf $shstrtab-padded-len])
+	(storage shstrtab-padded [buffer-alloc $shstrtab-padded-len $temp-buf $handler $err])
 	[memcpy $shstrtab-padded $shstrtab [strvlen $shstrtab]]
 	
-	(storage shstrtab-shdr [buffer-alloc $temp-buf (elf64-shdr)])
+	(storage shstrtab-shdr [buffer-alloc (elf64-shdr) $temp-buf $handler $err])
 	(setf sh-name $shstrtab-shdr #1)
 	(setf sh-type $shstrtab-shdr (sht-strtab))
 	(setf sh-flags $shstrtab-shdr #0)
@@ -403,7 +403,7 @@
 	(setf sh-entsize $shstrtab-shdr #0)
 	[mem-write $$bin $pos $shstrtab-shdr (elf64-shdr)]
 	
-	(storage text-shdr [buffer-alloc $temp-buf (elf64-shdr)])
+	(storage text-shdr [buffer-alloc (elf64-shdr) $temp-buf $handler $err])
 	(setf sh-name $text-shdr [+ (@ sh-name $shstrtab-shdr) [+ [strlen(" .shstrtab)] #1]])
 	(setf sh-type $text-shdr (sht-progbits))
 	(setf sh-flags $text-shdr [lor (shf-alloc) (shf-execinstr)])
@@ -416,7 +416,7 @@
 	(setf sh-entsize $text-shdr #0)
 	[mem-write $$bin $pos $text-shdr (elf64-shdr)]
 	
-	(storage strtab-shdr [buffer-alloc $temp-buf (elf64-shdr)])
+	(storage strtab-shdr [buffer-alloc (elf64-shdr) $temp-buf $handler $err])
 	(setf sh-name $strtab-shdr [+ (@ sh-name $text-shdr) [+ [strlen(" .text)] #1]])
 	(setf sh-type $strtab-shdr (sht-strtab))
 	(setf sh-flags $strtab-shdr #0)
@@ -429,7 +429,7 @@
 	(setf sh-entsize $strtab-shdr #0)
 	[mem-write $$bin $pos $strtab-shdr (elf64-shdr)]
 	
-	(storage symtab-shdr [buffer-alloc $temp-buf (elf64-shdr)])
+	(storage symtab-shdr [buffer-alloc (elf64-shdr) $temp-buf $handler $err])
 	(setf sh-name $symtab-shdr [+ (@ sh-name $strtab-shdr) [+ [strlen(" .strtab)] #1]])
 	(setf sh-type $symtab-shdr (sht-symtab))
 	(setf sh-flags $symtab-shdr #0)
@@ -442,7 +442,7 @@
 	(setf sh-entsize $symtab-shdr (elf64-sym))
 	[mem-write $$bin $pos $symtab-shdr (elf64-shdr)]
 	
-	(storage bss-shdr [buffer-alloc $temp-buf (elf64-shdr)])
+	(storage bss-shdr [buffer-alloc (elf64-shdr) $temp-buf $handler $err])
 	(setf sh-name $bss-shdr [+ (@ sh-name $symtab-shdr) [+ [strlen(" .symtab)] #1]])
 	(setf sh-type $bss-shdr (sht-nobits))
 	(setf sh-flags $bss-shdr [lor (shf-write) (shf-alloc)])
@@ -455,7 +455,7 @@
 	(setf sh-entsize $bss-shdr #0)
 	[mem-write $$bin $pos $bss-shdr (elf64-shdr)]
 	
-	(storage rela-shdr [buffer-alloc $temp-buf (elf64-shdr)])
+	(storage rela-shdr [buffer-alloc (elf64-shdr) $temp-buf $handler $err])
 	(setf sh-name $rela-shdr [+ (@ sh-name $bss-shdr) [+ [strlen(" .bss)] #1]])
 	(setf sh-type $rela-shdr (sht-rela))
 	(setf sh-flags $rela-shdr #0)
@@ -473,7 +473,7 @@
 	[mem-write $$bin $pos $strtab $strtab-padded-len]
 	[mem-write $$bin $pos $syms [* $sym-count (elf64-sym)]]
 	[mem-write $$bin $pos $relas [- $rela-ptr $relas]]
-	[destroy-buffer $temp-buf]))
+	[destroy-buffer $temp-buf $handler $err]))
 
 (function symbol-offsets-to-addresses (asms symbols obj) (begin
 	(foreach (sym $symbols)

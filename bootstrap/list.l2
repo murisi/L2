@@ -26,15 +26,15 @@
 
 (function nil? (l) [= [@cdr $l] (null)])
 
-(function append (data l r) (with return (begin
+(function append (data l r handler err) (with return (begin
 	(while (not [nil? $$l]) [set l (& cdr $$l)])
-	[set $l [buffer-alloc $r (list-struct)]]
+	[set $l [buffer-alloc (list-struct) $r $handler $err]]
 	(setf car $$l $data)
 	(setf cdr $$l nil)
 	{return (& car $$l)})))
 
-(function cons (data rest r) (with return
-	(let (l [buffer-alloc $r (list-struct)]) (begin
+(function cons (data rest r handler err) (with return
+	(let (l [buffer-alloc (list-struct) $r $handler $err]) (begin
 		(setf car $l $data)
 		(setf cdr $l $rest)
 		{return $l}))))
@@ -44,8 +44,8 @@
 		[set fst-ref (& cdr $$fst-ref)])
 	[set $fst-ref $snd]))
 
-(function prepend (data l-ref r)
-	(let (ret [buffer-alloc $r (list-struct)]) (begin
+(function prepend (data l-ref r handler err)
+	(let (ret [buffer-alloc (list-struct) $r $handler $err]) (begin
 		(setf car $ret $data)
 		(setf cdr $ret $$l-ref)
 		[set $l-ref $ret])))
@@ -65,19 +65,19 @@
 	(foreach (d $a) (if [find $pred b $d] (begin) {return $d}))
 	{return (null)})))
 
-(function filter (pred l r) (with return
+(function filter (pred l r handler err) (with return
 	(let (res nil) (begin
-		(foreach (e $l) (if [$pred $e] [prepend $e res $r] (begin)))
-		{return [reverse $res $r]}))))
+		(foreach (e $l) (if [$pred $e] [prepend $e res $r $handler $err] (begin)))
+		{return [reverse $res $r $handler $err]}))))
 
-(function reverse (l r) (with return
+(function reverse (l r handler err) (with return
 	(let (ret nil) (begin
-		(foreach (data $l) [prepend $data ret $r])
+		(foreach (data $l) [prepend $data ret $r $handler $err])
 		{return $ret}))))
 
-(function map (l ctx mapper r)
+(function map (l ctx mapper r handler err)
 	(with return
 		{(continuation aux (in out)
 			(if [nil? $in]
-				{return [reverse $out $r]}
-				{aux [@cdr $in] [cons [$mapper [@car $in] $ctx] $out $r]})) $l nil}))
+				{return [reverse $out $r $handler $err]}
+				{aux [@cdr $in] [cons [$mapper [@car $in] $ctx] $out $r $handler $err]})) $l nil}))

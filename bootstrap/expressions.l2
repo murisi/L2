@@ -1,5 +1,5 @@
-(function make-symbol (type scope state name definition r) (with return
-	(let (sym [buffer-alloc $r (symbol)]) (begin
+(function make-symbol (type scope state name definition r handler err) (with return
+	(let (sym [buffer-alloc (symbol) $r $handler $err]) (begin
 		(setf sym-type $sym $type)
 		(setf sym-scope $sym $scope)
 		(setf sym-state $sym $state)
@@ -7,14 +7,14 @@
 		(setf sym-definition $sym $definition)
 		{return $sym}))))
 
-(function make-literal (value reg) (with return
-	(let (t [buffer-alloc $reg (expression)]) (begin
+(function make-literal (value reg handler err) (with return
+	(let (t [buffer-alloc (expression) $reg $handler $err]) (begin
 		(setf expr-type $t (-literal-))
 		(setf expr-value $t $value)
 		{return $t}))))
 
-(function make-reference (name reg) (with return
-	(let (ref [buffer-alloc $reg (expression)]) (begin
+(function make-reference (name reg handler err) (with return
+	(let (ref [buffer-alloc (expression) $reg $handler $err]) (begin
 		(setf expr-type $ref (-reference-))
 		(setf expr-name $ref $name)
 		(setf expr-symbol $ref (null))
@@ -22,22 +22,22 @@
 
 (function refer-reference (reference referent) (setf expr-symbol $reference (@ expr-symbol $referent)))
 
-(function use-symbol (sym reg) (with return
-	(let (ref [buffer-alloc $reg (expression)]) (begin
+(function use-symbol (sym reg handler err) (with return
+	(let (ref [buffer-alloc (expression) $reg $handler $err]) (begin
 		(setf expr-type $ref (-reference-))
 		(setf expr-name $ref (@ sym-name $sym))
 		(setf expr-symbol $ref $sym)
 		{return $ref}))))
 
-(function make-begin (expressions reg) (with return
-	(let (beg [buffer-alloc $reg (expression)]) (begin
+(function make-begin (expressions reg handler err) (with return
+	(let (beg [buffer-alloc (expression) $reg $handler $err]) (begin
 		(setf expr-type $beg (-begin-))
 		(setf expr-expressions $beg $expressions)
 		(foreach (expr $expressions) (setf expr-parent $expr $beg))
 		{return $beg}))))
 
-(function make-function (ref params expr reg) (with return
-	(let (func [buffer-alloc $reg (expression)]) (begin
+(function make-function (ref params expr reg handler err) (with return
+	(let (func [buffer-alloc (expression) $reg $handler $err]) (begin
 		(setf expr-type $func (-function-))
 		(setf expr-reference $func $ref)
 		(setf expr-parent $ref $func)
@@ -51,8 +51,8 @@
 		(setf expr-parent $expr $func)
 		{return $func}))))
 
-(function make-continuation (ref params expr reg) (with return
-	(let (cont [buffer-alloc $reg (expression)]) (begin
+(function make-continuation (ref params expr reg handler err) (with return
+	(let (cont [buffer-alloc (expression) $reg $handler $err]) (begin
 		(setf expr-type $cont (-continuation-))
 		(setf expr-reference $cont $ref)
 		(setf expr-parent $ref $cont)
@@ -67,8 +67,8 @@
 		(setf expr-parent $expr $cont)
 		{return $cont}))))
 
-(function make-with (ref expr reg) (with return
-	(let (wth [buffer-alloc $reg (expression)]) (begin
+(function make-with (ref expr reg handler err) (with return
+	(let (wth [buffer-alloc (expression) $reg $handler $err]) (begin
 		(setf expr-type $wth (-with-))
 		(setf expr-reference $wth $ref)
 		(setf expr-parent $ref $wth)
@@ -83,16 +83,16 @@
 		(setf expr-parent $expr $wth)
 		{return $wth}))))
 
-(function make-asm (opcode arguments reg) (with return
-	(let (u [buffer-alloc $reg (expression)]) (begin
+(function make-asm (opcode arguments reg handler err) (with return
+	(let (u [buffer-alloc (expression) $reg $handler $err]) (begin
 		(setf expr-type $u (-assembly-))
 		(setf expr-opcode $u $opcode)
 		(setf expr-arguments $u $arguments)
 		(foreach (arg $arguments) (setf expr-parent $arg $u))
 		{return $u}))))
 
-(function make-jump (ref args reg) (with return
-	(let (u [buffer-alloc $reg (expression)]) (begin
+(function make-jump (ref args reg handler err) (with return
+	(let (u [buffer-alloc (expression) $reg $handler $err]) (begin
 		(setf expr-type $u (-jump-))
 		(setf expr-reference $u $ref)
 		(setf expr-parent $ref $u)
@@ -100,8 +100,8 @@
 		(foreach (arg $args) (setf expr-parent $arg $u))
 		{return $u}))))
 
-(function make-storage (ref args reg) (with return
-	(let (u [buffer-alloc $reg (expression)]) (begin
+(function make-storage (ref args reg handler err) (with return
+	(let (u [buffer-alloc (expression) $reg $handler $err]) (begin
 		(setf expr-type $u (-storage-))
 		(setf expr-reference $u $ref)
 		(setf expr-parent $ref $u)
@@ -110,16 +110,16 @@
 		(foreach (arg $args) (setf expr-parent $arg $u))
 		{return $u}))))
 
-(function make-meta (ref arg reg) (with return
-	(let (u [buffer-alloc $reg (expression)]) (begin
+(function make-meta (ref arg reg handler err) (with return
+	(let (u [buffer-alloc (expression) $reg $handler $err]) (begin
 		(setf expr-type $u (-meta-))
 		(setf expr-reference $u $ref)
 		(setf expr-parent $ref $u)
 		(setf expr-argument $u $arg)
 		{return $u}))))
 
-(function make-if (condition consequent alternate reg) (with return
-	(let (u [buffer-alloc $reg (expression)]) (begin
+(function make-if (condition consequent alternate reg handler err) (with return
+	(let (u [buffer-alloc (expression) $reg $handler $err]) (begin
 		(setf expr-type $u (-if-))
 		(setf expr-condition $u $condition)
 		(setf expr-parent $condition $u)
@@ -129,8 +129,8 @@
 		(setf expr-parent $alternate $u)
 		{return $u}))))
 
-(function make-invoke (ref args reg) (with return
-	(let (u [buffer-alloc $reg (expression)]) (begin
+(function make-invoke (ref args reg handler err) (with return
+	(let (u [buffer-alloc (expression) $reg $handler $err]) (begin
 		(setf expr-type $u (-invoke-))
 		(setf expr-reference $u $ref)
 		(setf expr-parent $ref $u)
@@ -138,14 +138,14 @@
 		(foreach (arg $args) (setf expr-parent $arg $u))
 		{return $u}))))
 
-(function make-program (exprs r) (with return
-	(let (program [make-function [make-reference (null) $r] nil [make-begin $exprs $r] $r]) (begin
+(function make-program (exprs r handler err) (with return (substitute (.. $r $handler $err)
+	(let (program [make-function [make-reference (null) ..] nil [make-begin $exprs ..] ..]) (begin
 		(setf expr-parent $program (null))
 		(foreach (expr $exprs)
 			(if (or [= (@ expr-type $expr) (-function-)] [= (@ expr-type $expr) (-storage-)])
 				(setf sym-scope (@ expr-symbol(@ expr-reference $expr)) (global-scope))
 				(begin)))
-		{return $program}))))
+		{return $program})))))
 
 (function print-expression (s hdl err)
 	(switch = (@ expr-type $s)
@@ -227,7 +227,7 @@
 
 (storage special-form-error #0)
 
-(function build-expression (d reg handler err)
+(function build-expression (d reg handler err) (substitute (.. $reg $handler $err)
 	(if [= [length $d] #0] {$handler}
 	(if [i/f:symbol? $d] [make-reference [to-string $d $reg] $reg]
 	(switch str= [to-string [@car $d] $reg]
@@ -236,18 +236,17 @@
 				{$handler (set-storage $err special-form-error $d (null))}
 			(if (not [i/f:symbol? [@cadr $d]])
 				{$handler (set-storage $err special-form-error $d [@cadr $d])}
-				[make-with [build-expression [@cadr $d] $reg $handler $err] [build-expression [@caddr $d] $reg $handler $err] $reg])))
+				[make-with [build-expression [@cadr $d] ..] [build-expression [@caddr $d] ..] $reg])))
 		
 		((" begin)
 			(with return (let (exprs nil) (begin
-				(foreach (v [@cdr $d]) [append [build-expression $v $reg $handler $err] exprs $reg])
+				(foreach (v [@cdr $d]) [append [build-expression $v ..] exprs $reg])
 				{return [make-begin $exprs $reg]}))))
 		
 		((" if)
 			(if (not [= [length $d] #4])
 				{$handler (set-storage $err special-form-error $d (null))}
-				[make-if [build-expression [@cadr $d] $reg $handler $err] [build-expression [@caddr $d] $reg $handler $err]
-					[build-expression [@cadddr $d] $reg $handler $err] $reg]))
+				[make-if [build-expression [@cadr $d] ..] [build-expression [@caddr $d] ..] [build-expression [@cadddr $d] ..] $reg]))
 		
 		((" function) (" continuation)
 			(if (not [= [length $d] #4])
@@ -259,13 +258,12 @@
 				(with return (let (parameters nil) (begin
 					(foreach (v [@caddr $d])
 						(if [i/f:symbol? $v]
-							[append [build-expression $v $reg $handler $err] parameters $reg]
+							[append [build-expression $v ..] parameters $reg]
 							{$handler (set-storage $err special-form-error $d $v)}))
 					{return [(switch str= [to-string [@car $d] $reg]
 							((" function) make-function)
 							make-continuation)
-						[build-expression [@cadr $d] $reg $handler $err] $parameters [build-expression [@cadddr $d] $reg $handler $err]
-							$reg]})))))))
+						[build-expression [@cadr $d] ..] $parameters [build-expression [@cadddr $d] ..] $reg]})))))))
 		
 		((" invoke) (" jump) (" storage)
 			(if [= [length $d] #1]
@@ -273,12 +271,12 @@
 			(if (and [str= [to-string [@car $d] $reg] (" storage)] (not [i/f:symbol? [@cadr $d]]))
 				{$handler (set-storage $err special-form-error $d [@cadr $d])}
 				(with return (let (arguments nil) (begin
-					(foreach (v [@cddr $d]) [append [build-expression $v $reg $handler $err] arguments $reg])
+					(foreach (v [@cddr $d]) [append [build-expression $v ..] arguments $reg])
 					{return [(switch str= [to-string [@car $d] $reg]
 							((" invoke) make-invoke)
 							((" jump) make-jump)
 							make-storage)
-						[build-expression [@cadr $d] $reg $handler $err] $arguments $reg]}))))))
+						[build-expression [@cadr $d] ..] $arguments $reg]}))))))
 		
 		((" literal)
 			(if (not [= [length $d] #2])
@@ -296,4 +294,4 @@
 								{$handler (set-storage $err special-form-error $d [@cadr $d])}))))
 						[to-string [@cadr $d] $reg] (build-expression-literal-len) #0}) $reg])))
 		
-		[make-meta [build-expression [@car $d] $reg $handler $err] [@cdr $d] $reg]))))
+		[make-meta [build-expression [@car $d] ..] [@cdr $d] $reg])))))
