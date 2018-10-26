@@ -277,15 +277,14 @@
 		$s))
 
 (function init-storage (data storage-expr symbols expr-buf obj-buf handler err cache)
-	(if $$cache $$cache (with return (begin
+	(if $$cache $$cache (with return (substitute (.. $expr-buf $handler $err) (begin
 		(storage sets nil)
 		(foreach (arg (@ expr-arguments $storage-expr)) (begin
-			[pre-visit-expressions vgenerate-metas arg (storage _ $$symbols $expr-buf $handler $err)]
-			[append (make-invokeN [make-literal set $expr-buf] ([make-literal $data $expr-buf] $arg) $expr-buf) sets $expr-buf]
+			[pre-visit-expressions vgenerate-metas arg (storage _ $$symbols ..)]
+			[append (make-invokeN [make-literal set ..] ([make-literal $data ..] $arg) ..) sets ..]
 			[set data [+ $data (unit)]]))
-		[set $cache [segment [load-program-and-mutate [make-program $sets $expr-buf] $$symbols $expr-buf $obj-buf $handler $err]
-			(" .text)]]
-		{return $$cache}))))
+		[set $cache [segment [load-program-and-mutate [make-program $sets ..] $$symbols $expr-buf $obj-buf $handler $err] (" .text)]]
+		{return $$cache})))))
 
 (function init-function (function-expr symbols expr-buf obj-buf handler err cache)
 	(if $$cache $$cache (with return (begin
