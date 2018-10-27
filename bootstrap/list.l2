@@ -1,3 +1,7 @@
+(;; Convenience functions for accessing elements of program internal lists.
+	Note that the @fst and @rst functions are list accessor functions only for
+	the fragments supplied to macros.)
+
 (function @car (l) (@ car $l))
 
 (function @cdr (l) (@ cdr $l))
@@ -26,6 +30,10 @@
 
 (function nil? (l) [= [@cdr $l] (null)])
 
+(;; Appends an item to the given list. $data is the data that is to be appended.
+	$l is a reference to the list that is to be appended to. $r is the buffer into
+	which the extension is being placed.)
+
 (function append (data l r handler err) (with return (begin
 	(while (not [nil? $$l]) [set l (& cdr $$l)])
 	[set $l [buffer-alloc (list-struct) $r $handler $err]]
@@ -33,16 +41,26 @@
 	(setf cdr $$l nil)
 	{return (& car $$l)})))
 
+(;; Makes a new list with the given head and tail. $data is what is going to be
+	put at the head. $rest is the list that will be the tail of the new list. $r
+	is the buffer into which the extension is being placed. Return value is the
+	new list.)
+
 (function cons (data rest r handler err) (with return
 	(let (l [buffer-alloc (list-struct) $r $handler $err]) (begin
 		(setf car $l $data)
 		(setf cdr $l $rest)
 		{return $l}))))
 
+(;; Appends the second list onto the first list. $fst-ref is a reference to the
+	list that will be appended to. $snd is the list that will be appended.)
+
 (function append-list (fst-ref snd) (begin
 	(while (not [nil? $$fst-ref])
 		[set fst-ref (& cdr $$fst-ref)])
 	[set $fst-ref $snd]))
+
+(;; Analogous to append above.)
 
 (function prepend (data l-ref r handler err)
 	(let (ret [buffer-alloc (list-struct) $r $handler $err]) (begin
@@ -50,30 +68,58 @@
 		(setf cdr $ret $$l-ref)
 		[set $l-ref $ret])))
 
+(;; Computes the length of the given list. $l is the list whose length will be
+	computed.)
+
 (function length (l) (with return
 	{(continuation loop (l size)
 		(if [nil? $l]
 			{return $size}
 			{loop [@cdr $l] [+ #1 $size]})) $l #0}))
 
+(;; Finds the first element of the given list that satisfies a predicate and
+	returns a reference to the list that it heads. Otherwise it returns (null).
+	$pred is a binary function that takes as its first parameter a list item
+	and as its second parameter $ctx and returns a non-zero value when the
+	predicate is satisfied. $l is a reference to the list that will be searched.)
+
 (function find (pred l ctx) (with return (begin
 	(until (s $l) [nil? $$s] (& cdr $$s)
 		(if [$pred [@car $$s] $ctx] {return $s} (begin)))
 	{return (null)})))
 
+(;; If list $a is not a subset of list $b, return the first element that indicates
+	this. Otherwise return (null). For parameter $pred, see above. $a is a list.
+	$b is a list.)
+
 (function not-subset (pred a b) (with return (begin
 	(foreach (d $a) (if [find $pred b $d] (begin) {return $d}))
 	{return (null)})))
+
+(;; Constructs a sublist of the given list that satisfied a particular predicate.
+	For parameter $pred, see above. $l is the list that is to be filtered. $r is
+	the buffer into which the filtered list should be put. Returns the filtered
+	list.)
 
 (function filter (pred l r handler err) (with return
 	(let (res nil) (begin
 		(foreach (e $l) (if [$pred $e] [prepend $e res $r $handler $err] (begin)))
 		{return [reverse $res $r $handler $err]}))))
 
+(;; Constructs a reverse of the given list. $l is the list that is to be reversed.
+	$r is the buffer into which the reversed list should be placed. Return value
+	is the reversed list.)
+
 (function reverse (l r handler err) (with return
 	(let (ret nil) (begin
 		(foreach (data $l) [prepend $data ret $r $handler $err])
 		{return $ret}))))
+
+(;; Maps the given list using the supplied function. $l is the list that is to be
+	mapped. $ctx is the second argument to the function that does the mapping.
+	$mapper is a binary function that takes as its first argument th list item and
+	as its second argument $ctx and returns the desired mapping. $r is the buffer
+	into which the mapped list will be placed. The return value is the mapped list.)
 
 (function map (l ctx mapper r handler err)
 	(with return
