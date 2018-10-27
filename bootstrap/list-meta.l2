@@ -23,16 +23,16 @@
 			[meta:zip $labels [meta:map $bindings (null) @frst $r]$r]$r]$r]$r]))
 
 (;; Like a C-array initializer, but for lists. Does the following transformation:
-	(list expr1 expr2 ... exprN r)
+	(list expr1 expr2 ... exprN (r handler err))
 	->
-	[cons expr1 [cons expr2 [... [cons exprN nil r] ...] r] r])
+	[cons expr1 [cons expr2 [... [cons exprN nil r handler err] ...] r handler err] r handler err])
 
 (function list (l r)
 	(with return (let (l [meta:reverse $l $r])
 		{(continuation loop (out in)
 			(if [emt? $in]
 				{return $out}
-				{loop [lllllst (` invoke $r) (` cons $r) [@fst $in] $out [@fst $l] emt $r] [@rst $in]})) (` nil $r) [@rst $l]})))
+				{loop [llllst (` invoke $r) (` cons $r) [@fst $in] $out [@fst $l] $r] [@rst $in]})) (` nil $r) [@rst $l]})))
 
 (function list-struct (l r) [mk# $r #16])
 
