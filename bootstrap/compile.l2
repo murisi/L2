@@ -1,3 +1,8 @@
+(;; Compiles a program into assembly. program is a program expression. symbols is a reference
+	to a list into which the symbols of the generated code will be put. expr-buf is the buffer
+	into which all the constructed expressions and symbols will be put. Return value is a list
+	of assembly expressions.)
+	
 (function compile-program (program symbols expr-buf handler err)
 	(with return (substitute (.. $expr-buf $handler $err) (begin
 		[visit-expressions vfind-multiple-definitions program (storage _ $handler $err)]
@@ -20,6 +25,10 @@
 		[visit-expressions vlinearized-expressions program (storage _ asms ..)]
 		{return [reverse $asms ..]}))))
 
+(;; Loads a program into memory and returns a handle to it. program is a program expression.
+	expr-buf is the buffer into which the results of compilation will be put. obj-buf is the
+	buffer into which the object code will be put. Return value is an object.)
+
 (function load-program (program expr-buf obj-buf handler err) (with return (begin
 	(storage symbols (begin))
 	(storage asms [compile-program $program symbols $expr-buf $handler $err])
@@ -29,6 +38,13 @@
 	(storage obj [load $objdest $objdest-sz $obj-buf $handler $err])
 	[symbol-offsets-to-addresses $asms $symbols $obj]
 	{return $obj})))
+
+(;; Behavior is the same as load-program, but with the following addition: syms is is a list
+	of object symbols, and after the loading is done, the undefined symbols of the loaded
+	program will take on the addresses supplied in the list. The handler continuation is
+	followed, and the error buffer reference by err set to the pair (undefined-reference-error,
+	<missing symbol name>) is there is an undefined symbol in the program that is not defined
+	in syms.)
 
 (function load-program-and-mutate (program syms expr-buf obj-buf handler err) (with return (begin
 	(storage obj [load-program $program $expr-buf $obj-buf $handler $err])
@@ -54,7 +70,11 @@
 		(close-file (begin
 			[close $fd $handler $err]
 			(if [= (@0 $err) no-error] {return $src-buf} {$handler (begin)})))))))
-			
+
+(;; Reads a list of expressions from a given file. fn is a string containing the filename.
+	expr-buf if the buffer into which the constructed expressions will be put. Return value
+	is a list of expressions.)
+
 (function read-expressions (fn expr-buf handler err) (with return (substitute (.. $expr-buf $handler $err) (begin
 	(storage src-sz (begin))
 	(storage src-buf [read-to-buffer $fn src-sz ..])
@@ -67,6 +87,16 @@
 	{return $expressions}))))
 
 (storage unsupported-ext-error (begin))
+
+(;; Takes a list of L2 and object files and evaluates them in order. srcv is a list of
+	strings containing paths to L2 and object files. symbols is reference to a list of
+	symbols and to it will be added the global variables of the loaded object files and
+	from it the execution environment of the same will be created. expr-buf is the
+	buffer into which expressions read from L2 source files are put. obj-buf is the
+	buffer into which both compiled and read object code is put. The handler continuation
+	is followed, and error buffer referenced by err is set to the pair
+	(unsupported-ext-error, <file path string>) if an extension other than .o or .l2 is
+	encountered.)
 
 (function evaluate-files (srcv symbols expr-buf obj-buf handler err) (begin
 	(storage objects nil)
@@ -92,6 +122,12 @@
 	(foreach (obj $objects) [mutate-symbols $obj $$symbols])
 	(foreach (obj $objects) [[segment $obj (" .text)]])))
 
+(;; Takes a list of L2 source files and compiles them into object files. programs is a
+	list of strings containing paths to L2 source files. syms is a list of symbols
+	pointing to the macros to be used during the meta-expression expansions. expr-buf
+	if the buffer into which constructed expressions will be put. obj-buf is the buffer
+	into which object code will be put.)
+
 (function compile-files (programs syms expr-buf obj-buf handler err)
 	(foreach (infn $programs) (begin
 		(storage dot [strrchr $infn (char .)])
@@ -115,6 +151,11 @@
 
 (storage no-error (begin))
 
+(;; This is where program execution starts. The following code essentially loads up and
+	executes the code specified in the command line arguments and then compiles the
+	separately specified code using the already loaded up functions as macros. It also
+	prints out the error messages if there are any.)
+
 (begin
 	(;; The buffer into which object code and syms are put)
 	(storage obj-buf (begin))
@@ -124,7 +165,7 @@
 	(storage err no-error (begin) (begin) (begin) (begin))
 	
 	(fallthrough
-		(substitute (.. $obj-buf handler err) (begin
+		(begin
 			[set obj-buf [create-buffer #0 exit-cont err]]
 			[set expr-buf [create-buffer #0 cleanup-obj-buf err]]
 			
@@ -142,7 +183,7 @@
 			(foreach (fn [@cdr $$dash-list]) [append $fn programs $obj-buf handler err])
 			
 			(;; These are all the symbols necessary for metaprogramming.)
-			(storage syms (list
+			(storage syms (substitute (.. $obj-buf handler err) (list
 				([make-sym (" -!-)(sym-char(char !))..]
 				[make-sym (" -!-)(sym-char(char !))..]
 				[make-sym (" -"-)(sym-char(char "))..]
@@ -238,61 +279,61 @@
 				[make-sym (" symbol?) i/f:symbol? ..]
 				[make-sym (" emt?) nil? ..]
 				[make-sym (" emt) nil ..]
-				[make-sym (" char=) i/f:char= ..])..))
+				[make-sym (" char=) i/f:char= ..])..)))
 			
 			(;; Evaluate the metaprogram)
 			[evaluate-files $metaprograms syms $expr-buf $obj-buf handler err]
 			(;; Compile the program in the metaprogram's environment)
-			[compile-files $programs $syms $expr-buf $obj-buf handler err]))
+			[compile-files $programs $syms $expr-buf $obj-buf handler err])
 			
-		(handler (switch = (@0 err)
+		(handler (substitute (.. cleanup err) (switch = (@0 err)
 			(multiple-definition-error (begin
-				[print-str (stdout) (" The definition of(space)) cleanup err]
-				[print-str (stdout) (@1 err) cleanup err]
-				[print-str (stdout) (" (space)erroneously occured multiple times.(lf)) cleanup err]))
+				[print-str (stdout) (" The definition of(space)) ..]
+				[print-str (stdout) (@1 err) ..]
+				[print-str (stdout) (" (space)erroneously occured multiple times.(lf)) ..]))
 				
 			(param-count-mismatch-error (begin
-				[print-str (stdout) (" The number of arguments in(space)) cleanup err]
-				[print-expression (@1 err) cleanup err]
-				[print-str (stdout) (" (space)does not match the number of parameters in(space)) cleanup err]
-				[print-expression (@2 err) cleanup err]
-				[print-str (stdout) (" .(lf)) cleanup err]))
+				[print-str (stdout) (" The number of arguments in(space)) ..]
+				[print-expression (@1 err) ..]
+				[print-str (stdout) (" (space)does not match the number of parameters in(space)) ..]
+				[print-expression (@2 err) ..]
+				[print-str (stdout) (" .(lf)) ..]))
 			
 			(undefined-reference-error (begin
-				[print-str (stdout) (" Undefined reference:(space)) cleanup err]
-				[print-str (stdout) (@1 err) cleanup err]
-				[print-str (stdout) (" .(lf)) cleanup err]))
+				[print-str (stdout) (" Undefined reference:(space)) ..]
+				[print-str (stdout) (@1 err) ..]
+				[print-str (stdout) (" .(lf)) ..]))
 			
 			(special-form-error (if (@2 err)
 				(begin
-					[print-str (stdout) (" The subexpression(space)) cleanup err]
-					[print-fragment (@2 err) cleanup err]
-					[print-str (stdout) (" (space)does not satisfy the requirements of the expression(space)) cleanup err]
-					[print-fragment (@1 err) cleanup err]
-					[print-str (stdout) (" .(lf)) cleanup err])
+					[print-str (stdout) (" The subexpression(space)) ..]
+					[print-fragment (@2 err) ..]
+					[print-str (stdout) (" (space)does not satisfy the requirements of the expression(space)) ..]
+					[print-fragment (@1 err) ..]
+					[print-str (stdout) (" .(lf)) ..])
 				(begin
-					[print-str (stdout) (" The expression(space)) cleanup err]
-					[print-fragment (@1 err) cleanup err]
-					[print-str (stdout) (" (space)has an incorrect number of subexpressions.(lf)) cleanup err])))
+					[print-str (stdout) (" The expression(space)) ..]
+					[print-fragment (@1 err) ..]
+					[print-str (stdout) (" (space)has an incorrect number of subexpressions.(lf)) ..])))
 			
 			(unexpected-char-error (begin
-				[print-str (stdout) (" Unexpectedly read(space)) cleanup err]
-				[print-char (stdout) (@1 err) cleanup err]
-				[print-str (stdout) (" (space)at(space)) cleanup err]
-				[print-uint (stdout) (@2 err) cleanup err]
-				[print-str (stdout) (" .(lf)) cleanup err]))
+				[print-str (stdout) (" Unexpectedly read(space)) ..]
+				[print-char (stdout) (@1 err) ..]
+				[print-str (stdout) (" (space)at(space)) ..]
+				[print-uint (stdout) (@2 err) ..]
+				[print-str (stdout) (" .(lf)) ..]))
 			
 			(file-access-error (if (@1 err)
 				(begin
-					[print-str (stdout) (" Inaccessable file:(space)) cleanup err]
-					[print-str (stdout) (@1 err) cleanup err]
-					[print-str (stdout) (" .(lf)) cleanup err])
-				[print-str (stdout) (" Inaccessable file.) cleanup err]))
+					[print-str (stdout) (" Inaccessable file:(space)) ..]
+					[print-str (stdout) (@1 err) ..]
+					[print-str (stdout) (" .(lf)) ..])
+				[print-str (stdout) (" Inaccessable file.) ..]))
 			
 			(unsupported-ext-error (begin
-				[print-str (stdout) (" File has unsupported extension:(space)) cleanup err]
-				[print-str (stdout) (@1 err) cleanup err]
-				[print-str (stdout) (" .(lf)) cleanup err]))
+				[print-str (stdout) (" File has unsupported extension:(space)) ..]
+				[print-str (stdout) (@1 err) ..]
+				[print-str (stdout) (" .(lf)) ..]))
 			
 			(arguments-error [print-str (stdout)
 				(" Bad command line arguments.(lf)
@@ -300,11 +341,13 @@
 				Outcome: Compiles each L2 file before the dash into an object file, then links all the object files(lf)
 				before the dash together, and then executes each object file before the dash in the order they were(lf)
 				specified. L2 files after the dash are then compiled using the global functions defined before the(lf)
-				dash as macros.(lf))])
+				dash as macros.(lf)) ..])
 			
-			(object-error [print-str (stdout) (" Bad object file supplied.(lf))])
+			(memory-access-error [print-str (stdout) (" Memory access error.(lf)) ..])
+			
+			(object-error [print-str (stdout) (" Bad object file supplied.(lf)) ..])
 				
-			(begin)))
+			(begin))))
 		
 		(cleanup (begin))
 		
