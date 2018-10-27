@@ -63,6 +63,11 @@
 	((vt) (true))
 	(false)))
 
+(;; What follows is essentially wrappers for Linux syscalls. The only twist is
+	that if the actual syscall returns an error code, then these functions will
+	modify the supplied error buffer and follow the error continuation instead
+	of returning.)
+
 (storage file-access-error (begin))
 
 (function open (path handler err)
@@ -146,7 +151,7 @@
 
 (function pad-size (x nearest) (let (r [rem $x $nearest]) [+ $x (if $r [- $nearest $r] #0)]))
 
-(;; Creates a new region with a minimum capacity in bytes given by the value at
+(;; Creates a new buffer with a minimum capacity in bytes given by the value at
 	min-capacity.)
 
 (function create-buffer (min-capacity handler err) (with return
@@ -166,9 +171,9 @@
 		$reg))
 		
 
-(;; Allocates memory in the region at reg of an amount in bytes equal to the
+(;; Allocates memory in the buffer at reg of an amount in bytes equal to the
 	integer at len. The only way to deallocate this memory is destroy the entire
-	region at reg.)
+	buffer at $reg.)
 
 (function buffer-alloc (len reg handler err) (with return
 	(let (last-elt (@ buf-last-elt $reg)) (begin
@@ -184,7 +189,7 @@
 		(setf buf-curr-pos $last-elt [+(@ buf-curr-pos $last-elt)$len])
 		{return [-(@ buf-curr-pos $last-elt)$len]}))))
 
-(;; Releases the memory associated with the region reg. After a call to this
+(;; Releases the memory associated with the buffer $reg. After a call to this
 	function, it is invalid to read or write data to the memory allocated on
 	this region.)
 

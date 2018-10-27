@@ -210,6 +210,13 @@
 		[+ [* (elf64-sym) [measure-symtab $generated-expressions $symbols]]
 		[* (elf64-rela) [* (write-elf-max-instr-fields) [length $generated-expressions]]]]]]]]])
 
+(;; Takes assembly code and a list of symbols as constructs an object file.
+	$generated-expressions is a list of assembly expressions. $symbols is a list
+	of the static symbols used in the assembly expressions. $bin is a reference
+	to where a reference to the generated object code should be put. $pos is a
+	reference to where the size of the generated object code should be put. $elfreg
+	is the buffer into which the generated object code should be put.)
+
 (function write-elf (generated-expressions symbols bin pos elfreg handler err) (begin
 	[set $pos #0]
 	[set $bin [buffer-alloc [max-elf-size $generated-expressions $symbols] $elfreg $handler $err]]
@@ -474,6 +481,11 @@
 	[mem-write $$bin $pos $syms [* $sym-count (elf64-sym)]]
 	[mem-write $$bin $pos $relas [- $rela-ptr $relas]]
 	[destroy-buffer $temp-buf $handler $err]))
+
+(;; Converts the offsets of the static symbols associated with L2 source code
+	that has now been loaded into addresses. $asms is a list of assembly expressions
+	containing symbols that need to be converted. $symbols is a list of symbols
+	corresponding to the assembly expressions that also need to be converted.)
 
 (function symbol-offsets-to-addresses (asms symbols obj) (begin
 	(foreach (sym $symbols)
