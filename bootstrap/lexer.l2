@@ -1,5 +1,7 @@
 (function i/f:char= (a b) [= (@ cs-character $a) (@ cs-character $b)])
 
+(;; Following array is used to lookup fragment character corresponding to ASCII character.)
+
 (storage characters
 	#0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 (char-init !) (char-init ")
 	(char-init #) (char-init $) (char-init %) (char-init &) (char-init ') #0 #0 (char-init *) (char-init +) (char-init ,)
@@ -13,6 +15,10 @@
 	(char-init m) (char-init n) (char-init o) (char-init p) (char-init q) (char-init r) (char-init s) (char-init t) (char-init u)
 	(char-init v) (char-init w) (char-init x) (char-init y) (char-init z) #0 (char-init |) #0 (char-init ~) #0)
 
+(;; Builds a symbol from a given C-string. $str is the C-string that the constructed
+	symbol will be based on. $r is the buffer in which the symbol will be constructed.
+	Return value is the constructed symbol.)
+
 (function build-symbol (str r) (with return
 	(let (sexprs nil) (begin
 		(while [getb $str] (begin
@@ -20,11 +26,25 @@
 			[set str [+ $str #1]]))
 		{return $sexprs}))))
 
+(;; Moves the supplied index forward to the first non-space character. $l2src is a
+	reference to the beginning of a buffer containing characters. $l2src-sz contains
+	the size in bytes of the buffer. $pos is the reference to an index integer that
+	will be increased. Return value is the number of remaining characters in the
+	buffer.)
+
 (function after-leading-space (l2src l2src-sz pos) (with return
 	{(continuation loop ()
 		(if (and [< $$pos $l2src-sz] [isspace [getb[+ $l2src $$pos]]])
 			(begin [set $pos [+ $$pos #1]] {loop})
 			{return [- $l2src-sz $$pos]}))}))
+
+(;; If there is a space at the current position in the buffer, then build a symbol
+	containing solely the sigil. Otherwise build a symbol of the form (<sigil>
+	<symbol>) where symbol is the symbol starting at the current position in the
+	buffer. $sigil is a string. $l2src is a reference to the start of a buffer
+	containing characters. $l2src-sz is the size of the buffer. $pos is a reference
+	to the current index in the buffer. $r is the buffer into which the symbol
+	should be put. Return value is the constructed symbol.)
 
 (function build-sigilled-symbol (sigil l2src l2src-sz pos r handler err) (with return (begin
 	(if [= $l2src-sz $$pos] {return [build-symbol $sigil $r]} (begin))
@@ -35,6 +55,11 @@
 				[append [build-symbol $sigil $r] sexprs $r]
 				[append [build-fragment $l2src $l2src-sz $pos $r $handler $err] sexprs $r]
 				{return $sexprs})))))))
+
+(;; Builds a fragment list starting at the current position in the buffer and ending
+	at the specified delimiter and then prefixes it with the given primitive.
+	$primitive is a string. $delimiter is an ascii character. For rest of parameters,
+	see above.)
 
 (function build-fragment-list (primitive delimeter l2src l2src-sz pos r handler err) (with return
 	(let (sexprs nil) (begin
@@ -48,6 +73,9 @@
 		{return $sexprs}))))
 
 (storage unexpected-char-error #0)
+
+(;; Builds a fragment starting at the current position in the buffer. For parameters,
+	see above.)
 
 (function build-fragment (l2src l2src-sz pos r handler err) (with return
 	(if [= $l2src-sz $$pos]
@@ -76,7 +104,13 @@
 							[set $pos [- $$pos #1]]
 							{return $l})))}))))))
 
+(;; Checks if the fragment $d is a symbol. A symbol is a non-empty list of characters.)
+
 (function i/f:symbol? (d) (and [length $d] (not (@ cs-list-flag[@car $d]))))
+
+(;; Converts the given symbol into an ASCII string. $d is the symbol that is to be
+	converted. $r is the buffer into which the string should be put. The return value
+	is the constructed string.)
 
 (function to-string (d r handler err) (with return
 	(let (str [buffer-alloc [+ [length $d] #1] $r $handler $err]) (i #0) (begin
@@ -86,12 +120,19 @@
 		[setb [+ $str $i] (null)]
 		{return $str}))))
 
-(function copy-fragment (l r) (with return
-	(let (c nil) (begin
+(;; Copies the given fragment into the given buffer. $l is the fragment that is to
+	be copied. $r is the buffer into which the fragment should be copied. The return
+	value is the copied fragment.)
+
+(function copy-fragment (l r handler err) (with return
+	(let (c nil) (substitute (.. $r $handler $err) (begin
 		(if [i/f:symbol? $l]
-			(foreach (s $l) [append (sym-char (@ cs-character $s)) c $r])
-			(foreach (s $l) [append [copy-fragment $s $r] c $r]))
-		{return $c}))))
+			(foreach (s $l) [append (sym-char (@ cs-character $s)) c ..])
+			(foreach (s $l) [append [copy-fragment $s ..] c ..]))
+		{return $c})))))
+
+(;; Prints the given fragment out to standard output. $d is the fragment that is
+	to be printed.)
 
 (function print-fragment (d hdl err) (begin
 	[print-char (stdout) (lparen) $hdl $err]
