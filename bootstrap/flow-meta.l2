@@ -1,3 +1,8 @@
+(;; Most macros that are about modifying control flow and their helper
+	functions are here.)
+
+(;; This is false.)
+
 (function false (l r) [mk# $r #0])
 
 (function true (l r) [mk# $r #1])
@@ -29,12 +34,22 @@
 
 (function not (l r) (`(if (,[@fst $l]) (false) (true))$r))
 
+(;; Reverses the given list. $l is the list to be reversed. $r is the buffer into
+	which the reversed list will be put. Return value is the reversed list.)
+
 (function meta:reverse (l r)
 	(with return
 		{(continuation _ (l reversed)
 			(if [emt? $l]
 				{return $reversed}
 				{_ [@rst $l] [lst [@fst $l] $reversed $r]})) $l emt}))
+
+(;; Maps the given list using the given function. $l is the list to be mapped. $ctx
+	is always passed as a second argument to the mapper. $mapper is the two argument
+	function that will be supplied a list item as its first argument and $ctx as its
+	second argument and will return an argument that will be put into the corresponding
+	position of another list. $r is the buffer into which the list being constructed
+	will be put. Return value is the mapped list.)
 
 (function meta:map (l ctx mapper r)
 	(with return
@@ -84,6 +99,9 @@
 								(function _ (e r) [llllst (` invoke $r) (` $switch:= $r) (` $switch:val $r) $e emt $r]) $r] $r])
 							(,[@fst [meta:reverse [@fst $remaining] $r]]) ,$else-clause) $r)}))
 				[@rst [meta:reverse [@rrst $l] $r]] [@fst [meta:reverse $l $r]]})))$r))
+
+(;; These macros provide exactly the same functionality as their equivalents
+	in C.)
 
 (function while (l r)
 	(`(with while:return {(continuation while:aux (while:val)
