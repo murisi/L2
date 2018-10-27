@@ -1,5 +1,5 @@
-(;; Compiles a program into assembly. program is a program expression. symbols is a reference
-	to a list into which the symbols of the generated code will be put. expr-buf is the buffer
+(;; Compiles a program into assembly. $program is a program expression. $symbols is a reference
+	to a list into which the symbols of the generated code will be put. $expr-buf is the buffer
 	into which all the constructed expressions and symbols will be put. Return value is a list
 	of assembly expressions.)
 	
@@ -25,8 +25,8 @@
 		[visit-expressions vlinearized-expressions program (storage _ asms ..)]
 		{return [reverse $asms ..]}))))
 
-(;; Loads a program into memory and returns a handle to it. program is a program expression.
-	expr-buf is the buffer into which the results of compilation will be put. obj-buf is the
+(;; Loads a program into memory and returns a handle to it. $program is a program expression.
+	$expr-buf is the buffer into which the results of compilation will be put. $obj-buf is the
 	buffer into which the object code will be put. Return value is an object.)
 
 (function load-program (program expr-buf obj-buf handler err) (with return (begin
@@ -39,11 +39,11 @@
 	[symbol-offsets-to-addresses $asms $symbols $obj]
 	{return $obj})))
 
-(;; Behavior is the same as load-program, but with the following addition: syms is is a list
+(;; Behavior is the same as load-program, but with the following addition: $syms is is a list
 	of object symbols, and after the loading is done, the undefined symbols of the loaded
-	program will take on the addresses supplied in the list. The handler continuation is
-	followed, and the error buffer reference by err set to the pair (undefined-reference-error,
-	<missing symbol name>) is there is an undefined symbol in the program that is not defined
+	program will take on the addresses supplied in the list. The $handler continuation is
+	followed, and the error buffer referenced by $err set to the pair (undefined-reference-error,
+	<missing symbol name>) if there is an undefined symbol in the program that is not defined
 	in syms.)
 
 (function load-program-and-mutate (program syms expr-buf obj-buf handler err) (with return (begin
@@ -71,8 +71,8 @@
 			[close $fd $handler $err]
 			(if [= (@0 $err) no-error] {return $src-buf} {$handler (begin)})))))))
 
-(;; Reads a list of expressions from a given file. fn is a string containing the filename.
-	expr-buf if the buffer into which the constructed expressions will be put. Return value
+(;; Reads a list of expressions from a given file. $fn is a string containing the filename.
+	$expr-buf is the buffer into which the constructed expressions will be put. Return value
 	is a list of expressions.)
 
 (function read-expressions (fn expr-buf handler err) (with return (substitute (.. $expr-buf $handler $err) (begin
@@ -88,13 +88,13 @@
 
 (storage unsupported-ext-error (begin))
 
-(;; Takes a list of L2 and object files and evaluates them in order. srcv is a list of
-	strings containing paths to L2 and object files. symbols is reference to a list of
+(;; Takes a list of L2 and object files and evaluates them in order. $srcv is a list of
+	strings containing paths to L2 and object files. $symbols is reference to a list of
 	symbols and to it will be added the global variables of the loaded object files and
-	from it the execution environment of the same will be created. expr-buf is the
-	buffer into which expressions read from L2 source files are put. obj-buf is the
-	buffer into which both compiled and read object code is put. The handler continuation
-	is followed, and error buffer referenced by err is set to the pair
+	from it the execution environment of the same will be created. $expr-buf is the
+	buffer into which expressions read from L2 source files are put. $obj-buf is the
+	buffer into which both compiled and read object code is put. The $handler continuation
+	is followed, and error buffer referenced by $err is set to the pair
 	(unsupported-ext-error, <file path string>) if an extension other than .o or .l2 is
 	encountered.)
 
@@ -122,10 +122,10 @@
 	(foreach (obj $objects) [mutate-symbols $obj $$symbols])
 	(foreach (obj $objects) [[segment $obj (" .text)]])))
 
-(;; Takes a list of L2 source files and compiles them into object files. programs is a
-	list of strings containing paths to L2 source files. syms is a list of symbols
-	pointing to the macros to be used during the meta-expression expansions. expr-buf
-	if the buffer into which constructed expressions will be put. obj-buf is the buffer
+(;; Takes a list of L2 source files and compiles them into object files. $programs is a
+	list of strings containing paths to L2 source files. $syms is a list of symbols
+	pointing to the macros to be used during the meta-expression expansions. $expr-buf
+	is the buffer into which constructed expressions will be put. $obj-buf is the buffer
 	into which object code will be put.)
 
 (function compile-files (programs syms expr-buf obj-buf handler err)
@@ -182,7 +182,8 @@
 			(storage programs nil)
 			(foreach (fn [@cdr $$dash-list]) [append $fn programs $obj-buf handler err])
 			
-			(;; These are all the symbols necessary for metaprogramming.)
+			(;; These are all the symbols necessary for metaprogramming. Their
+				definitions can be found in list.l2 and lexer.l2.)
 			(storage syms (substitute (.. $obj-buf handler err) (list
 				([make-sym (" -!-)(sym-char(char !))..]
 				[make-sym (" -!-)(sym-char(char !))..]
