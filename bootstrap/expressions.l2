@@ -20,7 +20,15 @@
 		(setf expr-symbol $ref (null))
 		{return $ref}))))
 
+(;; Makes a reference expression refer to another reference expression. $reference
+	is the expression being made to refer. $referent is the reference expression
+	being referred to.)
+
 (function refer-reference (reference referent) (setf expr-symbol $reference (@ expr-symbol $referent)))
+
+(;; Makes a reference expression attached to the given symbol. $sym is the symbol
+	to which the reference will be attached. $reg is the buffer into which the
+	the reference expression will be put. Return value is the reference expression.)
 
 (function use-symbol (sym reg handler err) (with return
 	(let (ref [buffer-alloc (expression) $reg $handler $err]) (begin
@@ -135,6 +143,10 @@
 		(setf expr-arguments $u $args)
 		(foreach (arg $args) (setf expr-parent $arg $u))
 		{return $u}))))
+
+(;; Builds a program from a list of expressions. $exprs is the list of expressions
+	from which the program will be built. A program is a function with no parent that
+	has as its expression a begin expression.)
 
 (function make-program (exprs r handler err) (with return (substitute (.. $r $handler $err)
 	(let (program [make-function [make-reference (null) ..] nil [make-begin $exprs ..] ..]) (begin
