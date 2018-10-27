@@ -1,4 +1,10 @@
-(function do-relocations (obj handler) (until (sec-idx #0) [= $sec-idx (@ e-shnum(@ obj-ehdr $obj))] [+ $sec-idx #1]
+(;; Does the relocations specified in the object file in light of the current
+	symbol addresses. The continuation $handler is followed and the error buffer
+	referenced by $err set to the singleton (object-error) if relocation type
+	is unrecognized. Note: Implementation is hacky since it does not perform
+	checks to confirm that the performed relocations are correct.)
+
+(function do-relocations (obj handler err) (until (sec-idx #0) [= $sec-idx (@ e-shnum(@ obj-ehdr $obj))] [+ $sec-idx #1]
 	(let (shdr-buf (loc (@ obj-shdrs $obj) $sec-idx (elf64-shdr)))
 		(if (or [= (@ sh-type $shdr-buf) (sht-rela)] [= (@ sh-type $shdr-buf) (sht-rel)])
 			(let (relanum [/ (@ sh-size $shdr-buf) (@ sh-entsize $shdr-buf)]) (relas-buf ($(loc (@ obj-relas $obj) $sec-idx (unit))))
@@ -21,8 +27,13 @@
 							((r-x86-64-pc8) [memcpy (@ r-offset $rela) (storage _[-[+(@ st-value $sym)$addend](@ r-offset $rela)])#1])
 							((r-x86-64-size32) [memcpy (@ r-offset $rela) (storage _[+(@ st-size $sym)$addend]) #4])
 							((r-x86-64-size64) [memcpy (@ r-offset $rela) (storage _[+(@ st-size $sym)$addend]) #8])
-							{$handler})))))
+							{$handler (set-storage $err object-error)})))))
 			(begin)))))
+
+(;; Stores the relocation addends somewhere out of the way because it may be the
+	case that that the contents of the addend field may be overwritten by a
+	relocation, which is a problem because the future relocations may depend on
+	the value of the addend.)
 
 (function store-addends (obj reg handler err)
 	(until (sec-idx #0) [= $sec-idx (@ e-shnum(@ obj-ehdr $obj))] [+ $sec-idx #1]
@@ -50,6 +61,9 @@
 								(loc $$addends-buf $rela-idx (elf64-sxword)) (@ r-offset $rela)]))))
 			(begin))))))
 
+(;; The offsets specified in the object file need to be turned into addresses for
+	the code to execute correctly.)
+
 (function offsets-to-addresses (obj)
 	(until (sec-idx #0) [= $sec-idx (@ e-shnum(@ obj-ehdr $obj))] [+ $sec-idx #1]
 		(let (shdr-buf (loc (@ obj-shdrs $obj) $sec-idx (elf64-shdr)))
@@ -71,6 +85,10 @@
 								(let (base-seg-addr ($(loc (@ obj-segs $obj) (@ st-shndx $sym) (unit))))
 									[+ $base-seg-addr (@ st-value $sym)]))))))
 			(begin))))))
+
+(;; Reformats the raw object code into a format more amenable for extraction of
+	information and updating. Constructs an object containing everything of interest
+	in the object code in the buffer $reg and returns it.)
 
 (function read-object (objsrc objsrc-sz reg handler err) (with return
 	(let (obj [buffer-alloc (object) $reg $handler $err]) (begin
@@ -111,22 +129,36 @@
 
 (storage object-error (begin))
 
+(;; Constructs a handle to the specified object code. $objsrc is a reference to
+	the buffer containing the object code. $objsrc-sz is the size of the buffer.
+	$reg is the buffer in which our handle will be constructed. Return value is
+	a handle to the object.)
+
 (function load (objsrc objsrc-sz reg handler err) (with return
 	(let (obj [read-object $objsrc $objsrc-sz $reg $handler $err]) (begin
 			[offsets-to-addresses $obj]
 			[store-addends $obj $reg $handler $err]
-			[do-relocations $obj $handler]
+			[do-relocations $obj $handler $err]
 			{return $obj}))))
 
 (function name-of (obj shdr sym)
 	(let (seg-buf ($(loc (@ obj-segs $obj) (@ sh-link $shdr) (unit))))
 		[+ $seg-buf (@ st-name $sym)]))
 
+(;; Makes a symbol with the given name and address. $name is a string containg
+	the name of the symbol. $address is the address of the symbol. $reg is the
+	buffer in which the symbol should be constructed. Return value is the
+	constructed symbol.)
+
 (function make-sym (name address reg handler err) (with return
 	(let (sym [buffer-alloc (object-symbol) $reg $handler $err]) (begin
 		(setf sym-name $sym $name)
 		(setf sym-offset $sym $address)
 		{return $sym}))))
+
+(;; Updates the symbols in the given object. $obj is the object whose symbols
+	need updating. $updates is a list of symbols representing the updates that
+	need to be applied to $obj.)
 
 (function mutate-symbols (obj updates) (begin
 	(foreach (update $updates)
@@ -145,7 +177,9 @@
 									(begin)))))
 					(begin)))))
 	(;; If $obj was created using load, the following invocation cannot produce an error; hence the (null) handler argument.)
-	[do-relocations $obj (null)]))
+	[do-relocations $obj (null) (null)]))
+
+(;; Returns the symbols in the given object.)
 
 (function symbols (flag obj reg handler err) (with return
 	(let (syms nil) (begin
@@ -165,9 +199,20 @@
 				(begin))))
 		{return $syms}))))
 
+(;; Returns a list of the mutable symbols in the given object. $obj is the object
+	whose mutable symbols are being queried. $reg is the buffer in which the list
+	of mutable symbols will be constructed. Return value is the list of mutable
+	symbols.)
+
 (function mutable-symbols (obj reg handler err) [symbols #1 $obj $reg $handler $err])
 
+(;; Analogous to above.)
+
 (function immutable-symbols (obj reg handler err) [symbols #0 $obj $reg $handler $err])
+
+(;; Returns the address of the segment of the given object that has a particular
+	name. $obj is the object whose segment addresses is being queried. $name is
+	the name of the segment that is to be found.)
 
 (function segment (obj name)
 	(if [= (@ e-shstrndx(@ obj-ehdr $obj)) (shn-undef)] (begin)
