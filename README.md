@@ -91,6 +91,12 @@ This expression is implemented by the emission of an instruction to `lea` of som
 
 Say the expression `[get x]` evaluates to the value at the reference `x` and the expression `[set x y]` puts the value `y` into the reference `x`. Then `(begin [set x (literal 0...01100001)] [putchar [get x]])` prints the text "a" to standard output.
 
+### Storage
+```racket
+(storage storage0 expression1 expression2 ... expressionN)
+```
+If this expression occurs inside a function, then space enough for N contiguous values has already been reserved in its stack frame. If it is occuring outside a function, then static memory instead has been reserved. `storage0` is a reference to the beginning of this space. This expression evaluates each of its sub-expressions in an environment containing `storage0` and stores the resulting values in contiguous locations of memory beginning at `storage0` in the same order as they were specified. The resulting value of this expression is `storage0`.
+
 ### If
 ```racket
 (if expression0 expression1 expression2)
