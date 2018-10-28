@@ -15,13 +15,13 @@ Afterwards, there is a [list of reductions](#examplesreductions) that shows how 
 | [Building L2](#building-l2) | [Begin](#begin) | [Commenting](#commenting) |
 | [The Evaluator](#the-evaluator) | [Literal](#literal) | [Dereferencing](#dereferencing) |
 | **[Syntactic Sugar](#syntactic-sugar)** | [Reference](#reference) | [Numbers](#numbers) |
-| **[Internal Representation](#internal-representation)** | [If](#if) | [Backquoting](#backquoting) |
-| **[Expression](#expression)** | [Function](#function) | [Variable Binding](#variable-binding) |
-| **[Compilation Library](#compilation-library)** |  [Invoke](#invoke) | [Switch Expression](#switch-expression) |
-| |  [With](#with) | [Characters](#characters) |
-| |  [Continuation](#continuation) | [Strings](#strings) |
-| |  [Jump](#jump) | [Conditional Compilation](#conditional-compilation) |
-| | | [Closures](#closures) |
+| **[Internal Representation](#internal-representation)** | [Storage](#storage) | [Backquoting](#backquoting) |
+| **[Expression](#expression)** | [If](#if) | [Variable Binding](#variable-binding) |
+| **[Compilation Library](#compilation-library)** | [Function](#function) | [Switch Expression](#switch-expression) |
+| | [Invoke](#invoke) | [Characters](#characters) |
+| | [With](#with) | [Strings](#strings) |
+| | [Continuation](#continuation) | [Conditional Compilation](#conditional-compilation) |
+| | [Jump](#jump) | [Closures](#closures) |
 | | | [Assume](#assume) |
 
 ## Getting Started
