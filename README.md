@@ -17,11 +17,12 @@ And at the end there is a [list of reductions](#examplesreductions) that shows h
 | **[Syntactic Sugar](#syntactic-sugar)** | [Reference](#reference) | [Numbers](#numbers) |
 | **[Internal Representation](#internal-representation)** | [Storage](#storage) | [Backquoting](#backquoting) |
 | **[Expression](#expression)** | [If](#if) | [Variable Binding](#variable-binding) |
-| | [Function](#function) | [Switch Expression](#switch-expression) |
-| | [Invoke](#invoke) | [Characters](#characters) |
-| | [With](#with) | [Strings](#strings) |
-| | [Continuation](#continuation) | [Closures](#closures) |
-| | [Jump](#jump) | [Assume](#assume) |
+| | [Function](#function) | [Boolean Expressions](#boolean-expressions) |
+| | [Invoke](#invoke) | [Switch Expression](#switch-expression) |
+| | [With](#with) | [Characters](#characters) |
+| | [Continuation](#continuation) | [Strings](#strings) |
+| | [Jump](#jump) | [Closures](#closures) |
+| | | [Assume](#assume) |
 
 ## Getting Started
 ### Building L2
@@ -464,6 +465,73 @@ Note in the above code that `what?` is only able to access `x` because `x` is de
 ./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 - test5.l2
 ```
 
+### Boolean Expressions
+The Boolean literals true and false are achieved using macros that return the same literal fragment regardless of the arguments supplied to them. Short-circut Boolean expressions are achieved through the `if` expression. The `if` expression is special because it has the property that only two out of its three sub-expressions are evaluated when it itself is evaluated. Now, the Boolean expressions implement the following transformations:
+```racket
+(false) -> (literal #0)
+
+(true) -> (literal #1)
+
+(or expr1 expr2 ... exprN)
+->
+(let (or:temp expr1) (if $or:temp
+	$or:temp
+	(let (or:temp expr2) (if $or:temp
+		$or:temp
+		...
+			(let (or:temp exprN) (if $or:temp
+				$or:temp
+				(false)))))))
+
+(and expr1 expr2 ... exprN)
+->
+(let (and:temp expr1) (if $and:temp
+	(let (and:temp expr2) (if $and:temp
+		...
+			(let (and:temp exprN) (if $and:temp
+				(true)
+				$and:temp))
+		$and:temp))
+	$and:temp))
+
+(not expr1)
+->
+(if expr1 (false) (true))
+```
+These transformations are implemented and used as follows:
+#### boolean.l2
+```racket
+(function mk# (r value) [value->literal $value $r])
+
+(function false (l r) [mk# $r #0])
+
+(function true (l r) [mk# $r #1])
+
+(function or (l r) (with return
+	{(continuation loop (l sexpr)
+			(if [emt? $l]
+				{return $sexpr}
+				{loop [@rst $l] (`(let (or:temp (,[@fst $l])) (if $or:temp $or:temp (, $sexpr $r)))$r)}))
+		[meta:reverse $l $r] (`(false)$r)}))
+
+(function and (l r) (with return
+	{(continuation loop (l sexpr)
+			(if [emt? $l]
+				{return $sexpr}
+				{loop [@rst $l] (`(let (and:temp (,[@fst $l])) (if $and:temp (, $sexpr $r) $and:temp))$r)}))
+		[meta:reverse $l $r] (`(true)$r)}))
+
+(function not (l r) (`(if (,[@fst $l]) (false) (true))$r))
+```
+#### test6.l2
+```racket
+(and (false) [/ #1 #0])
+```
+#### shell
+```shell
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 boolean.l2 - test6.l2
+```
+
 ### Switch Expression
 Now we will implement a variant of the switch statement that is parameterized by an equality predicate. The `switch` selection function will, for example, do the following transformation:
 ```racket
@@ -494,7 +562,7 @@ It is implemented and used as follows:
 							(,[@fst [meta:reverse [@fst $remaining] $r]]) ,$else-clause) $r)}))
 				[@rst [meta:reverse [@rrst $l] $r]] [@fst [meta:reverse $l $r]]})))$r))
 ```
-#### test6.l2
+#### test7.l2
 ```
 (switch = #10
 	(#20 [printf (" d is 20!)])
@@ -504,7 +572,7 @@ It is implemented and used as follows:
 ```
 #### shell
 ```shell
-./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 switch.l2 - test6.l2
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 boolean.l2 switch.l2 - test7.l2
 ```
 
 ### Characters
@@ -528,13 +596,13 @@ With `#` implemented, a somewhat more readable implementation of characters is p
 		(-r- (` #114 $r)) (-s- (` #115 $r)) (-t- (` #116 $r)) (-u- (` #117 $r)) (-v- (` #118 $r)) (-w- (` #119 $r)) (-x- (` #120 $r))
 		(-y- (` #121 $r)) (-z- (` #122 $r)) (-|- (` #124 $r)) (-~- (` #126 $r)) (` #0 $r)))
 ```
-#### test7.l2
+#### test8.l2
 ```racket
 [putchar (char A)]
 ```
 #### shell
 ```shell
-./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 switch.l2 characters.l2 - test7.l2
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 - test8.l2
 ```
 
 ### Strings
@@ -571,13 +639,13 @@ The above exposition has purposefully avoided making strings because it is tedio
 			{add-word [@rst $str] [+ $index #1]
 				[lst (`[setb [+ dquote:str (,[value->literal $index $r])] (,[@fst $str])]$r) $instrs $r]})))))) $l #0 emt}))
 ```
-#### test8.l2
+#### test9.l2
 ```
 [printf (" This is how the quote macro is used. (# 10) Now we are on a new line because 10 is a line feed.)]
 ```
 #### shell
 ```shell
-./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 switch.l2 characters.l2 strings.l2 - test8.l2
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 - test9.l2
 ```
 
 ### Closures
@@ -622,7 +690,7 @@ These are implemented and used as follows:
 ```
 #### shell
 ```shell
-./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 switch.l2 characters.l2 strings.l2 closures.l2 - test10.l2
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 closures.l2 - test10.l2
 ```
 
 ### Assume
@@ -656,6 +724,6 @@ In the function `foo`, if `$x` were equal to `$y`, then the else branch of the `
 
 #### shell
 ```shell
-./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 switch.l2 characters.l2 strings.l2 assume.l2 - test11.l2
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 assume.l2 - test11.l2
 ```
 Note that the `assume` expression can also be used to achieve C's `restrict` keyword simply by making its condition the conjunction of inequalities on the memory locations of the extremeties of the "arrays" in question.
