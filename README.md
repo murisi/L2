@@ -23,6 +23,7 @@ And at the end there is a [list of reductions](#examplesreductions) that shows h
 | | [Continuation](#continuation) | [Strings](#strings) |
 | | [Jump](#jump) | [Closures](#closures) |
 | | | [Assume](#assume) |
+| | | [Fields](#fields) |
 
 ## Getting Started
 ### Building L2
@@ -727,3 +728,140 @@ In the function `foo`, if `$x` were equal to `$y`, then the else branch of the `
 ./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 assume.l2 - test11.l2
 ```
 Note that the `assume` expression can also be used to achieve C's `restrict` keyword simply by making its condition the conjunction of inequalities on the memory locations of the extremeties of the "arrays" in question.
+
+### Fields
+L2 has no built-in mechanism for record and union types. The most naive way to do record types in L2 would be to create a getter function, setter function, and offset calculation function for every field where these functions simply access and/or mutate the desired memory locations. However this solution is untenable because of the amount of boilerplate that one would have to write. A better solution is to aggregate the offset, size, getter, and setter of each field into a higher-order macro that supplies this information into any macro that is passed to it. This way, generic getter, setter, address-of, offset-of, and sizeof functions can be defined once and used on any field. More concretely, the following transformations are what we want:
+```racket
+(offset-of expr0)
+->
+(expr0 offset-aux)
+
+(offset-aux expr0 ...)
+->
+expr0
+
+(size-of expr0)
+->
+(expr0 size-of-aux)
+
+(size-of-aux expr0 expr1 ...)
+->
+expr1
+
+(getter-of expr0)
+->
+(expr0 getter-of-aux)
+
+(getter-of-aux expr0 expr1 expr2 ...)
+->
+expr2
+
+(setter-of expr0)
+->
+(expr0 setter-of-aux)
+
+(setter-of-aux expr0 expr1 expr2 expr3 ...)
+->
+expr3
+
+(& expr0 expr1)
+->
+(expr0 &-aux expr1)
+
+(&-aux expr0 expr1 expr2 expr3 expr4 ...)
+->
+[+ expr4 expr0]
+
+(@ expr0 expr1)
+->
+(expr0 @-aux expr1)
+
+(@-aux expr0 expr1 expr2 expr3 expr4 ...)
+->
+[expr2 [+ expr4 expr0]]
+
+(setf expr0 expr1 expr2)
+->
+(expr0 setf-aux expr1 expr2)
+
+(setf-aux expr0 expr1 expr2 expr3 expr4 expr5)
+->
+[expr3 [+ expr4 expr0] expr5]
+```
+
+Why? Because if we define the macro `car` by the transformation `(car expr0 exprs ...) -> (expr0 #0 #8 get8b set8b exprs ...)` and `cdr` by the transformation `(cdr expr0 exprs ...) -> (expr0 #8 #8 get8b set8b exprs ...)`, then we get the following outcomes:
+```racket
+(offset-of car) -> (car offset-of-aux) -> (offset-of-aux #0 #8 get8b set8b) -> #0
+(size-of car) -> (car size-of-aux) -> (size-of-aux #0 #8 get8b set8b) -> #8
+(getter-of car) -> (car getter-of-aux) -> (getter-of-aux #0 #8 get8b set8b) -> get8b
+(setter-of car) -> (car setter-of-aux) -> (setter-of-aux #0 #8 get8b set8b) -> set8b
+(& car expr) -> (car &-aux expr) -> (&-aux #0 #8 get8b set8b expr) -> [+ expr #0]
+(@ car expr) -> (car @-aux expr) -> (@-aux #0 #8 get8b set8b expr) -> [get8b [+ expr #0]]
+(setf car expr val) -> (car setf-aux expr val) -> (setf-aux #0 #8 get8b set8b expr val) -> [set8b [+ expr #0] val]
+
+(offset-of cdr) -> ... -> #8
+(size-of cdr) -> ... -> #8
+(getter-of cdr) -> ... -> get8b
+(setter-of cdr) -> ... -> set8b
+(& cdr expr) -> ... -> [+ expr #8]
+(@ cdr expr) -> ... -> [get8b [+ expr #8]]
+(setf cdr expr val) -> ... -> [set8b [+ expr #8] val]
+```
+To recapitulate, we localized and separated out the definition of a field from the various operations that can be done on it. Since dozens of fields can potentially be used in a program, it makes sense to define a helper function, `mk-field`, that creates them. What follows is the implementation of this helper function and the aforementioned transformations:
+#### fields.l2
+```racket
+(function offset-of (l r) (`((,[@fst $l]) offset-of-aux)$r))
+
+(function offset-of-aux (l r) [@fst $l])
+
+(function size-of (l r) (`((,[@fst $l]) size-of-aux)$r))
+
+(function size-of-aux (l r) [@frst $l])
+
+(function getter-of (l r) (`((,[@fst $l]) getter-of-aux)$r))
+
+(function getter-of-aux (l r) [@frrst $l])
+
+(function setter-of (l r) (`((,[@fst $l]) setter-of-aux)$r))
+
+(function setter-of-aux (l r) [@frrrst $l])
+
+(function & (l r) (`((,[@fst $l]) &-aux (,[@frst $l]))$r))
+
+(function &-aux (l r) (`[+ (,[@frrrrst $l]) (,[@fst $l])]$r))
+
+(function @ (l r) (`((,[@fst $l]) @-aux (,[@frst $l]))$r))
+
+(function @-aux (l r) (`[(,[@frrst $l]) [+ (,[@frrrrst $l]) (,[@fst $l])]]$r))
+
+(function setf (l r) (`((,[@fst $l]) setf-aux (,[@frst $l]) (,[@frrst $l]))$r))
+
+(function setf-aux (l r) (`[(,[@frrrst $l]) [+ (,[@frrrrst $l]) (,[@fst $l])] (,[@frrrrrst $l])]$r))
+
+(function mk-field (l r offset size)
+	[lllllst [@fst $l] [value->literal $offset $r] [value->literal $size $r]
+		(switch = $size (#1 (` get1b $r)) (#2 (` get2b $r)) (#4 (` get4b $r)) (#8 (` get8b $r)) (`(null)$r))
+		(switch = $size (#1 (` set1b $r)) (#2 (` set2b $r)) (#4 (` set4b $r)) (#8 (` set8b $r)) (`(null)$r))
+		[@rst $l] $r])
+```
+#### somefields.l2
+```racket
+(function cons-cell (l r) [mk# $r #16])
+
+(function car (l r) [mk-field $l $r #0 #8])
+
+(function cdr (l r) [mk-field $l $r #8 #8])
+```
+#### test12.l2
+```racket
+(storage mycons (begin) (begin))
+(setf car mycons (char A))
+(setf cdr mycons (char a))
+[putchar (@ car mycons)]
+[putchar (@ cdr mycons)]
+```
+#### shell
+```shell
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 assume.l2 fields.l2 somefields.l2 - test12.l2
+```
+Note that there is no struct definition in the code, there are only definitions of the fields we need to work with. The negative consequence of this is that we lose C's type safety and portability. The positive consequences are that we gain control over the struct packing, we are now able to use the same field definitions across several conceptually different structs, and that we can overlap our fields in completely arbitrary ways.
