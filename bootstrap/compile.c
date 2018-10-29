@@ -9,6 +9,7 @@ typedef unsigned long int bool;
 #include "errors.c"
 #include "lexer.c"
 #include "expressions.c"
+#include "elf.c"
 #include "x86_64_object.c"
 #include "preparer.c"
 #include "x86_64_generator.c"

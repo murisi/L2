@@ -1,5 +1,3 @@
-#include "elf.h"
-
 /*
  * Some functions for loading up object files, querying the addresses of its
  * symbols in memory, and mutating those of its symbols that are mutable.

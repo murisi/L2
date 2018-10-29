@@ -47,7 +47,7 @@ void write_mr_instr(char *bin, int *pos, char opcode, int reg, int rm, bool m, b
 }
 
 void write_static_value(char *bin, int *pos, union expression *expr, int bytes, Elf64_Sym *symtab, Elf64_Rela **relas) {
-	uint64_t val = 0;
+	unsigned long int val = 0;
 	if(expr->base.type == literal) {
 		val = expr->literal.value;
 	} else if(expr->base.type == reference && bytes == 8) {
