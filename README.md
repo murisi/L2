@@ -196,87 +196,76 @@ An analogous transformation to the one for `$a1...aN` happens.
 An analogous transformation to the one for `$a1...aN` happens.
 
 ## Internal Representation
-After substituting out the syntactic sugar defined in the [invoke](#invoke), [jump](#jump), and [syntactic sugar](#syntactic-sugar) sections, we find that all L2 programs are just compositions of the `<pre-s-expression>`s: `<symbol>` and `(<pre-s-expression> <pre-s-expression> ... <pre-s-expression>)`. If we now replace every symbol with a list of its characters so that for example `foo` becomes `(f o o)`, we now find that all L2 programs are now just compositions of the `<s-expression>`s `<character>` and `(<s-expression> <s-expression> ... <s-expression>)`. The following functions that manipulate these s-expressions are not part of the L2 language and hence the compiler does not give references to them special treatment during compilation. However, when compiled code is loaded into an L2 compiler, undefined references to these functions are to be dynamically resolved.
+After substituting out the syntactic sugar defined in the [invoke](#invoke), [jump](#jump), and [syntactic sugar](#syntactic-sugar) sections, we find that all L2 programs are just fragments where a fragment is either a symbol or a list of fragments. And furthermore, every symbol can be seen as a list of its characters so that for example `foo` becomes `(f o o)`. The following functions that manipulate these fragments are not part of the L2 language and hence the compiler does not give references to them special treatment during compilation. However, when they are used in an L2 meta-program, undefined references to these functions are to be resolved by the compiler.
 
-### `[lst x y]`
-`x` must be a s-expression and `y` a list.
+### `[lst x y b]`
+`y` must be a list and `b` a buffer.
 
-Makes a list where `x` is first and `y` is the rest.
+Makes a list where `x` is first and `y` is the rest in the buffer `b`.
 
-Say the s-expression `foo` is stored at `a` and the list `(bar)` is stored at `b`. Then `[lst [get a] [get b]]` is the s-expression `(foo bar)`.
-### `[lst? x]`
-`x` must be a s-expression.
+Say the s-expression `foo` is stored at `a` and the list `(bar)` is stored at `b`. Then `[lst [get a] [get b]]` is the fragment `(foo bar)`.
+### `[symbol? x]`
+`x` must be a fragment.
 
-Evaluates to the complement of zero if `x` is also list. Otherwise evaluates to zero.
+Evaluates to the one if `x` is also a symbol. Otherwise evaluates to zero.
 
-Say the s-expression `foo` is stored at `a`. Then `[lst? [get a]]` evaluates to `(literal 1...1)`.
-### `[fst x]`
+Say the s-expression `foo` is stored at `a`. Then `[symbol? [get a]]` evaluates to `(literal 0...01)`.
+### `[@fst x]`
 `x` must be a list.
 
-Evaluates to a s-expression that is the first of `x`.
+Evaluates to the first of `x`.
 
-Say the list `foo` is stored at `a`. Then `[fst [get a]]` is the s-expression `f`. This `f` is not a list but is a character.
-### `[rst x]`
+Say the list `foo` is stored at `a`. Then `[@fst [get a]]` is the character `f`. This `f` is not a list but is a character.
+### `[@rst x]`
 `x` must be a list`.
 
 Evaluates to a list that is the rest of `x`.
 
-Say the list `foo` is stored at `a`. Then `[rst [get a]]` is the s-expression `oo`.
-### `[nil]`
+Say the list `foo` is stored at `a`. Then `[@rst [get a]]` is the fragment `oo`.
+### `emt`
 Evaluates to the empty list.
 
-Say the s-expression `foo` is stored at `a`. Then `[lst [get a] [nil]]` is the s-expression `(foo)`.
-### `[-<character>-]`
+Say the s-expression `foo` is stored at `a`. Then `[lst [get a] emt]` is the fragment `(foo)`.
+### `-<character>-`
 Evaluates to the character `<character>`.
 
-The expression `[lst [-f-] [lst [-o-] [lst [-o-] [nil]]]]` evaluates to the s-expression `foo`.
-### `[sexpr= x y]`
-`x` and `y` must be s-expressions.
+Say that a buffer is stored at `b`. Then the expression `[lst -f- [lst -o- [lst -o- emt [get b]] [get b]] [get b]]` evaluates to the fragment `foo`.
+### `[char= x y]`
+`x` and `y` must be characters.
 
-Evaluates to the complement of zero if `x` is the same s-expression as `y`, otherwise it evaluates to zero.
+Evaluates to one if `x` is the same character as `y`, otherwise it evaluates to zero.
 
-Say the s-expression `(foo (bar bar) foo foo)` is stored at both `x` and `y`. Then `[sexpr= [get x] [get y]]` evaluates to `(literal 1...1)`.
-### `[begin x]`
-`x` must be a list of s-expressions.
+Say the character `d` is stored at both `x` and `y`. Then `[char= [get x] [get y]]` evaluates to `(literal 0...01)`.
+### `[begin x b]`
+`x` must be a list of fragments and `b` a buffer.
 
-Evaluates to an s-expression formed by prepending the s-expression `begin` to `x`. The `begin` function could have the following definition: `(function b (sexprs) [lst [lst [-b-] [lst [-e-] [lst [-g-] [lst [-i-] [lst [-n-] [nil]]]]]] [get sexprs]])`.
-### `[b x]`
-This function is analogous to `begin`.
-### `[if x]`
-This function is analogous to `begin`.
-### `[function x]`
-This function is analogous to `begin`.
-### `[invoke x]`
-This function is analogous to `begin`.
-### `[with x]`
-This function is analogous to `begin`.
-### `[continuation x]`
-This function is analogous to `begin`.
-### `[jump x]`
-This function is analogous to `begin`.
+Evaluates to an fragment formed by prepending the symbol `begin` to `x`. The `begin` function could have the following definition: `(function begin (frags b) [lst [lst -b- [lst -e- [lst -g- [lst -i- [lst -n- emt [get b]] [get b]] [get b]] [get b]] [get b]] [get frags] [get b]])`.
+### `[literal x b]`, `[storage x b]`, `[if x b]`, `[function x b]`, `[invoke x b]`, `[with x b]`, `[continuation x b]`, `[jump x b]`
+These functions are analogous to `begin`.
+
 ## Expression
 ```racket
 (function0 expression1 ... expressionN)
 ```
 If the above expression is not a [primitive expression](#primitive-expressions), then `function0` is evaluated in the environment. The resulting value of this evaluation is then invoked with the (unevaluated) list of [s-expressions](#internal-representation) `(expression1 expression2 ... expressionN)` as its only argument. The list of s-expressions returned by this function then replaces the entire list of s-expressions `(function0 expression1 ... expressionN)`. If the result of this replacement is still a non-primitive expression, then the above process is repeated. When this process terminates, the appropriate assembly code for the resulting primitive expression is emitted.
 
-The expression `((function comment (sexprs) [fst [get sexprs]]) [foo] This comment is ignored. No, seriously.)` is replaced by `[foo]`, which in turn compiles into assembly similar to what is generated for other invoke expressions.
+The expression `((function comment (sexprs) [@fst [get sexprs]]) [foo] This comment is ignored. No, seriously.)` is replaced by `[foo]`, which in turn compiles into assembly similar to what is generated for other invoke expressions.
 
 ## Examples/Reductions
 In the extensive list processing that follows in this section, the following functions prove to be convenient abbreviations:
 #### abbreviations.l2
 ```racket
-(function frst (l) [fst [rst [get l]]])
-(function rfst (l) [rst [fst [get l]]])
-(function frfst (l) [fst [rfst [get l]]])
-(function frrst (l) [fst [rst [rst [get l]]]])
-(function frrrst (l) [fst [rst [rst [rst [get l]]]]])
-(function ffst (l) [fst [fst [get l]]])
-(function llst (a b c) [lst [get a] [lst [get b] [get c]]])
-(function lllst (a b c d) [lst [get a] [llst [get b] [get c] [get d]]])
-(function llllst (a b c d e) [lst [get a] [lllst [get b] [get c] [get d] [get e]]])
-(function lllllst (a b c d e f) [lst [get a] [llllst [get b] [get c] [get d] [get e] [get f]]])
-(function llllllst (a b c d e f g) [lst [get a] [lllllst [get b] [get c] [get d] [get e] [get f] [get g]]])
+(function @frst (l) [@fst [@rst [get l]]])
+(function @rfst (l) [@rst [@fst [get l]]])
+(function @frfst (l) [@fst [@rfst [get l]]])
+(function @frrst (l) [@fst [@rst [@rst [get l]]]])
+(function @frrrst (l) [@fst [@rst [@rst [@rst [get l]]]]])
+(function @ffst (l) [@fst [@fst [get l]]])
+(function @llst (a b c) [lst [get a] [lst [get b] [get c]]])
+(function @lllst (a b c d) [lst [get a] [@llst [get b] [get c] [get d]]])
+(function @llllst (a b c d e) [lst [get a] [@lllst [get b] [get c] [get d] [get e]]])
+(function @lllllst (a b c d e f) [lst [get a] [@llllst [get b] [get c] [get d] [get e] [get f]]])
+(function @llllllst (a b c d e f g) [lst [get a] [@lllllst [get b] [get c] [get d] [get e] [get f] [get g]]])
 ```
 
 ### Commenting
@@ -287,9 +276,9 @@ L2 has no built-in mechanism for commenting code written in it. The following co
 (function ** (l)
 	(with return
 		{(continuation find (first last)
-			(if [sexpr= [get last] [nil]]
+			(if [sexpr= [get last] emt]
 				{return [get first]}
-				{find [fst [get last]] [rst [get last]]})) [fst [get l]] [rst [get l]]}))
+				{find [@fst [get last]] [@rst [get last]]})) [@fst [get l]] [@rst [get l]]}))
 ```
 
 #### test1.l2
@@ -307,8 +296,8 @@ So far, we have been writing `[get x]` in order to get the value at the address 
 #### dereference.l2
 ```racket
 (function $ (var)
-	[llst [llllllst [-i-][-n-][-v-][-o-][-k-][-e-][nil]]
-		[lllst [-g-][-e-][-t-][nil]]
+	[@llst [@llllllst [-i-][-n-][-v-][-o-][-k-][-e-]emt]
+		[@lllst [-g-][-e-][-t-]emt]
 			[get var]])
 ```
 #### test2.l2
@@ -336,31 +325,31 @@ Integer literals prove to be quite tedious in L2 as can be seen from some of the
 ```racket
 (** Turns an 8-byte integer into base-2 s-expression representation of it.
 (function binary->base2sexpr (binary)
-	[lst [lst [-b-] [nil]] [lst (with return
+	[lst [lst [-b-] emt] [lst (with return
 		{(continuation write (count in out)
 			(if $count
 				{write [- $count (literal 0...01)]
 					[>> $in (literal 0...01)]
 					[lst (if [and $in (literal 0...01)] [-1-] [-0-]) $out]}
-				{return $out})) (literal 0...01000000) $binary [nil]}) [nil]]]))
+				{return $out})) (literal 0...01000000) $binary emt}) emt]]))
 
 (function # (l)
 	[binary->base2sexpr
 		(** Turns the base-10 s-expression input into a 4-byte integer.
 			(with return {(continuation read (in out)
-				(if [nil? $in]
+				(if [emt? $in]
 					{return $out}
-					{read [rst $in] [+ [* $out (literal 0...01010)]
-						(if [sexpr= [-9-] [fst $in]] (literal 0...01001)
-						(if [sexpr= [-8-] [fst $in]] (literal 0...01000)
-						(if [sexpr= [-7-] [fst $in]] (literal 0...0111)
-						(if [sexpr= [-6-] [fst $in]] (literal 0...0110)
-						(if [sexpr= [-5-] [fst $in]] (literal 0...0101)
-						(if [sexpr= [-4-] [fst $in]] (literal 0...0100)
-						(if [sexpr= [-3-] [fst $in]] (literal 0...011)
-						(if [sexpr= [-2-] [fst $in]] (literal 0...010)
-						(if [sexpr= [-1-] [fst $in]] (literal 0...01)
-							(literal 0...0))))))))))]})) [fst $l] (literal 0...0)}))])
+					{read [@rst $in] [+ [* $out (literal 0...01010)]
+						(if [sexpr= [-9-] [@fst $in]] (literal 0...01001)
+						(if [sexpr= [-8-] [@fst $in]] (literal 0...01000)
+						(if [sexpr= [-7-] [@fst $in]] (literal 0...0111)
+						(if [sexpr= [-6-] [@fst $in]] (literal 0...0110)
+						(if [sexpr= [-5-] [@fst $in]] (literal 0...0101)
+						(if [sexpr= [-4-] [@fst $in]] (literal 0...0100)
+						(if [sexpr= [-3-] [@fst $in]] (literal 0...011)
+						(if [sexpr= [-2-] [@fst $in]] (literal 0...010)
+						(if [sexpr= [-1-] [@fst $in]] (literal 0...01)
+							(literal 0...0))))))))))]})) [@fst $l] (literal 0...0)}))])
 ```
 #### test3.l2
 ```racket
@@ -382,26 +371,26 @@ The `foo` example in the internal representation section shows how tedious writi
 ```racket
 (function ` (l)
 	[(function aux (s)
-		(if [sexpr= $s [nil]]
-			[lst [llllllst [-i-][-n-][-v-][-o-][-k-][-e-][nil]]
-				[lst [lllst [-n-][-i-][-l-][nil]] [nil]]]
+		(if [sexpr= $s emt]
+			[lst [@llllllst [-i-][-n-][-v-][-o-][-k-][-e-]emt]
+				[lst [@lllst [-n-][-i-][-l-]emt] emt]]
 		
-		(if (if [lst? $s] (if [not [sexpr= $s [nil]]] (if [lst? [fst $s]] (if [not [sexpr= [fst $s] [nil]]]
-			(if [sexpr= [ffst $s] [-,-]] [sexpr= [rfst $s] [nil]] #0) #0) #0) #0) #0)
-					[frst $s]
+		(if (if [lst? $s] (if [not [sexpr= $s emt]] (if [lst? [@fst $s]] (if [not [sexpr= [@fst $s] emt]]
+			(if [sexpr= [@ffst $s] [-,-]] [sexpr= [@rfst $s] emt] #0) #0) #0) #0) #0)
+					[@frst $s]
 		
-		[lst [llllllst [-i-][-n-][-v-][-o-][-k-][-e-][nil]]
-			[lst [lllst [-l-][-s-][-t-][nil]]
-				[lst (if [lst? [fst $s]]
-					[aux [fst $s]]
-					[lst [llllllst [-i-][-n-][-v-][-o-][-k-][-e-][nil]]
-						[lst [lst [---] [lst [fst $s] [lst [---] [nil]]]] [nil]]])
-					[lst [aux [rst $s]] [nil]]]]]))) [fst $l]])
+		[lst [@llllllst [-i-][-n-][-v-][-o-][-k-][-e-]emt]
+			[lst [@lllst [-l-][-s-][-t-]emt]
+				[lst (if [lst? [@fst $s]]
+					[aux [@fst $s]]
+					[lst [@llllllst [-i-][-n-][-v-][-o-][-k-][-e-]emt]
+						[lst [lst [---] [lst [@fst $s] [lst [---] emt]]] emt]])
+					[lst [aux [@rst $s]] emt]]]]))) [@fst $l]])
 ```
 #### anotherfunction.l2:
 ```racket
 (function make-A-function (l)
-	(` (function A (,[nil]) [putchar #65])))
+	(` (function A (,emt) [putchar #65])))
 ```
 ##### or equivalently
 ```racket
@@ -433,23 +422,23 @@ It is implemented and used as follows:
 (function reverse (l)
 	(with return
 		{(continuation _ (l reversed)
-			(if [sexpr= $l [nil]]
+			(if [sexpr= $l emt]
 				{return $reversed}
-				{_ [rst $l] [lst [fst $l] $reversed]})) $l [nil]}))
+				{_ [@rst $l] [lst [@fst $l] $reversed]})) $l emt}))
 
 (** Returns a list with mapper applied to each element.
 (function map (l mapper)
 	(with return
 		{(continuation aux (in out)
-			(if [sexpr= $in [nil]]
+			(if [sexpr= $in emt]
 				{return [reverse $out]}
-				{aux [rst $in] [lst [$mapper [fst $in]] $out]})) $l [nil]})))
+				{aux [@rst $in] [lst [$mapper [@fst $in]] $out]})) $l emt})))
 
 (function let (l)
 	(`(with return
-		(,[llst `jump (`(continuation templet0
-			(,[map [rst [reverse $l]] fst])
-			{return (,[fst [reverse $l]])})) [map [rst [reverse $l]] frst]]))))
+		(,[@llst `jump (`(continuation templet0
+			(,[map [@rst [reverse $l]] fst])
+			{return (,[@fst [reverse $l]])})) [map [@rst [reverse $l]] @frst]]))))
 ```
 #### test5.l2
 ```
@@ -485,15 +474,15 @@ It is implemented and used as follows:
 #### switch.l2
 ```racket
 (function switch (l)
-	(`(let (tempeq0 (,[fst $l])) (tempval0 (,[frst $l]))
+	(`(let (tempeq0 (,[@fst $l])) (tempval0 (,[@frst $l]))
 		(,(with return
 			{(continuation aux (remaining else-clause)
-				(if [sexpr= $remaining [nil]]
+				(if [sexpr= $remaining emt]
 					{return $else-clause}
-					{aux [rst $remaining]
-						(`(if (,[llllst `invoke `$tempeq0 `$tempval0 [ffst $remaining] [nil]])
-							(,[frfst $remaining]) ,$else-clause))}))
-				[rst [reverse [rrst $l]]] [fst [reverse $l]]})))))
+					{aux [@rst $remaining]
+						(`(if (,[@llllst `invoke `$tempeq0 `$tempval0 [@ffst $remaining] emt])
+							(,[@frfst $remaining]) ,$else-clause))}))
+				[@rst [reverse [rrst $l]]] [@fst [reverse $l]]})))))
 ```
 #### test6.l2
 ```
@@ -514,7 +503,7 @@ With `#` implemented, a somewhat more readable implementation of characters is p
 #### characters.l2
 ```
 (function char (l)
-	(switch sexpr= [ffst $l]
+	(switch sexpr= [@ffst $l]
 		([-!-] `#33)
 		([-"-] `#34)
 		([-$-] `#36)
@@ -619,25 +608,25 @@ The above exposition has purposefully avoided making strings because it is tedio
 ```
 (function " (l) (with return
 	{(continuation add-word (str index instrs)
-		(if [sexpr= $str [nil]]
+		(if [sexpr= $str emt]
 			{return (`(with return
 				[allocate (,[binary->base2sexpr $index])
-					(continuation _ (str) (,[lst (` begin) [reverse [llst
+					(continuation _ (str) (,[lst (` begin) [reverse [@llst
 						(`{return $str})
 						(`[set-char [+ $str (,[binary->base2sexpr [- $index #1]])] #0])
 						$instrs]]]))]))}
 			
 			{(continuation add-char (word index instrs)
-					(if [sexpr= $word [nil]]
-						{add-word [rst $str] [+ $index #1]
+					(if [sexpr= $word emt]
+						{add-word [@rst $str] [+ $index #1]
 							[lst (`[set-char [+ $str (,[binary->base2sexpr $index])] #32]) $instrs]}
-						(if [lst? [fst $word]]
-							{add-char [nil] [+ $index #1]
+						(if [lst? [@fst $word]]
+							{add-char emt [+ $index #1]
 								[lst (`[set-char [+ $str (,[binary->base2sexpr $index])] ,$word]) $instrs]}
-							{add-char [rst $word] [+ $index #1]
+							{add-char [@rst $word] [+ $index #1]
 								[lst (`[set-char [+ $str (,[binary->base2sexpr $index])]
-									(,[char [lst [lst [fst $word] [nil]] [nil]]])]) $instrs]})))
-				[fst $str] $index $instrs})) $l #0 [nil]}))
+									(,[char [lst [lst [@fst $word] emt] emt]])]) $instrs]})))
+				[@fst $str] $index $instrs})) $l #0 emt}))
 ```
 #### test8.l2
 ```
@@ -652,7 +641,7 @@ The above exposition has purposefully avoided making strings because it is tedio
 Up till now, references to functions defined elsewhere have been the only things used as the first subexpression of an expression. Sometimes, however, the clarity of the whole expression can be improved by inlining the function. The following code proves this in the context of conditional compilation.
 #### test9.l2
 ```
-((if [> #10 #20] fst frst)
+((if [> #10 #20] fst @frst)
 	[printf (" I am not compiled!)]
 	[printf (" I am the one compiled!)])
 ```
@@ -686,18 +675,18 @@ These are implemented and used as follows:
 #### closures.l2
 ```racket
 (function environment (l)
-	(`(function (,[fst $l]) (,[lst `cont0 [frst $l]])
-		{$cont0 (,[frrst $l])})))
+	(`(function (,[@fst $l]) (,[lst `cont0 [@frst $l]])
+		{$cont0 (,[@frrst $l])})))
 
 (function lambda (l)
-	(`(continuation lambda0 (,[lst `cont0 [fst $l]])
-		{$cont0 (,[frst $l])})))
+	(`(continuation lambda0 (,[lst `cont0 [@fst $l]])
+		{$cont0 (,[@frst $l])})))
 
 (function ; (l)
-	(`(with return (,[lllst `invoke [fst $l] `return [rst $l]]))))
+	(`(with return (,[@lllst `invoke [@fst $l] `return [@rst $l]]))))
 
 (function : (l)
-	(`(with return (,[lllst `jump [fst $l] `return [rst $l]]))))
+	(`(with return (,[@lllst `jump [@fst $l] `return [@rst $l]]))))
 ```
 #### test10.l2
 ```
@@ -730,7 +719,7 @@ This is implemented as follows:
 (function assume (l)
 	(`(with return
 		{(continuation tempas0 ()
-			(if (,[fst $l]) {return (,[frst $l])} (begin)))})))
+			(if (,[@fst $l]) {return (,[@frst $l])} (begin)))})))
 ```
 #### test11.l2
 ```
