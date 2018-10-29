@@ -583,11 +583,6 @@ The above exposition has purposefully avoided making strings because it is tedio
 ### Closures
 A restricted form of closures can be implemented in L2. The key to their implementation is to `jump` out of the function that is supposed to provide the lexical environment. By doing this instead of merely returning from the environment function, the stack-pointer and thus the stack-frame of the environment are preserved. The following example implements a function that receives a single argument and "returns" (more accurately: jumps out) a continuation that adds this value to its own argument. But first, the following transformations are needed:
 ```racket
-(environment env0 (args ...) expr0)
-->
-(function env0 (cont0 args ...)
-	{$cont0 expr0})
-
 (lambda (args ...) expr0)
 ->
 (continuation lambda0 (cont0 args ...)
@@ -604,24 +599,20 @@ A restricted form of closures can be implemented in L2. The key to their impleme
 These are implemented and used as follows:
 #### closures.l2
 ```racket
-(function environment (l)
-	(`(function (,[@fst $l]) (,[lst `cont0 [@frst $l]])
-		{$cont0 (,[@frrst $l])})))
+(function lambda (l r)
+	(`(continuation lambda0 (,[lst (` cont0 $r) [@fst $l] $r])
+		{$cont0 (,[@frst $l])})$r))
 
-(function lambda (l)
-	(`(continuation lambda0 (,[lst `cont0 [@fst $l]])
-		{$cont0 (,[@frst $l])})))
+(function ; (l r)
+	(`(with semicolon:return (,[lllst (` invoke $r) [@fst $l] (` semicolon:return $r) [@rst $l] $r]))$r))
 
-(function ; (l)
-	(`(with return (,[@lllst `invoke [@fst $l] `return [@rst $l]]))))
-
-(function : (l)
-	(`(with return (,[@lllst `jump [@fst $l] `return [@rst $l]]))))
+(function : (l r)
+	(`(with colon:return (,[lllst (` jump $r) [@fst $l] (` colon:return $r) [@rst $l] $r]))$r))
 ```
 #### test10.l2
 ```
-(environment adder (x)
-	(lambda (y) [+ $x $y]))
+(function adder (cont x)
+	{$cont (lambda (y) [+ $x $y])})
 
 (let (add5 (; adder #5)) (add7 (; adder #7))
 	(begin
@@ -631,7 +622,7 @@ These are implemented and used as follows:
 ```
 #### shell
 ```shell
-./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 switch.l2 characters.l2 strings.l2 closures.l2 test10.l2
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 switch.l2 characters.l2 strings.l2 closures.l2 - test10.l2
 ```
 
 ### Assume
@@ -646,25 +637,25 @@ There are far fewer subtle ways to trigger undefined behaviors in L2 than in oth
 This is implemented as follows:
 #### assume.l2
 ```racket
-(function assume (l)
-	(`(with return
-		{(continuation tempas0 ()
-			(if (,[@fst $l]) {return (,[@frst $l])} (begin)))})))
+(function assume (l r)
+	(`(with assume:return
+		{(continuation assume:tempas0 ()
+			(if (,[@fst $l]) {assume:return (,[@frst $l])} (begin)))})$r))
 ```
 #### test11.l2
 ```
 (function foo (x y)
 	(assume [not [= $x $y]] (begin
-		[set-char $x (char A)]
-		[set-char $y (char B)]
-		[printf (" %c) [get-char $x]])))
+		[setb $x (char A)]
+		[setb $y (char B)]
+		[printf (" %c) [getb $x]])))
 
 [foo (" C) (" D)]
 ```
-In the function `foo`, if `$x` were equal to `$y`, then the else branch of the `assume`'s `if` expression would be taken. Since this branch does nothing, `continuation`'s body expression would finish evaluating. But this is the undefined behavior stated in [the first paragraph of the description of the `continuation` expression](#continuation). Therefore an L2 compiler does not have to worry about what happens in the case that `$x` equals `$y`. In light of this and the fact that the `if` condition is pure, the whole `assume` expression can be replaced with the first branch of `assume`'s `if`  expression. And more importantly, the the first branch of `assume`'s `if` expression can be optimized assuming that `$x` is not equal to `$y`. Therefore, a hypothetical optimizing compiler would also replace the last `[get-char $x]`, a load from memory, with `(char A)`, a constant.
+In the function `foo`, if `$x` were equal to `$y`, then the else branch of the `assume`'s `if` expression would be taken. Since this branch does nothing, `continuation`'s body expression would finish evaluating. But this is the undefined behavior stated in [the first paragraph of the description of the `continuation` expression](#continuation). Therefore an L2 compiler does not have to worry about what happens in the case that `$x` equals `$y`. In light of this and the fact that the `if` condition is pure, the whole `assume` expression can be replaced with the first branch of `assume`'s `if`  expression. And more importantly, the the first branch of `assume`'s `if` expression can be optimized assuming that `$x` is not equal to `$y`. Therefore, a hypothetical optimizing compiler would also replace the last `[getb $x]`, a load from memory, with `(char A)`, a constant.
 
 #### shell
 ```shell
-./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 switch.l2 characters.l2 strings.l2 assume.l2 test11.l2
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 switch.l2 characters.l2 strings.l2 assume.l2 - test11.l2
 ```
 Note that the `assume` expression can also be used to achieve C's `restrict` keyword simply by making its condition the conjunction of inequalities on the memory locations of the extremeties of the "arrays" in question.
