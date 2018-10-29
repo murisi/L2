@@ -20,9 +20,8 @@ And at the end there is a [list of reductions](#examplesreductions) that shows h
 | | [Function](#function) | [Switch Expression](#switch-expression) |
 | | [Invoke](#invoke) | [Characters](#characters) |
 | | [With](#with) | [Strings](#strings) |
-| | [Continuation](#continuation) | [Conditional Compilation](#conditional-compilation) |
-| | [Jump](#jump) | [Closures](#closures) |
-| | | [Assume](#assume) |
+| | [Continuation](#continuation) | [Closures](#closures) |
+| | [Jump](#jump) | [Assume](#assume) |
 
 ## Getting Started
 ### Building L2
@@ -252,38 +251,41 @@ In the extensive list processing that follows in this section, the following fun
 #### abbreviations.l2
 ```racket
 (function @frst (l) [@fst [@rst [get l]]])
+(function @ffrst (l) [@fst [@frst [get l]]])
+(function @frfrst (l) [@fst [@rst [@frst [get l]]]])
+(function @rrst (l) [@rst [@rst [get l]]])
+(function @rrrst (l) [@rst [@rrst [get l]]])
 (function @rfst (l) [@rst [@fst [get l]]])
 (function @frfst (l) [@fst [@rfst [get l]]])
+(function @frrfst (l) [@fst [@rst [@rfst [get l]]]])
 (function @frrst (l) [@fst [@rst [@rst [get l]]]])
 (function @frrrst (l) [@fst [@rst [@rst [@rst [get l]]]]])
+(function @frrrrst (l) [@fst [@rst [@rst [@rst [@rst [get l]]]]]])
+(function @frrrrrst (l) [@fst [@rst [@rst [@rst [@rst [@rst [get l]]]]]]])
 (function @ffst (l) [@fst [@fst [get l]]])
-(function @llst (a b c) [lst [get a] [lst [get b] [get c]]])
-(function @lllst (a b c d) [lst [get a] [@llst [get b] [get c] [get d]]])
-(function @llllst (a b c d e) [lst [get a] [@lllst [get b] [get c] [get d] [get e]]])
-(function @lllllst (a b c d e f) [lst [get a] [@llllst [get b] [get c] [get d] [get e] [get f]]])
-(function @llllllst (a b c d e f g) [lst [get a] [@lllllst [get b] [get c] [get d] [get e] [get f] [get g]]])
+(function llst (a b c r) [lst [get a] [lst [get b] [get c] [get r]] [get r]])
+(function lllst (a b c d r) [lst [get a] [llst [get b] [get c] [get d] [get r]] [get r]])
+(function llllst (a b c d e r) [lst [get a] [lllst [get b] [get c] [get d] [get e] [get r]] [get r]])
+(function lllllst (a b c d e f r) [lst [get a] [llllst [get b] [get c] [get d] [get e] [get f] [get r]] [get r]])
+(function llllllst (a b c d e f g r) [lst [get a] [lllllst [get b] [get c] [get d] [get e] [get f] [get g] [get r]] [get r]])
+(function lllllllst (a b c d e f g h r) [lst [get a] [llllllst [get b] [get c] [get d] [get e] [get f] [get g] [get h] [get r]] [get r]])
 ```
 
 ### Commenting
-L2 has no built-in mechanism for commenting code written in it. The following comment function that follows takes a list of s-expressions as its argument and returns the last s-expression in that list (which itself is guaranteed to be a list of s-expressions) effectively causing the other s-expressions to be ignored. Its implementation and use follows:
+L2 has no built-in mechanism for commenting code written in it. The following comment function takes a list of fragments as its argument and returns an empty begin expression effectively causing its arguments to be ignored. Its implementation and use follows:
 
 #### comments.l2
 ```racket
-(function ** (l)
-	(with return
-		{(continuation find (first last)
-			(if [sexpr= [get last] emt]
-				{return [get first]}
-				{find [@fst [get last]] [@rst [get last]]})) [@fst [get l]] [@rst [get l]]}))
+(function ;; (l r) [lst [lllllst -b- -e- -g- -i- -n- emt $r] emt $r])
 ```
 
 #### test1.l2
 ```racket
-(** This is a comment, and the next thing is what is actually compiled: (begin))
+(;; This is a comment, take no notice.)
 ```
 #### shell
 ```shell
-./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 test1.l2
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 - test1.l2
 ```
 
 ### Dereferencing
@@ -291,61 +293,67 @@ So far, we have been writing `[get x]` in order to get the value at the address 
 
 #### dereference.l2
 ```racket
-(function $ (var)
-	[@llst [@llllllst [-i-][-n-][-v-][-o-][-k-][-e-]emt]
-		[@lllst [-g-][-e-][-t-]emt]
-			[get var]])
+(function $ (var r)
+	[llst
+		[llllllst -i- -n- -v- -o- -k- -e- emt [get r]]
+		[lllst -g- -e- -t- emt [get r]]
+		[get var][get r]])
 ```
 #### test2.l2
 ```racket
-[set a (literal 0...01000001)]
-[set c a]
+(storage a (literal 0...01000001))
+(storage c a)
 [putchar $$c]
 ```
 ##### or equivalently
 ```racket
-[set a (literal 0...01000001)]
-[set c a]
-[putchar (get (get c))]
+(storage a (literal 0...01000001))
+(storage c a)
+[putchar [get [get c]]]
 ```
 #### shell
 ```shell
-./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 dereference.l2 test2.l2
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 - test2.l2
 ```
-Note that in the above code that `a` and `c` have global scope. This is because at the location of their usage, they are not bound by any `function`, `continuation`, or `with` expression.
+Note that in the above code that `a` and `c` have global scope. This is because the storage expressions are top-level.
 
 ### Numbers
-Integer literals prove to be quite tedious in L2 as can be seen from some of the examples in the primitive expressions section. The following function, `#`, implements decimal arithmetic for i386 by reading in an s-expression in base 10 and writing out the equivalent s-expression in base 2:
+Integer literals prove to be quite tedious in L2 as can be seen from some of the examples in the primitive expressions section. The following function, `#`, implements decimal arithmetic for x86-64 by reading in a symbol in base 10 and writing out the equivalent fragment in base 2:
 
 #### numbers64.l2
 ```racket
-(** Turns an 8-byte integer into base-2 s-expression representation of it.
-(function binary->base2sexpr (binary)
-	[lst [lst [-b-] emt] [lst (with return
-		{(continuation write (count in out)
-			(if $count
-				{write [- $count (literal 0...01)]
-					[>> $in (literal 0...01)]
-					[lst (if [and $in (literal 0...01)] [-1-] [-0-]) $out]}
-				{return $out})) (literal 0...01000000) $binary emt}) emt]]))
+(;; Turns an 8-byte value into a literal-expression representation of it.)
 
-(function # (l)
-	[binary->base2sexpr
-		(** Turns the base-10 s-expression input into a 4-byte integer.
-			(with return {(continuation read (in out)
-				(if [emt? $in]
-					{return $out}
-					{read [@rst $in] [+ [* $out (literal 0...01010)]
-						(if [sexpr= [-9-] [@fst $in]] (literal 0...01001)
-						(if [sexpr= [-8-] [@fst $in]] (literal 0...01000)
-						(if [sexpr= [-7-] [@fst $in]] (literal 0...0111)
-						(if [sexpr= [-6-] [@fst $in]] (literal 0...0110)
-						(if [sexpr= [-5-] [@fst $in]] (literal 0...0101)
-						(if [sexpr= [-4-] [@fst $in]] (literal 0...0100)
-						(if [sexpr= [-3-] [@fst $in]] (literal 0...011)
-						(if [sexpr= [-2-] [@fst $in]] (literal 0...010)
-						(if [sexpr= [-1-] [@fst $in]] (literal 0...01)
-							(literal 0...0))))))))))]})) [@fst $l] (literal 0...0)}))])
+(function value->literal (binary r)
+	[lst [lllllllst -l- -i- -t- -e- -r- -a- -l- emt $r]
+		[lst (with return {(continuation write (count in out)
+				(if $count
+					{write [- $count (literal 0...01)]
+						[>> $in (literal 0...01)]
+						[lst (if [land $in (literal 0...01)]
+							-1- -0-) $out $r]}
+					{return $out}))
+				(literal 0...01000000) $binary emt})
+			emt $r]$r])
+
+(;; Turns the base-10 fragment input into a literal expression.)
+
+(function # (l r) [value->literal
+	(with return {(continuation read (in out)
+		(if [emt? $in]
+			{return $out}
+			{read [@rst $in] [+ [* $out (literal 0...01010)]
+				(if [char= [@fst $in] -9-] (literal 0...01001)
+				(if [char= [@fst $in] -8-] (literal 0...01000)
+				(if [char= [@fst $in] -7-] (literal 0...0111)
+				(if [char= [@fst $in] -6-] (literal 0...0110)
+				(if [char= [@fst $in] -5-] (literal 0...0101)
+				(if [char= [@fst $in] -4-] (literal 0...0100)
+				(if [char= [@fst $in] -3-] (literal 0...011)
+				(if [char= [@fst $in] -2-] (literal 0...010)
+				(if [char= [@fst $in] -1-] (literal 0...01)
+					(literal 0...0))))))))))]}))
+		[@fst $l] (literal 0...0)}) $r])
 ```
 #### test3.l2
 ```racket
@@ -357,50 +365,46 @@ Integer literals prove to be quite tedious in L2 as can be seen from some of the
 ```
 #### shell
 ```shell
-./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 test3.l2
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 - test3.l2
 ```
 
 ### Backquoting
-The `foo` example in the internal representation section shows how tedious writing a function that outputs a symbol can be. The backquote function reduces this tedium. It takes a single s-expression as its argument and, generally, it returns an s-expression that makes that s-expression. The exception to this rule is that if a sub-expression of its input s-expression is of the form `(, expr0)`, then the result of evaluating `expr0` is inserted into that position of the output s-expression. Backquote can be implemented and used as follows:
+The `foo` example in the internal representation section shows how tedious writing a function that outputs a symbol can be. The backquote function reduces this tedium. It takes a fragment and a buffer as its argument and, generally, it returns a fragment that makes that fragment. The exception to this rule is that if a sub-expression of its input s-expression is of the form `(, expr0)`, then the fragment `expr0` is inserted verbatim into that position of the output fragment. Backquote can be implemented and used as follows:
 
 #### backquote.l2
 ```racket
-(function ` (l)
-	[(function aux (s)
-		(if [sexpr= $s emt]
-			[lst [@llllllst [-i-][-n-][-v-][-o-][-k-][-e-]emt]
-				[lst [@lllst [-n-][-i-][-l-]emt] emt]]
-		
-		(if (if [lst? $s] (if [not [sexpr= $s emt]] (if [lst? [@fst $s]] (if [not [sexpr= [@fst $s] emt]]
-			(if [sexpr= [@ffst $s] [-,-]] [sexpr= [@rfst $s] emt] #0) #0) #0) #0) #0)
+(function ` (l r)
+	[(function aux (s t r)
+		(if [emt? $s] [lllst -e- -m- -t- emt $r]
+
+		(if (if [emt? $s] #0 (if [symbol? $s] #0 (if [emt? [@fst $s]]
+			#0 (if [char= [@ffst $s] -,-] [emt? [@rfst $s]] #0))))
 					[@frst $s]
-		
-		[lst [@llllllst [-i-][-n-][-v-][-o-][-k-][-e-]emt]
-			[lst [@lllst [-l-][-s-][-t-]emt]
-				[lst (if [lst? [@fst $s]]
-					[aux [@fst $s]]
-					[lst [@llllllst [-i-][-n-][-v-][-o-][-k-][-e-]emt]
-						[lst [lst [---] [lst [@fst $s] [lst [---] emt]]] emt]])
-					[lst [aux [@rst $s]] emt]]]]))) [@fst $l]])
+
+		[lllllst [llllllst -i- -n- -v- -o- -k- -e- emt $r]
+			[lllst -l- -s- -t- emt $r]
+				(if [symbol? $s]
+						[lllst --- [@fst $s] --- emt $r]
+						[aux [@fst $s] $t $r])
+					[aux [@rst $s] $t $r] $t emt $r]))) [@fst $l] [@frst $l] $r])
 ```
 #### anotherfunction.l2:
 ```racket
-(function make-A-function (l)
-	(` (function A (,emt) [putchar #65])))
+(function make-A-function (l r)
+	(` (function A (,emt) [putchar #65]) $r))
 ```
 ##### or equivalently
 ```racket
 (function make-A-function (l)
-	(`(function A () [putchar #65])))
+	(`(function A () [putchar #65])$r))
 ```
 #### test4.l2
 ```racket
-(make-A-function)
-[A]
+[(make-A-function)]
 ```
 #### shell
 ```shell
-./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 anotherfunction.l2 test4.l2
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 anotherfunction.l2 - test4.l2
 ```
 
 ### Variable Binding
@@ -415,26 +419,35 @@ Variable binding is enabled by the `continuation` expression. `continuation` is 
 It is implemented and used as follows:
 #### let.l2
 ```racket
-(function reverse (l)
+(;; Reverses the given list. $l is the list to be reversed. $r is the buffer into
+	which the reversed list will be put. Return value is the reversed list.)
+
+(function meta:reverse (l r)
 	(with return
 		{(continuation _ (l reversed)
-			(if [sexpr= $l emt]
+			(if [emt? $l]
 				{return $reversed}
-				{_ [@rst $l] [lst [@fst $l] $reversed]})) $l emt}))
+				{_ [@rst $l] [lst [@fst $l] $reversed $r]})) $l emt}))
 
-(** Returns a list with mapper applied to each element.
-(function map (l mapper)
+(;; Maps the given list using the given function. $l is the list to be mapped. $ctx
+	is always passed as a second argument to the mapper. $mapper is the two argument
+	function that will be supplied a list item as its first argument and $ctx as its
+	second argument and will return an argument that will be put into the corresponding
+	position of another list. $r is the buffer into which the list being constructed
+	will be put. Return value is the mapped list.)
+
+(function meta:map (l ctx mapper r)
 	(with return
 		{(continuation aux (in out)
-			(if [sexpr= $in emt]
-				{return [reverse $out]}
-				{aux [@rst $in] [lst [$mapper [@fst $in]] $out]})) $l emt})))
+			(if [emt? $in]
+				{return [meta:reverse $out $r]}
+				{aux [@rst $in] [lst [$mapper [@fst $in] $ctx] $out $r]})) $l emt}))
 
-(function let (l)
-	(`(with return
-		(,[@llst `jump (`(continuation templet0
-			(,[map [@rst [reverse $l]] fst])
-			{return (,[@fst [reverse $l]])})) [map [@rst [reverse $l]] @frst]]))))
+(function let (l r)
+	(`(with let:return
+		(,[llst (` jump $r) (`(continuation let:aux
+			(,[meta:map [@rst [meta:reverse $l $r]] (null) @fst $r])
+			{let:return (,[@fst [meta:reverse $l $r]])}) $r) [meta:map [@rst [meta:reverse $l $r]] (null) @frst $r] $r])) $r))
 ```
 #### test5.l2
 ```
@@ -448,11 +461,11 @@ Note in the above code that `what?` is only able to access `x` because `x` is de
 
 #### shell
 ```shell
-./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 test5.l2
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 - test5.l2
 ```
 
 ### Switch Expression
-Now we will implement a variant of the switch statement that is parameterized by an equality predicate. The `switch` selection function implements the following transformation:
+Now we will implement a variant of the switch statement that is parameterized by an equality predicate. The `switch` selection function will, for example, do the following transformation:
 ```racket
 (switch eq0 val0 (vals exprs) ... expr0)
 ->
@@ -469,16 +482,17 @@ Now we will implement a variant of the switch statement that is parameterized by
 It is implemented and used as follows:
 #### switch.l2
 ```racket
-(function switch (l)
-	(`(let (tempeq0 (,[@fst $l])) (tempval0 (,[@frst $l]))
+(function switch (l r)
+	(`(let (switch:= (,[@fst $l])) (switch:val (,[@frst $l]))
 		(,(with return
 			{(continuation aux (remaining else-clause)
-				(if [sexpr= $remaining emt]
+				(if [emt? $remaining]
 					{return $else-clause}
 					{aux [@rst $remaining]
-						(`(if (,[@llllst `invoke `$tempeq0 `$tempval0 [@ffst $remaining] emt])
-							(,[@frfst $remaining]) ,$else-clause))}))
-				[@rst [reverse [rrst $l]]] [@fst [reverse $l]]})))))
+						(`(if (,[lst (` or $r) [meta:map [@rst [meta:reverse [@fst $remaining] $r]] $r
+								(function _ (e r) [llllst (` invoke $r) (` $switch:= $r) (` $switch:val $r) $e emt $r]) $r] $r])
+							(,[@fst [meta:reverse [@fst $remaining] $r]]) ,$else-clause) $r)}))
+				[@rst [meta:reverse [@rrst $l] $r]] [@fst [meta:reverse $l $r]]})))$r))
 ```
 #### test6.l2
 ```
@@ -490,103 +504,29 @@ It is implemented and used as follows:
 ```
 #### shell
 ```shell
-./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 switch.l2 test6.l2
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 switch.l2 - test6.l2
 ```
 
 ### Characters
-With `#` implemented, a somewhat more readable implementation of characters is possible. The `char` function takes a singleton list containing character s-expression and returns its ascii encoding using the `d` expression. Its implementation and use follows:
+With `#` implemented, a somewhat more readable implementation of characters is possible. The `char` function takes a singleton list containing a symbol of one character and returns its ascii encoding using the `#` expression. Its implementation and use follows:
 
 #### characters.l2
 ```
-(function char (l)
-	(switch sexpr= [@ffst $l]
-		([-!-] `#33)
-		([-"-] `#34)
-		([-$-] `#36)
-		([-%-] `#37)
-		([-&-] `#38)
-		([-'-] `#39)
-		([-*-] `#42)
-		([-+-] `#43)
-		([-,-] `#44)
-		([---] `#45)
-		([-.-] `#46)
-		([-/-] `#47)
-		([-0-] `#48)
-		([-1-] `#49)
-		([-2-] `#50)
-		([-3-] `#51)
-		([-4-] `#52)
-		([-5-] `#53)
-		([-6-] `#54)
-		([-7-] `#55)
-		([-8-] `#56)
-		([-9-] `#57)
-		([-:-] `#58)
-		([-;-] `#59)
-		([-<-] `#60)
-		([-=-] `#61)
-		([->-] `#62)
-		([-?-] `#63)
-		([-A-] `#65)
-		([-B-] `#66)
-		([-C-] `#67)
-		([-D-] `#68)
-		([-E-] `#69)
-		([-F-] `#70)
-		([-G-] `#71)
-		([-H-] `#72)
-		([-I-] `#73)
-		([-J-] `#74)
-		([-K-] `#75)
-		([-L-] `#76)
-		([-M-] `#77)
-		([-N-] `#78)
-		([-O-] `#79)
-		([-P-] `#80)
-		([-Q-] `#81)
-		([-R-] `#82)
-		([-S-] `#83)
-		([-T-] `#84)
-		([-U-] `#85)
-		([-V-] `#86)
-		([-W-] `#87)
-		([-X-] `#88)
-		([-Y-] `#89)
-		([-Z-] `#90)
-		([-\-] `#92)
-		([-^-] `#94)
-		([-_-] `#95)
-		([-`-] `#96)
-		([-a-] `#97)
-		([-b-] `#98)
-		([-c-] `#99)
-		([-d-] `#100)
-		([-e-] `#101)
-		([-f-] `#102)
-		([-g-] `#103)
-		([-h-] `#104)
-		([-i-] `#105)
-		([-j-] `#106)
-		([-k-] `#107)
-		([-l-] `#108)
-		([-m-] `#109)
-		([-n-] `#110)
-		([-o-] `#111)
-		([-p-] `#112)
-		([-q-] `#113)
-		([-r-] `#114)
-		([-s-] `#115)
-		([-t-] `#116)
-		([-u-] `#117)
-		([-v-] `#118)
-		([-w-] `#119)
-		([-x-] `#120)
-		([-y-] `#121)
-		([-z-] `#122)
-		([-|-] `#124)
-		([-~-] `#126)
-		`#0))
+(function char (l r)
+	(switch char= [@ffst $l]
+		(-!- (` #33 $r)) (-"- (` #34 $r)) (-#- (` #35 $r)) (-$- (` #36 $r)) (-%- (` #37 $r)) (-&- (` #38 $r)) (-'- (` #39 $r))
+		(-*- (` #42 $r)) (-+- (` #43 $r)) (-,- (` #44 $r)) (--- (` #45 $r)) (-.- (` #46 $r)) (-/- (` #47 $r)) (-0- (` #48 $r))
+		(-1- (` #49 $r)) (-2- (` #50 $r)) (-3- (` #51 $r)) (-4- (` #52 $r)) (-5- (` #53 $r)) (-6- (` #54 $r)) (-7- (` #55 $r))
+		(-8- (` #56 $r)) (-9- (` #57 $r)) (-:- (` #58 $r)) (-;- (` #59 $r)) (-<- (` #60 $r)) (-=- (` #61 $r)) (->- (` #62 $r))
+		(-?- (` #63 $r)) (-@- (` #64 $r)) (-A- (` #65 $r)) (-B- (` #66 $r)) (-C- (` #67 $r)) (-D- (` #68 $r)) (-E- (` #69 $r))
+		(-F- (` #70 $r)) (-G- (` #71 $r)) (-H- (` #72 $r)) (-I- (` #73 $r)) (-J- (` #74 $r)) (-K- (` #75 $r)) (-L- (` #76 $r))
+		(-M- (` #77 $r)) (-N- (` #78 $r)) (-O- (` #79 $r)) (-P- (` #80 $r)) (-Q- (` #81 $r)) (-R- (` #82 $r)) (-S- (` #83 $r))
+		(-T- (` #84 $r)) (-U- (` #85 $r)) (-V- (` #86 $r)) (-W- (` #87 $r)) (-X- (` #88 $r)) (-Y- (` #89 $r)) (-Z- (` #90 $r))
+		(-\- (` #92 $r)) (-^- (` #94 $r)) (-_- (` #95 $r)) (-`- (` #96 $r)) (-a- (` #97 $r)) (-b- (` #98 $r)) (-c- (` #99 $r))
+		(-d- (` #100 $r)) (-e- (` #101 $r)) (-f- (` #102 $r)) (-g- (` #103 $r)) (-h- (` #104 $r)) (-i- (` #105 $r)) (-j- (` #106 $r))
+		(-k- (` #107 $r)) (-l- (` #108 $r)) (-m- (` #109 $r)) (-n- (` #110 $r)) (-o- (` #111 $r)) (-p- (` #112 $r)) (-q- (` #113 $r))
+		(-r- (` #114 $r)) (-s- (` #115 $r)) (-t- (` #116 $r)) (-u- (` #117 $r)) (-v- (` #118 $r)) (-w- (` #119 $r)) (-x- (` #120 $r))
+		(-y- (` #121 $r)) (-z- (` #122 $r)) (-|- (` #124 $r)) (-~- (` #126 $r)) (` #0 $r)))
 ```
 #### test7.l2
 ```racket
@@ -594,35 +534,42 @@ With `#` implemented, a somewhat more readable implementation of characters is p
 ```
 #### shell
 ```shell
-./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 switch.l2 characters.l2 test7.l2
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 switch.l2 characters.l2 - test7.l2
 ```
 
 ### Strings
-The above exposition has purposefully avoided making strings because it is tedious to do using only literal and reference arithmetic. The quote function takes a list of lists of character s-expressions and returns the sequence of operations required to write its ascii encoding into memory. (An extension to this rule occurs when instead of a list of characters, an s-expression that is a list of lists is encountered. In this case the value of the s-expression is taken as the character to be inserted.) These "operations" are essentially decreasing the stack-pointer, putting the characters into that memory, and returning the address of that memory. Because the stack-frame of a function is destroyed upon its return, strings implemented in this way should not be returned. Quote is implemented below:
+The above exposition has purposefully avoided making strings because it is tedious to do using only literal and reference arithmetic. The quote function takes a list of symbols and returns the sequence of operations required to write its ascii encoding into memory. (An extension to this rule occurs when instead of a symbol, a fragment that is a list of fragments is encountered. In this case the value of the fragment is taken as the character to be inserted.) These "operations" are essentially reserving enough storage for the bytes of the input, putting the characters into that memory, and returning the address of that memory. Because the stack-frame of a function is destroyed upon its return, strings implemented in this way should not be returned. Quote is implemented below:
 
 #### strings.l2
 ```
-(function " (l) (with return
+(function " (l r) (with return
 	{(continuation add-word (str index instrs)
-		(if [sexpr= $str emt]
-			{return (`(with return
-				[allocate (,[binary->base2sexpr $index])
-					(continuation _ (str) (,[lst (` begin) [reverse [@llst
-						(`{return $str})
-						(`[set-char [+ $str (,[binary->base2sexpr [- $index #1]])] #0])
-						$instrs]]]))]))}
+		(if [emt? $str]
+			{return (`(with dquote:return
+				(,[llst (` begin $r) [llst (` storage $r) (` dquote:str $r)
+						(with return {(continuation _ (phs num)
+							(if $num
+								{_ [lst (` #0 $r) $phs $r] [- $num #1]}
+								{return $phs})) emt [+[/ $index (unit)]#1]}) $r]
+					[meta:reverse [lst (`{dquote:return dquote:str}$r) $instrs $r]$r]$r]))$r)}
+		
+		(if (and [emt? [@fst $str]] [emt? [@rst $str]])
+			{add-word [@rst $str] [+ $index #1]
+				[lst (`[setb [+ dquote:str (,[value->literal $index $r])] #0]$r) $instrs $r]}
+				
+		(if (and [emt? [@fst $str]] [symbol? [@frst $str]])
+			{add-word [@rst $str] [+ $index #1]
+				[lst (`[setb [+ dquote:str (,[value->literal $index $r])] #32]$r) $instrs $r]}
+		
+		(if [emt? [@fst $str]] {add-word [@rst $str] $index $instrs}
+				
+		(if [symbol? [@fst $str]]
+			{add-word [lst [@rfst $str] [@rst $str] $r] [+ $index #1]
+				[lst (`[setb [+ dquote:str (,[value->literal $index $r])]
+					(,[char [lst [lst [@ffst $str] emt $r] emt $r]$r emt])]$r) $instrs $r]}
 			
-			{(continuation add-char (word index instrs)
-					(if [sexpr= $word emt]
-						{add-word [@rst $str] [+ $index #1]
-							[lst (`[set-char [+ $str (,[binary->base2sexpr $index])] #32]) $instrs]}
-						(if [lst? [@fst $word]]
-							{add-char emt [+ $index #1]
-								[lst (`[set-char [+ $str (,[binary->base2sexpr $index])] ,$word]) $instrs]}
-							{add-char [@rst $word] [+ $index #1]
-								[lst (`[set-char [+ $str (,[binary->base2sexpr $index])]
-									(,[char [lst [lst [@fst $word] emt] emt]])]) $instrs]})))
-				[@fst $str] $index $instrs})) $l #0 emt}))
+			{add-word [@rst $str] [+ $index #1]
+				[lst (`[setb [+ dquote:str (,[value->literal $index $r])] (,[@fst $str])]$r) $instrs $r]})))))) $l #0 emt}))
 ```
 #### test8.l2
 ```
@@ -630,20 +577,7 @@ The above exposition has purposefully avoided making strings because it is tedio
 ```
 #### shell
 ```shell
-./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 switch.l2 characters.l2 strings.l2 test8.l2
-```
-
-### Conditional Compilation
-Up till now, references to functions defined elsewhere have been the only things used as the first subexpression of an expression. Sometimes, however, the clarity of the whole expression can be improved by inlining the function. The following code proves this in the context of conditional compilation.
-#### test9.l2
-```
-((if [> #10 #20] fst @frst)
-	[printf (" I am not compiled!)]
-	[printf (" I am the one compiled!)])
-```
-#### shell
-```shell
-./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 switch.l2 characters.l2 strings.l2 test9.l2
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 switch.l2 characters.l2 strings.l2 - test8.l2
 ```
 
 ### Closures
