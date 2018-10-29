@@ -5,19 +5,19 @@ The approach taken to achieve this has been to make C's features more composable
 1. irregular syntax is replaced by [S-expressions](#internal-representation); because simple syntax composes well with a non-trivial preprocessor (and [no, I have not merely transplanted Common Lisp's macros into C](#expression))
 2. loop constructs are replaced with what I could only describe as [a more structured variant of setjmp and longjmp without stack destruction](#with) (and [no, there is no performance overhead associated with this](#an-optimization))
 
-There are [9 language primitives](#primitive-expressions) and for each one of them I describe their syntax, what exactly they do in English, the i386 assembly they translate into, and an example usage of them. Following this comes a listing of L2's syntactic sugar. Following this comes a brief description of [L2's internal representation and the 7 functions (loosely speaking) that manipulate it](#internal-representation). After that comes a description of how [a non-primitive L2 expression](#expression) is compiled. The above descriptions take about 8 pages and are essentially a complete description of L2.
+There are [10 language primitives](#primitive-expressions) and for each one of them I describe their syntax, what exactly they do in English, the i386 assembly they translate into, and an example usage of them. Following this comes a listing of L2's syntactic sugar. Following this comes a brief description of [L2's internal representation and the 7 functions (loosely speaking) that manipulate it](#internal-representation). After that comes a description of how [a non-primitive L2 expression](#expression) is compiled. The above descriptions take about 8 pages and are essentially a complete description of L2.
 
-Afterwards, there is a [list of reductions](#examplesreductions) that shows how some of C's constructs can be defined in terms of L2. Here, I have also demonstrated [closures](#closures) to hint at how more exotic things like coroutines and generators are possible using L2's [continuations](#jump). And, finally, this [README](l2.pdf) ends with a description of [my L2 system's compilation library](#compilation-library), a binary interface for compiling L2 code.
+And at the end there is a [list of reductions](#examplesreductions) that shows how some of C's constructs can be defined in terms of L2. Here, I have also demonstrated [closures](#closures) to hint at how more exotic things like coroutines and generators are possible using L2's [continuations](#jump).
 
 ### Contents
 | **[Getting Started](#getting-started)** | [Primitive Expressions](#primitive-expressions) | [Examples/Reductions](#examplesreductions) |
 |:--- |:--- |:--- |
 | [Building L2](#building-l2) | [Begin](#begin) | [Commenting](#commenting) |
-| [The Evaluator](#the-evaluator) | [Literal](#literal) | [Dereferencing](#dereferencing) |
+| [The Compiler](#the-compiler) | [Literal](#literal) | [Dereferencing](#dereferencing) |
 | **[Syntactic Sugar](#syntactic-sugar)** | [Reference](#reference) | [Numbers](#numbers) |
 | **[Internal Representation](#internal-representation)** | [Storage](#storage) | [Backquoting](#backquoting) |
 | **[Expression](#expression)** | [If](#if) | [Variable Binding](#variable-binding) |
-| **[Compilation Library](#compilation-library)** | [Function](#function) | [Switch Expression](#switch-expression) |
+| | [Function](#function) | [Switch Expression](#switch-expression) |
 | | [Invoke](#invoke) | [Characters](#characters) |
 | | [With](#with) | [Strings](#strings) |
 | | [Continuation](#continuation) | [Conditional Compilation](#conditional-compilation) |
@@ -29,36 +29,28 @@ Afterwards, there is a [list of reductions](#examplesreductions) that shows how 
 ```shell
 ./buildl2
 ```
-**This implementation of L2 needs a Linux distribution running on the i386 or x86-64 architecture with the GNU C compiler and musl libc installed to run successfully.** To build the system, simply run the `buildl2` script at the root of the repository. The build should be fast - there are only about 2200 lines of C code to compile. This will create a directory called `bin` containing the files `l2evaluate`, `l2compile.so`, `sexpr.so`, and `i386.so` or `x86_64.so`. `l2evaluate` is an evaluator of L2 code: it reads in L2 code, compiles it, then executes it. `l2compile.so` is the library that contains the compiler (the evaluator uses it to compile L2 code). `i386.so` or `x86_64.so`, depdending on which is compiled, is a library of instruction wrappers to provide i386/x86-64 functionality (ADD, SUB, MOV, ...) not exposed by the L2 language. What follows is written assuming that you are on a x86-64 machine.
+In this project there are two implementations of L2 compilers. One implementation is the bootstrap compiler that comprises 3400 lines of C code which compiles in under a second. The other implementation is a self-hosting compiler written in about 3600 lines of L2 code (the meta-program accounts for about 1100 lines and the program accounts for the other 2500 lines) which compiles in under 9 seconds. Both of them produce identical object code (modulo padding bytes in the ELFs) when given identical inputs. **The bootstrap compiler needs a Linux distribution running on the x86-64 architecture with the GNU C compiler installed to be compiled successfully.** To build the bootstrap compiler, simply run the `buildl2` script at the root of the repository. This will create a directory called `bin` containing the files `l2compile`, `x86_64_linux_interface.o`, and `x86_64.o`. `l2compile` is a compiler of L2 code: it reads in L2 code and compiles it to object files. `x86_64.o` is a library of instruction wrappers to provide x86-64 functionality (ADD, SUB, MOV, SYSCALL, ...) not exposed by the L2 language.
 
-### The Evaluator
+### The Compiler
 ```shell
-./bin/l2evaluate libraries.so ... + inputs.l2 ...
+./bin/l2compile (metaprogram.o | metaprogram.l2) ... - program.l2 ...
 ```
-In this initial environment the L2 evaluator begins by loading the shared libraries `libraries.so ...` into memory. Then the evaluator iterates through each L2 source file after the plus sign. Each of the files read should be of the form `expression1 expression2 ... expressionN`. For each file, it compiles each [expression](#expression) and emits the corresponding machine code in order. This object code is then linked against the heretofore loaded libraries to produce a shared library. This shared library is then loaded into memory.
-
-If a minus sign is supplied as one of the source files, then a minus-prompt is displayed. You are expected to enter valid L2 source code. Each time you press Enter, a plus-prompt is printed to elicit you to add to the source code so far read. Pressing Ctrl-D on an empty line tells the evaluator to treat all the code entered since the last minus prompt as if it were an L2 source file. If Ctrl-C then Enter is typed in a plus-prompt, heretofore uncompiled code is discarded, and the evaluator returns to minus-prompt state.
+L2 projects are composed of two parts: the program and the metaprogram. The program is the end product; the stuff that you want in the output binaries. The metaprogram is the code that the compiler delegates to during the preprocessing of the program code. The L2 compiler begins by loading the metaprogram into memory. For the parts of the metaprogram that are object files, the loading is straightforward. For the parts of the metaprogram that are L2 files, they cannot simply be compiled and loaded as they may also need to be preprocessed. Hence a lazy compilation scheme is implemented where an object file exposing the same global symbols as the L2 file is loaded, and only later on when one of its functions is actually called will the compilation of the corresponding L2 code actually be done. The important gain to doing this is that the aforementioned compilation now happens in the environment of the entire metaprogram, that is, the metaprogram can use its entire self to preprocess itself. Once the metaprogram is loaded, its parts are linked together and to the compiler's interface for metaprogramming. And finally each part of the program is compiled into an object file with the assistance of the metaprogram.
 
 #### Example
 ##### file1.l2
 ```racket
-(function foo (sexprs)
-	(with return (begin
-		[putchar [+ (literal 0...01100001) (literal 0...01)]]
-		{return [lst [lst [-b-] [lst [-e-] [lst [-g-] [lst [-i-] [lst [-n-] [nil]]]]]] [nil]]})))
+(function foo (frag buf) [@fst[get frag]])
 
-[putchar (literal 0...01100001)]
 ```
 ##### file2.l2
 ```racket
 (function bar ()
 	[putchar (literal 0...01100011)])
-(foo this text does not matter)
+(foo [putchar (literal 0...01100110)])
 [putchar (literal 0...01100100)]
 ```
-Running `./bin/l2evaluate "./bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + file1.l2 file2.l2` should cause the text "abd" to be printed to standard output. The "a" comes from the last expression of file1.l2. It was printed after the compilation of file1.l2, when it was being loaded into the compiler. Why? Because L2 libraries are executed from top to bottom when they are loaded. The "b" comes from within the function in file1.l2. It was executed when the expression `(foo this text does not matter)` in file2.l2 was being compiled. Why? Because the `foo` causes the compiler to invoke a function called `foo` in the environment. The s-expression `(this text does not matter)` is the argument to the function `foo`, but the function `foo` ignores it and returns the s-expression `(begin)`. Hence `(begin)` replaces `(foo this text does not matter)` in `file2.l2`. Now `file2.l2` is entirely made up of primitive expressions which are compiled in the way specified below. Finally the text "d" is printed. Why? Because file2.l2's last expression is the only one that is side-effectual, does not get replaced during compilation, and (therefore) gets loaded into memory.
-
-Running `./bin/l2evaluate "./bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + file1.l2 -` should cause the evaluator to print "a" to standard output for the same reason as above. Now you should be in a minus-prompt. Pasting in the contents of `file2.l2`, then pressing Enter followed by Ctrl-D should now cause the evaluator to print the text "bd" for the same reasons as above.
+Running `./bin/l2compile "./bin/x86_64.o" file1.l2 - file2.l2` should produce an object file file2.o. file2.o when called should invoke the function `putchar` with the ASCII character 'f' and then it should invoke the function `putchar` with the ASCII character 'd'. And if its function `bar` should be called, then it will call the function `putchar` with 'c'. Why is it that the first invocations happen? Because object code resulting from L2 sources are executed from top to bottom when they are called and because the expression `(foo [putchar (literal 0...01100110)])` turned into `[putchar (literal 0...01100110)]`. Why is it that the aforementioned transformation happened? Because `(foo [putchar (literal 0...01100110)])` is a meta-expression and by the definition of the language causes the function `foo` in the metaprogram to be called with the fragment `([putchar (literal 0...01100110)])` as an argument and the thing which `foo` then did was to return the first element of this fragment, `[putchar (literal 0...01100110)]`, which then replaced the original `(foo [putchar (literal 0...01100110)])`.
 
 ## Primitive Expressions
 ### Begin
@@ -195,7 +187,7 @@ Looking at the examples above where the continuation reference does not escape, 
 In what follows, it is assumed that `$a1...aN` is not part of a larger string. If `$a1...aN` is simply a `$`, then it remains unchanged. Otherwise at least a character follows the `$`; in this case `$a1...aN` turns into `($ a1...aN)`.
 
 For example, the expression `$$hello$bye` turns into `($ $hello$bye)` which turns into `($ ($ hello$bye))`
-### `&a1...aN`
+### `#a1...aN`
 An analogous transformation to the one for `$a1...aN` happens.
 ### `,a1...aN`
 An analogous transformation to the one for `$a1...aN` happens.
@@ -337,7 +329,7 @@ So far, we have been writing `[get x]` in order to get the value at the address 
 Note that in the above code that `a` and `c` have global scope. This is because at the location of their usage, they are not bound by any `function`, `continuation`, or `with` expression.
 
 ### Numbers
-Integer literals prove to be quite tedious in L2 as can be seen from some of the examples in the primitive expressions section. The following function, `&`, implements decimal arithmetic for i386 by reading in an s-expression in base 10 and writing out the equivalent s-expression in base 2:
+Integer literals prove to be quite tedious in L2 as can be seen from some of the examples in the primitive expressions section. The following function, `#`, implements decimal arithmetic for i386 by reading in an s-expression in base 10 and writing out the equivalent s-expression in base 2:
 
 #### numbers64.l2
 ```racket
@@ -351,7 +343,7 @@ Integer literals prove to be quite tedious in L2 as can be seen from some of the
 					[lst (if [and $in (literal 0...01)] [-1-] [-0-]) $out]}
 				{return $out})) (literal 0...01000000) $binary [nil]}) [nil]]]))
 
-(function & (l)
+(function # (l)
 	[binary->base2sexpr
 		(** Turns the base-10 s-expression input into a 4-byte integer.
 			(with return {(continuation read (in out)
@@ -371,11 +363,11 @@ Integer literals prove to be quite tedious in L2 as can be seen from some of the
 ```
 #### test3.l2
 ```racket
-[putchar (& 65)]
+[putchar (# 65)]
 ```
 ##### or equivalently
 ```racket
-[putchar &65]
+[putchar #65]
 ```
 #### shell
 ```shell
@@ -394,7 +386,7 @@ The `foo` example in the internal representation section shows how tedious writi
 				[lst [lllst [-n-][-i-][-l-][nil]] [nil]]]
 		
 		(if (if [lst? $s] (if [not [sexpr= $s [nil]]] (if [lst? [fst $s]] (if [not [sexpr= [fst $s] [nil]]]
-			(if [sexpr= [ffst $s] [-,-]] [sexpr= [rfst $s] [nil]] &0) &0) &0) &0) &0)
+			(if [sexpr= [ffst $s] [-,-]] [sexpr= [rfst $s] [nil]] #0) #0) #0) #0) #0)
 					[frst $s]
 		
 		[lst [llllllst [-i-][-n-][-v-][-o-][-k-][-e-][nil]]
@@ -408,12 +400,12 @@ The `foo` example in the internal representation section shows how tedious writi
 #### anotherfunction.l2:
 ```racket
 (function make-A-function (l)
-	(` (function A (,[nil]) [putchar &65])))
+	(` (function A (,[nil]) [putchar #65])))
 ```
 ##### or equivalently
 ```racket
 (function make-A-function (l)
-	(`(function A () [putchar &65])))
+	(`(function A () [putchar #65])))
 ```
 #### test4.l2
 ```racket
@@ -460,7 +452,7 @@ It is implemented and used as follows:
 ```
 #### test5.l2
 ```
-(let (x &12) (begin
+(let (x #12) (begin
 	(function what? () [printf (" x is %i) $x])
 	[what?]
 	[what?]
@@ -504,10 +496,10 @@ It is implemented and used as follows:
 ```
 #### test6.l2
 ```
-(switch = &10
-	(&20 [printf (" d is 20!)])
-	(&10 [printf (" d is 10!)])
-	(&30 [printf (" d is 30!)])
+(switch = #10
+	(#20 [printf (" d is 20!)])
+	(#10 [printf (" d is 10!)])
+	(#30 [printf (" d is 30!)])
 	[printf (" s is something else.)])
 ```
 #### shell
@@ -516,99 +508,99 @@ It is implemented and used as follows:
 ```
 
 ### Characters
-With `&` implemented, a somewhat more readable implementation of characters is possible. The `char` function takes a singleton list containing character s-expression and returns its ascii encoding using the `d` expression. Its implementation and use follows:
+With `#` implemented, a somewhat more readable implementation of characters is possible. The `char` function takes a singleton list containing character s-expression and returns its ascii encoding using the `d` expression. Its implementation and use follows:
 
 #### characters.l2
 ```
 (function char (l)
 	(switch sexpr= [ffst $l]
-		([-!-] `&33)
-		([-"-] `&34)
-		([-$-] `&36)
-		([-%-] `&37)
-		([-&-] `&38)
-		([-'-] `&39)
-		([-*-] `&42)
-		([-+-] `&43)
-		([-,-] `&44)
-		([---] `&45)
-		([-.-] `&46)
-		([-/-] `&47)
-		([-0-] `&48)
-		([-1-] `&49)
-		([-2-] `&50)
-		([-3-] `&51)
-		([-4-] `&52)
-		([-5-] `&53)
-		([-6-] `&54)
-		([-7-] `&55)
-		([-8-] `&56)
-		([-9-] `&57)
-		([-:-] `&58)
-		([-;-] `&59)
-		([-<-] `&60)
-		([-=-] `&61)
-		([->-] `&62)
-		([-?-] `&63)
-		([-A-] `&65)
-		([-B-] `&66)
-		([-C-] `&67)
-		([-D-] `&68)
-		([-E-] `&69)
-		([-F-] `&70)
-		([-G-] `&71)
-		([-H-] `&72)
-		([-I-] `&73)
-		([-J-] `&74)
-		([-K-] `&75)
-		([-L-] `&76)
-		([-M-] `&77)
-		([-N-] `&78)
-		([-O-] `&79)
-		([-P-] `&80)
-		([-Q-] `&81)
-		([-R-] `&82)
-		([-S-] `&83)
-		([-T-] `&84)
-		([-U-] `&85)
-		([-V-] `&86)
-		([-W-] `&87)
-		([-X-] `&88)
-		([-Y-] `&89)
-		([-Z-] `&90)
-		([-\-] `&92)
-		([-^-] `&94)
-		([-_-] `&95)
-		([-`-] `&96)
-		([-a-] `&97)
-		([-b-] `&98)
-		([-c-] `&99)
-		([-d-] `&100)
-		([-e-] `&101)
-		([-f-] `&102)
-		([-g-] `&103)
-		([-h-] `&104)
-		([-i-] `&105)
-		([-j-] `&106)
-		([-k-] `&107)
-		([-l-] `&108)
-		([-m-] `&109)
-		([-n-] `&110)
-		([-o-] `&111)
-		([-p-] `&112)
-		([-q-] `&113)
-		([-r-] `&114)
-		([-s-] `&115)
-		([-t-] `&116)
-		([-u-] `&117)
-		([-v-] `&118)
-		([-w-] `&119)
-		([-x-] `&120)
-		([-y-] `&121)
-		([-z-] `&122)
-		([-|-] `&124)
-		([-~-] `&126)
-		`&0))
+		([-!-] `#33)
+		([-"-] `#34)
+		([-$-] `#36)
+		([-%-] `#37)
+		([-&-] `#38)
+		([-'-] `#39)
+		([-*-] `#42)
+		([-+-] `#43)
+		([-,-] `#44)
+		([---] `#45)
+		([-.-] `#46)
+		([-/-] `#47)
+		([-0-] `#48)
+		([-1-] `#49)
+		([-2-] `#50)
+		([-3-] `#51)
+		([-4-] `#52)
+		([-5-] `#53)
+		([-6-] `#54)
+		([-7-] `#55)
+		([-8-] `#56)
+		([-9-] `#57)
+		([-:-] `#58)
+		([-;-] `#59)
+		([-<-] `#60)
+		([-=-] `#61)
+		([->-] `#62)
+		([-?-] `#63)
+		([-A-] `#65)
+		([-B-] `#66)
+		([-C-] `#67)
+		([-D-] `#68)
+		([-E-] `#69)
+		([-F-] `#70)
+		([-G-] `#71)
+		([-H-] `#72)
+		([-I-] `#73)
+		([-J-] `#74)
+		([-K-] `#75)
+		([-L-] `#76)
+		([-M-] `#77)
+		([-N-] `#78)
+		([-O-] `#79)
+		([-P-] `#80)
+		([-Q-] `#81)
+		([-R-] `#82)
+		([-S-] `#83)
+		([-T-] `#84)
+		([-U-] `#85)
+		([-V-] `#86)
+		([-W-] `#87)
+		([-X-] `#88)
+		([-Y-] `#89)
+		([-Z-] `#90)
+		([-\-] `#92)
+		([-^-] `#94)
+		([-_-] `#95)
+		([-`-] `#96)
+		([-a-] `#97)
+		([-b-] `#98)
+		([-c-] `#99)
+		([-d-] `#100)
+		([-e-] `#101)
+		([-f-] `#102)
+		([-g-] `#103)
+		([-h-] `#104)
+		([-i-] `#105)
+		([-j-] `#106)
+		([-k-] `#107)
+		([-l-] `#108)
+		([-m-] `#109)
+		([-n-] `#110)
+		([-o-] `#111)
+		([-p-] `#112)
+		([-q-] `#113)
+		([-r-] `#114)
+		([-s-] `#115)
+		([-t-] `#116)
+		([-u-] `#117)
+		([-v-] `#118)
+		([-w-] `#119)
+		([-x-] `#120)
+		([-y-] `#121)
+		([-z-] `#122)
+		([-|-] `#124)
+		([-~-] `#126)
+		`#0))
 ```
 #### test7.l2
 ```racket
@@ -631,24 +623,24 @@ The above exposition has purposefully avoided making strings because it is tedio
 				[allocate (,[binary->base2sexpr $index])
 					(continuation _ (str) (,[lst (` begin) [reverse [llst
 						(`{return $str})
-						(`[set-char [+ $str (,[binary->base2sexpr [- $index &1]])] &0])
+						(`[set-char [+ $str (,[binary->base2sexpr [- $index #1]])] #0])
 						$instrs]]]))]))}
 			
 			{(continuation add-char (word index instrs)
 					(if [sexpr= $word [nil]]
-						{add-word [rst $str] [+ $index &1]
-							[lst (`[set-char [+ $str (,[binary->base2sexpr $index])] &32]) $instrs]}
+						{add-word [rst $str] [+ $index #1]
+							[lst (`[set-char [+ $str (,[binary->base2sexpr $index])] #32]) $instrs]}
 						(if [lst? [fst $word]]
-							{add-char [nil] [+ $index &1]
+							{add-char [nil] [+ $index #1]
 								[lst (`[set-char [+ $str (,[binary->base2sexpr $index])] ,$word]) $instrs]}
-							{add-char [rst $word] [+ $index &1]
+							{add-char [rst $word] [+ $index #1]
 								[lst (`[set-char [+ $str (,[binary->base2sexpr $index])]
 									(,[char [lst [lst [fst $word] [nil]] [nil]]])]) $instrs]})))
-				[fst $str] $index $instrs})) $l &0 [nil]}))
+				[fst $str] $index $instrs})) $l #0 [nil]}))
 ```
 #### test8.l2
 ```
-[printf (" This is how the quote macro is used. (& 10) Now we are on a new line because 10 is a line feed.)]
+[printf (" This is how the quote macro is used. (# 10) Now we are on a new line because 10 is a line feed.)]
 ```
 #### shell
 ```shell
@@ -659,7 +651,7 @@ The above exposition has purposefully avoided making strings because it is tedio
 Up till now, references to functions defined elsewhere have been the only things used as the first subexpression of an expression. Sometimes, however, the clarity of the whole expression can be improved by inlining the function. The following code proves this in the context of conditional compilation.
 #### test9.l2
 ```
-((if [> &10 &20] fst frst)
+((if [> #10 #20] fst frst)
 	[printf (" I am not compiled!)]
 	[printf (" I am the one compiled!)])
 ```
@@ -711,11 +703,11 @@ These are implemented and used as follows:
 (environment adder (x)
 	(lambda (y) [+ $x $y]))
 
-(let (add5 (; adder &5)) (add7 (; adder &7))
+(let (add5 (; adder #5)) (add7 (; adder #7))
 	(begin
-		[printf (" %i,) (: $add5 &2)]
-		[printf (" %i,) (: $add7 &3)]
-		[printf (" %i,) (: $add5 &1)]))
+		[printf (" %i,) (: $add5 #2)]
+		[printf (" %i,) (: $add7 #3)]
+		[printf (" %i,) (: $add5 #1)]))
 ```
 #### shell
 ```shell
@@ -756,70 +748,3 @@ In the function `foo`, if `$x` were equal to `$y`, then the else branch of the `
 ./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 switch.l2 characters.l2 strings.l2 assume.l2 test11.l2
 ```
 Note that the `assume` expression can also be used to achieve C's `restrict` keyword simply by making its condition the conjunction of inequalities on the memory locations of the extremeties of the "arrays" in question.
-
-## Compilation Library
-L2 provides a library to enable the compilation of L2 source files into binaries. In this implementation of L2, the compilation library is called `l2compile.so`. Below is a description of the functions this library exports; they can be invoked using any source language so long as [the calling convention](#invoke) outlined above is adhered to.
-
-### `[load x]`
-`x` must be the path to a shared library.
-
-Loads the shared library at path `x`.
-
-### `[compile y x]`
-`y` must be a path and `x` must be the path of an L2 source file.
-
-Compiles the source file `x` into an executable library that is placed at `y`. The loaded libraries are what the source file's macros are linked against and they are also what the final executable library is linked against. The binary produced by this function is a shared library that exports its top-level functions. The binary produced is also an executable that can be directly executed.
-
-### `[unload x]`
-`x` must be a path to a currently loaded shared library.
-
-Unloads the shared library at path `x`.
-
-#### Example Usage
-Run [the evaluator](#the-evaluator) using the command: `./bin/l2evaluate "./bin/x86_64.so" "./bin/l2compile.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 switch.l2 characters.l2 strings.l2 -` and enter the following code:
-
-```
-[load (" ./bin/x86_64.so)]
-[load (" /lib/x86_64-linux-musl/libc.so)]
-[load (" ./bin/sexpr.so)]
-[compile (" abbr.so) (" abbreviations.l2)]
-[load (" ./abbr.so)]
-[compile (" comm.so) (" comments.l2)]
-[load (" ./comm.so)]
-[compile (" deref.so) (" dereference.l2)]
-[load (" ./deref.so)]
-[compile (" num.so) (" numbers64.l2)]
-[load (" ./num.so)]
-[compile (" bq.so) (" backquote.l2)]
-[load (" ./bq.so)]
-[compile (" let.so) (" let.l2)]
-[load (" ./let.so)]
-[compile (" switch.so) (" switch.l2)]
-[load (" ./switch.so)]
-[compile (" char.so) (" characters.l2)]
-[load (" ./char.so)]
-[compile (" str.so) (" strings.l2)]
-[load (" ./str.so)]
-[compile (" clo.so) (" closures.l2)]
-[load (" ./clo.so)]
-[compile (" test10.so) (" test10.l2)]
-[unload (" ./clo.so)]
-[unload (" ./str.so)]
-[unload (" ./char.so)]
-[unload (" ./switch.so)]
-[unload (" ./let.so)]
-[unload (" ./bq.so)]
-[unload (" ./num.so)]
-[unload (" ./deref.so)]
-[unload (" ./comm.so)]
-[unload (" ./abbr.so)]
-[unload (" ./bin/sexpr.so)]
-[unload (" /lib/x86_64-linux-musl/libc.so)]
-[unload (" ./bin/x86_64.so)]
-[exit &0]
-```
-Pressing Ctrl-D should compile `abbreviations.l2` into `abbr.so`, `comments.l2` into `comm.so`, `dereference.l2` into `deref.so`, `numbers64.l2` into `num.so`, `backquote.l2` into `bq.so`, `switch.l2` into `switch.so`, `characters.l2` into `char.so`, `strings.l2` into `str.so`, `closures.l2` into `clo.so`, `let.l2` into `let.so`, and `test10.l2` into `test10.so`.
- 
-To execute `test10.so`, simply enter `./test10.so` into shell. Doing this should yield the same output as `./bin/l2evaluate "bin/x86_64.so" "./bin/sexpr.so" "/lib/x86_64-linux-musl/libc.so" + abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 switch.l2 characters.l2 strings.l2 closures.l2 test10.l2`. This should also illuminate how `l2evaluate` works.
-
-Note that one reason why `libc` is loaded in the above code is because `./bin/sexpr.so` depends upon it. Another reason is because `test10.l2` uses `printf`. Also note how each l2 file is loaded immediately after its compilation. In the case of `comments.l2`, `./comm.so` is loaded as soon as it's created to allow `numbers64.l2`, which uses comments, to be compiled successfully.
