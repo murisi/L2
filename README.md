@@ -27,9 +27,10 @@ And at the end there is a [list of reductions](#examplesreductions) that shows h
 ## Getting Started
 ### Building L2
 ```shell
-./buildl2
+./build_bootstrap
+./build_selfhost
 ```
-In this project there are two implementations of L2 compilers. One implementation is the bootstrap compiler that comprises 3400 lines of C code which compiles in under a second. The other implementation is a self-hosting compiler written in about 3600 lines of L2 code (the meta-program accounts for about 1100 lines and the program accounts for the other 2500 lines) which compiles in under 9 seconds. Both of them produce identical object code (modulo padding bytes in the ELFs) when given identical inputs. **The bootstrap compiler needs a Linux distribution running on the x86-64 architecture with the GNU C compiler installed to be compiled successfully.** To build the bootstrap compiler, simply run the `buildl2` script at the root of the repository. This will create a directory called `bin` containing the files `l2compile`, `x86_64_linux_interface.o`, and `x86_64.o`. `l2compile` is a compiler of L2 code: it reads in L2 code and compiles it to object files. `x86_64.o` is a library of instruction wrappers to provide x86-64 functionality (ADD, SUB, MOV, SYSCALL, ...) not exposed by the L2 language.
+In this project there are two implementations of L2 compilers. One implementation is the bootstrap compiler that comprises 3400 lines of C code which compiles in under a second. The other implementation is a self-hosting compiler written in about 3600 lines of L2 code (the meta-program accounts for about 1100 lines and the program accounts for the other 2500 lines) which compiles in under 9 seconds. Both of them produce identical object code (modulo padding bytes in the ELFs) when given identical inputs. **The bootstrap compiler needs a Linux distribution running on the x86-64 architecture with the GNU C compiler installed to be compiled successfully.** To build the bootstrap compiler, simply run the `build_bootstrap` script at the root of the repository. This will create a directory called `bin` containing the file `l2compile`. `l2compile` is a compiler of L2 code and its interface is described in the next section. To build the self-hosting compiler, simply run the `build_selfhost` script at the root of the repository. This will replace `l2compile` with a new compiler that has the same command line interface.
 
 ### The Compiler
 ```shell
