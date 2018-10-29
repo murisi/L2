@@ -188,12 +188,8 @@ Looking at the examples above where the continuation reference does not escape, 
 In what follows, it is assumed that `$a1...aN` is not part of a larger string. If `$a1...aN` is simply a `$`, then it remains unchanged. Otherwise at least a character follows the `$`; in this case `$a1...aN` turns into `($ a1...aN)`.
 
 For example, the expression `$$hello$bye` turns into `($ $hello$bye)` which turns into `($ ($ hello$bye))`
-### `#a1...aN`
-An analogous transformation to the one for `$a1...aN` happens.
-### `,a1...aN`
-An analogous transformation to the one for `$a1...aN` happens.
-### `` `a1...aN``
-An analogous transformation to the one for `$a1...aN` happens.
+### `#a1...aN`, `,a1...aN`, `` `a1...aN``
+Analogous transformations to the one for `$a1...aN` happen.
 
 ## Internal Representation
 After substituting out the syntactic sugar defined in the [invoke](#invoke), [jump](#jump), and [syntactic sugar](#syntactic-sugar) sections, we find that all L2 programs are just fragments where a fragment is either a symbol or a list of fragments. And furthermore, every symbol can be seen as a list of its characters so that for example `foo` becomes `(f o o)`. The following functions that manipulate these fragments are not part of the L2 language and hence the compiler does not give references to them special treatment during compilation. However, when they are used in an L2 meta-program, undefined references to these functions are to be resolved by the compiler.
@@ -247,9 +243,9 @@ These functions are analogous to `begin`.
 ```racket
 (function0 expression1 ... expressionN)
 ```
-If the above expression is not a [primitive expression](#primitive-expressions), then `function0` is evaluated in the environment. The resulting value of this evaluation is then invoked with the (unevaluated) list of [s-expressions](#internal-representation) `(expression1 expression2 ... expressionN)` as its only argument. The list of s-expressions returned by this function then replaces the entire list of s-expressions `(function0 expression1 ... expressionN)`. If the result of this replacement is still a non-primitive expression, then the above process is repeated. When this process terminates, the appropriate assembly code for the resulting primitive expression is emitted.
+If the above expression is not a [primitive expression](#primitive-expressions), then `function0` from the metaprogram is invoked with the (unevaluated) list of [fragments](#internal-representation) `(expression1 expression2 ... expressionN)` as its first argument and a buffer in which the replacement is to be constructed as its second argument. The fragment returned by this function then replaces the entire fragment `(function0 expression1 ... expressionN)`. If the result of this replacement is still a non-primitive expression, then the above process is repeated. When this process terminates, the appropriate assembly code for the resulting primitive expression is emitted.
 
-The expression `((function comment (sexprs) [@fst [get sexprs]]) [foo] This comment is ignored. No, seriously.)` is replaced by `[foo]`, which in turn compiles into assembly similar to what is generated for other invoke expressions.
+Meta-expressions were already demonstrated in the [compiler section](#the-compiler).
 
 ## Examples/Reductions
 In the extensive list processing that follows in this section, the following functions prove to be convenient abbreviations:
