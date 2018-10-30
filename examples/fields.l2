@@ -1,0 +1,33 @@
+(function offset-of (l r) (`((,[@fst $l]) offset-of-aux)$r))
+
+(function offset-of-aux (l r) [@fst $l])
+
+(function size-of (l r) (`((,[@fst $l]) size-of-aux)$r))
+
+(function size-of-aux (l r) [@frst $l])
+
+(function getter-of (l r) (`((,[@fst $l]) getter-of-aux)$r))
+
+(function getter-of-aux (l r) [@frrst $l])
+
+(function setter-of (l r) (`((,[@fst $l]) setter-of-aux)$r))
+
+(function setter-of-aux (l r) [@frrrst $l])
+
+(function & (l r) (`((,[@fst $l]) &-aux (,[@frst $l]))$r))
+
+(function &-aux (l r) (`[+ (,[@frrrrst $l]) (,[@fst $l])]$r))
+
+(function @ (l r) (`((,[@fst $l]) @-aux (,[@frst $l]))$r))
+
+(function @-aux (l r) (`[(,[@frrst $l]) [+ (,[@frrrrst $l]) (,[@fst $l])]]$r))
+
+(function setf (l r) (`((,[@fst $l]) setf-aux (,[@frst $l]) (,[@frrst $l]))$r))
+
+(function setf-aux (l r) (`[(,[@frrrst $l]) [+ (,[@frrrrst $l]) (,[@fst $l])] (,[@frrrrrst $l])]$r))
+
+(function mk-field (l r offset size)
+	[lllllst [@fst $l] [value->literal $offset $r] [value->literal $size $r]
+		(switch = $size (#1 (` get1b $r)) (#2 (` get2b $r)) (#4 (` get4b $r)) (#8 (` get8b $r)) (`(null)$r))
+		(switch = $size (#1 (` set1b $r)) (#2 (` set2b $r)) (#4 (` set4b $r)) (#8 (` set8b $r)) (`(null)$r))
+		[@rst $l] $r])

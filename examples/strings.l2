@@ -1,15 +1,28 @@
-(function " (l) (with return
+(function " (l r) (with return
 	{(continuation add-word (str index instrs)
-		(if [sexpr= $str [nil]]
-			{return (`(with return
-				[allocate (,[binary->base2sexpr $index])
-					(continuation _ (str) (,[lst (` begin) [reverse [lst (`{return $str}) $instrs]]]))]))}
+		(if [emt? $str]
+			{return (`(with dquote:return
+				(,[llst (` begin $r) [llst (` storage $r) (` dquote:str $r)
+						(with return {(continuation _ (phs num)
+							(if $num
+								{_ [lst (` #0 $r) $phs $r] [- $num #1]}
+								{return $phs})) emt [+[/ $index (unit)]#1]}) $r]
+					[meta:reverse [lst (`{dquote:return dquote:str}$r) $instrs $r]$r]$r]))$r)}
+		
+		(if (and [emt? [@fst $str]] [emt? [@rst $str]])
+			{add-word [@rst $str] [+ $index #1]
+				[lst (`[setb [+ dquote:str (,[value->literal $index $r])] #0]$r) $instrs $r]}
+				
+		(if (and [emt? [@fst $str]] [symbol? [@frst $str]])
+			{add-word [@rst $str] [+ $index #1]
+				[lst (`[setb [+ dquote:str (,[value->literal $index $r])] #32]$r) $instrs $r]}
+		
+		(if [emt? [@fst $str]] {add-word [@rst $str] $index $instrs}
+				
+		(if [symbol? [@fst $str]]
+			{add-word [lst [@rfst $str] [@rst $str] $r] [+ $index #1]
+				[lst (`[setb [+ dquote:str (,[value->literal $index $r])]
+					(,[char [lst [lst [@ffst $str] emt $r] emt $r]$r emt])]$r) $instrs $r]}
 			
-			{(continuation add-char (word index instrs)
-					(if [sexpr= $word [nil]]
-						{add-word [rst $str] [+ $index &1]
-							[lst (`[set-char [+ $str (,[binary->base2sexpr $index])]
-								(,(if [sexpr= [rst $str] [nil]] (` &0) (` &32)))]) $instrs]}
-						{add-char [rst $word] [+ $index &1]
-							[lst (`[set-char [+ $str (,[binary->base2sexpr $index])] (char (,[lst [fst $word] [nil]]))]) $instrs]}))
-				[fst $str] $index $instrs})) $l &0 [nil]}))
+			{add-word [@rst $str] [+ $index #1]
+				[lst (`[setb [+ dquote:str (,[value->literal $index $r])] (,[@fst $str])]$r) $instrs $r]})))))) $l #0 emt}))
