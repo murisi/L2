@@ -103,21 +103,18 @@ equals:
 xorq %rax, %rax
 subq %rsi, %rdi
 setz %al
-negq %rax
 ret
 
 greaterthan:
 xorq %rax, %rax
 subq %rdi, %rsi
 setc %al
-negq %rax
 ret
 
 lesserthan:
 xorq %rax, %rax
 subq %rsi, %rdi
 setc %al
-negq %rax
 ret
 
 leftshift:
