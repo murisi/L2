@@ -5,24 +5,24 @@ The approach taken to achieve this has been to make C's features more composable
 1. irregular syntax is replaced by [S-expressions](#internal-representation); because simple syntax composes well with a non-trivial preprocessor (and [no, I have not merely transplanted Common Lisp's macros into C](#expression))
 2. loop constructs are replaced with what I could only describe as [a more structured variant of setjmp and longjmp without stack destruction](#with) (and [no, there is no performance overhead associated with this](#an-optimization))
 
-There are [10 language primitives](#primitive-expressions) and for each one of them I describe their syntax, what exactly they do in English, the i386 assembly they translate into, and an example usage of them. Following this comes a listing of L2's syntactic sugar. Following this comes a brief description of [L2's internal representation and the 7 functions (loosely speaking) that manipulate it](#internal-representation). After that comes a description of how [a non-primitive L2 expression](#expression) is compiled. The above descriptions take about 8 pages and are essentially a complete description of L2.
+There are [10 language primitives](#expressions) and for each one of them I describe their syntax, what exactly they do in English, the i386 assembly they translate into, and an example usage of them. Following this comes a listing of L2's syntactic sugar. Following this comes a brief description of [L2's internal representation and the 5 functions that manipulate it](#internal-representation). After that comes a description of how [a meta-expression](#meta) is compiled. The above descriptions take about 8 pages and are essentially a complete description of L2.
 
 And at the end there is a [list of reductions](#examplesreductions) that shows how some of C's constructs can be defined in terms of L2. Here, I have also demonstrated [closures](#closures) to hint at how more exotic things like coroutines and generators are possible using L2's [continuations](#jump).
 
 ### Contents
-| **[Getting Started](#getting-started)** | [Primitive Expressions](#primitive-expressions) | [Examples/Reductions](#examplesreductions) |
+| **[Getting Started](#getting-started)** | [Expressions](#expressions) | [Examples/Reductions](#examplesreductions) |
 |:--- |:--- |:--- |
 | [Building L2](#building-l2) | [Begin](#begin) | [Commenting](#commenting) |
 | [The Compiler](#the-compiler) | [Literal](#literal) | [Dereferencing](#dereferencing) |
 | **[Syntactic Sugar](#syntactic-sugar)** | [Reference](#reference) | [Numbers](#numbers) |
 | **[Internal Representation](#internal-representation)** | [Storage](#storage) | [Backquoting](#backquoting) |
-| **[Expression](#expression)** | [If](#if) | [Variable Binding](#variable-binding) |
+| | [If](#if) | [Variable Binding](#variable-binding) |
 | | [Function](#function) | [Boolean Expressions](#boolean-expressions) |
 | | [Invoke](#invoke) | [Switch Expression](#switch-expression) |
 | | [With](#with) | [Characters](#characters) |
 | | [Continuation](#continuation) | [Strings](#strings) |
 | | [Jump](#jump) | [Closures](#closures) |
-| | | [Assume](#assume) |
+| | [Meta](#meta) | [Assume](#assume) |
 | | | [Fields](#fields) |
 
 ## Getting Started
@@ -54,7 +54,7 @@ L2 projects are composed of two parts: the program and the metaprogram. The prog
 ```
 Running `./bin/l2compile "./bin/x86_64.o" file1.l2 - file2.l2` should produce an object file file2.o. file2.o when called should invoke the function `putchar` with the ASCII character 'f' and then it should invoke the function `putchar` with the ASCII character 'd'. And if its function `bar` should be called, then it will call the function `putchar` with 'c'. Why is it that the first invocations happen? Because object code resulting from L2 sources are executed from top to bottom when they are called and because the expression `(foo [putchar (literal 0...01100110)])` turned into `[putchar (literal 0...01100110)]`. Why is it that the aforementioned transformation happened? Because `(foo [putchar (literal 0...01100110)])` is a meta-expression and by the definition of the language causes the function `foo` in the metaprogram to be called with the fragment `([putchar (literal 0...01100110)])` as an argument and the thing which `foo` then did was to return the first element of this fragment, `[putchar (literal 0...01100110)]`, which then replaced the original `(foo [putchar (literal 0...01100110)])`.
 
-## Primitive Expressions
+## Expressions
 ### Begin
 ```racket
 (begin expression1 expression2 ... expressionN)
@@ -240,11 +240,12 @@ Evaluates to an fragment formed by prepending the symbol `begin` to `x`. The `be
 ### `[literal x b]`, `[storage x b]`, `[if x b]`, `[function x b]`, `[invoke x b]`, `[with x b]`, `[continuation x b]`, `[jump x b]`
 These functions are analogous to `begin`.
 
-## Expression
+## Expressions Continued
+### Meta
 ```racket
 (function0 expression1 ... expressionN)
 ```
-If the above expression is not a [primitive expression](#primitive-expressions), then `function0` from the metaprogram is invoked with the (unevaluated) list of [fragments](#internal-representation) `(expression1 expression2 ... expressionN)` as its first argument and a buffer in which the replacement is to be constructed as its second argument. The fragment returned by this function then replaces the entire fragment `(function0 expression1 ... expressionN)`. If the result of this replacement is still a non-primitive expression, then the above process is repeated. When this process terminates, the appropriate assembly code for the resulting primitive expression is emitted.
+If the above expression is not listed above, then `function0` from the metaprogram is invoked with the (unevaluated) list of [fragments](#internal-representation) `(expression1 expression2 ... expressionN)` as its first argument and a buffer in which the replacement is to be constructed as its second argument. The fragment returned by this function then replaces the entire fragment `(function0 expression1 ... expressionN)`. If the result of this replacement contains a meta-expression, then the above process is repeated. When this process terminates, the appropriate assembly code for the resulting expression is emitted.
 
 Meta-expressions were already demonstrated in the [compiler section](#the-compiler).
 
@@ -320,7 +321,7 @@ So far, we have been writing `[get x]` in order to get the value at the address 
 Note that in the above code that `a` and `c` have global scope. This is because the storage expressions are top-level.
 
 ### Numbers
-Integer literals prove to be quite tedious in L2 as can be seen from some of the examples in the primitive expressions section. The following function, `#`, implements decimal arithmetic for x86-64 by reading in a symbol in base 10 and writing out the equivalent fragment in base 2:
+Integer literals prove to be quite tedious in L2 as can be seen from some of the examples in the expressions section. The following function, `#`, implements decimal arithmetic for x86-64 by reading in a symbol in base 10 and writing out the equivalent fragment in base 2:
 
 #### numbers64.l2
 ```racket
