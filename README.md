@@ -5,7 +5,7 @@ The approach taken to achieve this has been to make C's features more composable
 1. irregular syntax is replaced by [S-expressions](#internal-representation); because simple syntax composes well with a non-trivial preprocessor (and [no, I have not merely transplanted Common Lisp's macros into C](#expression))
 2. loop constructs are replaced with what I could only describe as [a more structured variant of setjmp and longjmp without stack destruction](#with) (and [no, there is no performance overhead associated with this](#an-optimization))
 
-There are [10 language primitives](#expressions) and for each one of them I describe their syntax, what exactly they do in English, the i386 assembly they translate into, and an example usage of them. Following this comes a listing of L2's syntactic sugar. Following this comes a brief description of [L2's internal representation and the 5 functions that manipulate it](#internal-representation). After that comes a description of how [a meta-expression](#meta) is compiled. The above descriptions take about 8 pages and are essentially a complete description of L2.
+There are [10 language primitives](#expressions) and for each one of them I describe their syntax, what exactly they do in English, the i386 assembly they translate into, and an example usage of them. Following this comes a listing of L2's syntactic sugar. Following this comes a brief description of [L2's internal representation and the 6 functions that manipulate it](#internal-representation). After that comes a description of how [a meta-expression](#meta) is compiled. The above descriptions take about 8 pages and are essentially a complete description of L2.
 
 And at the end there is a [list of reductions](#examplesreductions) that shows how some of C's constructs can be defined in terms of L2. Here, I have also demonstrated [closures](#closures) to hint at how more exotic things like coroutines and generators are possible using L2's [continuations](#jump).
 
@@ -214,7 +214,7 @@ Evaluates to the first of `x`.
 
 Say the list `foo` is stored at `a`. Then `[@fst [get a]]` is the character `f`. This `f` is not a list but is a character.
 ### `[@rst x]`
-`x` must be a list`.
+`x` must be a list.
 
 Evaluates to a list that is the rest of `x`.
 
@@ -223,6 +223,12 @@ Say the list `foo` is stored at `a`. Then `[@rst [get a]]` is the fragment `oo`.
 Evaluates to the empty list.
 
 Say the fragment `foo` is stored at `a`. Then `[lst [get a] emt]` is the fragment `(foo)`.
+### `[emt? x]`
+`x` must be a list.
+
+Evaluates to the one if `x` is the empty list. Otherwise evaluates to zero.
+
+`[emt? emt]` evaluates to `(literal 0...01)`.
 ### `-<character>-`
 Evaluates to the character `<character>`.
 
