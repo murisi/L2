@@ -200,13 +200,13 @@ After substituting out the syntactic sugar defined in the [invoke](#invoke), [ju
 
 Makes a list where `x` is first and `y` is the rest in the buffer `b`.
 
-Say the s-expression `foo` is stored at `a` and the list `(bar)` is stored at `b`. Then `[lst [get a] [get b]]` is the fragment `(foo bar)`.
+Say the fragment `foo` is stored at `a` and the list `(bar)` is stored at `b`. Then `[lst [get a] [get b]]` is the fragment `(foo bar)`.
 ### `[symbol? x]`
 `x` must be a fragment.
 
 Evaluates to the one if `x` is also a symbol. Otherwise evaluates to zero.
 
-Say the s-expression `foo` is stored at `a`. Then `[symbol? [get a]]` evaluates to `(literal 0...01)`.
+Say the fragment `foo` is stored at `a`. Then `[symbol? [get a]]` evaluates to `(literal 0...01)`.
 ### `[@fst x]`
 `x` must be a list.
 
@@ -222,7 +222,7 @@ Say the list `foo` is stored at `a`. Then `[@rst [get a]]` is the fragment `oo`.
 ### `emt`
 Evaluates to the empty list.
 
-Say the s-expression `foo` is stored at `a`. Then `[lst [get a] emt]` is the fragment `(foo)`.
+Say the fragment `foo` is stored at `a`. Then `[lst [get a] emt]` is the fragment `(foo)`.
 ### `-<character>-`
 Evaluates to the character `<character>`.
 
@@ -372,7 +372,7 @@ Integer literals prove to be quite tedious in L2 as can be seen from some of the
 ```
 
 ### Backquoting
-The `foo` example in the internal representation section shows how tedious writing a function that outputs a symbol can be. The backquote function reduces this tedium. It takes a fragment and a buffer as its argument and, generally, it returns a fragment that makes that fragment. The exception to this rule is that if a sub-expression of its input s-expression is of the form `(, expr0)`, then the fragment `expr0` is inserted verbatim into that position of the output fragment. Backquote can be implemented and used as follows:
+The `foo` example in the internal representation section shows how tedious writing a function that outputs a symbol can be. The backquote function reduces this tedium. It takes a fragment and a buffer as its argument and, generally, it returns a fragment that makes that fragment. The exception to this rule is that if a sub-expression of its input fragment is of the form `(, expr0)`, then the fragment `expr0` is inserted verbatim into that position of the output fragment. Backquote can be implemented and used as follows:
 
 #### backquote.l2
 ```racket
