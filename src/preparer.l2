@@ -15,7 +15,9 @@
 				(until (partial $definitions) [nil? $partial] [@cdr $partial]
 					(if [find (function _ (f ctx) [named-ref= (@ expr-reference $f) (@ expr-reference $ctx)])
 							(& cdr $partial) [@car $partial]]
-						{$handler (sets $err multiple-definition-error (@ expr-name(@ expr-reference[@car $partial])))}
+						(let (dup-ref-name (@ expr-name(@ expr-reference[@car $partial]))) (begin
+							[destroy-buffer $temp-reg]
+							{$handler (sets $err multiple-definition-error $dup-ref-name)}))
 						(begin))))
 			[destroy-buffer $temp-reg]
 			{return $e})))
@@ -24,7 +26,9 @@
 			(let (ref-with-params [cons (@ expr-reference $e) (@ expr-parameters $e) $temp-reg])
 				(until (partial $ref-with-params) [nil? $partial] [@cdr $partial]
 					(if [find (function _ (f ctx) [named-ref= $f $ctx]) (& cdr $partial) [@car $partial]]
-						{$handler (sets $err multiple-definition-error (@ expr-name[@car $partial]))}
+						(let (dup-ref-name (@ expr-name[@car $partial])) (begin
+							[destroy-buffer $temp-reg]
+							{$handler (sets $err multiple-definition-error $dup-ref-name)}))
 						(begin))))
 			[destroy-buffer $temp-reg]
 			{return $e})))
