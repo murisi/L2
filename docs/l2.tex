@@ -1,158 +1,521 @@
-\documentclass[twocolumn,landscape]{article}
+\PassOptionsToPackage{unicode=true}{hyperref} % options for packages loaded elsewhere
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[]{article}
 \usepackage{fullpage}
+\usepackage{lmodern}
+\usepackage{amssymb,amsmath}
+\usepackage{ifxetex,ifluatex}
+\usepackage{fixltx2e} % provides \textsubscript
+\ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provides euro and other symbols
+\else % if luatex or xelatex
+  \usepackage{unicode-math}
+  \defaultfontfeatures{Ligatures=TeX,Scale=MatchLowercase}
+\fi
+% use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+% use microtype if available
+\IfFileExists{microtype.sty}{%
+\usepackage[]{microtype}
+\UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\IfFileExists{parskip.sty}{%
 \usepackage{parskip}
-\usepackage{datetime}
-\usepackage{listings}
-\lstset{breaklines}
+}{% else
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt plus 2pt minus 1pt}
+}
 \usepackage{hyperref}
 \hypersetup{
-  colorlinks = true,
-  linktoc = all,
-}
+            pdfborder={0 0 0},
+            breaklinks=true}
+\urlstyle{same}  % don't use monospace font for urls
+\usepackage{longtable,booktabs}
+% Fix footnotes in tables (requires footnote package)
+\IfFileExists{footnote.sty}{\usepackage{footnote}\makesavenoteenv{longtable}}{}
+\setlength{\emergencystretch}{3em}  % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{0}
+% Redefines (sub)paragraphs to behave more like sections
+\ifx\paragraph\undefined\else
+\let\oldparagraph\paragraph
+\renewcommand{\paragraph}[1]{\oldparagraph{#1}\mbox{}}
+\fi
+\ifx\subparagraph\undefined\else
+\let\oldsubparagraph\subparagraph
+\renewcommand{\subparagraph}[1]{\oldsubparagraph{#1}\mbox{}}
+\fi
+
+% set default figure placement to htbp
+\makeatletter
+\def\fps@figure{htbp}
+\makeatother
+
+
+\date{}
 
 \begin{document}
-  \title{L2}
-  \author{Murisi Tarusenga}
-  \date{\today{} \currenttime}
-  \maketitle
-  \section{Introduction}\label{sec:introduction}
-    L2 is an attempt to find the smallest most distilled programming language equivalent to C. The goal is to turn as much of C's \hyperref[sec:conditional-compilation]{preprocessor directives}, \hyperref[sec:switch-expression]{control structures}, statements, \hyperref[sec:strings]{literals}, and functions requiring compiler assistance (setjmp, longjmp, \hyperref[sec:examples]{alloca}, \hyperref[sec:assume]{assume}, ...) into things definable inside L2 (with perhaps a little assembly). The language does not surject to all of C, its most glaring omission being that of a type-system. However, I reckon the result is still \hyperref[sec:closures]{pretty interesting}.
 
-    The approach taken to achieve this has been to make C's features more composable, more multipurpose, and, at least on one occasion, add a new feature so that a whole group of distinct features could be dropped. In particular, the most striking changes are that C's:
-    \begin{enumerate}
-      \item irregular syntax is replaced by \hyperref[sec:internal-representation]{S-expressions}; because simple syntax composes well with a non-trivial preprocessor (and \hyperref[sec:expression]{no, I have not merely transplanted Common Lisp's macros into C})
-      \item loop constructs are replaced with what I could only describe as \hyperref[sec:with]{a more structured variant of setjmp and longjmp without stack destruction} (and \hyperref[sec:an-optimization]{no, there is no performance overhead associated with this})
-    \end{enumerate}
+\hypertarget{l2}{%
+\section{L2}\label{l2}}
 
-    There are \hyperref[sec:primitive-expressions]{9 language primitives} and for each one of them I describe their syntax, what exactly they do in English, the i386 assembly they translate into, and an example usage of them. Following this comes a brief description of \hyperref[sec:internal-representation]{L2's internal representation and the 9 functions (loosely speaking) that manipulate it}. After that comes a description of how \hyperref[sec:expression]{a non-primitive L2 expression} is compiled. The above descriptions take about 8 pages and are essentially a complete description of L2.
+L2 is an attempt to find the smallest most distilled programming
+language equivalent to C. The goal is to turn as much of C's
+\protect\hyperlink{switch-expression}{control structures}, statements,
+\protect\hyperlink{strings}{literals}, \protect\hyperlink{fields}{data
+structure constructs}, and functions requiring compiler assistance
+(setjmp, longjmp, \protect\hyperlink{examples}{alloca},
+\protect\hyperlink{assume}{assume}, ...) into things definable inside L2
+(with perhaps a little assembly). The language does not surject to all
+of C, its most glaring omission being that of a type-system. However, I
+hope the \protect\hyperlink{examplesreductions}{examples below} will
+convince you that the result is still
+\protect\hyperlink{closures}{pretty interesting}. And if that is not
+enough, I recommend that you take a look at \href{src/compile.l2}{the
+implementation of a self-hosting compiler for L2 that accompanies this
+project} and compare it to \href{bootstrap/compile.c}{the compiler for
+bootstrapping it written in C}.
 
-    Afterwards, there is a \hyperref[sec:examplesreductions]{list of reductions} that shows how some of C's constructs can be defined in terms of L2. Here, I have also demonstrated \hyperref[sec:closures]{closures} to hint at how more exotic things like coroutines and generators are possible using L2's \hyperref[sec:jump]{continuations}. And, finally, this \href{https://github.com/murisi/L2/raw/master/l2.pdf}{README} ends with a description of \hyperref[sec:compilation-library]{my L2 system's compilation library}, a binary interface for compiling L2 code.
+The approach taken to achieve this has been to make C's features more
+composable, more multipurpose, and, at least on one occasion, add a new
+feature so that a whole group of distinct features could be dropped. In
+particular, the most striking changes are that C's:
 
-  \tableofcontents
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  irregular syntax is replaced by
+  \protect\hyperlink{internal-representation}{S-expressions}; because
+  simple syntax composes well with a non-trivial preprocessor (and
+  \protect\hyperlink{expression}{no, I have not merely transplanted
+  Common Lisp's macros into C})
+\item
+  loop constructs are replaced with what I could only describe as
+  \protect\hyperlink{with}{a more structured variant of setjmp and
+  longjmp without stack destruction} (and
+  \protect\hyperlink{an-optimization}{no, there is no performance
+  overhead associated with this})
+\end{enumerate}
 
-  \section{Getting Started}\label{sec:getting-started}
-  \subsection{Building L2}\label{sec:building-l2}
-  \begin{lstlisting}
-./buildl2
-  \end{lstlisting}
-  **My L2 system needs a Linux distribution running on the i386 (or AMD64 with libc6-dev-i386 installed) architecture with the GNU C compiler installed to run successfully.** To build the system, simply run the \lstinline{buildl2} script at the root of the repository. The build should be fast - there are only about 2300 lines of C code to compile. This will create a directory called \lstinline{bin} containing the files \lstinline{l2evaluate}, \lstinline{l2compile.a}, and \lstinline{i386.a}. \lstinline{l2evaluate} is an evaluator of L2 code: it reads in L2 code, compiles it, then executes it. \lstinline{l2compile.a} is the library that the evaluator uses to compile L2 code. \lstinline{i386.a} is a library of instruction wrappers to provide i386 functionality (ADD, SUB, MOV, ...) not exposed by the L2 language.
+There are \protect\hyperlink{expressions}{10 language primitives} and
+for each one of them I describe their syntax, what exactly they do in
+English, the i386 assembly they translate into, and an example usage of
+them. Following this comes a listing of L2's syntactic sugar. Then comes
+a brief description of \protect\hyperlink{internal-representation}{L2's
+internal representation and the 6 functions that manipulate it}. After
+that comes a description of how \protect\hyperlink{meta}{a
+meta-expression} is compiled. The above descriptions take about 8 pages
+and are essentially a complete description of L2. Then at the end there
+is a \protect\hyperlink{examplesreductions}{list of reductions} that
+shows how some of C's constructs can be defined in terms of L2. Here, I
+have also demonstrated \protect\hyperlink{closures}{closures} to hint at
+how more exotic things like coroutines and generators are possible using
+L2's \protect\hyperlink{jump}{continuations}.
 
-  \subsection{The Evaluator}\label{sec:the-evaluator}
-    \begin{lstlisting}
-./bin/l2evaluate libraries.a ... (- inputs.l2 ...) ... - inputs.l2 ...
-    \end{lstlisting}
-    The initial environment, the one that is there before anything is evaluated, comprises 17 functions: \lstinline{lst}, \lstinline{lst?}, \lstinline{fst}, \lstinline{rst}, \lstinline{sexpr}, \lstinline{nil}, \lstinline{nil?}, \lstinline{-<character>-}, \lstinline{<character>?}, \lstinline{begin}, \lstinline{b}, \lstinline{if}, \lstinline{function}, \lstinline{invoke}, \lstinline{with}, \lstinline{continuation}, and \lstinline{jump}. The former 9 are \hyperref[sec:internal-representation]{defined later}. Each one of the latter 8 functions does nothing else but return an s-expression formed by prepending its function name to the list of s-expressions supplied to them. For example, the \lstinline{b} function could have the following definition: \lstinline{(function b (sexprs) [lst [lst [-b-] [nil]] [' sexprs]])}.
+\hypertarget{contents}{%
+\subsubsection{Contents}\label{contents}}
 
-    In this initial environment the L2 evaluator begins by essentially generating machine code for a function whose's behavior is the "concatenation" of the static libraries \lstinline{libraries.a ...}, where static library here means the ordered "concatenation" of the object files (or more precisely, their code segments) within it. This generated code is then loaded into memory, and invoked. Afterwords, the memory reserved for the static libraries is maintained, and the libraries' exported functions are also made available for use throughout the remaining evaluations - we will say that the remaining evaluations happen in this augmented environment.
+\begin{longtable}[]{@{}lll@{}}
+\toprule
+\textbf{\protect\hyperlink{getting-started}{Getting Started}} &
+\protect\hyperlink{expressions}{Expressions} &
+\protect\hyperlink{examplesreductions}{Examples/Reductions}\tabularnewline
+\midrule
+\endhead
+\protect\hyperlink{building-l2}{Building L2} &
+\protect\hyperlink{begin}{Begin} &
+\protect\hyperlink{commenting}{Commenting}\tabularnewline
+\protect\hyperlink{the-compiler}{The Compiler} &
+\protect\hyperlink{literal}{Literal} &
+\protect\hyperlink{dereferencing}{Dereferencing}\tabularnewline
+\textbf{\protect\hyperlink{syntactic-sugar}{Syntactic Sugar}} &
+\protect\hyperlink{reference}{Reference} &
+\protect\hyperlink{numbers}{Numbers}\tabularnewline
+\textbf{\protect\hyperlink{internal-representation}{Internal
+Representation}} & \protect\hyperlink{storage}{Storage} &
+\protect\hyperlink{backquoting}{Backquoting}\tabularnewline
+& \protect\hyperlink{if}{If} &
+\protect\hyperlink{variable-binding}{Variable Binding}\tabularnewline
+& \protect\hyperlink{function}{Function} &
+\protect\hyperlink{boolean-expressions}{Boolean
+Expressions}\tabularnewline
+& \protect\hyperlink{invoke}{Invoke} &
+\protect\hyperlink{switch-expression}{Switch Expression}\tabularnewline
+& \protect\hyperlink{with}{With} &
+\protect\hyperlink{characters}{Characters}\tabularnewline
+& \protect\hyperlink{continuation}{Continuation} &
+\protect\hyperlink{strings}{Strings}\tabularnewline
+& \protect\hyperlink{jump}{Jump} &
+\protect\hyperlink{closures}{Closures}\tabularnewline
+& \protect\hyperlink{meta}{Meta} &
+\protect\hyperlink{assume}{Assume}\tabularnewline
+& & \protect\hyperlink{fields}{Fields}\tabularnewline
+\bottomrule
+\end{longtable}
 
-    For each hyphen argument, the compiler reads the following \lstinline{inputs.l2 ...} until either the next hyphen argument is found or the command line arguments are finished. Each of the files read should be of the form \lstinline{expression1 expression2 ... expressionN}. As the evaluator goes through the files in order, it compiles each \hyperref[sec:expression]{expression} in the current environment and emits the corresponding machine code in the same order as the expressions of the concatenated file. The amalgamated object code is then loaded into memory and executed. The evalutaion of the next set of L2 files happens in this further augmented environment.
+\hypertarget{getting-started}{%
+\subsection{Getting Started}\label{getting-started}}
 
-    If the entire list of arguments ends with a hyphen, then a minus-prompt is displayed. You are expected to enter valid L2 source code. Each time you press Enter, a plus-prompt is printed to elicit you to add to the source code so far read. Pressing Ctrl-D on an empty line tells the evaluator to compile in the environment all the code entered since the last minus prompt, execute it, and augment the environment. The evaluator then returns to minus-prompt state. If Ctrl-C, then Enter is typed in a minus-prompt, the evaluator exits. If this is done instead in a plus-prompt, heretofore uncompiled code is discarded, and the evaluator returns to minus-prompt state.
+\hypertarget{building-l2}{%
+\subsubsection{Building L2}\label{building-l2}}
 
-    \subsubsection{Example}\label{sec:example}
-      \begin{lstlisting}[caption={file1.l2}]
-(function foo (sexprs)
-  (with return (begin
-    [putchar [+ (b 00000000000000000000000001100001) (b 00000000000000000000000000000001)]]
-    {return [lst [lst [-b-] [lst [-e-] [lst [-g-] [lst [-i-] [lst [-n-] [nil]]]]]] [nil]]})))
+\begin{verbatim}
+./build_bootstrap
+./build_selfhost
+\end{verbatim}
 
-[putchar (b 00000000000000000000000001100001)]
-      \end{lstlisting}
-      
-      \begin{lstlisting}[caption={file2.l2}]
+In this project there are two implementations of L2 compilers. One
+implementation is the bootstrap compiler that comprises 3600 lines of C
+code which compiles in under a second. The other implementation is a
+self-hosting compiler written in about 3600 lines of L2 code (the
+meta-program accounts for about 1100 lines and the program accounts for
+the other 2500 lines) which compiles in under 9 seconds. Both of them
+produce identical object code (modulo padding bytes in the ELFs) when
+given identical inputs. \textbf{The bootstrap compiler needs a Linux
+distribution running on the x86-64 architecture with the GNU C compiler
+installed to be compiled successfully.} To build the bootstrap compiler,
+simply run the \texttt{build\_bootstrap} script at the root of the
+repository. This will create a directory called \texttt{bin} containing
+the file \texttt{l2compile}. \texttt{l2compile} is a compiler of L2 code
+and its interface is described in the next section. To build the
+self-hosting compiler, simply run the \texttt{build\_selfhost} script at
+the root of the repository. This will replace \texttt{l2compile} with a
+new compiler that has the same command line interface.
+
+\hypertarget{the-compiler}{%
+\subsubsection{The Compiler}\label{the-compiler}}
+
+\begin{verbatim}
+./bin/l2compile (metaprogram.o | metaprogram.l2) ... - program.l2 ...
+\end{verbatim}
+
+L2 projects are composed of two parts: the program and the metaprogram.
+The program is the end product; the stuff that you want in the output
+binaries. The metaprogram is the code that the compiler delegates to
+during the preprocessing of the program code. The L2 compiler begins by
+loading the metaprogram into memory. For the parts of the metaprogram
+that are object files, the loading is straightforward. For the parts of
+the metaprogram that are L2 files, they cannot simply be compiled and
+loaded as they may also need to be preprocessed. Hence a lazy
+compilation scheme is implemented where an object file exposing the same
+global symbols as the L2 file is loaded, and only later on when one of
+its functions is actually called will the compilation of the
+corresponding L2 code actually be done. The important gain to doing this
+is that the aforementioned compilation now happens in the environment of
+the entire metaprogram, that is, the metaprogram can use its entire self
+to preprocess itself. Once the metaprogram is loaded, its parts are
+linked together and to the compiler's interface for metaprogramming. And
+finally each part of the program is compiled into an object file with
+the assistance of the metaprogram.
+
+\hypertarget{example}{%
+\paragraph{Example}\label{example}}
+
+\hypertarget{file1.l2}{%
+\subparagraph{file1.l2}\label{file1.l2}}
+
+\begin{verbatim}
+(function foo (frag buf) [@fst[get frag]])
+
+\end{verbatim}
+
+\hypertarget{file2.l2}{%
+\subparagraph{file2.l2}\label{file2.l2}}
+
+\begin{verbatim}
 (function bar ()
-  [putchar
-    (b 00000000000000000000000001100011)])
-(foo this text does not matter)
-[putchar
-  (b 00000000000000000000000001100100)]
-      \end{lstlisting}
-      Running \lstinline{./bin/l2evaluate bin/i386.a - file1.l2 - file2.l2} should cause the text "abd" to be printed to standard output. The "a" comes from the last expression of file1.l2. It was printed after the compilation of file1.l2, when it was being loaded into the compiler. Why? Because L2 libraries are executed from top to bottom when they are dynamically loaded (and also when they are statically linked). The "b" comes from within the function in file1.l2. It was executed when the expression \lstinline{(foo this text does not matter)} in file2.l2 was being compiled. Why? Because the \lstinline{foo} causes the compiler to invoke a function called \lstinline{foo} in the environment. The s-expression \lstinline{(this text does not matter)} is the argument to the function \lstinline{foo}, but the function \lstinline{foo} ignores it and returns the s-expression \lstinline{(begin)}. Hence \lstinline{(begin)} replaces \lstinline{(foo this text does not matter)} in \lstinline{file2.l2}. Now \lstinline{file2.l2} is entirely made up of primitive expressions which are compiled in the way specified below. Finally the text "d" is printed. Why? Because file2.l2's last expression is the only one that is side-effectual, does not get replaced during compilation, and (therefore) gets loaded into memory.
+    [putchar (literal 0...01100011)])
+(foo [putchar (literal 0...01100110)])
+[putchar (literal 0...01100100)]
+\end{verbatim}
 
-      Running \lstinline{./bin/l2evaluate bin/i386.a - file1.l2 -} should cause the evaluator to print "a" to standard output for the same reason as above. Now you should be in a minus-prompt. Pasting in the contents of \lstinline{file2.l2}, then pressing Enter followed by Ctrl-D should now cause the evaluator to print the text "bd" for the same reasons as above.
+Running
+\texttt{./bin/l2compile\ "./bin/x86\_64.o"\ file1.l2\ -\ file2.l2}
+should produce an object file file2.o. file2.o when called should invoke
+the function \texttt{putchar} with the ASCII character 'f' and then it
+should invoke the function \texttt{putchar} with the ASCII character
+'d'. And if its function \texttt{bar} should be called, then it will
+call the function \texttt{putchar} with 'c'. Why is it that the first
+invocations happen? Because object code resulting from L2 sources are
+executed from top to bottom when they are called and because the
+expression \texttt{(foo\ {[}putchar\ (literal\ 0...01100110){]})} turned
+into \texttt{{[}putchar\ (literal\ 0...01100110){]}}. Why is it that the
+aforementioned transformation happened? Because
+\texttt{(foo\ {[}putchar\ (literal\ 0...01100110){]})} is a
+meta-expression and by the definition of the language causes the
+function \texttt{foo} in the metaprogram to be called with the fragment
+\texttt{({[}putchar\ (literal\ 0...01100110){]})} as an argument and the
+thing which \texttt{foo} then did was to return the first element of
+this fragment, \texttt{{[}putchar\ (literal\ 0...01100110){]}}, which
+then replaced the original
+\texttt{(foo\ {[}putchar\ (literal\ 0...01100110){]})}.
 
-  \section{Primitive Expressions}
-    \subsection{Begin}\label{sec:begin}
-      \begin{lstlisting}
+\hypertarget{expressions}{%
+\subsection{Expressions}\label{expressions}}
+
+\hypertarget{begin}{%
+\subsubsection{Begin}\label{begin}}
+
+\begin{verbatim}
 (begin expression1 expression2 ... expressionN)
-      \end{lstlisting}
-      Evaluates its subexpressions sequentially from left to right. That is, it evaluates \lstinline{expression1}, then \lstinline{expression2}, and so on, ending with the execution of \lstinline{expressionN}. Specifying zero subexpressions is valid. The return value is unspecified.
+\end{verbatim}
 
-      This expression is implemented by emitting the instructions for \lstinline{expression1}, then emitting the instructions for \lstinline{expression2} immediately afterwords and so on, ending with the emission of \lstinline{expressionN}.
+Evaluates its subexpressions sequentially from left to right. That is,
+it evaluates \texttt{expression1}, then \texttt{expression2}, and so on,
+ending with the execution of \texttt{expressionN}. Specifying zero
+subexpressions is valid. The return value is unspecified.
 
-      Say the expression \lstinline{[foo]} prints the text "foo" to standard output and the expression \lstinline{[bar]} prints the text "bar" to standard output. Then \lstinline{(begin [foo] [bar] [foo] [foo] [foo])} prints the text "foobarfoofoofoo" to standard output.
+This expression is implemented by emitting the instructions for
+\texttt{expression1}, then emitting the instructions for
+\texttt{expression2} immediately afterwords and so on, ending with the
+emission of \texttt{expressionN}.
 
-    \subsection{Binary}\label{sec:binary}
-      \begin{lstlisting}
-(b b31b30...b0)
-      \end{lstlisting}
-      The resulting value is the 32 bit number specified in binary inside the brackets. Specifying less than or more than 32 bits is an error. Useful for implementing character and string literals, and numbers in other bases.
+Say the expression \texttt{{[}foo{]}} prints the text "foo" to standard
+output and the expression \texttt{{[}bar{]}} prints the text "bar" to
+standard output. Then
+\texttt{(begin\ {[}foo{]}\ {[}bar{]}\ {[}foo{]}\ {[}foo{]}\ {[}foo{]})}
+prints the text "foobarfoofoofoo" to standard output.
 
-      This expression is implemented by emitting an instruction to \lstinline{mov} an immediate value into a memory location designated by the surrounding expression.
+\hypertarget{literal}{%
+\subsubsection{Literal}\label{literal}}
 
-      Say the expression \lstinline{[putchar x]} prints the character \lstinline{x}. Then \lstinline{[putchar (b 00000000000000000000000001100001)]} prints the text "a" to standard output.
+\begin{verbatim}
+(literal b63b62...b0)
+\end{verbatim}
 
-    \subsection{Reference}\label{sec:reference}
-      \begin{lstlisting}
+The resulting value is the 64 bit number specified in binary inside the
+brackets. Specifying less than or more than 64 bits is an error. Useful
+for implementing character and string literals, and numbers in other
+bases.
+
+This expression is implemented by emitting an instruction to
+\texttt{mov} an immediate value into a memory location designated by the
+surrounding expression.
+
+Say the expression \texttt{{[}putchar\ x{]}} prints the character
+\texttt{x}. Then \texttt{{[}putchar\ (literal\ 0...01100001){]}} prints
+the text "a" to standard output.
+
+\hypertarget{reference}{%
+\subsubsection{Reference}\label{reference}}
+
+\begin{verbatim}
 reference0
-      \end{lstlisting}
-      The resulting value is the address in memory to which this reference refers.
+\end{verbatim}
 
-      This expression is implemented by the emission of an instruction to \lstinline{lea} of some data into a memory location designated by the surrounding expression.
+The resulting value is the address in memory to which this reference
+refers.
 
-      Say the expression \lstinline{[' x]} evaluates to the value at the reference \lstinline{x} and the expression \lstinline{[set x y]} puts the value \lstinline{y} into the reference \lstinline{x}. Then \lstinline{(begin [set x (b 00000000000000000000000001100001)] [putchar [' x]])} prints the text "a" to standard output.
+This expression is implemented by the emission of an instruction to
+\texttt{lea} of some data into a memory location designated by the
+surrounding expression.
 
-    \subsection{If}\label{sec:if}
-      \begin{lstlisting}
+Say the expression \texttt{{[}get\ x{]}} evaluates to the value at the
+reference \texttt{x} and the expression \texttt{{[}set\ x\ y{]}} puts
+the value \texttt{y} into the reference \texttt{x}. Then
+\texttt{(begin\ {[}set\ x\ (literal\ 0...01100001){]}\ {[}putchar\ {[}get\ x{]}{]})}
+prints the text "a" to standard output.
+
+\hypertarget{storage}{%
+\subsubsection{Storage}\label{storage}}
+
+\begin{verbatim}
+(storage storage0 expression1 expression2 ... expressionN)
+\end{verbatim}
+
+If this expression occurs inside a function, then space enough for
+\texttt{N} contiguous values has already been reserved in its stack
+frame. If it is occuring outside a function, then static memory instead
+has been reserved. \texttt{storage0} is a reference to the beginning of
+this space. This expression evaluates each of its sub-expressions in an
+environment containing \texttt{storage0} and stores the resulting values
+in contiguous locations of memory beginning at \texttt{storage0} in the
+same order as they were specified. The resulting value of this
+expression is \texttt{storage0}.
+
+\texttt{N} contiguous words must be reserved in the current function's
+stack-frame plan. The expression is implemented by first emitting the
+instructions for any of the subexpressions with the location of the
+resulting value fixed to the corresponding reserved word. The same is
+done with the remaining expressions repeatedly until the instructions
+for all the subexpressions have been emitted. And then second emitting
+an instruction to \texttt{lea} of the beginning of the contiguous words
+into a memory location designated by the surrounding expression.
+
+The expression
+\texttt{{[}putchar\ {[}get\ (storage\ \_\ (literal\ 0...01100001)){]}{]}},
+for example, prints the text "a" to standard output.
+
+\hypertarget{if}{%
+\subsubsection{If}\label{if}}
+
+\begin{verbatim}
 (if expression0 expression1 expression2)
-      \end{lstlisting}
-      If \lstinline{expression0} is non-zero, then only \lstinline{expression1} is evaluated and its resulting value becomes that of the whole expression. If \lstinline{expression0} is zero, then only \lstinline{expression2} is evaluated and its resulting value becomes that of the whole expression.
+\end{verbatim}
 
-      This expression is implemented by first emitting an instruction to \lstinline{or} \lstinline{expression0} with itself. Then an instruction to \lstinline{je} to \lstinline{expression2}'s label is emitted. Then the instructions for \lstinline{expression1} are emitted with the location of the resulting value fixed to the same memory address designated for the resulting value of the \lstinline{if} expression. Then an instruction is emitted to \lstinline{jmp} to the end of all the instructions that are emitted for this \lstinline{if} expression. Then the label for \lstinline{expression2} is emitted. Then the instructions for \lstinline{expression2} are emitted with the location of the resulting value fixed to the same memory address designated for the resulting value of the \lstinline{if} expression.
+If \texttt{expression0} is non-zero, then only \texttt{expression1} is
+evaluated and its resulting value becomes that of the whole expression.
+If \texttt{expression0} is zero, then only \texttt{expression2} is
+evaluated and its resulting value becomes that of the whole expression.
 
-      The expression \lstinline{[putchar (if (b 00000000000000000000000000000000) (b 00000000000000000000000001100001) (b 00000000000000000000000001100010))]} prints the text "b" to standard output.
+This expression is implemented by first emitting an instruction to
+\texttt{or} \texttt{expression0} with itself. Then an instruction to
+\texttt{je} to \texttt{expression2}'s label is emitted. Then the
+instructions for \texttt{expression1} are emitted with the location of
+the resulting value fixed to the same memory address designated for the
+resulting value of the \texttt{if} expression. Then an instruction is
+emitted to \texttt{jmp} to the end of all the instructions that are
+emitted for this \texttt{if} expression. Then the label for
+\texttt{expression2} is emitted. Then the instructions for
+\texttt{expression2} are emitted with the location of the resulting
+value fixed to the same memory address designated for the resulting
+value of the \texttt{if} expression.
 
-    \subsection{Function}\label{sec:function}
-      \begin{lstlisting}
+The expression
+\texttt{{[}putchar\ (if\ (literal\ 0...0)\ (literal\ 0...01100001)\ (literal\ 0...01100010)){]}}
+prints the text "b" to standard output.
+
+\hypertarget{function}{%
+\subsubsection{Function}\label{function}}
+
+\begin{verbatim}
 (function function0 (reference1 reference2 ... referenceN) expression0)
-      \end{lstlisting}
-      Makes a function to be invoked with exactly \lstinline{N} arguments. When the function is invoked, \lstinline{expression0} is evaluated in an environment where \lstinline{function0} is a reference to the function itself and \lstinline{reference1}, \lstinline{reference2}, up to \lstinline{referenceN} are references to the resulting values of evaluating the corresponding arguments in the invoke expression invoking this function. Once the evaluation is complete, control flow returns to the invoke expression and the invoke expression's resulting value is the resulting value of evaluating \lstinline{expression0}. The resulting value of this function expression is a reference to the function.
+\end{verbatim}
 
-      This expression is implemented by first emitting an instruction to \lstinline{mov} the address \lstinline{function0} (a label to be emitted later) into the memory location designated by the surrounding expression. Then an instruction is emitted to \lstinline{jmp} to the end of all the instructions that are emitted for this function. Then the label named \lstinline{function0} is emitted. Then instructions to \lstinline{push} each callee-saved register onto the stack are emitted. Then an instruction to push the frame-pointer onto the stack is emitted. Then an instruction to move the value of the stack-pointer into the frame-pointer is emitted. Then an instruction to \lstinline{sub} from the stack-pointer the amount of words reserved on this function's stack-frame is emitted. After this the instructions for \lstinline{expression0} are emitted with the location of the resulting value fixed to a word within the stack-pointer's drop. After this an instruction is emitted to \lstinline{mov} the word from this location into the register \lstinline{eax}. And finally, instructions are emitted to \lstinline{leave} the current function's stack-frame, \lstinline{pop} the callee-save registers, and \lstinline{ret} to the address of the caller.
+Makes a function to be invoked with exactly \texttt{N} arguments. When
+the function is invoked, \texttt{expression0} is evaluated in an
+environment where \texttt{function0} is a reference to the function
+itself and \texttt{reference1}, \texttt{reference2}, up to
+\texttt{referenceN} are references to the resulting values of evaluating
+the corresponding arguments in the invoke expression invoking this
+function. Once the evaluation is complete, control flow returns to the
+invoke expression and the invoke expression's resulting value is the
+resulting value of evaluating \texttt{expression0}. The resulting value
+of this function expression is a reference to the function.
 
-      The expression \lstinline{[putchar [(function my- (a b) [- [' b] [' a]]) (b 00000000000000000000000000000001) (b 00000000000000000000000001100011)]]} prints the text "b" to standard output.
+This expression is implemented by first emitting an instruction to
+\texttt{mov} the address \texttt{function0} (a label to be emitted
+later) into the memory location designated by the surrounding
+expression. Then an instruction is emitted to \texttt{jmp} to the end of
+all the instructions that are emitted for this function. Then the label
+named \texttt{function0} is emitted. Then instructions to \texttt{push}
+each callee-saved register onto the stack are emitted. Then an
+instruction to push the frame-pointer onto the stack is emitted. Then an
+instruction to move the value of the stack-pointer into the
+frame-pointer is emitted. Then an instruction to \texttt{sub} from the
+stack-pointer the amount of words reserved on this function's
+stack-frame is emitted. After this the instructions for
+\texttt{expression0} are emitted with the location of the resulting
+value fixed to a word within the stack-pointer's drop. After this an
+instruction is emitted to \texttt{mov} the word from this location into
+the register \texttt{eax}. And finally, instructions are emitted to
+\texttt{leave} the current function's stack-frame, \texttt{pop} the
+callee-save registers, and \texttt{ret} to the address of the caller.
 
-    \subsection{Invoke}\label{sec:invoke}
-      \begin{lstlisting}
+The expression
+\texttt{{[}putchar\ {[}(function\ my-\ (a\ b)\ {[}-\ {[}get\ b{]}\ {[}get\ a{]}{]})\ (literal\ 0...01)\ (literal\ 0...01100011){]}{]}}
+prints the text "b" to standard output.
+
+\hypertarget{invoke}{%
+\subsubsection{Invoke}\label{invoke}}
+
+\begin{verbatim}
 (invoke function0 expression1 expression2 ... expressionN)
 [function0 expression1 expression2 ... expressionN]
-      \end{lstlisting}
-      Both the above expressions are equivalent. Evaluates \lstinline{function0}, \lstinline{expression1}, \lstinline{expression2}, up to \lstinline{expressionN} in an unspecified order and then invokes \lstinline{function0}, a reference to a function, providing it with the resulting values of evaluating \lstinline{expression1} up to \lstinline{expressionN}, in order. The resulting value of this expression is determined by the function being invoked.
+\end{verbatim}
 
-      \lstinline{N+1} words must be reserved in the current function's stack-frame plan. The expression is implemented by emitting the instructions for any of the subexpressions with the location of the resulting value fixed to the corresponding reserved word. The same is done with the remaining expressions repeatedly until the instructions for all the subexpressions have been emitted. Then an instruction to \lstinline{push} the last reserved word onto the stack is emitted, followed by the second last, and so on, ending with an instruction to \lstinline{push} the first reserved word onto the stack. A \lstinline{call} instruction with the zeroth reserved word as the operand is then emitted. Note that L2 expects registers \lstinline{esp}, \lstinline{ebp}, \lstinline{ebx}, \lstinline{esi}, and \lstinline{edi} to be preserved across \lstinline{call}s. An \lstinline{add} instruction that pops N words off the stack is then emitted. Then an instruction is emitted to \lstinline{mov} the register \lstinline{eax} into a memory location designated by the surrounding expression.
+Both the above expressions are equivalent. Evaluates \texttt{function0},
+\texttt{expression1}, \texttt{expression2}, up to \texttt{expressionN}
+in an unspecified order and then invokes \texttt{function0}, a reference
+to a function, providing it with the resulting values of evaluating
+\texttt{expression1} up to \texttt{expressionN}, in order. The resulting
+value of this expression is determined by the function being invoked.
 
-      A function with the reference \lstinline{-} that returns the value of subtracting its second parameter from its first could be defined as follows:
-      \begin{lstlisting}
+\texttt{N+1} words must be reserved in the current function's
+stack-frame plan. The expression is implemented by emitting the
+instructions for any of the subexpressions with the location of the
+resulting value fixed to the corresponding reserved word. The same is
+done with the remaining expressions repeatedly until the instructions
+for all the subexpressions have been emitted. Then an instruction to
+\texttt{push} the last reserved word onto the stack is emitted, followed
+by the second last, and so on, ending with an instruction to
+\texttt{push} the first reserved word onto the stack. A \texttt{call}
+instruction with the zeroth reserved word as the operand is then
+emitted. Note that L2 expects registers \texttt{esp}, \texttt{ebp},
+\texttt{ebx}, \texttt{esi}, and \texttt{edi} to be preserved across
+\texttt{call}s. An \texttt{add} instruction that pops N words off the
+stack is then emitted. Then an instruction is emitted to \texttt{mov}
+the register \texttt{eax} into a memory location designated by the
+surrounding expression.
+
+A function with the reference \texttt{-} that returns the value of
+subtracting its second parameter from its first could be defined as
+follows:
+
+\begin{verbatim}
 -:
 movl 4(%esp), %eax
 subl 8(%esp), %eax
 ret
-      \end{lstlisting}
-      The following invocation of it, \lstinline{(invoke putchar (invoke - (b 00000000000000000000000001100011) (b 00000000000000000000000000000001)))}, prints the text "b" to standard output.
+\end{verbatim}
 
-    \subsection{With}\label{sec:with}
-      \begin{lstlisting}
+The following invocation of it,
+\texttt{(invoke\ putchar\ (invoke\ -\ (literal\ 0...01100011)\ (literal\ 0...01)))},
+prints the text "b" to standard output.
+
+\hypertarget{with}{%
+\subsubsection{With}\label{with}}
+
+\begin{verbatim}
 (with continuation0 expression0)
-      \end{lstlisting}
-      Makes a continuation to the containing expression that is to be \lstinline{jump}ed to with exactly one argument. Then \lstinline{expression0} is evaluated in an environment where \lstinline{continuation0} is a reference to the aforementioned continuation. The resulting value of this expression is unspecified if the evaluation of \lstinline{expression0} completes. If the continuation \lstinline{continuation0} is \lstinline{jump}ed to, then this \lstinline{with} expression evaluates to the resulting value of the single argument within the responsible \lstinline{jump} expression.
+\end{verbatim}
 
-      5+1 words must be reserved in the current function's stack-frame plan. Call the reference to the first word of the reservation \lstinline{continuation0}. This expression is implemented by first emitting instructions to store the program's state at \lstinline{continuation0}, that is, instructions are emitted to \lstinline{mov} \lstinline{ebp}, the address of the instruction that should be executed after continuing (a label to be emitted later), \lstinline{edi}, \lstinline{esi}, and \lstinline{ebx}, in that order, to the first 5 words at \lstinline{continuation0}. After this, the instructions for \lstinline{expression0} are emitted. Then the label for the first instruction of the continuation is emitted. And finally, an instruction is emitted to \lstinline{mov} the resulting value of the continuation, the 6th word at \lstinline{continuation0}, into the memory location designated by the surrounding expression.
+Makes a continuation to the containing expression that is to be
+\texttt{jump}ed to with exactly one argument. Then \texttt{expression0}
+is evaluated in an environment where \texttt{continuation0} is a
+reference to the aforementioned continuation. The resulting value of
+this expression is unspecified if the evaluation of \texttt{expression0}
+completes. If the continuation \texttt{continuation0} is \texttt{jump}ed
+to, then this \texttt{with} expression evaluates to the resulting value
+of the single argument within the responsible \texttt{jump} expression.
 
-      \subsubsection{Examples}\label{sec:examples}
-        Note that the expression \lstinline!{continuation0 expression0}! \lstinline{jump}s to the continuation reference given by \lstinline{continuation0} with resulting value of evaluating \lstinline{expression0} as its argument. With the note in mind, the expression \lstinline!(begin [putchar (with ignore (begin {ignore (b 00000000000000000000000001001110)} [foo] [foo] [foo]))] [bar])! prints the text "nbar" to standard output.
+5+1 words must be reserved in the current function's stack-frame plan.
+Call the reference to the first word of the reservation
+\texttt{continuation0}. This expression is implemented by first emitting
+instructions to store the program's state at \texttt{continuation0},
+that is, instructions are emitted to \texttt{mov} \texttt{ebp}, the
+address of the instruction that should be executed after continuing (a
+label to be emitted later), \texttt{edi}, \texttt{esi}, and
+\texttt{ebx}, in that order, to the first 5 words at
+\texttt{continuation0}. After this, the instructions for
+\texttt{expression0} are emitted. Then the label for the first
+instruction of the continuation is emitted. And finally, an instruction
+is emitted to \texttt{mov} the resulting value of the continuation, the
+6th word at \texttt{continuation0}, into the memory location designated
+by the surrounding expression.
 
-        The following assembly function \lstinline{allocate} receives the number of bytes it is to allocate as its first argument, allocates that memory, and passes the initial address of this memory as the single argument to the continuation it receives as its second argument.
-        \begin{lstlisting}
+\hypertarget{examples}{%
+\paragraph{Examples}\label{examples}}
+
+Note that the expression \texttt{\{continuation0\ expression0\}}
+\texttt{jump}s to the continuation reference given by
+\texttt{continuation0} with resulting value of evaluating
+\texttt{expression0} as its argument. With the note in mind, the
+expression
+\texttt{(begin\ {[}putchar\ (with\ ignore\ (begin\ \{ignore\ (literal\ 0...01001110)\}\ {[}foo{]}\ {[}foo{]}\ {[}foo{]})){]}\ {[}bar{]})}
+prints the text "nbar" to standard output.
+
+The following assembly function \texttt{allocate} receives the number of
+bytes it is to allocate as its first argument, allocates that memory,
+and passes the initial address of this memory as the single argument to
+the continuation it receives as its second argument.
+
+\begin{verbatim}
 allocate:
 /* All sanctioned by L2 ABI: */
 movl 8(%esp), %ecx
@@ -164,460 +527,885 @@ subl 4(%esp), %esp
 andl $0xFFFFFFFC, %esp
 movl %esp, 20(%ecx)
 jmp *4(%ecx)
-        \end{lstlisting}
-        The following usage of it, \lstinline{(with dest [allocate (b 00000000000000000000000000000011) dest])}, evaluates to the address of the allocated memory. If allocate had just decreased \lstinline{esp} and returned, it would have been invalid because L2 expects functions to preserve \lstinline{esp}.
+\end{verbatim}
 
-    \subsection{Continuation}\label{sec:continuation}
-      \begin{lstlisting}
+The following usage of it,
+\texttt{(with\ dest\ {[}allocate\ (literal\ 0...011)\ dest{]})},
+evaluates to the address of the allocated memory. If allocate had just
+decreased \texttt{esp} and returned, it would have been invalid because
+L2 expects functions to preserve \texttt{esp}.
+
+\hypertarget{continuation}{%
+\subsubsection{Continuation}\label{continuation}}
+
+\begin{verbatim}
 (continuation continuation0 (reference1 reference2 ... referenceN) expression0)
-      \end{lstlisting}
-      Makes a continuation to be \lstinline{jump}ed to with exactly \lstinline{N} arguments. When the continuation is \lstinline{jump}ed to, \lstinline{expression0} is evaluated in an environment where \lstinline{continuation0} is a reference to the continuation itself and \lstinline{reference1}, \lstinline{reference2}, up to \lstinline{referenceN} are references to the resulting values of evaluating the corresponding arguments in the \lstinline{jump} expression \lstinline{jump}ing to this function. Undefined behavior occurs if the evaluation of \lstinline{expression0} completes - i.e. programmer must direct the control flow out of \lstinline{continuation0} somewhere within \lstinline{expression0}. The resulting value of this \lstinline{continuation} expression is a reference to the continuation.
+\end{verbatim}
 
-      5+N words must be reserved in the current function's stack-frame plan. Call the reference to the first word of the reservation \lstinline{continuation0}. This expression is implemented by first emitting an instruction to \lstinline{mov} the reference \lstinline{continuation0} into the memory location designated by the surrounding expression. Instructions are then emitted to store the program's state at \lstinline{continuation0}, that is, instructions are emitted to \lstinline{mov} \lstinline{ebp}, the address of the instruction that should be executed after continuing (a label to be emitted later), \lstinline{edi}, \lstinline{esi}, and \lstinline{ebx}, in that order, to the first 5 words at \lstinline{continuation0}. Then an instruction is emitted to \lstinline{jmp} to the end of all the instructions that are emitted for this \lstinline{continuation} expression. Then the label for the first instruction of the continuation is emitted. After this the instructions for \lstinline{expression0} are emitted.
+Makes a continuation to be \texttt{jump}ed to with exactly \texttt{N}
+arguments. When the continuation is \texttt{jump}ed to,
+\texttt{expression0} is evaluated in an environment where
+\texttt{continuation0} is a reference to the continuation itself and
+\texttt{reference1}, \texttt{reference2}, up to \texttt{referenceN} are
+references to the resulting values of evaluating the corresponding
+arguments in the \texttt{jump} expression \texttt{jump}ing to this
+function. Undefined behavior occurs if the evaluation of
+\texttt{expression0} completes - i.e. programmer must direct the control
+flow out of \texttt{continuation0} somewhere within
+\texttt{expression0}. The resulting value of this \texttt{continuation}
+expression is a reference to the continuation.
 
-      The expression \lstinline!{(continuation forever (a b) (begin [putchar [' a]] [putchar [' b]] {forever [- [' a] (b 00000000000000000000000000000001)] [- [' b] (b 00000000000000000000000000000001)]})) (b 00000000000000000000000001011010) (b 00000000000000000000000001111010)}! prints the text "ZzYyXxWw"... to standard output.
+5+N words must be reserved in the current function's stack-frame plan.
+Call the reference to the first word of the reservation
+\texttt{continuation0}. This expression is implemented by first emitting
+an instruction to \texttt{mov} the reference \texttt{continuation0} into
+the memory location designated by the surrounding expression.
+Instructions are then emitted to store the program's state at
+\texttt{continuation0}, that is, instructions are emitted to
+\texttt{mov} \texttt{ebp}, the address of the instruction that should be
+executed after continuing (a label to be emitted later), \texttt{edi},
+\texttt{esi}, and \texttt{ebx}, in that order, to the first 5 words at
+\texttt{continuation0}. Then an instruction is emitted to \texttt{jmp}
+to the end of all the instructions that are emitted for this
+\texttt{continuation} expression. Then the label for the first
+instruction of the continuation is emitted. After this the instructions
+for \texttt{expression0} are emitted.
 
-    \subsection{Jump}\label{sec:jump}
-      \begin{lstlisting}
+The expression
+\texttt{\{(continuation\ forever\ (a\ b)\ (begin\ {[}putchar\ {[}get\ a{]}{]}\ {[}putchar\ {[}get\ b{]}{]}\ \{forever\ {[}-\ {[}get\ a{]}\ (literal\ 0...01){]}\ {[}-\ {[}get\ b{]}\ (literal\ 0...01){]}\}))\ (literal\ 0...01011010)\ (literal\ 0...01111010)\}}
+prints the text "ZzYyXxWw"... to standard output.
+
+\hypertarget{jump}{%
+\subsubsection{Jump}\label{jump}}
+
+\begin{verbatim}
 (jump continuation0 expression1 expression2 ... expressionN)
 {continuation0 expression1 expression2 ... expressionN}
-      \end{lstlisting}
-      Both the above expressions are equivalent. Evaluates \lstinline{continuation0}, \lstinline{expression1}, \lstinline{expression2}, up to \lstinline{expressionN} in an unspecified order and then \lstinline{jump}s to \lstinline{continuation0}, a reference to a continuation, providing it with a local copies of \lstinline{expression1} up to \lstinline{expressionN} in order. The resulting value of this expression is unspecified.
+\end{verbatim}
 
-      \lstinline{N+1} words must be reserved in the current function's stack-frame plan. The expression is implemented by emitting the instructions for any of the subexpressions with the location of the resulting value fixed to the corresponding reserved word. The same is done with the remaining expressions repeatedly until the instructions for all the subexpressions have been emitted. Then an instruction to \lstinline{mov} the first reserved word to 5 words from the beginning of the continuation is emitted, followed by an instruction to \lstinline{mov} the second reserved word to an address immediately after that, and so on, ending with an instruction to \lstinline{mov} the last reserved word into the last memory address of that area. The program's state, that is, \lstinline{ebp}, the address of the instruction that should be executed after continuing, \lstinline{edi}, \lstinline{esi}, and \lstinline{ebx}, in that order, are what is stored at the beginning of a continuation. Instructions to \lstinline{mov} these values from the buffer into the appropriate registers and then set the program counter appropriately are, at last, emitted.
+Both the above expressions are equivalent. Evaluates
+\texttt{continuation0}, \texttt{expression1}, \texttt{expression2}, up
+to \texttt{expressionN} in an unspecified order and then \texttt{jump}s
+to \texttt{continuation0}, a reference to a continuation, providing it
+with a local copies of \texttt{expression1} up to \texttt{expressionN}
+in order. The resulting value of this expression is unspecified.
 
-      The expression \lstinline{(begin (with cutter (jump (continuation cuttee () (begin [bar] [bar] (jump cutter (b 00000000000000000000000000000000)) [bar] [bar] [bar])))) [foo])} prints the text "barbarfoo" to standard output.
+\texttt{N+1} words must be reserved in the current function's
+stack-frame plan. The expression is implemented by emitting the
+instructions for any of the subexpressions with the location of the
+resulting value fixed to the corresponding reserved word. The same is
+done with the remaining expressions repeatedly until the instructions
+for all the subexpressions have been emitted. Then an instruction to
+\texttt{mov} the first reserved word to 5 words from the beginning of
+the continuation is emitted, followed by an instruction to \texttt{mov}
+the second reserved word to an address immediately after that, and so
+on, ending with an instruction to \texttt{mov} the last reserved word
+into the last memory address of that area. The program's state, that is,
+\texttt{ebp}, the address of the instruction that should be executed
+after continuing, \texttt{edi}, \texttt{esi}, and \texttt{ebx}, in that
+order, are what is stored at the beginning of a continuation.
+Instructions to \texttt{mov} these values from the buffer into the
+appropriate registers and then set the program counter appropriately
+are, at last, emitted.
 
-      \subsubsection{An Optimization}\label{sec:an-optimization}
-        Looking at the examples above where the continuation reference does not escape, \lstinline{(with reference0 expression0)} behaves a lot like the pseudo-assembly \lstinline{expression0 reference0:} and \lstinline{(continuation reference0 (...) expression0)} behaves a lot like \lstinline{reference0: expression0}. To be more precise, when references to a particular continuation only occur as the \lstinline{continuation0} subexpression of a \lstinline{jump} statement, we know that the continuation is constrained to the function in which it is declared, and hence there is no need to store or restore \lstinline{ebp}, \lstinline{edi}, \lstinline{esi}, and \lstinline{ebx}. Continuations, then, are how efficient iteration is achieved in L2.
+The expression
+\texttt{(begin\ (with\ cutter\ (jump\ (continuation\ cuttee\ ()\ (begin\ {[}bar{]}\ {[}bar{]}\ (jump\ cutter\ (literal\ 0...0))\ {[}bar{]}\ {[}bar{]}\ {[}bar{]}))))\ {[}foo{]})}
+prints the text "barbarfoo" to standard output.
 
-  \section{Internal Representation}\label{sec:internal-representation}
-    After substituting out the syntactic sugar used for the \lstinline{invoke} and \lstinline{jump} expressions. We find that all L2 programs are just compositions of the \lstinline{<pre-s-expression>}s: \lstinline{<symbol>} and \lstinline{(<pre-s-expression> <pre-s-expression> ... <pre-s-expression>)}. If we now replace every symbol with a list of its characters so that for example \lstinline{foo} becomes \lstinline{(f o o)}, we now find that all L2 programs are now just compositions of the \lstinline{<s-expression>}s \lstinline{<character>} and \lstinline{(<s-expression> <s-expression> ... <s-expression>)}. The following functions that manipulate these s-expressions are not part of the L2 language and hence the compiler does not give references to them special treatment during compilation. However, when compiled code is loaded into an L2 compiler, undefined references to these functions are to be dynamically resolved.
+\hypertarget{an-optimization}{%
+\paragraph{An Optimization}\label{an-optimization}}
 
-    \subsection{\lstinline{[lst x y]}}
-      \lstinline{x} must be a s-expression and \lstinline{y} a list.
+Looking at the examples above where the continuation reference does not
+escape, \texttt{(with\ reference0\ expression0)} behaves a lot like the
+pseudo-assembly \texttt{expression0\ reference0:} and
+\texttt{(continuation\ reference0\ (...)\ expression0)} behaves a lot
+like \texttt{reference0:\ expression0}. To be more precise, when
+references to a particular continuation only occur as the
+\texttt{continuation0} subexpression of a \texttt{jump} statement, we
+know that the continuation is constrained to the function in which it is
+declared, and hence there is no need to store or restore \texttt{ebp},
+\texttt{edi}, \texttt{esi}, and \texttt{ebx}. Continuations, then, are
+how efficient iteration is achieved in L2.
 
-      Makes a list where \lstinline{x} is first and \lstinline{y} is the rest.
+\hypertarget{syntactic-sugar}{%
+\subsection{Syntactic Sugar}\label{syntactic-sugar}}
 
-      Say the s-expression \lstinline{foo} is stored at \lstinline{a} and the list \lstinline{(bar)} is stored at \lstinline{b}. Then \lstinline{[lst [' a] [' b]]} is the s-expression \lstinline{(foo bar)}.
-    \subsection{\lstinline{[lst? x]}}
-      \lstinline{x} must be a s-expression.
+\hypertarget{ux24a1...an}{%
+\subsubsection{\texorpdfstring{\texttt{\$a1...aN}}{\$a1...aN}}\label{ux24a1...an}}
 
-      Evaluates to the complement of zero if \lstinline{x} is also list. Otherwise evaluates to zero.
+In what follows, it is assumed that \texttt{\$a1...aN} is not part of a
+larger string. If \texttt{\$a1...aN} is simply a \texttt{\$}, then it
+remains unchanged. Otherwise at least a character follows the
+\texttt{\$}; in this case \texttt{\$a1...aN} turns into
+\texttt{(\$\ a1...aN)}.
 
-      Say the s-expression \lstinline{foo} is stored at \lstinline{a}. Then \lstinline{[lst? [' a]]} evaluates to \lstinline{(b 11111111111111111111111111111111)}.
-    \subsection{\lstinline{[fst x]}}
-      \lstinline{x} must be a list.
+For example, the expression \texttt{\$\$hello\$bye} turns into
+\texttt{(\$\ \$hello\$bye)} which turns into
+\texttt{(\$\ (\$\ hello\$bye))}
 
-      Evaluates to a s-expression that is the first of \lstinline{x}.
+\hypertarget{ux5cux23a1...anux2c-ux2ca1...anux2c-ux60a1...an}{%
+\subsubsection{\texorpdfstring{\texttt{\#a1...aN}, \texttt{,a1...aN},
+\texttt{\textasciigrave{}a1...aN}}{\#a1...aN, ,a1...aN, `a1...aN}}\label{ux5cux23a1...anux2c-ux2ca1...anux2c-ux60a1...an}}
 
-      Say the list \lstinline{foo} is stored at \lstinline{a}. Then \lstinline{[fst [' a]]} is the s-expression \lstinline{a}. This \lstinline{a} is not a list but is a character.
-    \subsection{\lstinline{[rst x]}}
-      \lstinline{x} must be a list.
+Analogous transformations to the one for \texttt{\$a1...aN} happen.
 
-      Evaluates to a list that is the rest of \lstinline{x}.
+\hypertarget{internal-representation}{%
+\subsection{Internal Representation}\label{internal-representation}}
 
-      Say the list \lstinline{foo} is stored at \lstinline{a}. Then \lstinline{[rst [' a]]} is the s-expression \lstinline{oo}.
-    \subsection{\lstinline{[sexpr x]}}
-      \lstinline{x} must be a list.
+After substituting out the syntactic sugar defined in the
+\protect\hyperlink{invoke}{invoke}, \protect\hyperlink{jump}{jump}, and
+\protect\hyperlink{syntactic-sugar}{syntactic sugar} sections, we find
+that all L2 programs are just fragments where a fragment is either a
+symbol or a list of fragments. And furthermore, every symbol can be seen
+as a list of its characters so that for example \texttt{foo} becomes
+\texttt{(f\ o\ o)}. The following functions that manipulate these
+fragments are not part of the L2 language and hence the compiler does
+not give references to them special treatment during compilation.
+However, when they are used in an L2 meta-program, undefined references
+to these functions are to be resolved by the compiler.
 
-      Evaluates to an s-expression wrapper of \lstinline{x}.
+\hypertarget{ux7bux5bux7dlst-x-y-bux7bux5dux7d}{%
+\subsubsection{\texorpdfstring{\texttt{{[}lst\ x\ y\ b{]}}}{{[}lst x y b{]}}}\label{ux7bux5bux7dlst-x-y-bux7bux5dux7d}}
 
-      Say the s-expression \lstinline{foo} is stored at \lstinline{a} and \lstinline{(bar)} is stored at \lstinline{b}. Then \lstinline{[lst [sexpr [rst [' a]]] [' b]]} is the s-expression \lstinline{(oo bar)}. Note that without the \lstinline{sexpr} invocation, the preconditions of \lstinline{lst} would be violated.
-    \subsection{\lstinline{[nil]}}
-      Evaluates to the empty list.
+\texttt{y} must be a list and \texttt{b} a buffer.
 
-      Say the s-expression \lstinline{foo} is stored at \lstinline{a}. Then \lstinline{[lst [' a] [nil]]} is the s-expression \lstinline{(foo)}.
-    \subsection{\lstinline{[nil? x]}}
-      \lstinline{x} must be a list.
+Makes a list where \texttt{x} is first and \texttt{y} is the rest in the
+buffer \texttt{b}.
 
-      Evaluates to the complement of zero if \lstinline{x} is the empty list. Otherwise evaluates to zero.
+Say the fragment \texttt{foo} is stored at \texttt{a} and the list
+\texttt{(bar)} is stored at \texttt{b}. Then
+\texttt{{[}lst\ {[}get\ a{]}\ {[}get\ b{]}{]}} is the fragment
+\texttt{(foo\ bar)}.
 
-      Say the s-expression \lstinline{((foo bar bar bar))} is stored at \lstinline{x}. Then \lstinline{[nil? [rst [' x]]]} evaluates to \lstinline{(b 11111111111111111111111111111111)}.
-    \subsection{\lstinline{[-<character>-]}}
-      Evaluates to the character \lstinline{<character>}.
+\hypertarget{ux7bux5bux7dsymbolux3f-xux7bux5dux7d}{%
+\subsubsection{\texorpdfstring{\texttt{{[}symbol?\ x{]}}}{{[}symbol? x{]}}}\label{ux7bux5bux7dsymbolux3f-xux7bux5dux7d}}
 
-      The expression \lstinline{[lst [-f-] [lst [-o-] [lst [-o-] [nil]]]]} evaluates to the s-expression \lstinline{foo}.
-    \subsection{\lstinline{[<character>? x]}}
-      \lstinline{x} must be a s-expression.
+\texttt{x} must be a fragment.
 
-      Evaluates to the complement of zero if \lstinline{x} is the character <character>. Otherwise evaluates to zero.
+Evaluates to the one if \texttt{x} is also a symbol. Otherwise evaluates
+to zero.
 
-      Say the s-expression \lstinline{(foo (bar bar) foo foo)} is stored at \lstinline{x}. Then \lstinline{[m? [' x]]} evaluates to \lstinline{(b 00000000000000000000000000000000)}.
+Say the fragment \texttt{foo} is stored at \texttt{a}. Then
+\texttt{{[}symbol?\ {[}get\ a{]}{]}} evaluates to
+\texttt{(literal\ 0...01)}.
 
-  \section{Expression}\label{sec:expression}
-    \begin{lstlisting}
+\hypertarget{ux7bux5bux7dux40fst-xux7bux5dux7d}{%
+\subsubsection{\texorpdfstring{\texttt{{[}@fst\ x{]}}}{{[}@fst x{]}}}\label{ux7bux5bux7dux40fst-xux7bux5dux7d}}
+
+\texttt{x} must be a list.
+
+Evaluates to the first of \texttt{x}.
+
+Say the list \texttt{foo} is stored at \texttt{a}. Then
+\texttt{{[}@fst\ {[}get\ a{]}{]}} is the character \texttt{f}. This
+\texttt{f} is not a list but is a character.
+
+\hypertarget{ux7bux5bux7dux40rst-xux7bux5dux7d}{%
+\subsubsection{\texorpdfstring{\texttt{{[}@rst\ x{]}}}{{[}@rst x{]}}}\label{ux7bux5bux7dux40rst-xux7bux5dux7d}}
+
+\texttt{x} must be a list.
+
+Evaluates to a list that is the rest of \texttt{x}.
+
+Say the list \texttt{foo} is stored at \texttt{a}. Then
+\texttt{{[}@rst\ {[}get\ a{]}{]}} is the fragment \texttt{oo}.
+
+\hypertarget{emt}{%
+\subsubsection{\texorpdfstring{\texttt{emt}}{emt}}\label{emt}}
+
+Evaluates to the empty list.
+
+Say the fragment \texttt{foo} is stored at \texttt{a}. Then
+\texttt{{[}lst\ {[}get\ a{]}\ emt{]}} is the fragment \texttt{(foo)}.
+
+\hypertarget{ux7bux5bux7demtux3f-xux7bux5dux7d}{%
+\subsubsection{\texorpdfstring{\texttt{{[}emt?\ x{]}}}{{[}emt? x{]}}}\label{ux7bux5bux7demtux3f-xux7bux5dux7d}}
+
+\texttt{x} must be a list.
+
+Evaluates to the one if \texttt{x} is the empty list. Otherwise
+evaluates to zero.
+
+\texttt{{[}emt?\ emt{]}} evaluates to \texttt{(literal\ 0...01)}.
+
+\hypertarget{-ux5ctextlessux7bux7dcharacterux5ctextgreaterux7bux7d-}{%
+\subsubsection{\texorpdfstring{\texttt{-\textless{}character\textgreater{}-}}{-\textless{}character\textgreater{}-}}\label{-ux5ctextlessux7bux7dcharacterux5ctextgreaterux7bux7d-}}
+
+Evaluates to the character \texttt{\textless{}character\textgreater{}}.
+
+Say that a buffer is stored at \texttt{b}. Then the expression
+\texttt{{[}lst\ -f-\ {[}lst\ -o-\ {[}lst\ -o-\ emt\ {[}get\ b{]}{]}\ {[}get\ b{]}{]}\ {[}get\ b{]}{]}}
+evaluates to the fragment \texttt{foo}.
+
+\hypertarget{ux7bux5bux7dchar=-x-yux7bux5dux7d}{%
+\subsubsection{\texorpdfstring{\texttt{{[}char=\ x\ y{]}}}{{[}char= x y{]}}}\label{ux7bux5bux7dchar=-x-yux7bux5dux7d}}
+
+\texttt{x} and \texttt{y} must be characters.
+
+Evaluates to one if \texttt{x} is the same character as \texttt{y},
+otherwise it evaluates to zero.
+
+Say the character \texttt{d} is stored at both \texttt{x} and
+\texttt{y}. Then \texttt{{[}char=\ {[}get\ x{]}\ {[}get\ y{]}{]}}
+evaluates to \texttt{(literal\ 0...01)}.
+
+\hypertarget{ux7bux5bux7dbegin-x-bux7bux5dux7d}{%
+\subsubsection{\texorpdfstring{\texttt{{[}begin\ x\ b{]}}}{{[}begin x b{]}}}\label{ux7bux5bux7dbegin-x-bux7bux5dux7d}}
+
+\texttt{x} must be a list of fragments and \texttt{b} a buffer.
+
+Evaluates to an fragment formed by prepending the symbol \texttt{begin}
+to \texttt{x}. The \texttt{begin} function could have the following
+definition:
+\texttt{(function\ begin\ (frags\ b)\ {[}lst\ {[}lst\ -b-\ {[}lst\ -e-\ {[}lst\ -g-\ {[}lst\ -i-\ {[}lst\ -n-\ emt\ {[}get\ b{]}{]}\ {[}get\ b{]}{]}\ {[}get\ b{]}{]}\ {[}get\ b{]}{]}\ {[}get\ b{]}{]}\ {[}get\ frags{]}\ {[}get\ b{]}{]})}.
+
+\hypertarget{ux7bux5bux7dliteral-x-bux7bux5dux7dux2c-ux7bux5bux7dstorage-x-bux7bux5dux7dux2c-ux7bux5bux7dif-x-bux7bux5dux7dux2c-ux7bux5bux7dfunction-x-bux7bux5dux7dux2c-ux7bux5bux7dinvoke-x-bux7bux5dux7dux2c-ux7bux5bux7dwith-x-bux7bux5dux7dux2c-ux7bux5bux7dcontinuation-x-bux7bux5dux7dux2c-ux7bux5bux7djump-x-bux7bux5dux7d}{%
+\subsubsection{\texorpdfstring{\texttt{{[}literal\ x\ b{]}},
+\texttt{{[}storage\ x\ b{]}}, \texttt{{[}if\ x\ b{]}},
+\texttt{{[}function\ x\ b{]}}, \texttt{{[}invoke\ x\ b{]}},
+\texttt{{[}with\ x\ b{]}}, \texttt{{[}continuation\ x\ b{]}},
+\texttt{{[}jump\ x\ b{]}}}{{[}literal x b{]}, {[}storage x b{]}, {[}if x b{]}, {[}function x b{]}, {[}invoke x b{]}, {[}with x b{]}, {[}continuation x b{]}, {[}jump x b{]}}}\label{ux7bux5bux7dliteral-x-bux7bux5dux7dux2c-ux7bux5bux7dstorage-x-bux7bux5dux7dux2c-ux7bux5bux7dif-x-bux7bux5dux7dux2c-ux7bux5bux7dfunction-x-bux7bux5dux7dux2c-ux7bux5bux7dinvoke-x-bux7bux5dux7dux2c-ux7bux5bux7dwith-x-bux7bux5dux7dux2c-ux7bux5bux7dcontinuation-x-bux7bux5dux7dux2c-ux7bux5bux7djump-x-bux7bux5dux7d}}
+
+These functions are analogous to \texttt{begin}.
+
+\hypertarget{expressions-continued}{%
+\subsection{Expressions Continued}\label{expressions-continued}}
+
+\hypertarget{meta}{%
+\subsubsection{Meta}\label{meta}}
+
+\begin{verbatim}
 (function0 expression1 ... expressionN)
-    \end{lstlisting}
-    If the above expression is not a \hyperref[sec:primitive-expressions]{primitive expression}, then \lstinline{function0} is evaluated in the environment. The resulting value of this evaluation is then invoked with the (unevaluated) list of \hyperref[sec:internal-representation]{s-expressions} \lstinline{(expression1 expression2 ... expressionN)} as its only argument. The list of s-expressions returned by this function then replaces the entire list of s-expressions \lstinline{(function0 expression1 ... expressionN)}. If the result of this replacement is still a non-primitive expression, then the above process is repeated. When this process terminates, the appropriate assembly code for the resulting primitive expression is emitted.
+\end{verbatim}
 
-    The expression \lstinline{((function comment (sexprs) [fst [' sexprs]]) [foo] This comment is ignored. No, seriously.)} is replaced by \lstinline{[foo]}, which in turn compiles into assembly similar to what is generated for other invoke expressions.
+If the above expression is not listed above, then \texttt{function0}
+from the metaprogram is invoked with the (unevaluated) list of
+\protect\hyperlink{internal-representation}{fragments}
+\texttt{(expression1\ expression2\ ...\ expressionN)} as its first
+argument and a buffer in which the replacement is to be constructed as
+its second argument. The fragment returned by this function then
+replaces the entire fragment
+\texttt{(function0\ expression1\ ...\ expressionN)}. If the result of
+this replacement contains a meta-expression, then the above process is
+repeated. When this process terminates, the appropriate assembly code
+for the resulting expression is emitted.
 
-  \section{Examples/Reductions}\label{sec:examplesreductions}
-    In the extensive list processing that follows in this section, the following functions prove to be convenient abbreviations:
-    \begin{lstlisting}[caption={abbreviations.l2}]
-(function frst (l) [fst [rst [' l]]])
-(function frfst (l) [fst [rst [fst [' l]]]])
-(function frrst (l) [fst [rst [rst [' l]]]])
-(function frrrst (l) [fst [rst [rst [rst [' l]]]]])
-(function rfst (l) [rst [fst [' l]]])
-(function ffst (l) [fst [fst [' l]]])
-(function llst (a b c) [lst [' a] [lst [' b] [' c]]])
-(function lllst (a b c d) [lst [' a] [lst [' b] [lst [' c] [' d]]]])
-(function llllst (a b c d e) [lst [' a] [lst [' b] [lst [' c] [lst [' d] [' e]]]]])
-(function llllllst (a b c d e f g) [lst [' a] [lst [' b] [lst [' c] [lst [' d] [lst [' e] [lst [' f] [' g]]]]]]])
-    \end{lstlisting}
+Meta-expressions were already demonstrated in the
+\protect\hyperlink{the-compiler}{compiler section}.
 
-    \subsection{Commenting}\label{sec:commenting}
-      L2 has no built-in mechanism for commenting code written in it. The following comment function that follows takes a list of s-expressions as its argument and returns the last s-expression in that list (which itself is guaranteed to be a list of s-expressions) effectively causing the other s-expressions to be ignored. Its implementation and use follows:
+\hypertarget{examplesux2freductions}{%
+\subsection{Examples/Reductions}\label{examplesux2freductions}}
 
-      \begin{lstlisting}[caption={comments.l2}]
-(function ** (l)
-  (with return
-    {(continuation find (first last)
-      (if [nil? [' last]]
-        {return [' first]}
-        {find [fst [' last]] [rst [' last]]})) [fst [' l]] [rst [' l]]}))
-      \end{lstlisting}
+In the extensive list processing that follows in this section, the
+following functions prove to be convenient abbreviations:
 
-      \begin{lstlisting}[caption={test1.l2}]
-(** This is a comment, and the next thing is what is actually compiled: (begin))
-      \end{lstlisting}
-      \begin{lstlisting}[caption={shell}]
-./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - test1.l2
-      \end{lstlisting}
+\hypertarget{abbreviations.l2}{%
+\paragraph{abbreviations.l2}\label{abbreviations.l2}}
 
-    \subsection{Numbers}\label{sec:numbers}
-      Integer literals prove to be quite tedious in L2 as can be seen from some of the examples in the primitive expressions section. The following function, \lstinline{d}, implements decimal arithmetic by reading in an s-expression in base 10 and writing out the equivalent s-expression in base 2:
+\begin{verbatim}
+(function @frst (l) [@fst [@rst [get l]]])
+(function @ffrst (l) [@fst [@frst [get l]]])
+(function @frfrst (l) [@fst [@rst [@frst [get l]]]])
+(function @rrst (l) [@rst [@rst [get l]]])
+(function @rrrst (l) [@rst [@rrst [get l]]])
+(function @rfst (l) [@rst [@fst [get l]]])
+(function @frfst (l) [@fst [@rfst [get l]]])
+(function @frrfst (l) [@fst [@rst [@rfst [get l]]]])
+(function @frrst (l) [@fst [@rst [@rst [get l]]]])
+(function @frrrst (l) [@fst [@rst [@rst [@rst [get l]]]]])
+(function @frrrrst (l) [@fst [@rst [@rst [@rst [@rst [get l]]]]]])
+(function @frrrrrst (l) [@fst [@rst [@rst [@rst [@rst [@rst [get l]]]]]]])
+(function @ffst (l) [@fst [@fst [get l]]])
+(function llst (a b c r) [lst [get a] [lst [get b] [get c] [get r]] [get r]])
+(function lllst (a b c d r) [lst [get a] [llst [get b] [get c] [get d] [get r]] [get r]])
+(function llllst (a b c d e r) [lst [get a] [lllst [get b] [get c] [get d] [get e] [get r]]
+    [get r]])
+(function lllllst (a b c d e f r) [lst [get a] [llllst [get b] [get c] [get d] [get e]
+    [get f] [get r]] [get r]])
+(function llllllst (a b c d e f g r) [lst [get a] [lllllst [get b] [get c] [get d] [get e]
+    [get f] [get g] [get r]] [get r]])
+(function lllllllst (a b c d e f g h r) [lst [get a] [llllllst [get b] [get c]
+    [get d] [get e] [get f] [get g] [get h] [get r]] [get r]])
+\end{verbatim}
 
-      \begin{lstlisting}[caption={numbers.l2}]
-(** Turns a 4-byte integer into base-2 s-expression representation of it.
-(function binary->base2sexpr (binary)
-  [lst [lst [-b-] [nil]] [lst (with return
-    {(continuation write (count in out)
-      (if [' count]
-        {write [- [' count] (b 00000000000000000000000000000001)]
-          [>> [' in] (b 00000000000000000000000000000001)]
-          [lst (if [and [' in] (b 00000000000000000000000000000001)] [-1-] [-0-]) [' out]]}
-        {return [' out]})) (b 00000000000000000000000000100000) [' binary] [nil]}) [nil]]]))
+\hypertarget{commenting}{%
+\subsubsection{Commenting}\label{commenting}}
 
-(function d (l)
-  [binary->base2sexpr
-    (** Turns the base-10 s-expression input into a 4-byte integer.
-      (with return {(continuation read (in out)
-        (if [nil? [' in]]
-          {return [' out]}
-          {read [rst [' in]] [+ [* [' out] (b 00000000000000000000000000001010)]
-            (if [9? [fst [' in]]] (b 00000000000000000000000000001001)
-            (if [8? [fst [' in]]] (b 00000000000000000000000000001000)
-            (if [7? [fst [' in]]] (b 00000000000000000000000000000111)
-            (if [6? [fst [' in]]] (b 00000000000000000000000000000110)
-            (if [5? [fst [' in]]] (b 00000000000000000000000000000101)
-            (if [4? [fst [' in]]] (b 00000000000000000000000000000100)
-            (if [3? [fst [' in]]] (b 00000000000000000000000000000011)
-            (if [2? [fst [' in]]] (b 00000000000000000000000000000010)
-            (if [1? [fst [' in]]] (b 00000000000000000000000000000001)
-              (b 00000000000000000000000000000000))))))))))]})) [fst [' l]] (b 00000000000000000000000000000000)}))])
-      \end{lstlisting}
-      
-      \begin{lstlisting}[caption={test2.l2}]
-[putchar (d 65)]
-      \end{lstlisting}
-      
-      \begin{lstlisting}[caption={shell}]
-./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - test2.l2
-      \end{lstlisting}
+L2 has no built-in mechanism for commenting code written in it. The
+following comment function takes a list of fragments as its argument and
+returns an empty begin expression effectively causing its arguments to
+be ignored. Its implementation and use follows:
 
-    \subsection{Backquoting}\label{sec:backquoting}
-      The \lstinline{foo} example in the internal representation section shows how tedious writing a function that outputs a symbol can be. The backquote function reduces this tedium. It takes a single s-expression as its argument and, generally, it returns an s-expression that makes that s-expression. The exception to this rule is that if a sub-expression of its input s-expression is of the form \lstinline{(, expr0)}, then the result of evaluating \lstinline{expr0} is inserted into that position of the output s-expression. Backquote can be implemented and used as follows:
+\hypertarget{comments.l2}{%
+\paragraph{comments.l2}\label{comments.l2}}
 
-      \begin{lstlisting}[caption={backquote.l2}]
-(function ` (l)
-  [(function aux (s)
-    (if [nil? [' s]]
-      [lst [sexpr [llllllst [-i-][-n-][-v-][-o-][-k-][-e-][nil]]]
-        [lst [sexpr [lllst [-n-][-i-][-l-][nil]]] [nil]]]
+\begin{verbatim}
+(function ;; (l r) [lst [lllllst -b- -e- -g- -i- -n- emt $r] emt $r])
+\end{verbatim}
 
-    (if (if [lst? [' s]] (if [not [nil? [' s]]] (if [lst? [fst [' s]]] (if [not [nil? [fst [' s]]]]
-      (if [,? [ffst [' s]]] [nil? [rfst [' s]]] (d 0)) (d 0)) (d 0)) (d 0)) (d 0))
-          [frst [' s]]
+\hypertarget{test1.l2}{%
+\paragraph{test1.l2}\label{test1.l2}}
 
-    [lst [sexpr [llllllst [-i-][-n-][-v-][-o-][-k-][-e-][nil]]]
-      [lst [sexpr [lllst [-l-][-s-][-t-][nil]]]
-        [lst (if [lst? [fst [' s]]]
-          [sexpr [aux [fst [' s]]]]
-          [sexpr [lst
-            [sexpr [llllllst [-i-][-n-][-v-][-o-][-k-][-e-][nil]]]
-              [lst [sexpr [lst [---] [lst [fst [' s]] [lst [---] [nil]]]]] [nil]]]])
-            [lst [sexpr [aux [rst [' s]]]] [nil]]]]]))) [fst [' l]]])
-      \end{lstlisting}
-      
-      \begin{lstlisting}[caption={anotherfunction.l2}]
+\begin{verbatim}
+(;; This is a comment, take no notice.)
+\end{verbatim}
+
+\hypertarget{shell}{%
+\paragraph{shell}\label{shell}}
+
+\begin{verbatim}
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 - test1.l2
+\end{verbatim}
+
+\hypertarget{dereferencing}{%
+\subsubsection{Dereferencing}\label{dereferencing}}
+
+So far, we have been writing \texttt{{[}get\ x{]}} in order to get the
+value at the address \texttt{x}. Given the frequency with which
+dereferencing happens, writing \texttt{{[}get\ x{]}} all the time can
+greatly increase the amount of code required to get a task done. The
+following function \texttt{\$} implements an abbreviation for
+dereferencing.
+
+\hypertarget{dereference.l2}{%
+\paragraph{dereference.l2}\label{dereference.l2}}
+
+\begin{verbatim}
+(function $ (var r)
+    [llst
+        [llllllst -i- -n- -v- -o- -k- -e- emt [get r]]
+        [lllst -g- -e- -t- emt [get r]]
+        [get var][get r]])
+\end{verbatim}
+
+\hypertarget{test2.l2}{%
+\paragraph{test2.l2}\label{test2.l2}}
+
+\begin{verbatim}
+(storage a (literal 0...01000001))
+(storage c a)
+[putchar $$c]
+\end{verbatim}
+
+\hypertarget{or-equivalently}{%
+\subparagraph{or equivalently}\label{or-equivalently}}
+
+\begin{verbatim}
+(storage a (literal 0...01000001))
+(storage c a)
+[putchar [get [get c]]]
+\end{verbatim}
+
+\hypertarget{shell-1}{%
+\paragraph{shell}\label{shell-1}}
+
+\begin{verbatim}
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 - test2.l2
+\end{verbatim}
+
+Note that in the above code that \texttt{a} and \texttt{c} have global
+scope. This is because the storage expressions are top-level.
+
+\hypertarget{numbers}{%
+\subsubsection{Numbers}\label{numbers}}
+
+Integer literals prove to be quite tedious in L2 as can be seen from
+some of the examples in the expressions section. The following function,
+\texttt{\#}, implements decimal arithmetic for x86-64 by reading in a
+symbol in base 10 and writing out the equivalent fragment in base 2:
+
+\hypertarget{numbers64.l2}{%
+\paragraph{numbers64.l2}\label{numbers64.l2}}
+
+\begin{verbatim}
+(;; Turns an 8-byte value into a literal-expression representation of it.)
+
+(function value->literal (binary r)
+    [lst [lllllllst -l- -i- -t- -e- -r- -a- -l- emt $r]
+        [lst (with return {(continuation write (count in out)
+                (if $count
+                    {write [- $count (literal 0...01)]
+                        [>> $in (literal 0...01)]
+                        [lst (if [land $in (literal 0...01)]
+                            -1- -0-) $out $r]}
+                    {return $out}))
+                (literal 0...01000000) $binary emt})
+            emt $r]$r])
+
+(;; Turns the base-10 fragment input into a literal expression.)
+
+(function # (l r) [value->literal
+    (with return {(continuation read (in out)
+        (if [emt? $in]
+            {return $out}
+            {read [@rst $in] [+ [* $out (literal 0...01010)]
+                (if [char= [@fst $in] -9-] (literal 0...01001)
+                (if [char= [@fst $in] -8-] (literal 0...01000)
+                (if [char= [@fst $in] -7-] (literal 0...0111)
+                (if [char= [@fst $in] -6-] (literal 0...0110)
+                (if [char= [@fst $in] -5-] (literal 0...0101)
+                (if [char= [@fst $in] -4-] (literal 0...0100)
+                (if [char= [@fst $in] -3-] (literal 0...011)
+                (if [char= [@fst $in] -2-] (literal 0...010)
+                (if [char= [@fst $in] -1-] (literal 0...01)
+                    (literal 0...0))))))))))]}))
+        [@fst $l] (literal 0...0)}) $r])
+\end{verbatim}
+
+\hypertarget{test3.l2}{%
+\paragraph{test3.l2}\label{test3.l2}}
+
+\begin{verbatim}
+[putchar (# 65)]
+\end{verbatim}
+
+\hypertarget{or-equivalently-1}{%
+\subparagraph{or equivalently}\label{or-equivalently-1}}
+
+\begin{verbatim}
+[putchar #65]
+\end{verbatim}
+
+\hypertarget{shell-2}{%
+\paragraph{shell}\label{shell-2}}
+
+\begin{verbatim}
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 - \
+    test3.l2
+\end{verbatim}
+
+\hypertarget{backquoting}{%
+\subsubsection{Backquoting}\label{backquoting}}
+
+The \texttt{foo} example in the internal representation section shows
+how tedious writing a function that outputs a symbol can be. The
+backquote function reduces this tedium. It takes a fragment and a buffer
+as its argument and, generally, it returns a fragment that makes that
+fragment. The exception to this rule is that if a sub-expression of its
+input fragment is of the form \texttt{(,\ expr0)}, then the fragment
+\texttt{expr0} is inserted verbatim into that position of the output
+fragment. Backquote can be implemented and used as follows:
+
+\hypertarget{backquote.l2}{%
+\paragraph{backquote.l2}\label{backquote.l2}}
+
+\begin{verbatim}
+(function ` (l r)
+    [(function aux (s t r)
+        (if [emt? $s] [lllst -e- -m- -t- emt $r]
+
+        (if (if [emt? $s] #0 (if [symbol? $s] #0 (if [emt? [@fst $s]]
+            #0 (if [char= [@ffst $s] -,-] [emt? [@rfst $s]] #0))))
+                    [@frst $s]
+
+        [lllllst [llllllst -i- -n- -v- -o- -k- -e- emt $r]
+            [lllst -l- -s- -t- emt $r]
+                (if [symbol? $s]
+                        [lllst --- [@fst $s] --- emt $r]
+                        [aux [@fst $s] $t $r])
+                    [aux [@rst $s] $t $r] $t emt $r]))) [@fst $l] [@frst $l] $r])
+\end{verbatim}
+
+\hypertarget{anotherfunction.l2:}{%
+\paragraph{anotherfunction.l2:}\label{anotherfunction.l2:}}
+
+\begin{verbatim}
+(function make-A-function (l r)
+    (` (function A (,emt) [putchar #65]) $r))
+\end{verbatim}
+
+\hypertarget{or-equivalently-2}{%
+\subparagraph{or equivalently}\label{or-equivalently-2}}
+
+\begin{verbatim}
 (function make-A-function (l)
-  (` (function A (,[nil]) [putchar (d 65)])))
-      \end{lstlisting}
-      
-      \begin{lstlisting}[caption={or equivalently}]
-(function make-A-function (l)
-  (`(function A () [putchar (d 65)])))
-      \end{lstlisting}
-      
-      \begin{lstlisting}[caption={test3.l2}]
-(make-A-function)
-[A]
-      \end{lstlisting}
-      
-      \begin{lstlisting}[caption={shell}]
-./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 - anotherfunction.l2 - test3.l2
-      \end{lstlisting}
+    (`(function A () [putchar #65])$r))
+\end{verbatim}
 
-    \subsection{Characters}\label{sec:characters}
-      With \lstinline{d} implemented, a somewhat more readable implementation of characters is possible. The \lstinline{char} function takes a singleton list containing character s-expression and returns its ascii encoding using the \lstinline{d} expression. Its implementation and use follows:
+\hypertarget{test4.l2}{%
+\paragraph{test4.l2}\label{test4.l2}}
 
-      \begin{lstlisting}[caption={characters.l2}]
-(function char (l) [(function aux (c)
-    (if [!? [' c]] (`(d 33))
-    (if ["? [' c]] (`(d 34))
-    (if [$? [' c]] (`(d 36))
-    (if [%? [' c]] (`(d 37))
-    (if [&? [' c]] (`(d 38))
-    (if ['? [' c]] (`(d 39))
-    (if [*? [' c]] (`(d 42))
-    (if [+? [' c]] (`(d 43))
-    (if [,? [' c]] (`(d 44))
-    (if [-? [' c]] (`(d 45))
-    (if [.? [' c]] (`(d 46))
-    (if [/? [' c]] (`(d 47))
-    (if [0? [' c]] (`(d 48))
-    (if [1? [' c]] (`(d 49))
-    (if [2? [' c]] (`(d 50))
-    (if [3? [' c]] (`(d 51))
-    (if [4? [' c]] (`(d 52))
-    (if [5? [' c]] (`(d 53))
-    (if [6? [' c]] (`(d 54))
-    (if [7? [' c]] (`(d 55))
-    (if [8? [' c]] (`(d 56))
-    (if [9? [' c]] (`(d 57))
-    (if [:? [' c]] (`(d 58))
-    (if [;? [' c]] (`(d 59))
-    (if [<? [' c]] (`(d 60))
-    (if [=? [' c]] (`(d 61))
-    (if [>? [' c]] (`(d 62))
-    (if [?? [' c]] (`(d 63))
-    (if [A? [' c]] (`(d 65))
-    (if [B? [' c]] (`(d 66))
-    (if [C? [' c]] (`(d 67))
-    (if [D? [' c]] (`(d 68))
-    (if [E? [' c]] (`(d 69))
-    (if [F? [' c]] (`(d 70))
-    (if [G? [' c]] (`(d 71))
-    (if [H? [' c]] (`(d 72))
-    (if [I? [' c]] (`(d 73))
-    (if [J? [' c]] (`(d 74))
-    (if [K? [' c]] (`(d 75))
-    (if [L? [' c]] (`(d 76))
-    (if [M? [' c]] (`(d 77))
-    (if [N? [' c]] (`(d 78))
-    (if [O? [' c]] (`(d 79))
-    (if [P? [' c]] (`(d 80))
-    (if [Q? [' c]] (`(d 81))
-    (if [R? [' c]] (`(d 82))
-    (if [S? [' c]] (`(d 83))
-    (if [T? [' c]] (`(d 84))
-    (if [U? [' c]] (`(d 85))
-    (if [V? [' c]] (`(d 86))
-    (if [W? [' c]] (`(d 87))
-    (if [X? [' c]] (`(d 88))
-    (if [Y? [' c]] (`(d 89))
-    (if [Z? [' c]] (`(d 90))
-    (if [\? [' c]] (`(d 92))
-    (if [^? [' c]] (`(d 94))
-    (if [_? [' c]] (`(d 95))
-    (if [`? [' c]] (`(d 96))
-    (if [a? [' c]] (`(d 97))
-    (if [b? [' c]] (`(d 98))
-    (if [c? [' c]] (`(d 99))
-    (if [d? [' c]] (`(d 100))
-    (if [e? [' c]] (`(d 101))
-    (if [f? [' c]] (`(d 102))
-    (if [g? [' c]] (`(d 103))
-    (if [h? [' c]] (`(d 104))
-    (if [i? [' c]] (`(d 105))
-    (if [j? [' c]] (`(d 106))
-    (if [k? [' c]] (`(d 107))
-    (if [l? [' c]] (`(d 108))
-    (if [m? [' c]] (`(d 109))
-    (if [n? [' c]] (`(d 110))
-    (if [o? [' c]] (`(d 111))
-    (if [p? [' c]] (`(d 112))
-    (if [q? [' c]] (`(d 113))
-    (if [r? [' c]] (`(d 114))
-    (if [s? [' c]] (`(d 115))
-    (if [t? [' c]] (`(d 116))
-    (if [u? [' c]] (`(d 117))
-    (if [v? [' c]] (`(d 118))
-    (if [w? [' c]] (`(d 119))
-    (if [x? [' c]] (`(d 120))
-    (if [y? [' c]] (`(d 121))
-    (if [z? [' c]] (`(d 122))
-    (if [|? [' c]] (`(d 124))
-    (if [~? [' c]] (`(d 126)) (`(d 0)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
-  [ffst [' l]]])
-      \end{lstlisting}
-      
-      \begin{lstlisting}[caption={test4.l2}]
-[putchar (char A)]
-      \end{lstlisting}
-      
-      \begin{lstlisting}[caption={shell}]
-./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 - characters.l2 - test4.l2
-      \end{lstlisting}
+\begin{verbatim}
+[(make-A-function)]
+\end{verbatim}
 
-    \subsection{Strings}\label{sec:strings}
-      The above exposition has purposefully avoided making strings because it is tedious to do using only binary and reference arithmetic. The quote function takes a list of lists of character s-expressions and returns the sequence of operations required to write its ascii encoding into memory. These "operations" are essentially decreasing the stack-pointer, putting the characters into that memory, and returning the address of that memory. Because the stack-frame of a function is destroyed upon its return, strings implemented in this way should not be returned. Quote is implemented below along with its helper function called \lstinline{reverse} that reverses lists:
+\hypertarget{shell-3}{%
+\paragraph{shell}\label{shell-3}}
 
-      \begin{lstlisting}[caption={reverse.l2}]
-(function reverse (l)
-  (with return
-    {(continuation _ (l reversed)
-      (if [nil? [' l]]
-        {return [' reversed]}
-        {_ [rst [' l]] [lst [fst [' l]] [' reversed]]})) [' l] [nil]}))
-      \end{lstlisting}
-      
-      \begin{lstlisting}[caption={strings.l2}]
-(function " (l) (with return
-  {(continuation add-word (str index instrs)
-    (if [nil? [' str]]
-      {return (`(with return
-        [allocate (,[binary->base2sexpr [' index]])
-          (continuation _ (str) (,[lst (` begin) [reverse [lst (`{return [' str]}) [' instrs]]]]))]))}
+\begin{verbatim}
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 \
+    backquote.l2 anotherfunction.l2 - test4.l2
+\end{verbatim}
 
-      {(continuation add-char (word index instrs)
-          (if [nil? [' word]]
-            {add-word [rst [' str]] [+ [' index] (d 1)]
-              [lst (`[set-char [+ [' str] (,[binary->base2sexpr [' index]])]
-                (,(if [nil? [rst [' str]]] (`(d 0)) (`(d 32))))]) [' instrs]]}
-            {add-char [rst [' word]] [+ [' index] (d 1)]
-              [lst (`[set-char [+ [' str] (,[binary->base2sexpr [' index]])] (char (,[lst [fst [' word]] [nil]]))])
-                [' instrs]]}))
-        [fst [' str]] [' index] [' instrs]})) [' l] (d 0) [nil]}))
-      \end{lstlisting}
-      
-      \begin{lstlisting}[caption={test5.l2}]
-[printf (" This is how the quote macro is used. Now printing number in speechmarks "%i") (d 123)]
-      \end{lstlisting}
-      
-      \begin{lstlisting}[caption={shell}]
-./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 - characters.l2 reverse.l2 strings.l2 - test5.l2
-      \end{lstlisting}
+\hypertarget{variable-binding}{%
+\subsubsection{Variable Binding}\label{variable-binding}}
 
-    \subsection{Conditional Compilation}\label{sec:conditional-compilation}
-      Up till now, references to functions defined elsewhere have been the only things used as the first subexpression of an expression. Sometimes, however, the clarity of the whole expression can be improved by inlining the function. The following code proves this in the context of conditional compilation.
-      
-      \begin{lstlisting}[caption={test6.l2}]
-((if [> (d 10) (d 20)] fst frst)
-  [printf (" I am not compiled!)]
-  [printf (" I am the one compiled!)])
-      \end{lstlisting}
-      
-      \begin{lstlisting}[caption={shell}]
-./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 reverse.l2 - characters.l2 strings.l2 - test6.l2
-      \end{lstlisting}
+Variable binding is enabled by the \texttt{continuation} expression.
+\texttt{continuation} is special because, like \texttt{function}, it
+allows references to be bound. Unlike \texttt{function}, however,
+expressions within \texttt{continuation} can directly access its parent
+function's variables. The \texttt{let} binding function implements the
+following transformation:
 
-    \subsection{Variable Binding}\label{sec:variable-binding}
-      Variable binding is enabled by the \lstinline{continuation} expression. \lstinline{continuation} is special because, like \lstinline{function}, it allows references to be bound. Unlike \lstinline{function}, however, expressions within \lstinline{continuation} can directly access its parent function's variables. The \lstinline{let} binding function implements the following transformation:
-      \begin{lstlisting}
-(let ((params args) ...) expr0)
+\begin{verbatim}
+(let (params args) ... expr0)
 ->
 (with return
-  {(continuation templet0 (params ...)
-    {return expr0}) vals ...})
-      \end{lstlisting}
-      It is implemented and used as follows:
-      \begin{lstlisting}[caption={let.l2}]
-(** Returns a list with mapper applied to each element.
-(function map (l mapper)
-  (with return
-    {(continuation aux (in out)
-      (if [nil? [' in]]
-        {return [reverse [' out]]}
-        {aux [rst [' in]] [lst [[' mapper] [fst [' in]]] [' out]]})) [' l] [nil]})))
+    {(continuation templet0 (params ...)
+        {return expr0}) vals ...})
+\end{verbatim}
 
-(function let (l)
-  (`(with return
-    (,[llst (` jump) (`(continuation templet0
-      (,[map [fst [' l]] fst])
-      {return (,[frst [' l]])})) [map [fst [' l]] frst]]))))
-      \end{lstlisting}
-      
-      \begin{lstlisting}[caption={test7.l2}]
-(let ((x (d 12)))
-  (begin
-    (function what? () [printf (" x is %i) [' x]])
+It is implemented and used as follows:
+
+\hypertarget{let.l2}{%
+\paragraph{let.l2}\label{let.l2}}
+
+\begin{verbatim}
+(;; Reverses the given list. $l is the list to be reversed. $r is the buffer into
+    which the reversed list will be put. Return value is the reversed list.)
+
+(function meta:reverse (l r)
+    (with return
+        {(continuation _ (l reversed)
+            (if [emt? $l]
+                {return $reversed}
+                {_ [@rst $l] [lst [@fst $l] $reversed $r]})) $l emt}))
+
+(;; Maps the given list using the given function. $l is the list to be mapped. $ctx
+    is always passed as a second argument to the mapper. $mapper is the two argument
+    function that will be supplied a list item as its first argument and $ctx as its
+    second argument and will return an argument that will be put into the corresponding
+    position of another list. $r is the buffer into which the list being constructed
+    will be put. Return value is the mapped list.)
+
+(function meta:map (l ctx mapper r)
+    (with return
+        {(continuation aux (in out)
+            (if [emt? $in]
+                {return [meta:reverse $out $r]}
+                {aux [@rst $in] [lst [$mapper [@fst $in] $ctx] $out $r]})) $l emt}))
+
+(function let (l r)
+    (`(with let:return
+        (,[llst (` jump $r) (`(continuation let:aux
+            (,[meta:map [@rst [meta:reverse $l $r]] (null) @fst $r])
+            {let:return (,[@fst [meta:reverse $l $r]])}) $r) [meta:map [@rst
+                [meta:reverse $l $r]] (null) @frst $r] $r])) $r))
+\end{verbatim}
+
+\hypertarget{test5.l2}{%
+\paragraph{test5.l2}\label{test5.l2}}
+
+\begin{verbatim}
+(let (x #12) (begin
+    (function what? () [printf (" x is %i) $x])
     [what?]
     [what?]
     [what?]))
-      \end{lstlisting}
-      Note in the above code that \lstinline{what?} is only able to access \lstinline{x} because \lstinline{x} is defined outside of all functions and hence is statically allocated. Also note that L2 permits reference shadowing, so \lstinline{let} expressions can be nested without worrying, for instance, about the impact of an inner \lstinline{templet0} on an outer one.
+\end{verbatim}
 
-      \begin{lstlisting}[caption={shell}]
-./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 - characters.l2 strings.l2 let.l2 - test7.l2
-      \end{lstlisting}
+Note in the above code that \texttt{what?} is only able to access
+\texttt{x} because \texttt{x} is defined outside of all functions and
+hence is statically allocated. Also note that L2 permits reference
+shadowing, so \texttt{let} expressions can be nested without worrying,
+for instance, about the impact of an inner \texttt{templet0} on an outer
+one.
 
-    \subsection{Switch Expression}\label{sec:switch-expression}
-      Now we will implement a variant of the switch statement that is parameterized by an equality predicate. The \lstinline{switch} selection function implements the following transformation:
-      \begin{lstlisting}
+\hypertarget{shell-4}{%
+\paragraph{shell}\label{shell-4}}
+
+\begin{verbatim}
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 \
+    backquote.l2 let.l2 - test5.l2
+\end{verbatim}
+
+\hypertarget{boolean-expressions}{%
+\subsubsection{Boolean Expressions}\label{boolean-expressions}}
+
+The Boolean literals true and false are achieved using macros that
+return the same literal fragment regardless of the arguments supplied to
+them. Short-circut Boolean expressions are achieved through the
+\texttt{if} expression. The \texttt{if} expression is special because it
+has the property that only two out of its three sub-expressions are
+evaluated when it itself is evaluated. Now, the Boolean expressions
+implement the following transformations:
+
+\begin{verbatim}
+(false) -> (literal #0)
+
+(true) -> (literal #1)
+
+(or expr1 expr2 ... exprN)
+->
+(let (or:temp expr1) (if $or:temp
+    $or:temp
+    (let (or:temp expr2) (if $or:temp
+        $or:temp
+        ...
+            (let (or:temp exprN) (if $or:temp
+                $or:temp
+                (false)))))))
+
+(and expr1 expr2 ... exprN)
+->
+(let (and:temp expr1) (if $and:temp
+    (let (and:temp expr2) (if $and:temp
+        ...
+            (let (and:temp exprN) (if $and:temp
+                (true)
+                $and:temp))
+        $and:temp))
+    $and:temp))
+
+(not expr1)
+->
+(if expr1 (false) (true))
+\end{verbatim}
+
+These transformations are implemented and used as follows:
+
+\hypertarget{boolean.l2}{%
+\paragraph{boolean.l2}\label{boolean.l2}}
+
+\begin{verbatim}
+(function mk# (r value) [value->literal $value $r])
+
+(function false (l r) [mk# $r #0])
+
+(function true (l r) [mk# $r #1])
+
+(function or (l r) (with return
+    {(continuation loop (l sexpr)
+            (if [emt? $l]
+                {return $sexpr}
+                {loop [@rst $l] (`(let (or:temp (,[@fst $l])) (if $or:temp $or:temp
+                    (, $sexpr $r)))$r)}))
+        [meta:reverse $l $r] (`(false)$r)}))
+
+(function and (l r) (with return
+    {(continuation loop (l sexpr)
+            (if [emt? $l]
+                {return $sexpr}
+                {loop [@rst $l] (`(let (and:temp (,[@fst $l])) (if $and:temp
+                    (, $sexpr $r) $and:temp))$r)}))
+        [meta:reverse $l $r] (`(true)$r)}))
+
+(function not (l r) (`(if (,[@fst $l]) (false) (true))$r))
+\end{verbatim}
+
+\hypertarget{test6.l2}{%
+\paragraph{test6.l2}\label{test6.l2}}
+
+\begin{verbatim}
+(and (false) [/ #1 #0])
+\end{verbatim}
+
+\hypertarget{shell-5}{%
+\paragraph{shell}\label{shell-5}}
+
+\begin{verbatim}
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 \
+    backquote.l2 let.l2 boolean.l2 - test6.l2
+\end{verbatim}
+
+\hypertarget{switch-expression}{%
+\subsubsection{Switch Expression}\label{switch-expression}}
+
+Now we will implement a variant of the switch statement that is
+parameterized by an equality predicate. The \texttt{switch} selection
+function will, for example, do the following transformation:
+
+\begin{verbatim}
 (switch eq0 val0 (vals exprs) ... expr0)
 ->
-(let ((tempeq0 eq0) (tempval0 val0))
-  (if [[' tempeq0] [' tempval0] vals1]
-    exprs1
-    (if [[' tempeq0] [' tempval0] vals2]
-      exprs2
-      ...
-        (if [[' tempeq0] [' tempval0] valsN]
-          exprsN
-          expr0))))
-      \end{lstlisting}
-      It is implemented and used as follows:
-      \begin{lstlisting}[caption={switch.l2}]
-(function switch (l)
-  (`(let ((tempeq0 (,[fst [' l]])) (tempval0 (,[frst [' l]])))
-    (,(with return
-      {(continuation aux (remaining else-clause)
-        (if [nil? [' remaining]]
-          {return [' else-clause]}
-          {aux [rst [' remaining]]
-            (`(if (,[llllst (` invoke) (` [' tempeq0]) (` [' tempval0]) [ffst [' remaining]] [nil]])
-              (,[frfst [' remaining]]) (,[' else-clause])))}))
-        [rst [reverse [rrst [' l]]]] [fst [reverse [' l]]]})))))
-      \end{lstlisting}
-      
-      \begin{lstlisting}[caption={test8.l2}]
-(switch = (d 10)
-  ((d 20) [printf (" d is 20!)])
-  ((d 10) [printf (" d is 10!)])
-  ((d 30) [printf (" d is 30!)])
-  [printf (" s is something else.)])
-      \end{lstlisting}
-      
-      \begin{lstlisting}[caption={shell}]
-./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 reverse.l2 - switch.l2 characters.l2 strings.l2 let.l2 - test8.l2
-      \end{lstlisting}
+(let (tempeq0 eq0) (tempval0 val0)
+    (if [[' tempeq0] [' tempval0] vals1]
+        exprs1
+        (if [[' tempeq0] [' tempval0] vals2]
+            exprs2
+            ...
+                (if [[' tempeq0] [' tempval0] valsN]
+                    exprsN
+                    expr0))))
+\end{verbatim}
 
-    \subsection{Closures}\label{sec:closures}
-      A restricted form of closures can be implemented in L2. The key to their implementation is to \lstinline{jump} out of the function that is supposed to provide the lexical environment. By doing this instead of merely returning from the environment function, the stack-pointer and thus the stack-frame of the environment are preserved. The following example implements a function that receives a single argument and "returns" (more accurately: jumps out) a continuation that adds this value to its own argument. But first, the following transformations are needed:
-      \begin{lstlisting}
-(environment env0 (args ...) expr0)
-->
-(function env0 (cont0 args ...)
-  {[' cont0] expr0})
+It is implemented and used as follows:
 
+\hypertarget{switch.l2}{%
+\paragraph{switch.l2}\label{switch.l2}}
+
+\begin{verbatim}
+(function switch (l r)
+    (`(let (switch:= (,[@fst $l])) (switch:val (,[@frst $l]))
+        (,(with return
+            {(continuation aux (remaining else-clause)
+                (if [emt? $remaining]
+                    {return $else-clause}
+                    {aux [@rst $remaining]
+                        (`(if (,[lst (` or $r) [meta:map [@rst [meta:reverse
+                                [@fst $remaining] $r]] $r (function _ (e r)
+                                [llllst (` invoke $r) (` $switch:= $r)
+                                (` $switch:val $r) $e emt $r]) $r] $r])
+                            (,[@fst [meta:reverse [@fst $remaining] $r]])
+                                ,$else-clause) $r)}))
+                [@rst [meta:reverse [@rrst $l] $r]] [@fst [meta:reverse $l $r]]})))$r))
+\end{verbatim}
+
+\hypertarget{test7.l2}{%
+\paragraph{test7.l2}\label{test7.l2}}
+
+\begin{verbatim}
+(switch = #10
+    (#20 [printf (" d is 20!)])
+    (#10 [printf (" d is 10!)])
+    (#30 [printf (" d is 30!)])
+    [printf (" s is something else.)])
+\end{verbatim}
+
+\hypertarget{shell-6}{%
+\paragraph{shell}\label{shell-6}}
+
+\begin{verbatim}
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 \
+    backquote.l2 let.l2 boolean.l2 switch.l2 - test7.l2
+\end{verbatim}
+
+\hypertarget{characters}{%
+\subsubsection{Characters}\label{characters}}
+
+With \texttt{\#} implemented, a somewhat more readable implementation of
+characters is possible. The \texttt{char} function takes a singleton
+list containing a symbol of one character and returns its ascii encoding
+using the \texttt{\#} expression. Its implementation and use follows:
+
+\hypertarget{characters.l2}{%
+\paragraph{characters.l2}\label{characters.l2}}
+
+\begin{verbatim}
+(function char (l r) (switch char= [@ffst $l]
+    (-!- (` #33 $r)) (-"- (` #34 $r)) (-#- (` #35 $r)) (-$- (` #36 $r)) (-%- (` #37 $r))
+    (-&- (` #38 $r)) (-'- (` #39 $r)) (-*- (` #42 $r)) (-+- (` #43 $r)) (-,- (` #44 $r))
+    (--- (` #45 $r)) (-.- (` #46 $r)) (-/- (` #47 $r)) (-0- (` #48 $r)) (-1- (` #49 $r))
+    (-2- (` #50 $r)) (-3- (` #51 $r)) (-4- (` #52 $r)) (-5- (` #53 $r)) (-6- (` #54 $r))
+    (-7- (` #55 $r)) (-8- (` #56 $r)) (-9- (` #57 $r)) (-:- (` #58 $r)) (-;- (` #59 $r))
+    (-<- (` #60 $r)) (-=- (` #61 $r)) (->- (` #62 $r)) (-?- (` #63 $r)) (-@- (` #64 $r))
+    (-A- (` #65 $r)) (-B- (` #66 $r)) (-C- (` #67 $r)) (-D- (` #68 $r)) (-E- (` #69 $r))
+    (-F- (` #70 $r)) (-G- (` #71 $r)) (-H- (` #72 $r)) (-I- (` #73 $r)) (-J- (` #74 $r))
+    (-K- (` #75 $r)) (-L- (` #76 $r)) (-M- (` #77 $r)) (-N- (` #78 $r)) (-O- (` #79 $r))
+    (-P- (` #80 $r)) (-Q- (` #81 $r)) (-R- (` #82 $r)) (-S- (` #83 $r)) (-T- (` #84 $r))
+    (-U- (` #85 $r)) (-V- (` #86 $r)) (-W- (` #87 $r)) (-X- (` #88 $r)) (-Y- (` #89 $r))
+    (-Z- (` #90 $r)) (-\- (` #92 $r)) (-^- (` #94 $r)) (-_- (` #95 $r)) (-`- (` #96 $r))
+    (-a- (` #97 $r)) (-b- (` #98 $r)) (-c- (` #99 $r)) (-d- (` #100 $r)) (-e- (` #101 $r))
+    (-f- (` #102 $r)) (-g- (` #103 $r)) (-h- (` #104 $r)) (-i- (` #105 $r))
+    (-j- (` #106 $r)) (-k- (` #107 $r)) (-l- (` #108 $r)) (-m- (` #109 $r))
+    (-n- (` #110 $r)) (-o- (` #111 $r)) (-p- (` #112 $r)) (-q- (` #113 $r))
+    (-r- (` #114 $r)) (-s- (` #115 $r)) (-t- (` #116 $r)) (-u- (` #117 $r))
+    (-v- (` #118 $r)) (-w- (` #119 $r)) (-x- (` #120 $r)) (-y- (` #121 $r))
+    (-z- (` #122 $r)) (-|- (` #124 $r)) (-~- (` #126 $r)) (` #0 $r)))
+\end{verbatim}
+
+\hypertarget{test8.l2}{%
+\paragraph{test8.l2}\label{test8.l2}}
+
+\begin{verbatim}
+[putchar (char A)]
+\end{verbatim}
+
+\hypertarget{shell-7}{%
+\paragraph{shell}\label{shell-7}}
+
+\begin{verbatim}
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 \
+    backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 - test8.l2
+\end{verbatim}
+
+\hypertarget{strings}{%
+\subsubsection{Strings}\label{strings}}
+
+The above exposition has purposefully avoided making strings because it
+is tedious to do using only literal and reference arithmetic. The quote
+function takes a list of symbols and returns the sequence of operations
+required to write its ascii encoding into memory. (An extension to this
+rule occurs when instead of a symbol, a fragment that is a list of
+fragments is encountered. In this case the value of the fragment is
+taken as the character to be inserted.) These "operations" are
+essentially reserving enough storage for the bytes of the input, putting
+the characters into that memory, and returning the address of that
+memory. Because the stack-frame of a function is destroyed upon its
+return, strings implemented in this way should not be returned. Quote is
+implemented below:
+
+\hypertarget{strings.l2}{%
+\paragraph{strings.l2}\label{strings.l2}}
+
+\begin{verbatim}
+(function " (l r) (with return
+    {(continuation add-word (str index instrs)
+        (if [emt? $str]
+            {return (`(with dquote:return
+                (,[llst (` begin $r) [llst (` storage $r) (` dquote:str $r)
+                        (with return {(continuation _ (phs num)
+                            (if $num
+                                {_ [lst (` #0 $r) $phs $r] [- $num #1]}
+                                {return $phs})) emt [+[/ $index (unit)]#1]}) $r]
+                    [meta:reverse [lst (`{dquote:return dquote:str}$r) $instrs $r]$r]$r]))
+                        $r)}
+        
+        (if (and [emt? [@fst $str]] [emt? [@rst $str]])
+            {add-word [@rst $str] [+ $index #1]
+                [lst (`[setb [+ dquote:str (,[value->literal $index $r])] #0]$r) $instrs
+                    $r]}
+                
+        (if (and [emt? [@fst $str]] [symbol? [@frst $str]])
+            {add-word [@rst $str] [+ $index #1]
+                [lst (`[setb [+ dquote:str (,[value->literal $index $r])] #32]$r) $instrs
+                    $r]}
+        
+        (if [emt? [@fst $str]] {add-word [@rst $str] $index $instrs}
+                
+        (if [symbol? [@fst $str]]
+            {add-word [lst [@rfst $str] [@rst $str] $r] [+ $index #1]
+                [lst (`[setb [+ dquote:str (,[value->literal $index $r])]
+                    (,[char [lst [lst [@ffst $str] emt $r] emt $r]$r emt])]$r) $instrs $r]}
+            
+            {add-word [@rst $str] [+ $index #1]
+                [lst (`[setb [+ dquote:str (,[value->literal $index $r])] (,[@fst $str])]$r)
+                    $instrs $r]})))))) $l #0 emt}))
+\end{verbatim}
+
+\hypertarget{test9.l2}{%
+\paragraph{test9.l2}\label{test9.l2}}
+
+\begin{verbatim}
+[printf (" This is how the quote macro is used. (# 10) Now we are on a new line because 10
+    is a line feed.)]
+\end{verbatim}
+
+\hypertarget{shell-8}{%
+\paragraph{shell}\label{shell-8}}
+
+\begin{verbatim}
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 \
+    backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 - test9.l2
+\end{verbatim}
+
+\hypertarget{closures}{%
+\subsubsection{Closures}\label{closures}}
+
+A restricted form of closures can be implemented in L2. The key to their
+implementation is to \texttt{jump} out of the function that is supposed
+to provide the lexical environment. By doing this instead of merely
+returning from the environment function, the stack-pointer and thus the
+stack-frame of the environment are preserved. The following example
+implements a function that receives a single argument and "returns"
+(more accurately: jumps out) a continuation that adds this value to its
+own argument. But first, the following transformations are needed:
+
+\begin{verbatim}
 (lambda (args ...) expr0)
 ->
 (continuation lambda0 (cont0 args ...)
-  {[' cont0] expr0})
+    {$cont0 expr0})
 
 (; func0 args ...)
 ->
@@ -626,153 +1414,314 @@ jmp *4(%ecx)
 (: cont0 args ...)
 ->
 (with return {cont0 return args ...})
-      \end{lstlisting}
-      These are implemented and used as follows:
-      \begin{lstlisting}[caption={closures.l2}]
-(function environment (l)
-  (`(function (,[fst [' l]]) (,[lst (` cont0) [frst [' l]]])
-    {[' cont0] (,[frrst [' l]])})))
+\end{verbatim}
 
-(function lambda (l)
-  (`(continuation lambda0 (,[lst (` cont0) [fst [' l]]])
-    {[' cont0] (,[frst [' l]])})))
+These are implemented and used as follows:
 
-(function ; (l)
-  (`(with return (,[lllst (` invoke) [fst [' l]] (` return) [rst [' l]]]))))
+\hypertarget{closures.l2}{%
+\paragraph{closures.l2}\label{closures.l2}}
 
-(function : (l)
-  (`(with return (,[lllst (` jump) [fst [' l]] (` return) [rst [' l]]]))))
-      \end{lstlisting}
-      
-      \begin{lstlisting}[caption={test9.l2}]
-(environment adder (x)
-  (lambda (y) [+ [' x] [' y]]))
+\begin{verbatim}
+(function lambda (l r)
+    (`(continuation lambda0 (,[lst (` cont0 $r) [@fst $l] $r])
+        {$cont0 (,[@frst $l])})$r))
 
-(let ((add5 (; adder (d 5))) (add7 (; adder (d 7))))
-  (begin
-    [printf (" %i,) (: [' add5] (d 2))]
-    [printf (" %i,) (: [' add7] (d 3))]
-    [printf (" %i,) (: [' add5] (d 1))]))
-      \end{lstlisting}
-      
-      \begin{lstlisting}[caption={shell}]
-./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 reverse.l2 - characters.l2 strings.l2 closures.l2 let.l2 - test9.l2
-      \end{lstlisting}
+(function ; (l r)
+    (`(with semicolon:return (,[lllst (` invoke $r) [@fst $l] (` semicolon:return $r)
+        [@rst $l] $r]))$r))
 
-    \subsection{Assume}\label{sec:assume}
-      There are far fewer subtle ways to trigger undefined behaviors in L2 than in other unsafe languages because L2 does not have dereferencing, arithmetic operators, types, or other such functionality built in; the programmer has to implement this functionality themselves in \href{https://raw.githubusercontent.com/murisi/L2/master/assets/i386.s}{assembly routines callable from L2}. This shift in responsibility means that any L2 compiler is freed up to treat invocations of undefined behaviors in L2 code as intentional. The following usage of undefined behavior within the function \lstinline{assume} is inspired by \href{https://blog.regehr.org/archives/1096}{Regehr}. The function \lstinline{assume}, which compiles \lstinline{y} assuming that the condition \lstinline{x} holds, implements the following transformation.
-      \begin{lstlisting}
+(function : (l r)
+    (`(with colon:return (,[lllst (` jump $r) [@fst $l] (` colon:return $r) [@rst $l] $r]))
+        $r))
+\end{verbatim}
+
+\hypertarget{test10.l2}{%
+\paragraph{test10.l2}\label{test10.l2}}
+
+\begin{verbatim}
+(function adder (cont x)
+    {$cont (lambda (y) [+ $x $y])})
+
+(let (add5 (; adder #5)) (add7 (; adder #7))
+    (begin
+        [printf (" %i,) (: $add5 #2)]
+        [printf (" %i,) (: $add7 #3)]
+        [printf (" %i,) (: $add5 #1)]))
+\end{verbatim}
+
+\hypertarget{shell-9}{%
+\paragraph{shell}\label{shell-9}}
+
+\begin{verbatim}
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 \
+    backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 closures.l2 - \
+    test10.l2
+\end{verbatim}
+
+\hypertarget{assume}{%
+\subsubsection{Assume}\label{assume}}
+
+There are far fewer subtle ways to trigger undefined behaviors in L2
+than in other unsafe languages because L2 does not have dereferencing,
+arithmetic operators, types, or other such functionality built in; the
+programmer has to implement this functionality themselves in
+\href{assets/x86_64.s}{assembly routines callable from L2}. This shift
+in responsibility means that any L2 compiler is freed up to treat
+invocations of undefined behaviors in L2 code as intentional. The
+following usage of undefined behavior within the function
+\texttt{assume} is inspired by
+\href{https://blog.regehr.org/archives/1096}{Regehr}. The function
+\texttt{assume}, which compiles \texttt{y} assuming that the condition
+\texttt{x} holds, implements the following transformation.
+
+\begin{verbatim}
 (assume x y)
 ->
 (with return
-  {(continuation tempas0 ()
-    (if x {return y} (begin)))})
-      \end{lstlisting}
-      This is implemented as follows:
-      \begin{lstlisting}[caption={assume.l2}]
-(function assume (l)
-  (`(with return
     {(continuation tempas0 ()
-      (if (,[fst [' l]]) {return (,[frst [' l]])} (begin)))})))
-      \end{lstlisting}
-      
-      \begin{lstlisting}[caption={test10.l2}]
+        (if x {return y} (begin)))})
+\end{verbatim}
+
+This is implemented as follows:
+
+\hypertarget{assume.l2}{%
+\paragraph{assume.l2}\label{assume.l2}}
+
+\begin{verbatim}
+(function assume (l r)
+    (`(with assume:return
+        {(continuation assume:tempas0 ()
+            (if (,[@fst $l]) {assume:return (,[@frst $l])} (begin)))})$r))
+\end{verbatim}
+
+\hypertarget{test11.l2}{%
+\paragraph{test11.l2}\label{test11.l2}}
+
+\begin{verbatim}
 (function foo (x y)
-  (assume [not [= [' x] [' y]]] (begin
-    [set-char [' x] (char A)]
-    [set-char [' y] (char B)]
-    [printf (" %c) [get-char [' x]]])))
+    (assume [not [= $x $y]] (begin
+        [setb $x (char A)]
+        [setb $y (char B)]
+        [printf (" %c) [getb $x]])))
 
 [foo (" C) (" D)]
-      \end{lstlisting}
-      In the function \lstinline{foo}, if \lstinline{[' x]} were equal to \lstinline{[' y]}, then the else branch of the \lstinline{assume}'s \lstinline{if} expression would be taken. Since this branch does nothing, \lstinline{continuation}'s body expression would finish evaluating. But this is the undefined behavior stated in \hyperref[sec:continuation]{the first paragraph of the description of the \lstinline{continuation} expression}. Therefore an L2 compiler does not have to worry about what happens in the case that \lstinline{[' x]} equals \lstinline{[' y]}. In light of this and the fact that the \lstinline{if} condition is pure, the whole \lstinline{assume} expression can be replaced with the first branch of \lstinline{assume}'s \lstinline{if}  expression. And more importantly, the the first branch of \lstinline{assume}'s \lstinline{if} expression can be optimized assuming that \lstinline{[' x]} is not equal to \lstinline{[' y]}. Therefore, a hypothetical optimizing compiler would also replace the last \lstinline{[get-char [' x]]}, a load from memory, with \lstinline{(char A)}, a constant.
+\end{verbatim}
 
-      \begin{lstlisting}[caption={shell}]
-./bin/l2evaluate bin/i386.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 reverse.l2 - characters.l2 strings.l2 assume.l2 - test10.l2
-      \end{lstlisting}
-      Note that the \lstinline{assume} expression can also be used to achieve C's \lstinline{restrict} keyword simply by making its condition the conjunction of inequalities on the memory locations of the extremeties of the "arrays" in question.
+In the function \texttt{foo}, if \texttt{\$x} were equal to
+\texttt{\$y}, then the else branch of the \texttt{assume}'s \texttt{if}
+expression would be taken. Since this branch does nothing,
+\texttt{continuation}'s body expression would finish evaluating. But
+this is the undefined behavior stated in
+\protect\hyperlink{continuation}{the first paragraph of the description
+of the \texttt{continuation} expression}. Therefore an L2 compiler does
+not have to worry about what happens in the case that \texttt{\$x}
+equals \texttt{\$y}. In light of this and the fact that the \texttt{if}
+condition is pure, the whole \texttt{assume} expression can be replaced
+with the first branch of \texttt{assume}'s \texttt{if} expression. And
+more importantly, the the first branch of \texttt{assume}'s \texttt{if}
+expression can be optimized assuming that \texttt{\$x} is not equal to
+\texttt{\$y}. Therefore, a hypothetical optimizing compiler would also
+replace the last \texttt{{[}getb\ \$x{]}}, a load from memory, with
+\texttt{(char\ A)}, a constant.
 
-  \section{Compilation Library}\label{sec:compilation-library}
-    My L2 system provides a library called \lstinline{l2compile.a} to enable the compilation of L2 source files. Below is a description of the functions this library exports; they can be invoked using any source language so long as \hyperref[sec:invoke]{the calling convention} outlined above is adhered to. In what follows, I invoke these functions is from within \hyperref[sec:the-evaluator]{the evaluator} using the command: \lstinline{./bin/l2evaluate ./bin/i386.a ./bin/l2compile.a - abbreviations.l2 comments.l2 - numbers.l2 - backquote.l2 reverse.l2 - characters.l2 strings.l2 closures.l2 let.l2 -}. In fact, this command is so convenient that I have packaged it in a script called \href{https://raw.githubusercontent.com/murisi/L2/master/l2evaluate-with-compile}{\lstinline{l2evaluate-with-compile}} at the root of the repository.
+\hypertarget{shell-10}{%
+\paragraph{shell}\label{shell-10}}
 
-    \subsection{\lstinline{[library x]}}
-      \lstinline{x} must be the path of an L2 source file.
+\begin{verbatim}
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 \
+    backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 assume.l2 - \
+    test11.l2
+\end{verbatim}
 
-      Evaluates to the path of a static library produced from compiling the source file \lstinline{x}.
+Note that the \texttt{assume} expression can also be used to achieve C's
+\texttt{restrict} keyword simply by making its condition the conjunction
+of inequalities on the memory locations of the extremeties of the
+"arrays" in question.
 
-      Typing \lstinline{[puts [library (" test9.l2)]]}, pressing Enter, then pressing Ctrl-D prints ".libvORuaz.a".
+\hypertarget{fields}{%
+\subsubsection{Fields}\label{fields}}
 
-    \subsection{\lstinline{[sequence x y]}}
-      \lstinline{x} and \lstinline{y} must be paths to static libraries.
+L2 has no built-in mechanism for record and union types. The most naive
+way to do record types in L2 would be to create a getter function,
+setter function, and offset calculation function for every field where
+these functions simply access and/or mutate the desired memory
+locations. However this solution is untenable because of the amount of
+boilerplate that one would have to write. A better solution is to
+aggregate the offset, size, getter, and setter of each field into a
+higher-order macro that supplies this information into any macro that is
+passed to it. This way, generic getter, setter, address-of, offset-of,
+and sizeof functions can be defined once and used on any field. More
+concretely, the following transformations are what we want:
 
-      Evaluates to the path of a static library whose's ordered sequence of object files is the concatenation of those of \lstinline{x} and those of \lstinline{y}.
+\begin{verbatim}
+(offset-of expr0)
+->
+(expr0 offset-aux)
 
-      Typing \lstinline{[puts [sequence (" bin/i386.a) [library (" test9.l2)]]]}, pressing Enter, then pressing Ctrl-D prints ".libnApfuA.a".
+(offset-aux expr0 ...)
+->
+expr0
 
-    \subsection{\lstinline{[executable x]}}
-      \lstinline{x} must be the path to a static library.
+(size-of expr0)
+->
+(expr0 size-of-aux)
 
-      Evaluates to the path of an executable whose's behavior is the "concatenation" of the ordered object files in \lstinline{x}.
+(size-of-aux expr0 expr1 ...)
+->
+expr1
 
-      Typing \lstinline{[puts [executable [sequence (" bin/i386.a) [library (" test9.l2)]]]]}, pressing Enter, then Ctrl-D prints ".exe6u1i1s". Running this executable should give the same output as in \hyperref[sec:test9.l2]{the section above}.
+(getter-of expr0)
+->
+(expr0 getter-of-aux)
 
-    \subsection{\lstinline{[copy x y]}}
-      \lstinline{x} must be a path to a non-existing file. \lstinline{y} must be a path to an existing file.
+(getter-of-aux expr0 expr1 expr2 ...)
+->
+expr2
 
-      Copies the file at path \lstinline{y} to the path \lstinline{x}. Invokation evaluates to \lstinline{x}.
+(setter-of expr0)
+->
+(expr0 setter-of-aux)
 
-      Typing \lstinline{[puts [copy (" test9) [executable [sequence (" bin/i386.a) [library (" test9.l2)]]]]]}, pressing Enter, then Ctrl-D prints "test9". Running this executable should give the same output as above.
+(setter-of-aux expr0 expr1 expr2 expr3 ...)
+->
+expr3
 
-    \subsection{\lstinline{[nil-library]}}
-      Evaluates to the path of an empty static library.
+(& expr0 expr1)
+->
+(expr0 &-aux expr1)
 
-      This function plays the role of "zero" in the arithmetic of static libraries.
+(&-aux expr0 expr1 expr2 expr3 expr4 ...)
+->
+[+ expr4 expr0]
 
-      Typing \lstinline{[puts [executable [nil-library]]]}, pressing Enter, then Ctrl-D prints ".exeOj671O". Running this executable should do nothing.
+(@ expr0 expr1)
+->
+(expr0 @-aux expr1)
 
-    \subsection{\lstinline{[skip x y]}}
-      \lstinline{x} must be a path to a static library. \lstinline{y} must be a symbol not occuring in the static library \lstinline{x}.
+(@-aux expr0 expr1 expr2 expr3 expr4 ...)
+->
+[expr2 [+ expr4 expr0]]
 
-      Evaluates to the path of a static library whose's first object file comprises a jump to \lstinline{y}, whose's following object files are those of \lstinline{x} in order, and whose's last object file comprises the label \lstinline{y}.
+(setf expr0 expr1 expr2)
+->
+(expr0 setf-aux expr1 expr2)
 
-      This function is useful for jumping over static libraries produced by C compilers. Otherwise L2's top-down mode of execution would cause C function definitions to be executed upon encounter rather than only on invocation.
+(setf-aux expr0 expr1 expr2 expr3 expr4 expr5)
+->
+[expr3 [+ expr4 expr0] expr5]
+\end{verbatim}
 
-      Typing \lstinline{[puts [executable [skip [sequence (" bin/i386.a) [library (" test9.l2)]] (" skipper)]]]}, pressing Enter, then Ctrl-D prints ".exeBokO5Q". Running this executable should do nothing.
+Why? Because if we define the macro \texttt{car} by the transformation
+\texttt{(car\ expr0\ exprs\ ...)\ -\textgreater{}\ (expr0\ \#0\ \#8\ get8b\ set8b\ exprs\ ...)}
+and \texttt{cdr} by the transformation
+\texttt{(cdr\ expr0\ exprs\ ...)\ -\textgreater{}\ (expr0\ \#8\ \#8\ get8b\ set8b\ exprs\ ...)},
+then we get the following outcomes:
 
-    \subsection{\lstinline{[concatenate x y]}}
-      \lstinline{x} and \lstinline{y} must be paths to L2 source files.
+\begin{verbatim}
+(offset-of car) -> (car offset-of-aux) -> (offset-of-aux #0 #8 get8b set8b) -> #0
+(size-of car) -> (car size-of-aux) -> (size-of-aux #0 #8 get8b set8b) -> #8
+(getter-of car) -> (car getter-of-aux) -> (getter-of-aux #0 #8 get8b set8b) -> get8b
+(setter-of car) -> (car setter-of-aux) -> (setter-of-aux #0 #8 get8b set8b) -> set8b
+(& car expr) -> (car &-aux expr) -> (&-aux #0 #8 get8b set8b expr) -> [+ expr #0]
+(@ car expr) -> (car @-aux expr) -> (@-aux #0 #8 get8b set8b expr) -> [get8b [+ expr #0]]
+(setf car expr val) -> (car setf-aux expr val) -> (setf-aux #0 #8 get8b set8b expr val) ->
+    [set8b [+ expr #0] val]
 
-      Evaluates to the path of an L2 source file produced by concatenating the source files \lstinline{x} and \lstinline{y}.
+(offset-of cdr) -> ... -> #8
+(size-of cdr) -> ... -> #8
+(getter-of cdr) -> ... -> get8b
+(setter-of cdr) -> ... -> set8b
+(& cdr expr) -> ... -> [+ expr #8]
+(@ cdr expr) -> ... -> [get8b [+ expr #8]]
+(setf cdr expr val) -> ... -> [set8b [+ expr #8] val]
+\end{verbatim}
 
-      Typing \lstinline{[puts [concatenate (" abbreviations.l2) (" comments.l2)]]}, pressing Enter, then pressing Ctrl-D prints ".catnX1RiH".
+To recapitulate, we localized and separated out the definition of a
+field from the various operations that can be done on it. Since dozens
+of fields can potentially be used in a program, it makes sense to define
+a helper function, \texttt{mk-field}, that creates them. What follows is
+the implementation of this helper function and the aforementioned
+transformations:
 
-    \subsection{\lstinline{[nil-source]}}
-      Evaluates to the path of an empty source file.
+\hypertarget{fields.l2}{%
+\paragraph{fields.l2}\label{fields.l2}}
 
-      This function plays the role of "zero" in the arithmetic of source files.
+\begin{verbatim}
+(function offset-of (l r) (`((,[@fst $l]) offset-of-aux)$r))
 
-      Typing \lstinline{[puts [executable [library [nil-source]]]]}, pressing Enter, then Ctrl-D prints ".exelbIIhj". Running this executable should do nothing.
+(function offset-of-aux (l r) [@fst $l])
 
-    \subsection{\lstinline{[load x]}}
-      \lstinline{x} must be the path to a static library.
+(function size-of (l r) (`((,[@fst $l]) size-of-aux)$r))
 
-      Augments the current environment with the static library \lstinline{x}. Evaluates to a handle to the loaded library.
+(function size-of-aux (l r) [@frst $l])
 
-      Typing \lstinline{[load [library (" file1.l2)]]}, pressing Enter, then Ctrl-D should print "a". Entering \lstinline{(foo this text does not matter)}, pressing Enter, then Ctrl-D should print "b".
+(function getter-of (l r) (`((,[@fst $l]) getter-of-aux)$r))
 
-    \subsection{\lstinline{[unload x]}}
-      \lstinline{x} should be the handle to a loaded library.
+(function getter-of-aux (l r) [@frrst $l])
 
-      Removes from the current environment the loaded library to which \lstinline{x} refers. Evaluates to an unspecified value.
+(function setter-of (l r) (`((,[@fst $l]) setter-of-aux)$r))
 
-      In an environment where \lstinline{load} has not yet ben used, type \lstinline{[unload [load [library (" file1.l2)]]]}, press Enter, then Ctrl-D. Entering \lstinline{(foo this text does not matter)}, pressing Enter, then Ctrl-D should produce an error.
+(function setter-of-aux (l r) [@frrrst $l])
 
-    \subsection{\lstinline{[dynamic x]}}
-      \lstinline{x} must be the path of a static library.
+(function & (l r) (`((,[@fst $l]) &-aux (,[@frst $l]))$r))
 
-      Evaluates to the path of a dynamic library that executes \lstinline{x} on loading and that exports all the functions of \lstinline{x}.
+(function &-aux (l r) (`[+ (,[@frrrrst $l]) (,[@fst $l])]$r))
 
-      Typing \lstinline{[puts [dynamic [library (" comments.l2)]]]}, pressing Enter, then pressing Ctrl-D prints "./.libLDsGsm.so". The output of \lstinline{objdump -T ./.libLDsGsm.so} should show that \lstinline{**} is an exported symbol.
+(function @ (l r) (`((,[@fst $l]) @-aux (,[@frst $l]))$r))
+
+(function @-aux (l r) (`[(,[@frrst $l]) [+ (,[@frrrrst $l]) (,[@fst $l])]]$r))
+
+(function setf (l r) (`((,[@fst $l]) setf-aux (,[@frst $l]) (,[@frrst $l]))$r))
+
+(function setf-aux (l r) (`[(,[@frrrst $l]) [+ (,[@frrrrst $l]) (,[@fst $l])]
+    (,[@frrrrrst $l])]$r))
+
+(function mk-field (l r offset size)
+    [lllllst [@fst $l] [value->literal $offset $r] [value->literal $size $r]
+        (switch = $size (#1 (` get1b $r)) (#2 (` get2b $r)) (#4 (` get4b $r))
+            (#8 (` get8b $r)) (`(null)$r))
+        (switch = $size (#1 (` set1b $r)) (#2 (` set2b $r)) (#4 (` set4b $r))
+            (#8 (` set8b $r)) (`(null)$r))
+        [@rst $l] $r])
+\end{verbatim}
+
+\hypertarget{somefields.l2}{%
+\paragraph{somefields.l2}\label{somefields.l2}}
+
+\begin{verbatim}
+(function cons-cell (l r) [mk# $r #16])
+
+(function car (l r) [mk-field $l $r #0 #8])
+
+(function cdr (l r) [mk-field $l $r #8 #8])
+\end{verbatim}
+
+\hypertarget{test12.l2}{%
+\paragraph{test12.l2}\label{test12.l2}}
+
+\begin{verbatim}
+(storage mycons (begin) (begin))
+(setf car mycons (char A))
+(setf cdr mycons (char a))
+[putchar (@ car mycons)]
+[putchar (@ cdr mycons)]
+\end{verbatim}
+
+\hypertarget{shell-11}{%
+\paragraph{shell}\label{shell-11}}
+
+\begin{verbatim}
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 \
+    backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 assume.l2 fields.l2 \
+    somefields.l2 - test12.l2
+\end{verbatim}
+
+Note that there is no struct definition in the code, there are only
+definitions of the fields we need to work with. The negative consequence
+of this is that we lose C's type safety and portability. The positive
+consequences are that we gain control over the struct packing, we are
+now able to use the same field definitions across several conceptually
+different structs, and that we can overlap our fields in completely
+arbitrary ways.
 
 \end{document}
-\grid
