@@ -15,7 +15,7 @@
 				(until (partial $definitions) [nil? $partial] [@cdr $partial]
 					(if [find (function _ (f ctx) [named-ref= (@ expr-reference $f) (@ expr-reference $ctx)])
 							(& cdr $partial) [@car $partial]]
-						{$handler (set-storage $err multiple-definition-error (@ expr-name(@ expr-reference[@car $partial])))}
+						{$handler (sets $err multiple-definition-error (@ expr-name(@ expr-reference[@car $partial])))}
 						(begin))))
 			[destroy-buffer $temp-reg]
 			{return $e})))
@@ -24,7 +24,7 @@
 			(let (ref-with-params [cons (@ expr-reference $e) (@ expr-parameters $e) $temp-reg])
 				(until (partial $ref-with-params) [nil? $partial] [@cdr $partial]
 					(if [find (function _ (f ctx) [named-ref= $f $ctx]) (& cdr $partial) [@car $partial]]
-						{$handler (set-storage $err multiple-definition-error (@ expr-name[@car $partial]))}
+						{$handler (sets $err multiple-definition-error (@ expr-name[@car $partial]))}
 						(begin))))
 			[destroy-buffer $temp-reg]
 			{return $e})))
@@ -110,12 +110,12 @@
 			(if (and (or (and [jump-reference? $s] [c-reference? (@ sym-definition(@ expr-symbol $s))])
 					(and [invoke-reference? $s] [function-reference? (@ sym-definition(@ expr-symbol $s))]))
 					(not [= [length(@ expr-arguments(@ expr-parent $s))] [length(@ expr-parameters[get-target-expression $s])]]))
-				{$handler (set-storage $err param-count-mismatch-error (@ expr-parent $s) [get-target-expression $s])}
+				{$handler (sets $err param-count-mismatch-error (@ expr-parent $s) [get-target-expression $s])}
 				{return $s})))
 	(if (and (or (and [= (@ expr-type $s) (-continuation-)] [jump-reference? $s])
 			(and [= (@ expr-type $s) (-function-)] [invoke-reference? $s]))
 			(not [= [length (@ expr-arguments(@ expr-parent $s))] [length (@ expr-parameters $s)]]))
-		{$handler (set-storage $err param-count-mismatch-error (@ expr-parent $s) $s)}
+		{$handler (sets $err param-count-mismatch-error (@ expr-parent $s) $s)}
 		{return $s})))))
 
 (function vescape-analysis-aux (ref target)
@@ -283,7 +283,7 @@
 				(if [str= (@ sym-name $sym) (@ expr-name (@ expr-reference $s))]
 					{return [vgenerate-metas [build-expression [(@ sym-offset $sym) (@ expr-argument $s) $expr-buf]
 						$expr-buf $handler $err] $ctx]} (begin)))
-			{$handler (set-storage $err undefined-reference-error (@ expr-name(@ expr-reference $s)))}))
+			{$handler (sets $err undefined-reference-error (@ expr-name(@ expr-reference $s)))}))
 		$s))
 
 (;; This function handles the lazy compilation of expressions that are neither

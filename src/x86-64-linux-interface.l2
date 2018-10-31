@@ -73,19 +73,19 @@
 (function open (path handler err)
 	(let (ret [syscall (sys-open) $path (o-rdonly)])
 		(if (and [<= [- #0 #4095] $ret] [<= $ret [- #0 #1]])
-			{$handler (set-storage $err file-access-error $path)}
+			{$handler (sets $err file-access-error $path)}
 			$ret)))
 
 (function create (path handler err)
 	(let (ret [syscall (sys-open) $path [lor (o-wronly) (o-creat)] [lor (s-irwxu) [lor (s-irwxg) (s-irwxo)]]])
 		(if (and [<= [- #0 #4095] $ret] [<= $ret [- #0 #1]])
-			{$handler (set-storage $err file-access-error $path)}
+			{$handler (sets $err file-access-error $path)}
 			$ret)))
 
 (function print (fd d len handler err)
 	(let (ret [syscall (sys-write) $fd $d $len])
 		(if (and [<= [- #0 #4095] $ret] [<= $ret [- #0 #1]])
-			{$handler (set-storage $err file-access-error (null))}
+			{$handler (sets $err file-access-error (null))}
 			$ret)))
 
 (function print-str (fd str handler err) [print $fd $str [strlen $str] $handler $err])
@@ -113,13 +113,13 @@
 (function read (fd buf cnt handler err)
 	(let (ret [syscall (sys-read) $fd $buf $cnt])
 		(if (and [<= [- #0 #4095] $ret] [<= $ret [- #0 #1]])
-			{$handler (set-storage $err file-access-error (null))}
+			{$handler (sets $err file-access-error (null))}
 			$ret)))
 
 (function close (fd handler err)
 	(let (ret [syscall (sys-close) $fd])
 		(if (and [<= [- #0 #4095] $ret] [<= $ret [- #0 #1]])
-			{$handler (set-storage $err file-access-error (null))}
+			{$handler (sets $err file-access-error (null))}
 			$ret)))
 
 (function size (fd handler err) (with return (begin
@@ -127,7 +127,7 @@
 		(begin)(begin)(begin)(begin)(begin)(begin)(begin)(begin)(begin))
 	(let (ret [syscall (sys-fstat) $fd statbuf])
 		(if (and [<= [- #0 #4095] $ret] [<= $ret [- #0 #1]])
-			{$handler (set-storage $err file-access-error (null))}
+			{$handler (sets $err file-access-error (null))}
 			{return [get [+ statbuf #48]]})))))
 
 (storage memory-access-error (begin))
@@ -137,7 +137,7 @@
 (function mmap (len handler err)
 	(let (ret [syscall (sys-mmap) (null) $len [lor (prot-read) (prot-write)] [lor (map-private) (map-anonymous)] [lnot #0] #0])
 		(if (and [<= [- #0 #4095] $ret] [<= $ret [- #0 #1]])
-			{$handler (set-storage $err memory-access-error)}
+			{$handler (sets $err memory-access-error)}
 			$ret)))
 
 (;; Deletes virtual address mappings coinciding with the range starting with the
@@ -146,7 +146,7 @@
 (function munmap (ptr len handler err)
 	(let (ret [syscall (sys-munmap) $ptr $len])
 		(if (and [<= [- #0 #4095] $ret] [<= $ret [- #0 #1]])
-			{$handler (set-storage $err memory-access-error)}
+			{$handler (sets $err memory-access-error)}
 			$ret)))
 
 (function pad-size (x nearest) (let (r [rem $x $nearest]) [+ $x (if $r [- $nearest $r] #0)]))

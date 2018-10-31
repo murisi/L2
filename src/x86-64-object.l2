@@ -30,7 +30,7 @@
 					((r-x86-64-pc8) [memcpy (@ r-offset $rela) (storage _[-[+(@ st-value $sym)$addend](@ r-offset $rela)])#1])
 					((r-x86-64-size32) [memcpy (@ r-offset $rela) (storage _[+(@ st-size $sym)$addend]) #4])
 					((r-x86-64-size64) [memcpy (@ r-offset $rela) (storage _[+(@ st-size $sym)$addend]) #8])
-					{$handler (set-storage $err object-error)}))))
+					{$handler (sets $err object-error)}))))
 			(begin)))))
 
 (;; Stores the relocation addends somewhere out of the way because it may be the
@@ -100,7 +100,7 @@
 
 (function read-object (objsrc objsrc-sz reg handler err) (with return (begin
 	(storage obj [buffer-alloc (object) $reg $handler $err])
-	(if [< $objsrc-sz (elf64-ehdr)] {$handler (set-storage $err object-error)} (begin))
+	(if [< $objsrc-sz (elf64-ehdr)] {$handler (sets $err object-error)} (begin))
 	(setf obj-ehdr $obj [buffer-alloc (elf64-ehdr) $reg $handler $err])
 	[memcpy (@ obj-ehdr $obj) $objsrc (elf64-ehdr)]
 	(setf obj-shdrs $obj [buffer-alloc [* (@ e-shnum(@ obj-ehdr $obj)) (elf64-shdr)] $reg $handler $err])

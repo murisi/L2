@@ -51,7 +51,7 @@
 	(storage temp-reg [create-buffer #0 $handler $err])
 	(storage ms [mutable-symbols $obj $temp-reg $handler $err])
 	(storage missing-sym [not-subset (function symbol= (sym1 sym2) [str= (@ sym-name $sym1) (@ sym-name $sym2)]) $ms $syms])
-	(if $missing-sym {$handler (set-storage $err undefined-reference-error (@ sym-name $missing-sym))} (begin))
+	(if $missing-sym {$handler (sets $err undefined-reference-error (@ sym-name $missing-sym))} (begin))
 	[destroy-buffer $temp-reg $handler $err]
 	[mutate-symbols $obj $syms]
 	{return $obj})))
@@ -114,7 +114,7 @@
 			(storage buf [read-to-buffer $src obj-sz $obj-buf $handler $err])
 			[set obj [load $buf $obj-sz $obj-buf $handler $err]])
 	
-			{$handler (set-storage $err unsupported-ext-error $src)}))
+			{$handler (sets $err unsupported-ext-error $src)}))
 
 		[append $obj objects $obj-buf $handler $err]
 		[append-list $symbols [immutable-symbols $obj $obj-buf $handler $err]]))
@@ -171,7 +171,7 @@
 			
 			(storage args [@cdr[argv $obj-buf handler err]])
 			(storage dash-list [find str= args (" -)])
-			(if $dash-list (begin) {handler (set-storage err arguments-error)})
+			(if $dash-list (begin) {handler (sets err arguments-error)})
 			
 			(storage metaprograms nil)
 			(with break (foreach (fn $args)
