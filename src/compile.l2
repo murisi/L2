@@ -51,8 +51,11 @@
 	(storage temp-reg [create-buffer #0 $handler $err])
 	(storage ms [mutable-symbols $obj $temp-reg $handler $err])
 	(storage missing-sym [not-subset (function symbol= (sym1 sym2) [str= (@ sym-name $sym1) (@ sym-name $sym2)]) $ms $syms])
-	(if $missing-sym {$handler (sets $err undefined-reference-error (@ sym-name $missing-sym))} (begin))
-	[destroy-buffer $temp-reg $handler $err]
+	(if $missing-sym
+		(let (missing-sym-name (@ sym-name $missing-sym)) (begin
+			[destroy-buffer $temp-reg $handler $err]
+			{$handler (sets $err undefined-reference-error $missing-sym-name)}))
+		[destroy-buffer $temp-reg $handler $err])
 	[mutate-symbols $obj $syms]
 	{return $obj})))
 	
