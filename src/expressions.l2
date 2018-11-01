@@ -63,16 +63,14 @@
 		(setf expr-type $func (-function-))
 		(setf expr-parent $func null-expr)
 		(setf expr-return-symbol $func null-symbol)
-		(setf expr-reference $func $ref)
-		(setf expr-parent $ref $func)
+		(put expr-reference $func $ref)
 		(setf expr-symbol $ref [make-symbol (static-storage) (local-scope) (defined-state) (@ expr-name $ref) $ref ..])
 		(setf expr-parameters $func $params)
 		(foreach (param $params) (begin
 			(setf expr-parent $param $func)
 			(setf expr-symbol $param [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ expr-name $param) $param ..])))
 		(setf expr-symbols $func nil)
-		(setf expr-expression $func $expr)
-		(setf expr-parent $expr $func)
+		(put expr-expression $func $expr)
 		{return $func})))))
 
 (function make-continuation (ref params expr reg handler err) (with return
@@ -81,16 +79,14 @@
 		(setf expr-parent $cont null-expr)
 		(setf expr-return-symbol $cont null-symbol)
 		(setf expr-cont-instr-ref $cont null-expr)
-		(setf expr-reference $cont $ref)
-		(setf expr-parent $ref $cont)
+		(put expr-reference $cont $ref)
 		(setf expr-symbol $ref [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ expr-name $ref) $ref ..])
 		(setf expr-parameters $cont $params)
 		(foreach (param $params) (begin
 			(setf expr-parent $param $cont)
 			(setf expr-symbol $param [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ expr-name $param) $param ..])))
 		(setf expr-escapes $cont (true))
-		(setf expr-expression $cont $expr)
-		(setf expr-parent $expr $cont)
+		(put expr-expression $cont $expr)
 		{return $cont})))))
 
 (function make-with (ref expr reg handler err) (with return
@@ -99,16 +95,14 @@
 		(setf expr-parent $wth null-expr)
 		(setf expr-return-symbol $wth null-symbol)
 		(setf expr-cont-instr-ref $wth null-expr)
-		(setf expr-reference $wth $ref)
-		(setf expr-parent $ref $wth)
+		(put expr-reference $wth $ref)
 		(setf expr-symbol $ref [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ expr-name $ref) $ref ..])
 		(let (param [make-reference null-name ..]) (begin
 			(setf expr-parent $param $wth)
 			(setf expr-symbol $param [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ expr-name $param) $param ..])
 			(setf expr-parameters $wth [cons $param nil $reg])))
 		(setf expr-escapes $wth (true))
-		(setf expr-expression $wth $expr)
-		(setf expr-parent $expr $wth)
+		(put expr-expression $wth $expr)
 		{return $wth})))))
 
 (function make-asm (opcode arguments reg handler err) (with return
@@ -125,8 +119,7 @@
 		(setf expr-parent $u null-expr)
 		(setf expr-return-symbol $u null-symbol)
 		(setf expr-short-circuit $u null-expr)
-		(setf expr-reference $u $ref)
-		(setf expr-parent $ref $u)
+		(put expr-reference $u $ref)
 		(setf expr-arguments $u $args)
 		(foreach (arg $args) (setf expr-parent $arg $u))
 		{return $u}))))
@@ -136,8 +129,7 @@
 		(setf expr-type $u (-storage-))
 		(setf expr-parent $u null-expr)
 		(setf expr-return-symbol $u null-symbol)
-		(setf expr-reference $u $ref)
-		(setf expr-parent $ref $u)
+		(put expr-reference $u $ref)
 		(setf expr-symbol $ref [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ expr-name $ref) $ref ..])
 		(setf expr-arguments $u $args)
 		(foreach (arg $args) (setf expr-parent $arg $u))
@@ -146,8 +138,7 @@
 (function make-meta (ref arg reg handler err) (with return
 	(let (u [buffer-alloc (expression) $reg $handler $err]) (begin
 		(setf expr-type $u (-meta-))
-		(setf expr-reference $u $ref)
-		(setf expr-parent $ref $u)
+		(put expr-reference $u $ref)
 		(setf expr-argument $u $arg)
 		{return $u}))))
 
@@ -156,12 +147,9 @@
 		(setf expr-type $u (-if-))
 		(setf expr-parent $u null-expr)
 		(setf expr-return-symbol $u null-symbol)
-		(setf expr-condition $u $condition)
-		(setf expr-parent $condition $u)
-		(setf expr-consequent $u $consequent)
-		(setf expr-parent $consequent $u)
-		(setf expr-alternate $u $alternate)
-		(setf expr-parent $alternate $u)
+		(put expr-condition $u $condition)
+		(put expr-consequent $u $consequent)
+		(put expr-alternate $u $alternate)
 		{return $u}))))
 
 (function make-invoke (ref args reg handler err) (with return
@@ -169,8 +157,7 @@
 		(setf expr-type $u (-invoke-))
 		(setf expr-parent $u null-expr)
 		(setf expr-return-symbol $u null-symbol)
-		(setf expr-reference $u $ref)
-		(setf expr-parent $ref $u)
+		(put expr-reference $u $ref)
 		(setf expr-arguments $u $args)
 		(foreach (arg $args) (setf expr-parent $arg $u))
 		{return $u}))))
