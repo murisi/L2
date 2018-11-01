@@ -218,11 +218,19 @@
 (;; Returns a list containing the the command line arguments. The returned list
 	and its dependencies will all reside in the region reg.)
 
-(function argv (reg handler err) (with return
-	(let (f [open (" /proc/self/cmdline) $handler $err]) (buf [buffer-alloc (arg-max) $reg $handler $err])
-		(let (bytes-rem [read $f $buf (arg-max) $handler $err]) (begin
-			[close $f $handler $err]
-			{(continuation loop (buf bytes-rem args)
+(function argv (reg handler err) (with return (begin
+	(storage f (begin))
+	(storage retval (begin))
+	(fallthrough
+		(begin
+			[set f [open (" /proc/self/cmdline) $handler $err]]
+			(storage buf [buffer-alloc (arg-max) $reg cleanup $err])
+			(storage bytes-rem [read $f $buf (arg-max) cleanup $err])
+			[set retval (with break {(continuation loop (buf bytes-rem args)
 				(if $bytes-rem
-					{loop [+ $buf [+ [strlen $buf] #1]] [- $bytes-rem [+ [strlen $buf] #1]] [cons $buf $args $reg]}
-					{return [reverse $args $reg]})) $buf $bytes-rem nil})))))
+					{loop [+ $buf [+ [strlen $buf] #1]] [- $bytes-rem [+ [strlen $buf] #1]] [cons $buf $args $reg cleanup $err]}
+					{break [reverse $args $reg cleanup $err]})) $buf $bytes-rem nil})])
+					
+		(cleanup (begin
+			[close $f $handler $err]
+			(if [= (@0 $err) no-error] {return $retval} {$handler (begin)})))))))
