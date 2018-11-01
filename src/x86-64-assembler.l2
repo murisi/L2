@@ -185,14 +185,14 @@
 	(storage strtab-len #1)
 	
 	(foreach (sym $symbols)
-		(if (@ sym-name $sym)
+		(if [not= (@ sym-name $sym) null-name]
 			[set+ strtab-len [+ [strlen(@ sym-name $sym)] #1]]
 			(begin)))
 	
 	(foreach (e $generated-expressions)
 		(if [= (@ expr-opcode $e) (label)]
 			(let (label-str (@ expr-name [@car (@ expr-arguments $e)]))
-				(if $label-str [set+ strtab-len [+ [strlen $label-str] #1]] (begin)))
+				(if [not= $label-str null-name] [set+ strtab-len [+ [strlen $label-str] #1]] (begin)))
 			(begin)))
 	
 	{return $strtab-len})))
@@ -277,7 +277,7 @@
 	
 			(foreach (sym $symbols)
 				(if [= (@ sym-scope $sym) (local-scope)] (begin
-					(if (@ sym-name $sym)
+					(if [not= (@ sym-name $sym) null-name]
 						(begin
 							[strcpy $strtabptr (@ sym-name $sym)]
 							(setf st-name $sym-ptr [- $strtabptr $strtab])
@@ -299,7 +299,7 @@
 				(if (and [= (@ expr-opcode $e) (label)]
 						[= (@ sym-scope(@ expr-symbol[@car(@ expr-arguments $e)])) (local-scope)]) (begin
 					(storage ref [@car(@ expr-arguments $e)])
-					(if (@ expr-name $ref)
+					(if [not= (@ expr-name $ref) null-name]
 						(begin
 							[strcpy $strtabptr (@ expr-name $ref)]
 							(setf st-name $sym-ptr [- $strtabptr $strtab])
@@ -319,7 +319,7 @@
 	
 			(foreach (sym $symbols)
 				(if (and [= (@ sym-scope $sym) (global-scope)] [= (@ sym-state $sym) (defined-state)]) (begin
-					(if (@ sym-name $sym)
+					(if [not= (@ sym-name $sym) null-name]
 						(begin
 							[strcpy $strtabptr (@ sym-name $sym)]
 							(setf st-name $sym-ptr [- $strtabptr $strtab])
@@ -339,7 +339,7 @@
 	
 			(foreach (sym $symbols)
 				(if (and [= (@ sym-scope $sym) (global-scope)] [= (@ sym-state $sym) (undefined-state)]) (begin
-					(if (@ sym-name $sym)
+					(if [not= (@ sym-name $sym) null-name]
 						(begin
 							[strcpy $strtabptr (@ sym-name $sym)]
 							(setf st-name $sym-ptr [- $strtabptr $strtab])
@@ -359,7 +359,7 @@
 				(if (and [= (@ expr-opcode $e) (label)]
 						[= (@ sym-scope(@ expr-symbol[@car(@ expr-arguments $e)])) (global-scope)]) (begin
 					(storage ref [@car(@ expr-arguments $e)])
-					(if (@ expr-name $ref)
+					(if [not= (@ expr-name $ref) null-name]
 						(begin
 							[strcpy $strtabptr (@ expr-name $ref)]
 							(setf st-name $sym-ptr [- $strtabptr $strtab])

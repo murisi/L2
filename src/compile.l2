@@ -8,8 +8,8 @@
 		[visit-expressions vfind-multiple-definitions program (storage _ $handler $err)]
 		[classify-program-symbols (@ expr-expression $program)]
 		[visit-expressions vlink-references (& expr-expression $program) (storage _ ..)]
-		[visit-expressions vescape-analysis program (null)]
-		[set program [use-return-symbol $program (null) ..]]
+		[visit-expressions vescape-analysis program (begin)]
+		[set program [use-return-symbol $program null-symbol ..]]
 		[classify-program-symbols (@ expr-expression $program)]
 		[visit-expressions vlayout-frames (& expr-expression $program) (storage _ ..)]
 		[visit-expressions vgenerate-references program (storage _ ..)]
@@ -51,7 +51,7 @@
 	(storage temp-reg [create-buffer #0 $handler $err])
 	(storage ms [mutable-symbols $obj $temp-reg $handler $err])
 	(storage missing-sym [not-subset (function symbol= (sym1 sym2) [str= (@ sym-name $sym1) (@ sym-name $sym2)]) $ms $syms])
-	(if $missing-sym
+	(if [not= $missing-sym null-not-subset]
 		(let (missing-sym-name (@ sym-name $missing-sym)) (begin
 			[destroy-buffer $temp-reg $handler $err]
 			{$handler (sets $err undefined-reference-error $missing-sym-name)}))
@@ -108,11 +108,11 @@
 		(storage obj (begin))
 		(storage dot [strrchr $src (char .)])
 
-		(if (and $dot [str= $dot (" .l2)])
+		(if (and [not= $dot null-strrchr] [str= $dot (" .l2)])
 			[set obj [load-program [generate-metaprogram [make-program [read-expressions $src $expr-buf $handler $err]
 				$expr-buf $handler $err] $symbols $expr-buf $obj-buf $handler $err] $expr-buf $obj-buf $handler $err]]
 	
-		(if (and $dot [str= $dot (" .o)]) (begin
+		(if (and [not= $dot null-strrchr] [str= $dot (" .o)]) (begin
 			(storage obj-sz (begin))
 			(storage buf [read-to-buffer $src obj-sz $obj-buf $handler $err])
 			[set obj [load $buf $obj-sz $obj-buf $handler $err]])
@@ -134,7 +134,7 @@
 (function compile-files (programs syms expr-buf obj-buf handler err)
 	(foreach (infn $programs) (begin
 		(storage dot [strrchr $infn (char .)])
-		(if (and $dot [str= $dot (" .l2)]) (begin
+		(if (and [not= $dot null-strrchr] [str= $dot (" .l2)]) (begin
 			(storage program [make-program [read-expressions $infn $expr-buf $handler $err] $expr-buf $handler $err])
 			[pre-visit-expressions vgenerate-metas program (storage _ $syms $expr-buf $handler $err)]
 			(storage symbols (begin))
@@ -174,7 +174,7 @@
 			
 			(storage args [@cdr[argv $obj-buf handler err]])
 			(storage dash-list [find str= args (" -)])
-			(if $dash-list (begin) {handler (sets err arguments-error)})
+			(if [not= $dash-list null-find] (begin) {handler (sets err arguments-error)})
 			
 			(storage metaprograms nil)
 			(with break (foreach (fn $args)
@@ -308,7 +308,7 @@
 				[print-str (stdout) (@1 err) ..]
 				[print-str (stdout) (" .(lf)) ..]))
 			
-			(special-form-error (if (@2 err)
+			(special-form-error (if [not= (@2 err) null-fragment]
 				(begin
 					[print-str (stdout) (" The subexpression(space)) ..]
 					[print-fragment (@2 err) ..]
@@ -327,7 +327,7 @@
 				[print-uint (stdout) (@2 err) ..]
 				[print-str (stdout) (" .(lf)) ..]))
 			
-			(file-access-error (if (@1 err)
+			(file-access-error (if [not= (@1 err) null-path]
 				(begin
 					[print-str (stdout) (" Inaccessable file:(space)) ..]
 					[print-str (stdout) (@1 err) ..]
