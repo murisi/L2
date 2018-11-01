@@ -84,12 +84,12 @@
 			{$handler (sets $err file-access-error $path)}
 			$ret)))
 
-(storage null-path (begin))
+(storage null-string (begin))
 
 (function print (fd d len handler err)
 	(let (ret [syscall (sys-write) $fd $d $len])
 		(if (and [<= [- #0 #4095] $ret] [<= $ret [- #0 #1]])
-			{$handler (sets $err file-access-error null-path)}
+			{$handler (sets $err file-access-error null-string)}
 			$ret)))
 
 (function print-str (fd str handler err) [print $fd $str [strlen $str] $handler $err])
@@ -117,13 +117,13 @@
 (function read (fd buf cnt handler err)
 	(let (ret [syscall (sys-read) $fd $buf $cnt])
 		(if (and [<= [- #0 #4095] $ret] [<= $ret [- #0 #1]])
-			{$handler (sets $err file-access-error null-path)}
+			{$handler (sets $err file-access-error null-string)}
 			$ret)))
 
 (function close (fd handler err)
 	(let (ret [syscall (sys-close) $fd])
 		(if (and [<= [- #0 #4095] $ret] [<= $ret [- #0 #1]])
-			{$handler (sets $err file-access-error null-path)}
+			{$handler (sets $err file-access-error null-string)}
 			$ret)))
 
 (function size (fd handler err) (with return (begin
@@ -131,7 +131,7 @@
 		(begin)(begin)(begin)(begin)(begin)(begin)(begin)(begin)(begin))
 	(let (ret [syscall (sys-fstat) $fd statbuf])
 		(if (and [<= [- #0 #4095] $ret] [<= $ret [- #0 #1]])
-			{$handler (sets $err file-access-error null-path)}
+			{$handler (sets $err file-access-error null-string)}
 			{return [get [+ statbuf #48]]})))))
 
 (storage memory-access-error (begin))
