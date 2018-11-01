@@ -23,10 +23,10 @@
 	symbol will be based on. $r is the buffer in which the symbol will be constructed.
 	Return value is the constructed symbol.)
 
-(function build-symbol (str r) (with return
+(function build-symbol (str r handler err) (with return
 	(let (sexprs nil) (begin
 		(while [getb $str] (begin
-			[append (sym-char [getb $str]) sexprs $r]
+			[append (sym-char [getb $str]) sexprs $r $handler $err]
 			[set str [+ $str #1]]))
 		{return $sexprs}))))
 
@@ -50,15 +50,16 @@
 	to the current index in the buffer. $r is the buffer into which the symbol
 	should be put. Return value is the constructed symbol.)
 
-(function build-sigilled-symbol (sigil l2src l2src-sz pos r handler err) (with return (begin
-	(if [= $l2src-sz $$pos] {return [build-symbol $sigil $r]} (begin))
-	(let (d [getb [+ $l2src $$pos]])
-		(if (or [isspace $d] [= $d (rparen)] [= $d (rbrace)] [= $d (rbracket)] [= $d (lparen)] [= $d (lbrace)] [= $d (lbracket)])
-			{return [build-symbol $sigil $r]}
-			(let (sexprs nil) (begin
-				[append [build-symbol $sigil $r] sexprs $r]
-				[append [build-fragment $l2src $l2src-sz $pos $r $handler $err] sexprs $r]
-				{return $sexprs})))))))
+(function build-sigilled-symbol (sigil l2src l2src-sz pos r handler err) (with return
+	(substitute (.. $r $handler $err) (begin
+		(if [= $l2src-sz $$pos] {return [build-symbol $sigil ..]} (begin))
+		(let (d [getb [+ $l2src $$pos]])
+			(if (or [isspace $d] [= $d (rparen)] [= $d (rbrace)] [= $d (rbracket)] [= $d (lparen)] [= $d (lbrace)] [= $d (lbracket)])
+				{return [build-symbol $sigil ..]}
+				(let (sexprs nil) (begin
+					[append [build-symbol $sigil ..] sexprs ..]
+					[append [build-fragment $l2src $l2src-sz $pos ..] sexprs ..]
+					{return $sexprs}))))))))
 
 (;; Builds a fragment list starting at the current position in the buffer and ending
 	at the specified delimiter and then prefixes it with the given primitive.
@@ -66,15 +67,15 @@
 	see above.)
 
 (function build-fragment-list (primitive delimeter l2src l2src-sz pos r handler err) (with return
-	(let (sexprs nil) (begin
-		[append [build-symbol $primitive $r] sexprs $r]
+	(substitute (.. $r $handler $err) (let (sexprs nil) (begin
+		[append [build-symbol $primitive ..] sexprs ..]
 		(while (true) (begin
 			(let (rem [after-leading-space $l2src $l2src-sz $pos])
 				(if (and $rem [= [getb [+ $l2src $$pos]] $delimeter])
 					(begin [set $pos [+ $$pos #1]] {return $sexprs})
 					(begin)))
-			[append [build-fragment $l2src $l2src-sz $pos $r $handler $err] sexprs $r]))
-		{return $sexprs}))))
+			[append [build-fragment $l2src $l2src-sz $pos ..] sexprs ..]))
+		{return $sexprs})))))
 
 (storage unexpected-char-error (begin))
 
