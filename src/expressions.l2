@@ -176,83 +176,83 @@
 (;; Prints the given expression as it would be written in an L2 source file.
 	$s is an expression.)
 
-(function print-expression (s hdl err)
+(function print-expression (s hdl err) (substitute (.. $hdl $err)
 	(switch = (@ expr-type $s)
 		((-begin-) (begin
-			[print-str (stdout) (" (lparen)begin(space)) $hdl $err]
+			[print-str (stdout) (" (lparen)begin(space)) ..]
 			(foreach (t (@ expr-expressions $s)) (begin
-				[print-expression $t $hdl $err]
-				[print-str (stdout) (" (space)) $hdl $err]))
-			[print-str (stdout) (" (bs)(rparen)) $hdl $err]))
+				[print-expression $t ..]
+				[print-str (stdout) (" (space)) ..]))
+			[print-str (stdout) (" (bs)(rparen)) ..]))
 		
 		((-with-) (begin
-			[print-str (stdout) (" (lparen)with(space)) $hdl $err]
-			[print-expression (@ expr-reference $s) $hdl $err]
-			[print-str (stdout) (" (space)) $hdl $err]
-			[print-expression (@ expr-expression $s) $hdl $err]
-			[print-str (stdout) (" (rparen)) $hdl $err]))
+			[print-str (stdout) (" (lparen)with(space)) ..]
+			[print-expression (@ expr-reference $s) ..]
+			[print-str (stdout) (" (space)) ..]
+			[print-expression (@ expr-expression $s) ..]
+			[print-str (stdout) (" (rparen)) ..]))
 		
 		((-invoke-) (-jump-) (-storage-) (begin
 			[print-str (stdout) (switch = (@ expr-type $s)
 				((-invoke-) (" (lbracket)))
 				((-jump-) (" (lbrace)))
-				(" (lparen)storage(space))) $hdl $err]
-			[print-expression (@ expr-reference $s) $hdl $err]
-			[print-str (stdout) (" (space)) $hdl $err]
+				(" (lparen)storage(space))) ..]
+			[print-expression (@ expr-reference $s) ..]
+			[print-str (stdout) (" (space)) ..]
 			(foreach (t (@ expr-arguments $s)) (begin
-				[print-expression $t $hdl $err]
-				[print-str (stdout) (" (space)) $hdl $err]))
-			[print-str (stdout) (" (bs)) $hdl $err]
+				[print-expression $t ..]
+				[print-str (stdout) (" (space)) ..]))
+			[print-str (stdout) (" (bs)) ..]
 			[print-str (stdout) (switch = (@ expr-type $s)
 				((-invoke-) (" (rbracket)))
 				((-jump-) (" (rbrace)))
-				(" (rbracket))) $hdl $err]))
+				(" (rbracket))) ..]))
 		
 		((-function-) (-continuation-) (begin
-			[print-str (stdout) (" (lparen)) $hdl $err]
+			[print-str (stdout) (" (lparen)) ..]
 			[print-str (stdout) (switch = (@ expr-type $s)
 				((-function-) (" function))
-				(" continuation)) $hdl $err]
-			[print-str (stdout) (" (space)) $hdl $err]
-			[print-expression (@ expr-reference $s) $hdl $err]
-			[print-str (stdout) (" (space)(lparen)(space)) $hdl $err]
+				(" continuation)) ..]
+			[print-str (stdout) (" (space)) ..]
+			[print-expression (@ expr-reference $s) ..]
+			[print-str (stdout) (" (space)(lparen)(space)) ..]
 			(foreach (t (@ expr-parameters $s)) (begin
-				[print-expression $t $hdl $err]
-				[print-str (stdout) (" (space)) $hdl $err]))
-			[print-str (stdout) (" (rparen)(space)) $hdl $err]
-			[print-expression (@ expr-expression $s) $hdl $err]
-			[print-str (stdout) (" (rparen)) $hdl $err]))
+				[print-expression $t ..]
+				[print-str (stdout) (" (space)) ..]))
+			[print-str (stdout) (" (rparen)(space)) ..]
+			[print-expression (@ expr-expression $s) ..]
+			[print-str (stdout) (" (rparen)) ..]))
 			
 		((-if-) (begin
-			[print-str (stdout) (" (lparen)if(space)) $hdl $err]
-			[print-expression (@ expr-condition $s) $hdl $err]
-			[print-str (stdout) (" (space)) $hdl $err]
-			[print-expression (@ expr-consequent $s) $hdl $err]
-			[print-str (stdout) (" (space)) $hdl $err]
-			[print-expression (@ expr-alternate $s) $hdl $err]
-			[print-str (stdout) (" (rparen)) $hdl $err]))
+			[print-str (stdout) (" (lparen)if(space)) ..]
+			[print-expression (@ expr-condition $s) ..]
+			[print-str (stdout) (" (space)) ..]
+			[print-expression (@ expr-consequent $s) ..]
+			[print-str (stdout) (" (space)) ..]
+			[print-expression (@ expr-alternate $s) ..]
+			[print-str (stdout) (" (rparen)) ..]))
 		
 		((-reference-)
 			(if [not= (@ expr-name $s) null-string]
-				[print-str (stdout) (@ expr-name $s) $hdl $err]
+				[print-str (stdout) (@ expr-name $s) ..]
 				(begin
-					[print-str (stdout) (" (lparen)reference(space)) $hdl $err]
-					[print-uint (stdout) (@ expr-symbol $s) $hdl $err]
-					[print-str (stdout) (" (rparen)) $hdl $err])))
+					[print-str (stdout) (" (lparen)reference(space)) ..]
+					[print-uint (stdout) (@ expr-symbol $s) ..]
+					[print-str (stdout) (" (rparen)) ..])))
 					
 		((-literal-) (begin
-			[print-str (stdout) (" (lparen)literal(space)) $hdl $err]
-			[print-uint (stdout) (@ expr-value $s) $hdl $err]
-			[print-str (stdout) (" (rparen)) $hdl $err]))
+			[print-str (stdout) (" (lparen)literal(space)) ..]
+			[print-uint (stdout) (@ expr-value $s) ..]
+			[print-str (stdout) (" (rparen)) ..]))
 		
 		((-meta-) (begin
-			[print-str (stdout) (" (lparen)) $hdl $err]
-			[print-expression (@ expr-reference $s) $hdl $err]
-			[print-str (stdout) (" (space)) $hdl $err]
-			[print-fragment (@ expr-argument $s) $hdl $err]
-			[print-str (stdout) (" (rparen)) $hdl $err]))
+			[print-str (stdout) (" (lparen)) ..]
+			[print-expression (@ expr-reference $s) ..]
+			[print-str (stdout) (" (space)) ..]
+			[print-fragment (@ expr-argument $s) ..]
+			[print-str (stdout) (" (rparen)) ..]))
 			
-		(begin)))
+		(begin))))
 
 (storage special-form-error (begin))
 
