@@ -1,4 +1,4 @@
-(function defined-str= (a b) (and [not= $a null-name] [not= $b null-name] [str= $a $b]))
+(function defined-str= (a b) (and [not= $a null-string] [not= $b null-string] [str= $a $b]))
 
 (function named-ref= (a b) [defined-str= (@ expr-name $a) (@ expr-name $b)])
 
@@ -186,12 +186,12 @@
 		((-with-) (-continuation-) (begin
 			(setf expr-return-symbol $n $ret-sym)
 			(put expr-expression $n [use-return-symbol (@ expr-expression $n)
-				[make-symbol (dynamic-storage) (local-scope) (defined-state) null-name null-expr ..] ..])
+				[make-symbol (dynamic-storage) (local-scope) (defined-state) null-string null-expr ..] ..])
 			{return $n}))
 		
 		((-function-) (begin
 			(setf expr-return-symbol $n $ret-sym)
-			(setf expr-expression-return-symbol $n [make-symbol (dynamic-storage) (local-scope) (defined-state) null-name
+			(setf expr-expression-return-symbol $n [make-symbol (dynamic-storage) (local-scope) (defined-state) null-string
 				null-expr ..])
 			(put expr-expression $n [use-return-symbol (@ expr-expression $n) (@ expr-expression-return-symbol $n) ..])
 			{return $n}))
@@ -199,12 +199,12 @@
 		((-invoke-) (-jump-) (-storage-)
 			(let (container nil) (begin
 				(if [= (@ expr-type $n) (-storage-)] (begin)
-					(let (ref-ret-sym [make-symbol (dynamic-storage) (local-scope) (defined-state) null-name null-expr ..]) (begin
+					(let (ref-ret-sym [make-symbol (dynamic-storage) (local-scope) (defined-state) null-string null-expr ..]) (begin
 						[append [use-return-symbol (@ expr-reference $n) $ref-ret-sym ..] container ..]
 						(put expr-reference $n [use-symbol $ref-ret-sym ..]))))
 						
 				(until (partial (@ expr-arguments $n)) [nil? $partial] [@cdr $partial]
-					(let (arg-ret-sym [make-symbol (dynamic-storage) (local-scope) (defined-state) null-name null-expr ..]) (begin
+					(let (arg-ret-sym [make-symbol (dynamic-storage) (local-scope) (defined-state) null-string null-expr ..]) (begin
 						[append [use-return-symbol [@car $partial] $arg-ret-sym ..] container ..]
 						(replace-expression (& car $partial) [use-symbol $arg-ret-sym ..]))))
 				
@@ -215,7 +215,7 @@
 		((-if-) (let (container nil) (begin
 			(put expr-consequent $n [use-return-symbol (@ expr-consequent $n) $ret-sym ..])
 			(put expr-alternate $n [use-return-symbol (@ expr-alternate $n) $ret-sym ..])
-			(let (cond-ret-sym [make-symbol (dynamic-storage) (local-scope) (defined-state) null-name null-expr ..]) (begin
+			(let (cond-ret-sym [make-symbol (dynamic-storage) (local-scope) (defined-state) null-string null-expr ..]) (begin
 				[append [use-return-symbol (@ expr-condition $n) $cond-ret-sym ..] container ..]
 				(put expr-condition $n [use-symbol $cond-ret-sym ..])
 				[append $n container ..]))
@@ -224,7 +224,7 @@
 		((-begin-) (begin
 			(until (partial (@ expr-expressions $n)) [nil? $partial] [@cdr $partial]
 				(replace-expression (& car $partial) [use-return-symbol [@car $partial]
-					[make-symbol (dynamic-storage) (local-scope) (defined-state) null-name null-expr ..] ..]))
+					[make-symbol (dynamic-storage) (local-scope) (defined-state) null-string null-expr ..] ..]))
 			{return $n}))
 		
 		((-reference-) (-literal-) (begin
@@ -348,7 +348,7 @@
 				(foreach (_ (@ expr-arguments $s)) [prepend [make-begin nil ..] args ..])
 				(storage storage-ref [make-reference (@ expr-name (@ expr-reference $s)) ..])
 				[append [make-storage $storage-ref $args ..] c ..]
-				(storage storage-ref-arg [make-reference null-name ..])
+				(storage storage-ref-arg [make-reference null-string ..])
 				[refer-reference $storage-ref-arg $storage-ref]
 				[append (make-invokeN (make-invokeN [make-literal init-storage ..] ($storage-ref-arg [make-literal $s ..]
 					[make-literal $symbols ..] [make-literal $expr-buf ..] [make-literal $obj-buf ..] [make-literal $handler ..]
@@ -358,8 +358,8 @@
 				(storage params nil)
 				(storage args nil)
 				(foreach (_ (@ expr-parameters $s)) (begin
-					[prepend [make-reference null-name ..] params ..]
-					[prepend (make-invokeN [make-literal get ..] ([make-reference null-name ..]) ..) args ..]))
+					[prepend [make-reference null-string ..] params ..]
+					[prepend (make-invokeN [make-literal get ..] ([make-reference null-string ..]) ..) args ..]))
 				[append [make-function [make-reference (@ expr-name (@ expr-reference $s)) ..] $params
 					[make-invoke (make-invokeN [make-literal init-function ..] ([make-literal $s ..] [make-literal $symbols ..]
 					[make-literal $expr-buf ..] [make-literal $obj-buf ..] [make-literal $handler ..] [make-literal $err ..]
