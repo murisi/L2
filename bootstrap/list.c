@@ -13,10 +13,10 @@ typedef struct _list_* list;
 #define frrrrrst rst->rst->rst->rst->rst->fst
 #define rrrrrrst rst->rst->rst->rst->rst->rst
 
-struct _list_ nil[] = {{ nil, NULL }};
+struct _list_ nil[] = {{ NULL, nil }};
 
 bool is_nil(list s) {
-	return s->rst == NULL ? true : false;
+	return s->rst == s ? true : false;
 }
 
 #define foreach(t, u) \

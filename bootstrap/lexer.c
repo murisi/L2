@@ -1,13 +1,13 @@
 struct character {
-	void *list_flag;
 	char character;
+	void *flag;
 };
 
 bool char_equals(struct character *a, struct character *b) {
 	return a->character == b->character;
 }
 
-#define char_init(ch) {{ .list_flag = NULL, .character = ch }}
+#define char_init(ch) {{ .character = ch, .flag = NULL }}
 
 struct character chars[][1] = {
 	{0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0}, {0},
@@ -110,7 +110,7 @@ list build_fragment(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *hand
 }
 
 bool is_symbol(list d) {
-	return length(d) && !((struct character *) d->fst)->list_flag;
+	return length(d) && !((struct character *) d->fst)->flag;
 }
 
 char *to_string(list d, region r) {
@@ -144,11 +144,10 @@ list copy_fragment(list l, region r) {
 void print_fragment(list d) {
 	write_str(STDOUT, "(");
 	if(!is_nil(d)) {
-		struct character *_fst = d->fst;
-		if(_fst->list_flag) {
-			print_fragment((list) _fst);
+		if(is_symbol(d)) {
+			write_char(STDOUT, ((struct character *) d->fst)->character);
 		} else {
-			write_char(STDOUT, _fst->character);
+			print_fragment((list) d->fst);
 		}
 		write_str(STDOUT, " . ");
 		print_fragment(d->rst);
