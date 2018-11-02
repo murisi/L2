@@ -68,7 +68,7 @@ union expression *vlayout_frames(union expression *n, region r) {
 			break;
 		} case continuation: case with: {
 			union expression *parent_function = get_parent_function(n);
-			if(n->continuation.escapes) {
+			if(true) {
 				n->continuation.reference->reference.symbol->size = CONT_SIZE;
 				append(n->continuation.reference->reference.symbol, &parent_function->function.symbols, r);
 			}
@@ -209,8 +209,8 @@ union expression *vgenerate_continuation_expressions(union expression *n, region
 	switch(n->base.type) {
 		case continuation: {
 			union expression *container = make_begin(nil, r);
-			emit(make_load_address(n->continuation.escapes ?
-				n->continuation.reference->reference.symbol : cont_instr_ref(n, r)->reference.symbol, make_asm0(R11, r), r), r);
+			emit(make_load_address((n->continuation.escapes ?
+				n->continuation.reference : cont_instr_ref(n, r))->reference.symbol, make_asm0(R11, r), r), r);
 			emit(make_store(make_asm0(R11, r), n->continuation.return_symbol, 0, make_asm0(R10, r), r), r);
 			if(n->continuation.escapes) {
 				emit(make_store_continuation(n, r), r);
