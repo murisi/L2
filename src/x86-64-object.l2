@@ -6,16 +6,16 @@
 
 (function do-relocations (obj handler err)
 	(until (sec-idx #0) [= $sec-idx (@ e-shnum(@ obj-ehdr $obj))] [+ $sec-idx #1] (begin
-		(storage shdr-buf (loc (@ obj-shdrs $obj) $sec-idx (elf64-shdr)))
+		(storage shdr-buf (loc (elf64-shdr) $sec-idx (@ obj-shdrs $obj)))
 		(if (or [= (@ sh-type $shdr-buf) (sht-rela)] [= (@ sh-type $shdr-buf) (sht-rel)]) (begin
 			(storage relanum [/ (@ sh-size $shdr-buf) (@ sh-entsize $shdr-buf)])
-			(storage relas-buf ($(loc (@ obj-relas $obj) $sec-idx (unit))))
-			(storage addends-buf ($(loc (@ obj-addends $obj) $sec-idx (unit))))
+			(storage relas-buf ($(loc (unit) $sec-idx (@ obj-relas $obj))))
+			(storage addends-buf ($(loc (unit) $sec-idx (@ obj-addends $obj))))
 			(until (rela-idx #0) [= $rela-idx $relanum] [+ $rela-idx #1] (begin
-				(storage syms-buf ($(loc (@ obj-syms $obj) (@ sh-link $shdr-buf) (unit))))
-				(storage rela (loc $relas-buf $rela-idx (elf64-rela)))
-				(storage addend ($(loc $addends-buf $rela-idx (elf64-sxword))))
-				(storage sym (loc $syms-buf (elf64-r-sym (@ r-info $rela)) (elf64-sym)))
+				(storage syms-buf ($(loc (unit) (@ sh-link $shdr-buf) (@ obj-syms $obj))))
+				(storage rela (loc (elf64-rela) $rela-idx $relas-buf))
+				(storage addend ($(loc (elf64-sxword) $rela-idx $addends-buf)))
+				(storage sym (loc (elf64-sym) (elf64-r-sym (@ r-info $rela)) $syms-buf))
 				(switch = (elf64-r-type (@ r-info $rela))
 					((r-x86-64-none) (begin))
 					((r-x86-64-64) [memcpy (@ r-offset $rela) (storage _[+(@ st-value $sym)$addend]) #8])
@@ -40,29 +40,29 @@
 
 (function store-addends (obj reg handler err)
 	(until (sec-idx #0) [= $sec-idx (@ e-shnum(@ obj-ehdr $obj))] [+ $sec-idx #1] (begin
-		(storage shdr-buf (loc (@ obj-shdrs $obj) $sec-idx (elf64-shdr)))
+		(storage shdr-buf (loc (elf64-shdr) $sec-idx (@ obj-shdrs $obj)))
 		(if [= (@ sh-type $shdr-buf) (sht-rela)] (begin
 			(storage relanum [/ (@ sh-size $shdr-buf) (@ sh-entsize $shdr-buf)])
-			(storage relas-buf ($(loc (@ obj-relas $obj) $sec-idx (unit))))
-			(storage addends-buf (loc (@ obj-addends $obj) $sec-idx (unit)))
+			(storage relas-buf ($(loc (unit) $sec-idx (@ obj-relas $obj))))
+			(storage addends-buf (loc (unit) $sec-idx (@ obj-addends $obj)))
 			[set $addends-buf [buffer-alloc [* $relanum (elf64-sxword)] $reg $handler $err]]
 			(until (rela-idx #0) [= $rela-idx $relanum] [+ $rela-idx #1]
-				(let (rela (loc $relas-buf $rela-idx (elf64-rela)))
-					[set8b (loc $$addends-buf $rela-idx (elf64-sxword)) (@ r-addend $rela)])))
+				(let (rela (loc (elf64-rela) $rela-idx $relas-buf))
+					[set8b (loc (elf64-sxword) $rela-idx $$addends-buf) (@ r-addend $rela)])))
 					
 		(if [= (@ sh-type $shdr-buf) (sht-rel)] (begin
 			(storage relanum [/ (@ sh-size $shdr-buf) (@ sh-entsize $shdr-buf)])
-			(storage relas-buf ($(loc (@ obj-relas $obj) $sec-idx (unit))))
-			(storage addends-buf (loc (@ obj-addends $obj) $sec-idx (unit)))
+			(storage relas-buf ($(loc (unit) $sec-idx (@ obj-relas $obj))))
+			(storage addends-buf (loc (unit) $sec-idx (@ obj-addends $obj)))
 			[set $addends-buf [buffer-alloc [* $relanum (elf64-sxword)] $reg $handler $err]]
 			(until (rela-idx #0) [= $rela-idx $relanum] [+ $rela-idx #1]
-				(let (rela (loc $relas-buf $rela-idx (elf64-rela)))
+				(let (rela (loc (elf64-rela) $rela-idx $relas-buf))
 					[(switch = (elf64-r-type (@ r-info $rela))
 							((r-x86-64-8) set1b) ((r-x86-64-pc8) set1b) ((r-x86-64-16) set2b) ((r-x86-64-pc16) set2b)
 							((r-x86-64-pc32) set4b) ((r-x86-64-32) set4b) ((r-x86-64-32s) set4b) ((r-x86-64-size32) set4b)
 							((r-x86-64-64) set8b) ((r-x86-64-size64) set8b) ((r-x86-64-glob-dat) set8b)
 							((r-x86-64-jump-slot) set8b) {$handler})
-						(loc $$addends-buf $rela-idx (elf64-sxword)) (@ r-offset $rela)])))
+						(loc (elf64-sxword) $rela-idx $$addends-buf) (@ r-offset $rela)])))
 						
 		(begin))))))
 
@@ -71,25 +71,25 @@
 
 (function offsets-to-addresses (obj)
 	(until (sec-idx #0) [= $sec-idx (@ e-shnum(@ obj-ehdr $obj))] [+ $sec-idx #1] (begin
-		(storage shdr-buf (loc (@ obj-shdrs $obj) $sec-idx (elf64-shdr)))
+		(storage shdr-buf (loc (elf64-shdr) $sec-idx (@ obj-shdrs $obj)))
 		(if (or [= (@ sh-type $shdr-buf) (sht-rela)] [= (@ sh-type $shdr-buf) (sht-rel)]) (begin
 			(storage relanum [/ (@ sh-size $shdr-buf) (@ sh-entsize $shdr-buf)])
-			(storage relas-buf ($(loc (@ obj-relas $obj) $sec-idx (unit))))
+			(storage relas-buf ($(loc (unit) $sec-idx (@ obj-relas $obj))))
 			(until (rela-idx #0) [= $rela-idx $relanum] [+ $rela-idx #1] (begin
-				(storage rela (loc $relas-buf $rela-idx (elf64-rela)))
-				(storage target-seg-addr ($(loc (@ obj-segs $obj) (@ sh-info $shdr-buf) (unit))))
+				(storage rela (loc (elf64-rela) $rela-idx $relas-buf))
+				(storage target-seg-addr ($(loc (unit) (@ sh-info $shdr-buf) (@ obj-segs $obj))))
 				(setf r-offset $rela [+ $target-seg-addr (@ r-offset $rela)]))))
 				
 		(if [= (@ sh-type $shdr-buf) (sht-symtab)] (begin
 			(storage symnum [/ (@ sh-size $shdr-buf) (@ sh-entsize $shdr-buf)])
-			(storage syms-buf ($(loc (@ obj-syms $obj) $sec-idx (unit))))
+			(storage syms-buf ($(loc (unit) $sec-idx (@ obj-syms $obj))))
 			(until (sym-idx #0) [= $sym-idx $symnum] [+ $sym-idx #1] (begin
-				(storage sym (loc $syms-buf $sym-idx (elf64-sym)))
+				(storage sym (loc (elf64-sym) $sym-idx $syms-buf))
 				(setf st-value $sym (switch = (@ st-shndx $sym)
 					((shn-abs) (@ st-value $sym))
 					((shn-common) #0)
 					((shn-undef) #0)
-					(let (base-seg-addr ($(loc (@ obj-segs $obj) (@ st-shndx $sym) (unit))))
+					(let (base-seg-addr ($(loc (unit) (@ st-shndx $sym) (@ obj-segs $obj))))
 						[+ $base-seg-addr (@ st-value $sym)]))))))
 						
 		(begin))))))
@@ -110,9 +110,9 @@
 	(setf obj-segs $obj [buffer-alloc [* (@ e-shnum(@ obj-ehdr $obj)) (unit)] $reg $handler $err])
 	
 	(until (sec-idx #0) [= $sec-idx (@ e-shnum(@ obj-ehdr $obj))] [+ $sec-idx #1] (begin
-		(storage shdr-buf (loc (@ obj-shdrs $obj) $sec-idx (elf64-shdr)))
-		(storage seg-buf (loc (@ obj-segs $obj) $sec-idx (unit)))
-		[memcpy $shdr-buf [+ $objsrc (loc (@ e-shoff(@ obj-ehdr $obj)) $sec-idx (@ e-shentsize(@ obj-ehdr $obj)))] (elf64-shdr)]
+		(storage shdr-buf (loc (elf64-shdr) $sec-idx (@ obj-shdrs $obj)))
+		(storage seg-buf (loc (unit) $sec-idx (@ obj-segs $obj)))
+		[memcpy $shdr-buf [+ $objsrc (loc (@ e-shentsize(@ obj-ehdr $obj)) $sec-idx (@ e-shoff(@ obj-ehdr $obj)))] (elf64-shdr)]
 		[set $seg-buf [buffer-alloc (@ sh-size $shdr-buf) $reg $handler $err]]
 		
 		(if [= (@ sh-type $shdr-buf) (sht-nobits)] (begin)
@@ -120,20 +120,20 @@
 			
 		(if [= (@ sh-type $shdr-buf) (sht-symtab)] (begin
 			(storage symnum [/ (@ sh-size $shdr-buf) (@ sh-entsize $shdr-buf)])
-			(storage syms-buf (loc (@ obj-syms $obj) $sec-idx (unit)))
+			(storage syms-buf (loc (unit) $sec-idx (@ obj-syms $obj)))
 			(;; Following code copies recognized information from the symbol table into (@ obj-syms $obj))
 			[set $syms-buf [buffer-alloc [* $symnum (elf64-sym)] $reg $handler $err]]
 			(until (sym-idx #0) [= $sym-idx $symnum] [+ $sym-idx #1]
-				[memcpy (loc $$syms-buf $sym-idx (elf64-sym)) (loc $$seg-buf $sym-idx (@ sh-entsize $shdr-buf))
+				[memcpy (loc (elf64-sym) $sym-idx $$syms-buf) (loc (@ sh-entsize $shdr-buf) $sym-idx $$seg-buf)
 					(elf64-sym)]))
 					
 		(if (or [= (@ sh-type $shdr-buf) (sht-rela)] [= (@ sh-type $shdr-buf) (sht-rel)]) (begin
 			(storage relanum [/ (@ sh-size $shdr-buf) (@ sh-entsize $shdr-buf)])
-			(storage relas-buf (loc (@ obj-relas $obj) $sec-idx (unit)))
+			(storage relas-buf (loc (unit) $sec-idx (@ obj-relas $obj)))
 			(;; Following code copies recognized information from the relocations into (@ obj-relas $obj))
 			[set $relas-buf [buffer-alloc [* $relanum (elf64-rela)] $reg $handler $err]]
 			(until (rela-idx #0) [= $rela-idx $relanum] [+ $rela-idx #1]
-				[memcpy (loc $$relas-buf $rela-idx (elf64-rela)) (loc $$seg-buf $rela-idx (@ sh-entsize $shdr-buf))
+				[memcpy (loc (elf64-rela) $rela-idx $$relas-buf) (loc (@ sh-entsize $shdr-buf) $rela-idx $$seg-buf)
 					(if [= (@ sh-type $shdr-buf) (sht-rela)] (elf64-rela) (elf64-rel))]))
 					
 		(begin)))))
@@ -154,7 +154,7 @@
 			{return $obj}))))
 
 (function name-of (obj shdr sym)
-	(let (seg-buf ($(loc (@ obj-segs $obj) (@ sh-link $shdr) (unit))))
+	(let (seg-buf ($(loc (unit) (@ sh-link $shdr) (@ obj-segs $obj))))
 		[+ $seg-buf (@ st-name $sym)]))
 
 (;; Makes a symbol with the given name and address. $name is a string containg
@@ -175,12 +175,12 @@
 (function mutate-symbols (obj updates) (begin
 	(foreach (update $updates)
 		(until (sec-idx #0) [= $sec-idx (@ e-shnum(@ obj-ehdr $obj))] [+ $sec-idx #1] (begin
-			(storage shdr-buf (loc (@ obj-shdrs $obj) $sec-idx (elf64-shdr)))
+			(storage shdr-buf (loc (elf64-shdr) $sec-idx (@ obj-shdrs $obj)))
 			(if [= (@ sh-type $shdr-buf) (sht-symtab)] (begin
 				(storage symnum [/ (@ sh-size $shdr-buf) (@ sh-entsize $shdr-buf)])
-				(storage syms-buf ($(loc (@ obj-syms $obj) $sec-idx (unit))))
+				(storage syms-buf ($(loc (unit) $sec-idx (@ obj-syms $obj))))
 				(until (sym-idx #1) [= $sym-idx $symnum] [+ $sym-idx #1] (begin
-					(storage sym (loc $syms-buf $sym-idx (elf64-sym)))
+					(storage sym (loc (elf64-sym) $sym-idx $syms-buf))
 					(if (and (not [strcmp [name-of $obj $shdr-buf $sym] (@ sym-name $update)])
 							(or [= (@ st-shndx $sym) (shn-undef)] [= (@ st-shndx $sym) (shn-common)])
 							(or [= (elf64-st-bind (@ st-info $sym)) (stb-global)]
@@ -196,12 +196,12 @@
 (function symbols (flag obj reg handler err) (with return (begin
 	(storage syms nil)
 	(until (sec-idx #0) [= $sec-idx (@ e-shnum(@ obj-ehdr $obj))] [+ $sec-idx #1] (begin
-		(storage shdr-buf (loc (@ obj-shdrs $obj) $sec-idx (elf64-shdr)))
+		(storage shdr-buf (loc (elf64-shdr) $sec-idx (@ obj-shdrs $obj)))
 		(if [= (@ sh-type $shdr-buf) (sht-symtab)] (begin
 			(storage symnum [/ (@ sh-size $shdr-buf) (@ sh-entsize $shdr-buf)])
-			(storage syms-buf ($(loc (@ obj-syms $obj) $sec-idx (unit))))
+			(storage syms-buf ($(loc (unit) $sec-idx (@ obj-syms $obj))))
 			(until (sym-idx #1) [= $sym-idx $symnum] [+ $sym-idx #1] (begin
-				(storage sym (loc $syms-buf $sym-idx (elf64-sym)))
+				(storage sym (loc (elf64-sym) $sym-idx $syms-buf))
 				(if (and [= (not(not(or [= (@ st-shndx $sym) (shn-undef)] [= (@ st-shndx $sym) (shn-common)]))) $flag]
 						(or [= (elf64-st-bind (@ st-info $sym)) (stb-global)]
 							[= (elf64-st-bind (@ st-info $sym)) (stb-weak)]))
@@ -228,8 +228,8 @@
 
 (function segment (obj name) (with return
 	(if [= (@ e-shstrndx(@ obj-ehdr $obj)) (shn-undef)] (begin) (begin
-		(storage shstrseg-buf ($(loc (@ obj-segs $obj) (@ e-shstrndx(@ obj-ehdr $obj)) (unit))))
+		(storage shstrseg-buf ($(loc (unit) (@ e-shstrndx(@ obj-ehdr $obj)) (@ obj-segs $obj))))
 		(until (sec-idx #0) [= $sec-idx (@ e-shnum(@ obj-ehdr $obj))] [+ $sec-idx #1] (begin
-			(storage shdr-buf (loc (@ obj-shdrs $obj) $sec-idx (elf64-shdr)))
-			(if [strcmp (loc $shstrseg-buf (@ sh-name $shdr-buf) #1) $name] (begin)
-				{return ($(loc (@ obj-segs $obj) $sec-idx (unit)))})))))))
+			(storage shdr-buf (loc (elf64-shdr) $sec-idx (@ obj-shdrs $obj)))
+			(if [strcmp (loc #1 (@ sh-name $shdr-buf) $shstrseg-buf) $name] (begin)
+				{return ($(loc (unit) $sec-idx (@ obj-segs $obj)))})))))))
