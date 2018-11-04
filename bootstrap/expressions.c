@@ -43,13 +43,11 @@ struct symbol *make_symbol(enum symbol_type type, enum symbol_scope scope, enum 
 struct base_expression {
 	enum expression_type type;
 	union expression *parent;
-	struct symbol *return_symbol;
 };
 
 struct begin_expression {
 	enum expression_type type;
 	union expression *parent;
-	struct symbol *return_symbol;
 	
 	list expressions; // void * = struct expression *
 };
@@ -57,7 +55,6 @@ struct begin_expression {
 struct assembly_expression {
 	enum expression_type type;
 	union expression *parent;
-	struct symbol *return_symbol;
 	
 	unsigned long opcode;
 	list arguments; // void * = union expression *
@@ -66,7 +63,6 @@ struct assembly_expression {
 struct storage_expression {
 	enum expression_type type;
 	union expression *parent;
-	struct symbol *return_symbol;
 	
 	union expression *reference;
 	list arguments; // void * = union expression *
@@ -75,7 +71,6 @@ struct storage_expression {
 struct invoke_expression {
 	enum expression_type type;
 	union expression *parent;
-	struct symbol *return_symbol;
 	
 	union expression *reference;
 	list arguments; // void * = union expression *
@@ -84,7 +79,6 @@ struct invoke_expression {
 struct jump_expression {
 	enum expression_type type;
 	union expression *parent;
-	struct symbol *return_symbol;
 	
 	union expression *reference;
 	list arguments;
@@ -95,7 +89,6 @@ struct jump_expression {
 struct if_expression {
 	enum expression_type type;
 	union expression *parent;
-	struct symbol *return_symbol;
 	
 	union expression *condition;
 	union expression *consequent;
@@ -105,7 +98,6 @@ struct if_expression {
 struct literal_expression {
 	enum expression_type type;
 	union expression *parent;
-	struct symbol *return_symbol;
 	
 	long int value;
 };
@@ -113,20 +105,17 @@ struct literal_expression {
 struct function_expression {
 	enum expression_type type;
 	union expression *parent;
-	struct symbol *return_symbol;
 	
 	union expression *reference;
 	union expression *expression;
 	list parameters; //void * = union expression *
 	
 	list symbols;
-	struct symbol *expression_return_symbol;
 };
 
 struct continuation_expression {
 	enum expression_type type;
 	union expression *parent;
-	struct symbol *return_symbol;
 	
 	union expression *reference;
 	union expression *expression;
@@ -139,7 +128,6 @@ struct continuation_expression {
 struct with_expression {
 	enum expression_type type;
 	union expression *parent;
-	struct symbol *return_symbol;
 	
 	union expression *reference;
 	union expression *expression;
@@ -152,7 +140,6 @@ struct with_expression {
 struct reference_expression {
 	enum expression_type type;
 	union expression *parent;
-	struct symbol *return_symbol;
 	
 	char *name;
 	struct symbol *symbol;
@@ -161,7 +148,6 @@ struct reference_expression {
 struct meta_expression {
 	enum expression_type type;
 	union expression *parent;
-	struct symbol *return_symbol;
 	
 	union expression *reference;
 	list argument;
@@ -194,7 +180,6 @@ union expression *make_reference(char *name, region reg) {
 	union expression *ref = buffer_alloc(reg, sizeof(union expression));
 	ref->reference.type = reference;
 	ref->reference.parent = NULL;
-	ref->reference.return_symbol = NULL;
 	ref->reference.name = name;
 	ref->reference.symbol = NULL;
 	return ref;
@@ -208,7 +193,6 @@ union expression *use_symbol(struct symbol *sym, region reg) {
 	union expression *ref = buffer_alloc(reg, sizeof(union expression));
 	ref->reference.type = reference;
 	ref->reference.parent = NULL;
-	ref->reference.return_symbol = NULL;
 	ref->reference.name = sym->name;
 	ref->reference.symbol = sym;
 	return ref;
@@ -218,7 +202,6 @@ union expression *make_begin(list expressions, region reg) {
 	union expression *beg = buffer_alloc(reg, sizeof(union expression));
 	beg->begin.type = begin;
 	beg->begin.parent = NULL;
-	beg->begin.return_symbol = NULL;
 	beg->begin.expressions = expressions;
 	union expression *expr;
 	foreach(expr, expressions) {
@@ -250,7 +233,6 @@ union expression *make_function(union expression *ref, list params, union expres
 	union expression *func = buffer_alloc(reg, sizeof(union expression));
 	func->function.type = function;
 	func->function.parent = NULL;
-	func->function.return_symbol = NULL;
 	put(func, function.reference, ref);
 	ref->reference.symbol = make_symbol(static_storage, local_scope, defined_state, ref->reference.name, ref, reg);
 	func->function.parameters = params;
@@ -268,7 +250,6 @@ union expression *make_continuation(union expression *ref, list params, union ex
 	union expression *cont = buffer_alloc(reg, sizeof(union expression));
 	cont->continuation.type = continuation;
 	cont->continuation.parent = NULL;
-	cont->continuation.return_symbol = NULL;
 	cont->continuation.escapes = false;
 	put(cont, continuation.reference, ref);
 	ref->reference.symbol = make_symbol(dynamic_storage, local_scope, defined_state, ref->reference.name, ref, reg);
@@ -286,7 +267,6 @@ union expression *make_with(union expression *ref, union expression *expr, regio
 	union expression *wth = buffer_alloc(reg, sizeof(union expression));
 	wth->with.type = with;
 	wth->with.parent = NULL;
-	wth->with.return_symbol = NULL;
 	wth->with.escapes = false;
 	put(wth, with.reference, ref);
 	ref->reference.symbol = make_symbol(dynamic_storage, local_scope, defined_state, ref->reference.name, ref, reg);
@@ -331,7 +311,6 @@ union expression *make_jump(union expression *ref, list args, region reg) {
 	union expression *u = buffer_alloc(reg, sizeof(union expression));
 	u->jump.type = jump;
 	u->jump.parent = NULL;
-	u->jump.return_symbol = NULL;
 	put(u, jump.reference, ref);
 	u->jump.arguments = args;
 	union expression *arg;
@@ -363,7 +342,6 @@ union expression *make_storage(union expression *ref, list args, region reg) {
 	union expression *u = buffer_alloc(reg, sizeof(union expression));
 	u->storage.type = storage;
 	u->storage.parent = NULL;
-	u->storage.return_symbol = NULL;
 	put(u, storage.reference, ref);
 	ref->reference.symbol = make_symbol(dynamic_storage, local_scope, defined_state, ref->reference.name, ref, reg);
 	u->storage.arguments = args;
@@ -386,7 +364,6 @@ union expression *make_if(union expression *condition, union expression *consequ
 	union expression *u = buffer_alloc(reg, sizeof(union expression));
 	u->_if.type = _if;
 	u->_if.parent = NULL;
-	u->_if.return_symbol = NULL;
 	put(u, _if.condition, condition);
 	put(u, _if.consequent, consequent);
 	put(u, _if.alternate, alternate);
@@ -397,7 +374,6 @@ union expression *make_invoke(union expression *ref, list args, region reg) {
 	union expression *u = buffer_alloc(reg, sizeof(union expression));
 	u->invoke.type = invoke;
 	u->invoke.parent = NULL;
-	u->invoke.return_symbol = NULL;
 	put(u, invoke.reference, ref);
 	u->invoke.arguments = args;
 	union expression *arg;

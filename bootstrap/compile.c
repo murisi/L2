@@ -20,15 +20,9 @@ list compile_program(union expression *program, struct expansion_context *ectx, 
 	classify_program_symbols(program->function.expression);
 	visit_expressions(vlink_references, &program->function.expression, (void* []) {ectx->handler, ectx->expr_buf});
 	visit_expressions(vescape_analysis, &program, NULL);
-	program = use_return_symbol(program, NULL, ectx->expr_buf);
 	classify_program_symbols(program->function.expression);
 	visit_expressions(vlayout_frames, &program->function.expression, ectx->expr_buf);
-	visit_expressions(vgenerate_references, &program, ectx->expr_buf);
-	visit_expressions(vgenerate_continuation_expressions, &program, ectx->expr_buf);
-	visit_expressions(vgenerate_literals, &program, ectx->expr_buf);
-	visit_expressions(vgenerate_ifs, &program, ectx->expr_buf);
-	visit_expressions(vgenerate_function_expressions, &program, ectx->expr_buf);
-	visit_expressions(vgenerate_storage_expressions, &program, ectx->expr_buf);
+	program->function.expression = generate_expressions(program->function.expression, ectx->expr_buf);
 	*symbols = program->function.symbols;
 	union expression *l;
 	{foreach(l, program->function.parameters) { prepend(l->reference.symbol, symbols, ectx->expr_buf); }}

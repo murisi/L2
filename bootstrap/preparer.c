@@ -246,61 +246,6 @@ void pre_visit_expressions(union expression *(*visitor)(union expression *, void
 	_emit_x->base.parent = container; \
 }
 
-union expression *use_return_symbol(union expression *n, struct symbol *ret_sym, region r) {
-	switch(n->base.type) {
-		case with: case continuation: {
-			n->continuation.return_symbol = ret_sym;
-			put(n, continuation.expression, use_return_symbol(n->continuation.expression,
-				make_symbol(dynamic_storage, local_scope, defined_state, NULL, NULL, r), r));
-			return n;
-		} case function: {
-			n->function.return_symbol = ret_sym;
-			n->function.expression_return_symbol = make_symbol(dynamic_storage, local_scope, defined_state, NULL, NULL, r);
-			put(n, function.expression, use_return_symbol(n->function.expression, n->function.expression_return_symbol, r));
-			return n;
-		} case invoke: case jump: case storage: {
-			union expression *container = make_begin(nil, r);
-			
-			if(n->base.type != storage) {
-				struct symbol *ref_ret_sym = make_symbol(dynamic_storage, local_scope, defined_state, NULL, NULL, r);
-				emit(use_return_symbol(n->invoke.reference, ref_ret_sym, r), r);
-				n->invoke.reference = use_symbol(ref_ret_sym, r);
-			}
-			
-			union expression **t;
-			foreachaddress(t, n->invoke.arguments) {
-				struct symbol *arg_ret_sym = make_symbol(dynamic_storage, local_scope, defined_state, NULL, NULL, r);
-				emit(use_return_symbol(*t, arg_ret_sym, r), r);
-				*t = use_symbol(arg_ret_sym, r);
-			}
-			n->invoke.return_symbol = ret_sym;
-			emit(n, r);
-			return container;
-		} case _if: {
-			union expression *container = make_begin(nil, r);
-			
-			put(n, _if.consequent, use_return_symbol(n->_if.consequent, ret_sym, r));
-			put(n, _if.alternate, use_return_symbol(n->_if.alternate, ret_sym, r));
-			
-			struct symbol *cond_ret_sym = make_symbol(dynamic_storage, local_scope, defined_state, NULL, NULL, r);
-			emit(use_return_symbol(n->_if.condition, cond_ret_sym, r), r);
-			put(n, _if.condition, use_symbol(cond_ret_sym, r));
-			emit(n, r);
-			return container;
-		} case begin: {
-			union expression **t;
-			foreachaddress(t, n->begin.expressions) {
-				*t = use_return_symbol(*t, make_symbol(dynamic_storage, local_scope, defined_state, NULL, NULL, r), r);
-				(*t)->base.parent = n;
-			}
-			return n;
-		} case reference: case literal: {
-			n->reference.return_symbol = ret_sym;
-			return n;
-		}
-	}
-}
-
 union expression *vlinearized_expressions(union expression *n, void *ctx) {
 	if(n->base.type != begin) {
 		list *l = ((void **) ctx)[0];
@@ -311,9 +256,6 @@ union expression *vlinearized_expressions(union expression *n, void *ctx) {
 }
 
 void classify_program_symbols(union expression *expr) {
-	if(expr->base.return_symbol) {
-		expr->base.return_symbol->type = static_storage;
-	}
 	switch(expr->base.type) {
 		case begin: {
 			union expression *t;
