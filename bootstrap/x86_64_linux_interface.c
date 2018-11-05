@@ -40,6 +40,8 @@ typedef struct {
 	void *ctx; //For data that you want to transfer through jumps
 } jumpbuf;
 
+void setjump(jumpbuf *buf);
+void longjump(jumpbuf *buf);
 long int syscall(long int syscall_num, ...);
 
 unsigned long strlen(const char *str) {
