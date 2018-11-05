@@ -2,17 +2,17 @@
 
 cd ./src
 
-# Compile the instruction wrappers that provide x86-64 functionality
+echo "* Compiling the instruction wrappers that provide x86-64 functionality ..."
 
 gcc --static -g -c -o ../bin/x86_64.o x86_64.s
 
 objcopy --redefine-syms=x86_64_sym_pairs ../bin/x86_64.o
 
-# Compile L2 program source into object files
+echo "* Compiling L2 source code into object files ..."
 
 ../bin/l2compile core-meta.l2 64-numbers-meta.l2 text-meta.l2 flow-meta.l2 list-meta.l2 ../bin/x86_64.o x86-64-linux-interface-meta.l2 lexer-meta.l2 elf-meta.l2 x86-64-object-meta.l2 expressions-meta.l2 x86-64-assembler-meta.l2 x86-64-generator-meta.l2 - x86-64-linux-interface.l2 lexer.l2 x86-64-object.l2 expressions.l2 x86-64-assembler.l2 preparer.l2 x86-64-generator.l2 compile.l2 list.l2 64-numbers.l2
 
-# Each produced object file is wrapped in an anonymous function to initialize it. Hence print out labels for them:
+echo "* Writing out labels for object files ..."
 
 echo $'.globl x8664linuxinterfaceo\n.text\nx8664linuxinterfaceo:\n' > "x86-64-linux-interface.s"
 
@@ -34,14 +34,15 @@ echo $'.globl listo\n.text\nlisto:\n' > "list.s"
 
 echo $'.globl numbers64o\n.text\nnumbers64o:\n' > "64-numbers.s"
 
-# Print out some assembly to call each initializer one by one
+echo "* Writing out some assembly to call each initializer one by one"
 
 echo $'.globl _start\n.text\n_start:\ncall x8664linuxinterfaceo\ncall lexero\ncall x8664objecto\ncall expressionso\ncall x8664assemblero\ncall preparero\ncall x8664generatoro\ncall listo\ncall numbers64o\ncall compileo\n' > "start.s"
 
-# Link everything together, including x86_64.o which contains system interface
+echo "* Linking the produced object files together and replacing l2compile ..."
 
 gcc -fuse-ld=gold -nostdlib x86-64-linux-interface.s x86-64-linux-interface.o lexer.s lexer.o x86-64-object.s x86-64-object.o expressions.s expressions.o x86-64-assembler.s x86-64-assembler.o preparer.s preparer.o x86-64-generator.s x86-64-generator.o compile.s compile.o list.s list.o 64-numbers.s 64-numbers.o ../bin/x86_64.o start.s -o ../bin/l2compile
 
-# Remove the scaffolding
+echo "* Removing the intermediate files ..."
 
 rm "x86-64-linux-interface.s" "lexer.s" "x86-64-object.s" "expressions.s" "x86-64-assembler.s" "preparer.s" "x86-64-generator.s" "compile.s" "list.s" "64-numbers.s" "x86-64-linux-interface.o" "lexer.o" "x86-64-object.o" "expressions.o" "x86-64-assembler.o" "preparer.o" "x86-64-generator.o" "compile.o" "list.o" "64-numbers.o" "start.s"
+
