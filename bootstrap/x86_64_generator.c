@@ -86,21 +86,21 @@ union expression *vlayout_frames(union expression *n, region r) {
 
 void make_load(struct symbol *sym, int offset, union expression *dest_reg, union expression *scratch_reg, list *c, region r) {
 	if(sym->type == dynamic_storage) {
-		append(make_asm3(MOVQ_MDB_TO_REG, make_literal(sym->offset + offset, r), make_asm0(RBP, r), dest_reg, r), c, r);
+		prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(sym->offset + offset, r), make_asm0(RBP, r), dest_reg, r), c, r);
 	} else {
-		append(make_asm2(MOVQ_IMM_TO_REG, make_asm2(STVAL_ADD_OFF_TO_REF, use_symbol(sym, r), make_literal(offset, r), r), scratch_reg,
+		prepend(make_asm2(MOVQ_IMM_TO_REG, make_asm2(STVAL_ADD_OFF_TO_REF, use_symbol(sym, r), make_literal(offset, r), r), scratch_reg,
 			r), c, r);
-		append(make_asm3(MOVQ_MDB_TO_REG, make_literal(0, r), scratch_reg, dest_reg, r), c, r);
+		prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(0, r), scratch_reg, dest_reg, r), c, r);
 	}
 }
 
 void make_store(union expression *src_reg, struct symbol *sym, int offset, union expression *scratch_reg, list *c, region r) {
 	if(sym->type == dynamic_storage) {
-		append(make_asm3(MOVQ_FROM_REG_INTO_MDB, src_reg, make_literal(sym->offset + offset, r), make_asm0(RBP, r), r), c, r);
+		prepend(make_asm3(MOVQ_FROM_REG_INTO_MDB, src_reg, make_literal(sym->offset + offset, r), make_asm0(RBP, r), r), c, r);
 	} else {
-		append(make_asm2(MOVQ_IMM_TO_REG, make_asm2(STVAL_ADD_OFF_TO_REF, use_symbol(sym, r), make_literal(offset, r), r), scratch_reg,
+		prepend(make_asm2(MOVQ_IMM_TO_REG, make_asm2(STVAL_ADD_OFF_TO_REF, use_symbol(sym, r), make_literal(offset, r), r), scratch_reg,
 			r), c, r);
-		append(make_asm3(MOVQ_FROM_REG_INTO_MDB, src_reg, make_literal(0, r), scratch_reg, r), c, r);
+		prepend(make_asm3(MOVQ_FROM_REG_INTO_MDB, src_reg, make_literal(0, r), scratch_reg, r), c, r);
 	}
 }
 
@@ -108,23 +108,23 @@ void generate_expressions(union expression *n, list *c, region r);
 
 void sgenerate_ifs(union expression *n, list *c, region r) {
 	generate_expressions(n->_if.condition, c, r);
-	append(make_asm2(ORQ_REG_TO_REG, make_asm0(RAX, r), make_asm0(RAX, r), r), c, r);
+	prepend(make_asm2(ORQ_REG_TO_REG, make_asm0(RAX, r), make_asm0(RAX, r), r), c, r);
 	
 	struct symbol *alternate_symbol = make_symbol(static_storage, local_scope, defined_state, NULL, NULL, r);
-	append(make_asm1(JE_REL, make_asm1(STVAL_SUB_RIP_FROM_REF, use_symbol(alternate_symbol, r), r), r), c, r);
+	prepend(make_asm1(JE_REL, make_asm1(STVAL_SUB_RIP_FROM_REF, use_symbol(alternate_symbol, r), r), r), c, r);
 	generate_expressions(n->_if.consequent, c, r);
 	struct symbol *end_symbol = make_symbol(static_storage, local_scope, defined_state, NULL, NULL, r);
-	append(make_asm1(JMP_REL, make_asm1(STVAL_SUB_RIP_FROM_REF, use_symbol(end_symbol, r), r), r), c, r);
-	append(make_asm1(LABEL, use_symbol(alternate_symbol, r), r), c, r);
+	prepend(make_asm1(JMP_REL, make_asm1(STVAL_SUB_RIP_FROM_REF, use_symbol(end_symbol, r), r), r), c, r);
+	prepend(make_asm1(LABEL, use_symbol(alternate_symbol, r), r), c, r);
 	generate_expressions(n->_if.alternate, c, r);
-	append(make_asm1(LABEL, use_symbol(end_symbol, r), r), c, r);
+	prepend(make_asm1(LABEL, use_symbol(end_symbol, r), r), c, r);
 }
 
 void make_load_address(struct symbol *sym, union expression *dest_reg, list *c, region r) {
 	if(sym->type == dynamic_storage) {
-		append(make_asm3(LEAQ_OF_MDB_INTO_REG, make_literal(sym->offset, r), make_asm0(RBP, r), dest_reg, r), c, r);
+		prepend(make_asm3(LEAQ_OF_MDB_INTO_REG, make_literal(sym->offset, r), make_asm0(RBP, r), dest_reg, r), c, r);
 	} else {
-		append(make_asm2(MOVQ_IMM_TO_REG, use_symbol(sym, r), dest_reg, r), c, r);
+		prepend(make_asm2(MOVQ_IMM_TO_REG, use_symbol(sym, r), dest_reg, r), c, r);
 	}
 }
 
@@ -161,19 +161,19 @@ void make_store_continuation(union expression *n, list *c, region r) {
 }
 
 void move_arguments(union expression *n, int offset, list *c, region r) {
-	append(make_asm1(PUSHQ_REG, make_asm0(R11, r), r), c, r);
+	prepend(make_asm1(PUSHQ_REG, make_asm0(R11, r), r), c, r);
 	union expression *t;
 	{foreach(t, reverse(n->jump.arguments, r)) {
 		generate_expressions(t, c, r);
-		append(make_asm1(PUSHQ_REG, make_asm0(RAX, r), r), c, r);
+		prepend(make_asm1(PUSHQ_REG, make_asm0(RAX, r), r), c, r);
 	}}
-	append(make_asm3(MOVQ_MDB_TO_REG, make_literal(length(n->jump.arguments) * WORD_SIZE, r), make_asm0(RSP, r), make_asm0(R11, r), r), c, r);
+	prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(length(n->jump.arguments) * WORD_SIZE, r), make_asm0(RSP, r), make_asm0(R11, r), r), c, r);
 	foreach(t, n->jump.arguments) {
-		append(make_asm1(POPQ_REG, make_asm0(RAX, r), r), c, r);
-		append(make_asm3(MOVQ_FROM_REG_INTO_MDB, make_asm0(RAX, r), make_literal(offset, r), make_asm0(R11, r), r), c, r);
+		prepend(make_asm1(POPQ_REG, make_asm0(RAX, r), r), c, r);
+		prepend(make_asm3(MOVQ_FROM_REG_INTO_MDB, make_asm0(RAX, r), make_literal(offset, r), make_asm0(R11, r), r), c, r);
 		offset += WORD_SIZE;
 	}
-	append(make_asm1(POPQ_REG, make_asm0(R11, r), r), c, r);
+	prepend(make_asm1(POPQ_REG, make_asm0(R11, r), r), c, r);
 }
 
 void sgenerate_continuations(union expression *n, list *c, region r) {
@@ -184,10 +184,10 @@ void sgenerate_continuations(union expression *n, list *c, region r) {
 	
 	//Skip the actual instructions of the continuation
 	struct symbol *after_symbol = make_symbol(static_storage, local_scope, defined_state, NULL, NULL, r);
-	append(make_asm1(JMP_REL, make_asm1(STVAL_SUB_RIP_FROM_REF, use_symbol(after_symbol, r), r), r), c, r);
-	append(make_asm1(LABEL, cont_instr_ref(n, r), r), c, r);
+	prepend(make_asm1(JMP_REL, make_asm1(STVAL_SUB_RIP_FROM_REF, use_symbol(after_symbol, r), r), r), c, r);
+	prepend(make_asm1(LABEL, cont_instr_ref(n, r), r), c, r);
 	generate_expressions(n->continuation.expression, c, r);
-	append(make_asm1(LABEL, use_symbol(after_symbol, r), r), c, r);
+	prepend(make_asm1(LABEL, use_symbol(after_symbol, r), r), c, r);
 }
 
 void sgenerate_withs(union expression *n, list *c, region r) {
@@ -195,7 +195,7 @@ void sgenerate_withs(union expression *n, list *c, region r) {
 		make_store_continuation(n, c, r);
 	}
 	generate_expressions(n->with.expression, c, r);
-	append(make_asm1(LABEL, cont_instr_ref(n, r), r), c, r);
+	prepend(make_asm1(LABEL, cont_instr_ref(n, r), r), c, r);
 	make_load(((union expression *) n->with.parameter->fst)->reference.symbol, 0, make_asm0(RAX, r), make_asm0(R10, r), c, r);
 }
 
@@ -207,23 +207,23 @@ void sgenerate_jumps(union expression *n, list *c, region r) {
 				make_asm0(R11, r), c, r);
 			move_arguments(n, 0, c, r);
 		}
-		append(make_asm1(JMP_REL, make_asm1(STVAL_SUB_RIP_FROM_REF, cont_instr_ref(n->jump.short_circuit, r), r), r), c, r);
+		prepend(make_asm1(JMP_REL, make_asm1(STVAL_SUB_RIP_FROM_REF, cont_instr_ref(n->jump.short_circuit, r), r), r), c, r);
 	} else {
-		append(make_asm2(MOVQ_REG_TO_REG, make_asm0(RAX, r), make_asm0(R11, r), r), c, r);
+		prepend(make_asm2(MOVQ_REG_TO_REG, make_asm0(RAX, r), make_asm0(R11, r), r), c, r);
 		move_arguments(n, CONT_SIZE, c, r);
-		append(make_asm3(MOVQ_MDB_TO_REG, make_literal(CONT_RBX, r), make_asm0(R11, r), make_asm0(RBX, r), r), c, r);
-		append(make_asm3(MOVQ_MDB_TO_REG, make_literal(CONT_R12, r), make_asm0(R11, r), make_asm0(R12, r), r), c, r);
-		append(make_asm3(MOVQ_MDB_TO_REG, make_literal(CONT_R13, r), make_asm0(R11, r), make_asm0(R13, r), r), c, r);
-		append(make_asm3(MOVQ_MDB_TO_REG, make_literal(CONT_R14, r), make_asm0(R11, r), make_asm0(R14, r), r), c, r);
-		append(make_asm3(MOVQ_MDB_TO_REG, make_literal(CONT_R15, r), make_asm0(R11, r), make_asm0(R15, r), r), c, r);
-		append(make_asm3(MOVQ_MDB_TO_REG, make_literal(CONT_CIR, r), make_asm0(R11, r), make_asm0(R10, r), r), c, r);
-		append(make_asm3(MOVQ_MDB_TO_REG, make_literal(CONT_RBP, r), make_asm0(R11, r), make_asm0(RBP, r), r), c, r);
-		append(make_asm1(JMP_TO_REG, make_asm0(R10, r), r), c, r);
+		prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(CONT_RBX, r), make_asm0(R11, r), make_asm0(RBX, r), r), c, r);
+		prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(CONT_R12, r), make_asm0(R11, r), make_asm0(R12, r), r), c, r);
+		prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(CONT_R13, r), make_asm0(R11, r), make_asm0(R13, r), r), c, r);
+		prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(CONT_R14, r), make_asm0(R11, r), make_asm0(R14, r), r), c, r);
+		prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(CONT_R15, r), make_asm0(R11, r), make_asm0(R15, r), r), c, r);
+		prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(CONT_CIR, r), make_asm0(R11, r), make_asm0(R10, r), r), c, r);
+		prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(CONT_RBP, r), make_asm0(R11, r), make_asm0(RBP, r), r), c, r);
+		prepend(make_asm1(JMP_TO_REG, make_asm0(R10, r), r), c, r);
 	}
 }
 
 void sgenerate_literals(union expression *n, list *c, region r) {
-	append(make_asm2(MOVQ_IMM_TO_REG, make_literal(n->literal.value, r), make_asm0(RAX, r), r), c, r);
+	prepend(make_asm2(MOVQ_IMM_TO_REG, make_literal(n->literal.value, r), make_asm0(RAX, r), r), c, r);
 }
 
 int get_current_offset(union expression *function) {
@@ -239,48 +239,48 @@ void sgenerate_functions(union expression *n, list *c, region r) {
 	
 	struct symbol *after_symbol = make_symbol(static_storage, local_scope, defined_state, NULL, NULL, r);
 	
-	append(make_asm1(JMP_REL, make_asm1(STVAL_SUB_RIP_FROM_REF, use_symbol(after_symbol, r), r), r), c, r);
-	append(make_asm1(LABEL, n->function.reference, r), c, r);
+	prepend(make_asm1(JMP_REL, make_asm1(STVAL_SUB_RIP_FROM_REF, use_symbol(after_symbol, r), r), r), c, r);
+	prepend(make_asm1(LABEL, n->function.reference, r), c, r);
 	
-	append(make_asm1(POPQ_REG, make_asm0(R11, r), r), c, r);
+	prepend(make_asm1(POPQ_REG, make_asm0(R11, r), r), c, r);
 	
 	//Insert first 6 parameters onto stack
-	append(make_asm1(PUSHQ_REG, make_asm0(R9, r), r), c, r);
-	append(make_asm1(PUSHQ_REG, make_asm0(R8, r), r), c, r);
-	append(make_asm1(PUSHQ_REG, make_asm0(RCX, r), r), c, r);
-	append(make_asm1(PUSHQ_REG, make_asm0(RDX, r), r), c, r);
-	append(make_asm1(PUSHQ_REG, make_asm0(RSI, r), r), c, r);
-	append(make_asm1(PUSHQ_REG, make_asm0(RDI, r), r), c, r);
+	prepend(make_asm1(PUSHQ_REG, make_asm0(R9, r), r), c, r);
+	prepend(make_asm1(PUSHQ_REG, make_asm0(R8, r), r), c, r);
+	prepend(make_asm1(PUSHQ_REG, make_asm0(RCX, r), r), c, r);
+	prepend(make_asm1(PUSHQ_REG, make_asm0(RDX, r), r), c, r);
+	prepend(make_asm1(PUSHQ_REG, make_asm0(RSI, r), r), c, r);
+	prepend(make_asm1(PUSHQ_REG, make_asm0(RDI, r), r), c, r);
 	
-	append(make_asm1(PUSHQ_REG, make_asm0(R11, r), r), c, r);
+	prepend(make_asm1(PUSHQ_REG, make_asm0(R11, r), r), c, r);
 	
 	//Save callee-saved registers
-	append(make_asm1(PUSHQ_REG, make_asm0(R12, r), r), c, r);
-	append(make_asm1(PUSHQ_REG, make_asm0(R13, r), r), c, r);
-	append(make_asm1(PUSHQ_REG, make_asm0(R14, r), r), c, r);
-	append(make_asm1(PUSHQ_REG, make_asm0(R15, r), r), c, r);
-	append(make_asm1(PUSHQ_REG, make_asm0(RBX, r), r), c, r);
+	prepend(make_asm1(PUSHQ_REG, make_asm0(R12, r), r), c, r);
+	prepend(make_asm1(PUSHQ_REG, make_asm0(R13, r), r), c, r);
+	prepend(make_asm1(PUSHQ_REG, make_asm0(R14, r), r), c, r);
+	prepend(make_asm1(PUSHQ_REG, make_asm0(R15, r), r), c, r);
+	prepend(make_asm1(PUSHQ_REG, make_asm0(RBX, r), r), c, r);
 	
-	append(make_asm1(PUSHQ_REG, make_asm0(RBP, r), r), c, r);
-	append(make_asm2(MOVQ_REG_TO_REG, make_asm0(RSP, r), make_asm0(RBP, r), r), c, r);
-	append(make_asm2(SUBQ_IMM_FROM_REG, make_literal(-get_current_offset(n), r), make_asm0(RSP, r), r), c, r);
+	prepend(make_asm1(PUSHQ_REG, make_asm0(RBP, r), r), c, r);
+	prepend(make_asm2(MOVQ_REG_TO_REG, make_asm0(RSP, r), make_asm0(RBP, r), r), c, r);
+	prepend(make_asm2(SUBQ_IMM_FROM_REG, make_literal(-get_current_offset(n), r), make_asm0(RSP, r), r), c, r);
 	
 	//Execute the function body
 	generate_expressions(n->function.expression, c, r);
 	
-	append(make_asm0(LEAVE, r), c, r);
+	prepend(make_asm0(LEAVE, r), c, r);
 	//Restore callee-saved registers
-	append(make_asm1(POPQ_REG, make_asm0(RBX, r), r), c, r);
-	append(make_asm1(POPQ_REG, make_asm0(R15, r), r), c, r);
-	append(make_asm1(POPQ_REG, make_asm0(R14, r), r), c, r);
-	append(make_asm1(POPQ_REG, make_asm0(R13, r), r), c, r);
-	append(make_asm1(POPQ_REG, make_asm0(R12, r), r), c, r);
+	prepend(make_asm1(POPQ_REG, make_asm0(RBX, r), r), c, r);
+	prepend(make_asm1(POPQ_REG, make_asm0(R15, r), r), c, r);
+	prepend(make_asm1(POPQ_REG, make_asm0(R14, r), r), c, r);
+	prepend(make_asm1(POPQ_REG, make_asm0(R13, r), r), c, r);
+	prepend(make_asm1(POPQ_REG, make_asm0(R12, r), r), c, r);
 	
-	append(make_asm1(POPQ_REG, make_asm0(R11, r), r), c, r);
-	append(make_asm2(ADDQ_IMM_TO_REG, make_literal(6*WORD_SIZE, r), make_asm0(RSP, r), r), c, r);
-	append(make_asm1(PUSHQ_REG, make_asm0(R11, r), r), c, r);
-	append(make_asm0(RET, r), c, r);
-	append(make_asm1(LABEL, use_symbol(after_symbol, r), r), c, r);
+	prepend(make_asm1(POPQ_REG, make_asm0(R11, r), r), c, r);
+	prepend(make_asm2(ADDQ_IMM_TO_REG, make_literal(6*WORD_SIZE, r), make_asm0(RSP, r), r), c, r);
+	prepend(make_asm1(PUSHQ_REG, make_asm0(R11, r), r), c, r);
+	prepend(make_asm0(RET, r), c, r);
+	prepend(make_asm1(LABEL, use_symbol(after_symbol, r), r), c, r);
 }
 
 void sgenerate_invokes(union expression *n, list *c, region r) {
@@ -288,36 +288,36 @@ void sgenerate_invokes(union expression *n, list *c, region r) {
 	union expression *t;
 	foreach(t, reverse(n->invoke.arguments, r)) {
 		generate_expressions(t, c, r);
-		append(make_asm1(PUSHQ_REG, make_asm0(RAX, r), r), c, r);
+		prepend(make_asm1(PUSHQ_REG, make_asm0(RAX, r), r), c, r);
 	}
 	generate_expressions(n->invoke.reference, c, r);
-	append(make_asm2(MOVQ_REG_TO_REG, make_asm0(RAX, r), make_asm0(R11, r), r), c, r);
+	prepend(make_asm2(MOVQ_REG_TO_REG, make_asm0(RAX, r), make_asm0(R11, r), r), c, r);
 	
 	if(length(n->invoke.arguments) > 0) {
-		append(make_asm1(POPQ_REG, make_asm0(RDI, r), r), c, r);
+		prepend(make_asm1(POPQ_REG, make_asm0(RDI, r), r), c, r);
 	}
 	if(length(n->invoke.arguments) > 1) {
-		append(make_asm1(POPQ_REG, make_asm0(RSI, r), r), c, r);
+		prepend(make_asm1(POPQ_REG, make_asm0(RSI, r), r), c, r);
 	}
 	if(length(n->invoke.arguments) > 2) {
-		append(make_asm1(POPQ_REG, make_asm0(RDX, r), r), c, r);
+		prepend(make_asm1(POPQ_REG, make_asm0(RDX, r), r), c, r);
 	}
 	if(length(n->invoke.arguments) > 3) {
-		append(make_asm1(POPQ_REG, make_asm0(RCX, r), r), c, r);
+		prepend(make_asm1(POPQ_REG, make_asm0(RCX, r), r), c, r);
 	}
 	if(length(n->invoke.arguments) > 4) {
-		append(make_asm1(POPQ_REG, make_asm0(R8, r), r), c, r);
+		prepend(make_asm1(POPQ_REG, make_asm0(R8, r), r), c, r);
 	}
 	if(length(n->invoke.arguments) > 5) {
-		append(make_asm1(POPQ_REG, make_asm0(R9, r), r), c, r);
+		prepend(make_asm1(POPQ_REG, make_asm0(R9, r), r), c, r);
 	}
 	
-	append(make_asm2(MOVQ_IMM_TO_REG, make_literal(0, r), make_asm0(RAX, r), r), c, r);
+	prepend(make_asm2(MOVQ_IMM_TO_REG, make_literal(0, r), make_asm0(RAX, r), r), c, r);
 	
-	append(make_asm1(CALL_REG, make_asm0(R11, r), r), c, r);
+	prepend(make_asm1(CALL_REG, make_asm0(R11, r), r), c, r);
 	
 	if(length(n->invoke.arguments) > 6) {
-		append(make_asm2(ADDQ_IMM_TO_REG, make_literal(WORD_SIZE * (length(n->invoke.arguments) - 6), r), make_asm0(RSP, r), r), c, r);
+		prepend(make_asm2(ADDQ_IMM_TO_REG, make_literal(WORD_SIZE * (length(n->invoke.arguments) - 6), r), make_asm0(RSP, r), r), c, r);
 	}
 }
 
@@ -370,21 +370,21 @@ list generate_program(union expression *n, list *symbols, region r) {
 	{foreach(l, n->function.parameters) { prepend(l->reference.symbol, symbols, r); }}
 	
 	list c = nil;
-	append(make_asm1(PUSHQ_REG, make_asm0(R12, r), r), &c, r);
-	append(make_asm1(PUSHQ_REG, make_asm0(R13, r), r), &c, r);
-	append(make_asm1(PUSHQ_REG, make_asm0(R14, r), r), &c, r);
-	append(make_asm1(PUSHQ_REG, make_asm0(R15, r), r), &c, r);
-	append(make_asm1(PUSHQ_REG, make_asm0(RBX, r), r), &c, r);
-	append(make_asm1(PUSHQ_REG, make_asm0(RBP, r), r), &c, r);
-	append(make_asm2(MOVQ_REG_TO_REG, make_asm0(RSP, r), make_asm0(RBP, r), r), &c, r);
+	prepend(make_asm1(PUSHQ_REG, make_asm0(R12, r), r), &c, r);
+	prepend(make_asm1(PUSHQ_REG, make_asm0(R13, r), r), &c, r);
+	prepend(make_asm1(PUSHQ_REG, make_asm0(R14, r), r), &c, r);
+	prepend(make_asm1(PUSHQ_REG, make_asm0(R15, r), r), &c, r);
+	prepend(make_asm1(PUSHQ_REG, make_asm0(RBX, r), r), &c, r);
+	prepend(make_asm1(PUSHQ_REG, make_asm0(RBP, r), r), &c, r);
+	prepend(make_asm2(MOVQ_REG_TO_REG, make_asm0(RSP, r), make_asm0(RBP, r), r), &c, r);
 	generate_expressions(n->function.expression, &c, r);
-	append(make_asm0(LEAVE, r), &c, r);
-	append(make_asm1(POPQ_REG, make_asm0(RBX, r), r), &c, r);
-	append(make_asm1(POPQ_REG, make_asm0(R15, r), r), &c, r);
-	append(make_asm1(POPQ_REG, make_asm0(R14, r), r), &c, r);
-	append(make_asm1(POPQ_REG, make_asm0(R13, r), r), &c, r);
-	append(make_asm1(POPQ_REG, make_asm0(R12, r), r), &c, r);
-	append(make_asm0(RET, r), &c, r);
-	return c;
+	prepend(make_asm0(LEAVE, r), &c, r);
+	prepend(make_asm1(POPQ_REG, make_asm0(RBX, r), r), &c, r);
+	prepend(make_asm1(POPQ_REG, make_asm0(R15, r), r), &c, r);
+	prepend(make_asm1(POPQ_REG, make_asm0(R14, r), r), &c, r);
+	prepend(make_asm1(POPQ_REG, make_asm0(R13, r), r), &c, r);
+	prepend(make_asm1(POPQ_REG, make_asm0(R12, r), r), &c, r);
+	prepend(make_asm0(RET, r), &c, r);
+	return reverse(c, r);
 }
 

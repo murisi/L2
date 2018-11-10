@@ -240,15 +240,6 @@ void pre_visit_expressions(union expression *(*visitor)(union expression *, void
 	}
 }
 
-union expression *vlinearized_expressions(union expression *n, void *ctx) {
-	if(n->base.type != begin) {
-		list *l = ((void **) ctx)[0];
-		region r = ((void **) ctx)[1];
-		prepend(n, l, r);
-	}
-	return n;
-}
-
 void classify_program_symbols(union expression *expr) {
 	switch(expr->base.type) {
 		case begin: {
