@@ -143,19 +143,13 @@ void sgenerate_references(union expression *n, list *c, region r) {
 	make_load_address(n->reference.symbol, make_asm0(RAX, r), c, r);
 }
 
-union expression *cont_instr_ref(union expression *n, region r) {
-	return n->continuation.cont_instr_ref ?
-		n->continuation.cont_instr_ref :
-		(n->continuation.cont_instr_ref = use_symbol(make_symbol(static_storage, local_scope, defined_state, NULL, NULL, r), r));
-}
-
 void make_store_continuation(union expression *n, list *c, region r) {
 	make_store(make_asm0(RBX, r), n->continuation.reference->reference.symbol, CONT_RBX, make_asm0(R11, r), c, r);
 	make_store(make_asm0(R12, r), n->continuation.reference->reference.symbol, CONT_R12, make_asm0(R11, r), c, r);
 	make_store(make_asm0(R13, r), n->continuation.reference->reference.symbol, CONT_R13, make_asm0(R11, r), c, r);
 	make_store(make_asm0(R14, r), n->continuation.reference->reference.symbol, CONT_R14, make_asm0(R11, r), c, r);
 	make_store(make_asm0(R15, r), n->continuation.reference->reference.symbol, CONT_R15, make_asm0(R11, r), c, r);
-	make_load_address(cont_instr_ref(n, r)->reference.symbol, make_asm0(R10, r), c, r);
+	make_load_address(n->continuation.cont_instr_ref->reference.symbol, make_asm0(R10, r), c, r);
 	make_store(make_asm0(R10, r), n->continuation.reference->reference.symbol, CONT_CIR, make_asm0(R11, r), c, r);
 	make_store(make_asm0(RBP, r), n->continuation.reference->reference.symbol, CONT_RBP, make_asm0(R11, r), c, r);
 }
@@ -185,7 +179,7 @@ void sgenerate_continuations(union expression *n, list *c, region r) {
 	//Skip the actual instructions of the continuation
 	struct symbol *after_symbol = make_symbol(static_storage, local_scope, defined_state, NULL, NULL, r);
 	prepend(make_asm1(JMP_REL, make_asm1(STVAL_SUB_RIP_FROM_REF, use_symbol(after_symbol, r), r), r), c, r);
-	prepend(make_asm1(LABEL, cont_instr_ref(n, r), r), c, r);
+	prepend(make_asm1(LABEL, n->continuation.cont_instr_ref, r), c, r);
 	generate_expressions(n->continuation.expression, c, r);
 	prepend(make_asm1(LABEL, use_symbol(after_symbol, r), r), c, r);
 }
@@ -195,7 +189,7 @@ void sgenerate_withs(union expression *n, list *c, region r) {
 		make_store_continuation(n, c, r);
 	}
 	generate_expressions(n->with.expression, c, r);
-	prepend(make_asm1(LABEL, cont_instr_ref(n, r), r), c, r);
+	prepend(make_asm1(LABEL, n->continuation.cont_instr_ref, r), c, r);
 	make_load(((union expression *) n->with.parameter->fst)->reference.symbol, 0, make_asm0(RAX, r), make_asm0(R10, r), c, r);
 }
 
@@ -207,7 +201,7 @@ void sgenerate_jumps(union expression *n, list *c, region r) {
 				make_asm0(R11, r), c, r);
 			move_arguments(n, 0, c, r);
 		}
-		prepend(make_asm1(JMP_REL, make_asm1(STVAL_SUB_RIP_FROM_REF, cont_instr_ref(n->jump.short_circuit, r), r), r), c, r);
+		prepend(make_asm1(JMP_REL, make_asm1(STVAL_SUB_RIP_FROM_REF, n->jump.short_circuit->continuation.cont_instr_ref, r), r), c, r);
 	} else {
 		prepend(make_asm2(MOVQ_REG_TO_REG, make_asm0(RAX, r), make_asm0(R11, r), r), c, r);
 		move_arguments(n, CONT_SIZE, c, r);
