@@ -63,9 +63,10 @@
 	
 	(let (params args) ... expr0)
 	->
-	(with return
-		{(continuation templet0 (params ...)
-			{return expr0}) vals ...}))
+	(with let:return
+		{(continuation let:aux (params ...) (begin
+			(storage let:storage expr0)
+			{let:return $let:storage})) vals ...}))
 
 (function let (l r)
 	(`(with let:return
@@ -105,12 +106,17 @@
 
 (function while (l r)
 	(`(with while:return {(continuation while:aux (while:val)
-		(if (,[@fst $l]) {while:aux (,[@frst $l])} {while:return $while:val})) (begin)})$r))
+		(if (,[@fst $l])
+			(begin
+				(storage while:storage (,[@frst $l]))
+				{while:aux $while:storage})
+			{while:return $while:val})) (begin)})$r))
 
 (function do-while (l r)
-	(`(with do-while:return {(continuation do-while:aux (do-while:val)
-			(if (,[@frst $l]) {do-while:aux (,[@fst $l])} {do-while:return $do-while:val}))
-		(,[@fst $l])})$r))
+	(`(with do-while:return {(continuation do-while:aux (do-while:val) (begin
+			(storage do-while:storage (,[@fst $l]))
+			(if (,[@frst $l]) {do-while:aux (begin)} {do-while:return $do-while:storage})))
+		(begin)})$r))
 
 (;; The following macro is roughly analogous to C's for-loop. The difference is
 	that until loops until the condition is true rather than while it is true. The
