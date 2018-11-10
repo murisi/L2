@@ -22,14 +22,7 @@ list compile_program(union expression *program, struct expansion_context *ectx, 
 	visit_expressions(vescape_analysis, &program, NULL);
 	classify_program_symbols(program->function.expression);
 	visit_expressions(vlayout_frames, &program->function.expression, ectx->expr_buf);
-	program->function.expression = generate_expressions(program->function.expression, ectx->expr_buf);
-	*symbols = program->function.symbols;
-	union expression *l;
-	{foreach(l, program->function.parameters) { prepend(l->reference.symbol, symbols, ectx->expr_buf); }}
-	program = generate_toplevel(program, ectx->expr_buf);
-	list asms = nil;
-	visit_expressions(vlinearized_expressions, &program, (void* []) {&asms, ectx->expr_buf});
-	return reverse(asms, ectx->expr_buf);
+	return generate_program(program, symbols, ectx->expr_buf);
 }
 
 Object *load_program(union expression *program, struct expansion_context *ectx) {

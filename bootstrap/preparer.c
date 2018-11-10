@@ -240,12 +240,6 @@ void pre_visit_expressions(union expression *(*visitor)(union expression *, void
 	}
 }
 
-#define emit(x, r) { \
-	union expression *_emit_x = x; \
-	append(_emit_x, &container->begin.expressions, r); \
-	_emit_x->base.parent = container; \
-}
-
 union expression *vlinearized_expressions(union expression *n, void *ctx) {
 	if(n->base.type != begin) {
 		list *l = ((void **) ctx)[0];
