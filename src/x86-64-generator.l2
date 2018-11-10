@@ -80,12 +80,6 @@
 (function generate-reference (n c r handler err) (substitute (.. $r $handler $err)
 		[generate-load-address (@ expr-symbol $n) (make-asmN(rax)()..) $c ..]))
 
-(function cont-instr-ref (n r handler err) (with return (begin
-	(if [not= (@ expr-cont-instr-ref $n) null-expr] (begin)
-		(substitute (.. $r $handler $err) (setf expr-cont-instr-ref $n
-			[use-symbol [make-symbol (static-storage) (local-scope) (defined-state) null-string null-expr ..] ..])))
-	{return (@ expr-cont-instr-ref $n)})))
-
 (function generate-store-continuation (n c r handler err)
 	(substitute (.. $r $handler $err) (begin
 		[generate-store (make-asmN(rbx)()..) (@ expr-symbol(@ expr-reference $n)) (cont-rbx) (make-asmN(r11)()..) $c ..]
@@ -93,7 +87,7 @@
 		[generate-store (make-asmN(r13)()..) (@ expr-symbol(@ expr-reference $n)) (cont-r13) (make-asmN(r11)()..) $c ..]
 		[generate-store (make-asmN(r14)()..) (@ expr-symbol(@ expr-reference $n)) (cont-r14) (make-asmN(r11)()..) $c ..]
 		[generate-store (make-asmN(r15)()..) (@ expr-symbol(@ expr-reference $n)) (cont-r15) (make-asmN(r11)()..) $c ..]
-		[generate-load-address (@ expr-symbol[cont-instr-ref $n ..]) (make-asmN(r10)()..) $c ..]
+		[generate-load-address (@ expr-symbol(@ expr-cont-instr-ref $n)) (make-asmN(r10)()..) $c ..]
 		[generate-store (make-asmN(r10)()..) (@ expr-symbol(@ expr-reference $n)) (cont-cir) (make-asmN(r11)()..) $c ..]
 		[generate-store (make-asmN(rbp)()..) (@ expr-symbol(@ expr-reference $n)) (cont-rbp) (make-asmN(r11)()..) $c ..])))
 
@@ -124,7 +118,7 @@
 		
 		(storage after-symbol [make-symbol (static-storage) (local-scope) (defined-state) null-string null-expr ..])
 		[prepend (make-asmN (jmp-rel) ((make-asmN (stval-sub-rip-from-ref) ([use-symbol $after-symbol ..]) ..)) ..) $c ..]
-		[prepend (make-asmN (label) ([cont-instr-ref $n ..]) ..) $c ..]
+		[prepend (make-asmN (label) ((@ expr-cont-instr-ref $n)) ..) $c ..]
 		[generate-expression (@ expr-expression $n) $c ..]
 		[prepend (make-asmN (label) ([use-symbol $after-symbol ..]) ..) $c ..])))
 
@@ -132,7 +126,7 @@
 	(substitute (.. $r $handler $err) (begin
 		(if (@ expr-escapes $n) [generate-store-continuation $n $c ..] (begin))
 		[generate-expression (@ expr-expression $n) $c ..]
-		[prepend (make-asmN (label) ([cont-instr-ref $n ..]) ..) $c ..]
+		[prepend (make-asmN (label) ((@ expr-cont-instr-ref $n)) ..) $c ..]
 		[generate-load (@ expr-symbol[@car(@ expr-parameters $n)]) #0 (make-asmN(rax)()..) (make-asmN(r10)()..) $c ..])))
 
 (function generate-jump (n c r handler err)
@@ -145,7 +139,7 @@
 					[generate-move-arguments $n #0 $c ..])
 					(begin))
 				[prepend (make-asmN (jmp-rel) ((make-asmN (stval-sub-rip-from-ref)
-					([cont-instr-ref (@ expr-short-circuit $n) ..]) ..)) ..) $c ..])
+					((@ expr-cont-instr-ref(@ expr-short-circuit $n))) ..)) ..) $c ..])
 			(begin
 				[prepend (make-asmN(movq-reg-to-reg)((make-asmN(rax)()..) (make-asmN(r11)()..))..) $c ..]
 				[generate-move-arguments $n (cont-size) $c ..]
