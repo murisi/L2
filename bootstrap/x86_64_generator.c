@@ -48,8 +48,8 @@
 union expression *vlayout_frames(union expression *n, region r) {
 	switch(n->base.type) {
 		case function: {
-			//Offset of parameters relative to frame pointer is 6 callee saves + return address 
-			int parameter_offset = 7*WORD_SIZE;
+			//Offset of parameters relative to frame pointer is 1 callee saves + return address 
+			int parameter_offset = 2*WORD_SIZE;
 			union expression *t;
 			{foreach(t, n->function.parameters) {
 				t->reference.symbol->offset = parameter_offset;
@@ -133,7 +133,7 @@ void sgenerate_storage_expressions(union expression *n, list *c, region r) {
 	union expression *t;
 	foreach(t, n->storage.arguments) {
 		generate_expressions(t, c, r);
-		make_store(make_asm0(RAX, r), n->storage.reference->reference.symbol, offset, make_asm0(R13, r), c, r);
+		make_store(make_asm0(RAX, r), n->storage.reference->reference.symbol, offset, make_asm0(R11, r), c, r);
 		offset += WORD_SIZE;
 	}
 	make_load_address(n->storage.reference->reference.symbol, make_asm0(RAX, r), c, r);
@@ -251,13 +251,6 @@ void sgenerate_functions(union expression *n, list *c, region r) {
 	
 	prepend(make_asm1(PUSHQ_REG, make_asm0(R11, r), r), c, r);
 	
-	//Save callee-saved registers
-	prepend(make_asm1(PUSHQ_REG, make_asm0(R12, r), r), c, r);
-	prepend(make_asm1(PUSHQ_REG, make_asm0(R13, r), r), c, r);
-	prepend(make_asm1(PUSHQ_REG, make_asm0(R14, r), r), c, r);
-	prepend(make_asm1(PUSHQ_REG, make_asm0(R15, r), r), c, r);
-	prepend(make_asm1(PUSHQ_REG, make_asm0(RBX, r), r), c, r);
-	
 	prepend(make_asm1(PUSHQ_REG, make_asm0(RBP, r), r), c, r);
 	prepend(make_asm2(MOVQ_REG_TO_REG, make_asm0(RSP, r), make_asm0(RBP, r), r), c, r);
 	prepend(make_asm2(SUBQ_IMM_FROM_REG, make_literal(-get_current_offset(n), r), make_asm0(RSP, r), r), c, r);
@@ -266,12 +259,6 @@ void sgenerate_functions(union expression *n, list *c, region r) {
 	generate_expressions(n->function.expression, c, r);
 	
 	prepend(make_asm0(LEAVE, r), c, r);
-	//Restore callee-saved registers
-	prepend(make_asm1(POPQ_REG, make_asm0(RBX, r), r), c, r);
-	prepend(make_asm1(POPQ_REG, make_asm0(R15, r), r), c, r);
-	prepend(make_asm1(POPQ_REG, make_asm0(R14, r), r), c, r);
-	prepend(make_asm1(POPQ_REG, make_asm0(R13, r), r), c, r);
-	prepend(make_asm1(POPQ_REG, make_asm0(R12, r), r), c, r);
 	
 	prepend(make_asm1(POPQ_REG, make_asm0(R11, r), r), c, r);
 	prepend(make_asm2(ADDQ_IMM_TO_REG, make_literal(6*WORD_SIZE, r), make_asm0(RSP, r), r), c, r);
@@ -367,20 +354,10 @@ list generate_program(union expression *n, list *symbols, region r) {
 	{foreach(l, n->function.parameters) { prepend(l->reference.symbol, symbols, r); }}
 	
 	list c = nil;
-	prepend(make_asm1(PUSHQ_REG, make_asm0(R12, r), r), &c, r);
-	prepend(make_asm1(PUSHQ_REG, make_asm0(R13, r), r), &c, r);
-	prepend(make_asm1(PUSHQ_REG, make_asm0(R14, r), r), &c, r);
-	prepend(make_asm1(PUSHQ_REG, make_asm0(R15, r), r), &c, r);
-	prepend(make_asm1(PUSHQ_REG, make_asm0(RBX, r), r), &c, r);
 	prepend(make_asm1(PUSHQ_REG, make_asm0(RBP, r), r), &c, r);
 	prepend(make_asm2(MOVQ_REG_TO_REG, make_asm0(RSP, r), make_asm0(RBP, r), r), &c, r);
 	generate_expressions(n->function.expression, &c, r);
 	prepend(make_asm0(LEAVE, r), &c, r);
-	prepend(make_asm1(POPQ_REG, make_asm0(RBX, r), r), &c, r);
-	prepend(make_asm1(POPQ_REG, make_asm0(R15, r), r), &c, r);
-	prepend(make_asm1(POPQ_REG, make_asm0(R14, r), r), &c, r);
-	prepend(make_asm1(POPQ_REG, make_asm0(R13, r), r), &c, r);
-	prepend(make_asm1(POPQ_REG, make_asm0(R12, r), r), &c, r);
 	prepend(make_asm0(RET, r), &c, r);
 	return reverse(c, r);
 }
