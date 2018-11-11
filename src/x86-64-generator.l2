@@ -1,7 +1,7 @@
 (function vlayout-frames (n r) (with return (substitute (.. (@0 $r) (@1 $r) (@2 $r)) (begin
 	(switch = (@ expr-type $n)
 		((-function-) (begin
-			(let (parameter-offset [* #7 (word-size)])
+			(let (parameter-offset [* #2 (word-size)])
 				(foreach (t (@ expr-parameters $n)) (begin
 					(setf sym-offset (@ expr-symbol $t) $parameter-offset)
 					[set parameter-offset [+ $parameter-offset (word-size)]])))
@@ -73,7 +73,7 @@
 	(let (offset #0) (substitute (.. $r $handler $err) (begin
 		(foreach (t (@ expr-arguments $n)) (begin
 			[generate-expression $t $c ..]
-			[generate-store (make-asmN(rax)()..) (@ expr-symbol(@ expr-reference $n)) $offset (make-asmN(r13)()..) $c ..]
+			[generate-store (make-asmN(rax)()..) (@ expr-symbol(@ expr-reference $n)) $offset (make-asmN(r11)()..) $c ..]
 			[set offset [+ $offset (word-size)]]))
 		[generate-load-address (@ expr-symbol(@ expr-reference $n)) (make-asmN(rax)()..) $c ..]))))
 
@@ -183,13 +183,6 @@
 		
 		[prepend (make-asmN(pushq-reg)((make-asmN(r11)()..))..) $c ..]
 		
-		(;; Save callee-saved registers)
-		[prepend (make-asmN(pushq-reg)((make-asmN(r12)()..))..) $c ..]
-		[prepend (make-asmN(pushq-reg)((make-asmN(r13)()..))..) $c ..]
-		[prepend (make-asmN(pushq-reg)((make-asmN(r14)()..))..) $c ..]
-		[prepend (make-asmN(pushq-reg)((make-asmN(r15)()..))..) $c ..]
-		[prepend (make-asmN(pushq-reg)((make-asmN(rbx)()..))..) $c ..]
-		
 		[prepend (make-asmN(pushq-reg)((make-asmN(rbp)()..))..) $c ..]
 		[prepend (make-asmN(movq-reg-to-reg)((make-asmN(rsp)()..) (make-asmN(rbp)()..))..) $c ..]
 		[prepend (make-asmN(subq-imm-from-reg)([make-literal [- #0 [get-current-offset $n]] ..] (make-asmN(rsp)()..))..) $c ..]
@@ -198,12 +191,6 @@
 		[generate-expression (@ expr-expression $n) $c ..]
 		
 		[prepend (make-asmN(leave)()..) $c ..]
-		(;; Restore callee-saved registers)
-		[prepend (make-asmN(popq-reg)((make-asmN(rbx)()..))..) $c ..]
-		[prepend (make-asmN(popq-reg)((make-asmN(r15)()..))..) $c ..]
-		[prepend (make-asmN(popq-reg)((make-asmN(r14)()..))..) $c ..]
-		[prepend (make-asmN(popq-reg)((make-asmN(r13)()..))..) $c ..]
-		[prepend (make-asmN(popq-reg)((make-asmN(r12)()..))..) $c ..]
 		
 		[prepend (make-asmN(popq-reg)((make-asmN(r11)()..))..) $c ..]
 		[prepend (make-asmN(addq-imm-to-reg)([make-literal [* #6(word-size)]..] (make-asmN(rsp)()..))..) $c ..]
@@ -270,20 +257,10 @@
 		[set $symbols (@ expr-symbols $n)]
 		(foreach (l (@ expr-parameters $n)) [prepend (@ expr-symbol $l) $symbols ..])
 		
-		[prepend (make-asmN(pushq-reg)((make-asmN(r12)()..))..) c ..]
-		[prepend (make-asmN(pushq-reg)((make-asmN(r13)()..))..) c ..]
-		[prepend (make-asmN(pushq-reg)((make-asmN(r14)()..))..) c ..]
-		[prepend (make-asmN(pushq-reg)((make-asmN(r15)()..))..) c ..]
-		[prepend (make-asmN(pushq-reg)((make-asmN(rbx)()..))..) c ..]
 		[prepend (make-asmN(pushq-reg)((make-asmN(rbp)()..))..) c ..]
 		[prepend (make-asmN(movq-reg-to-reg)((make-asmN(rsp)()..) (make-asmN(rbp)()..))..) c ..]
 		[generate-expression (@ expr-expression $n) c ..]
 		[prepend (make-asmN(leave)()..) c ..]
-		[prepend (make-asmN(popq-reg)((make-asmN(rbx)()..))..) c ..]
-		[prepend (make-asmN(popq-reg)((make-asmN(r15)()..))..) c ..]
-		[prepend (make-asmN(popq-reg)((make-asmN(r14)()..))..) c ..]
-		[prepend (make-asmN(popq-reg)((make-asmN(r13)()..))..) c ..]
-		[prepend (make-asmN(popq-reg)((make-asmN(r12)()..))..) c ..]
 		[prepend (make-asmN(ret)()..) c ..]
 		{return [reverse $c ..]})))))
 
