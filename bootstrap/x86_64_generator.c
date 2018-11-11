@@ -64,7 +64,7 @@ union expression *vlayout_frames(union expression *n, region r) {
 			break;
 		} case continuation: case with: {
 			union expression *parent_function = get_parent_function(n);
-			if(true) {
+			if(n->continuation.escapes) {
 				n->continuation.reference->reference.symbol->size = CONT_SIZE;
 				append(n->continuation.reference->reference.symbol, &parent_function->function.symbols, r);
 			}
@@ -194,8 +194,10 @@ void sgenerate_withs(union expression *n, list *c, region r) {
 }
 
 void sgenerate_jumps(union expression *n, list *c, region r) {
-	generate_expressions(n->jump.reference, c, r);
 	if(n->jump.short_circuit) {
+		if(n->jump.reference->base.type == continuation) {
+			generate_expressions(n->jump.reference, c, r);
+		}
 		if(length(n->jump.short_circuit->continuation.parameters) > 0) {
 			make_load_address(((union expression *) n->jump.short_circuit->continuation.parameters->fst)->reference.symbol,
 				make_asm0(R11, r), c, r);
@@ -203,6 +205,7 @@ void sgenerate_jumps(union expression *n, list *c, region r) {
 		}
 		prepend(make_asm1(JMP_REL, make_asm1(STVAL_SUB_RIP_FROM_REF, n->jump.short_circuit->continuation.cont_instr_ref, r), r), c, r);
 	} else {
+		generate_expressions(n->jump.reference, c, r);
 		prepend(make_asm2(MOVQ_REG_TO_REG, make_asm0(RAX, r), make_asm0(R11, r), r), c, r);
 		move_arguments(n, CONT_SIZE, c, r);
 		prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(CONT_RBX, r), make_asm0(R11, r), make_asm0(RBX, r), r), c, r);

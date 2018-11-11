@@ -11,7 +11,7 @@
 					(setf sym-offset $u $symbol-offset))))))
 		
 		((-continuation-) (-with-) (begin
-			(if (true) (begin
+			(if (@ expr-escapes $n) (begin
 				(setf sym-size (@ expr-symbol(@ expr-reference $n)) (cont-size))
 				[append (@ expr-symbol(@ expr-reference $n)) (& expr-symbols[get-parent-function $n]) ..])
 				(begin))
@@ -130,10 +130,12 @@
 		[generate-load (@ expr-symbol[@car(@ expr-parameters $n)]) #0 (make-asmN(rax)()..) (make-asmN(r10)()..) $c ..])))
 
 (function generate-jump (n c r handler err)
-	(substitute (.. $r $handler $err) (begin
-		[generate-expression (@ expr-reference $n) $c ..]
+	(substitute (.. $r $handler $err)
 		(if [not= (@ expr-short-circuit $n) null-expr]
 			(begin
+				(if [= (@ expr-type(@ expr-reference $n)) (-continuation-)]
+					[generate-expression (@ expr-reference $n) $c ..]
+					(begin))
 				(if [length (@ expr-parameters(@ expr-short-circuit $n))] (begin
 					[generate-load-address (@ expr-symbol[@car (@ expr-parameters(@ expr-short-circuit $n))]) (make-asmN(r11)()..) $c ..]
 					[generate-move-arguments $n #0 $c ..])
@@ -141,6 +143,7 @@
 				[prepend (make-asmN (jmp-rel) ((make-asmN (stval-sub-rip-from-ref)
 					((@ expr-cont-instr-ref(@ expr-short-circuit $n))) ..)) ..) $c ..])
 			(begin
+				[generate-expression (@ expr-reference $n) $c ..]
 				[prepend (make-asmN(movq-reg-to-reg)((make-asmN(rax)()..) (make-asmN(r11)()..))..) $c ..]
 				[generate-move-arguments $n (cont-size) $c ..]
 				[prepend (make-asmN(movq-mdb-to-reg)([make-literal(cont-rbx)..] (make-asmN(r11)()..) (make-asmN(rbx)()..))..) $c ..]
@@ -150,7 +153,7 @@
 				[prepend (make-asmN(movq-mdb-to-reg)([make-literal(cont-r15)..] (make-asmN(r11)()..) (make-asmN(r15)()..))..) $c ..]
 				[prepend (make-asmN(movq-mdb-to-reg)([make-literal(cont-cir)..] (make-asmN(r11)()..) (make-asmN(r10)()..))..) $c ..]
 				[prepend (make-asmN(movq-mdb-to-reg)([make-literal(cont-rbp)..] (make-asmN(r11)()..) (make-asmN(rbp)()..))..) $c ..]
-				[prepend (make-asmN(jmp-to-reg)((make-asmN(r10)()..))..) $c ..])))))
+				[prepend (make-asmN(jmp-to-reg)((make-asmN(r10)()..))..) $c ..]))))
 
 (function generate-literal (n c r handler err) (substitute (.. $r $handler $err)
 	[prepend (make-asmN(movq-imm-to-reg)([make-literal(@ expr-value $n)..] (make-asmN(rax)()..))..) $c ..]))
