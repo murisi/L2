@@ -350,9 +350,6 @@ void generate_expressions(union expression *n, list *c, region r) {
 
 list generate_program(union expression *n, list *symbols, region r) {
 	*symbols = n->function.symbols;
-	union expression *l;
-	{foreach(l, n->function.parameters) { prepend(l->reference.symbol, symbols, r); }}
-	
 	list c = nil;
 	prepend(make_asm1(PUSHQ_REG, make_asm0(RBP, r), r), &c, r);
 	prepend(make_asm2(MOVQ_REG_TO_REG, make_asm0(RSP, r), make_asm0(RBP, r), r), &c, r);

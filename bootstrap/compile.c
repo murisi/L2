@@ -39,7 +39,7 @@ Object *load_program_and_mutate(union expression *program, struct expansion_cont
 	Object *obj = load_program(program, ectx);
 	region temp_reg = create_buffer(0);
 	list ms = mutable_symbols(obj, temp_reg);
-	struct symbol *missing_sym = not_subset((bool (*)(void *, void *))symbol_equals, ms, ectx->symbols);
+	struct symbol *missing_sym = not_subset((bool (*)(void *, void *)) symbol_equals, ms, ectx->symbols);
 	if(missing_sym) {
 		throw_undefined_reference(missing_sym->name, ectx->handler);
 	}

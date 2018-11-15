@@ -138,11 +138,13 @@ union expression *vlink_references(union expression *s, void *ctx) {
 	if(s->base.type == reference) {
 		s->reference.symbol = s->reference.symbol ? s->reference.symbol : symbol_of(s);
 		if(!s->reference.symbol) {
-			union expression *ref = make_reference(s->reference.name, r);
-			struct symbol *sym = make_symbol(static_storage, global_scope, undefined_state, s->reference.name, ref, r);
-			ref->reference.symbol = sym;
-			prepend(ref, &root_function_of(s)->function.parameters, r);
-			ref->reference.parent = root_function_of(s);
+			union expression *stg = make_storage(make_reference(s->reference.name, r), nil, r);
+			struct symbol *sym = stg->storage.reference->reference.symbol;
+			sym->type = static_storage;
+			sym->scope = global_scope;
+			sym->state = undefined_state;
+			prepend(stg, &root_function_of(s)->function.expression->begin.expressions, r);
+			stg->storage.parent = root_function_of(s)->function.expression;
 			s->reference.symbol = sym;
 		} else if(((is_jump_reference(s) && is_c_reference(s->reference.symbol->definition)) ||
 			(is_invoke_reference(s) && is_function_reference(s->reference.symbol->definition))) &&
