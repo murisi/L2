@@ -201,14 +201,14 @@
 	function, it is invalid to read or write data to the memory allocated on
 	this region.)
 
-(function destroy-buffer (reg handler err) (begin
+(function destroy-buffer (reg handler err) (with return (begin
 	(;;[check-buffer-integrity reg])
 	{(continuation loop (reg)
 		(let (next-reg (@ buf-next-elt reg)) (begin
 			[munmap reg [- (@ buf-end-pos reg) reg] handler err]
 			(if [= next-reg null-element]
 				{return (begin)}
-				{loop next-reg})))) reg}))
+				{loop next-reg})))) reg})))
 
 (;; Returns a C-string that is a copy of the one at src. The returned string and
 	its dependencies will all reside in the region reg.)
