@@ -1,10 +1,10 @@
 (storage null-fragment (begin))
 
-(;; Checks if two fragment characters are equal. $a is a fragment character. $b
+(;; Checks if two fragment characters are equal. a is a fragment character. b
 	is a fragment character. Return value is (true) if they are equal and (false)
 	otherwise.)
 
-(function i/f:char= (a b) [= (@ cs-character $a) (@ cs-character $b)])
+(function i/f:char= (a b) [= (@ cs-character a) (@ cs-character b)])
 
 (;; Following array is used to lookup fragment character corresponding to ASCII character.)
 
@@ -21,63 +21,63 @@
 	(char-init m) (char-init n) (char-init o) (char-init p) (char-init q) (char-init r) (char-init s) (char-init t) (char-init u)
 	(char-init v) (char-init w) (char-init x) (char-init y) (char-init z) #0 (char-init |) #0 (char-init ~) #0)
 
-(;; Builds a symbol from a given C-string. $str is the C-string that the constructed
-	symbol will be based on. $r is the buffer in which the symbol will be constructed.
+(;; Builds a symbol from a given C-string. str is the C-string that the constructed
+	symbol will be based on. r is the buffer in which the symbol will be constructed.
 	Return value is the constructed symbol.)
 
 (function build-symbol (str r handler err) (with return
 	(let (sexprs nil) (begin
-		(while [getb $str] (begin
-			[append (sym-char [getb $str]) sexprs $r $handler $err]
-			[set str [+ $str #1]]))
-		{return $sexprs}))))
+		(while [getb str] (begin
+			[append (sym-char [getb str]) sexprs r handler err]
+			[set str [+ str #1]]))
+		{return sexprs}))))
 
-(;; Moves the supplied index forward to the first non-space character. $l2src is a
-	reference to the beginning of a buffer containing characters. $l2src-sz contains
-	the size in bytes of the buffer. $pos is the reference to an index integer that
+(;; Moves the supplied index forward to the first non-space character. l2src is a
+	reference to the beginning of a buffer containing characters. l2src-sz contains
+	the size in bytes of the buffer. pos is the reference to an index integer that
 	will be increased. Return value is the number of remaining characters in the
 	buffer.)
 
 (function after-leading-space (l2src l2src-sz pos) (with return
 	{(continuation loop ()
-		(if (and [< $$pos $l2src-sz] [isspace [getb[+ $l2src $$pos]]])
-			(begin [set $pos [+ $$pos #1]] {loop})
-			{return [- $l2src-sz $$pos]}))}))
+		(if (and [< $pos l2src-sz] [isspace [getb[+ l2src $pos]]])
+			(begin [set pos [+ $pos #1]] {loop})
+			{return [- l2src-sz $pos]}))}))
 
 (;; If there is a space at the current position in the buffer, then build a symbol
 	containing solely the sigil. Otherwise build a symbol of the form (<sigil>
 	<symbol>) where symbol is the symbol starting at the current position in the
-	buffer. $sigil is a string. $l2src is a reference to the start of a buffer
-	containing characters. $l2src-sz is the size of the buffer. $pos is a reference
-	to the current index in the buffer. $r is the buffer into which the symbol
+	buffer. sigil is a string. l2src is a reference to the start of a buffer
+	containing characters. l2src-sz is the size of the buffer. pos is a reference
+	to the current index in the buffer. r is the buffer into which the symbol
 	should be put. Return value is the constructed symbol.)
 
 (function build-sigilled-symbol (sigil l2src l2src-sz pos r handler err) (with return
-	(substitute (.. $r $handler $err) (begin
-		(if [= $l2src-sz $$pos] {return [build-symbol $sigil ..]} (begin))
-		(let (d [getb [+ $l2src $$pos]])
-			(if (or [isspace $d] [= $d (rparen)] [= $d (rbrace)] [= $d (rbracket)] [= $d (lparen)] [= $d (lbrace)] [= $d (lbracket)])
-				{return [build-symbol $sigil ..]}
+	(substitute (.. r handler err) (begin
+		(if [= l2src-sz $pos] {return [build-symbol sigil ..]} (begin))
+		(let (d [getb [+ l2src $pos]])
+			(if (or [isspace d] [= d (rparen)] [= d (rbrace)] [= d (rbracket)] [= d (lparen)] [= d (lbrace)] [= d (lbracket)])
+				{return [build-symbol sigil ..]}
 				(let (sexprs nil) (begin
-					[append [build-symbol $sigil ..] sexprs ..]
-					[append [build-fragment $l2src $l2src-sz $pos ..] sexprs ..]
-					{return $sexprs}))))))))
+					[append [build-symbol sigil ..] sexprs ..]
+					[append [build-fragment l2src l2src-sz pos ..] sexprs ..]
+					{return sexprs}))))))))
 
 (;; Builds a fragment list starting at the current position in the buffer and ending
 	at the specified delimiter and then prefixes it with the given primitive.
-	$primitive is a string. $delimiter is an ascii character. For rest of parameters,
+	primitive is a string. delimiter is an ascii character. For rest of parameters,
 	see above.)
 
 (function build-fragment-list (primitive delimeter l2src l2src-sz pos r handler err) (with return
-	(substitute (.. $r $handler $err) (let (sexprs nil) (begin
-		[append [build-symbol $primitive ..] sexprs ..]
+	(substitute (.. r handler err) (let (sexprs nil) (begin
+		[append [build-symbol primitive ..] sexprs ..]
 		(while (true) (begin
-			(let (rem [after-leading-space $l2src $l2src-sz $pos])
-				(if (and $rem [= [getb [+ $l2src $$pos]] $delimeter])
-					(begin [set $pos [+ $$pos #1]] {return $sexprs})
+			(let (rem [after-leading-space l2src l2src-sz pos])
+				(if (and rem [= [getb [+ l2src $pos]] delimeter])
+					(begin [set pos [+ $pos #1]] {return sexprs})
 					(begin)))
-			[append [build-fragment $l2src $l2src-sz $pos ..] sexprs ..]))
-		{return $sexprs})))))
+			[append [build-fragment l2src l2src-sz pos ..] sexprs ..]))
+		{return sexprs})))))
 
 (storage unexpected-char-error (begin))
 
@@ -85,70 +85,70 @@
 	see above.)
 
 (function build-fragment (l2src l2src-sz pos r handler err) (with return
-	(substitute (.. $r $handler $err) (if [= $l2src-sz $$pos]
-		{$handler (sets $err unexpected-char-error #0 $$pos)}
-		(let (c [getb [+ $l2src $$pos]])
-			(if (or [isspace $c] [= $c (rparen)] [= $c (rbrace)] [= $c (rbracket)])
-				{$handler (sets $err unexpected-char-error $c $$pos)}
+	(substitute (.. r handler err) (if [= l2src-sz $pos]
+		{handler (sets err unexpected-char-error #0 $pos)}
+		(let (c [getb [+ l2src $pos]])
+			(if (or [isspace c] [= c (rparen)] [= c (rbrace)] [= c (rbracket)])
+				{handler (sets err unexpected-char-error c $pos)}
 				(begin
-					[set $pos [+ $$pos #1]]
-					{return (switch = $c
-						((lparen) [@cdr [build-fragment-list (" expression) (rparen) $l2src $l2src-sz $pos ..]])
-						((lbrace) [build-fragment-list (" jump) (rbrace) $l2src $l2src-sz $pos ..])
-						((lbracket) [build-fragment-list (" invoke) (rbracket) $l2src $l2src-sz $pos ..])
-						((char $) [build-sigilled-symbol (" $) $l2src $l2src-sz $pos ..])
-						((char #) [build-sigilled-symbol (" #) $l2src $l2src-sz $pos ..])
-						((char ,) [build-sigilled-symbol (" ,) $l2src $l2src-sz $pos ..])
-						((char `) [build-sigilled-symbol (" `) $l2src $l2src-sz $pos ..])
+					[set pos [+ $pos #1]]
+					{return (switch = c
+						((lparen) [@cdr [build-fragment-list (" expression) (rparen) l2src l2src-sz pos ..]])
+						((lbrace) [build-fragment-list (" jump) (rbrace) l2src l2src-sz pos ..])
+						((lbracket) [build-fragment-list (" invoke) (rbracket) l2src l2src-sz pos ..])
+						((char $) [build-sigilled-symbol (" $) l2src l2src-sz pos ..])
+						((char #) [build-sigilled-symbol (" #) l2src l2src-sz pos ..])
+						((char ,) [build-sigilled-symbol (" ,) l2src l2src-sz pos ..])
+						((char `) [build-sigilled-symbol (" `) l2src l2src-sz pos ..])
 						(let (l nil) (begin
 							(do-while (begin
-									[append (sym-char $c) l ..]
-									(if [= $$pos $l2src-sz] {return $l} (begin))
-									[set c [getb [+ $l2src $$pos]]]
-									[set $pos [+ $$pos #1]])
-								(not (or [isspace $c] [= $c (lparen)] [= $c (rparen)] [= $c (lbrace)] [= $c (rbrace)]
-									[= $c (lbracket)] [= $c (rbracket)])))
-							[set $pos [- $$pos #1]]
-							{return $l})))})))))))
+									[append (sym-char c) l ..]
+									(if [= $pos l2src-sz] {return l} (begin))
+									[set c [getb [+ l2src $pos]]]
+									[set pos [+ $pos #1]])
+								(not (or [isspace c] [= c (lparen)] [= c (rparen)] [= c (lbrace)] [= c (rbrace)]
+									[= c (lbracket)] [= c (rbracket)])))
+							[set pos [- $pos #1]]
+							{return l})))})))))))
 
 (storage character-flag (begin))
 
-(;; Checks if the fragment $d is a symbol. A symbol is a non-empty list of characters.)
+(;; Checks if the fragment d is a symbol. A symbol is a non-empty list of characters.)
 
-(function i/f:symbol? (d) (and [length $d] [= (@ cs-flag[@car $d]) character-flag]))
+(function i/f:symbol? (d) (and [length d] [= (@ cs-flag[@car d]) character-flag]))
 
-(;; Converts the given symbol into an ASCII string. $d is the symbol that is to be
-	converted. $r is the buffer into which the string should be put. The return value
+(;; Converts the given symbol into an ASCII string. d is the symbol that is to be
+	converted. r is the buffer into which the string should be put. The return value
 	is the constructed string.)
 
 (function to-string (d r handler err) (with return
-	(let (str [buffer-alloc [+ [length $d] #1] $r $handler $err]) (i #0) (begin
-		(foreach (t $d) (begin
-			[setb [+ $str $i] (@ cs-character $t)]
-			[set i [+ $i #1]]))
-		[setb [+ $str $i] (nul)]
-		{return $str}))))
+	(let (str [buffer-alloc [+ [length d] #1] r handler err]) (i #0) (begin
+		(foreach (t d) (begin
+			[setb [+ str i] (@ cs-character t)]
+			[set i [+ i #1]]))
+		[setb [+ str i] (nul)]
+		{return str}))))
 
-(;; Copies the given fragment into the given buffer. $l is the fragment that is to
-	be copied. $r is the buffer into which the fragment should be copied. The return
+(;; Copies the given fragment into the given buffer. l is the fragment that is to
+	be copied. r is the buffer into which the fragment should be copied. The return
 	value is the copied fragment.)
 
 (function copy-fragment (l r handler err) (with return
-	(let (c nil) (substitute (.. $r $handler $err) (begin
-		(if [i/f:symbol? $l]
-			(foreach (s $l) [append (sym-char (@ cs-character $s)) c ..])
-			(foreach (s $l) [append [copy-fragment $s ..] c ..]))
-		{return $c})))))
+	(let (c nil) (substitute (.. r handler err) (begin
+		(if [i/f:symbol? l]
+			(foreach (s l) [append (sym-char (@ cs-character s)) c ..])
+			(foreach (s l) [append [copy-fragment s ..] c ..]))
+		{return c})))))
 
-(;; Prints the given fragment out to standard output. $d is the fragment that is
+(;; Prints the given fragment out to standard output. d is the fragment that is
 	to be printed.)
 
 (function print-fragment (d hdl err) (begin
-	[print-char (stdout) (lparen) $hdl $err]
-	(if [nil? $d] (begin) (begin
-		(if [i/f:symbol? $d]
-			[print-char (stdout) (@ cs-character[@car $d]) $hdl $err]
-			[print-fragment [@car $d] $hdl $err])
-		[print-str (stdout) ("(space).(space)) $hdl $err]
-		[print-fragment [@cdr $d] $hdl $err]))
-	[print-char (stdout) (rparen) $hdl $err]))
+	[print-char (stdout) (lparen) hdl err]
+	(if [nil? d] (begin) (begin
+		(if [i/f:symbol? d]
+			[print-char (stdout) (@ cs-character[@car d]) hdl err]
+			[print-fragment [@car d] hdl err])
+		[print-str (stdout) ("(space).(space)) hdl err]
+		[print-fragment [@cdr d] hdl err]))
+	[print-char (stdout) (rparen) hdl err]))

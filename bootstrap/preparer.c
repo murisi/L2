@@ -378,8 +378,7 @@ union expression *generate_metaprogram(union expression *program, struct expansi
 			int i;
 			for(i = 0; i < length(s->function.parameters); i++) {
 				prepend(make_reference(NULL, ectx->expr_buf), &params, ectx->expr_buf);
-				prepend(make_invoke1(make_literal((unsigned long) _get_, ectx->expr_buf), make_reference(NULL, ectx->expr_buf),
-					ectx->expr_buf), &args, ectx->expr_buf);
+				prepend(make_reference(NULL, ectx->expr_buf), &args, ectx->expr_buf);
 			}
 			append(make_function(make_reference(s->function.reference->reference.name, ectx->expr_buf), params,
 				make_invoke(make_invoke3(make_literal((unsigned long) init_function, ectx->expr_buf),
@@ -388,7 +387,7 @@ union expression *generate_metaprogram(union expression *program, struct expansi
 					ectx->expr_buf);
 			union expression *a, *t;
 			foreachzipped(a, t, params, args) {
-				refer_reference(t->invoke.arguments->fst, a);
+				refer_reference(t, a);
 			}
 		} else {
 			append(make_invoke0(make_invoke3(make_literal((unsigned long) init_expression, ectx->expr_buf),

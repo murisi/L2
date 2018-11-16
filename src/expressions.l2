@@ -3,321 +3,321 @@
 (storage null-symbol (begin))
 
 (function make-symbol (type scope state name definition r handler err) (with return
-	(let (sym [buffer-alloc (symbol) $r $handler $err]) (begin
-		(setf sym-type $sym $type)
-		(setf sym-scope $sym $scope)
-		(setf sym-state $sym $state)
-		(setf sym-name $sym $name)
-		(setf sym-definition $sym $definition)
-		{return $sym}))))
+	(let (sym [buffer-alloc (symbol) r handler err]) (begin
+		(setf sym-type sym type)
+		(setf sym-scope sym scope)
+		(setf sym-state sym state)
+		(setf sym-name sym name)
+		(setf sym-definition sym definition)
+		{return sym}))))
 
 (function make-literal (value reg handler err) (with return
-	(let (t [buffer-alloc (expression) $reg $handler $err]) (begin
-		(setf expr-type $t (-literal-))
-		(setf expr-parent $t null-expr)
-		(setf expr-value $t $value)
-		{return $t}))))
+	(let (t [buffer-alloc (expression) reg handler err]) (begin
+		(setf expr-type t (-literal-))
+		(setf expr-parent t null-expr)
+		(setf expr-value t value)
+		{return t}))))
 
 (function make-reference (name reg handler err) (with return
-	(let (ref [buffer-alloc (expression) $reg $handler $err]) (begin
-		(setf expr-type $ref (-reference-))
-		(setf expr-parent $ref null-expr)
-		(setf expr-name $ref $name)
-		(setf expr-symbol $ref null-symbol)
-		{return $ref}))))
+	(let (ref [buffer-alloc (expression) reg handler err]) (begin
+		(setf expr-type ref (-reference-))
+		(setf expr-parent ref null-expr)
+		(setf expr-name ref name)
+		(setf expr-symbol ref null-symbol)
+		{return ref}))))
 
-(;; Makes a reference expression refer to another reference expression. $reference
-	is the expression being made to refer. $referent is the reference expression
+(;; Makes a reference expression refer to another reference expression. reference
+	is the expression being made to refer. referent is the reference expression
 	being referred to.)
 
-(function refer-reference (reference referent) (setf expr-symbol $reference (@ expr-symbol $referent)))
+(function refer-reference (reference referent) (setf expr-symbol reference (@ expr-symbol referent)))
 
-(;; Makes a reference expression attached to the given symbol. $sym is the symbol
-	to which the reference will be attached. $reg is the buffer into which the
+(;; Makes a reference expression attached to the given symbol. sym is the symbol
+	to which the reference will be attached. reg is the buffer into which the
 	the reference expression will be put. Return value is the reference expression.)
 
 (function use-symbol (sym reg handler err) (with return
-	(let (ref [buffer-alloc (expression) $reg $handler $err]) (begin
-		(setf expr-type $ref (-reference-))
-		(setf expr-parent $ref null-expr)
-		(setf expr-name $ref (@ sym-name $sym))
-		(setf expr-symbol $ref $sym)
-		{return $ref}))))
+	(let (ref [buffer-alloc (expression) reg handler err]) (begin
+		(setf expr-type ref (-reference-))
+		(setf expr-parent ref null-expr)
+		(setf expr-name ref (@ sym-name sym))
+		(setf expr-symbol ref sym)
+		{return ref}))))
 
 (function make-begin (expressions reg handler err) (with return
-	(let (beg [buffer-alloc (expression) $reg $handler $err]) (begin
-		(setf expr-type $beg (-begin-))
-		(setf expr-parent $beg null-expr)
-		(setf expr-expressions $beg $expressions)
-		(foreach (expr $expressions) (setf expr-parent $expr $beg))
-		{return $beg}))))
+	(let (beg [buffer-alloc (expression) reg handler err]) (begin
+		(setf expr-type beg (-begin-))
+		(setf expr-parent beg null-expr)
+		(setf expr-expressions beg expressions)
+		(foreach (expr expressions) (setf expr-parent expr beg))
+		{return beg}))))
 
 (function make-function (ref params expr reg handler err) (with return
-	(substitute (.. $reg $handler $err) (let (func [buffer-alloc (expression) ..]) (begin
-		(setf expr-type $func (-function-))
-		(setf expr-parent $func null-expr)
-		(put expr-reference $func $ref)
-		(setf expr-symbol $ref [make-symbol (static-storage) (local-scope) (defined-state) (@ expr-name $ref) $ref ..])
-		(setf expr-parameters $func $params)
-		(foreach (param $params) (begin
-			(setf expr-parent $param $func)
-			(setf expr-symbol $param [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ expr-name $param) $param ..])))
-		(setf expr-symbols $func nil)
-		(put expr-expression $func $expr)
-		{return $func})))))
+	(substitute (.. reg handler err) (let (func [buffer-alloc (expression) ..]) (begin
+		(setf expr-type func (-function-))
+		(setf expr-parent func null-expr)
+		(put expr-reference func ref)
+		(setf expr-symbol ref [make-symbol (static-storage) (local-scope) (defined-state) (@ expr-name ref) ref ..])
+		(setf expr-parameters func params)
+		(foreach (param params) (begin
+			(setf expr-parent param func)
+			(setf expr-symbol param [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ expr-name param) param ..])))
+		(setf expr-symbols func nil)
+		(put expr-expression func expr)
+		{return func})))))
 
 (function make-continuation (ref params expr reg handler err) (with return
-	(substitute (.. $reg $handler $err) (let (cont [buffer-alloc (expression) ..]) (begin
-		(setf expr-type $cont (-continuation-))
-		(setf expr-parent $cont null-expr)
-		(setf expr-cont-instr-ref $cont
+	(substitute (.. reg handler err) (let (cont [buffer-alloc (expression) ..]) (begin
+		(setf expr-type cont (-continuation-))
+		(setf expr-parent cont null-expr)
+		(setf expr-cont-instr-ref cont
 			[use-symbol [make-symbol (static-storage) (local-scope) (defined-state) null-string null-expr ..] ..])
-		(put expr-reference $cont $ref)
-		(setf expr-symbol $ref [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ expr-name $ref) $ref ..])
-		(setf expr-parameters $cont $params)
-		(foreach (param $params) (begin
-			(setf expr-parent $param $cont)
-			(setf expr-symbol $param [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ expr-name $param) $param ..])))
-		(setf expr-escapes $cont (false))
-		(put expr-expression $cont $expr)
-		{return $cont})))))
+		(put expr-reference cont ref)
+		(setf expr-symbol ref [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ expr-name ref) ref ..])
+		(setf expr-parameters cont params)
+		(foreach (param params) (begin
+			(setf expr-parent param cont)
+			(setf expr-symbol param [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ expr-name param) param ..])))
+		(setf expr-escapes cont (false))
+		(put expr-expression cont expr)
+		{return cont})))))
 
 (function make-with (ref expr reg handler err) (with return
-	(substitute (.. $reg $handler $err) (let (wth [buffer-alloc (expression) ..]) (begin
-		(setf expr-type $wth (-with-))
-		(setf expr-parent $wth null-expr)
-		(setf expr-cont-instr-ref $wth
+	(substitute (.. reg handler err) (let (wth [buffer-alloc (expression) ..]) (begin
+		(setf expr-type wth (-with-))
+		(setf expr-parent wth null-expr)
+		(setf expr-cont-instr-ref wth
 			[use-symbol [make-symbol (static-storage) (local-scope) (defined-state) null-string null-expr ..] ..])
-		(put expr-reference $wth $ref)
-		(setf expr-symbol $ref [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ expr-name $ref) $ref ..])
+		(put expr-reference wth ref)
+		(setf expr-symbol ref [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ expr-name ref) ref ..])
 		(let (param [make-reference null-string ..]) (begin
-			(setf expr-parent $param $wth)
-			(setf expr-symbol $param [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ expr-name $param) $param ..])
-			(setf expr-parameters $wth [cons $param nil $reg])))
-		(setf expr-escapes $wth (false))
-		(put expr-expression $wth $expr)
-		{return $wth})))))
+			(setf expr-parent param wth)
+			(setf expr-symbol param [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ expr-name param) param ..])
+			(setf expr-parameters wth [cons param nil ..])))
+		(setf expr-escapes wth (false))
+		(put expr-expression wth expr)
+		{return wth})))))
 
 (function make-asm (opcode arguments reg handler err) (with return
-	(let (u [buffer-alloc (expression) $reg $handler $err]) (begin
-		(setf expr-type $u (-assembly-))
-		(setf expr-opcode $u $opcode)
-		(setf expr-arguments $u $arguments)
-		(foreach (arg $arguments) (setf expr-parent $arg $u))
-		{return $u}))))
+	(let (u [buffer-alloc (expression) reg handler err]) (begin
+		(setf expr-type u (-assembly-))
+		(setf expr-opcode u opcode)
+		(setf expr-arguments u arguments)
+		(foreach (arg arguments) (setf expr-parent arg u))
+		{return u}))))
 
 (function make-jump (ref args reg handler err) (with return
-	(let (u [buffer-alloc (expression) $reg $handler $err]) (begin
-		(setf expr-type $u (-jump-))
-		(setf expr-parent $u null-expr)
-		(setf expr-short-circuit $u null-expr)
-		(put expr-reference $u $ref)
-		(setf expr-arguments $u $args)
-		(foreach (arg $args) (setf expr-parent $arg $u))
-		{return $u}))))
+	(let (u [buffer-alloc (expression) reg handler err]) (begin
+		(setf expr-type u (-jump-))
+		(setf expr-parent u null-expr)
+		(setf expr-short-circuit u null-expr)
+		(put expr-reference u ref)
+		(setf expr-arguments u args)
+		(foreach (arg args) (setf expr-parent arg u))
+		{return u}))))
 
 (function make-storage (ref args reg handler err) (with return
-	(substitute (.. $reg $handler $err) (let (u [buffer-alloc (expression) ..]) (begin
-		(setf expr-type $u (-storage-))
-		(setf expr-parent $u null-expr)
-		(put expr-reference $u $ref)
-		(setf expr-symbol $ref [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ expr-name $ref) $ref ..])
-		(setf expr-arguments $u $args)
-		(foreach (arg $args) (setf expr-parent $arg $u))
-		{return $u})))))
+	(substitute (.. reg handler err) (let (u [buffer-alloc (expression) ..]) (begin
+		(setf expr-type u (-storage-))
+		(setf expr-parent u null-expr)
+		(put expr-reference u ref)
+		(setf expr-symbol ref [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ expr-name ref) ref ..])
+		(setf expr-arguments u args)
+		(foreach (arg args) (setf expr-parent arg u))
+		{return u})))))
 
 (function make-meta (ref arg reg handler err) (with return
-	(let (u [buffer-alloc (expression) $reg $handler $err]) (begin
-		(setf expr-type $u (-meta-))
-		(put expr-reference $u $ref)
-		(setf expr-argument $u $arg)
-		{return $u}))))
+	(let (u [buffer-alloc (expression) reg handler err]) (begin
+		(setf expr-type u (-meta-))
+		(put expr-reference u ref)
+		(setf expr-argument u arg)
+		{return u}))))
 
 (function make-if (condition consequent alternate reg handler err) (with return
-	(let (u [buffer-alloc (expression) $reg $handler $err]) (begin
-		(setf expr-type $u (-if-))
-		(setf expr-parent $u null-expr)
-		(put expr-condition $u $condition)
-		(put expr-consequent $u $consequent)
-		(put expr-alternate $u $alternate)
-		{return $u}))))
+	(let (u [buffer-alloc (expression) reg handler err]) (begin
+		(setf expr-type u (-if-))
+		(setf expr-parent u null-expr)
+		(put expr-condition u condition)
+		(put expr-consequent u consequent)
+		(put expr-alternate u alternate)
+		{return u}))))
 
 (function make-invoke (ref args reg handler err) (with return
-	(let (u [buffer-alloc (expression) $reg $handler $err]) (begin
-		(setf expr-type $u (-invoke-))
-		(setf expr-parent $u null-expr)
-		(put expr-reference $u $ref)
-		(setf expr-arguments $u $args)
-		(foreach (arg $args) (setf expr-parent $arg $u))
-		{return $u}))))
+	(let (u [buffer-alloc (expression) reg handler err]) (begin
+		(setf expr-type u (-invoke-))
+		(setf expr-parent u null-expr)
+		(put expr-reference u ref)
+		(setf expr-arguments u args)
+		(foreach (arg args) (setf expr-parent arg u))
+		{return u}))))
 
-(;; Builds a program from a list of expressions. $exprs is the list of expressions
+(;; Builds a program from a list of expressions. exprs is the list of expressions
 	from which the program will be built. A program is a function with no parent that
 	has as its expression a begin expression.)
 
-(function make-program (exprs r handler err) (with return (substitute (.. $r $handler $err)
-	(let (program [make-function [make-reference null-string ..] nil [make-begin $exprs ..] ..]) (begin
-		(setf expr-parent $program null-expr)
-		(foreach (expr $exprs)
-			(if (or [= (@ expr-type $expr) (-function-)] [= (@ expr-type $expr) (-storage-)])
-				(setf sym-scope (@ expr-symbol(@ expr-reference $expr)) (global-scope))
+(function make-program (exprs r handler err) (with return (substitute (.. r handler err)
+	(let (program [make-function [make-reference null-string ..] nil [make-begin exprs ..] ..]) (begin
+		(setf expr-parent program null-expr)
+		(foreach (expr exprs)
+			(if (or [= (@ expr-type expr) (-function-)] [= (@ expr-type expr) (-storage-)])
+				(setf sym-scope (@ expr-symbol(@ expr-reference expr)) (global-scope))
 				(begin)))
-		{return $program})))))
+		{return program})))))
 
 (;; Prints the given expression as it would be written in an L2 source file.
-	$s is an expression.)
+	s is an expression.)
 
-(function print-expression (s hdl err) (substitute (.. $hdl $err)
-	(switch = (@ expr-type $s)
+(function print-expression (s hdl err) (substitute (.. hdl err)
+	(switch = (@ expr-type s)
 		((-begin-) (begin
 			[print-str (stdout) (" (lparen)begin(space)) ..]
-			(foreach (t (@ expr-expressions $s)) (begin
-				[print-expression $t ..]
+			(foreach (t (@ expr-expressions s)) (begin
+				[print-expression t ..]
 				[print-str (stdout) (" (space)) ..]))
 			[print-str (stdout) (" (bs)(rparen)) ..]))
 		
 		((-with-) (begin
 			[print-str (stdout) (" (lparen)with(space)) ..]
-			[print-expression (@ expr-reference $s) ..]
+			[print-expression (@ expr-reference s) ..]
 			[print-str (stdout) (" (space)) ..]
-			[print-expression (@ expr-expression $s) ..]
+			[print-expression (@ expr-expression s) ..]
 			[print-str (stdout) (" (rparen)) ..]))
 		
 		((-invoke-) (-jump-) (-storage-) (begin
-			[print-str (stdout) (switch = (@ expr-type $s)
+			[print-str (stdout) (switch = (@ expr-type s)
 				((-invoke-) (" (lbracket)))
 				((-jump-) (" (lbrace)))
 				(" (lparen)storage(space))) ..]
-			[print-expression (@ expr-reference $s) ..]
+			[print-expression (@ expr-reference s) ..]
 			[print-str (stdout) (" (space)) ..]
-			(foreach (t (@ expr-arguments $s)) (begin
-				[print-expression $t ..]
+			(foreach (t (@ expr-arguments s)) (begin
+				[print-expression t ..]
 				[print-str (stdout) (" (space)) ..]))
 			[print-str (stdout) (" (bs)) ..]
-			[print-str (stdout) (switch = (@ expr-type $s)
+			[print-str (stdout) (switch = (@ expr-type s)
 				((-invoke-) (" (rbracket)))
 				((-jump-) (" (rbrace)))
 				(" (rbracket))) ..]))
 		
 		((-function-) (-continuation-) (begin
 			[print-str (stdout) (" (lparen)) ..]
-			[print-str (stdout) (switch = (@ expr-type $s)
+			[print-str (stdout) (switch = (@ expr-type s)
 				((-function-) (" function))
 				(" continuation)) ..]
 			[print-str (stdout) (" (space)) ..]
-			[print-expression (@ expr-reference $s) ..]
+			[print-expression (@ expr-reference s) ..]
 			[print-str (stdout) (" (space)(lparen)(space)) ..]
-			(foreach (t (@ expr-parameters $s)) (begin
-				[print-expression $t ..]
+			(foreach (t (@ expr-parameters s)) (begin
+				[print-expression t ..]
 				[print-str (stdout) (" (space)) ..]))
 			[print-str (stdout) (" (rparen)(space)) ..]
-			[print-expression (@ expr-expression $s) ..]
+			[print-expression (@ expr-expression s) ..]
 			[print-str (stdout) (" (rparen)) ..]))
 			
 		((-if-) (begin
 			[print-str (stdout) (" (lparen)if(space)) ..]
-			[print-expression (@ expr-condition $s) ..]
+			[print-expression (@ expr-condition s) ..]
 			[print-str (stdout) (" (space)) ..]
-			[print-expression (@ expr-consequent $s) ..]
+			[print-expression (@ expr-consequent s) ..]
 			[print-str (stdout) (" (space)) ..]
-			[print-expression (@ expr-alternate $s) ..]
+			[print-expression (@ expr-alternate s) ..]
 			[print-str (stdout) (" (rparen)) ..]))
 		
 		((-reference-)
-			(if [not= (@ expr-name $s) null-string]
-				[print-str (stdout) (@ expr-name $s) ..]
+			(if [not= (@ expr-name s) null-string]
+				[print-str (stdout) (@ expr-name s) ..]
 				(begin
 					[print-str (stdout) (" (lparen)reference(space)) ..]
-					[print-uint (stdout) (@ expr-symbol $s) ..]
+					[print-uint (stdout) (@ expr-symbol s) ..]
 					[print-str (stdout) (" (rparen)) ..])))
 					
 		((-literal-) (begin
 			[print-str (stdout) (" (lparen)literal(space)) ..]
-			[print-uint (stdout) (@ expr-value $s) ..]
+			[print-uint (stdout) (@ expr-value s) ..]
 			[print-str (stdout) (" (rparen)) ..]))
 		
 		((-meta-) (begin
 			[print-str (stdout) (" (lparen)) ..]
-			[print-expression (@ expr-reference $s) ..]
+			[print-expression (@ expr-reference s) ..]
 			[print-str (stdout) (" (space)) ..]
-			[print-fragment (@ expr-argument $s) ..]
+			[print-fragment (@ expr-argument s) ..]
 			[print-str (stdout) (" (rparen)) ..]))
 			
 		(begin))))
 
 (storage special-form-error (begin))
 
-(;; Builds an expression from a given program fragment. $d is the program fragment.
-	$reg is the buffer into which the built expressions will be put. The return value
-	is the constructed expression. The continuation $handler will be followed, and
-	buffer reference by $err set to the tuple (special-form-error, ...) in the event
+(;; Builds an expression from a given program fragment. d is the program fragment.
+	reg is the buffer into which the built expressions will be put. The return value
+	is the constructed expression. The continuation handler will be followed, and
+	buffer reference by err set to the tuple (special-form-error, ...) in the event
 	of a malformed expression.)
 
-(function build-expression (d reg handler err) (substitute (.. $reg $handler $err)
-	(if [= [length $d] #0] {$handler}
-	(if [i/f:symbol? $d] [make-reference [to-string $d ..] ..]
-	(switch str= [to-string [@car $d] ..]
+(function build-expression (d reg handler err) (substitute (.. reg handler err)
+	(if [= [length d] #0] {handler}
+	(if [i/f:symbol? d] [make-reference [to-string d ..] ..]
+	(switch str= [to-string [@car d] ..]
 		((" with)
-			(if (not [= [length $d] #3])
-				{$handler (sets $err special-form-error $d null-fragment)}
-			(if (not [i/f:symbol? [@cadr $d]])
-				{$handler (sets $err special-form-error $d [@cadr $d])}
-				[make-with [build-expression [@cadr $d] ..] [build-expression [@caddr $d] ..] ..])))
+			(if (not [= [length d] #3])
+				{handler (sets err special-form-error d null-fragment)}
+			(if (not [i/f:symbol? [@cadr d]])
+				{handler (sets err special-form-error d [@cadr d])}
+				[make-with [build-expression [@cadr d] ..] [build-expression [@caddr d] ..] ..])))
 		
 		((" begin)
 			(with return (let (exprs nil) (begin
-				(foreach (v [@cdr $d]) [append [build-expression $v ..] exprs ..])
-				{return [make-begin $exprs ..]}))))
+				(foreach (v [@cdr d]) [append [build-expression v ..] exprs ..])
+				{return [make-begin exprs ..]}))))
 		
 		((" if)
-			(if (not [= [length $d] #4])
-				{$handler (sets $err special-form-error $d null-fragment)}
-				[make-if [build-expression [@cadr $d] ..] [build-expression [@caddr $d] ..] [build-expression [@cadddr $d] ..] ..]))
+			(if (not [= [length d] #4])
+				{handler (sets err special-form-error d null-fragment)}
+				[make-if [build-expression [@cadr d] ..] [build-expression [@caddr d] ..] [build-expression [@cadddr d] ..] ..]))
 		
 		((" function) (" continuation)
-			(if (not [= [length $d] #4])
-				{$handler (sets $err special-form-error $d null-fragment)}
-			(if (not [i/f:symbol? [@cadr $d]])
-				{$handler (sets $err special-form-error $d [@cadr $d])}
-			(if [i/f:symbol? [@caddr $d]]
-				{$handler (sets $err special-form-error $d [@caddr $d])}
+			(if (not [= [length d] #4])
+				{handler (sets err special-form-error d null-fragment)}
+			(if (not [i/f:symbol? [@cadr d]])
+				{handler (sets err special-form-error d [@cadr d])}
+			(if [i/f:symbol? [@caddr d]]
+				{handler (sets err special-form-error d [@caddr d])}
 				(with return (let (parameters nil) (begin
-					(foreach (v [@caddr $d])
-						(if [i/f:symbol? $v]
-							[append [build-expression $v ..] parameters ..]
-							{$handler (sets $err special-form-error $d $v)}))
-					{return [(switch str= [to-string [@car $d] ..]
+					(foreach (v [@caddr d])
+						(if [i/f:symbol? v]
+							[append [build-expression v ..] parameters ..]
+							{handler (sets err special-form-error d v)}))
+					{return [(switch str= [to-string [@car d] ..]
 							((" function) make-function)
 							make-continuation)
-						[build-expression [@cadr $d] ..] $parameters [build-expression [@cadddr $d] ..] ..]})))))))
+						[build-expression [@cadr d] ..] parameters [build-expression [@cadddr d] ..] ..]})))))))
 		
 		((" invoke) (" jump) (" storage)
-			(if [= [length $d] #1]
-				{$handler (sets $err special-form-error $d null-fragment)}
-			(if (and [str= [to-string [@car $d] ..] (" storage)] (not [i/f:symbol? [@cadr $d]]))
-				{$handler (sets $err special-form-error $d [@cadr $d])}
+			(if [= [length d] #1]
+				{handler (sets err special-form-error d null-fragment)}
+			(if (and [str= [to-string [@car d] ..] (" storage)] (not [i/f:symbol? [@cadr d]]))
+				{handler (sets err special-form-error d [@cadr d])}
 				(with return (let (arguments nil) (begin
-					(foreach (v [@cddr $d]) [append [build-expression $v ..] arguments ..])
-					{return [(switch str= [to-string [@car $d] ..]
+					(foreach (v [@cddr d]) [append [build-expression v ..] arguments ..])
+					{return [(switch str= [to-string [@car d] ..]
 							((" invoke) make-invoke)
 							((" jump) make-jump)
 							make-storage)
-						[build-expression [@cadr $d] ..] $arguments ..]}))))))
+						[build-expression [@cadr d] ..] arguments ..]}))))))
 		
 		((" literal)
-			(if (not [= [length $d] #2])
-				{$handler (sets $err special-form-error $d null-fragment)}
-			(if (or (not [i/f:symbol? [@cadr $d]]) (not [= [length [@cadr $d]] (build-expression-literal-len)]))
-				{$handler (sets $err special-form-error $d [@cadr $d])}
+			(if (not [= [length d] #2])
+				{handler (sets err special-form-error d null-fragment)}
+			(if (or (not [i/f:symbol? [@cadr d]]) (not [= [length [@cadr d]] (build-expression-literal-len)]))
+				{handler (sets err special-form-error d [@cadr d])}
 				[make-literal (with return
 					{(continuation loop (str i value)
-							(if [= $i #0]
-								{return $value}
-							(if [= [getb $str] (char 1)]
-								{loop [+ $str #1] [- $i #1] [+ [<< $value #1] #1]}
-							(if [= [getb $str] (char 0)]
-								{loop [+ $str #1] [- $i #1] [<< $value #1]}
-								{$handler (sets $err special-form-error $d [@cadr $d])}))))
-						[to-string [@cadr $d] ..] (build-expression-literal-len) #0}) ..])))
+							(if [= i #0]
+								{return value}
+							(if [= [getb str] (char 1)]
+								{loop [+ str #1] [- i #1] [+ [<< value #1] #1]}
+							(if [= [getb str] (char 0)]
+								{loop [+ str #1] [- i #1] [<< value #1]}
+								{handler (sets err special-form-error d [@cadr d])}))))
+						[to-string [@cadr d] ..] (build-expression-literal-len) #0}) ..])))
 		
-		[make-meta [build-expression [@car $d] ..] [@cdr $d] ..])))))
+		[make-meta [build-expression [@car d] ..] [@cdr d] ..])))))

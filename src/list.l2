@@ -2,132 +2,132 @@
 	Note that the @fst and @rst functions are list accessor functions only for
 	the fragments supplied to macros.)
 
-(function @car (l) (@ car $l))
+(function @car (l) (@ car l))
 
-(function @cdr (l) (@ cdr $l))
+(function @cdr (l) (@ cdr l))
 
-(function @cddr (l) [@cdr [@cdr $l]])
+(function @cddr (l) [@cdr [@cdr l]])
 
-(function @cdddr (l) [@cdr [@cddr $l]])
+(function @cdddr (l) [@cdr [@cddr l]])
 
-(function @cddddr (l) [@cdr [@cdddr $l]])
+(function @cddddr (l) [@cdr [@cdddr l]])
 
-(function @cdddddr (l) [@cdr [@cddddr $l]])
+(function @cdddddr (l) [@cdr [@cddddr l]])
 
-(function @cddddddr (l) [@cdr [@cdddddr $l]])
+(function @cddddddr (l) [@cdr [@cdddddr l]])
 
-(function @cadr (l) [@car [@cdr $l]])
+(function @cadr (l) [@car [@cdr l]])
 
-(function @caddr (l) [@car [@cddr $l]])
+(function @caddr (l) [@car [@cddr l]])
 
-(function @cadddr (l) [@car [@cdddr $l]])
+(function @cadddr (l) [@car [@cdddr l]])
 
-(function @caddddr (l) [@car [@cddddr $l]])
+(function @caddddr (l) [@car [@cddddr l]])
 
-(function @cadddddr (l) [@car [@cdddddr $l]])
+(function @cadddddr (l) [@car [@cdddddr l]])
 
 (storage nil (begin) nil)
 
-(function nil? (l) [= [@cdr $l] $l])
+(function nil? (l) [= [@cdr l] l])
 
-(;; Appends an item to the given list. $data is the data that is to be appended.
-	$l is a reference to the list that is to be appended to. $r is the buffer into
+(;; Appends an item to the given list. data is the data that is to be appended.
+	l is a reference to the list that is to be appended to. r is the buffer into
 	which the extension is being placed.)
 
 (function append (data l r handler err) (with return (begin
-	(while (not [nil? $$l]) [set l (& cdr $$l)])
-	[set $l [buffer-alloc (list-struct) $r $handler $err]]
-	(setf car $$l $data)
-	(setf cdr $$l nil)
-	{return (& car $$l)})))
+	(while (not [nil? $l]) [set l (& cdr $l)])
+	[set l [buffer-alloc (list-struct) r handler err]]
+	(setf car $l data)
+	(setf cdr $l nil)
+	{return (& car $l)})))
 
-(;; Makes a new list with the given head and tail. $data is what is going to be
-	put at the head. $rest is the list that will be the tail of the new list. $r
+(;; Makes a new list with the given head and tail. data is what is going to be
+	put at the head. rest is the list that will be the tail of the new list. r
 	is the buffer into which the extension is being placed. Return value is the
 	new list.)
 
 (function cons (data rest r handler err) (with return
-	(let (l [buffer-alloc (list-struct) $r $handler $err]) (begin
-		(setf car $l $data)
-		(setf cdr $l $rest)
-		{return $l}))))
+	(let (l [buffer-alloc (list-struct) r handler err]) (begin
+		(setf car l data)
+		(setf cdr l rest)
+		{return l}))))
 
-(;; Appends the second list onto the first list. $fst-ref is a reference to the
-	list that will be appended to. $snd is the list that will be appended.)
+(;; Appends the second list onto the first list. fst-ref is a reference to the
+	list that will be appended to. snd is the list that will be appended.)
 
 (function append-list (fst-ref snd) (begin
-	(while (not [nil? $$fst-ref])
-		[set fst-ref (& cdr $$fst-ref)])
-	[set $fst-ref $snd]))
+	(while (not [nil? $fst-ref])
+		[set fst-ref (& cdr $fst-ref)])
+	[set fst-ref snd]))
 
 (;; Analogous to append above.)
 
 (function prepend (data l-ref r handler err)
-	(let (ret [buffer-alloc (list-struct) $r $handler $err]) (begin
-		(setf car $ret $data)
-		(setf cdr $ret $$l-ref)
-		[set $l-ref $ret])))
+	(let (ret [buffer-alloc (list-struct) r handler err]) (begin
+		(setf car ret data)
+		(setf cdr ret $l-ref)
+		[set l-ref ret])))
 
-(;; Computes the length of the given list. $l is the list whose length will be
+(;; Computes the length of the given list. l is the list whose length will be
 	computed.)
 
 (function length (l) (with return
 	{(continuation loop (l size)
-		(if [nil? $l]
-			{return $size}
-			{loop [@cdr $l] [+ #1 $size]})) $l #0}))
+		(if [nil? l]
+			{return size}
+			{loop [@cdr l] [+ #1 size]})) l #0}))
 
 (storage null-find (begin))
 
 (;; Finds the first element of the given list that satisfies a predicate and
 	returns a reference to the list that it heads. Otherwise it returns null-find.
-	$pred is a binary function that takes as its first parameter a list item
-	and as its second parameter $ctx and returns a non-zero value when the
-	predicate is satisfied. $l is a reference to the list that will be searched.)
+	pred is a binary function that takes as its first parameter a list item
+	and as its second parameter ctx and returns a non-zero value when the
+	predicate is satisfied. l is a reference to the list that will be searched.)
 
 (function find (pred l ctx) (with return (begin
-	(until (s $l) [nil? $$s] (& cdr $$s)
-		(if [$pred [@car $$s] $ctx] {return $s} (begin)))
+	(until (s l) [nil? $s] (& cdr $s)
+		(if [pred [@car $s] ctx] {return s} (begin)))
 	{return null-find})))
 
 (storage null-not-subset (begin))
 
-(;; If list $a is not a subset of list $b, return the first element that indicates
-	this. Otherwise return null-not-subset. For parameter $pred, see above. $a is a list.
-	$b is a list.)
+(;; If list a is not a subset of list b, return the first element that indicates
+	this. Otherwise return null-not-subset. For parameter pred, see above. a is a list.
+	b is a list.)
 
 (function not-subset (pred a b) (with return (begin
-	(foreach (d $a) (if [not= [find $pred b $d] null-find] (begin) {return $d}))
+	(foreach (d a) (if [not= [find pred b d] null-find] (begin) {return d}))
 	{return null-not-subset})))
 
 (;; Constructs a sublist of the given list that satisfied a particular predicate.
-	For parameter $pred, see above. $l is the list that is to be filtered. $r is
+	For parameter pred, see above. l is the list that is to be filtered. r is
 	the buffer into which the filtered list should be put. Returns the filtered
 	list.)
 
 (function filter (pred l r handler err) (with return
 	(let (res nil) (begin
-		(foreach (e $l) (if [$pred $e] [prepend $e res $r $handler $err] (begin)))
-		{return [reverse $res $r $handler $err]}))))
+		(foreach (e l) (if [pred e] [prepend e res r handler err] (begin)))
+		{return [reverse res r handler err]}))))
 
-(;; Constructs a reverse of the given list. $l is the list that is to be reversed.
-	$r is the buffer into which the reversed list should be placed. Return value
+(;; Constructs a reverse of the given list. l is the list that is to be reversed.
+	r is the buffer into which the reversed list should be placed. Return value
 	is the reversed list.)
 
 (function reverse (l r handler err) (with return
 	(let (ret nil) (begin
-		(foreach (data $l) [prepend $data ret $r $handler $err])
-		{return $ret}))))
+		(foreach (data l) [prepend data ret r handler err])
+		{return ret}))))
 
-(;; Maps the given list using the supplied function. $l is the list that is to be
-	mapped. $ctx is the second argument to the function that does the mapping.
-	$mapper is a binary function that takes as its first argument th list item and
-	as its second argument $ctx and returns the desired mapping. $r is the buffer
+(;; Maps the given list using the supplied function. l is the list that is to be
+	mapped. ctx is the second argument to the function that does the mapping.
+	mapper is a binary function that takes as its first argument th list item and
+	as its second argument ctx and returns the desired mapping. r is the buffer
 	into which the mapped list will be placed. The return value is the mapped list.)
 
 (function map (l ctx mapper r handler err)
 	(with return
 		{(continuation aux (in out)
-			(if [nil? $in]
-				{return [reverse $out $r $handler $err]}
-				{aux [@cdr $in] [cons [$mapper [@car $in] $ctx] $out $r $handler $err]})) $l nil}))
+			(if [nil? in]
+				{return [reverse out r handler err]}
+				{aux [@cdr in] [cons [mapper [@car in] ctx] out r handler err]})) l nil}))

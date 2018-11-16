@@ -139,8 +139,18 @@ void sgenerate_storage_expressions(union expression *n, list *c, region r) {
 	make_load_address(n->storage.reference->reference.symbol, make_asm0(RAX, r), c, r);
 }
 
+bool equals(void *a, void *b) {
+	return a == b;
+}
+
 void sgenerate_references(union expression *n, list *c, region r) {
-	make_load_address(n->reference.symbol, make_asm0(RAX, r), c, r);
+	union expression *def = n->reference.symbol->definition;
+	if((def->reference.parent->base.type == function || def->reference.parent->base.type == continuation) &&
+		exists(equals, &def->reference.parent->function.parameters, def)) {
+			make_load(n->reference.symbol, 0, make_asm0(RAX, r), make_asm0(R11, r), c, r);
+	} else {
+		make_load_address(n->reference.symbol, make_asm0(RAX, r), c, r);
+	}
 }
 
 void make_store_continuation(union expression *n, list *c, region r) {

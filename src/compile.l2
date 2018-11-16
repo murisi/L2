@@ -1,50 +1,50 @@
-(;; Compiles a program into assembly. $program is a program expression. $symbols is a reference
-	to a list into which the symbols of the generated code will be put. $expr-buf is the buffer
+(;; Compiles a program into assembly. program is a program expression. symbols is a reference
+	to a list into which the symbols of the generated code will be put. expr-buf is the buffer
 	into which all the constructed expressions and symbols will be put. Return value is a list
 	of assembly expressions.)
 	
 (function compile-program (program symbols expr-buf handler err)
-	(with return (substitute (.. $expr-buf $handler $err) (begin
-		[visit-expressions vfind-multiple-definitions program (storage _ $handler $err)]
-		[classify-program-symbols (@ expr-expression $program)]
-		[visit-expressions vlink-references (& expr-expression $program) (storage _ ..)]
+	(with return (substitute (.. expr-buf handler err) (begin
+		[visit-expressions vfind-multiple-definitions program (storage _ handler err)]
+		[classify-program-symbols (@ expr-expression program)]
+		[visit-expressions vlink-references (& expr-expression program) (storage _ ..)]
 		[visit-expressions vescape-analysis program (begin)]
-		[classify-program-symbols (@ expr-expression $program)]
-		[visit-expressions vlayout-frames (& expr-expression $program) (storage _ ..)]
-		{return [generate-program $program $symbols ..]}))))
+		[classify-program-symbols (@ expr-expression program)]
+		[visit-expressions vlayout-frames (& expr-expression program) (storage _ ..)]
+		{return [generate-program program symbols ..]}))))
 
-(;; Loads a program into memory and returns a handle to it. $program is a program expression.
-	$expr-buf is the buffer into which the results of compilation will be put. $obj-buf is the
+(;; Loads a program into memory and returns a handle to it. program is a program expression.
+	expr-buf is the buffer into which the results of compilation will be put. obj-buf is the
 	buffer into which the object code will be put. Return value is an object.)
 
 (function load-program (program expr-buf obj-buf handler err) (with return (begin
 	(storage symbols (begin))
-	(storage asms [compile-program $program symbols $expr-buf $handler $err])
+	(storage asms [compile-program program symbols expr-buf handler err])
 	(storage objdest (begin))
 	(storage objdest-sz (begin))
-	[write-elf $asms $symbols objdest objdest-sz $obj-buf $handler $err]
-	(storage obj [load $objdest $objdest-sz $obj-buf $handler $err])
+	[write-elf $asms $symbols objdest objdest-sz obj-buf handler err]
+	(storage obj [load $objdest $objdest-sz obj-buf handler err])
 	[symbol-offsets-to-addresses $asms $symbols $obj]
 	{return $obj})))
 
-(;; Behavior is the same as load-program, but with the following addition: $syms is is a list
+(;; Behavior is the same as load-program, but with the following addition: syms is is a list
 	of object symbols, and after the loading is done, the undefined symbols of the loaded
-	program will take on the addresses supplied in the list. The $handler continuation is
-	followed, and the error buffer referenced by $err set to the pair (undefined-reference-error,
+	program will take on the addresses supplied in the list. The handler continuation is
+	followed, and the error buffer referenced by err set to the pair (undefined-reference-error,
 	<missing symbol name>) if there is an undefined symbol in the program that is not defined
 	in syms.)
 
 (function load-program-and-mutate (program syms expr-buf obj-buf handler err) (with return (begin
-	(storage obj [load-program $program $expr-buf $obj-buf $handler $err])
-	(storage temp-reg [create-buffer #0 $handler $err])
-	(storage ms [mutable-symbols $obj $temp-reg $handler $err])
-	(storage missing-sym [not-subset (function symbol= (sym1 sym2) [str= (@ sym-name $sym1) (@ sym-name $sym2)]) $ms $syms])
+	(storage obj [load-program program expr-buf obj-buf handler err])
+	(storage temp-reg [create-buffer #0 handler err])
+	(storage ms [mutable-symbols $obj $temp-reg handler err])
+	(storage missing-sym [not-subset (function symbol= (sym1 sym2) [str= (@ sym-name sym1) (@ sym-name sym2)]) $ms syms])
 	(if [not= $missing-sym null-not-subset]
 		(let (missing-sym-name (@ sym-name $missing-sym)) (begin
-			[destroy-buffer $temp-reg $handler $err]
-			{$handler (sets $err undefined-reference-error $missing-sym-name)}))
-		[destroy-buffer $temp-reg $handler $err])
-	[mutate-symbols $obj $syms]
+			[destroy-buffer $temp-reg handler err]
+			{handler (sets err undefined-reference-error missing-sym-name)}))
+		[destroy-buffer $temp-reg handler err])
+	[mutate-symbols $obj syms]
 	{return $obj})))
 	
 (function read-to-buffer (fn size-out expr-buf handler err) (with return (begin
@@ -53,22 +53,22 @@
 	
 	(fallthrough
 		(begin
-			[set fd [open $fn $handler $err]]
-			[set $size-out [size $fd close-file $err]]
-			[set src-buf [buffer-alloc $$size-out $expr-buf close-file $err]]
-			[read $fd $src-buf $$size-out close-file $err])
+			[set fd [open fn handler err]]
+			[set size-out [size $fd close-file err]]
+			[set src-buf [buffer-alloc $size-out expr-buf close-file err]]
+			[read $fd $src-buf $size-out close-file err])
 			
 		(close-file (begin
-			[close $fd $handler $err]
-			(if [= (@0 $err) no-error] {return $src-buf} {$handler (begin)})))))))
+			[close $fd handler err]
+			(if [= (@0 err) no-error] {return $src-buf} {handler (begin)})))))))
 
-(;; Reads a list of expressions from a given file. $fn is a string containing the filename.
-	$expr-buf is the buffer into which the constructed expressions will be put. Return value
+(;; Reads a list of expressions from a given file. fn is a string containing the filename.
+	expr-buf is the buffer into which the constructed expressions will be put. Return value
 	is a list of expressions.)
 
-(function read-expressions (fn expr-buf handler err) (with return (substitute (.. $expr-buf $handler $err) (begin
+(function read-expressions (fn expr-buf handler err) (with return (substitute (.. expr-buf handler err) (begin
 	(storage src-sz (begin))
-	(storage src-buf [read-to-buffer $fn src-sz ..])
+	(storage src-buf [read-to-buffer fn src-sz ..])
 	(storage expressions nil)
 	(storage pos #0)
 	
@@ -79,63 +79,63 @@
 
 (storage unsupported-ext-error (begin))
 
-(;; Takes a list of L2 and object files and evaluates them in order. $srcv is a list of
-	strings containing paths to L2 and object files. $symbols is reference to a list of
+(;; Takes a list of L2 and object files and evaluates them in order. srcv is a list of
+	strings containing paths to L2 and object files. symbols is reference to a list of
 	symbols and to it will be added the global variables of the loaded object files and
-	from it the execution environment of the same will be created. $expr-buf is the
-	buffer into which expressions read from L2 source files are put. $obj-buf is the
-	buffer into which both compiled and read object code is put. The $handler continuation
-	is followed, and error buffer referenced by $err is set to the pair
+	from it the execution environment of the same will be created. expr-buf is the
+	buffer into which expressions read from L2 source files are put. obj-buf is the
+	buffer into which both compiled and read object code is put. The handler continuation
+	is followed, and error buffer referenced by err is set to the pair
 	(unsupported-ext-error, <file path string>) if an extension other than .o or .l2 is
 	encountered.)
 
 (function evaluate-files (srcv symbols expr-buf obj-buf handler err) (begin
 	(storage objects nil)
 	
-	(foreach (src $srcv) (begin
+	(foreach (src srcv) (begin
 		(storage obj (begin))
-		(storage dot [strrchr $src (char .)])
+		(storage dot [strrchr src (char .)])
 
 		(if (and [not= $dot null-strrchr] [str= $dot (" .l2)])
-			[set obj [load-program [generate-metaprogram [make-program [read-expressions $src $expr-buf $handler $err]
-				$expr-buf $handler $err] $symbols $expr-buf $obj-buf $handler $err] $expr-buf $obj-buf $handler $err]]
+			[set obj [load-program [generate-metaprogram [make-program [read-expressions src expr-buf handler err]
+				expr-buf handler err] symbols expr-buf obj-buf handler err] expr-buf obj-buf handler err]]
 	
 		(if (and [not= $dot null-strrchr] [str= $dot (" .o)]) (begin
 			(storage obj-sz (begin))
-			(storage buf [read-to-buffer $src obj-sz $obj-buf $handler $err])
-			[set obj [load $buf $obj-sz $obj-buf $handler $err]])
+			(storage buf [read-to-buffer src obj-sz obj-buf handler err])
+			[set obj [load $buf $obj-sz obj-buf handler err]])
 	
-			{$handler (sets $err unsupported-ext-error $src)}))
+			{handler (sets err unsupported-ext-error src)}))
 
-		[append $obj objects $obj-buf $handler $err]
-		[append-list $symbols [immutable-symbols $obj $obj-buf $handler $err]]))
+		[append $obj objects obj-buf handler err]
+		[append-list symbols [immutable-symbols $obj obj-buf handler err]]))
 
-	(foreach (obj $objects) [mutate-symbols $obj $$symbols])
+	(foreach (obj $objects) [mutate-symbols $obj $symbols])
 	(foreach (obj $objects) [[segment $obj (" .text)]])))
 
-(;; Takes a list of L2 source files and compiles them into object files. $programs is a
-	list of strings containing paths to L2 source files. $syms is a list of symbols
-	pointing to the macros to be used during the meta-expression expansions. $expr-buf
-	is the buffer into which constructed expressions will be put. $obj-buf is the buffer
+(;; Takes a list of L2 source files and compiles them into object files. programs is a
+	list of strings containing paths to L2 source files. syms is a list of symbols
+	pointing to the macros to be used during the meta-expression expansions. expr-buf
+	is the buffer into which constructed expressions will be put. obj-buf is the buffer
 	into which object code will be put.)
 
 (function compile-files (programs syms expr-buf obj-buf handler err)
-	(foreach (infn $programs) (begin
-		(storage dot [strrchr $infn (char .)])
+	(foreach (infn programs) (begin
+		(storage dot [strrchr infn (char .)])
 		(if (and [not= $dot null-strrchr] [str= $dot (" .l2)]) (begin
-			(storage program [make-program [read-expressions $infn $expr-buf $handler $err] $expr-buf $handler $err])
-			[pre-visit-expressions vgenerate-metas program (storage _ $syms $expr-buf $handler $err)]
+			(storage program [make-program [read-expressions infn expr-buf handler err] expr-buf handler err])
+			[pre-visit-expressions vgenerate-metas program (storage _ syms expr-buf handler err)]
 			(storage symbols (begin))
-			(storage asms [compile-program $program symbols $expr-buf $handler $err])
+			(storage asms [compile-program $program symbols expr-buf handler err])
 			(storage objdest (begin))
 			(storage objdest-sz (begin))
-			[write-elf $asms $symbols objdest objdest-sz $obj-buf $handler $err]
-			(storage outfn [buffer-alloc [+ [strlen $infn] #1] $obj-buf $handler $err])
-			[strcpy $outfn $infn]
+			[write-elf $asms $symbols objdest objdest-sz obj-buf handler err]
+			(storage outfn [buffer-alloc [+ [strlen infn] #1] obj-buf handler err])
+			[strcpy $outfn infn]
 			[strcpy [strrchr $outfn (char .)] (" .o)]
-			(storage fd [create $outfn $handler $err])
+			(storage fd [create $outfn handler err])
 			[print $fd $objdest $objdest-sz]
-			[close $fd $handler $err])
+			[close $fd handler err])
 			(begin)))))
 
 (storage arguments-error (begin))
@@ -166,12 +166,12 @@
 			
 			(storage metaprograms nil)
 			(with break (foreach (fn $args)
-				(if [str= $fn (" -)]
+				(if [str= fn (" -)]
 					{break (begin)}
-					[append $fn metaprograms $obj-buf handler err])))
+					[append fn metaprograms $obj-buf handler err])))
 			
 			(storage programs nil)
-			(foreach (fn [@cdr $$dash-list]) [append $fn programs $obj-buf handler err])
+			(foreach (fn [@cdr $$dash-list]) [append fn programs $obj-buf handler err])
 			
 			(;; These are all the symbols necessary for metaprogramming. Their
 				definitions can be found in list.l2 and lexer.l2.)

@@ -1,60 +1,60 @@
-(function exit (code) [syscall (sys-exit) $code])
+(function exit (code) [syscall (sys-exit) code])
 
 (function strlen (str) (with return
 	{(continuation loop (i)
-		(if [getb [+ $str $i]]
-			{loop [+ $i #1]}
-			{return $i})) #0}))
+		(if [getb [+ str i]]
+			{loop [+ i #1]}
+			{return i})) #0}))
 
 (function strvlen (str) (with return
 	{(continuation loop (i)
-		(if (or [getb [+ $str [- $i #1]]] [getb [+ $str $i]])
-			{loop [+ $i #1]}
-			{return $i})) #1}))
+		(if (or [getb [+ str [- i #1]]] [getb [+ str i]])
+			{loop [+ i #1]}
+			{return i})) #1}))
 
 (storage null-strrchr (begin))
 
 (function strrchr (s c) (with return
-	(let (t [+ $s [strlen $s]]) (begin
+	(let (t [+ s [strlen s]]) (begin
 		{(continuation loop (t)
-			(if [= [getb $t] [getb c]]
-				{return $t}
-			(if [= $t $s]
+			(if [= [getb t] [getb c]]
+				{return t}
+			(if [= t s]
 				{return null-strrchr}
-				{loop [- $t #1]}))) $t}))))
+				{loop [- t #1]}))) t}))))
 
 (function strcmp (s1 s2) (with return
 	{(continuation loop (s1 s2)
-		(if (and [getb $s1] [getb $s2] [= [getb $s1] [getb $s2]])
-			{loop [+ $s1 #1] [+ $s2 #1]}
-			{return [- [getb $s1] [getb $s2]]})) $s1 $s2}))
+		(if (and [getb s1] [getb s2] [= [getb s1] [getb s2]])
+			{loop [+ s1 #1] [+ s2 #1]}
+			{return [- [getb s1] [getb s2]]})) s1 s2}))
 
-(function str= (s1 s2) (not [strcmp $s1 $s2]))
+(function str= (s1 s2) (not [strcmp s1 s2]))
 
 (function strcpy (dest src) (with return
 	{(continuation loop (dest src) (begin
-		[setb $dest [getb $src]]
-		(if [getb $dest]
-			{loop [+ $dest #1] [+ $src #1]}
-			{return (begin)}))) $dest $src}))
+		[setb dest [getb src]]
+		(if [getb dest]
+			{loop [+ dest #1] [+ src #1]}
+			{return (begin)}))) dest src}))
 
 (function memcpy (dest src n) (with return
 	{(continuation loop (dest src n)
-		(if $n
+		(if n
 			(begin
-				[setb $dest [getb $src]]
-				{loop [+ $dest #1] [+ $src #1] [- $n #1]})
-			{return (begin)})) $dest $src $n}))
+				[setb dest [getb src]]
+				{loop [+ dest #1] [+ src #1] [- n #1]})
+			{return (begin)})) dest src n}))
 
 (function memset (s c n) (with return
 	{(continuation loop (s n)
-		(if $n
+		(if n
 			(begin
-				[setb $s [getb c]]
-				{loop [+ $s #1] [- $n #1]})
-			{return (begin)})) $s $n}))
+				[setb s [getb c]]
+				{loop [+ s #1] [- n #1]})
+			{return (begin)})) s n}))
 
-(function set+ (r inc) [set $r [+ $$r $inc]])
+(function set+ (r inc) [set r [+ $r inc]])
 
 (function isspace (c) (switch = [getb c]
 	((space) (true))
@@ -73,34 +73,34 @@
 (storage file-access-error (begin))
 
 (function open (path handler err)
-	(let (ret [syscall (sys-open) $path (o-rdonly)])
-		(if (and [<= [- #0 #4095] $ret] [<= $ret [- #0 #1]])
-			{$handler (sets $err file-access-error $path)}
-			$ret)))
+	(let (ret [syscall (sys-open) path (o-rdonly)])
+		(if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
+			{handler (sets err file-access-error path)}
+			ret)))
 
 (function create (path handler err)
-	(let (ret [syscall (sys-open) $path [lor (o-wronly) (o-creat)] [lor (s-irwxu) [lor (s-irwxg) (s-irwxo)]]])
-		(if (and [<= [- #0 #4095] $ret] [<= $ret [- #0 #1]])
-			{$handler (sets $err file-access-error $path)}
-			$ret)))
+	(let (ret [syscall (sys-open) path [lor (o-wronly) (o-creat)] [lor (s-irwxu) [lor (s-irwxg) (s-irwxo)]]])
+		(if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
+			{handler (sets err file-access-error path)}
+			ret)))
 
 (storage null-string (begin))
 
 (function print (fd d len handler err)
-	(let (ret [syscall (sys-write) $fd $d $len])
-		(if (and [<= [- #0 #4095] $ret] [<= $ret [- #0 #1]])
-			{$handler (sets $err file-access-error null-string)}
-			$ret)))
+	(let (ret [syscall (sys-write) fd d len])
+		(if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
+			{handler (sets err file-access-error null-string)}
+			ret)))
 
-(function print-str (fd str handler err) [print $fd $str [strlen $str] $handler $err])
+(function print-str (fd str handler err) [print fd str [strlen str] handler err])
 
-(function print-char (fd ch handler err) [print $fd ch #1 $handler $err])
+(function print-char (fd ch handler err) [print fd ch #1 handler err])
 
 (function print-uint (fd i handler err) (begin
 	(storage j #19)
 	(storage str (begin) (begin) (begin))
-	(until (i $i) [= $i #0] [/ $i #10] (begin
-		[setb [+ str $j] (switch = [rem $i #10]
+	(until (i i) [= i #0] [/ i #10] (begin
+		[setb [+ str $j] (switch = [rem i #10]
 			(#9 (char 9))
 			(#8 (char 8))
 			(#7 (char 7))
@@ -112,26 +112,26 @@
 			(#1 (char 1))
 			(char 0))]
 		[set j [- $j #1]]))
-	[print $fd [+ str [+ $j #1]] [- #19 $j] $handler $err]))
+	[print fd [+ str [+ $j #1]] [- #19 $j] handler err]))
 
 (function read (fd buf cnt handler err)
-	(let (ret [syscall (sys-read) $fd $buf $cnt])
-		(if (and [<= [- #0 #4095] $ret] [<= $ret [- #0 #1]])
-			{$handler (sets $err file-access-error null-string)}
-			$ret)))
+	(let (ret [syscall (sys-read) fd buf cnt])
+		(if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
+			{handler (sets err file-access-error null-string)}
+			ret)))
 
 (function close (fd handler err)
-	(let (ret [syscall (sys-close) $fd])
-		(if (and [<= [- #0 #4095] $ret] [<= $ret [- #0 #1]])
-			{$handler (sets $err file-access-error null-string)}
-			$ret)))
+	(let (ret [syscall (sys-close) fd])
+		(if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
+			{handler (sets err file-access-error null-string)}
+			ret)))
 
 (function size (fd handler err) (with return (begin
 	(storage statbuf (begin)(begin)(begin)(begin)(begin)(begin)(begin)(begin)(begin)
 		(begin)(begin)(begin)(begin)(begin)(begin)(begin)(begin)(begin))
-	(let (ret [syscall (sys-fstat) $fd statbuf])
-		(if (and [<= [- #0 #4095] $ret] [<= $ret [- #0 #1]])
-			{$handler (sets $err file-access-error null-string)}
+	(let (ret [syscall (sys-fstat) fd statbuf])
+		(if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
+			{handler (sets err file-access-error null-string)}
 			{return [get [+ statbuf #48]]})))))
 
 (storage memory-access-error (begin))
@@ -139,21 +139,21 @@
 (;; Creates a new virtual address mapping of the size in bytes given at len.)
 
 (function mmap (len handler err)
-	(let (ret [syscall (sys-mmap) #0 $len [lor (prot-read) (prot-write)] [lor (map-private) (map-anonymous)] [lnot #0] #0])
-		(if (and [<= [- #0 #4095] $ret] [<= $ret [- #0 #1]])
-			{$handler (sets $err memory-access-error)}
-			$ret)))
+	(let (ret [syscall (sys-mmap) #0 len [lor (prot-read) (prot-write)] [lor (map-private) (map-anonymous)] [lnot #0] #0])
+		(if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
+			{handler (sets err memory-access-error)}
+			ret)))
 
 (;; Deletes virtual address mappings coinciding with the range starting with the
 	value at ptr and having an extent of the value given at len.)
 
 (function munmap (ptr len handler err)
-	(let (ret [syscall (sys-munmap) $ptr $len])
-		(if (and [<= [- #0 #4095] $ret] [<= $ret [- #0 #1]])
-			{$handler (sets $err memory-access-error)}
-			$ret)))
+	(let (ret [syscall (sys-munmap) ptr len])
+		(if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
+			{handler (sets err memory-access-error)}
+			ret)))
 
-(function pad-size (x nearest) (let (r [rem $x $nearest]) [+ $x (if $r [- $nearest $r] #0)]))
+(function pad-size (x nearest) (let (r [rem x nearest]) [+ x (if r [- nearest r] #0)]))
 
 (storage null-element (begin))
 
@@ -161,59 +161,59 @@
 	min-capacity.)
 
 (function create-buffer (min-capacity handler err) (with return
-	(let (len [pad-size [+ $min-capacity (buffer-element)] (page-size)])
-		(let (reg [mmap $len $handler $err]) (begin
-			(setf buf-next-elt $reg null-element)
-			(setf buf-last-elt $reg $reg)
-			(setf buf-curr-pos $reg [+ $reg (buffer-element)])
-			(setf buf-end-pos $reg [+ $reg $len])
-			(setf buf-magic-dbg $reg (hex DEADBEEFDEADBEEF))
-			{return $reg})))))
+	(let (len [pad-size [+ min-capacity (buffer-element)] (page-size)])
+		(let (reg [mmap len handler err]) (begin
+			(setf buf-next-elt reg null-element)
+			(setf buf-last-elt reg reg)
+			(setf buf-curr-pos reg [+ reg (buffer-element)])
+			(setf buf-end-pos reg [+ reg len])
+			(setf buf-magic-dbg reg (hex DEADBEEFDEADBEEF))
+			{return reg})))))
 
 (function check-buffer-integrity (reg)
 	(do-while (begin
-			(if [= (@ buf-magic-dbg $reg) (hex DEADBEEFDEADBEEF)] (begin) [exit #11])
-			[set reg (@ buf-next-elt $reg)])
-		[not= $reg null-element]))
+			(if [= (@ buf-magic-dbg reg) (hex DEADBEEFDEADBEEF)] (begin) [exit #11])
+			[set reg (@ buf-next-elt reg)])
+		[not= reg null-element]))
 		
 
 (;; Allocates memory in the buffer at reg of an amount in bytes equal to the
 	integer at len. The only way to deallocate this memory is destroy the entire
-	buffer at $reg.)
+	buffer at reg.)
 
 (function buffer-alloc (len reg handler err) (with return
-	(let (last-elt (@ buf-last-elt $reg)) (begin
-		(;;[check-buffer-integrity $reg])
-		[set len [pad-size $len (alloc-alignment)]]
-		(if [> [+(@ buf-curr-pos $last-elt)$len] (@ buf-end-pos $last-elt)]
+	(let (last-elt (@ buf-last-elt reg)) (begin
+		(;;[check-buffer-integrity reg])
+		[set len [pad-size len (alloc-alignment)]]
+		(if [> [+(@ buf-curr-pos last-elt)len] (@ buf-end-pos last-elt)]
 			(begin
-				(setf buf-next-elt $last-elt [create-buffer [+ $len [* #2[-(@ buf-end-pos $last-elt) $last-elt]]] $handler $err])
-				(setf buf-last-elt $reg (@ buf-next-elt $last-elt))
-				[set last-elt (@ buf-next-elt $last-elt)])
+				(setf buf-next-elt last-elt [create-buffer [+ len [* #2[-(@ buf-end-pos last-elt) last-elt]]] handler err])
+				(setf buf-last-elt reg (@ buf-next-elt last-elt))
+				[set last-elt (@ buf-next-elt last-elt)])
 			(begin))
 		
-		(setf buf-curr-pos $last-elt [+(@ buf-curr-pos $last-elt)$len])
-		{return [-(@ buf-curr-pos $last-elt)$len]}))))
+		(setf buf-curr-pos last-elt [+(@ buf-curr-pos last-elt)len])
+		{return [-(@ buf-curr-pos last-elt)len]}))))
 
-(;; Releases the memory associated with the buffer $reg. After a call to this
+(;; Releases the memory associated with the buffer reg. After a call to this
 	function, it is invalid to read or write data to the memory allocated on
 	this region.)
 
 (function destroy-buffer (reg handler err) (begin
-	(;;[check-buffer-integrity $reg])
+	(;;[check-buffer-integrity reg])
 	(do-while
-			(let (next-reg (@ buf-next-elt $reg)) (begin
-				[munmap $reg [- (@ buf-end-pos $reg) $reg] $handler $err]
-				[set reg $next-reg]))
-		[not= $reg null-element])))
+			(let (next-reg (@ buf-next-elt reg)) (begin
+				[munmap reg [- (@ buf-end-pos reg) reg] handler err]
+				[set reg next-reg]))
+		[not= reg null-element])))
 
 (;; Returns a C-string that is a copy of the one at src. The returned string and
 	its dependencies will all reside in the region reg.)
 
 (function rstrcpy (src reg handler err) (with return
-	(let (dest [buffer-alloc [+[strlen $src]#1] $reg $handler $err]) (begin
-		[strcpy $dest $src]
-		{return $dest}))))
+	(let (dest [buffer-alloc [+[strlen src]#1] reg handler err]) (begin
+		[strcpy dest src]
+		{return dest}))))
 
 (;; Returns a list containing the the command line arguments. The returned list
 	and its dependencies will all reside in the region reg.)
@@ -223,14 +223,14 @@
 	(storage retval (begin))
 	(fallthrough
 		(begin
-			[set f [open (" /proc/self/cmdline) $handler $err]]
-			(storage buf [buffer-alloc (arg-max) $reg cleanup $err])
-			(storage bytes-rem [read $f $buf (arg-max) cleanup $err])
+			[set f [open (" /proc/self/cmdline) handler err]]
+			(storage buf [buffer-alloc (arg-max) reg cleanup err])
+			(storage bytes-rem [read $f $buf (arg-max) cleanup err])
 			[set retval (with break {(continuation loop (buf bytes-rem args)
 				(if $bytes-rem
-					{loop [+ $buf [+ [strlen $buf] #1]] [- $bytes-rem [+ [strlen $buf] #1]] [cons $buf $args $reg cleanup $err]}
-					{break [reverse $args $reg cleanup $err]})) $buf $bytes-rem nil})])
+					{loop [+ $buf [+ [strlen $buf] #1]] [- $bytes-rem [+ [strlen $buf] #1]] [cons $buf args reg cleanup err]}
+					{break [reverse args reg cleanup err]})) buf bytes-rem nil})])
 					
 		(cleanup (begin
-			[close $f $handler $err]
-			(if [= (@0 $err) no-error] {return $retval} {$handler (begin)})))))))
+			[close $f handler err]
+			(if [= (@0 err) no-error] {return $retval} {handler (begin)})))))))

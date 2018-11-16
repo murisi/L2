@@ -3,9 +3,9 @@
 
 (;; This is false.)
 
-(function false (l r) [mk# $r #0])
+(function false (l r) [mk# r #0])
 
-(function true (l r) [mk# $r #1])
+(function true (l r) [mk# r #1])
 
 (;; The following macro returns the first non-zero argument supplied to
 	it leaving the rest unevaluated. If all the arguments are zero, then
@@ -13,10 +13,10 @@
 
 (function or (l r) (with return
 	{(continuation loop (l sexpr)
-			(if [emt? $l]
-				{return $sexpr}
-				{loop [@rst $l] (`(let (or:temp (,[@fst $l])) (if $or:temp $or:temp (, $sexpr $r)))$r)}))
-		[meta:reverse $l $r] (`(false)$r)}))
+			(if [emt? l]
+				{return sexpr}
+				{loop [@rst l] (`(let (or:temp (,[@fst l])) (if or:temp or:temp (, sexpr r)))r)}))
+		[meta:reverse l r] (`(false)r)}))
 
 (;; The following macro returns the first zero argument supplied to it
 	leaving the rest unevaluated. If all the arguments are non-zero, then
@@ -24,39 +24,39 @@
 
 (function and (l r) (with return
 	{(continuation loop (l sexpr)
-			(if [emt? $l]
-				{return $sexpr}
-				{loop [@rst $l] (`(let (and:temp (,[@fst $l])) (if $and:temp (, $sexpr $r) $and:temp))$r)}))
-		[meta:reverse $l $r] (`(true)$r)}))
+			(if [emt? l]
+				{return sexpr}
+				{loop [@rst l] (`(let (and:temp (,[@fst l])) (if and:temp (, sexpr r) and:temp))r)}))
+		[meta:reverse l r] (`(true)r)}))
 
 (;; The following macro returns (false) if the single argument supplied to it
 	is non-zero. Otherwise it returns (true).)
 
-(function not (l r) (`(if (,[@fst $l]) (false) (true))$r))
+(function not (l r) (`(if (,[@fst l]) (false) (true))r))
 
-(;; Reverses the given list. $l is the list to be reversed. $r is the buffer into
+(;; Reverses the given list. l is the list to be reversed. r is the buffer into
 	which the reversed list will be put. Return value is the reversed list.)
 
 (function meta:reverse (l r)
 	(with return
 		{(continuation _ (l reversed)
-			(if [emt? $l]
-				{return $reversed}
-				{_ [@rst $l] [lst [@fst $l] $reversed $r]})) $l emt}))
+			(if [emt? l]
+				{return reversed}
+				{_ [@rst l] [lst [@fst l] reversed r]})) l emt}))
 
-(;; Maps the given list using the given function. $l is the list to be mapped. $ctx
-	is always passed as a second argument to the mapper. $mapper is the two argument
-	function that will be supplied a list item as its first argument and $ctx as its
+(;; Maps the given list using the given function. l is the list to be mapped. ctx
+	is always passed as a second argument to the mapper. mapper is the two argument
+	function that will be supplied a list item as its first argument and ctx as its
 	second argument and will return an argument that will be put into the corresponding
-	position of another list. $r is the buffer into which the list being constructed
+	position of another list. r is the buffer into which the list being constructed
 	will be put. Return value is the mapped list.)
 
 (function meta:map (l ctx mapper r)
 	(with return
 		{(continuation aux (in out)
-			(if [emt? $in]
-				{return [meta:reverse $out $r]}
-				{aux [@rst $in] [lst [$mapper [@fst $in] $ctx] $out $r]})) $l emt}))
+			(if [emt? in]
+				{return [meta:reverse out r]}
+				{aux [@rst in] [lst [mapper [@fst in] ctx] out r]})) l emt}))
 
 (;; The following function implements variable binding by do the following
 	transformation:
@@ -70,9 +70,9 @@
 
 (function let (l r)
 	(`(with let:return
-		(,[llst (` jump $r) (`(continuation let:aux (,[meta:map [@rst [meta:reverse $l $r]] (begin) @fst $r]) (begin
-			(storage let:storage (,[@fst [meta:reverse $l $r]]))
-			{let:return $let:storage})) $r) [meta:map [@rst [meta:reverse $l $r]] (begin) @frst $r] $r])) $r))
+		(,[llst (` jump r) (`(continuation let:aux (,[meta:map [@rst [meta:reverse l r]] (begin) @fst r]) (begin
+			(storage let:storage (,[@fst [meta:reverse l r]]))
+			{let:return $let:storage})) r) [meta:map [@rst [meta:reverse l r]] (begin) @frst r] r])) r))
 
 (;; The following function implements the switch expression by doing the
 	following transformation:
@@ -90,33 +90,33 @@
 						expr0)))))
 
 (function switch (l r)
-	(`(let (switch:= (,[@fst $l])) (switch:val (,[@frst $l]))
+	(`(let (switch:= (,[@fst l])) (switch:val (,[@frst l]))
 		(,(with return
 			{(continuation aux (remaining else-clause)
-				(if [emt? $remaining]
-					{return $else-clause}
-					{aux [@rst $remaining]
-						(`(if (,[lst (` or $r) [meta:map [@rst [meta:reverse [@fst $remaining] $r]] $r
-								(function _ (e r) [llllst (` invoke $r) (` $switch:= $r) (` $switch:val $r) $e emt $r]) $r] $r])
-							(,[@fst [meta:reverse [@fst $remaining] $r]]) ,$else-clause) $r)}))
-				[@rst [meta:reverse [@rrst $l] $r]] [@fst [meta:reverse $l $r]]})))$r))
+				(if [emt? remaining]
+					{return else-clause}
+					{aux [@rst remaining]
+						(`(if (,[lst (` or r) [meta:map [@rst [meta:reverse [@fst remaining] r]] r
+								(function _ (e r) [llllst (` invoke r) (` switch:= r) (` switch:val r) e emt r]) r] r])
+							(,[@fst [meta:reverse [@fst remaining] r]]) ,else-clause) r)}))
+				[@rst [meta:reverse [@rrst l] r]] [@fst [meta:reverse l r]]})))r))
 
 (;; These macros provide exactly the same functionality as their equivalents
 	in C.)
 
 (function while (l r)
 	(`(with while:return {(continuation while:aux (while:val)
-		(if (,[@fst $l])
+		(if (,[@fst l])
 			(begin
-				(storage while:storage (,[@frst $l]))
+				(storage while:storage (,[@frst l]))
 				{while:aux $while:storage})
-			{while:return $while:val})) (begin)})$r))
+			{while:return while:val})) (begin)})r))
 
 (function do-while (l r)
 	(`(with do-while:return {(continuation do-while:aux (do-while:val) (begin
-			(storage do-while:storage (,[@fst $l]))
-			(if (,[@frst $l]) {do-while:aux (begin)} {do-while:return $do-while:storage})))
-		(begin)})$r))
+			(storage do-while:storage (,[@fst l]))
+			(if (,[@frst l]) {do-while:aux (begin)} {do-while:return $do-while:storage})))
+		(begin)})r))
 
 (;; The following macro is roughly analogous to C's for-loop. The difference is
 	that until loops until the condition is true rather than while it is true. The
@@ -125,10 +125,10 @@
 	of the loop header must do the mutations itself.)
 
 (function until (l r)
-	(`(with until:return {(continuation until:aux ((,[@ffst $l]))
-		(if (,[@frst $l])
+	(`(with until:return {(continuation until:aux ((,[@ffst l]))
+		(if (,[@frst l])
 			{until:return (begin)}
-			(begin (,[@frrrst $l]) {until:aux (,[@frrst $l])}))) (,[@frfst $l])})$r))
+			(begin (,[@frrrst l]) {until:aux (,[@frrst l])}))) (,[@frfst l])})r))
 
 (;; The following function implements the following transformation:
 	
@@ -139,7 +139,7 @@
 
 (function fallthrough (l r) (with return
 	{(continuation loop (acc exprs)
-			(if [emt? $exprs]
-				{return $acc}
-				{loop (`(begin (with (,[@ffst $exprs]) ,$acc) (,[@frfst $exprs]))$r) [@rst $exprs]}))
-		[@fst $l] [@rst $l]}))
+			(if [emt? exprs]
+				{return acc}
+				{loop (`(begin (with (,[@ffst exprs]) ,acc) (,[@frfst exprs]))r) [@rst exprs]}))
+		[@fst l] [@rst l]}))
