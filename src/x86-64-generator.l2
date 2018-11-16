@@ -1,14 +1,15 @@
 (function vlayout-frames (n r) (with return (substitute (.. (@0 r) (@1 r) (@2 r)) (begin
 	(switch = (@ expr-type n)
 		((-function-) (begin
-			(let (parameter-offset [* #2 (word-size)])
-				(foreach (t (@ expr-parameters n)) (begin
-					(setf sym-offset (@ expr-symbol t) parameter-offset)
-					[set parameter-offset [+ parameter-offset (word-size)]])))
-			(let (symbol-offset #0)
-				(foreach (u [reverse (@ expr-symbols n) ..]) (begin
-					[set symbol-offset [- symbol-offset [pad-size (@ sym-size u) (word-size)]]]
-					(setf sym-offset u symbol-offset))))))
+			(storage parameter-offset-ref [* #2 (word-size)])
+			(foreach (t (@ expr-parameters n)) (begin
+				(setf sym-offset (@ expr-symbol t) $parameter-offset-ref)
+				[set parameter-offset-ref [+ $parameter-offset-ref (word-size)]]))
+				
+			(storage symbol-offset-ref #0)
+			(foreach (u [reverse (@ expr-symbols n) ..]) (begin
+				[set symbol-offset-ref [- $symbol-offset-ref [pad-size (@ sym-size u) (word-size)]]]
+				(setf sym-offset u $symbol-offset-ref)))))
 		
 		((-continuation-) (-with-) (begin
 			(if (@ expr-escapes n) (begin
@@ -70,12 +71,13 @@
 			[prepend (make-asmN (movq-imm-to-reg) ([use-symbol sym ..] dest-reg) ..) c ..])))
 
 (function generate-storage (n c r handler err)
-	(let (offset #0) (substitute (.. r handler err) (begin
+	(substitute (.. r handler err) (begin
+		(storage offset-ref #0)
 		(foreach (t (@ expr-arguments n)) (begin
 			[generate-expression t c ..]
-			[generate-store (make-asmN(rax)()..) (@ expr-symbol(@ expr-reference n)) offset (make-asmN(r11)()..) c ..]
-			[set offset [+ offset (word-size)]]))
-		[generate-load-address (@ expr-symbol(@ expr-reference n)) (make-asmN(rax)()..) c ..]))))
+			[generate-store (make-asmN(rax)()..) (@ expr-symbol(@ expr-reference n)) $offset-ref (make-asmN(r11)()..) c ..]
+			[set offset-ref [+ $offset-ref (word-size)]]))
+		[generate-load-address (@ expr-symbol(@ expr-reference n)) (make-asmN(rax)()..) c ..])))
 
 (function generate-reference (n c r handler err) (substitute (.. r handler err)
 		[generate-load-address (@ expr-symbol n) (make-asmN(rax)()..) c ..]))
@@ -101,11 +103,13 @@
 		[prepend (make-asmN (movq-mdb-to-reg) ([make-literal [* [length (@ expr-arguments n)] (word-size)] ..] (make-asmN(rsp)()..)
 			(make-asmN(r11)()..)) ..) c ..]
 		
+		(storage offset-ref $offset)
+		
 		(foreach (t (@ expr-arguments n)) (begin
 			[prepend (make-asmN(popq-reg)((make-asmN(rax)()..))..) c ..]
 			[prepend (make-asmN (movq-from-reg-into-mdb)
-				((make-asmN(rax)()..) [make-literal offset ..] (make-asmN(r11)()..)) ..) c ..]
-			[set offset [+ offset (word-size)]]))
+				((make-asmN(rax)()..) [make-literal $offset-ref ..] (make-asmN(r11)()..)) ..) c ..]
+			[set offset-ref [+ $offset-ref (word-size)]]))
 		
 		[prepend (make-asmN(popq-reg)((make-asmN(r11)()..))..) c ..])))
 

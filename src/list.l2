@@ -34,12 +34,15 @@
 	l is a reference to the list that is to be appended to. r is the buffer into
 	which the extension is being placed.)
 
-(function append (data l r handler err) (with return (begin
-	(while (not [nil? $l]) [set l (& cdr $l)])
-	[set l [buffer-alloc (list-struct) r handler err]]
-	(setf car $l data)
-	(setf cdr $l nil)
-	{return (& car $l)})))
+(function append (data l r handler err) (with return
+	{(continuation loop (l)
+		(if (not [nil? $l])
+			{loop (& cdr $l)}
+			(begin
+				[set l [buffer-alloc (list-struct) r handler err]]
+				(setf car $l data)
+				(setf cdr $l nil)
+				{return (& car $l)}))) l}))
 
 (;; Makes a new list with the given head and tail. data is what is going to be
 	put at the head. rest is the list that will be the tail of the new list. r
@@ -55,10 +58,11 @@
 (;; Appends the second list onto the first list. fst-ref is a reference to the
 	list that will be appended to. snd is the list that will be appended.)
 
-(function append-list (fst-ref snd) (begin
-	(while (not [nil? $fst-ref])
-		[set fst-ref (& cdr $fst-ref)])
-	[set fst-ref snd]))
+(function append-list (fst-ref snd) (with return
+	{(continuation loop (fst-ref)
+		(if [nil? $fst-ref]
+			{return [set fst-ref snd]}
+			{loop (& cdr $fst-ref)})) fst-ref}))
 
 (;; Analogous to append above.)
 

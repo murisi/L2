@@ -170,30 +170,32 @@
 			(setf buf-magic-dbg reg (hex DEADBEEFDEADBEEF))
 			{return reg})))))
 
-(function check-buffer-integrity (reg)
-	(do-while (begin
-			(if [= (@ buf-magic-dbg reg) (hex DEADBEEFDEADBEEF)] (begin) [exit #11])
-			[set reg (@ buf-next-elt reg)])
-		[not= reg null-element]))
-		
+(function check-buffer-integrity (reg) (with return
+	{(continuation loop (reg)
+			(if [= (@ buf-magic-dbg reg) (hex DEADBEEFDEADBEEF)]
+				(let (reg (@ buf-next-elt reg))
+					(if [= reg null-element]
+						{return (begin)}
+						{loop reg}))
+				[exit #11])) reg}))
 
 (;; Allocates memory in the buffer at reg of an amount in bytes equal to the
 	integer at len. The only way to deallocate this memory is destroy the entire
 	buffer at reg.)
 
 (function buffer-alloc (len reg handler err) (with return
-	(let (last-elt (@ buf-last-elt reg)) (begin
+	(let (len [pad-size len (alloc-alignment)]) (begin
 		(;;[check-buffer-integrity reg])
-		[set len [pad-size len (alloc-alignment)]]
-		(if [> [+(@ buf-curr-pos last-elt)len] (@ buf-end-pos last-elt)]
+		(storage last-elt-ref (@ buf-last-elt reg))
+		(if [> [+(@ buf-curr-pos $last-elt-ref)len] (@ buf-end-pos $last-elt-ref)]
 			(begin
-				(setf buf-next-elt last-elt [create-buffer [+ len [* #2[-(@ buf-end-pos last-elt) last-elt]]] handler err])
-				(setf buf-last-elt reg (@ buf-next-elt last-elt))
-				[set last-elt (@ buf-next-elt last-elt)])
+				(setf buf-next-elt $last-elt-ref [create-buffer [+ len [* #2[-(@ buf-end-pos $last-elt-ref) $last-elt-ref]]] handler err])
+				(setf buf-last-elt reg (@ buf-next-elt $last-elt-ref))
+				[set last-elt-ref (@ buf-next-elt $last-elt-ref)])
 			(begin))
 		
-		(setf buf-curr-pos last-elt [+(@ buf-curr-pos last-elt)len])
-		{return [-(@ buf-curr-pos last-elt)len]}))))
+		(setf buf-curr-pos $last-elt-ref [+(@ buf-curr-pos $last-elt-ref)len])
+		{return [-(@ buf-curr-pos $last-elt-ref)len]}))))
 
 (;; Releases the memory associated with the buffer reg. After a call to this
 	function, it is invalid to read or write data to the memory allocated on
@@ -201,11 +203,12 @@
 
 (function destroy-buffer (reg handler err) (begin
 	(;;[check-buffer-integrity reg])
-	(do-while
-			(let (next-reg (@ buf-next-elt reg)) (begin
-				[munmap reg [- (@ buf-end-pos reg) reg] handler err]
-				[set reg next-reg]))
-		[not= reg null-element])))
+	{(continuation loop (reg)
+		(let (next-reg (@ buf-next-elt reg)) (begin
+			[munmap reg [- (@ buf-end-pos reg) reg] handler err]
+			(if [= next-reg null-element]
+				{return (begin)}
+				{loop next-reg})))) reg}))
 
 (;; Returns a C-string that is a copy of the one at src. The returned string and
 	its dependencies will all reside in the region reg.)
