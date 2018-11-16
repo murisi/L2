@@ -17,7 +17,7 @@
 (function strrchr (s c) (with return
 	(let (t [+ s [strlen s]]) (begin
 		{(continuation loop (t)
-			(if [= [getb t] [getb c]]
+			(if [= [getb t] c]
 				{return t}
 			(if [= t s]
 				{return null-strrchr}
@@ -56,7 +56,7 @@
 
 (function set+ (r inc) [set r [+ $r inc]])
 
-(function isspace (c) (switch = [getb c]
+(function isspace (c) (switch = c
 	((space) (true))
 	((ff) (true))
 	((lf) (true))
@@ -230,9 +230,9 @@
 			(storage buf [buffer-alloc (arg-max) reg cleanup err])
 			(storage bytes-rem [read $f $buf (arg-max) cleanup err])
 			[set retval (with break {(continuation loop (buf bytes-rem args)
-				(if $bytes-rem
-					{loop [+ $buf [+ [strlen $buf] #1]] [- $bytes-rem [+ [strlen $buf] #1]] [cons $buf args reg cleanup err]}
-					{break [reverse args reg cleanup err]})) buf bytes-rem nil})])
+				(if bytes-rem
+					{loop [+ buf [+ [strlen buf] #1]] [- bytes-rem [+ [strlen buf] #1]] [cons buf args reg cleanup err]}
+					{break [reverse args reg cleanup err]})) $buf $bytes-rem nil})])
 					
 		(cleanup (begin
 			[close $f handler err]
