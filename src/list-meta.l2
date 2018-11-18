@@ -42,6 +42,27 @@
 				{loop [llllst (` invoke r) (` cons r) [@fst in] out [@rst l] r] [@rst in]}))
 		(` nil r) [meta:reverse [@fst l] r]}))
 
+(;; A macro to do a reverse map. Does the following transformation:
+	(reverse-map (x l) expr ctx ...)
+	->
+	(with reverse-map:return
+		{(continuation reverse-map:loop (reverse-map:l reverse-map:acc)
+			(if [nil? reverse-map:l]
+				{reverse-map:return reverse-map:acc}
+				{reverse-map:loop
+					[@cdr reverse-map:l]
+					[cons (let (x [@car reverse-map:l]) expr) reverse-map:acc ctx ...]})) l nil}))
+
+(function reverse-map (l r)
+	(`(with reverse-map:return
+		{(continuation reverse-map:loop (reverse-map:l reverse-map:acc)
+			(if [nil? reverse-map:l]
+				{reverse-map:return reverse-map:acc}
+				{reverse-map:loop
+					[@cdr reverse-map:l]
+					(,[llllst (` invoke r) (` cons r) (`(let ((,[@ffst l]) [@car reverse-map:l]) (,[@frst l]))r) (` reverse-map:acc r)
+						[@rrst l] r])})) (,[@frfst l]) nil})r))
+
 (function list-struct (l r) [mk# r #16])
 
 (function car (l r) [mk-field l r #0 #8])

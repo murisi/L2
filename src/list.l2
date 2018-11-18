@@ -109,19 +109,16 @@
 	the buffer into which the filtered list should be put. Returns the filtered
 	list.)
 
-(function filter (pred l r handler err) (with return
-	(let (res nil) (begin
-		(foreach (e l) (if [pred e] [prepend e res r handler err] (begin)))
-		{return [reverse res r handler err]}))))
+(function filter (pred l r handler err) (with return (begin
+		(storage res-ref nil)
+		(foreach (e l) (if [pred e] [prepend e res-ref r handler err] (begin)))
+		{return [reverse $res-ref r handler err]})))
 
 (;; Constructs a reverse of the given list. l is the list that is to be reversed.
 	r is the buffer into which the reversed list should be placed. Return value
 	is the reversed list.)
 
-(function reverse (l r handler err) (with return (begin
-		(storage ret-ref nil)
-		(foreach (data l) [prepend data ret-ref r handler err])
-		{return $ret-ref})))
+(function reverse (l r handler err) (reverse-map (x l) x r handler err))
 
 (;; Maps the given list using the supplied function. l is the list that is to be
 	mapped. ctx is the second argument to the function that does the mapping.
