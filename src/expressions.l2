@@ -264,10 +264,7 @@
 				{handler (sets err special-form-error d [@cadr d])}
 				[make-with [build-expression [@cadr d] ..] [build-expression [@caddr d] ..] ..])))
 		
-		((" begin)
-			(with return (let (exprs nil) (begin
-				(foreach (v [@cdr d]) [append [build-expression v ..] exprs ..])
-				{return [make-begin exprs ..]}))))
+		((" begin) [make-begin [reverse (reverse-map (v [@cdr d]) [build-expression v ..] ..) ..] ..])
 		
 		((" if)
 			(if (not [= [length d] #4])
@@ -281,28 +278,26 @@
 				{handler (sets err special-form-error d [@cadr d])}
 			(if [i/f:symbol? [@caddr d]]
 				{handler (sets err special-form-error d [@caddr d])}
-				(with return (let (parameters nil) (begin
-					(foreach (v [@caddr d])
+				(let (parameters [reverse (reverse-map (v [@caddr d])
 						(if [i/f:symbol? v]
-							[append [build-expression v ..] parameters ..]
-							{handler (sets err special-form-error d v)}))
-					{return [(switch str= [to-string [@car d] ..]
+							[build-expression v ..]
+							{handler (sets err special-form-error d v)}) ..) ..])
+							
+					[(switch str= [to-string [@car d] ..]
 							((" function) make-function)
 							make-continuation)
-						[build-expression [@cadr d] ..] parameters [build-expression [@cadddr d] ..] ..]})))))))
+						[build-expression [@cadr d] ..] parameters [build-expression [@cadddr d] ..] ..])))))
 		
 		((" invoke) (" jump) (" storage)
 			(if [= [length d] #1]
 				{handler (sets err special-form-error d null-fragment)}
 			(if (and [str= [to-string [@car d] ..] (" storage)] (not [i/f:symbol? [@cadr d]]))
 				{handler (sets err special-form-error d [@cadr d])}
-				(with return (let (arguments nil) (begin
-					(foreach (v [@cddr d]) [append [build-expression v ..] arguments ..])
-					{return [(switch str= [to-string [@car d] ..]
-							((" invoke) make-invoke)
-							((" jump) make-jump)
-							make-storage)
-						[build-expression [@cadr d] ..] arguments ..]}))))))
+				[(switch str= [to-string [@car d] ..]
+						((" invoke) make-invoke)
+						((" jump) make-jump)
+						make-storage)
+					[build-expression [@cadr d] ..] [reverse (reverse-map (v [@cddr d]) [build-expression v ..] ..) ..] ..])))
 		
 		((" literal)
 			(if (not [= [length d] #2])
