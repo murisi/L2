@@ -20,7 +20,7 @@
 	[set rex [lor $rex [<< #0 (rex-x)]]]
 	(if [land rm (hex 8)] [set rex [lor $rex [<< #1 (rex-b)]]] (begin))
 	[mem-write bin pos rex #1]
-	[mem-write bin pos opcode #1]
+	[mem-write bin pos (storage _ opcode) #1]
 	[mem-write bin pos modrm #1]
 	(if $has-sib [mem-write bin pos sib #1] (begin))))
 
@@ -252,7 +252,7 @@
 			(setf e-shnum $ehdr (write-elf-sh-count))
 			(setf e-shstrndx $ehdr #1)
 			[mem-write $bin pos $ehdr (elf64-ehdr)]
-	
+			
 			(storage strtab-len [measure-strtab generated-expressions symbols])
 			(storage sym-count [measure-symtab generated-expressions symbols])
 	
@@ -378,12 +378,13 @@
 			(storage text-len (begin))
 			(storage max-text-sec-len [pad-size [* (write-elf-max-instr-len) [length generated-expressions]] (write-elf-alignment)])
 			(storage max-rela-sec-len [* (write-elf-max-instr-fields) [* [length generated-expressions] (elf64-rela)]])
-	
+			
 			(storage text [buffer-alloc $max-text-sec-len $temp-buf cleanup err])
 			(storage relas [buffer-alloc $max-rela-sec-len $temp-buf cleanup err])
 			(storage rela-ptr $relas)
+			
 			[assemble generated-expressions $text text-len $syms rela-ptr]
-	
+			
 			(;; Mandatory undefined section)
 			(storage undef-shdr [buffer-alloc (elf64-shdr) $temp-buf cleanup err])
 			(setf sh-name $undef-shdr #0)
