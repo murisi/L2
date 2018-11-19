@@ -277,38 +277,44 @@
 	there are any failures in the lazy compilation. Return value is a program
 	expression representing the meta-program.)
 	
-(function generate-metaprogram (program symbols expr-buf obj-buf handler err) (with return
-	(substitute (.. expr-buf handler err) (begin
-		(storage c nil)
-		(foreach (s (@ expr-expressions (@ expr-expression program))) (begin
-			(storage cache [buffer-alloc (unit) obj-buf handler err])
-			[set $cache null-cache]
-			(if [= (@ expr-type s) (-storage-)] (begin
-				(storage args nil)
-				(foreach (_ (@ expr-arguments s)) [prepend [make-begin nil ..] args ..])
-				(storage storage-ref [make-reference (@ expr-name (@ expr-reference s)) ..])
-				[append [make-storage $storage-ref $args ..] c ..]
-				(storage storage-ref-arg [make-reference null-string ..])
-				[refer-reference $storage-ref-arg $storage-ref]
-				[append (make-invokeN (make-invokeN [make-literal init-storage ..] ($storage-ref-arg [make-literal s ..]
-					[make-literal symbols ..] [make-literal expr-buf ..] [make-literal obj-buf ..] [make-literal handler ..]
-					[make-literal err ..] [make-literal $cache ..]) ..) () ..) c ..])
+(function generate-metaprogram (program symbols expr-buf obj-buf handler err)
+	(substitute (.. expr-buf handler err)
+		(named-let loop (s-list (@ expr-expressions (@ expr-expression program))) (c nil)
+			(if [nil? s-list]
+				[make-program [reverse c ..] ..]
+				(begin
+					(letb (cache [buffer-alloc (unit) obj-buf handler err])
+					[set cache null-cache]
+					(letb (s [@car s-list])
+					
+					(if [= (@ expr-type s) (-storage-)]
+						(letb (args (reverse-map (_ (@ expr-arguments s)) [make-begin nil ..] ..))
+						(letb (storage-ref [make-reference (@ expr-name (@ expr-reference s)) ..])
+						(letb (c [cons [make-storage storage-ref args ..] c ..])
+						(letb (storage-ref-arg [make-reference null-string ..])
+						[refer-reference storage-ref-arg storage-ref]
+						(letb (init-invoke (make-invokeN (make-invokeN [make-literal init-storage ..] (storage-ref-arg [make-literal s ..]
+							[make-literal symbols ..] [make-literal expr-buf ..] [make-literal obj-buf ..] [make-literal handler ..]
+							[make-literal err ..] [make-literal cache ..]) ..) () ..))
+						(letb (c [cons init-invoke c ..])
+						{loop [@cdr s-list] c}))))))
 				
-			(if [= (@ expr-type s) (-function-)] (begin
-				(storage params nil)
-				(storage args nil)
-				(foreach (_ (@ expr-parameters s)) (begin
-					[prepend [make-reference null-string ..] params ..]
-					[prepend (make-invokeN [make-literal get ..] ([make-reference null-string ..]) ..) args ..]))
-				[append [make-function [make-reference (@ expr-name (@ expr-reference s)) ..] $params
-					[make-invoke (make-invokeN [make-literal init-function ..] ([make-literal s ..] [make-literal symbols ..]
-					[make-literal expr-buf ..] [make-literal obj-buf ..] [make-literal handler ..] [make-literal err ..]
-					[make-literal $cache ..]) ..) $args ..] ..] c ..]
-				(foreach (a $params) (t $args) [refer-reference [@car(@ expr-arguments t)] a]))
+					(if [= (@ expr-type s) (-function-)]
+						(letb (params (reverse-map (_ (@ expr-parameters s)) [make-reference null-string ..] ..))
+						(letb (args (reverse-map (_ (@ expr-parameters s))
+							(make-invokeN [make-literal get ..] ([make-reference null-string ..]) ..) ..))
+						(letb (thunk [make-function [make-reference (@ expr-name (@ expr-reference s)) ..] params
+							[make-invoke (make-invokeN [make-literal init-function ..] ([make-literal s ..] [make-literal symbols ..]
+							[make-literal expr-buf ..] [make-literal obj-buf ..] [make-literal handler ..] [make-literal err ..]
+							[make-literal cache ..]) ..) args ..] ..])
+						(foreach (a params) (t args) [refer-reference [@car(@ expr-arguments t)] a])
+						(letb (c [cons thunk c ..])
+						{loop [@cdr s-list] c}))))
 			
-			(begin
-				[append (make-invokeN (make-invokeN [make-literal init-expression ..] ([make-literal s ..]
-					[make-literal symbols ..] [make-literal expr-buf ..] [make-literal obj-buf ..] [make-literal handler ..]
-					[make-literal err ..] [make-literal $cache ..]) ..) () ..) c ..])))))
-		{return [make-program $c ..]}))))
+					(begin
+						(letb (init-invoke (make-invokeN (make-invokeN [make-literal init-expression ..] ([make-literal s ..]
+							[make-literal symbols ..] [make-literal expr-buf ..] [make-literal obj-buf ..] [make-literal handler ..]
+							[make-literal err ..] [make-literal cache ..]) ..) () ..))
+						(letb (c [cons init-invoke c ..])
+						{loop [@cdr s-list] c}))))))))))))
 
