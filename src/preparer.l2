@@ -241,8 +241,9 @@
 
 (function init-expression (expr symbols expr-buf obj-buf handler err cache)
 	(if [not= $cache null-cache] $cache (with return (substitute (.. expr-buf handler err) (begin
-		[pre-visit-expressions vgenerate-metas expr (storage _ $symbols ..)]
-		[set cache [segment [load-program-and-mutate [make-program [cons expr nil ..] ..] $symbols expr-buf obj-buf
+		(storage expr-ref expr)
+		[pre-visit-expressions vgenerate-metas expr-ref (storage _ $symbols ..)]
+		[set cache [segment [load-program-and-mutate [make-program [cons $expr-ref nil ..] ..] $symbols expr-buf obj-buf
 			handler err] (" .text)]]
 		{return $cache})))))
 
@@ -251,17 +252,19 @@
 		(storage sets nil)
 		(storage data-ref data)
 		(foreach (arg (@ expr-arguments storage-expr)) (begin
-			[pre-visit-expressions vgenerate-metas arg (storage _ $symbols ..)]
-			[append (make-invokeN [make-literal set ..] ([make-literal $data-ref ..] arg) ..) sets ..]
-			[set data-ref [+ $data-ref (unit)]]))
+			(storage arg-ref arg)
+			[pre-visit-expressions vgenerate-metas arg-ref (storage _ $symbols ..)]
+			[append (make-invokeN [make-literal set ..] ([make-literal $data-ref ..] $arg-ref) ..) sets ..]
+			[set+ data-ref (unit)]))
 		[set cache [segment [load-program-and-mutate [make-program $sets ..] $symbols expr-buf obj-buf handler err] (" .text)]]
 		{return $cache})))))
 
 (function init-function (function-expr symbols expr-buf obj-buf handler err cache)
 	(if [not= $cache null-cache] $cache (with return (substitute (.. expr-buf handler err) (begin
-		[pre-visit-expressions vgenerate-metas function-expr (storage _ $symbols ..)]
-		[load-program-and-mutate [make-program [cons function-expr nil ..] ..] $symbols expr-buf obj-buf handler err]
-		[set cache (@ sym-offset (@ expr-symbol (@ expr-reference function-expr)))]
+		(storage function-expr-ref function-expr)
+		[pre-visit-expressions vgenerate-metas function-expr-ref (storage _ $symbols ..)]
+		[load-program-and-mutate [make-program [cons $function-expr-ref nil ..] ..] $symbols expr-buf obj-buf handler err]
+		[set cache (@ sym-offset (@ expr-symbol (@ expr-reference $function-expr-ref)))]
 		{return $cache})))))
 
 (storage null-cache (begin))
