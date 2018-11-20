@@ -12,25 +12,25 @@
 			(letb (relas-buf ($(loc (unit) sec-idx (@ obj-relas obj))))
 			(letb (addends-buf ($(loc (unit) sec-idx (@ obj-addends obj))))
 			(until (rela-idx #0) [= rela-idx relanum] [+ rela-idx #1] (begin
-				(storage syms-buf ($(loc (unit) (@ sh-link shdr-buf) (@ obj-syms obj))))
-				(storage rela (loc (elf64-rela) rela-idx relas-buf))
+				(letb (syms-buf ($(loc (unit) (@ sh-link shdr-buf) (@ obj-syms obj))))
+				(letb (rela (loc (elf64-rela) rela-idx relas-buf))
 				(storage addend ($(loc (elf64-sxword) rela-idx addends-buf)))
-				(storage sym (loc (elf64-sym) (elf64-r-sym (@ r-info $rela)) $syms-buf))
-				(switch = (elf64-r-type (@ r-info $rela))
+				(storage sym (loc (elf64-sym) (elf64-r-sym (@ r-info rela)) syms-buf))
+				(switch = (elf64-r-type (@ r-info rela))
 					((r-x86-64-none) (begin))
-					((r-x86-64-64) [memcpy (@ r-offset $rela) (storage _[+(@ st-value $sym)$addend]) #8])
-					((r-x86-64-pc32) [memcpy (@ r-offset $rela) (storage _[-[+(@ st-value $sym)$addend](@ r-offset $rela)]) #4])
-					((r-x86-64-glob-dat) [memcpy (@ r-offset $rela) (storage _(@ st-value $sym)) #8])
-					((r-x86-64-jump-slot) [memcpy (@ r-offset $rela) (storage _(@ st-value $sym)) #8])
-					((r-x86-64-32) [memcpy (@ r-offset $rela) (storage _[+(@ st-value $sym) $addend]) #4])
-					((r-x86-64-32s) [memcpy (@ r-offset $rela) (storage _[+(@ st-value $sym) $addend]) #4])
-					((r-x86-64-16) [memcpy (@ r-offset $rela) (storage _[+(@ st-value $sym) $addend]) #2])
-					((r-x86-64-pc16) [memcpy (@ r-offset $rela) (storage _[-[+(@ st-value $sym)$addend](@ r-offset $rela)])#2])
-					((r-x86-64-8) [memcpy (@ r-offset $rela) (storage _[+(@ st-value $sym)$addend]) #1])
-					((r-x86-64-pc8) [memcpy (@ r-offset $rela) (storage _[-[+(@ st-value $sym)$addend](@ r-offset $rela)])#1])
-					((r-x86-64-size32) [memcpy (@ r-offset $rela) (storage _[+(@ st-size $sym)$addend]) #4])
-					((r-x86-64-size64) [memcpy (@ r-offset $rela) (storage _[+(@ st-size $sym)$addend]) #8])
-					{handler (sets err object-error)})))))))
+					((r-x86-64-64) [memcpy (@ r-offset rela) (storage _[+(@ st-value $sym)$addend]) #8])
+					((r-x86-64-pc32) [memcpy (@ r-offset rela) (storage _[-[+(@ st-value $sym)$addend](@ r-offset rela)]) #4])
+					((r-x86-64-glob-dat) [memcpy (@ r-offset rela) (storage _(@ st-value $sym)) #8])
+					((r-x86-64-jump-slot) [memcpy (@ r-offset rela) (storage _(@ st-value $sym)) #8])
+					((r-x86-64-32) [memcpy (@ r-offset rela) (storage _[+(@ st-value $sym) $addend]) #4])
+					((r-x86-64-32s) [memcpy (@ r-offset rela) (storage _[+(@ st-value $sym) $addend]) #4])
+					((r-x86-64-16) [memcpy (@ r-offset rela) (storage _[+(@ st-value $sym) $addend]) #2])
+					((r-x86-64-pc16) [memcpy (@ r-offset rela) (storage _[-[+(@ st-value $sym)$addend](@ r-offset rela)])#2])
+					((r-x86-64-8) [memcpy (@ r-offset rela) (storage _[+(@ st-value $sym)$addend]) #1])
+					((r-x86-64-pc8) [memcpy (@ r-offset rela) (storage _[-[+(@ st-value $sym)$addend](@ r-offset rela)])#1])
+					((r-x86-64-size32) [memcpy (@ r-offset rela) (storage _[+(@ st-size $sym)$addend]) #4])
+					((r-x86-64-size64) [memcpy (@ r-offset rela) (storage _[+(@ st-size $sym)$addend]) #8])
+					{handler (sets err object-error)})))))))))
 			(begin))))))
 
 (;; Stores the relocation addends somewhere out of the way because it may be the
@@ -76,21 +76,21 @@
 			(letb (relanum [/ (@ sh-size shdr-buf) (@ sh-entsize shdr-buf)])
 			(letb (relas-buf ($(loc (unit) sec-idx (@ obj-relas obj))))
 			(until (rela-idx #0) [= rela-idx relanum] [+ rela-idx #1] (begin
-				(storage rela (loc (elf64-rela) rela-idx relas-buf))
+				(letb (rela (loc (elf64-rela) rela-idx relas-buf))
 				(storage target-seg-addr ($(loc (unit) (@ sh-info shdr-buf) (@ obj-segs obj))))
-				(setf r-offset $rela [+ $target-seg-addr (@ r-offset $rela)]))))))
+				(setf r-offset rela [+ $target-seg-addr (@ r-offset rela)])))))))
 				
 		(if [= (@ sh-type shdr-buf) (sht-symtab)] (begin
 			(storage symnum [/ (@ sh-size shdr-buf) (@ sh-entsize shdr-buf)])
-			(storage syms-buf ($(loc (unit) sec-idx (@ obj-syms obj))))
+			(letb (syms-buf ($(loc (unit) sec-idx (@ obj-syms obj))))
 			(until (sym-idx #0) [= sym-idx $symnum] [+ sym-idx #1] (begin
-				(storage sym (loc (elf64-sym) sym-idx $syms-buf))
+				(storage sym (loc (elf64-sym) sym-idx syms-buf))
 				(setf st-value $sym (switch = (@ st-shndx $sym)
 					((shn-abs) (@ st-value $sym))
 					((shn-common) #0)
 					((shn-undef) #0)
 					(let (base-seg-addr ($(loc (unit) (@ st-shndx $sym) (@ obj-segs obj))))
-						[+ base-seg-addr (@ st-value $sym)]))))))
+						[+ base-seg-addr (@ st-value $sym)])))))))
 						
 		(begin)))))))
 
@@ -120,12 +120,12 @@
 			
 		(if [= (@ sh-type shdr-buf) (sht-symtab)] (begin
 			(storage symnum [/ (@ sh-size shdr-buf) (@ sh-entsize shdr-buf)])
-			(storage syms-buf (loc (unit) sec-idx (@ obj-syms $obj)))
+			(letb (syms-buf (loc (unit) sec-idx (@ obj-syms $obj)))
 			(;; Following code copies recognized information from the symbol table into (@ obj-syms $obj))
-			[set $syms-buf [buffer-alloc [* $symnum (elf64-sym)] reg handler err]]
+			[set syms-buf [buffer-alloc [* $symnum (elf64-sym)] reg handler err]]
 			(until (sym-idx #0) [= sym-idx $symnum] [+ sym-idx #1]
-				[memcpy (loc (elf64-sym) sym-idx $$syms-buf) (loc (@ sh-entsize shdr-buf) sym-idx $$seg-buf)
-					(elf64-sym)]))
+				[memcpy (loc (elf64-sym) sym-idx $syms-buf) (loc (@ sh-entsize shdr-buf) sym-idx $$seg-buf)
+					(elf64-sym)])))
 					
 		(if (or [= (@ sh-type shdr-buf) (sht-rela)] [= (@ sh-type shdr-buf) (sht-rel)]) (begin
 			(letb (relanum [/ (@ sh-size shdr-buf) (@ sh-entsize shdr-buf)])
@@ -178,15 +178,15 @@
 			(letb (shdr-buf (loc (elf64-shdr) sec-idx (@ obj-shdrs obj)))
 			(if [= (@ sh-type shdr-buf) (sht-symtab)] (begin
 				(storage symnum [/ (@ sh-size shdr-buf) (@ sh-entsize shdr-buf)])
-				(storage syms-buf ($(loc (unit) sec-idx (@ obj-syms obj))))
+				(letb (syms-buf ($(loc (unit) sec-idx (@ obj-syms obj))))
 				(until (sym-idx #1) [= sym-idx $symnum] [+ sym-idx #1] (begin
-					(storage sym (loc (elf64-sym) sym-idx $syms-buf))
+					(storage sym (loc (elf64-sym) sym-idx syms-buf))
 					(if (and (not [strcmp [name-of obj shdr-buf $sym] (@ sym-name update)])
 							(or [= (@ st-shndx $sym) (shn-undef)] [= (@ st-shndx $sym) (shn-common)])
 							(or [= (elf64-st-bind (@ st-info $sym)) (stb-global)]
 								[= (elf64-st-bind (@ st-info $sym)) (stb-weak)]))
 						(setf st-value $sym (@ sym-offset update))
-						(begin)))))
+						(begin))))))
 				(begin))))))
 	(;; If obj was created using load, the following invocation cannot produce an error; hence the unspecified handler arguments.)
 	[do-relocations obj (begin) (begin)]))
@@ -199,15 +199,15 @@
 		(letb (shdr-buf (loc (elf64-shdr) sec-idx (@ obj-shdrs obj)))
 		(if [= (@ sh-type shdr-buf) (sht-symtab)] (begin
 			(storage symnum [/ (@ sh-size shdr-buf) (@ sh-entsize shdr-buf)])
-			(storage syms-buf ($(loc (unit) sec-idx (@ obj-syms obj))))
+			(letb (syms-buf ($(loc (unit) sec-idx (@ obj-syms obj))))
 			(until (sym-idx #1) [= sym-idx $symnum] [+ sym-idx #1] (begin
-				(storage sym (loc (elf64-sym) sym-idx $syms-buf))
+				(storage sym (loc (elf64-sym) sym-idx syms-buf))
 				(if (and [= (not(not(or [= (@ st-shndx $sym) (shn-undef)] [= (@ st-shndx $sym) (shn-common)]))) flag]
 						(or [= (elf64-st-bind (@ st-info $sym)) (stb-global)]
 							[= (elf64-st-bind (@ st-info $sym)) (stb-weak)]))
 					[prepend [make-sym [name-of obj shdr-buf $sym] (@ st-value $sym) reg handler err] syms
 						reg handler err]
-					(begin)))))
+					(begin))))))
 		(begin)))))
 	{return $syms})))
 
