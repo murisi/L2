@@ -5,8 +5,8 @@
 (storage multiple-definition-error (begin))
 
 (function vfind-multiple-definitions (e ctx) (with return (begin
-	(storage handler (@0 ctx))
-	(storage err (@1 ctx))
+	(letb (handler (@0 ctx))
+	(letb (err (@1 ctx))
 	
 	(switch = (@ expr-type e)
 		((-begin-) (let (temp-reg [create-buffer #0]) (begin
@@ -17,7 +17,7 @@
 							(& cdr partial) [@car partial]] null-find]
 						(let (dup-ref-name (@ expr-name(@ expr-reference[@car partial]))) (begin
 							[destroy-buffer temp-reg]
-							{$handler (sets $err multiple-definition-error dup-ref-name)}))
+							{handler (sets err multiple-definition-error dup-ref-name)}))
 						(begin))))
 			[destroy-buffer temp-reg]
 			{return e})))
@@ -28,12 +28,12 @@
 					(if [not= [find (function _ (f ctx) [named-ref= f ctx]) (& cdr partial) [@car partial]] null-find]
 						(let (dup-ref-name (@ expr-name[@car partial])) (begin
 							[destroy-buffer temp-reg]
-							{$handler (sets $err multiple-definition-error dup-ref-name)}))
+							{handler (sets err multiple-definition-error dup-ref-name)}))
 						(begin))))
 			[destroy-buffer temp-reg]
 			{return e})))
 		
-		{return e}))))
+		{return e}))))))
 
 (function get-parent-function (n) (with return
 	{(continuation loop (n)
@@ -95,35 +95,35 @@
 (storage param-count-mismatch-error (begin))
 
 (function vlink-references (s ctx) (with return (begin
-	(storage handler (@1 ctx))
-	(storage r (@0 ctx))
-	(storage err (@2 ctx))
+	(letb (handler (@1 ctx))
+	(letb (r (@0 ctx))
+	(letb (err (@2 ctx))
 	
 	(if [= (@ expr-type s) (-reference-)]
 		(begin
 			(setf expr-symbol s (if [not= (@ expr-symbol s) null-symbol] (@ expr-symbol s) [symbol-of s]))
 			(if [= (@ expr-symbol s) null-symbol]
 				(begin
-					(letb (stg [make-storage [make-reference (@ expr-name s) $r $handler $err] nil $r $handler $err])
+					(letb (stg [make-storage [make-reference (@ expr-name s) r handler err] nil r handler err])
 					(letb (sym (@ expr-symbol(@ expr-reference stg)))
 					(setf sym-type sym (static-storage))
 					(setf sym-scope sym (global-scope))
 					(setf sym-state sym (undefined-state))
 					(letb (rf [get-root-function s])
-					[prepend stg (& expr-expressions(@ expr-expression rf)) $r $handler $err]
+					[prepend stg (& expr-expressions(@ expr-expression rf)) r handler err]
 					(setf expr-parent stg (@ expr-expression rf))
 					(setf expr-symbol s sym)
 					{return s}))))
 			(if (and (or (and [jump-reference? s] [c-reference? (@ sym-definition(@ expr-symbol s))])
 					(and [invoke-reference? s] [function-reference? (@ sym-definition(@ expr-symbol s))]))
 					(not [= [length(@ expr-arguments(@ expr-parent s))] [length(@ expr-parameters[get-target-expression s])]]))
-				{$handler (sets $err param-count-mismatch-error (@ expr-parent s) [get-target-expression s])}
+				{handler (sets err param-count-mismatch-error (@ expr-parent s) [get-target-expression s])}
 				{return s})))
 	(if (and (or (and [= (@ expr-type s) (-continuation-)] [jump-reference? s])
 			(and [= (@ expr-type s) (-function-)] [invoke-reference? s]))
 			(not [= [length (@ expr-arguments(@ expr-parent s))] [length (@ expr-parameters s)]]))
-		{$handler (sets $err param-count-mismatch-error (@ expr-parent s) s)}
-		{return s})))))
+		{handler (sets err param-count-mismatch-error (@ expr-parent s) s)}
+		{return s}))))))))
 
 (function vescape-analysis-aux (ref target)
 	(if [jump-reference? ref]
@@ -221,16 +221,16 @@
 (function vgenerate-metas (s ctx)
 	(if [= (@ expr-type s) (-meta-)]
 		(with return (begin
-			(storage handler (@2 ctx))
-			(storage err (@3 ctx))
-			(storage symbols (@0 ctx))
-			(storage expr-buf (@1 ctx))
+			(letb (handler (@2 ctx))
+			(letb (err (@3 ctx))
+			(letb (symbols (@0 ctx))
+			(letb (expr-buf (@1 ctx))
 			
-			(foreach (sym $symbols)
+			(foreach (sym symbols)
 				(if [str= (@ sym-name sym) (@ expr-name (@ expr-reference s))]
-					{return [vgenerate-metas [build-expression [(@ sym-offset sym) (@ expr-argument s) $expr-buf]
-						$expr-buf $handler $err] ctx]} (begin)))
-			{$handler (sets $err undefined-reference-error (@ expr-name(@ expr-reference s)))}))
+					{return [vgenerate-metas [build-expression [(@ sym-offset sym) (@ expr-argument s) expr-buf]
+						expr-buf handler err] ctx]} (begin)))
+			{handler (sets err undefined-reference-error (@ expr-name(@ expr-reference s)))}))))))
 		s))
 
 (;; This function handles the lazy compilation of expressions that are neither

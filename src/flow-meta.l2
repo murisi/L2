@@ -112,12 +112,6 @@
 				{while:aux $while:storage})
 			{while:return while:val})) (begin)})r))
 
-(function do-while (l r)
-	(`(with do-while:return {(continuation do-while:aux (do-while:val) (begin
-			(storage do-while:storage (,[@fst l]))
-			(if (,[@frst l]) {do-while:aux (begin)} {do-while:return $do-while:storage})))
-		(begin)})r))
-
 (;; The following macro is roughly analogous to C's for-loop. The difference is
 	that until loops until the condition is true rather than while it is true. The
 	other difference is that this construct updates the loop control varable itself
@@ -162,5 +156,8 @@
 				{let:return $let:storage})) r) [meta:map bindings (begin) @frst r] r])) r)))
 
 (function letb (l r)
-	(`{(continuation letb:cont ((,[@ffst l])) (,[lst (` begin r) [@rst l] r])) (,[@frfst l])}r))
+	(`(with letb:return
+		{(continuation letb:cont ((,[@ffst l]))
+			(,[lst (` begin r)
+				[meta:reverse [lst (`{letb:return (begin)}r) [meta:reverse [@rst l] r] r] r] r])) (,[@frfst l])})r))
 
