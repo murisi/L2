@@ -26,7 +26,7 @@
 	Return value is the constructed symbol.)
 
 (function build-symbol (str r handler err)
-	(named-let loop (sexprs nil) (strptr str)
+	(nlet loop (sexprs nil) (strptr str)
 		(if [getb strptr]
 			{loop [cons (sym-char [getb strptr]) sexprs r handler err] [+ strptr #1]}
 			[reverse sexprs r handler err])))
@@ -38,7 +38,7 @@
 	buffer.)
 
 (function after-leading-space (l2src l2src-sz pos)
-	(named-let loop
+	(nlet loop
 		(if (and [< $pos l2src-sz] [isspace [getb[+ l2src $pos]]])
 			(begin [set+ pos #1] {loop})
 			[- l2src-sz $pos])))
@@ -66,7 +66,7 @@
 
 (function build-fragment-list (primitive delimeter l2src l2src-sz pos r handler err) (with return
 	(substitute (.. r handler err)
-		(named-let loop (sexprs (list ([build-symbol primitive ..]) ..))
+		(nlet loop (sexprs (list ([build-symbol primitive ..]) ..))
 			(let (rem [after-leading-space l2src l2src-sz pos])
 				(if (and rem [= [getb [+ l2src $pos]] delimeter])
 					(begin [set+ pos #1] {return [reverse sexprs ..]})
@@ -94,7 +94,7 @@
 						((char ,) [build-sigilled-symbol (" ,) l2src l2src-sz pos ..])
 						((char `) [build-sigilled-symbol (" `) l2src l2src-sz pos ..])
 						
-						[reverse (named-let loop (l nil) (c c)
+						[reverse (nlet loop (l nil) (c c)
 							(let (l [cons (sym-char c) l ..])
 								(if [= $pos l2src-sz] l
 									(let (c [getb [+ l2src $pos]])
@@ -113,7 +113,7 @@
 
 (function to-string (d r handler err) (with return
 	(let (str [buffer-alloc [+ [length d] #1] r handler err])
-		(named-let loop (d d) (i #0)
+		(nlet loop (d d) (i #0)
 			(if [nil? d]
 				(begin
 					[setb [+ str i] (nul)]
