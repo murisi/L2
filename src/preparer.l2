@@ -103,14 +103,17 @@
 		(begin
 			(setf expr-symbol s (if [not= (@ expr-symbol s) null-symbol] (@ expr-symbol s) [symbol-of s]))
 			(if [= (@ expr-symbol s) null-symbol]
-				(let (ref [make-reference (@ expr-name s) $r $handler $err]) (rf [get-root-function s])
-					(let (sym [make-symbol (static-storage) (global-scope) (undefined-state) (@ expr-name s) ref $r $handler $err])
-						(begin
-							(setf expr-symbol ref sym)
-							(setf expr-parameters rf [cons ref (@ expr-parameters rf) $r $handler $err])
-							(setf expr-parent ref rf)
-							(setf expr-symbol s sym)
-							{return s})))
+				(begin
+					(letb (stg [make-storage [make-reference (@ expr-name s) $r $handler $err] nil $r $handler $err])
+					(letb (sym (@ expr-symbol(@ expr-reference stg)))
+					(setf sym-type sym (static-storage))
+					(setf sym-scope sym (global-scope))
+					(setf sym-state sym (undefined-state))
+					(letb (rf [get-root-function s])
+					[prepend stg (& expr-expressions(@ expr-expression rf)) $r $handler $err]
+					(setf expr-parent stg (@ expr-expression rf))
+					(setf expr-symbol s sym)
+					{return s}))))
 			(if (and (or (and [jump-reference? s] [c-reference? (@ sym-definition(@ expr-symbol s))])
 					(and [invoke-reference? s] [function-reference? (@ sym-definition(@ expr-symbol s))]))
 					(not [= [length(@ expr-arguments(@ expr-parent s))] [length(@ expr-parameters[get-target-expression s])]]))
@@ -304,13 +307,12 @@
 				
 					(if [= (@ expr-type s) (-function-)]
 						(letb (params (reverse-map (_ (@ expr-parameters s)) [make-reference null-string ..] ..))
-						(letb (args (reverse-map (_ (@ expr-parameters s))
-							(make-invokeN [make-literal get ..] ([make-reference null-string ..]) ..) ..))
+						(letb (args (reverse-map (_ (@ expr-parameters s)) [make-reference null-string ..] ..))
 						(letb (thunk [make-function [make-reference (@ expr-name (@ expr-reference s)) ..] params
 							[make-invoke (make-invokeN [make-literal init-function ..] ([make-literal s ..] [make-literal symbols ..]
 							[make-literal expr-buf ..] [make-literal obj-buf ..] [make-literal handler ..] [make-literal err ..]
 							[make-literal cache ..]) ..) args ..] ..])
-						(foreach (a params) (t args) [refer-reference [@car(@ expr-arguments t)] a])
+						(foreach (a params) (t args) [refer-reference t a])
 						(letb (c [cons thunk c ..])
 						{loop [@cdr s-list] c}))))
 			

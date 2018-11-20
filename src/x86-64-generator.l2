@@ -79,8 +79,13 @@
 			[set offset-ref [+ $offset-ref (word-size)]]))
 		[generate-load-address (@ expr-symbol(@ expr-reference n)) (make-asmN(rax)()..) c ..])))
 
-(function generate-reference (n c r handler err) (substitute (.. r handler err)
-		[generate-load-address (@ expr-symbol n) (make-asmN(rax)()..) c ..]))
+(function generate-reference (n c r handler err)
+	(substitute (.. r handler err)
+		(let (def (@ sym-definition(@ expr-symbol n)))
+			(if (and (or [= (@ expr-type(@ expr-parent def)) (-function-)] [= (@ expr-type(@ expr-parent def)) (-continuation-)])
+					[not= [find = (& expr-parameters(@ expr-parent def)) def] null-find])
+				[generate-load (@ expr-symbol n) #0 (make-asmN(rax)()..) (make-asmN(r11)()..) c ..]
+				[generate-load-address (@ expr-symbol n) (make-asmN(rax)()..) c ..]))))
 
 (function generate-store-continuation (n c r handler err)
 	(substitute (.. r handler err) (begin
@@ -258,10 +263,8 @@
 
 (function generate-program (n symbols r handler err) (with return
 	(substitute (.. r handler err) (begin
-		(storage c nil)
 		[set symbols (@ expr-symbols n)]
-		(foreach (l (@ expr-parameters n)) [prepend (@ expr-symbol l) symbols ..])
-		
+		(storage c nil)
 		[prepend (make-asmN(pushq-reg)((make-asmN(rbp)()..))..) c ..]
 		[prepend (make-asmN(movq-reg-to-reg)((make-asmN(rsp)()..) (make-asmN(rbp)()..))..) c ..]
 		[generate-expression (@ expr-expression n) c ..]
