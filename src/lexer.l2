@@ -40,7 +40,7 @@
 (function after-leading-space (l2src l2src-sz pos)
 	(named-let loop
 		(if (and [< $pos l2src-sz] [isspace [getb[+ l2src $pos]]])
-			(begin [set pos [+ $pos #1]] {loop})
+			(begin [set+ pos #1] {loop})
 			[- l2src-sz $pos])))
 
 (;; If there is a space at the current position in the buffer, then build a symbol
@@ -69,7 +69,7 @@
 		(named-let loop (sexprs (list ([build-symbol primitive ..]) ..))
 			(let (rem [after-leading-space l2src l2src-sz pos])
 				(if (and rem [= [getb [+ l2src $pos]] delimeter])
-					(begin [set pos [+ $pos #1]] {return [reverse sexprs ..]})
+					(begin [set+ pos #1] {return [reverse sexprs ..]})
 					{loop [cons [build-fragment l2src l2src-sz pos ..] sexprs ..]}))))))
 
 (storage unexpected-char-error (begin))
@@ -84,7 +84,7 @@
 			(if (or [isspace c] [= c (rparen)] [= c (rbrace)] [= c (rbracket)])
 				{handler (sets err unexpected-char-error c $pos)}
 				(begin
-					[set pos [+ $pos #1]]
+					[set+ pos #1]
 					{return (switch = c
 						((lparen) [@cdr [build-fragment-list (" expression) (rparen) l2src l2src-sz pos ..]])
 						((lbrace) [build-fragment-list (" jump) (rbrace) l2src l2src-sz pos ..])
@@ -99,9 +99,7 @@
 								(if [= $pos l2src-sz] l
 									(let (c [getb [+ l2src $pos]])
 										(if (or [isspace c] [= c (lparen)] [= c (rparen)] [= c (lbrace)] [= c (rbrace)] [= c (lbracket)] [= c (rbracket)]) l
-											(begin
-												[set pos [+ $pos #1]]
-												{loop l c})))))) ..])})))))))
+											(begin [set+ pos #1] {loop l c})))))) ..])})))))))
 
 (storage character-flag (begin))
 
