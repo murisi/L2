@@ -23,17 +23,16 @@
 	[mem-write bin pos (storage _ modrm) #1]
 	(if has-sib [mem-write bin pos (storage _ sib) #1] (begin)))))))))))))
 
-(function write-static-value (bin pos expr bytes symtab relas) (begin
-	(storage val #0)
-	
-	(if [= (@ expr-type expr) (-literal-)]
-		[set val (@ expr-value expr)]
+(function write-static-value (bin pos expr bytes symtab relas)
+	(if [= (@ expr-type expr) (-literal-)] (begin
+		[mem-write bin pos (storage _(@ expr-value expr)) bytes])
 		
 	(if (and [= (@ expr-type expr) (-reference-)] [= bytes #8]) (begin
 		(setf r-offset $relas $pos)
 		(setf r-info $relas (elf64-r-info [/[- (@ sym-context(@ expr-symbol expr)) symtab](elf64-sym)] (r-x86-64-64)))
 		(setf r-addend $relas #0)
-		[set+ relas (elf64-rela)])
+		[set+ relas (elf64-rela)]
+		[mem-write bin pos (storage _ #0) bytes])
 		
 	(if (and [= (@ expr-type expr) (-assembly-)] [= (@ expr-opcode expr) (stval-add-off-to-ref)] [= bytes #8]) (begin
 		(storage ref [@car(@ expr-arguments expr)])
@@ -41,18 +40,18 @@
 		(setf r-offset $relas $pos)
 		(setf r-info $relas (elf64-r-info [/[- (@ sym-context(@ expr-symbol $ref)) symtab](elf64-sym)] (r-x86-64-64)))
 		(setf r-addend $relas (@ expr-value $offset))
-		[set+ relas (elf64-rela)])
+		[set+ relas (elf64-rela)]
+		[mem-write bin pos (storage _ #0) bytes])
 		
 	(if (and [= (@ expr-type expr) (-assembly-)] [= (@ expr-opcode expr) (stval-sub-rip-from-ref)] [= bytes #4]) (begin
 		(storage ref [@car(@ expr-arguments expr)])
 		(setf r-offset $relas $pos)
 		(setf r-info $relas (elf64-r-info [/[- (@ sym-context(@ expr-symbol $ref)) symtab](elf64-sym)] (r-x86-64-pc32)))
 		(setf r-addend $relas [- #0 bytes])
-		[set+ relas (elf64-rela)])
+		[set+ relas (elf64-rela)]
+		[mem-write bin pos (storage _ #0) bytes])
 		
-		(begin)))))
-	
-	[mem-write bin pos val bytes]))
+		(begin))))))
 
 (function write-o-instr (bin pos opcode reg) (begin
 	(letb (rd [land (hex 7) reg])
@@ -180,27 +179,22 @@
 
 (storage shstrtab ("(nul).shstrtab(nul).text(nul).strtab(nul).symtab(nul).bss(nul).rela.text(nul)))
 
-(function measure-strtab (generated-expressions symbols) (with return (begin
-	(storage strtab-len #1)
-	
-	(foreach (sym symbols)
-		(if [not= (@ sym-name sym) null-string]
-			[set+ strtab-len [+ [strlen(@ sym-name sym)] #1]]
-			(begin)))
-	
-	(foreach (e generated-expressions)
-		(if [= (@ expr-opcode e) (label)]
-			(let (label-str (@ expr-name [@car (@ expr-arguments e)]))
-				(if [not= label-str null-string] [set+ strtab-len [+ [strlen label-str] #1]] (begin)))
-			(begin)))
-	
-	{return $strtab-len})))
+(function measure-strtab (generated-expressions symbols)
+	(let (strtab-len (fold-left (acc #1) (sym symbols)
+			[+ acc (if [not= (@ sym-name sym) null-string]
+				[+ [strlen(@ sym-name sym)] #1]
+				#0)]))
+				
+		(fold-left (acc strtab-len) (e generated-expressions)
+			[+ acc (if [= (@ expr-opcode e) (label)]
+				(let (label-str (@ expr-name [@car (@ expr-arguments e)]))
+					(if [not= label-str null-string] [+ [strlen label-str] #1] #0))
+				#0)])))
 
-(function measure-symtab (generated-expressions symbols) (with return (begin
-	(storage sym-count #1)
-	(foreach (sym symbols) [set+ sym-count #1])
-	(foreach (e generated-expressions) (if [= (@ expr-opcode e) (label)] [set+ sym-count #1] (begin)))
-	{return $sym-count})))
+(function measure-symtab (generated-expressions symbols)
+	(let (sym-count (fold-left (acc #1) (sym symbols) [+ acc #1]))
+		(fold-left (acc sym-count) (e generated-expressions)
+			[+ acc (if [= (@ expr-opcode e) (label)] #1 #0)])))
 
 (function max-elf-size (generated-expressions symbols)
 	[+ (elf64-ehdr) [+ [* (elf64-shdr) (write-elf-sh-count)] [+ [pad-size [strvlen $shstrtab] (write-elf-alignment)]

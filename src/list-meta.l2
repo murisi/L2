@@ -63,6 +63,26 @@
 					(,[llllst (` invoke r) (` cons r) (`(let ((,[@ffst l]) [@car reverse-map:l]) (,[@frst l]))r) (` reverse-map:acc r)
 						[@rrst l] r])})) (,[@frfst l]) nil})r))
 
+(;; A macro to do a reverse map. Does the following transformation:
+	(fold-left (y acc) (x l) expr)
+	->
+	(with fold-left:return
+		{(continuation fold-left:loop (fold-left:acc fold-left:l)
+			(if [nil? fold-left:l]
+				{fold-left:return fold-left:acc}
+				{fold-left:loop
+					(let (y fold-left:acc) (x [@car fold-left:l]) expr)
+					[@cdr fold-left:l]})) acc l}))
+
+(function fold-left (l r)
+	(`(with fold-left:return
+		{(continuation fold-left:loop (fold-left:acc fold-left:l)
+			(if [nil? fold-left:l]
+				{fold-left:return fold-left:acc}
+				{fold-left:loop
+					(let ((,[@ffst l]) fold-left:acc) ((,[@ffrst l]) [@car fold-left:l]) (,[@frrst l]))
+					[@cdr fold-left:l]})) (,[@frfst l]) (,[@frfrst l])})r))
+
 (function list-struct (l r) [mk# r #16])
 
 (function car (l r) [mk-field l r #0 #8])
