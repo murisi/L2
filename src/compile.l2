@@ -19,13 +19,13 @@
 
 (function load-program (program expr-buf obj-buf handler err) (with return (begin
 	(storage symbols (begin))
-	(storage asms [compile-program program symbols expr-buf handler err])
+	(letb (asms [compile-program program symbols expr-buf handler err])
 	(storage objdest (begin))
 	(storage objdest-sz (begin))
-	[write-elf $asms $symbols objdest objdest-sz obj-buf handler err]
-	(storage obj [load $objdest $objdest-sz obj-buf handler err])
-	[symbol-offsets-to-addresses $asms $symbols $obj]
-	{return $obj})))
+	[write-elf asms $symbols objdest objdest-sz obj-buf handler err]
+	(letb (obj [load $objdest $objdest-sz obj-buf handler err])
+	[symbol-offsets-to-addresses asms $symbols obj]
+	{return obj})))))
 
 (;; Behavior is the same as load-program, but with the following addition: syms is is a list
 	of object symbols, and after the loading is done, the undefined symbols of the loaded
@@ -35,17 +35,17 @@
 	in syms.)
 
 (function load-program-and-mutate (program syms expr-buf obj-buf handler err) (with return (begin
-	(storage obj [load-program program expr-buf obj-buf handler err])
-	(storage temp-reg [create-buffer #0 handler err])
-	(storage ms [mutable-symbols $obj $temp-reg handler err])
-	(storage missing-sym [not-subset (function symbol= (sym1 sym2) [str= (@ sym-name sym1) (@ sym-name sym2)]) $ms syms])
-	(if [not= $missing-sym null-not-subset]
-		(let (missing-sym-name (@ sym-name $missing-sym)) (begin
-			[destroy-buffer $temp-reg handler err]
+	(letb (obj [load-program program expr-buf obj-buf handler err])
+	(letb (temp-reg [create-buffer #0 handler err])
+	(letb (ms [mutable-symbols obj temp-reg handler err])
+	(letb (missing-sym [not-subset (function symbol= (sym1 sym2) [str= (@ sym-name sym1) (@ sym-name sym2)]) ms syms])
+	(if [not= missing-sym null-not-subset]
+		(let (missing-sym-name (@ sym-name missing-sym)) (begin
+			[destroy-buffer temp-reg handler err]
 			{handler (sets err undefined-reference-error missing-sym-name)}))
-		[destroy-buffer $temp-reg handler err])
-	[mutate-symbols $obj syms]
-	{return $obj})))
+		[destroy-buffer temp-reg handler err])
+	[mutate-symbols obj syms]
+	{return obj})))))))
 	
 (function read-to-buffer (fn size-out expr-buf handler err) (with return (begin
 	(storage fd (begin))
@@ -68,14 +68,13 @@
 
 (function read-expressions (fn expr-buf handler err) (with return (substitute (.. expr-buf handler err) (begin
 	(storage src-sz (begin))
-	(storage src-buf [read-to-buffer fn src-sz ..])
-	(storage expressions nil)
+	(letb (src-buf [read-to-buffer fn src-sz ..])
 	(storage pos #0)
 	
-	(while [after-leading-space $src-buf $src-sz pos]
-		[append [build-expression [build-fragment $src-buf $src-sz pos ..] ..] expressions ..])
-	
-	{return $expressions}))))
+	(nlet loop (expressions nil)
+		(if [after-leading-space src-buf $src-sz pos]
+			{loop [cons [build-expression [build-fragment src-buf $src-sz pos ..] ..] expressions ..]}
+			{return [reverse expressions ..]})))))))
 
 (storage unsupported-ext-error (begin))
 
@@ -94,13 +93,13 @@
 	
 	(foreach (src srcv) (begin
 		(storage obj (begin))
-		(storage dot [strrchr src (char .)])
+		(letb (dot [strrchr src (char .)])
 
-		(if (and [not= $dot null-strrchr] [str= $dot (" .l2)])
+		(if (and [not= dot null-strrchr] [str= dot (" .l2)])
 			[set obj [load-program [generate-metaprogram [make-program [read-expressions src expr-buf handler err]
 				expr-buf handler err] symbols expr-buf obj-buf handler err] expr-buf obj-buf handler err]]
 	
-		(if (and [not= $dot null-strrchr] [str= $dot (" .o)]) (begin
+		(if (and [not= dot null-strrchr] [str= dot (" .o)]) (begin
 			(storage obj-sz (begin))
 			(storage buf [read-to-buffer src obj-sz obj-buf handler err])
 			[set obj [load $buf $obj-sz obj-buf handler err]])
@@ -108,7 +107,7 @@
 			{handler (sets err unsupported-ext-error src)}))
 
 		[append $obj objects obj-buf handler err]
-		[append-list symbols [immutable-symbols $obj obj-buf handler err]]))
+		[append-list symbols [immutable-symbols $obj obj-buf handler err]])))
 
 	(foreach (obj $objects) [mutate-symbols obj $symbols])
 	(foreach (obj $objects) [[segment obj (" .text)]])))
@@ -122,20 +121,21 @@
 (function compile-files (programs syms expr-buf obj-buf handler err)
 	(foreach (infn programs) (begin
 		(storage dot [strrchr infn (char .)])
-		(if (and [not= $dot null-strrchr] [str= $dot (" .l2)]) (begin
-			(storage program [make-program [read-expressions infn expr-buf handler err] expr-buf handler err])
-			[pre-visit-expressions vgenerate-metas program (storage _ syms expr-buf handler err)]
-			(storage symbols (begin))
-			(storage asms [compile-program $program symbols expr-buf handler err])
-			(storage objdest (begin))
-			(storage objdest-sz (begin))
-			[write-elf $asms $symbols objdest objdest-sz obj-buf handler err]
-			(storage outfn [buffer-alloc [+ [strlen infn] #1] obj-buf handler err])
-			[strcpy $outfn infn]
-			[strcpy [strrchr $outfn (char .)] (" .o)]
-			(storage fd [create $outfn handler err])
-			[print $fd $objdest $objdest-sz]
-			[close $fd handler err])
+		(if (and [not= $dot null-strrchr] [str= $dot (" .l2)])
+			(begin
+				(storage program [make-program [read-expressions infn expr-buf handler err] expr-buf handler err])
+				[pre-visit-expressions vgenerate-metas program (storage _ syms expr-buf handler err)]
+				(storage symbols (begin))
+				(letb (asms [compile-program $program symbols expr-buf handler err])
+				(storage objdest (begin))
+				(storage objdest-sz (begin))
+				[write-elf asms $symbols objdest objdest-sz obj-buf handler err]
+				(letb (outfn [buffer-alloc [+ [strlen infn] #1] obj-buf handler err])
+				[strcpy outfn infn]
+				[strcpy [strrchr outfn (char .)] (" .o)]
+				(letb (fd [create outfn handler err])
+				[print fd $objdest $objdest-sz]
+				[close fd handler err]))))
 			(begin)))))
 
 (storage arguments-error (begin))
