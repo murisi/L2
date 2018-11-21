@@ -35,21 +35,21 @@
 		[mem-write bin pos (storage _ #0) bytes])
 		
 	(if (and [= (@ expr-type expr) (-assembly-)] [= (@ expr-opcode expr) (stval-add-off-to-ref)] [= bytes #8]) (begin
-		(storage ref [@car(@ expr-arguments expr)])
-		(storage offset [@cadr(@ expr-arguments expr)])
+		(letb (ref [@car(@ expr-arguments expr)])
+		(letb (offset [@cadr(@ expr-arguments expr)])
 		(setf r-offset $relas $pos)
-		(setf r-info $relas (elf64-r-info [/[- (@ sym-context(@ expr-symbol $ref)) symtab](elf64-sym)] (r-x86-64-64)))
-		(setf r-addend $relas (@ expr-value $offset))
+		(setf r-info $relas (elf64-r-info [/[- (@ sym-context(@ expr-symbol ref)) symtab](elf64-sym)] (r-x86-64-64)))
+		(setf r-addend $relas (@ expr-value offset))
 		[set+ relas (elf64-rela)]
-		[mem-write bin pos (storage _ #0) bytes])
+		[mem-write bin pos (storage _ #0) bytes])))
 		
 	(if (and [= (@ expr-type expr) (-assembly-)] [= (@ expr-opcode expr) (stval-sub-rip-from-ref)] [= bytes #4]) (begin
-		(storage ref [@car(@ expr-arguments expr)])
+		(letb (ref [@car(@ expr-arguments expr)])
 		(setf r-offset $relas $pos)
-		(setf r-info $relas (elf64-r-info [/[- (@ sym-context(@ expr-symbol $ref)) symtab](elf64-sym)] (r-x86-64-pc32)))
+		(setf r-info $relas (elf64-r-info [/[- (@ sym-context(@ expr-symbol ref)) symtab](elf64-sym)] (r-x86-64-pc32)))
 		(setf r-addend $relas [- #0 bytes])
 		[set+ relas (elf64-rela)]
-		[mem-write bin pos (storage _ #0) bytes])
+		[mem-write bin pos (storage _ #0) bytes]))
 		
 		(begin))))))
 
@@ -71,109 +71,107 @@
 	(foreach (n generated-expressions)
 		(switch = (@ expr-opcode n)
 			((label) (begin
-				(storage label-ref [@car(@ expr-arguments n)])
-				(setf sym-offset (@ expr-symbol $label-ref) $pos)
-				(setf st-value (@ sym-context(@ expr-symbol $label-ref)) $pos)))
+				(letb (label-ref [@car(@ expr-arguments n)])
+				(setf sym-offset (@ expr-symbol label-ref) $pos)
+				(setf st-value (@ sym-context(@ expr-symbol label-ref)) $pos))))
 				
 			((leaq-of-mdb-into-reg) (begin
-				(storage opcode (hex 8D))
-				(storage reg (@ expr-opcode [@caddr (@ expr-arguments n)])) (;; Dest)
-				(storage rm (@ expr-opcode [@cadr (@ expr-arguments n)])) (;; Src)
-				[write-mr-instr bin pos $opcode $reg $rm (true) (true)]
-				[write-static-value bin pos [@car (@ expr-arguments n)] #4 symtab relas]))
+				(letb (opcode (hex 8D))
+				(letb (reg (@ expr-opcode [@caddr (@ expr-arguments n)])) (;; Dest)
+				(letb (rm (@ expr-opcode [@cadr (@ expr-arguments n)])) (;; Src)
+				[write-mr-instr bin pos opcode reg rm (true) (true)]
+				[write-static-value bin pos [@car (@ expr-arguments n)] #4 symtab relas])))))
 				
 			((movq-from-reg-into-mdb) (begin
-				(storage opcode (hex 89))
-				(storage reg (@ expr-opcode [@car (@ expr-arguments n)])) (;; Src)
-				(storage rm (@ expr-opcode [@caddr (@ expr-arguments n)])) (;; Dest)
-				[write-mr-instr bin pos $opcode $reg $rm (true) (true)]
-				[write-static-value bin pos [@cadr (@ expr-arguments n)] #4 symtab relas]))
+				(letb (opcode (hex 89))
+				(letb (reg (@ expr-opcode [@car (@ expr-arguments n)])) (;; Src)
+				(letb (rm (@ expr-opcode [@caddr (@ expr-arguments n)])) (;; Dest)
+				[write-mr-instr bin pos opcode reg rm (true) (true)]
+				[write-static-value bin pos [@cadr (@ expr-arguments n)] #4 symtab relas])))))
 				
 			((jmp-rel) (begin
-				(storage opcode (hex E9))
-				[mem-write bin pos opcode #1]
-				[write-static-value bin pos [@car (@ expr-arguments n)] #4 symtab relas]))
+				(letb (opcode (hex E9))
+				[mem-write bin pos (storage _ opcode) #1]
+				[write-static-value bin pos [@car (@ expr-arguments n)] #4 symtab relas])))
 				
 			((movq-mdb-to-reg) (begin
-				(storage opcode (hex 8B))
-				(storage reg (@ expr-opcode [@caddr (@ expr-arguments n)])) (;; Dest)
-				(storage rm (@ expr-opcode [@cadr (@ expr-arguments n)])) (;; Src)
-				[write-mr-instr bin pos $opcode $reg $rm (true) (true)]
-				[write-static-value bin pos [@car (@ expr-arguments n)] #4 symtab relas]))
+				(letb (opcode (hex 8B))
+				(letb (reg (@ expr-opcode [@caddr (@ expr-arguments n)])) (;; Dest)
+				(letb (rm (@ expr-opcode [@cadr (@ expr-arguments n)])) (;; Src)
+				[write-mr-instr bin pos opcode reg rm (true) (true)]
+				[write-static-value bin pos [@car (@ expr-arguments n)] #4 symtab relas])))))
 				
 			((pushq-reg) (begin
-				(storage opcode (hex 50))
-				(storage reg (@ expr-opcode [@car (@ expr-arguments n)])) (;; Dest)
-				[write-o-instr bin pos $opcode $reg]))
+				(letb (opcode (hex 50))
+				(letb (reg (@ expr-opcode [@car (@ expr-arguments n)])) (;; Dest)
+				[write-o-instr bin pos opcode reg]))))
 				
 			((movq-reg-to-reg) (begin
-				(storage opcode (hex 8B))
-				(storage reg (@ expr-opcode [@cadr (@ expr-arguments n)])) (;; Dest)
-				(storage rm (@ expr-opcode [@car (@ expr-arguments n)])) (;; Src)
-				[write-mr-instr bin pos $opcode $reg $rm (false) (true)]))
+				(letb (opcode (hex 8B))
+				(letb (reg (@ expr-opcode [@cadr (@ expr-arguments n)])) (;; Dest)
+				(letb (rm (@ expr-opcode [@car (@ expr-arguments n)])) (;; Src)
+				[write-mr-instr bin pos opcode reg rm (false) (true)])))))
 				
 			((subq-imm-from-reg) (begin
-				(storage opcode (hex 81))
-				(storage reg #5)
-				(storage rm (@ expr-opcode [@cadr (@ expr-arguments n)])) (;; Dest)
-				[write-mr-instr bin pos $opcode $reg $rm (false) (true)]
-				[mem-write bin pos (& expr-value [@car (@ expr-arguments n)]) #4]))
+				(letb (opcode (hex 81))
+				(letb (reg #5)
+				(letb (rm (@ expr-opcode [@cadr (@ expr-arguments n)])) (;; Dest)
+				[write-mr-instr bin pos opcode reg rm (false) (true)]
+				[mem-write bin pos (& expr-value [@car (@ expr-arguments n)]) #4])))))
 				
 			((addq-imm-to-reg) (begin
-				(storage opcode (hex 81))
-				(storage reg #0)
-				(storage rm (@ expr-opcode [@cadr (@ expr-arguments n)])) (;; Dest)
-				[write-mr-instr bin pos $opcode $reg $rm (false) (true)]
-				[mem-write bin pos (& expr-value [@car (@ expr-arguments n)]) #4]))
+				(letb (opcode (hex 81))
+				(letb (reg #0)
+				(letb (rm (@ expr-opcode [@cadr (@ expr-arguments n)])) (;; Dest)
+				[write-mr-instr bin pos opcode reg rm (false) (true)]
+				[mem-write bin pos (& expr-value [@car (@ expr-arguments n)]) #4])))))
 				
 			((popq-reg) (begin
-				(storage opcode (hex 58))
-				(storage reg (@ expr-opcode [@car (@ expr-arguments n)])) (;; Dest)
-				[write-o-instr bin pos $opcode $reg]))
+				(letb (opcode (hex 58))
+				(letb (reg (@ expr-opcode [@car (@ expr-arguments n)])) (;; Dest)
+				[write-o-instr bin pos opcode reg]))))
 				
 			((leave) [mem-write bin pos (storage opcode (hex C9)) #1])
 				
 			((ret) [mem-write bin pos (storage opcode (hex C3)) #1])
 				
 			((jmp-to-reg) (begin
-				(storage opcode (hex FF))
-				(storage reg #4)
-				(storage rm (@ expr-opcode [@car (@ expr-arguments n)]))
-				[write-mr-instr bin pos $opcode $reg $rm (false) (false)]))
+				(letb (opcode (hex FF))
+				(letb (reg #4)
+				(letb (rm (@ expr-opcode [@car (@ expr-arguments n)]))
+				[write-mr-instr bin pos opcode reg rm (false) (false)])))))
 				
 			((je-rel) (begin
-				(storage opcode1 (hex 0F))
-				(storage opcode2 (hex 84))
-				[mem-write bin pos opcode1 #1]
-				[mem-write bin pos opcode2 #1]
+				[mem-write bin pos (storage opcode1 (hex 0F)) #1]
+				[mem-write bin pos (storage opcode2 (hex 84)) #1]
 				[write-static-value bin pos [@car (@ expr-arguments n)] #4 symtab relas]))
 				
 			((orq-reg-to-reg) (begin
-				(storage opcode (hex 0B))
-				(storage reg (@ expr-opcode [@cadr (@ expr-arguments n)])) (;; Dest)
-				(storage rm (@ expr-opcode [@car (@ expr-arguments n)])) (;; Src)
-				[write-mr-instr bin pos $opcode $reg $rm (false) (true)]))
+				(letb (opcode (hex 0B))
+				(letb (reg (@ expr-opcode [@cadr (@ expr-arguments n)])) (;; Dest)
+				(letb (rm (@ expr-opcode [@car (@ expr-arguments n)])) (;; Src)
+				[write-mr-instr bin pos opcode reg rm (false) (true)])))))
 				
 			((movq-imm-to-reg) (begin
-				(storage opcode (hex B8))
-				(storage imm-expr [@car (@ expr-arguments n)])
-				(storage reg (@ expr-opcode [@cadr (@ expr-arguments n)])) (;; Dest)
-				(storage rd [land (hex 7) $reg])
-				(storage opcoderd [+ $opcode $rd])
-				(storage rex [<< #4 #4])
-				[set rex [lor $rex [<< #1 (rex-w)]]]
-				[set rex [lor $rex [<< #0 (rex-r)]]]
-				[set rex [lor $rex [<< #0 (rex-x)]]]
-				(if [land $reg (hex 8)] [set rex [lor $rex [<< #1 (rex-b)]]] (begin))
-				[mem-write bin pos rex #1]
-				[mem-write bin pos opcoderd #1]
-				[write-static-value bin pos $imm-expr #8 symtab relas]))
+				(letb (opcode (hex B8))
+				(letb (imm-expr [@car (@ expr-arguments n)])
+				(letb (reg (@ expr-opcode [@cadr (@ expr-arguments n)])) (;; Dest)
+				(letb (rd [land (hex 7) reg])
+				(letb (opcoderd [+ opcode rd])
+				(letb (rex [<< #4 #4])
+				(letb (rex [lor rex [<< #1 (rex-w)]])
+				(letb (rex [lor rex [<< #0 (rex-r)]])
+				(letb (rex [lor rex [<< #0 (rex-x)]])
+				(letb (rex (if [land reg (hex 8)] [lor rex [<< #1 (rex-b)]] rex))
+				[mem-write bin pos (storage _ rex) #1]
+				[mem-write bin pos (storage _ opcoderd) #1]
+				[write-static-value bin pos imm-expr #8 symtab relas]))))))))))))
 				
 			((call-reg) (begin
-				(storage opcode (hex FF))
-				(storage reg #2)
-				(storage rm (@ expr-opcode [@car (@ expr-arguments n)]))
-				[write-mr-instr bin pos $opcode $reg $rm (false) (false)]))
+				(letb (opcode (hex FF))
+				(letb (reg #2)
+				(letb (rm (@ expr-opcode [@car (@ expr-arguments n)]))
+				[write-mr-instr bin pos opcode reg rm (false) (false)])))))
 			
 			(begin)))))
 
