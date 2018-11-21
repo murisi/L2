@@ -9,20 +9,19 @@
 					{loop [+ bytes #1]}))) bytes})))
 
 (function write-mr-instr (bin pos opcode reg rm m rexw) (begin
-	(storage mod (if m #2 #3))
-	(storage modrm [lor [<< $mod (instr-mod)] [lor [<< [land reg (hex 7)] (instr-reg)] [<< [land rm (hex 7)] (instr-rm)]]])
-	(storage has-sib (and m (or [= rm (rsp)] [= rm (r12)])))
-	(storage sib (begin))
-	(if $has-sib [set sib [lor [<< #4 (instr-index)] [lor [<< [land rm (hex 7)] (instr-base)] [<< #0 (instr-ss)]]]] (begin))
-	(storage rex [<< #4 #4])
-	(if rexw [set rex [lor $rex [<< #1 (rex-w)]]] (begin))
-	(if [land reg (hex 8)] [set rex [lor $rex [<< #1 (rex-r)]]] (begin))
-	[set rex [lor $rex [<< #0 (rex-x)]]]
-	(if [land rm (hex 8)] [set rex [lor $rex [<< #1 (rex-b)]]] (begin))
-	[mem-write bin pos rex #1]
+	(letb (mod (if m #2 #3))
+	(letb (modrm [lor [<< mod (instr-mod)] [lor [<< [land reg (hex 7)] (instr-reg)] [<< [land rm (hex 7)] (instr-rm)]]])
+	(letb (has-sib (and m (or [= rm (rsp)] [= rm (r12)])))
+	(letb (sib (if has-sib [lor [<< #4 (instr-index)] [lor [<< [land rm (hex 7)] (instr-base)] [<< #0 (instr-ss)]]] (begin)))
+	(letb (rex [<< #4 #4])
+	(letb (rex (if rexw [lor rex [<< #1 (rex-w)]] rex))
+	(letb (rex (if [land reg (hex 8)] [lor rex [<< #1 (rex-r)]] rex))
+	(letb (rex [lor rex [<< #0 (rex-x)]])
+	(letb (rex (if [land rm (hex 8)] [lor rex [<< #1 (rex-b)]] rex))
+	[mem-write bin pos (storage _ rex) #1]
 	[mem-write bin pos (storage _ opcode) #1]
-	[mem-write bin pos modrm #1]
-	(if $has-sib [mem-write bin pos sib #1] (begin))))
+	[mem-write bin pos (storage _ modrm) #1]
+	(if has-sib [mem-write bin pos (storage _ sib) #1] (begin)))))))))))))
 
 (function write-static-value (bin pos expr bytes symtab relas) (begin
 	(storage val #0)
@@ -56,17 +55,17 @@
 	[mem-write bin pos val bytes]))
 
 (function write-o-instr (bin pos opcode reg) (begin
-	(storage rd [land (hex 7) reg])
-	(storage opcoderd [+ opcode $rd])
-	(storage rex [<< #4 #4])
-	[set rex [lor $rex [<< #0 (rex-w)]]]
-	[set rex [lor $rex [<< #0 (rex-r)]]]
-	[set rex [lor $rex [<< #0 (rex-x)]]]
+	(letb (rd [land (hex 7) reg])
+	(letb (opcoderd [+ opcode rd])
+	(letb (rex [<< #4 #4])
+	(letb (rex [lor rex [<< #0 (rex-w)]])
+	(letb (rex [lor rex [<< #0 (rex-r)]])
+	(letb (rex [lor rex [<< #0 (rex-x)]])
 	(if [land reg (hex 8)] (begin
-		[set rex [lor $rex [<< #1 (rex-b)]]]
-		[mem-write bin pos rex #1])
+		(letb (rex [lor rex [<< #1 (rex-b)]])
+		[mem-write bin pos (storage _ rex) #1]))
 		(begin))
-	[mem-write bin pos opcoderd #1]))
+	[mem-write bin pos (storage _ opcoderd) #1]))))))))
 
 (function assemble (generated-expressions bin pos symtab relas) (begin
 	[set pos #0]
