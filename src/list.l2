@@ -104,31 +104,9 @@
 	(foreach (d a) (if [not= [find pred (storage _ b) d] null-find] (begin) {return d}))
 	{return null-not-subset})))
 
-(;; Constructs a sublist of the given list that satisfied a particular predicate.
-	For parameter pred, see above. l is the list that is to be filtered. r is
-	the buffer into which the filtered list should be put. Returns the filtered
-	list.)
-
-(function filter (pred l r handler err) (with return (begin
-		(storage res-ref nil)
-		(foreach (e l) (if [pred e] [prepend e res-ref r handler err] (begin)))
-		{return [reverse $res-ref r handler err]})))
-
 (;; Constructs a reverse of the given list. l is the list that is to be reversed.
 	r is the buffer into which the reversed list should be placed. Return value
 	is the reversed list.)
 
 (function reverse (l r handler err) (reverse-map (x l) x r handler err))
 
-(;; Maps the given list using the supplied function. l is the list that is to be
-	mapped. ctx is the second argument to the function that does the mapping.
-	mapper is a binary function that takes as its first argument th list item and
-	as its second argument ctx and returns the desired mapping. r is the buffer
-	into which the mapped list will be placed. The return value is the mapped list.)
-
-(function map (l ctx mapper r handler err)
-	(with return
-		{(continuation aux (in out)
-			(if [nil? in]
-				{return [reverse out r handler err]}
-				{aux [@cdr in] [cons [mapper [@car in] ctx] out r handler err]})) l nil}))

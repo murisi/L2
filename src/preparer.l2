@@ -10,8 +10,8 @@
 	
 	(switch = (@ expr-type e)
 		((-begin-) (let (temp-reg [create-buffer #0]) (begin
-			(let (definitions [filter (function _ (f) (or [= (@ expr-type f) (-storage-)] [= (@ expr-type f) (-function-)]))
-					(@ expr-expressions e) temp-reg])
+			(let (definitions (reverse-filter (f (@ expr-expressions e))
+					(or [= (@ expr-type f) (-storage-)] [= (@ expr-type f) (-function-)]) temp-reg handler err))
 				(until (partial definitions) [nil? partial] [@cdr partial]
 					(if [not= [find (function _ (f ctx) [named-ref= (@ expr-reference f) (@ expr-reference ctx)])
 							(& cdr partial) [@car partial]] null-find]

@@ -63,6 +63,30 @@
 					(,[llllst (` invoke r) (` cons r) (`(let ((,[@ffst l]) [@car reverse-map:l]) (,[@frst l]))r) (` reverse-map:acc r)
 						[@rrst l] r])})) (,[@frfst l]) nil})r))
 
+(;; A macro to do a reverse filter. Does the following transformation:
+	(reverse-filter (x l) expr ctx ...)
+	->
+	(with reverse-filter:return
+		{(continuation reverse-filter:loop (reverse-filter:l reverse-filter:acc)
+			(if [nil? reverse-filter:l]
+				{reverse-filter:return reverse-filter:acc}
+				{reverse-filter:loop
+					[@cdr reverse-filter:l]
+					(if (let (x [@car reverse-filter:l]) expr)
+						[cons [@car reverse-filter:l] reverse-filter:acc ctx ...]
+						reverse-filter:acc)})) l nil}))
+
+(function reverse-filter (l r)
+	(`(with reverse-filter:return
+		{(continuation reverse-filter:loop (reverse-filter:l reverse-filter:acc)
+			(if [nil? reverse-filter:l]
+				{reverse-filter:return reverse-filter:acc}
+				{reverse-filter:loop
+					[@cdr reverse-filter:l]
+					(if (let ((,[@ffst l]) [@car reverse-filter:l]) (,[@frst l]))
+						(,[llllst (` invoke r) (` cons r) (`[@car reverse-filter:l]r) (` reverse-filter:acc r) [@rrst l] r])
+						reverse-filter:acc)})) (,[@frfst l]) nil})r))
+
 (;; A macro to do a reverse map. Does the following transformation:
 	(fold-left (y acc) (x l) expr)
 	->
