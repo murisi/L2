@@ -38,14 +38,15 @@
 	(define (obj [load-program program expr-buf obj-buf handler err])
 	(define (temp-reg [create-buffer #0 handler err])
 	(define (ms [mutable-symbols obj temp-reg handler err])
-	(define (missing-sym [not-subset (function symbol= (sym1 sym2) [str= (@ sym-name sym1) (@ sym-name sym2)]) ms syms])
-	(if [not= missing-sym null-not-subset]
-		(let (missing-sym-name (@ sym-name missing-sym)) (begin
-			[destroy-buffer temp-reg handler err]
-			{handler (sets err undefined-reference-error missing-sym-name)}))
-		[destroy-buffer temp-reg handler err])
+	
+	(foreach (d ms) (find (x syms) [str= (@ sym-name d) (@ sym-name x)] (begin
+		(define (missing-sym-name (@ sym-name d))
+		[destroy-buffer temp-reg handler err]
+		{handler (sets err undefined-reference-error missing-sym-name)}))))
+	
+	[destroy-buffer temp-reg handler err]
 	[mutate-symbols obj syms]
-	{return obj})))))))
+	{return obj}))))))
 	
 (function read-to-buffer (fn size-out expr-buf handler err) (with return (begin
 	(storage fd (begin))
@@ -161,7 +162,7 @@
 			[set expr-buf [create-buffer #0 cleanup-obj-buf err]]
 			
 			(storage args [@cdr[argv $obj-buf handler err]])
-			(storage dash-list (find (x $args) [str= x (" -)] handler (sets err arguments-error)))
+			(storage dash-list (find (x $args) [str= x (" -)] {handler (sets err arguments-error)}))
 			
 			(storage metaprograms nil)
 			(with break (foreach (fn $args)
