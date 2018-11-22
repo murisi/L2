@@ -13,23 +13,22 @@
 			(let (definitions (reverse-filter (f (@ expr-expressions e))
 					(or [= (@ expr-type f) (-storage-)] [= (@ expr-type f) (-function-)]) temp-reg handler err))
 				(until (partial definitions) [nil? partial] [@cdr partial]
-					(if [not= [find (function _ (f ctx) [named-ref= (@ expr-reference f) (@ expr-reference ctx)])
-							(& cdr partial) [@car partial]] null-find]
-						(let (dup-ref-name (@ expr-name(@ expr-reference[@car partial]))) (begin
-							[destroy-buffer temp-reg]
-							{handler (sets err multiple-definition-error dup-ref-name)}))
-						(begin))))
+					(with break
+						(let (_ (find (f (@ cdr partial)) [named-ref= (@ expr-reference f) (@ expr-reference [@car partial])] break))
+							(let (dup-ref-name (@ expr-name(@ expr-reference[@car partial]))) (begin
+								[destroy-buffer temp-reg]
+								{handler (sets err multiple-definition-error dup-ref-name)}))))))
 			[destroy-buffer temp-reg]
 			{return e})))
 		
 		((-continuation-) (-function-) (let (temp-reg [create-buffer #0]) (begin
 			(let (ref-with-params [cons (@ expr-reference e) (@ expr-parameters e) temp-reg])
 				(until (partial ref-with-params) [nil? partial] [@cdr partial]
-					(if [not= [find (function _ (f ctx) [named-ref= f ctx]) (& cdr partial) [@car partial]] null-find]
-						(let (dup-ref-name (@ expr-name[@car partial])) (begin
-							[destroy-buffer temp-reg]
-							{handler (sets err multiple-definition-error dup-ref-name)}))
-						(begin))))
+					(with break
+						(let (_ (find (f (@ cdr partial)) [named-ref= f [@car partial]] break))
+							(let (dup-ref-name (@ expr-name[@car partial])) (begin
+								[destroy-buffer temp-reg]
+								{handler (sets err multiple-definition-error dup-ref-name)}))))))
 			[destroy-buffer temp-reg]
 			{return e})))
 		

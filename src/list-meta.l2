@@ -107,6 +107,26 @@
 					(let ((,[@ffst l]) fold-left:acc) ((,[@ffrst l]) [@car fold-left:l]) (,[@frrst l]))
 					[@cdr fold-left:l]})) (,[@frfst l]) (,[@frfrst l])})r))
 
+(;; A macro to do a find. Does the following transformation:
+	(find (x l) expr hdl)
+	->
+	(with find:return
+		{(continuation find:loop (find:l)
+			(if [nil? find:l]
+				{hdl (begin)}
+				(if (let (x [@car find:l]) expr)
+					{find:return [@car find:l]}
+					{find:loop [@cdr find:l]}))) l}))
+
+(function find (l r)
+	(`(with find:return
+		{(continuation find:loop (find:l)
+			(if [nil? find:l]
+				{(,[@frrst l]) (begin)}
+				(if (let ((,[@ffst l]) [@car find:l]) (,[@frst l]))
+					{find:return [@car find:l]}
+					{find:loop [@cdr find:l]}))) (,[@frfst l])})r))
+
 (function list-struct (l r) [mk# r #16])
 
 (function car (l r) [mk-field l r #0 #8])
