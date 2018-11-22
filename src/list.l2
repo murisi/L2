@@ -81,19 +81,6 @@
 			{return size}
 			{loop [@cdr l] [+ #1 size]})) l #0}))
 
-(storage null-find (begin))
-
-(;; Finds the first element of the given list that satisfies a predicate and
-	returns a reference to the list that it heads. Otherwise it returns null-find.
-	pred is a binary function that takes as its first parameter a list item
-	and as its second parameter ctx and returns a non-zero value when the
-	predicate is satisfied. l is a reference to the list that will be searched.)
-
-(function find (pred l ctx) (with return (begin
-	(until (s l) [nil? $s] (& cdr $s)
-		(if [pred [@car $s] ctx] {return s} (begin)))
-	{return null-find})))
-
 (storage null-not-subset (begin))
 
 (;; If list a is not a subset of list b, return the first element that indicates
@@ -101,7 +88,7 @@
 	b is a list.)
 
 (function not-subset (pred a b) (with return (begin
-	(foreach (d a) (if [not= [find pred (storage _ b) d] null-find] (begin) {return d}))
+	(foreach (d a) (find (x b) [pred x d] return d))
 	{return null-not-subset})))
 
 (;; Constructs a reverse of the given list. l is the list that is to be reversed.
