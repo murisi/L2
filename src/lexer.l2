@@ -26,9 +26,9 @@
 	Return value is the constructed symbol.)
 
 (function build-symbol (str r handler err)
-	(nlet loop (sexprs nil) (strptr str)
+	(loop cons-char (sexprs nil) (strptr str)
 		(if [getb strptr]
-			{loop [cons (sym-char [getb strptr]) sexprs r handler err] [+ strptr #1]}
+			{cons-char [cons (sym-char [getb strptr]) sexprs r handler err] [+ strptr #1]}
 			[reverse sexprs r handler err])))
 
 (;; Moves the supplied index forward to the first non-space character. l2src is a
@@ -38,9 +38,9 @@
 	buffer.)
 
 (function after-leading-space (l2src l2src-sz pos)
-	(nlet loop
+	(loop find-space
 		(if (and [< $pos l2src-sz] [isspace [getb[+ l2src $pos]]])
-			(begin [set+ pos #1] {loop})
+			(begin [set+ pos #1] {find-space})
 			[- l2src-sz $pos])))
 
 (;; If there is a space at the current position in the buffer, then build a symbol
@@ -66,11 +66,11 @@
 
 (function build-fragment-list (primitive delimeter l2src l2src-sz pos r handler err) (with return
 	(substitute (.. r handler err)
-		(nlet loop (sexprs (list ([build-symbol primitive ..]) ..))
+		(loop cons-frag (sexprs (list ([build-symbol primitive ..]) ..))
 			(let (rem [after-leading-space l2src l2src-sz pos])
 				(if (and rem [= [getb [+ l2src $pos]] delimeter])
 					(begin [set+ pos #1] {return [reverse sexprs ..]})
-					{loop [cons [build-fragment l2src l2src-sz pos ..] sexprs ..]}))))))
+					{cons-frag [cons [build-fragment l2src l2src-sz pos ..] sexprs ..]}))))))
 
 (storage unexpected-char-error (begin))
 
@@ -94,12 +94,12 @@
 						((char ,) [build-sigilled-symbol (" ,) l2src l2src-sz pos ..])
 						((char `) [build-sigilled-symbol (" `) l2src l2src-sz pos ..])
 						
-						[reverse (nlet loop (l nil) (c c)
+						[reverse (loop cons-char (l nil) (c c)
 							(let (l [cons (sym-char c) l ..])
 								(if [= $pos l2src-sz] l
 									(let (c [getb [+ l2src $pos]])
 										(if (or [isspace c] [= c (lparen)] [= c (rparen)] [= c (lbrace)] [= c (rbrace)] [= c (lbracket)] [= c (rbracket)]) l
-											(begin [set+ pos #1] {loop l c})))))) ..])})))))))
+											(begin [set+ pos #1] {cons-char l c})))))) ..])})))))))
 
 (storage character-flag (begin))
 
@@ -113,14 +113,14 @@
 
 (function to-string (d r handler err) (with return
 	(let (str [buffer-alloc [+ [length d] #1] r handler err])
-		(nlet loop (d d) (i #0)
+		(loop put-char (d d) (i #0)
 			(if [nil? d]
 				(begin
 					[setb [+ str i] (nul)]
 					{return str})
 				(begin
 					[setb [+ str i] (@ cs-character [@car d])]
-					{loop [@cdr d] [+ i #1]}))))))
+					{put-char [@cdr d] [+ i #1]}))))))
 
 (;; Copies the given fragment into the given buffer. l is the fragment that is to
 	be copied. r is the buffer into which the fragment should be copied. The return
