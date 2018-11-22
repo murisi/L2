@@ -5,8 +5,8 @@
 (storage multiple-definition-error (begin))
 
 (function vfind-multiple-definitions (e ctx) (with return (begin
-	(letb (handler (@0 ctx))
-	(letb (err (@1 ctx))
+	(define (handler (@0 ctx))
+	(define (err (@1 ctx))
 	
 	(switch = (@ expr-type e)
 		((-begin-) (let (temp-reg [create-buffer #0]) (begin
@@ -95,9 +95,9 @@
 (storage param-count-mismatch-error (begin))
 
 (function vlink-references (s ctx) (with return (begin
-	(letb (handler (@1 ctx))
-	(letb (r (@0 ctx))
-	(letb (err (@2 ctx))
+	(define (handler (@1 ctx))
+	(define (r (@0 ctx))
+	(define (err (@2 ctx))
 	
 	(substitute (.. r handler err)
 		(if [= (@ expr-type s) (-reference-)]
@@ -105,12 +105,12 @@
 				(setf expr-symbol s (if [not= (@ expr-symbol s) null-symbol] (@ expr-symbol s) [symbol-of s]))
 				(if [= (@ expr-symbol s) null-symbol]
 					(begin
-						(letb (stg [make-storage [make-reference (@ expr-name s) ..] nil ..])
-						(letb (sym (@ expr-symbol(@ expr-reference stg)))
+						(define (stg [make-storage [make-reference (@ expr-name s) ..] nil ..])
+						(define (sym (@ expr-symbol(@ expr-reference stg)))
 						(setf sym-type sym (static-storage))
 						(setf sym-scope sym (global-scope))
 						(setf sym-state sym (undefined-state))
-						(letb (rf [get-root-function s])
+						(define (rf [get-root-function s])
 						[prepend stg (& expr-expressions(@ expr-expression rf)) ..]
 						(setf expr-parent stg (@ expr-expression rf))
 						(setf expr-symbol s sym)
@@ -222,10 +222,10 @@
 (function vgenerate-metas (s ctx)
 	(if [= (@ expr-type s) (-meta-)]
 		(with return (begin
-			(letb (handler (@2 ctx))
-			(letb (err (@3 ctx))
-			(letb (symbols (@0 ctx))
-			(letb (expr-buf (@1 ctx))
+			(define (handler (@2 ctx))
+			(define (err (@3 ctx))
+			(define (symbols (@0 ctx))
+			(define (expr-buf (@1 ctx))
 			
 			(foreach (sym symbols)
 				(if [str= (@ sym-name sym) (@ expr-name (@ expr-reference s))]
@@ -288,36 +288,36 @@
 	(substitute (.. expr-buf handler err)
 		[make-program [reverse (fold-left (c nil) (s (@ expr-expressions (@ expr-expression program)))
 			(with break (begin
-				(letb (cache [buffer-alloc (unit) obj-buf handler err])
+				(define (cache [buffer-alloc (unit) obj-buf handler err])
 				[set cache null-cache]
 				
 				(if [= (@ expr-type s) (-storage-)]
-					(letb (args (reverse-map (_ (@ expr-arguments s)) [make-begin nil ..] ..))
-					(letb (storage-ref [make-reference (@ expr-name (@ expr-reference s)) ..])
-					(letb (c [cons [make-storage storage-ref args ..] c ..])
-					(letb (storage-ref-arg [make-reference null-string ..])
+					(define (args (reverse-map (_ (@ expr-arguments s)) [make-begin nil ..] ..))
+					(define (storage-ref [make-reference (@ expr-name (@ expr-reference s)) ..])
+					(define (c [cons [make-storage storage-ref args ..] c ..])
+					(define (storage-ref-arg [make-reference null-string ..])
 					[refer-reference storage-ref-arg storage-ref]
-					(letb (init-invoke (make-invokeN (make-invokeN [make-literal init-storage ..] (storage-ref-arg [make-literal s ..]
+					(define (init-invoke (make-invokeN (make-invokeN [make-literal init-storage ..] (storage-ref-arg [make-literal s ..]
 						[make-literal symbols ..] [make-literal expr-buf ..] [make-literal obj-buf ..] [make-literal handler ..]
 						[make-literal err ..] [make-literal cache ..]) ..) () ..))
-					(letb (c [cons init-invoke c ..])
+					(define (c [cons init-invoke c ..])
 					{break c}))))))
 			
 				(if [= (@ expr-type s) (-function-)]
-					(letb (params (reverse-map (_ (@ expr-parameters s)) [make-reference null-string ..] ..))
-					(letb (args (reverse-map (_ (@ expr-parameters s)) [make-reference null-string ..] ..))
-					(letb (thunk [make-function [make-reference (@ expr-name (@ expr-reference s)) ..] params
+					(define (params (reverse-map (_ (@ expr-parameters s)) [make-reference null-string ..] ..))
+					(define (args (reverse-map (_ (@ expr-parameters s)) [make-reference null-string ..] ..))
+					(define (thunk [make-function [make-reference (@ expr-name (@ expr-reference s)) ..] params
 						[make-invoke (make-invokeN [make-literal init-function ..] ([make-literal s ..] [make-literal symbols ..]
 						[make-literal expr-buf ..] [make-literal obj-buf ..] [make-literal handler ..] [make-literal err ..]
 						[make-literal cache ..]) ..) args ..] ..])
 					(foreach (a params) (t args) [refer-reference t a])
-					(letb (c [cons thunk c ..])
+					(define (c [cons thunk c ..])
 					{break c}))))
 		
 				(begin
-					(letb (init-invoke (make-invokeN (make-invokeN [make-literal init-expression ..] ([make-literal s ..]
+					(define (init-invoke (make-invokeN (make-invokeN [make-literal init-expression ..] ([make-literal s ..]
 						[make-literal symbols ..] [make-literal expr-buf ..] [make-literal obj-buf ..] [make-literal handler ..]
 						[make-literal err ..] [make-literal cache ..]) ..) () ..))
-					(letb (c [cons init-invoke c ..])
+					(define (c [cons init-invoke c ..])
 					{break c}))))))))) ..] ..]))
 

@@ -19,11 +19,11 @@
 
 (function load-program (program expr-buf obj-buf handler err) (with return (begin
 	(storage symbols (begin))
-	(letb (asms [compile-program program symbols expr-buf handler err])
+	(define (asms [compile-program program symbols expr-buf handler err])
 	(storage objdest (begin))
 	(storage objdest-sz (begin))
 	[write-elf asms $symbols objdest objdest-sz obj-buf handler err]
-	(letb (obj [load $objdest $objdest-sz obj-buf handler err])
+	(define (obj [load $objdest $objdest-sz obj-buf handler err])
 	[symbol-offsets-to-addresses asms $symbols obj]
 	{return obj})))))
 
@@ -35,10 +35,10 @@
 	in syms.)
 
 (function load-program-and-mutate (program syms expr-buf obj-buf handler err) (with return (begin
-	(letb (obj [load-program program expr-buf obj-buf handler err])
-	(letb (temp-reg [create-buffer #0 handler err])
-	(letb (ms [mutable-symbols obj temp-reg handler err])
-	(letb (missing-sym [not-subset (function symbol= (sym1 sym2) [str= (@ sym-name sym1) (@ sym-name sym2)]) ms syms])
+	(define (obj [load-program program expr-buf obj-buf handler err])
+	(define (temp-reg [create-buffer #0 handler err])
+	(define (ms [mutable-symbols obj temp-reg handler err])
+	(define (missing-sym [not-subset (function symbol= (sym1 sym2) [str= (@ sym-name sym1) (@ sym-name sym2)]) ms syms])
 	(if [not= missing-sym null-not-subset]
 		(let (missing-sym-name (@ sym-name missing-sym)) (begin
 			[destroy-buffer temp-reg handler err]
@@ -68,7 +68,7 @@
 
 (function read-expressions (fn expr-buf handler err) (with return (substitute (.. expr-buf handler err) (begin
 	(storage src-sz (begin))
-	(letb (src-buf [read-to-buffer fn src-sz ..])
+	(define (src-buf [read-to-buffer fn src-sz ..])
 	(storage pos #0)
 	
 	(nlet loop (expressions nil)
@@ -93,7 +93,7 @@
 	
 	(foreach (src srcv) (begin
 		(storage obj (begin))
-		(letb (dot [strrchr src (char .)])
+		(define (dot [strrchr src (char .)])
 
 		(if (and [not= dot null-strrchr] [str= dot (" .l2)])
 			[set obj [load-program [generate-metaprogram [make-program [read-expressions src expr-buf handler err]
@@ -126,14 +126,14 @@
 				(storage program [make-program [read-expressions infn expr-buf handler err] expr-buf handler err])
 				[pre-visit-expressions vgenerate-metas program (storage _ syms expr-buf handler err)]
 				(storage symbols (begin))
-				(letb (asms [compile-program $program symbols expr-buf handler err])
+				(define (asms [compile-program $program symbols expr-buf handler err])
 				(storage objdest (begin))
 				(storage objdest-sz (begin))
 				[write-elf asms $symbols objdest objdest-sz obj-buf handler err]
-				(letb (outfn [buffer-alloc [+ [strlen infn] #1] obj-buf handler err])
+				(define (outfn [buffer-alloc [+ [strlen infn] #1] obj-buf handler err])
 				[strcpy outfn infn]
 				[strcpy [strrchr outfn (char .)] (" .o)]
-				(letb (fd [create outfn handler err])
+				(define (fd [create outfn handler err])
 				[print fd $objdest $objdest-sz]
 				[close fd handler err]))))
 			(begin)))))
