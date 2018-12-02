@@ -1,5 +1,5 @@
 # L2
-L2 is an attempt to find the smallest most distilled programming language equivalent to C. The goal is to turn as much of C's [control structures](#switch-expression), statements, [literals](#strings), [data structure constructs](#fields), and functions requiring compiler assistance (setjmp, longjmp, [alloca](#examples), [assume](#assume), ...) into things definable inside L2 (with perhaps a little assembly). The language does not surject to all of C, its most glaring omission being that of a type-system. However, I hope the [examples below](#examplesreductions) will convince you that the result is still [pretty interesting](#closures). And if that is not enough, I recommend that you take a look at [the implementation of a self-hosting compiler for L2 that accompanies this project](src/compile.l2) and compare it to [the compiler for bootstrapping it written in C](bootstrap/compile.c).
+L2 is an attempt to find the smallest most distilled programming language equivalent to C. The goal is to turn as much of C's [control structures](#switch-expression), statements, [literals](#strings), [data structure constructs](#fields), and functions requiring compiler assistance (setjmp, longjmp, [assume](#assume), ...) into things definable inside L2 (with perhaps a little assembly). The language does not surject to all of C, its most glaring omission being that of a type-system. However, I hope the [examples below](#examplesreductions) will convince you that the result is still [pretty interesting](#closures). And if that is not enough, I recommend that you take a look at [the implementation of a self-hosting compiler for L2 that accompanies this project](src/compile.l2) and compare it to [the compiler for bootstrapping it written in C](bootstrap/compile.c).
 
 The approach taken to achieve this has been to make C's features more composable, more multipurpose, and, at least on one occasion, add a new feature so that a whole group of distinct features could be dropped. In particular, the most striking changes are that C's:
 1. irregular syntax is replaced by [S-expressions](#internal-representation); because simple syntax composes well with a non-trivial preprocessor (and [no, I have not merely transplanted Common Lisp's macros into C](#expression))
@@ -12,15 +12,15 @@ There are [10 language primitives](#expressions) and for each one of them I desc
 |:--- |:--- |:--- |
 | [Building L2](#building-l2) | [Begin](#begin) | [Commenting](#commenting) |
 | [The Compiler](#the-compiler) | [Literal](#literal) | [Dereferencing](#dereferencing) |
-| **[Syntactic Sugar](#syntactic-sugar)** | [Reference](#reference) | [Numbers](#numbers) |
-| **[Internal Representation](#internal-representation)** | [Storage](#storage) | [Backquoting](#backquoting) |
-| | [If](#if) | [Variable Binding](#variable-binding) |
-| | [Function](#function) | [Boolean Expressions](#boolean-expressions) |
-| | [Invoke](#invoke) | [Switch Expression](#switch-expression) |
-| | [With](#with) | [Characters](#characters) |
-| | [Continuation](#continuation) | [Strings](#strings) |
-| | [Jump](#jump) | [Closures](#closures) |
-| | [Meta](#meta) | [Assume](#assume) |
+| **[Syntactic Sugar](#syntactic-sugar)** | [Storage](#storage) | [Numbers](#numbers) |
+| **[Internal Representation](#internal-representation)** | [If](#if) | [Backquoting](#backquoting) |
+| | [Function](#function) | [Variable Binding](#variable-binding) |
+| | [Invoke](#invoke) | [Boolean Expressions](#boolean-expressions) |
+| | [With](#with) | [Switch Expression](#switch-expression) |
+| | [Continuation](#continuation) | [Characters](#characters) |
+| | [Jump](#jump) | [Strings](#strings) |
+| | [Meta](#meta) | [Closures](#closures) |
+| | | [Assume](#assume) |
 | | | [Fields](#fields) |
 
 ## Getting Started
@@ -40,7 +40,7 @@ L2 projects are composed of two parts: the program and the metaprogram. The prog
 #### Example
 ##### file1.l2
 ```racket
-(function foo (frag buf) [@fst[get frag]])
+(function foo (frag buf) [@fst frag])
 
 ```
 ##### file2.l2
@@ -73,16 +73,6 @@ This expression is implemented by emitting an instruction to `mov` an immediate 
 
 Say the expression `[putchar x]` prints the character `x`. Then `[putchar (literal 0...01100001)]` prints the text "a" to standard output.
 
-### Reference
-```racket
-reference0
-```
-The resulting value is the address in memory to which this reference refers.
-
-This expression is implemented by the emission of an instruction to `lea` of some data into a memory location designated by the surrounding expression.
-
-Say the expression `[get x]` evaluates to the value at the reference `x` and the expression `[set x y]` puts the value `y` into the reference `x`. Then `(begin [set x (literal 0...01100001)] [putchar [get x]])` prints the text "a" to standard output.
-
 ### Storage
 ```racket
 (storage storage0 expression1 expression2 ... expressionN)
@@ -105,13 +95,13 @@ The expression `[putchar (if (literal 0...0) (literal 0...01100001) (literal 0..
 
 ### Function
 ```racket
-(function function0 (reference1 reference2 ... referenceN) expression0)
+(function function0 (param1 param2 ... paramN) expression0)
 ```
-Makes a function to be invoked with exactly `N` arguments. When the function is invoked, `expression0` is evaluated in an environment where `function0` is a reference to the function itself and `reference1`, `reference2`, up to `referenceN` are references to the resulting values of evaluating the corresponding arguments in the invoke expression invoking this function. Once the evaluation is complete, control flow returns to the invoke expression and the invoke expression's resulting value is the resulting value of evaluating `expression0`. The resulting value of this function expression is a reference to the function.
+Makes a function to be invoked with exactly `N` arguments. When the function is invoked, `expression0` is evaluated in an environment where `function0` is a reference to the function itself and `param1`, `param2`, up to `paramN` are the resulting values of evaluating the corresponding arguments in the invoke expression invoking this function. Once the evaluation is complete, control flow returns to the invoke expression and the invoke expression's resulting value is the resulting value of evaluating `expression0`. The resulting value of this function expression is a reference to the function.
 
 This expression is implemented by first emitting an instruction to `mov` the address `function0` (a label to be emitted later) into the memory location designated by the surrounding expression. Then an instruction is emitted to `jmp` to the end of all the instructions that are emitted for this function. Then the label named `function0` is emitted. Then instructions to `push` each callee-saved register onto the stack are emitted. Then an instruction to push the frame-pointer onto the stack is emitted. Then an instruction to move the value of the stack-pointer into the frame-pointer is emitted. Then an instruction to `sub` from the stack-pointer the amount of words reserved on this function's stack-frame is emitted. After this the instructions for `expression0` are emitted with the location of the resulting value fixed to a word within the stack-pointer's drop. After this an instruction is emitted to `mov` the word from this location into the register `eax`. And finally, instructions are emitted to `leave` the current function's stack-frame, `pop` the callee-save registers, and `ret` to the address of the caller.
 
-The expression `[putchar [(function my- (a b) [- [get b] [get a]]) (literal 0...01) (literal 0...01100011)]]` prints the text "b" to standard output.
+The expression `[putchar [(function my- (a b) [- b a]) (literal 0...01) (literal 0...01100011)]]` prints the text "b" to standard output.
 
 ### Invoke
 ```racket
@@ -160,13 +150,13 @@ The following usage of it, `(with dest [allocate (literal 0...011) dest])`, eval
 
 ### Continuation
 ```racket
-(continuation continuation0 (reference1 reference2 ... referenceN) expression0)
+(continuation continuation0 (param1 param2 ... paramN) expression0)
 ```
-Makes a continuation to be `jump`ed to with exactly `N` arguments. When the continuation is `jump`ed to, `expression0` is evaluated in an environment where `continuation0` is a reference to the continuation itself and `reference1`, `reference2`, up to `referenceN` are references to the resulting values of evaluating the corresponding arguments in the `jump` expression `jump`ing to this function. Undefined behavior occurs if the evaluation of `expression0` completes - i.e. programmer must direct the control flow out of `continuation0` somewhere within `expression0`. The resulting value of this `continuation` expression is a reference to the continuation.
+Makes a continuation to be `jump`ed to with exactly `N` arguments. When the continuation is `jump`ed to, `expression0` is evaluated in an environment where `continuation0` is a reference to the continuation itself and `param1`, `param2`, up to `paramN` are the resulting values of evaluating the corresponding arguments in the `jump` expression `jump`ing to this function. Undefined behavior occurs if the evaluation of `expression0` completes - i.e. programmer must direct the control flow out of `continuation0` somewhere within `expression0`. The resulting value of this `continuation` expression is a reference to the continuation.
 
 5+N words must be reserved in the current function's stack-frame plan. Call the reference to the first word of the reservation `continuation0`. This expression is implemented by first emitting an instruction to `mov` the reference `continuation0` into the memory location designated by the surrounding expression. Instructions are then emitted to store the program's state at `continuation0`, that is, instructions are emitted to `mov` `ebp`, the address of the instruction that should be executed after continuing (a label to be emitted later), `edi`, `esi`, and `ebx`, in that order, to the first 5 words at `continuation0`. Then an instruction is emitted to `jmp` to the end of all the instructions that are emitted for this `continuation` expression. Then the label for the first instruction of the continuation is emitted. After this the instructions for `expression0` are emitted.
 
-The expression `{(continuation forever (a b) (begin [putchar [get a]] [putchar [get b]] {forever [- [get a] (literal 0...01)] [- [get b] (literal 0...01)]})) (literal 0...01011010) (literal 0...01111010)}` prints the text "ZzYyXxWw"... to standard output.
+The expression `{(continuation forever (a b) (begin [putchar a] [putchar b] {forever [- a (literal 0...01)] [- b (literal 0...01)]})) (literal 0...01011010) (literal 0...01111010)}` prints the text "ZzYyXxWw"... to standard output.
 
 ### Jump
 ```racket
@@ -198,29 +188,29 @@ After substituting out the syntactic sugar defined in the [invoke](#invoke), [ju
 
 Makes a list where `x` is first and `y` is the rest in the buffer `b`.
 
-Say the fragment `foo` is stored at `a` and the list `(bar)` is stored at `b`. Then `[lst [get a] [get b]]` is the fragment `(foo bar)`.
+Say that `a` is the fragment `foo` and `b` is the list `(bar)`. Then `[lst a b]` is the fragment `(foo bar)`.
 ### `[symbol? x]`
 `x` must be a fragment.
 
 Evaluates to the one if `x` is also a symbol. Otherwise evaluates to zero.
 
-Say the fragment `foo` is stored at `a`. Then `[symbol? [get a]]` evaluates to `(literal 0...01)`.
+Say that `a` is the fragment `foo`. Then `[symbol? a]` evaluates to `(literal 0...01)`.
 ### `[@fst x]`
 `x` must be a list.
 
 Evaluates to the first of `x`.
 
-Say the list `foo` is stored at `a`. Then `[@fst [get a]]` is the character `f`. This `f` is not a list but is a character.
+Say that `a` is the list `foo`. Then `[@fst a]` is the character `f`. This `f` is not a list but is a character.
 ### `[@rst x]`
 `x` must be a list.
 
 Evaluates to a list that is the rest of `x`.
 
-Say the list `foo` is stored at `a`. Then `[@rst [get a]]` is the fragment `oo`.
+Say that `a` is the list `foo`. Then `[@rst a]` is the fragment `oo`.
 ### `emt`
 Evaluates to the empty list.
 
-Say the fragment `foo` is stored at `a`. Then `[lst [get a] emt]` is the fragment `(foo)`.
+Say that `a` is the fragment `foo`. Then `[lst a emt]` is the fragment `(foo)`.
 ### `[emt? x]`
 `x` must be a list.
 
@@ -230,17 +220,17 @@ Evaluates to the one if `x` is the empty list. Otherwise evaluates to zero.
 ### `-<character>-`
 Evaluates to the character `<character>`.
 
-Say that a buffer is stored at `b`. Then the expression `[lst -f- [lst -o- [lst -o- emt [get b]] [get b]] [get b]]` evaluates to the fragment `foo`.
+Say that `b` is a buffer. Then the expression `[lst -f- [lst -o- [lst -o- emt b] b] b]` evaluates to the fragment `foo`.
 ### `[char= x y]`
 `x` and `y` must be characters.
 
 Evaluates to one if `x` is the same character as `y`, otherwise it evaluates to zero.
 
-Say the character `d` is stored at both `x` and `y`. Then `[char= [get x] [get y]]` evaluates to `(literal 0...01)`.
+Say that `x` and `y` are the character `d`. Then `[char= x y]` evaluates to `(literal 0...01)`.
 ### `[begin x b]`
 `x` must be a list of fragments and `b` a buffer.
 
-Evaluates to an fragment formed by prepending the symbol `begin` to `x`. The `begin` function could have the following definition: `(function begin (frags b) [lst [lst -b- [lst -e- [lst -g- [lst -i- [lst -n- emt [get b]] [get b]] [get b]] [get b]] [get b]] [get frags] [get b]])`.
+Evaluates to an fragment formed by prepending the symbol `begin` to `x`. The `begin` function could have the following definition: `(function begin (frags b) [lst [lst -b- [lst -e- [lst -g- [lst -i- [lst -n- emt b] b] b] b] b] frags b])`.
 ### `[literal x b]`, `[storage x b]`, `[if x b]`, `[function x b]`, `[invoke x b]`, `[with x b]`, `[continuation x b]`, `[jump x b]`
 These functions are analogous to `begin`.
 
@@ -415,7 +405,7 @@ The `foo` example in the internal representation section shows how tedious writi
 ```
 
 ### Variable Binding
-Variable binding is enabled by the `continuation` expression. `continuation` is special because, like `function`, it allows references to be bound. Unlike `function`, however, expressions within `continuation` can directly access its parent function's variables. The `let` binding function implements the following transformation:
+Variable binding is enabled by the `continuation` expression. `continuation` is special because, like `function`, it allows identifiers to be bound. Unlike `function`, however, expressions within `continuation` can directly access its parent function's variables. The `let` binding function implements the following transformation:
 ```racket
 (let (params args) ... expr0)
 ->
@@ -464,7 +454,7 @@ It is implemented and used as follows:
 	[what?]
 	[what?]))
 ```
-Note in the above code that `what?` is only able to access `x` because `x` is defined outside of all functions and hence is statically allocated. Also note that L2 permits reference shadowing, so `let` expressions can be nested without worrying, for instance, about the impact of an inner `templet0` on an outer one.
+Note in the above code that `what?` is only able to access `x` because `x` is defined outside of all functions and hence is statically allocated. Also note that L2 permits identifier shadowing, so `let` expressions can be nested without worrying, for instance, about the impact of an inner `templet0` on an outer one.
 
 #### shell
 ```shell
@@ -611,7 +601,7 @@ With `#` implemented, a somewhat more readable implementation of characters is p
 ```
 
 ### Strings
-The above exposition has purposefully avoided making strings because it is tedious to do using only literal and reference arithmetic. The quote function takes a list of symbols and returns the sequence of operations required to write its ascii encoding into memory. (An extension to this rule occurs when instead of a symbol, a fragment that is a list of fragments is encountered. In this case the value of the fragment is taken as the character to be inserted.) These "operations" are essentially reserving enough storage for the bytes of the input, putting the characters into that memory, and returning the address of that memory. Because the stack-frame of a function is destroyed upon its return, strings implemented in this way should not be returned. Quote is implemented below:
+The above exposition has purposefully avoided making strings because it is tedious to individually store each character literal in memory. The quote function takes a list of symbols and returns the sequence of operations required to write its ascii encoding into memory. (An extension to this rule occurs when instead of a symbol, a fragment that is a list of fragments is encountered. In this case the value of the fragment is taken as the character to be inserted.) These "operations" are essentially reserving enough storage for the bytes of the input, putting the characters into that memory, and returning the address of that memory. Because the stack-frame of a function is destroyed upon its return, strings implemented in this way should not be returned. Quote is implemented below:
 
 #### strings.l2
 ```
