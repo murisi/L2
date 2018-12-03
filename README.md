@@ -247,25 +247,25 @@ Meta-expressions were already demonstrated in the [compiler section](#the-compil
 In the extensive list processing that follows in this section, the following functions prove to be convenient abbreviations:
 #### abbreviations.l2
 ```racket
-(function @frst (l) [@fst [@rst [get l]]])
-(function @ffrst (l) [@fst [@frst [get l]]])
-(function @frfrst (l) [@fst [@rst [@frst [get l]]]])
-(function @rrst (l) [@rst [@rst [get l]]])
-(function @rrrst (l) [@rst [@rrst [get l]]])
-(function @rfst (l) [@rst [@fst [get l]]])
-(function @frfst (l) [@fst [@rfst [get l]]])
-(function @frrfst (l) [@fst [@rst [@rfst [get l]]]])
-(function @frrst (l) [@fst [@rst [@rst [get l]]]])
-(function @frrrst (l) [@fst [@rst [@rst [@rst [get l]]]]])
-(function @frrrrst (l) [@fst [@rst [@rst [@rst [@rst [get l]]]]]])
-(function @frrrrrst (l) [@fst [@rst [@rst [@rst [@rst [@rst [get l]]]]]]])
-(function @ffst (l) [@fst [@fst [get l]]])
-(function llst (a b c r) [lst [get a] [lst [get b] [get c] [get r]] [get r]])
-(function lllst (a b c d r) [lst [get a] [llst [get b] [get c] [get d] [get r]] [get r]])
-(function llllst (a b c d e r) [lst [get a] [lllst [get b] [get c] [get d] [get e] [get r]] [get r]])
-(function lllllst (a b c d e f r) [lst [get a] [llllst [get b] [get c] [get d] [get e] [get f] [get r]] [get r]])
-(function llllllst (a b c d e f g r) [lst [get a] [lllllst [get b] [get c] [get d] [get e] [get f] [get g] [get r]] [get r]])
-(function lllllllst (a b c d e f g h r) [lst [get a] [llllllst [get b] [get c] [get d] [get e] [get f] [get g] [get h] [get r]] [get r]])
+(function @frst (l) [@fst [@rst l]])
+(function @ffrst (l) [@fst [@frst l]])
+(function @frfrst (l) [@fst [@rst [@frst l]]])
+(function @rrst (l) [@rst [@rst l]])
+(function @rrrst (l) [@rst [@rrst l]])
+(function @rfst (l) [@rst [@fst l]])
+(function @frfst (l) [@fst [@rfst l]])
+(function @frrfst (l) [@fst [@rst [@rfst l]]])
+(function @frrst (l) [@fst [@rst [@rst l]]])
+(function @frrrst (l) [@fst [@rst [@rst [@rst l]]]])
+(function @frrrrst (l) [@fst [@rst [@rst [@rst [@rst l]]]]])
+(function @frrrrrst (l) [@fst [@rst [@rst [@rst [@rst [@rst l]]]]]])
+(function @ffst (l) [@fst [@fst l]])
+(function llst (a b c r) [lst a [lst b c r] r])
+(function lllst (a b c d r) [lst a [llst b c d r] r])
+(function llllst (a b c d e r) [lst a [lllst b c d e r] r])
+(function lllllst (a b c d e f r) [lst a [llllst b c d e f r] r])
+(function llllllst (a b c d e f g r) [lst a [lllllst b c d e f g r] r])
+(function lllllllst (a b c d e f g h r) [lst a [llllllst b c d e f g h r] r])
 ```
 
 ### Commenting
@@ -273,7 +273,7 @@ L2 has no built-in mechanism for commenting code written in it. The following co
 
 #### comments.l2
 ```racket
-(function ;; (l r) [lst [lllllst -b- -e- -g- -i- -n- emt $r] emt $r])
+(function ;; (l r) [lst [lllllst -b- -e- -g- -i- -n- emt r] emt r])
 ```
 
 #### test1.l2
@@ -292,9 +292,9 @@ So far, we have been writing `[get x]` in order to get the value at the address 
 ```racket
 (function $ (var r)
 	[llst
-		[llllllst -i- -n- -v- -o- -k- -e- emt [get r]]
-		[lllst -g- -e- -t- emt [get r]]
-		[get var][get r]])
+		[llllllst -i- -n- -v- -o- -k- -e- emt r]
+		[lllst -g- -e- -t- emt r]
+		var r])
 ```
 #### test2.l2
 ```racket
@@ -322,35 +322,35 @@ Integer literals prove to be quite tedious in L2 as can be seen from some of the
 (;; Turns an 8-byte value into a literal-expression representation of it.)
 
 (function value->literal (binary r)
-	[lst [lllllllst -l- -i- -t- -e- -r- -a- -l- emt $r]
+	[lst [lllllllst -l- -i- -t- -e- -r- -a- -l- emt r]
 		[lst (with return {(continuation write (count in out)
-				(if $count
-					{write [- $count (literal 0...01)]
-						[>> $in (literal 0...01)]
-						[lst (if [land $in (literal 0...01)]
-							-1- -0-) $out $r]}
-					{return $out}))
-				(literal 0...01000000) $binary emt})
-			emt $r]$r])
+				(if count
+					{write [- count (literal 0...01)]
+						[>> in (literal 0...01)]
+						[lst (if [land in (literal 0...01)]
+							-1- -0-) out r]}
+					{return out}))
+				(literal 0...01000000) binary emt})
+			emt r]r])
 
 (;; Turns the base-10 fragment input into a literal expression.)
 
 (function # (l r) [value->literal
 	(with return {(continuation read (in out)
-		(if [emt? $in]
-			{return $out}
-			{read [@rst $in] [+ [* $out (literal 0...01010)]
-				(if [char= [@fst $in] -9-] (literal 0...01001)
-				(if [char= [@fst $in] -8-] (literal 0...01000)
-				(if [char= [@fst $in] -7-] (literal 0...0111)
-				(if [char= [@fst $in] -6-] (literal 0...0110)
-				(if [char= [@fst $in] -5-] (literal 0...0101)
-				(if [char= [@fst $in] -4-] (literal 0...0100)
-				(if [char= [@fst $in] -3-] (literal 0...011)
-				(if [char= [@fst $in] -2-] (literal 0...010)
-				(if [char= [@fst $in] -1-] (literal 0...01)
+		(if [emt? in]
+			{return out}
+			{read [@rst in] [+ [* out (literal 0...01010)]
+				(if [char= [@fst in] -9-] (literal 0...01001)
+				(if [char= [@fst in] -8-] (literal 0...01000)
+				(if [char= [@fst in] -7-] (literal 0...0111)
+				(if [char= [@fst in] -6-] (literal 0...0110)
+				(if [char= [@fst in] -5-] (literal 0...0101)
+				(if [char= [@fst in] -4-] (literal 0...0100)
+				(if [char= [@fst in] -3-] (literal 0...011)
+				(if [char= [@fst in] -2-] (literal 0...010)
+				(if [char= [@fst in] -1-] (literal 0...01)
 					(literal 0...0))))))))))]}))
-		[@fst $l] (literal 0...0)}) $r])
+		[@fst l] (literal 0...0)}) r])
 ```
 #### test3.l2
 ```racket
@@ -372,28 +372,28 @@ The `foo` example in the internal representation section shows how tedious writi
 ```racket
 (function ` (l r)
 	[(function aux (s t r)
-		(if [emt? $s] [lllst -e- -m- -t- emt $r]
+		(if [emt? s] [lllst -e- -m- -t- emt r]
 
-		(if (if [emt? $s] #0 (if [symbol? $s] #0 (if [emt? [@fst $s]]
-			#0 (if [char= [@ffst $s] -,-] [emt? [@rfst $s]] #0))))
-					[@frst $s]
+		(if (if [emt? s] #0 (if [symbol? s] #0 (if [emt? [@fst s]]
+			#0 (if [char= [@ffst s] -,-] [emt? [@rfst s]] #0))))
+					[@frst s]
 
-		[lllllst [llllllst -i- -n- -v- -o- -k- -e- emt $r]
-			[lllst -l- -s- -t- emt $r]
-				(if [symbol? $s]
-						[lllst --- [@fst $s] --- emt $r]
-						[aux [@fst $s] $t $r])
-					[aux [@rst $s] $t $r] $t emt $r]))) [@fst $l] [@frst $l] $r])
+		[lllllst [llllllst -i- -n- -v- -o- -k- -e- emt r]
+			[lllst -l- -s- -t- emt r]
+				(if [symbol? s]
+						[lllst --- [@fst s] --- emt r]
+						[aux [@fst s] t r])
+					[aux [@rst s] t r] t emt r]))) [@fst l] [@frst l] r])
 ```
 #### anotherfunction.l2:
 ```racket
 (function make-A-function (l r)
-	(` (function A (,emt) [putchar #65]) $r))
+	(` (function A (,emt) [putchar #65]) r))
 ```
 ##### or equivalently
 ```racket
 (function make-A-function (l)
-	(`(function A () [putchar #65])$r))
+	(`(function A () [putchar #65])r))
 ```
 #### test4.l2
 ```racket
@@ -409,47 +409,48 @@ Variable binding is enabled by the `continuation` expression. `continuation` is 
 ```racket
 (let (params args) ... expr0)
 ->
-(with return
-	{(continuation templet0 (params ...)
-		{return expr0}) vals ...})
+(with let:return
+	{(continuation let:aux (params ...) (begin
+		(storage let:storage expr0)
+		{let:return $let:storage})) vals ...})
 ```
 It is implemented and used as follows:
 #### let.l2
 ```racket
-(;; Reverses the given list. $l is the list to be reversed. $r is the buffer into
+(;; Reverses the given list. l is the list to be reversed. r is the buffer into
 	which the reversed list will be put. Return value is the reversed list.)
 
 (function meta:reverse (l r)
 	(with return
 		{(continuation _ (l reversed)
-			(if [emt? $l]
-				{return $reversed}
-				{_ [@rst $l] [lst [@fst $l] $reversed $r]})) $l emt}))
+			(if [emt? l]
+				{return reversed}
+				{_ [@rst l] [lst [@fst l] reversed r]})) l emt}))
 
-(;; Maps the given list using the given function. $l is the list to be mapped. $ctx
-	is always passed as a second argument to the mapper. $mapper is the two argument
-	function that will be supplied a list item as its first argument and $ctx as its
+(;; Maps the given list using the given function. l is the list to be mapped. ctx
+	is always passed as a second argument to the mapper. mapper is the two argument
+	function that will be supplied a list item as its first argument and ctx as its
 	second argument and will return an argument that will be put into the corresponding
-	position of another list. $r is the buffer into which the list being constructed
+	position of another list. r is the buffer into which the list being constructed
 	will be put. Return value is the mapped list.)
 
 (function meta:map (l ctx mapper r)
 	(with return
 		{(continuation aux (in out)
-			(if [emt? $in]
-				{return [meta:reverse $out $r]}
-				{aux [@rst $in] [lst [$mapper [@fst $in] $ctx] $out $r]})) $l emt}))
+			(if [emt? in]
+				{return [meta:reverse out r]}
+				{aux [@rst in] [lst [mapper [@fst in] ctx] out r]})) l emt}))
 
 (function let (l r)
 	(`(with let:return
-		(,[llst (` jump $r) (`(continuation let:aux
-			(,[meta:map [@rst [meta:reverse $l $r]] (null) @fst $r])
-			{let:return (,[@fst [meta:reverse $l $r]])}) $r) [meta:map [@rst [meta:reverse $l $r]] (null) @frst $r] $r])) $r))
+		(,[llst (` jump r) (`(continuation let:aux (,[meta:map [@rst [meta:reverse l r]] (begin) @fst r]) (begin
+			(storage let:storage (,[@fst [meta:reverse l r]]))
+			{let:return $let:storage})) r) [meta:map [@rst [meta:reverse l r]] (begin) @frst r] r])) r))
 ```
 #### test5.l2
 ```
 (let (x #12) (begin
-	(function what? () [printf (" x is %i) $x])
+	(function what? () [printf (" x is %i) x])
 	[what?]
 	[what?]
 	[what?]))
@@ -470,25 +471,25 @@ The Boolean literals true and false are achieved using macros that return the sa
 
 (or expr1 expr2 ... exprN)
 ->
-(let (or:temp expr1) (if $or:temp
-	$or:temp
-	(let (or:temp expr2) (if $or:temp
-		$or:temp
+(let (or:temp expr1) (if or:temp
+	or:temp
+	(let (or:temp expr2) (if or:temp
+		or:temp
 		...
-			(let (or:temp exprN) (if $or:temp
-				$or:temp
+			(let (or:temp exprN) (if or:temp
+				or:temp
 				(false)))))))
 
 (and expr1 expr2 ... exprN)
 ->
-(let (and:temp expr1) (if $and:temp
-	(let (and:temp expr2) (if $and:temp
+(let (and:temp expr1) (if and:temp
+	(let (and:temp expr2) (if and:temp
 		...
-			(let (and:temp exprN) (if $and:temp
+			(let (and:temp exprN) (if and:temp
 				(true)
-				$and:temp))
-		$and:temp))
-	$and:temp))
+				and:temp))
+		and:temp))
+	and:temp))
 
 (not expr1)
 ->
@@ -497,27 +498,27 @@ The Boolean literals true and false are achieved using macros that return the sa
 These transformations are implemented and used as follows:
 #### boolean.l2
 ```racket
-(function mk# (r value) [value->literal $value $r])
+(function mk# (r value) [value->literal value r])
 
-(function false (l r) [mk# $r #0])
+(function false (l r) [mk# r #0])
 
-(function true (l r) [mk# $r #1])
+(function true (l r) [mk# r #1])
 
 (function or (l r) (with return
 	{(continuation loop (l sexpr)
-			(if [emt? $l]
-				{return $sexpr}
-				{loop [@rst $l] (`(let (or:temp (,[@fst $l])) (if $or:temp $or:temp (, $sexpr $r)))$r)}))
-		[meta:reverse $l $r] (`(false)$r)}))
+			(if [emt? l]
+				{return sexpr}
+				{loop [@rst l] (`(let (or:temp (,[@fst l])) (if or:temp or:temp (, sexpr r)))r)}))
+		[meta:reverse l r] (`(false)r)}))
 
 (function and (l r) (with return
 	{(continuation loop (l sexpr)
-			(if [emt? $l]
-				{return $sexpr}
-				{loop [@rst $l] (`(let (and:temp (,[@fst $l])) (if $and:temp (, $sexpr $r) $and:temp))$r)}))
-		[meta:reverse $l $r] (`(true)$r)}))
+			(if [emt? l]
+				{return sexpr}
+				{loop [@rst l] (`(let (and:temp (,[@fst l])) (if and:temp (, sexpr r) and:temp))r)}))
+		[meta:reverse l r] (`(true)r)}))
 
-(function not (l r) (`(if (,[@fst $l]) (false) (true))$r))
+(function not (l r) (`(if (,[@fst l]) (false) (true))r))
 ```
 #### test6.l2
 ```racket
@@ -534,12 +535,12 @@ Now we will implement a variant of the switch statement that is parameterized by
 (switch eq0 val0 (vals exprs) ... expr0)
 ->
 (let (tempeq0 eq0) (tempval0 val0)
-	(if [[' tempeq0] [' tempval0] vals1]
+	(if [tempeq0 tempval0 vals1]
 		exprs1
-		(if [[' tempeq0] [' tempval0] vals2]
+		(if [tempeq0 tempval0 vals2]
 			exprs2
 			...
-				(if [[' tempeq0] [' tempval0] valsN]
+				(if [tempeq0 tempval0 valsN]
 					exprsN
 					expr0))))
 ```
@@ -547,16 +548,16 @@ It is implemented and used as follows:
 #### switch.l2
 ```racket
 (function switch (l r)
-	(`(let (switch:= (,[@fst $l])) (switch:val (,[@frst $l]))
+	(`(let (switch:= (,[@fst l])) (switch:val (,[@frst l]))
 		(,(with return
 			{(continuation aux (remaining else-clause)
-				(if [emt? $remaining]
-					{return $else-clause}
-					{aux [@rst $remaining]
-						(`(if (,[lst (` or $r) [meta:map [@rst [meta:reverse [@fst $remaining] $r]] $r
-								(function _ (e r) [llllst (` invoke $r) (` $switch:= $r) (` $switch:val $r) $e emt $r]) $r] $r])
-							(,[@fst [meta:reverse [@fst $remaining] $r]]) ,$else-clause) $r)}))
-				[@rst [meta:reverse [@rrst $l] $r]] [@fst [meta:reverse $l $r]]})))$r))
+				(if [emt? remaining]
+					{return else-clause}
+					{aux [@rst remaining]
+						(`(if (,[lst (` or r) [meta:map [@rst [meta:reverse [@fst remaining] r]] r
+								(function _ (e r) [llllst (` invoke r) (` switch:= r) (` switch:val r) e emt r]) r] r])
+							(,[@fst [meta:reverse [@fst remaining] r]]) ,else-clause) r)}))
+				[@rst [meta:reverse [@rrst l] r]] [@fst [meta:reverse l r]]})))r))
 ```
 #### test7.l2
 ```
@@ -576,20 +577,20 @@ With `#` implemented, a somewhat more readable implementation of characters is p
 
 #### characters.l2
 ```
-(function char (l r) (switch char= [@ffst $l]
-	(-!- (` #33 $r)) (-"- (` #34 $r)) (-#- (` #35 $r)) (-$- (` #36 $r)) (-%- (` #37 $r)) (-&- (` #38 $r)) (-'- (` #39 $r))
-	(-*- (` #42 $r)) (-+- (` #43 $r)) (-,- (` #44 $r)) (--- (` #45 $r)) (-.- (` #46 $r)) (-/- (` #47 $r)) (-0- (` #48 $r))
-	(-1- (` #49 $r)) (-2- (` #50 $r)) (-3- (` #51 $r)) (-4- (` #52 $r)) (-5- (` #53 $r)) (-6- (` #54 $r)) (-7- (` #55 $r))
-	(-8- (` #56 $r)) (-9- (` #57 $r)) (-:- (` #58 $r)) (-;- (` #59 $r)) (-<- (` #60 $r)) (-=- (` #61 $r)) (->- (` #62 $r))
-	(-?- (` #63 $r)) (-@- (` #64 $r)) (-A- (` #65 $r)) (-B- (` #66 $r)) (-C- (` #67 $r)) (-D- (` #68 $r)) (-E- (` #69 $r))
-	(-F- (` #70 $r)) (-G- (` #71 $r)) (-H- (` #72 $r)) (-I- (` #73 $r)) (-J- (` #74 $r)) (-K- (` #75 $r)) (-L- (` #76 $r))
-	(-M- (` #77 $r)) (-N- (` #78 $r)) (-O- (` #79 $r)) (-P- (` #80 $r)) (-Q- (` #81 $r)) (-R- (` #82 $r)) (-S- (` #83 $r))
-	(-T- (` #84 $r)) (-U- (` #85 $r)) (-V- (` #86 $r)) (-W- (` #87 $r)) (-X- (` #88 $r)) (-Y- (` #89 $r)) (-Z- (` #90 $r))
-	(-\- (` #92 $r)) (-^- (` #94 $r)) (-_- (` #95 $r)) (-`- (` #96 $r)) (-a- (` #97 $r)) (-b- (` #98 $r)) (-c- (` #99 $r))
-	(-d- (` #100 $r)) (-e- (` #101 $r)) (-f- (` #102 $r)) (-g- (` #103 $r)) (-h- (` #104 $r)) (-i- (` #105 $r)) (-j- (` #106 $r))
-	(-k- (` #107 $r)) (-l- (` #108 $r)) (-m- (` #109 $r)) (-n- (` #110 $r)) (-o- (` #111 $r)) (-p- (` #112 $r)) (-q- (` #113 $r))
-	(-r- (` #114 $r)) (-s- (` #115 $r)) (-t- (` #116 $r)) (-u- (` #117 $r)) (-v- (` #118 $r)) (-w- (` #119 $r)) (-x- (` #120 $r))
-	(-y- (` #121 $r)) (-z- (` #122 $r)) (-|- (` #124 $r)) (-~- (` #126 $r)) (` #0 $r)))
+(function char (l r) (switch char= [@ffst l]
+	(-!- (` #33 r)) (-"- (` #34 r)) (-#- (` #35 r)) (-$- (` #36 r)) (-%- (` #37 r)) (-&- (` #38 r)) (-'- (` #39 r))
+	(-*- (` #42 r)) (-+- (` #43 r)) (-,- (` #44 r)) (--- (` #45 r)) (-.- (` #46 r)) (-/- (` #47 r)) (-0- (` #48 r))
+	(-1- (` #49 r)) (-2- (` #50 r)) (-3- (` #51 r)) (-4- (` #52 r)) (-5- (` #53 r)) (-6- (` #54 r)) (-7- (` #55 r))
+	(-8- (` #56 r)) (-9- (` #57 r)) (-:- (` #58 r)) (-;- (` #59 r)) (-<- (` #60 r)) (-=- (` #61 r)) (->- (` #62 r))
+	(-?- (` #63 r)) (-@- (` #64 r)) (-A- (` #65 r)) (-B- (` #66 r)) (-C- (` #67 r)) (-D- (` #68 r)) (-E- (` #69 r))
+	(-F- (` #70 r)) (-G- (` #71 r)) (-H- (` #72 r)) (-I- (` #73 r)) (-J- (` #74 r)) (-K- (` #75 r)) (-L- (` #76 r))
+	(-M- (` #77 r)) (-N- (` #78 r)) (-O- (` #79 r)) (-P- (` #80 r)) (-Q- (` #81 r)) (-R- (` #82 r)) (-S- (` #83 r))
+	(-T- (` #84 r)) (-U- (` #85 r)) (-V- (` #86 r)) (-W- (` #87 r)) (-X- (` #88 r)) (-Y- (` #89 r)) (-Z- (` #90 r))
+	(-\- (` #92 r)) (-^- (` #94 r)) (-_- (` #95 r)) (-`- (` #96 r)) (-a- (` #97 r)) (-b- (` #98 r)) (-c- (` #99 r))
+	(-d- (` #100 r)) (-e- (` #101 r)) (-f- (` #102 r)) (-g- (` #103 r)) (-h- (` #104 r)) (-i- (` #105 r)) (-j- (` #106 r))
+	(-k- (` #107 r)) (-l- (` #108 r)) (-m- (` #109 r)) (-n- (` #110 r)) (-o- (` #111 r)) (-p- (` #112 r)) (-q- (` #113 r))
+	(-r- (` #114 r)) (-s- (` #115 r)) (-t- (` #116 r)) (-u- (` #117 r)) (-v- (` #118 r)) (-w- (` #119 r)) (-x- (` #120 r))
+	(-y- (` #121 r)) (-z- (` #122 r)) (-|- (` #124 r)) (-~- (` #126 r)) (` #0 r)))
 ```
 #### test8.l2
 ```racket
@@ -607,32 +608,32 @@ The above exposition has purposefully avoided making strings because it is tedio
 ```
 (function " (l r) (with return
 	{(continuation add-word (str index instrs)
-		(if [emt? $str]
+		(if [emt? str]
 			{return (`(with dquote:return
-				(,[llst (` begin $r) [llst (` storage $r) (` dquote:str $r)
+				(,[llst (` begin r) [llst (` storage r) (` dquote:str r)
 						(with return {(continuation _ (phs num)
-							(if $num
-								{_ [lst (` #0 $r) $phs $r] [- $num #1]}
-								{return $phs})) emt [+[/ $index (unit)]#1]}) $r]
-					[meta:reverse [lst (`{dquote:return dquote:str}$r) $instrs $r]$r]$r]))$r)}
+							(if num
+								{_ [lst (` #0 r) phs r] [- num #1]}
+								{return phs})) emt [+[/ index (unit)]#1]}) r]
+					[meta:reverse [lst (`{dquote:return dquote:str}r) instrs r]r]r]))r)}
 		
-		(if (and [emt? [@fst $str]] [emt? [@rst $str]])
-			{add-word [@rst $str] [+ $index #1]
-				[lst (`[setb [+ dquote:str (,[value->literal $index $r])] #0]$r) $instrs $r]}
+		(if (and [emt? [@fst str]] [emt? [@rst str]])
+			{add-word [@rst str] [+ index #1]
+				[lst (`[setb [+ dquote:str (,[value->literal index r])] #0]r) instrs r]}
 				
-		(if (and [emt? [@fst $str]] [symbol? [@frst $str]])
-			{add-word [@rst $str] [+ $index #1]
-				[lst (`[setb [+ dquote:str (,[value->literal $index $r])] #32]$r) $instrs $r]}
+		(if (and [emt? [@fst str]] [symbol? [@frst str]])
+			{add-word [@rst str] [+ index #1]
+				[lst (`[setb [+ dquote:str (,[value->literal index r])] #32]r) instrs r]}
 		
-		(if [emt? [@fst $str]] {add-word [@rst $str] $index $instrs}
+		(if [emt? [@fst str]] {add-word [@rst str] index instrs}
 				
-		(if [symbol? [@fst $str]]
-			{add-word [lst [@rfst $str] [@rst $str] $r] [+ $index #1]
-				[lst (`[setb [+ dquote:str (,[value->literal $index $r])]
-					(,[char [lst [lst [@ffst $str] emt $r] emt $r]$r emt])]$r) $instrs $r]}
+		(if [symbol? [@fst str]]
+			{add-word [lst [@rfst str] [@rst str] r] [+ index #1]
+				[lst (`[setb [+ dquote:str (,[value->literal index r])]
+					(,[char [lst [lst [@ffst str] emt r] emt r]r emt])]r) instrs r]}
 			
-			{add-word [@rst $str] [+ $index #1]
-				[lst (`[setb [+ dquote:str (,[value->literal $index $r])] (,[@fst $str])]$r) $instrs $r]})))))) $l #0 emt}))
+			{add-word [@rst str] [+ index #1]
+				[lst (`[setb [+ dquote:str (,[value->literal index r])] (,[@fst str])]r) instrs r]})))))) l #0 emt}))
 ```
 #### test9.l2
 ```
@@ -649,7 +650,7 @@ A restricted form of closures can be implemented in L2. The key to their impleme
 (lambda (args ...) expr0)
 ->
 (continuation lambda0 (cont0 args ...)
-	{$cont0 expr0})
+	{cont0 expr0})
 
 (; func0 args ...)
 ->
@@ -663,25 +664,25 @@ These are implemented and used as follows:
 #### closures.l2
 ```racket
 (function lambda (l r)
-	(`(continuation lambda0 (,[lst (` cont0 $r) [@fst $l] $r])
-		{$cont0 (,[@frst $l])})$r))
+	(`(continuation lambda0 (,[lst (` cont0 r) [@fst l] r])
+		{cont0 (,[@frst l])})r))
 
 (function ; (l r)
-	(`(with semicolon:return (,[lllst (` invoke $r) [@fst $l] (` semicolon:return $r) [@rst $l] $r]))$r))
+	(`(with semicolon:return (,[lllst (` invoke r) [@fst l] (` semicolon:return r) [@rst l] r]))r))
 
 (function : (l r)
-	(`(with colon:return (,[lllst (` jump $r) [@fst $l] (` colon:return $r) [@rst $l] $r]))$r))
+	(`(with colon:return (,[lllst (` jump r) [@fst l] (` colon:return r) [@rst l] r]))r))
 ```
 #### test10.l2
 ```
 (function adder (cont x)
-	{$cont (lambda (y) [+ $x $y])})
+	{cont (lambda (y) [+ x y])})
 
 (let (add5 (; adder #5)) (add7 (; adder #7))
 	(begin
-		[printf (" %i,) (: $add5 #2)]
-		[printf (" %i,) (: $add7 #3)]
-		[printf (" %i,) (: $add5 #1)]))
+		[printf (" %i,) (: add5 #2)]
+		[printf (" %i,) (: add7 #3)]
+		[printf (" %i,) (: add5 #1)]))
 ```
 #### shell
 ```shell
@@ -703,19 +704,19 @@ This is implemented as follows:
 (function assume (l r)
 	(`(with assume:return
 		{(continuation assume:tempas0 ()
-			(if (,[@fst $l]) {assume:return (,[@frst $l])} (begin)))})$r))
+			(if (,[@fst l]) {assume:return (,[@frst l])} (begin)))})r))
 ```
 #### test11.l2
 ```
 (function foo (x y)
-	(assume [not [= $x $y]] (begin
-		[setb $x (char A)]
-		[setb $y (char B)]
-		[printf (" %c) [getb $x]])))
+	(assume [not [= x y]] (begin
+		[setb x (char A)]
+		[setb y (char B)]
+		[printf (" %c) [getb x]])))
 
 [foo (" C) (" D)]
 ```
-In the function `foo`, if `$x` were equal to `$y`, then the else branch of the `assume`'s `if` expression would be taken. Since this branch does nothing, `continuation`'s body expression would finish evaluating. But this is the undefined behavior stated in [the first paragraph of the description of the `continuation` expression](#continuation). Therefore an L2 compiler does not have to worry about what happens in the case that `$x` equals `$y`. In light of this and the fact that the `if` condition is pure, the whole `assume` expression can be replaced with the first branch of `assume`'s `if`  expression. And more importantly, the the first branch of `assume`'s `if` expression can be optimized assuming that `$x` is not equal to `$y`. Therefore, a hypothetical optimizing compiler would also replace the last `[getb $x]`, a load from memory, with `(char A)`, a constant.
+In the function `foo`, if `x` were equal to `y`, then the else branch of the `assume`'s `if` expression would be taken. Since this branch does nothing, `continuation`'s body expression would finish evaluating. But this is the undefined behavior stated in [the first paragraph of the description of the `continuation` expression](#continuation). Therefore an L2 compiler does not have to worry about what happens in the case that `x` equals `y`. In light of this and the fact that the `if` condition is pure, the whole `assume` expression can be replaced with the first branch of `assume`'s `if`  expression. And more importantly, the the first branch of `assume`'s `if` expression can be optimized assuming that `x` is not equal to `y`. Therefore, a hypothetical optimizing compiler would also replace the last `[getb x]`, a load from memory, with `(char A)`, a constant.
 
 #### shell
 ```shell
@@ -804,47 +805,47 @@ Why? Because if we define the macro `car` by the transformation `(car expr0 expr
 To recapitulate, we localized and separated out the definition of a field from the various operations that can be done on it. Since dozens of fields can potentially be used in a program, it makes sense to define a helper function, `mk-field`, that creates them. What follows is the implementation of this helper function and the aforementioned transformations:
 #### fields.l2
 ```racket
-(function offset-of (l r) (`((,[@fst $l]) offset-of-aux)$r))
+(function offset-of (l r) (`((,[@fst l]) offset-of-aux)r))
 
-(function offset-of-aux (l r) [@fst $l])
+(function offset-of-aux (l r) [@fst l])
 
-(function size-of (l r) (`((,[@fst $l]) size-of-aux)$r))
+(function size-of (l r) (`((,[@fst l]) size-of-aux)r))
 
-(function size-of-aux (l r) [@frst $l])
+(function size-of-aux (l r) [@frst l])
 
-(function getter-of (l r) (`((,[@fst $l]) getter-of-aux)$r))
+(function getter-of (l r) (`((,[@fst l]) getter-of-aux)r))
 
-(function getter-of-aux (l r) [@frrst $l])
+(function getter-of-aux (l r) [@frrst l])
 
-(function setter-of (l r) (`((,[@fst $l]) setter-of-aux)$r))
+(function setter-of (l r) (`((,[@fst l]) setter-of-aux)r))
 
-(function setter-of-aux (l r) [@frrrst $l])
+(function setter-of-aux (l r) [@frrrst l])
 
-(function & (l r) (`((,[@fst $l]) &-aux (,[@frst $l]))$r))
+(function & (l r) (`((,[@fst l]) &-aux (,[@frst l]))r))
 
-(function &-aux (l r) (`[+ (,[@frrrrst $l]) (,[@fst $l])]$r))
+(function &-aux (l r) (`[+ (,[@frrrrst l]) (,[@fst l])]r))
 
-(function @ (l r) (`((,[@fst $l]) @-aux (,[@frst $l]))$r))
+(function @ (l r) (`((,[@fst l]) @-aux (,[@frst l]))r))
 
-(function @-aux (l r) (`[(,[@frrst $l]) [+ (,[@frrrrst $l]) (,[@fst $l])]]$r))
+(function @-aux (l r) (`[(,[@frrst l]) [+ (,[@frrrrst l]) (,[@fst l])]]r))
 
-(function setf (l r) (`((,[@fst $l]) setf-aux (,[@frst $l]) (,[@frrst $l]))$r))
+(function setf (l r) (`((,[@fst l]) setf-aux (,[@frst l]) (,[@frrst l]))r))
 
-(function setf-aux (l r) (`[(,[@frrrst $l]) [+ (,[@frrrrst $l]) (,[@fst $l])] (,[@frrrrrst $l])]$r))
+(function setf-aux (l r) (`[(,[@frrrst l]) [+ (,[@frrrrst l]) (,[@fst l])] (,[@frrrrrst l])]r))
 
 (function mk-field (l r offset size)
-	[lllllst [@fst $l] [value->literal $offset $r] [value->literal $size $r]
-		(switch = $size (#1 (` get1b $r)) (#2 (` get2b $r)) (#4 (` get4b $r)) (#8 (` get8b $r)) (`(null)$r))
-		(switch = $size (#1 (` set1b $r)) (#2 (` set2b $r)) (#4 (` set4b $r)) (#8 (` set8b $r)) (`(null)$r))
-		[@rst $l] $r])
+	[lllllst [@fst l] [value->literal offset r] [value->literal size r]
+		(switch = size (#1 (` get1b r)) (#2 (` get2b r)) (#4 (` get4b r)) (#8 (` get8b r)) (`(begin)r))
+		(switch = size (#1 (` set1b r)) (#2 (` set2b r)) (#4 (` set4b r)) (#8 (` set8b r)) (`(begin)r))
+		[@rst l] r])
 ```
 #### somefields.l2
 ```racket
-(function cons-cell (l r) [mk# $r #16])
+(function cons-cell (l r) [mk# r #16])
 
-(function car (l r) [mk-field $l $r #0 #8])
+(function car (l r) [mk-field l r #0 #8])
 
-(function cdr (l r) [mk-field $l $r #8 #8])
+(function cdr (l r) [mk-field l r #8 #8])
 ```
 #### test12.l2
 ```racket
