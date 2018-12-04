@@ -181,7 +181,7 @@ For example, the expression `$$hello$bye` turns into `($ $hello$bye)` which turn
 Analogous transformations to the one for `$a1...aN` happen.
 
 ## Internal Representation
-After substituting out the syntactic sugar defined in the [invoke](#invoke), [jump](#jump), and [syntactic sugar](#syntactic-sugar) sections, we find that all L2 programs are just fragments where a fragment is either a symbol or a list of fragments. And furthermore, every symbol can be seen as a list of its characters so that for example `foo` becomes `(f o o)`. The following functions that manipulate these fragments are not part of the L2 language and hence the compiler does not give references to them special treatment during compilation. However, when they are used in an L2 meta-program, undefined references to these functions are to be resolved by the compiler.
+After substituting out the syntactic sugar defined in the [invoke](#invoke), [jump](#jump), and [syntactic sugar](#syntactic-sugar) sections, we find that all L2 programs are just fragments where a fragment is either a token or a list of fragments. And furthermore, every token can be seen as a list of its characters so that for example `foo` becomes `(f o o)`. The following functions that manipulate these fragments are not part of the L2 language and hence the compiler does not give references to them special treatment during compilation. However, when they are used in an L2 meta-program, undefined references to these functions are to be resolved by the compiler.
 
 ### `[lst x y b]`
 `y` must be a list and `b` a buffer.
@@ -189,12 +189,12 @@ After substituting out the syntactic sugar defined in the [invoke](#invoke), [ju
 Makes a list where `x` is first and `y` is the rest in the buffer `b`.
 
 Say that `a` is the fragment `foo` and `b` is the list `(bar)`. Then `[lst a b]` is the fragment `(foo bar)`.
-### `[symbol? x]`
+### `[token? x]`
 `x` must be a fragment.
 
-Evaluates to the one if `x` is also a symbol. Otherwise evaluates to zero.
+Evaluates to the one if `x` is also a token. Otherwise evaluates to zero.
 
-Say that `a` is the fragment `foo`. Then `[symbol? a]` evaluates to `(literal 0...01)`.
+Say that `a` is the fragment `foo`. Then `[token? a]` evaluates to `(literal 0...01)`.
 ### `[@fst x]`
 `x` must be a list.
 
@@ -230,7 +230,7 @@ Say that `x` and `y` are the character `d`. Then `[char= x y]` evaluates to `(li
 ### `[begin x b]`
 `x` must be a list of fragments and `b` a buffer.
 
-Evaluates to an fragment formed by prepending the symbol `begin` to `x`. The `begin` function could have the following definition: `(function begin (frags b) [lst [lst -b- [lst -e- [lst -g- [lst -i- [lst -n- emt b] b] b] b] b] frags b])`.
+Evaluates to an fragment formed by prepending the token `begin` to `x`. The `begin` function could have the following definition: `(function begin (frags b) [lst [lst -b- [lst -e- [lst -g- [lst -i- [lst -n- emt b] b] b] b] b] frags b])`.
 ### `[literal x b]`, `[storage x b]`, `[if x b]`, `[function x b]`, `[invoke x b]`, `[with x b]`, `[continuation x b]`, `[jump x b]`
 These functions are analogous to `begin`.
 
@@ -315,7 +315,7 @@ So far, we have been writing `[get x]` in order to get the value at the address 
 Note that in the above code that `a` and `c` have global scope. This is because the storage expressions are top-level.
 
 ### Numbers
-Integer literals prove to be quite tedious in L2 as can be seen from some of the examples in the expressions section. The following function, `#`, implements decimal arithmetic for x86-64 by reading in a symbol in base 10 and writing out the equivalent fragment in base 2:
+Integer literals prove to be quite tedious in L2 as can be seen from some of the examples in the expressions section. The following function, `#`, implements decimal arithmetic for x86-64 by reading in a token in base 10 and writing out the equivalent fragment in base 2:
 
 #### numbers64.l2
 ```racket
@@ -366,7 +366,7 @@ Integer literals prove to be quite tedious in L2 as can be seen from some of the
 ```
 
 ### Backquoting
-The `foo` example in the internal representation section shows how tedious writing a function that outputs a symbol can be. The backquote function reduces this tedium. It takes a fragment and a buffer as its argument and, generally, it returns a fragment that makes that fragment. The exception to this rule is that if a sub-expression of its input fragment is of the form `(, expr0)`, then the fragment `expr0` is inserted verbatim into that position of the output fragment. Backquote can be implemented and used as follows:
+The `foo` example in the internal representation section shows how tedious writing a function that outputs a token can be. The backquote function reduces this tedium. It takes a fragment and a buffer as its argument and, generally, it returns a fragment that makes that fragment. The exception to this rule is that if a sub-expression of its input fragment is of the form `(, expr0)`, then the fragment `expr0` is inserted verbatim into that position of the output fragment. Backquote can be implemented and used as follows:
 
 #### backquote.l2
 ```racket
@@ -374,13 +374,13 @@ The `foo` example in the internal representation section shows how tedious writi
 	[(function aux (s t r)
 		(if [emt? s] [lllst -e- -m- -t- emt r]
 
-		(if (if [emt? s] #0 (if [symbol? s] #0 (if [emt? [@fst s]]
+		(if (if [emt? s] #0 (if [token? s] #0 (if [emt? [@fst s]]
 			#0 (if [char= [@ffst s] -,-] [emt? [@rfst s]] #0))))
 					[@frst s]
 
 		[lllllst [llllllst -i- -n- -v- -o- -k- -e- emt r]
 			[lllst -l- -s- -t- emt r]
-				(if [symbol? s]
+				(if [token? s]
 						[lllst --- [@fst s] --- emt r]
 						[aux [@fst s] t r])
 					[aux [@rst s] t r] t emt r]))) [@fst l] [@frst l] r])
@@ -573,7 +573,7 @@ It is implemented and used as follows:
 ```
 
 ### Characters
-With `#` implemented, a somewhat more readable implementation of characters is possible. The `char` function takes a singleton list containing a symbol of one character and returns its ascii encoding using the `#` expression. Its implementation and use follows:
+With `#` implemented, a somewhat more readable implementation of characters is possible. The `char` function takes a singleton list containing a token of one character and returns its ascii encoding using the `#` expression. Its implementation and use follows:
 
 #### characters.l2
 ```
@@ -602,7 +602,7 @@ With `#` implemented, a somewhat more readable implementation of characters is p
 ```
 
 ### Strings
-The above exposition has purposefully avoided making strings because it is tedious to individually store each character literal in memory. The quote function takes a list of symbols and returns the sequence of operations required to write its ascii encoding into memory. (An extension to this rule occurs when instead of a symbol, a fragment that is a list of fragments is encountered. In this case the value of the fragment is taken as the character to be inserted.) These "operations" are essentially reserving enough storage for the bytes of the input, putting the characters into that memory, and returning the address of that memory. Because the stack-frame of a function is destroyed upon its return, strings implemented in this way should not be returned. Quote is implemented below:
+The above exposition has purposefully avoided making strings because it is tedious to individually store each character literal in memory. The quote function takes a list of tokens and returns the sequence of operations required to write its ascii encoding into memory. (An extension to this rule occurs when instead of a token, a fragment that is a list of fragments is encountered. In this case the value of the fragment is taken as the character to be inserted.) These "operations" are essentially reserving enough storage for the bytes of the input, putting the characters into that memory, and returning the address of that memory. Because the stack-frame of a function is destroyed upon its return, strings implemented in this way should not be returned. Quote is implemented below:
 
 #### strings.l2
 ```
@@ -621,13 +621,13 @@ The above exposition has purposefully avoided making strings because it is tedio
 			{add-word [@rst str] [+ index #1]
 				[lst (`[setb [+ dquote:str (,[value->literal index r])] #0]r) instrs r]}
 				
-		(if (and [emt? [@fst str]] [symbol? [@frst str]])
+		(if (and [emt? [@fst str]] [token? [@frst str]])
 			{add-word [@rst str] [+ index #1]
 				[lst (`[setb [+ dquote:str (,[value->literal index r])] #32]r) instrs r]}
 		
 		(if [emt? [@fst str]] {add-word [@rst str] index instrs}
 				
-		(if [symbol? [@fst str]]
+		(if [token? [@fst str]]
 			{add-word [lst [@rfst str] [@rst str] r] [+ index #1]
 				[lst (`[setb [+ dquote:str (,[value->literal index r])]
 					(,[char [lst [lst [@ffst str] emt r] emt r]r emt])]r) instrs r]}
