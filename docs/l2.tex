@@ -1,3 +1,4 @@
+% pandoc -s -f markdown_github -t latex --tab-stop 2 -o l2.tex README.md
 % produced using Pandoc - strongly recommended
 \PassOptionsToPackage{unicode=true}{hyperref} % options for packages loaded elsewhere
 \PassOptionsToPackage{hyphens}{url}
@@ -11,32 +12,33 @@
 \ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
   \usepackage[T1]{fontenc}
   \usepackage[utf8]{inputenc}
-  \usepackage{textcomp} % provides euro and other symbols
 \else % if luatex or xelatex
-  \usepackage{unicode-math}
+  \ifxetex
+    \usepackage{mathspec}
+  \else
+    \usepackage{fontspec}
+  \fi
   \defaultfontfeatures{Ligatures=TeX,Scale=MatchLowercase}
 \fi
 % use upquote if available, for straight quotes in verbatim environments
 \IfFileExists{upquote.sty}{\usepackage{upquote}}{}
 % use microtype if available
 \IfFileExists{microtype.sty}{%
-\usepackage[]{microtype}
+\usepackage{microtype}
 \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
 }{}
+\usepackage[unicode=true]{hyperref}
+\hypersetup{
+            pdfborder={0 0 0},
+            breaklinks=true}
+\urlstyle{same}  % don't use monospace font for urls
+\usepackage{longtable,booktabs}
 \IfFileExists{parskip.sty}{%
 \usepackage{parskip}
 }{% else
 \setlength{\parindent}{0pt}
 \setlength{\parskip}{6pt plus 2pt minus 1pt}
 }
-\usepackage{hyperref}
-\hypersetup{
-            pdfborder={0 0 0},
-            breaklinks=true}
-\urlstyle{same}  % don't use monospace font for urls
-\usepackage{longtable,booktabs}
-% Fix footnotes in tables (requires footnote package)
-\IfFileExists{footnote.sty}{\usepackage{footnote}\makesavenoteenv{longtable}}{}
 \setlength{\emergencystretch}{3em}  % prevent overfull lines
 \providecommand{\tightlist}{%
   \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
@@ -51,35 +53,28 @@
 \renewcommand{\subparagraph}[1]{\oldsubparagraph{#1}\mbox{}}
 \fi
 
-% set default figure placement to htbp
-\makeatletter
-\def\fps@figure{htbp}
-\makeatother
-
-
 \date{}
 
 \begin{document}
 
-\hypertarget{l2}{%
-\section{L2}\label{l2}}
+\section{L2}\label{l2}
 
 L2 is an attempt to find the smallest most distilled programming
 language equivalent to C. The goal is to turn as much of C's
 \protect\hyperlink{switch-expression}{control structures}, statements,
 \protect\hyperlink{strings}{literals}, \protect\hyperlink{fields}{data
 structure constructs}, and functions requiring compiler assistance
-(setjmp, longjmp, \protect\hyperlink{examples}{alloca},
-\protect\hyperlink{assume}{assume}, ...) into things definable inside L2
-(with perhaps a little assembly). The language does not surject to all
-of C, its most glaring omission being that of a type-system. However, I
-hope the \protect\hyperlink{examplesreductions}{examples below} will
-convince you that the result is still
-\protect\hyperlink{closures}{pretty interesting}. And if that is not
-enough, I recommend that you take a look at \href{src/compile.l2}{the
-implementation of a self-hosting compiler for L2 that accompanies this
-project} and compare it to \href{bootstrap/compile.c}{the compiler for
-bootstrapping it written in C}.
+(setjmp, longjmp, \protect\hyperlink{assume}{assume}, \ldots{}) into
+things definable inside L2 (with perhaps a little assembly). The
+language does not surject to all of C, its most glaring omission being
+that of a type-system. However, I hope the
+\protect\hyperlink{examplesreductions}{examples below} will convince you
+that the result is still \protect\hyperlink{closures}{pretty
+interesting}. And if that is not enough, I recommend that you take a
+look at \href{src/compile.l2}{the implementation of a self-hosting
+compiler for L2 that accompanies this project} and compare it to
+\href{bootstrap/compile.c}{the compiler for bootstrapping it written in
+C}.
 
 The approach taken to achieve this has been to make C's features more
 composable, more multipurpose, and, at least on one occasion, add a new
@@ -87,7 +82,6 @@ feature so that a whole group of distinct features could be dropped. In
 particular, the most striking changes are that C's:
 
 \begin{enumerate}
-\def\labelenumi{\arabic{enumi}.}
 \tightlist
 \item
   irregular syntax is replaced by
@@ -103,8 +97,8 @@ particular, the most striking changes are that C's:
   overhead associated with this})
 \end{enumerate}
 
-There are \protect\hyperlink{expressions}{10 language primitives} and
-for each one of them I describe their syntax, what exactly they do in
+There are \protect\hyperlink{expressions}{9 language primitives} and for
+each one of them I describe their syntax, what exactly they do in
 English, the i386 assembly they translate into, and an example usage of
 them. Following this comes a listing of L2's syntactic sugar. Then comes
 a brief description of \protect\hyperlink{internal-representation}{L2's
@@ -118,8 +112,7 @@ have also demonstrated \protect\hyperlink{closures}{closures} to hint at
 how more exotic things like coroutines and generators are possible using
 L2's \protect\hyperlink{jump}{continuations}.
 
-\hypertarget{contents}{%
-\subsubsection{Contents}\label{contents}}
+\subsubsection{Contents}\label{contents}
 
 \begin{longtable}[]{@{}lll@{}}
 \toprule
@@ -135,35 +128,34 @@ L2's \protect\hyperlink{jump}{continuations}.
 \protect\hyperlink{literal}{Literal} &
 \protect\hyperlink{dereferencing}{Dereferencing}\tabularnewline
 \textbf{\protect\hyperlink{syntactic-sugar}{Syntactic Sugar}} &
-\protect\hyperlink{reference}{Reference} &
+\protect\hyperlink{storage}{Storage} &
 \protect\hyperlink{numbers}{Numbers}\tabularnewline
 \textbf{\protect\hyperlink{internal-representation}{Internal
-Representation}} & \protect\hyperlink{storage}{Storage} &
+Representation}} & \protect\hyperlink{if}{If} &
 \protect\hyperlink{backquoting}{Backquoting}\tabularnewline
-& \protect\hyperlink{if}{If} &
-\protect\hyperlink{variable-binding}{Variable Binding}\tabularnewline
 & \protect\hyperlink{function}{Function} &
+\protect\hyperlink{variable-binding}{Variable Binding}\tabularnewline
+& \protect\hyperlink{invoke}{Invoke} &
 \protect\hyperlink{boolean-expressions}{Boolean
 Expressions}\tabularnewline
-& \protect\hyperlink{invoke}{Invoke} &
-\protect\hyperlink{switch-expression}{Switch Expression}\tabularnewline
 & \protect\hyperlink{with}{With} &
-\protect\hyperlink{characters}{Characters}\tabularnewline
+\protect\hyperlink{switch-expression}{Switch Expression}\tabularnewline
 & \protect\hyperlink{continuation}{Continuation} &
-\protect\hyperlink{strings}{Strings}\tabularnewline
+\protect\hyperlink{characters}{Characters}\tabularnewline
 & \protect\hyperlink{jump}{Jump} &
-\protect\hyperlink{closures}{Closures}\tabularnewline
+\protect\hyperlink{strings}{Strings}\tabularnewline
 & \protect\hyperlink{meta}{Meta} &
-\protect\hyperlink{assume}{Assume}\tabularnewline
+\protect\hyperlink{closures}{Closures}\tabularnewline
+& & \protect\hyperlink{assume}{Assume}\tabularnewline
 & & \protect\hyperlink{fields}{Fields}\tabularnewline
 \bottomrule
 \end{longtable}
 
-\hypertarget{getting-started}{%
-\subsection{Getting Started}\label{getting-started}}
+\hypertarget{getting-started}{\subsection{Getting
+Started}\label{getting-started}}
 
-\hypertarget{building-l2}{%
-\subsubsection{Building L2}\label{building-l2}}
+\hypertarget{building-l2}{\subsubsection{Building
+L2}\label{building-l2}}
 
 \begin{verbatim}
 ./build_bootstrap
@@ -171,25 +163,26 @@ Expressions}\tabularnewline
 \end{verbatim}
 
 In this project there are two implementations of L2 compilers. One
-implementation is the bootstrap compiler that comprises 3600 lines of C
-code which compiles in under a second. The other implementation is a
-self-hosting compiler written in about 3600 lines of L2 code (the
-meta-program accounts for about 1100 lines and the program accounts for
-the other 2500 lines) which compiles in under 9 seconds. Both of them
-produce identical object code (modulo padding bytes in the ELFs) when
-given identical inputs. \textbf{The bootstrap compiler needs a Linux
-distribution running on the x86-64 architecture with the GNU C compiler
-installed to be compiled successfully.} To build the bootstrap compiler,
-simply run the \texttt{build\_bootstrap} script at the root of the
-repository. This will create a directory called \texttt{bin} containing
-the file \texttt{l2compile}. \texttt{l2compile} is a compiler of L2 code
-and its interface is described in the next section. To build the
-self-hosting compiler, simply run the \texttt{build\_selfhost} script at
-the root of the repository. This will replace \texttt{l2compile} with a
-new compiler that has the same command line interface.
+implementation is the bootstrap compiler that comprises 3700 lines of C
+code which compiles in under a third of a second. The other
+implementation is a self-hosting compiler written in about 3700 lines of
+L2 code (the meta-program accounts for about 1100 lines and the program
+accounts for the other 2500 lines) which compiles to a roughly a 700KB
+executable in under 4 seconds. Both of them produce identical object
+code (modulo padding bytes in the ELFs) when given identical inputs.
+\textbf{The bootstrap compiler needs a Linux distribution running on the
+x86-64 architecture with the GNU C compiler installed to be compiled
+successfully.} To build the bootstrap compiler, simply run the
+\texttt{build\_bootstrap} script at the root of the repository. This
+will create a directory called \texttt{bin} containing the file
+\texttt{l2compile}. \texttt{l2compile} is a compiler of L2 code and its
+interface is described in the next section. To build the self-hosting
+compiler, simply run the \texttt{build\_selfhost} script at the root of
+the repository. This will replace \texttt{l2compile} with a new compiler
+that has the same command line interface.
 
-\hypertarget{the-compiler}{%
-\subsubsection{The Compiler}\label{the-compiler}}
+\hypertarget{the-compiler}{\subsubsection{The
+Compiler}\label{the-compiler}}
 
 \begin{verbatim}
 ./bin/l2compile (metaprogram.o | metaprogram.l2) ... - program.l2 ...
@@ -214,23 +207,19 @@ linked together and to the compiler's interface for metaprogramming. And
 finally each part of the program is compiled into an object file with
 the assistance of the metaprogram.
 
-\hypertarget{example}{%
-\paragraph{Example}\label{example}}
+\paragraph{Example}\label{example}
 
-\hypertarget{file1.l2}{%
-\subparagraph{file1.l2}\label{file1.l2}}
+\subparagraph{file1.l2}\label{file1.l2}
 
 \begin{verbatim}
-(function foo (frag buf) [@fst[get frag]])
-
+(function foo (frag buf) [@fst frag])
 \end{verbatim}
 
-\hypertarget{file2.l2}{%
-\subparagraph{file2.l2}\label{file2.l2}}
+\subparagraph{file2.l2}\label{file2.l2}
 
 \begin{verbatim}
 (function bar ()
-    [putchar (literal 0...01100011)])
+  [putchar (literal 0...01100011)])
 (foo [putchar (literal 0...01100110)])
 [putchar (literal 0...01100100)]
 \end{verbatim}
@@ -238,10 +227,10 @@ the assistance of the metaprogram.
 Running
 \texttt{./bin/l2compile\ "./bin/x86\_64.o"\ file1.l2\ -\ file2.l2}
 should produce an object file file2.o. file2.o when called should invoke
-the function \texttt{putchar} with the ASCII character 'f' and then it
+the function \texttt{putchar} with the ASCII character `f' and then it
 should invoke the function \texttt{putchar} with the ASCII character
-'d'. And if its function \texttt{bar} should be called, then it will
-call the function \texttt{putchar} with 'c'. Why is it that the first
+`d'. And if its function \texttt{bar} should be called, then it will
+call the function \texttt{putchar} with `c'. Why is it that the first
 invocations happen? Because object code resulting from L2 sources are
 executed from top to bottom when they are called and because the
 expression \texttt{(foo\ {[}putchar\ (literal\ 0...01100110){]})} turned
@@ -256,11 +245,9 @@ this fragment, \texttt{{[}putchar\ (literal\ 0...01100110){]}}, which
 then replaced the original
 \texttt{(foo\ {[}putchar\ (literal\ 0...01100110){]})}.
 
-\hypertarget{expressions}{%
-\subsection{Expressions}\label{expressions}}
+\hypertarget{expressions}{\subsection{Expressions}\label{expressions}}
 
-\hypertarget{begin}{%
-\subsubsection{Begin}\label{begin}}
+\hypertarget{begin}{\subsubsection{Begin}\label{begin}}
 
 \begin{verbatim}
 (begin expression1 expression2 ... expressionN)
@@ -276,14 +263,13 @@ This expression is implemented by emitting the instructions for
 \texttt{expression2} immediately afterwords and so on, ending with the
 emission of \texttt{expressionN}.
 
-Say the expression \texttt{{[}foo{]}} prints the text "foo" to standard
-output and the expression \texttt{{[}bar{]}} prints the text "bar" to
-standard output. Then
+Say the expression \texttt{{[}foo{]}} prints the text ``foo'' to
+standard output and the expression \texttt{{[}bar{]}} prints the text
+``bar'' to standard output. Then
 \texttt{(begin\ {[}foo{]}\ {[}bar{]}\ {[}foo{]}\ {[}foo{]}\ {[}foo{]})}
-prints the text "foobarfoofoofoo" to standard output.
+prints the text ``foobarfoofoofoo'' to standard output.
 
-\hypertarget{literal}{%
-\subsubsection{Literal}\label{literal}}
+\hypertarget{literal}{\subsubsection{Literal}\label{literal}}
 
 \begin{verbatim}
 (literal b63b62...b0)
@@ -300,30 +286,9 @@ surrounding expression.
 
 Say the expression \texttt{{[}putchar\ x{]}} prints the character
 \texttt{x}. Then \texttt{{[}putchar\ (literal\ 0...01100001){]}} prints
-the text "a" to standard output.
+the text ``a'' to standard output.
 
-\hypertarget{reference}{%
-\subsubsection{Reference}\label{reference}}
-
-\begin{verbatim}
-reference0
-\end{verbatim}
-
-The resulting value is the address in memory to which this reference
-refers.
-
-This expression is implemented by the emission of an instruction to
-\texttt{lea} of some data into a memory location designated by the
-surrounding expression.
-
-Say the expression \texttt{{[}get\ x{]}} evaluates to the value at the
-reference \texttt{x} and the expression \texttt{{[}set\ x\ y{]}} puts
-the value \texttt{y} into the reference \texttt{x}. Then
-\texttt{(begin\ {[}set\ x\ (literal\ 0...01100001){]}\ {[}putchar\ {[}get\ x{]}{]})}
-prints the text "a" to standard output.
-
-\hypertarget{storage}{%
-\subsubsection{Storage}\label{storage}}
+\hypertarget{storage}{\subsubsection{Storage}\label{storage}}
 
 \begin{verbatim}
 (storage storage0 expression1 expression2 ... expressionN)
@@ -350,10 +315,9 @@ into a memory location designated by the surrounding expression.
 
 The expression
 \texttt{{[}putchar\ {[}get\ (storage\ \_\ (literal\ 0...01100001)){]}{]}},
-for example, prints the text "a" to standard output.
+for example, prints the text ``a'' to standard output.
 
-\hypertarget{if}{%
-\subsubsection{If}\label{if}}
+\hypertarget{if}{\subsubsection{If}\label{if}}
 
 \begin{verbatim}
 (if expression0 expression1 expression2)
@@ -379,25 +343,24 @@ value of the \texttt{if} expression.
 
 The expression
 \texttt{{[}putchar\ (if\ (literal\ 0...0)\ (literal\ 0...01100001)\ (literal\ 0...01100010)){]}}
-prints the text "b" to standard output.
+prints the text ``b'' to standard output.
 
-\hypertarget{function}{%
-\subsubsection{Function}\label{function}}
+\hypertarget{function}{\subsubsection{Function}\label{function}}
 
 \begin{verbatim}
-(function function0 (reference1 reference2 ... referenceN) expression0)
+(function function0 (param1 param2 ... paramN) expression0)
 \end{verbatim}
 
 Makes a function to be invoked with exactly \texttt{N} arguments. When
 the function is invoked, \texttt{expression0} is evaluated in an
 environment where \texttt{function0} is a reference to the function
-itself and \texttt{reference1}, \texttt{reference2}, up to
-\texttt{referenceN} are references to the resulting values of evaluating
-the corresponding arguments in the invoke expression invoking this
-function. Once the evaluation is complete, control flow returns to the
-invoke expression and the invoke expression's resulting value is the
-resulting value of evaluating \texttt{expression0}. The resulting value
-of this function expression is a reference to the function.
+itself and \texttt{param1}, \texttt{param2}, up to \texttt{paramN} are
+the resulting values of evaluating the corresponding arguments in the
+invoke expression invoking this function. Once the evaluation is
+complete, control flow returns to the invoke expression and the invoke
+expression's resulting value is the resulting value of evaluating
+\texttt{expression0}. The resulting value of this function expression is
+a reference to the function.
 
 This expression is implemented by first emitting an instruction to
 \texttt{mov} the address \texttt{function0} (a label to be emitted
@@ -419,11 +382,10 @@ the register \texttt{eax}. And finally, instructions are emitted to
 callee-save registers, and \texttt{ret} to the address of the caller.
 
 The expression
-\texttt{{[}putchar\ {[}(function\ my-\ (a\ b)\ {[}-\ {[}get\ b{]}\ {[}get\ a{]}{]})\ (literal\ 0...01)\ (literal\ 0...01100011){]}{]}}
-prints the text "b" to standard output.
+\texttt{{[}putchar\ {[}(function\ my-\ (a\ b)\ {[}-\ b\ a{]})\ (literal\ 0...01)\ (literal\ 0...01100011){]}{]}}
+prints the text ``b'' to standard output.
 
-\hypertarget{invoke}{%
-\subsubsection{Invoke}\label{invoke}}
+\hypertarget{invoke}{\subsubsection{Invoke}\label{invoke}}
 
 \begin{verbatim}
 (invoke function0 expression1 expression2 ... expressionN)
@@ -467,10 +429,9 @@ ret
 
 The following invocation of it,
 \texttt{(invoke\ putchar\ (invoke\ -\ (literal\ 0...01100011)\ (literal\ 0...01)))},
-prints the text "b" to standard output.
+prints the text ``b'' to standard output.
 
-\hypertarget{with}{%
-\subsubsection{With}\label{with}}
+\hypertarget{with}{\subsubsection{With}\label{with}}
 
 \begin{verbatim}
 (with continuation0 expression0)
@@ -500,8 +461,7 @@ is emitted to \texttt{mov} the resulting value of the continuation, the
 6th word at \texttt{continuation0}, into the memory location designated
 by the surrounding expression.
 
-\hypertarget{examples}{%
-\paragraph{Examples}\label{examples}}
+\paragraph{Examples}\label{examples}
 
 Note that the expression \texttt{\{continuation0\ expression0\}}
 \texttt{jump}s to the continuation reference given by
@@ -509,7 +469,7 @@ Note that the expression \texttt{\{continuation0\ expression0\}}
 \texttt{expression0} as its argument. With the note in mind, the
 expression
 \texttt{(begin\ {[}putchar\ (with\ ignore\ (begin\ \{ignore\ (literal\ 0...01001110)\}\ {[}foo{]}\ {[}foo{]}\ {[}foo{]})){]}\ {[}bar{]})}
-prints the text "nbar" to standard output.
+prints the text ``nbar'' to standard output.
 
 The following assembly function \texttt{allocate} receives the number of
 bytes it is to allocate as its first argument, allocates that memory,
@@ -536,25 +496,24 @@ evaluates to the address of the allocated memory. If allocate had just
 decreased \texttt{esp} and returned, it would have been invalid because
 L2 expects functions to preserve \texttt{esp}.
 
-\hypertarget{continuation}{%
-\subsubsection{Continuation}\label{continuation}}
+\hypertarget{continuation}{\subsubsection{Continuation}\label{continuation}}
 
 \begin{verbatim}
-(continuation continuation0 (reference1 reference2 ... referenceN) expression0)
+(continuation continuation0 (param1 param2 ... paramN) expression0)
 \end{verbatim}
 
 Makes a continuation to be \texttt{jump}ed to with exactly \texttt{N}
 arguments. When the continuation is \texttt{jump}ed to,
 \texttt{expression0} is evaluated in an environment where
 \texttt{continuation0} is a reference to the continuation itself and
-\texttt{reference1}, \texttt{reference2}, up to \texttt{referenceN} are
-references to the resulting values of evaluating the corresponding
-arguments in the \texttt{jump} expression \texttt{jump}ing to this
-function. Undefined behavior occurs if the evaluation of
-\texttt{expression0} completes - i.e. programmer must direct the control
-flow out of \texttt{continuation0} somewhere within
-\texttt{expression0}. The resulting value of this \texttt{continuation}
-expression is a reference to the continuation.
+\texttt{param1}, \texttt{param2}, up to \texttt{paramN} are the
+resulting values of evaluating the corresponding arguments in the
+\texttt{jump} expression \texttt{jump}ing to this function. Undefined
+behavior occurs if the evaluation of \texttt{expression0} completes -
+i.e.~programmer must direct the control flow out of
+\texttt{continuation0} somewhere within \texttt{expression0}. The
+resulting value of this \texttt{continuation} expression is a reference
+to the continuation.
 
 5+N words must be reserved in the current function's stack-frame plan.
 Call the reference to the first word of the reservation
@@ -573,11 +532,10 @@ instruction of the continuation is emitted. After this the instructions
 for \texttt{expression0} are emitted.
 
 The expression
-\texttt{\{(continuation\ forever\ (a\ b)\ (begin\ {[}putchar\ {[}get\ a{]}{]}\ {[}putchar\ {[}get\ b{]}{]}\ \{forever\ {[}-\ {[}get\ a{]}\ (literal\ 0...01){]}\ {[}-\ {[}get\ b{]}\ (literal\ 0...01){]}\}))\ (literal\ 0...01011010)\ (literal\ 0...01111010)\}}
-prints the text "ZzYyXxWw"... to standard output.
+\texttt{\{(continuation\ forever\ (a\ b)\ (begin\ {[}putchar\ a{]}\ {[}putchar\ b{]}\ \{forever\ {[}-\ a\ (literal\ 0...01){]}\ {[}-\ b\ (literal\ 0...01){]}\}))\ (literal\ 0...01011010)\ (literal\ 0...01111010)\}}
+prints the text ``ZzYyXxWw''\ldots{} to standard output.
 
-\hypertarget{jump}{%
-\subsubsection{Jump}\label{jump}}
+\hypertarget{jump}{\subsubsection{Jump}\label{jump}}
 
 \begin{verbatim}
 (jump continuation0 expression1 expression2 ... expressionN)
@@ -611,10 +569,10 @@ are, at last, emitted.
 
 The expression
 \texttt{(begin\ (with\ cutter\ (jump\ (continuation\ cuttee\ ()\ (begin\ {[}bar{]}\ {[}bar{]}\ (jump\ cutter\ (literal\ 0...0))\ {[}bar{]}\ {[}bar{]}\ {[}bar{]}))))\ {[}foo{]})}
-prints the text "barbarfoo" to standard output.
+prints the text ``barbarfoo'' to standard output.
 
-\hypertarget{an-optimization}{%
-\paragraph{An Optimization}\label{an-optimization}}
+\hypertarget{an-optimization}{\paragraph{An
+Optimization}\label{an-optimization}}
 
 Looking at the examples above where the continuation reference does not
 escape, \texttt{(with\ reference0\ expression0)} behaves a lot like the
@@ -628,11 +586,10 @@ declared, and hence there is no need to store or restore \texttt{ebp},
 \texttt{edi}, \texttt{esi}, and \texttt{ebx}. Continuations, then, are
 how efficient iteration is achieved in L2.
 
-\hypertarget{syntactic-sugar}{%
-\subsection{Syntactic Sugar}\label{syntactic-sugar}}
+\hypertarget{syntactic-sugar}{\subsection{Syntactic
+Sugar}\label{syntactic-sugar}}
 
-\hypertarget{ux24a1...an}{%
-\subsubsection{\texorpdfstring{\texttt{\$a1...aN}}{\$a1...aN}}\label{ux24a1...an}}
+\subsubsection{\texorpdfstring{\texttt{\$a1...aN}}{\$a1...aN}}\label{a1...an}
 
 In what follows, it is assumed that \texttt{\$a1...aN} is not part of a
 larger string. If \texttt{\$a1...aN} is simply a \texttt{\$}, then it
@@ -644,20 +601,19 @@ For example, the expression \texttt{\$\$hello\$bye} turns into
 \texttt{(\$\ \$hello\$bye)} which turns into
 \texttt{(\$\ (\$\ hello\$bye))}
 
-\hypertarget{ux5cux23a1...anux2c-ux2ca1...anux2c-ux60a1...an}{%
 \subsubsection{\texorpdfstring{\texttt{\#a1...aN}, \texttt{,a1...aN},
-\texttt{\textasciigrave{}a1...aN}}{\#a1...aN, ,a1...aN, `a1...aN}}\label{ux5cux23a1...anux2c-ux2ca1...anux2c-ux60a1...an}}
+\texttt{`a1...aN}}{\#a1...aN, ,a1...aN, `a1...aN}}\label{a1...an-a1...an-a1...an}
 
 Analogous transformations to the one for \texttt{\$a1...aN} happen.
 
-\hypertarget{internal-representation}{%
-\subsection{Internal Representation}\label{internal-representation}}
+\hypertarget{internal-representation}{\subsection{Internal
+Representation}\label{internal-representation}}
 
 After substituting out the syntactic sugar defined in the
 \protect\hyperlink{invoke}{invoke}, \protect\hyperlink{jump}{jump}, and
 \protect\hyperlink{syntactic-sugar}{syntactic sugar} sections, we find
 that all L2 programs are just fragments where a fragment is either a
-symbol or a list of fragments. And furthermore, every symbol can be seen
+token or a list of fragments. And furthermore, every token can be seen
 as a list of its characters so that for example \texttt{foo} becomes
 \texttt{(f\ o\ o)}. The following functions that manipulate these
 fragments are not part of the L2 language and hence the compiler does
@@ -665,62 +621,54 @@ not give references to them special treatment during compilation.
 However, when they are used in an L2 meta-program, undefined references
 to these functions are to be resolved by the compiler.
 
-\hypertarget{ux7bux5bux7dlst-x-y-bux7bux5dux7d}{%
-\subsubsection{\texorpdfstring{\texttt{{[}lst\ x\ y\ b{]}}}{{[}lst x y b{]}}}\label{ux7bux5bux7dlst-x-y-bux7bux5dux7d}}
+\subsubsection{\texorpdfstring{\texttt{{[}lst\ x\ y\ b{]}}}{{[}lst x y b{]}}}\label{lst-x-y-b}
 
 \texttt{y} must be a list and \texttt{b} a buffer.
 
 Makes a list where \texttt{x} is first and \texttt{y} is the rest in the
 buffer \texttt{b}.
 
-Say the fragment \texttt{foo} is stored at \texttt{a} and the list
-\texttt{(bar)} is stored at \texttt{b}. Then
-\texttt{{[}lst\ {[}get\ a{]}\ {[}get\ b{]}{]}} is the fragment
+Say that \texttt{a} is the fragment \texttt{foo} and \texttt{b} is the
+list \texttt{(bar)}. Then \texttt{{[}lst\ a\ b{]}} is the fragment
 \texttt{(foo\ bar)}.
 
-\hypertarget{ux7bux5bux7dsymbolux3f-xux7bux5dux7d}{%
-\subsubsection{\texorpdfstring{\texttt{{[}symbol?\ x{]}}}{{[}symbol? x{]}}}\label{ux7bux5bux7dsymbolux3f-xux7bux5dux7d}}
+\subsubsection{\texorpdfstring{\texttt{{[}token?\ x{]}}}{{[}token? x{]}}}\label{token-x}
 
 \texttt{x} must be a fragment.
 
-Evaluates to the one if \texttt{x} is also a symbol. Otherwise evaluates
+Evaluates to the one if \texttt{x} is also a token. Otherwise evaluates
 to zero.
 
-Say the fragment \texttt{foo} is stored at \texttt{a}. Then
-\texttt{{[}symbol?\ {[}get\ a{]}{]}} evaluates to
-\texttt{(literal\ 0...01)}.
+Say that \texttt{a} is the fragment \texttt{foo}. Then
+\texttt{{[}token?\ a{]}} evaluates to \texttt{(literal\ 0...01)}.
 
-\hypertarget{ux7bux5bux7dux40fst-xux7bux5dux7d}{%
-\subsubsection{\texorpdfstring{\texttt{{[}@fst\ x{]}}}{{[}@fst x{]}}}\label{ux7bux5bux7dux40fst-xux7bux5dux7d}}
+\subsubsection{\texorpdfstring{\texttt{{[}@fst\ x{]}}}{{[}@fst x{]}}}\label{fst-x}
 
 \texttt{x} must be a list.
 
 Evaluates to the first of \texttt{x}.
 
-Say the list \texttt{foo} is stored at \texttt{a}. Then
-\texttt{{[}@fst\ {[}get\ a{]}{]}} is the character \texttt{f}. This
-\texttt{f} is not a list but is a character.
+Say that \texttt{a} is the list \texttt{foo}. Then
+\texttt{{[}@fst\ a{]}} is the character \texttt{f}. This \texttt{f} is
+not a list but is a character.
 
-\hypertarget{ux7bux5bux7dux40rst-xux7bux5dux7d}{%
-\subsubsection{\texorpdfstring{\texttt{{[}@rst\ x{]}}}{{[}@rst x{]}}}\label{ux7bux5bux7dux40rst-xux7bux5dux7d}}
+\subsubsection{\texorpdfstring{\texttt{{[}@rst\ x{]}}}{{[}@rst x{]}}}\label{rst-x}
 
 \texttt{x} must be a list.
 
 Evaluates to a list that is the rest of \texttt{x}.
 
-Say the list \texttt{foo} is stored at \texttt{a}. Then
-\texttt{{[}@rst\ {[}get\ a{]}{]}} is the fragment \texttt{oo}.
+Say that \texttt{a} is the list \texttt{foo}. Then
+\texttt{{[}@rst\ a{]}} is the fragment \texttt{oo}.
 
-\hypertarget{emt}{%
-\subsubsection{\texorpdfstring{\texttt{emt}}{emt}}\label{emt}}
+\subsubsection{\texorpdfstring{\texttt{emt}}{emt}}\label{emt}
 
 Evaluates to the empty list.
 
-Say the fragment \texttt{foo} is stored at \texttt{a}. Then
-\texttt{{[}lst\ {[}get\ a{]}\ emt{]}} is the fragment \texttt{(foo)}.
+Say that \texttt{a} is the fragment \texttt{foo}. Then
+\texttt{{[}lst\ a\ emt{]}} is the fragment \texttt{(foo)}.
 
-\hypertarget{ux7bux5bux7demtux3f-xux7bux5dux7d}{%
-\subsubsection{\texorpdfstring{\texttt{{[}emt?\ x{]}}}{{[}emt? x{]}}}\label{ux7bux5bux7demtux3f-xux7bux5dux7d}}
+\subsubsection{\texorpdfstring{\texttt{{[}emt?\ x{]}}}{{[}emt? x{]}}}\label{emt-x}
 
 \texttt{x} must be a list.
 
@@ -729,51 +677,44 @@ evaluates to zero.
 
 \texttt{{[}emt?\ emt{]}} evaluates to \texttt{(literal\ 0...01)}.
 
-\hypertarget{-ux5ctextlessux7bux7dcharacterux5ctextgreaterux7bux7d-}{%
-\subsubsection{\texorpdfstring{\texttt{-\textless{}character\textgreater{}-}}{-\textless{}character\textgreater{}-}}\label{-ux5ctextlessux7bux7dcharacterux5ctextgreaterux7bux7d-}}
+\subsubsection{\texorpdfstring{\texttt{-\textless{}character\textgreater{}-}}{-\textless{}character\textgreater{}-}}\label{character-}
 
 Evaluates to the character \texttt{\textless{}character\textgreater{}}.
 
-Say that a buffer is stored at \texttt{b}. Then the expression
-\texttt{{[}lst\ -f-\ {[}lst\ -o-\ {[}lst\ -o-\ emt\ {[}get\ b{]}{]}\ {[}get\ b{]}{]}\ {[}get\ b{]}{]}}
+Say that \texttt{b} is a buffer. Then the expression
+\texttt{{[}lst\ -f-\ {[}lst\ -o-\ {[}lst\ -o-\ emt\ b{]}\ b{]}\ b{]}}
 evaluates to the fragment \texttt{foo}.
 
-\hypertarget{ux7bux5bux7dchar=-x-yux7bux5dux7d}{%
-\subsubsection{\texorpdfstring{\texttt{{[}char=\ x\ y{]}}}{{[}char= x y{]}}}\label{ux7bux5bux7dchar=-x-yux7bux5dux7d}}
+\subsubsection{\texorpdfstring{\texttt{{[}char=\ x\ y{]}}}{{[}char= x y{]}}}\label{char-x-y}
 
 \texttt{x} and \texttt{y} must be characters.
 
 Evaluates to one if \texttt{x} is the same character as \texttt{y},
 otherwise it evaluates to zero.
 
-Say the character \texttt{d} is stored at both \texttt{x} and
-\texttt{y}. Then \texttt{{[}char=\ {[}get\ x{]}\ {[}get\ y{]}{]}}
-evaluates to \texttt{(literal\ 0...01)}.
+Say that \texttt{x} and \texttt{y} are the character \texttt{d}. Then
+\texttt{{[}char=\ x\ y{]}} evaluates to \texttt{(literal\ 0...01)}.
 
-\hypertarget{ux7bux5bux7dbegin-x-bux7bux5dux7d}{%
-\subsubsection{\texorpdfstring{\texttt{{[}begin\ x\ b{]}}}{{[}begin x b{]}}}\label{ux7bux5bux7dbegin-x-bux7bux5dux7d}}
+\subsubsection{\texorpdfstring{\texttt{{[}begin\ x\ b{]}}}{{[}begin x b{]}}}\label{begin-x-b}
 
 \texttt{x} must be a list of fragments and \texttt{b} a buffer.
 
-Evaluates to an fragment formed by prepending the symbol \texttt{begin}
+Evaluates to an fragment formed by prepending the token \texttt{begin}
 to \texttt{x}. The \texttt{begin} function could have the following
 definition:
-\texttt{(function\ begin\ (frags\ b)\ {[}lst\ {[}lst\ -b-\ {[}lst\ -e-\ {[}lst\ -g-\ {[}lst\ -i-\ {[}lst\ -n-\ emt\ {[}get\ b{]}{]}\ {[}get\ b{]}{]}\ {[}get\ b{]}{]}\ {[}get\ b{]}{]}\ {[}get\ b{]}{]}\ {[}get\ frags{]}\ {[}get\ b{]}{]})}.
+\texttt{(function\ begin\ (frags\ b)\ {[}lst\ {[}lst\ -b-\ {[}lst\ -e-\ {[}lst\ -g-\ {[}lst\ -i-\ {[}lst\ -n-\ emt\ b{]}\ b{]}\ b{]}\ b{]}\ b{]}\ frags\ b{]})}.
 
-\hypertarget{ux7bux5bux7dliteral-x-bux7bux5dux7dux2c-ux7bux5bux7dstorage-x-bux7bux5dux7dux2c-ux7bux5bux7dif-x-bux7bux5dux7dux2c-ux7bux5bux7dfunction-x-bux7bux5dux7dux2c-ux7bux5bux7dinvoke-x-bux7bux5dux7dux2c-ux7bux5bux7dwith-x-bux7bux5dux7dux2c-ux7bux5bux7dcontinuation-x-bux7bux5dux7dux2c-ux7bux5bux7djump-x-bux7bux5dux7d}{%
 \subsubsection{\texorpdfstring{\texttt{{[}literal\ x\ b{]}},
 \texttt{{[}storage\ x\ b{]}}, \texttt{{[}if\ x\ b{]}},
 \texttt{{[}function\ x\ b{]}}, \texttt{{[}invoke\ x\ b{]}},
 \texttt{{[}with\ x\ b{]}}, \texttt{{[}continuation\ x\ b{]}},
-\texttt{{[}jump\ x\ b{]}}}{{[}literal x b{]}, {[}storage x b{]}, {[}if x b{]}, {[}function x b{]}, {[}invoke x b{]}, {[}with x b{]}, {[}continuation x b{]}, {[}jump x b{]}}}\label{ux7bux5bux7dliteral-x-bux7bux5dux7dux2c-ux7bux5bux7dstorage-x-bux7bux5dux7dux2c-ux7bux5bux7dif-x-bux7bux5dux7dux2c-ux7bux5bux7dfunction-x-bux7bux5dux7dux2c-ux7bux5bux7dinvoke-x-bux7bux5dux7dux2c-ux7bux5bux7dwith-x-bux7bux5dux7dux2c-ux7bux5bux7dcontinuation-x-bux7bux5dux7dux2c-ux7bux5bux7djump-x-bux7bux5dux7d}}
+\texttt{{[}jump\ x\ b{]}}}{{[}literal x b{]}, {[}storage x b{]}, {[}if x b{]}, {[}function x b{]}, {[}invoke x b{]}, {[}with x b{]}, {[}continuation x b{]}, {[}jump x b{]}}}\label{literal-x-b-storage-x-b-if-x-b-function-x-b-invoke-x-b-with-x-b-continuation-x-b-jump-x-b}
 
 These functions are analogous to \texttt{begin}.
 
-\hypertarget{expressions-continued}{%
-\subsection{Expressions Continued}\label{expressions-continued}}
+\subsection{Expressions Continued}\label{expressions-continued}
 
-\hypertarget{meta}{%
-\subsubsection{Meta}\label{meta}}
+\hypertarget{meta}{\subsubsection{Meta}\label{meta}}
 
 \begin{verbatim}
 (function0 expression1 ... expressionN)
@@ -794,72 +735,61 @@ for the resulting expression is emitted.
 Meta-expressions were already demonstrated in the
 \protect\hyperlink{the-compiler}{compiler section}.
 
-\hypertarget{examplesux2freductions}{%
-\subsection{Examples/Reductions}\label{examplesux2freductions}}
+\hypertarget{examplesreductions}{\subsection{Examples/Reductions}\label{examplesreductions}}
 
 In the extensive list processing that follows in this section, the
 following functions prove to be convenient abbreviations:
 
-\hypertarget{abbreviations.l2}{%
-\paragraph{abbreviations.l2}\label{abbreviations.l2}}
+\paragraph{abbreviations.l2}\label{abbreviations.l2}
 
 \begin{verbatim}
-(function @frst (l) [@fst [@rst [get l]]])
-(function @ffrst (l) [@fst [@frst [get l]]])
-(function @frfrst (l) [@fst [@rst [@frst [get l]]]])
-(function @rrst (l) [@rst [@rst [get l]]])
-(function @rrrst (l) [@rst [@rrst [get l]]])
-(function @rfst (l) [@rst [@fst [get l]]])
-(function @frfst (l) [@fst [@rfst [get l]]])
-(function @frrfst (l) [@fst [@rst [@rfst [get l]]]])
-(function @frrst (l) [@fst [@rst [@rst [get l]]]])
-(function @frrrst (l) [@fst [@rst [@rst [@rst [get l]]]]])
-(function @frrrrst (l) [@fst [@rst [@rst [@rst [@rst [get l]]]]]])
-(function @frrrrrst (l) [@fst [@rst [@rst [@rst [@rst [@rst [get l]]]]]]])
-(function @ffst (l) [@fst [@fst [get l]]])
-(function llst (a b c r) [lst [get a] [lst [get b] [get c] [get r]] [get r]])
-(function lllst (a b c d r) [lst [get a] [llst [get b] [get c] [get d] [get r]] [get r]])
-(function llllst (a b c d e r) [lst [get a] [lllst [get b] [get c] [get d] [get e] [get r]]
-    [get r]])
-(function lllllst (a b c d e f r) [lst [get a] [llllst [get b] [get c] [get d] [get e]
-    [get f] [get r]] [get r]])
-(function llllllst (a b c d e f g r) [lst [get a] [lllllst [get b] [get c] [get d] [get e]
-    [get f] [get g] [get r]] [get r]])
-(function lllllllst (a b c d e f g h r) [lst [get a] [llllllst [get b] [get c]
-    [get d] [get e] [get f] [get g] [get h] [get r]] [get r]])
+(function @frst (l) [@fst [@rst l]])
+(function @ffrst (l) [@fst [@frst l]])
+(function @frfrst (l) [@fst [@rst [@frst l]]])
+(function @rrst (l) [@rst [@rst l]])
+(function @rrrst (l) [@rst [@rrst l]])
+(function @rfst (l) [@rst [@fst l]])
+(function @frfst (l) [@fst [@rfst l]])
+(function @frrfst (l) [@fst [@rst [@rfst l]]])
+(function @frrst (l) [@fst [@rst [@rst l]]])
+(function @frrrst (l) [@fst [@rst [@rst [@rst l]]]])
+(function @frrrrst (l) [@fst [@rst [@rst [@rst [@rst l]]]]])
+(function @frrrrrst (l) [@fst [@rst [@rst [@rst [@rst [@rst l]]]]]])
+(function @ffst (l) [@fst [@fst l]])
+(function llst (a b c r) [lst a [lst b c r] r])
+(function lllst (a b c d r) [lst a [llst b c d r] r])
+(function llllst (a b c d e r) [lst a [lllst b c d e r] r])
+(function lllllst (a b c d e f r) [lst a [llllst b c d e f r] r])
+(function llllllst (a b c d e f g r) [lst a [lllllst b c d e f g r] r])
+(function lllllllst (a b c d e f g h r) [lst a [llllllst b c d e f g h r] r])
 \end{verbatim}
 
-\hypertarget{commenting}{%
-\subsubsection{Commenting}\label{commenting}}
+\hypertarget{commenting}{\subsubsection{Commenting}\label{commenting}}
 
 L2 has no built-in mechanism for commenting code written in it. The
 following comment function takes a list of fragments as its argument and
 returns an empty begin expression effectively causing its arguments to
 be ignored. Its implementation and use follows:
 
-\hypertarget{comments.l2}{%
-\paragraph{comments.l2}\label{comments.l2}}
+\paragraph{comments.l2}\label{comments.l2}
 
 \begin{verbatim}
-(function ;; (l r) [lst [lllllst -b- -e- -g- -i- -n- emt $r] emt $r])
+(function ;; (l r) [lst [lllllst -b- -e- -g- -i- -n- emt r] emt r])
 \end{verbatim}
 
-\hypertarget{test1.l2}{%
-\paragraph{test1.l2}\label{test1.l2}}
+\paragraph{test1.l2}\label{test1.l2}
 
 \begin{verbatim}
 (;; This is a comment, take no notice.)
 \end{verbatim}
 
-\hypertarget{shell}{%
-\paragraph{shell}\label{shell}}
+\paragraph{shell}\label{shell}
 
 \begin{verbatim}
 ./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 - test1.l2
 \end{verbatim}
 
-\hypertarget{dereferencing}{%
-\subsubsection{Dereferencing}\label{dereferencing}}
+\hypertarget{dereferencing}{\subsubsection{Dereferencing}\label{dereferencing}}
 
 So far, we have been writing \texttt{{[}get\ x{]}} in order to get the
 value at the address \texttt{x}. Given the frequency with which
@@ -868,19 +798,17 @@ greatly increase the amount of code required to get a task done. The
 following function \texttt{\$} implements an abbreviation for
 dereferencing.
 
-\hypertarget{dereference.l2}{%
-\paragraph{dereference.l2}\label{dereference.l2}}
+\paragraph{dereference.l2}\label{dereference.l2}
 
 \begin{verbatim}
 (function $ (var r)
-    [llst
-        [llllllst -i- -n- -v- -o- -k- -e- emt [get r]]
-        [lllst -g- -e- -t- emt [get r]]
-        [get var][get r]])
+  [llst
+    [llllllst -i- -n- -v- -o- -k- -e- emt r]
+    [lllst -g- -e- -t- emt r]
+    var r])
 \end{verbatim}
 
-\hypertarget{test2.l2}{%
-\paragraph{test2.l2}\label{test2.l2}}
+\paragraph{test2.l2}\label{test2.l2}
 
 \begin{verbatim}
 (storage a (literal 0...01000001))
@@ -888,8 +816,7 @@ dereferencing.
 [putchar $$c]
 \end{verbatim}
 
-\hypertarget{or-equivalently}{%
-\subparagraph{or equivalently}\label{or-equivalently}}
+\subparagraph{or equivalently}\label{or-equivalently}
 
 \begin{verbatim}
 (storage a (literal 0...01000001))
@@ -897,8 +824,7 @@ dereferencing.
 [putchar [get [get c]]]
 \end{verbatim}
 
-\hypertarget{shell-1}{%
-\paragraph{shell}\label{shell-1}}
+\paragraph{shell}\label{shell-1}
 
 \begin{verbatim}
 ./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 - test2.l2
@@ -907,79 +833,73 @@ dereferencing.
 Note that in the above code that \texttt{a} and \texttt{c} have global
 scope. This is because the storage expressions are top-level.
 
-\hypertarget{numbers}{%
-\subsubsection{Numbers}\label{numbers}}
+\hypertarget{numbers}{\subsubsection{Numbers}\label{numbers}}
 
 Integer literals prove to be quite tedious in L2 as can be seen from
 some of the examples in the expressions section. The following function,
 \texttt{\#}, implements decimal arithmetic for x86-64 by reading in a
-symbol in base 10 and writing out the equivalent fragment in base 2:
+token in base 10 and writing out the equivalent fragment in base 2:
 
-\hypertarget{numbers64.l2}{%
-\paragraph{numbers64.l2}\label{numbers64.l2}}
+\paragraph{numbers64.l2}\label{numbers64.l2}
 
 \begin{verbatim}
 (;; Turns an 8-byte value into a literal-expression representation of it.)
 
 (function value->literal (binary r)
-    [lst [lllllllst -l- -i- -t- -e- -r- -a- -l- emt $r]
-        [lst (with return {(continuation write (count in out)
-                (if $count
-                    {write [- $count (literal 0...01)]
-                        [>> $in (literal 0...01)]
-                        [lst (if [land $in (literal 0...01)]
-                            -1- -0-) $out $r]}
-                    {return $out}))
-                (literal 0...01000000) $binary emt})
-            emt $r]$r])
+  [lst [lllllllst -l- -i- -t- -e- -r- -a- -l- emt r]
+    [lst (with return {(continuation write (count in out)
+        (if count
+          {write [- count (literal 0...01)]
+            [>> in (literal 0...01)]
+            [lst (if [land in (literal 0...01)]
+              -1- -0-) out r]}
+          {return out}))
+        (literal 0...01000000) binary emt})
+      emt r]r])
 
 (;; Turns the base-10 fragment input into a literal expression.)
 
 (function # (l r) [value->literal
-    (with return {(continuation read (in out)
-        (if [emt? $in]
-            {return $out}
-            {read [@rst $in] [+ [* $out (literal 0...01010)]
-                (if [char= [@fst $in] -9-] (literal 0...01001)
-                (if [char= [@fst $in] -8-] (literal 0...01000)
-                (if [char= [@fst $in] -7-] (literal 0...0111)
-                (if [char= [@fst $in] -6-] (literal 0...0110)
-                (if [char= [@fst $in] -5-] (literal 0...0101)
-                (if [char= [@fst $in] -4-] (literal 0...0100)
-                (if [char= [@fst $in] -3-] (literal 0...011)
-                (if [char= [@fst $in] -2-] (literal 0...010)
-                (if [char= [@fst $in] -1-] (literal 0...01)
-                    (literal 0...0))))))))))]}))
-        [@fst $l] (literal 0...0)}) $r])
+  (with return {(continuation read (in out)
+    (if [emt? in]
+      {return out}
+      {read [@rst in] [+ [* out (literal 0...01010)]
+        (if [char= [@fst in] -9-] (literal 0...01001)
+        (if [char= [@fst in] -8-] (literal 0...01000)
+        (if [char= [@fst in] -7-] (literal 0...0111)
+        (if [char= [@fst in] -6-] (literal 0...0110)
+        (if [char= [@fst in] -5-] (literal 0...0101)
+        (if [char= [@fst in] -4-] (literal 0...0100)
+        (if [char= [@fst in] -3-] (literal 0...011)
+        (if [char= [@fst in] -2-] (literal 0...010)
+        (if [char= [@fst in] -1-] (literal 0...01)
+          (literal 0...0))))))))))]}))
+    [@fst l] (literal 0...0)}) r])
 \end{verbatim}
 
-\hypertarget{test3.l2}{%
-\paragraph{test3.l2}\label{test3.l2}}
+\paragraph{test3.l2}\label{test3.l2}
 
 \begin{verbatim}
 [putchar (# 65)]
 \end{verbatim}
 
-\hypertarget{or-equivalently-1}{%
-\subparagraph{or equivalently}\label{or-equivalently-1}}
+\subparagraph{or equivalently}\label{or-equivalently-1}
 
 \begin{verbatim}
 [putchar #65]
 \end{verbatim}
 
-\hypertarget{shell-2}{%
-\paragraph{shell}\label{shell-2}}
+\paragraph{shell}\label{shell-2}
 
 \begin{verbatim}
 ./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 - \
-    test3.l2
+  test3.l2
 \end{verbatim}
 
-\hypertarget{backquoting}{%
-\subsubsection{Backquoting}\label{backquoting}}
+\hypertarget{backquoting}{\subsubsection{Backquoting}\label{backquoting}}
 
 The \texttt{foo} example in the internal representation section shows
-how tedious writing a function that outputs a symbol can be. The
+how tedious writing a function that outputs a token can be. The
 backquote function reduces this tedium. It takes a fragment and a buffer
 as its argument and, generally, it returns a fragment that makes that
 fragment. The exception to this rule is that if a sub-expression of its
@@ -987,63 +907,58 @@ input fragment is of the form \texttt{(,\ expr0)}, then the fragment
 \texttt{expr0} is inserted verbatim into that position of the output
 fragment. Backquote can be implemented and used as follows:
 
-\hypertarget{backquote.l2}{%
-\paragraph{backquote.l2}\label{backquote.l2}}
+\paragraph{backquote.l2}\label{backquote.l2}
 
 \begin{verbatim}
 (function ` (l r)
-    [(function aux (s t r)
-        (if [emt? $s] [lllst -e- -m- -t- emt $r]
+  [(function aux (s t r)
+    (if [emt? s] [lllst -e- -m- -t- emt r]
 
-        (if (if [emt? $s] #0 (if [symbol? $s] #0 (if [emt? [@fst $s]]
-            #0 (if [char= [@ffst $s] -,-] [emt? [@rfst $s]] #0))))
-                    [@frst $s]
+    (if (if [emt? s] #0 (if [token? s] #0 (if [emt? [@fst s]]
+      #0 (if [char= [@ffst s] -,-] [emt? [@rfst s]] #0))))
+          [@frst s]
 
-        [lllllst [llllllst -i- -n- -v- -o- -k- -e- emt $r]
-            [lllst -l- -s- -t- emt $r]
-                (if [symbol? $s]
-                        [lllst --- [@fst $s] --- emt $r]
-                        [aux [@fst $s] $t $r])
-                    [aux [@rst $s] $t $r] $t emt $r]))) [@fst $l] [@frst $l] $r])
+    [lllllst [llllllst -i- -n- -v- -o- -k- -e- emt r]
+      [lllst -l- -s- -t- emt r]
+        (if [token? s]
+            [lllst --- [@fst s] --- emt r]
+            [aux [@fst s] t r])
+          [aux [@rst s] t r] t emt r]))) [@fst l] [@frst l] r])
 \end{verbatim}
 
-\hypertarget{anotherfunction.l2:}{%
-\paragraph{anotherfunction.l2:}\label{anotherfunction.l2:}}
+\paragraph{anotherfunction.l2:}\label{anotherfunction.l2}
 
 \begin{verbatim}
 (function make-A-function (l r)
-    (` (function A (,emt) [putchar #65]) $r))
+  (` (function A (,emt) [putchar #65]) r))
 \end{verbatim}
 
-\hypertarget{or-equivalently-2}{%
-\subparagraph{or equivalently}\label{or-equivalently-2}}
+\subparagraph{or equivalently}\label{or-equivalently-2}
 
 \begin{verbatim}
 (function make-A-function (l)
-    (`(function A () [putchar #65])$r))
+  (`(function A () [putchar #65])r))
 \end{verbatim}
 
-\hypertarget{test4.l2}{%
-\paragraph{test4.l2}\label{test4.l2}}
+\paragraph{test4.l2}\label{test4.l2}
 
 \begin{verbatim}
 [(make-A-function)]
 \end{verbatim}
 
-\hypertarget{shell-3}{%
-\paragraph{shell}\label{shell-3}}
+\paragraph{shell}\label{shell-3}
 
 \begin{verbatim}
 ./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 \
-    backquote.l2 anotherfunction.l2 - test4.l2
+  backquote.l2 anotherfunction.l2 - test4.l2
 \end{verbatim}
 
-\hypertarget{variable-binding}{%
-\subsubsection{Variable Binding}\label{variable-binding}}
+\hypertarget{variable-binding}{\subsubsection{Variable
+Binding}\label{variable-binding}}
 
 Variable binding is enabled by the \texttt{continuation} expression.
 \texttt{continuation} is special because, like \texttt{function}, it
-allows references to be bound. Unlike \texttt{function}, however,
+allows identifiers to be bound. Unlike \texttt{function}, however,
 expressions within \texttt{continuation} can directly access its parent
 function's variables. The \texttt{let} binding function implements the
 following transformation:
@@ -1051,77 +966,76 @@ following transformation:
 \begin{verbatim}
 (let (params args) ... expr0)
 ->
-(with return
-    {(continuation templet0 (params ...)
-        {return expr0}) vals ...})
+(with let:return
+  {(continuation let:aux (params ...) (begin
+    (storage let:storage expr0)
+    {let:return $let:storage})) vals ...})
 \end{verbatim}
 
 It is implemented and used as follows:
 
-\hypertarget{let.l2}{%
-\paragraph{let.l2}\label{let.l2}}
+\paragraph{let.l2}\label{let.l2}
 
 \begin{verbatim}
-(;; Reverses the given list. $l is the list to be reversed. $r is the buffer into
-    which the reversed list will be put. Return value is the reversed list.)
+(;; Reverses the given list. l is the list to be reversed. r is the buffer into
+  which the reversed list will be put. Return value is the reversed list.)
 
 (function meta:reverse (l r)
-    (with return
-        {(continuation _ (l reversed)
-            (if [emt? $l]
-                {return $reversed}
-                {_ [@rst $l] [lst [@fst $l] $reversed $r]})) $l emt}))
+  (with return
+    {(continuation _ (l reversed)
+      (if [emt? l]
+        {return reversed}
+        {_ [@rst l] [lst [@fst l] reversed r]})) l emt}))
 
-(;; Maps the given list using the given function. $l is the list to be mapped. $ctx
-    is always passed as a second argument to the mapper. $mapper is the two argument
-    function that will be supplied a list item as its first argument and $ctx as its
-    second argument and will return an argument that will be put into the corresponding
-    position of another list. $r is the buffer into which the list being constructed
-    will be put. Return value is the mapped list.)
+(;; Maps the given list using the given function. l is the list to be mapped. ctx
+  is always passed as a second argument to the mapper. mapper is the two argument
+  function that will be supplied a list item as its first argument and ctx as its
+  second argument and will return an argument that will be put into the corresponding
+  position of another list. r is the buffer into which the list being constructed
+  will be put. Return value is the mapped list.)
 
 (function meta:map (l ctx mapper r)
-    (with return
-        {(continuation aux (in out)
-            (if [emt? $in]
-                {return [meta:reverse $out $r]}
-                {aux [@rst $in] [lst [$mapper [@fst $in] $ctx] $out $r]})) $l emt}))
+  (with return
+    {(continuation aux (in out)
+      (if [emt? in]
+        {return [meta:reverse out r]}
+        {aux [@rst in] [lst [mapper [@fst in] ctx] out r]})) l emt}))
 
 (function let (l r)
-    (`(with let:return
-        (,[llst (` jump $r) (`(continuation let:aux
-            (,[meta:map [@rst [meta:reverse $l $r]] (null) @fst $r])
-            {let:return (,[@fst [meta:reverse $l $r]])}) $r) [meta:map [@rst
-                [meta:reverse $l $r]] (null) @frst $r] $r])) $r))
+  (`(with let:return
+    (,[llst (` jump r)
+      (`(continuation let:aux (,[meta:map [@rst [meta:reverse l r]] (begin) @fst r]) (begin
+        (storage let:storage (,[@fst [meta:reverse l r]]))
+        {let:return $let:storage})) r)
+      [meta:map [@rst [meta:reverse l r]] (begin) @frst r] r])) r))
 \end{verbatim}
 
-\hypertarget{test5.l2}{%
-\paragraph{test5.l2}\label{test5.l2}}
+\paragraph{test5.l2}\label{test5.l2}
 
 \begin{verbatim}
 (let (x #12) (begin
-    (function what? () [printf (" x is %i) $x])
-    [what?]
-    [what?]
-    [what?]))
+  (function what? () [printf (" x is %i) x])
+  [what?]
+  [what?]
+  [what?]))
 \end{verbatim}
 
 Note in the above code that \texttt{what?} is only able to access
 \texttt{x} because \texttt{x} is defined outside of all functions and
-hence is statically allocated. Also note that L2 permits reference
+hence is statically allocated. Also note that L2 permits identifier
 shadowing, so \texttt{let} expressions can be nested without worrying,
 for instance, about the impact of an inner \texttt{templet0} on an outer
 one.
 
-\hypertarget{shell-4}{%
-\paragraph{shell}\label{shell-4}}
+\paragraph{shell}\label{shell-4}
 
 \begin{verbatim}
 ./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 \
-    backquote.l2 let.l2 - test5.l2
+  backquote.l2 let.l2 - test5.l2
 \end{verbatim}
 
-\hypertarget{boolean-expressions}{%
-\subsubsection{Boolean Expressions}\label{boolean-expressions}}
+\hypertarget{boolean-expressions}{\subsubsection{Boolean
+Expressions}\label{boolean-expressions}}
 
 The Boolean literals true and false are achieved using macros that
 return the same literal fragment regardless of the arguments supplied to
@@ -1138,25 +1052,25 @@ implement the following transformations:
 
 (or expr1 expr2 ... exprN)
 ->
-(let (or:temp expr1) (if $or:temp
-    $or:temp
-    (let (or:temp expr2) (if $or:temp
-        $or:temp
-        ...
-            (let (or:temp exprN) (if $or:temp
-                $or:temp
-                (false)))))))
+(let (or:temp expr1) (if or:temp
+  or:temp
+  (let (or:temp expr2) (if or:temp
+    or:temp
+    ...
+      (let (or:temp exprN) (if or:temp
+        or:temp
+        (false)))))))
 
 (and expr1 expr2 ... exprN)
 ->
-(let (and:temp expr1) (if $and:temp
-    (let (and:temp expr2) (if $and:temp
-        ...
-            (let (and:temp exprN) (if $and:temp
-                (true)
-                $and:temp))
-        $and:temp))
-    $and:temp))
+(let (and:temp expr1) (if and:temp
+  (let (and:temp expr2) (if and:temp
+    ...
+      (let (and:temp exprN) (if and:temp
+        (true)
+        and:temp))
+    and:temp))
+  and:temp))
 
 (not expr1)
 ->
@@ -1165,52 +1079,47 @@ implement the following transformations:
 
 These transformations are implemented and used as follows:
 
-\hypertarget{boolean.l2}{%
-\paragraph{boolean.l2}\label{boolean.l2}}
+\paragraph{boolean.l2}\label{boolean.l2}
 
 \begin{verbatim}
-(function mk# (r value) [value->literal $value $r])
+(function mk# (r value) [value->literal value r])
 
-(function false (l r) [mk# $r #0])
+(function false (l r) [mk# r #0])
 
-(function true (l r) [mk# $r #1])
+(function true (l r) [mk# r #1])
 
 (function or (l r) (with return
-    {(continuation loop (l sexpr)
-            (if [emt? $l]
-                {return $sexpr}
-                {loop [@rst $l] (`(let (or:temp (,[@fst $l])) (if $or:temp $or:temp
-                    (, $sexpr $r)))$r)}))
-        [meta:reverse $l $r] (`(false)$r)}))
+  {(continuation loop (l sexpr)
+      (if [emt? l]
+        {return sexpr}
+        {loop [@rst l] (`(let (or:temp (,[@fst l])) (if or:temp or:temp (, sexpr r)))r)}))
+    [meta:reverse l r] (`(false)r)}))
 
 (function and (l r) (with return
-    {(continuation loop (l sexpr)
-            (if [emt? $l]
-                {return $sexpr}
-                {loop [@rst $l] (`(let (and:temp (,[@fst $l])) (if $and:temp
-                    (, $sexpr $r) $and:temp))$r)}))
-        [meta:reverse $l $r] (`(true)$r)}))
+  {(continuation loop (l sexpr)
+      (if [emt? l]
+        {return sexpr}
+        {loop [@rst l] (`(let (and:temp (,[@fst l])) (if and:temp (, sexpr r) and:temp))r)}))
+    [meta:reverse l r] (`(true)r)}))
 
-(function not (l r) (`(if (,[@fst $l]) (false) (true))$r))
+(function not (l r) (`(if (,[@fst l]) (false) (true))r))
 \end{verbatim}
 
-\hypertarget{test6.l2}{%
-\paragraph{test6.l2}\label{test6.l2}}
+\paragraph{test6.l2}\label{test6.l2}
 
 \begin{verbatim}
 (and (false) [/ #1 #0])
 \end{verbatim}
 
-\hypertarget{shell-5}{%
-\paragraph{shell}\label{shell-5}}
+\paragraph{shell}\label{shell-5}
 
 \begin{verbatim}
 ./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 \
-    backquote.l2 let.l2 boolean.l2 - test6.l2
+  backquote.l2 let.l2 boolean.l2 - test6.l2
 \end{verbatim}
 
-\hypertarget{switch-expression}{%
-\subsubsection{Switch Expression}\label{switch-expression}}
+\hypertarget{switch-expression}{\subsubsection{Switch
+Expression}\label{switch-expression}}
 
 Now we will implement a variant of the switch statement that is
 parameterized by an equality predicate. The \texttt{switch} selection
@@ -1220,185 +1129,167 @@ function will, for example, do the following transformation:
 (switch eq0 val0 (vals exprs) ... expr0)
 ->
 (let (tempeq0 eq0) (tempval0 val0)
-    (if [[' tempeq0] [' tempval0] vals1]
-        exprs1
-        (if [[' tempeq0] [' tempval0] vals2]
-            exprs2
-            ...
-                (if [[' tempeq0] [' tempval0] valsN]
-                    exprsN
-                    expr0))))
+  (if [tempeq0 tempval0 vals1]
+    exprs1
+    (if [tempeq0 tempval0 vals2]
+      exprs2
+      ...
+        (if [tempeq0 tempval0 valsN]
+          exprsN
+          expr0))))
 \end{verbatim}
 
 It is implemented and used as follows:
 
-\hypertarget{switch.l2}{%
-\paragraph{switch.l2}\label{switch.l2}}
+\paragraph{switch.l2}\label{switch.l2}
 
 \begin{verbatim}
 (function switch (l r)
-    (`(let (switch:= (,[@fst $l])) (switch:val (,[@frst $l]))
-        (,(with return
-            {(continuation aux (remaining else-clause)
-                (if [emt? $remaining]
-                    {return $else-clause}
-                    {aux [@rst $remaining]
-                        (`(if (,[lst (` or $r) [meta:map [@rst [meta:reverse
-                                [@fst $remaining] $r]] $r (function _ (e r)
-                                [llllst (` invoke $r) (` $switch:= $r)
-                                (` $switch:val $r) $e emt $r]) $r] $r])
-                            (,[@fst [meta:reverse [@fst $remaining] $r]])
-                                ,$else-clause) $r)}))
-                [@rst [meta:reverse [@rrst $l] $r]] [@fst [meta:reverse $l $r]]})))$r))
+  (`(let (switch:= (,[@fst l])) (switch:val (,[@frst l]))
+    (,(with return
+      {(continuation aux (remaining else-clause)
+        (if [emt? remaining]
+          {return else-clause}
+          {aux [@rst remaining]
+            (`(if (,[lst (` or r) [meta:map [@rst [meta:reverse [@fst remaining] r]] r
+                (function _ (e r)
+                  [llllst (` invoke r) (` switch:= r) (` switch:val r) e emt r]) r] r])
+              (,[@fst [meta:reverse [@fst remaining] r]]) ,else-clause) r)}))
+        [@rst [meta:reverse [@rrst l] r]] [@fst [meta:reverse l r]]})))r))
 \end{verbatim}
 
-\hypertarget{test7.l2}{%
-\paragraph{test7.l2}\label{test7.l2}}
+\paragraph{test7.l2}\label{test7.l2}
 
 \begin{verbatim}
 (switch = #10
-    (#20 [printf (" d is 20!)])
-    (#10 [printf (" d is 10!)])
-    (#30 [printf (" d is 30!)])
-    [printf (" s is something else.)])
+  (#20 [printf (" d is 20!)])
+  (#10 [printf (" d is 10!)])
+  (#30 [printf (" d is 30!)])
+  [printf (" s is something else.)])
 \end{verbatim}
 
-\hypertarget{shell-6}{%
-\paragraph{shell}\label{shell-6}}
+\paragraph{shell}\label{shell-6}
 
 \begin{verbatim}
 ./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 \
-    backquote.l2 let.l2 boolean.l2 switch.l2 - test7.l2
+  backquote.l2 let.l2 boolean.l2 switch.l2 - test7.l2
 \end{verbatim}
 
-\hypertarget{characters}{%
-\subsubsection{Characters}\label{characters}}
+\hypertarget{characters}{\subsubsection{Characters}\label{characters}}
 
 With \texttt{\#} implemented, a somewhat more readable implementation of
 characters is possible. The \texttt{char} function takes a singleton
-list containing a symbol of one character and returns its ascii encoding
+list containing a token of one character and returns its ascii encoding
 using the \texttt{\#} expression. Its implementation and use follows:
 
-\hypertarget{characters.l2}{%
-\paragraph{characters.l2}\label{characters.l2}}
+\paragraph{characters.l2}\label{characters.l2}
 
 \begin{verbatim}
-(function char (l r) (switch char= [@ffst $l]
-    (-!- (` #33 $r)) (-"- (` #34 $r)) (-#- (` #35 $r)) (-$- (` #36 $r)) (-%- (` #37 $r))
-    (-&- (` #38 $r)) (-'- (` #39 $r)) (-*- (` #42 $r)) (-+- (` #43 $r)) (-,- (` #44 $r))
-    (--- (` #45 $r)) (-.- (` #46 $r)) (-/- (` #47 $r)) (-0- (` #48 $r)) (-1- (` #49 $r))
-    (-2- (` #50 $r)) (-3- (` #51 $r)) (-4- (` #52 $r)) (-5- (` #53 $r)) (-6- (` #54 $r))
-    (-7- (` #55 $r)) (-8- (` #56 $r)) (-9- (` #57 $r)) (-:- (` #58 $r)) (-;- (` #59 $r))
-    (-<- (` #60 $r)) (-=- (` #61 $r)) (->- (` #62 $r)) (-?- (` #63 $r)) (-@- (` #64 $r))
-    (-A- (` #65 $r)) (-B- (` #66 $r)) (-C- (` #67 $r)) (-D- (` #68 $r)) (-E- (` #69 $r))
-    (-F- (` #70 $r)) (-G- (` #71 $r)) (-H- (` #72 $r)) (-I- (` #73 $r)) (-J- (` #74 $r))
-    (-K- (` #75 $r)) (-L- (` #76 $r)) (-M- (` #77 $r)) (-N- (` #78 $r)) (-O- (` #79 $r))
-    (-P- (` #80 $r)) (-Q- (` #81 $r)) (-R- (` #82 $r)) (-S- (` #83 $r)) (-T- (` #84 $r))
-    (-U- (` #85 $r)) (-V- (` #86 $r)) (-W- (` #87 $r)) (-X- (` #88 $r)) (-Y- (` #89 $r))
-    (-Z- (` #90 $r)) (-\- (` #92 $r)) (-^- (` #94 $r)) (-_- (` #95 $r)) (-`- (` #96 $r))
-    (-a- (` #97 $r)) (-b- (` #98 $r)) (-c- (` #99 $r)) (-d- (` #100 $r)) (-e- (` #101 $r))
-    (-f- (` #102 $r)) (-g- (` #103 $r)) (-h- (` #104 $r)) (-i- (` #105 $r))
-    (-j- (` #106 $r)) (-k- (` #107 $r)) (-l- (` #108 $r)) (-m- (` #109 $r))
-    (-n- (` #110 $r)) (-o- (` #111 $r)) (-p- (` #112 $r)) (-q- (` #113 $r))
-    (-r- (` #114 $r)) (-s- (` #115 $r)) (-t- (` #116 $r)) (-u- (` #117 $r))
-    (-v- (` #118 $r)) (-w- (` #119 $r)) (-x- (` #120 $r)) (-y- (` #121 $r))
-    (-z- (` #122 $r)) (-|- (` #124 $r)) (-~- (` #126 $r)) (` #0 $r)))
+(function char (l r) (switch char= [@ffst l]
+  (-!- (` #33 r)) (-"- (` #34 r)) (-#- (` #35 r)) (-$- (` #36 r)) (-%- (` #37 r))
+  (-&- (` #38 r)) (-'- (` #39 r)) (-*- (` #42 r)) (-+- (` #43 r)) (-,- (` #44 r))
+  (--- (` #45 r)) (-.- (` #46 r)) (-/- (` #47 r)) (-0- (` #48 r)) (-1- (` #49 r))
+  (-2- (` #50 r)) (-3- (` #51 r)) (-4- (` #52 r)) (-5- (` #53 r)) (-6- (` #54 r))
+  (-7- (` #55 r)) (-8- (` #56 r)) (-9- (` #57 r)) (-:- (` #58 r)) (-;- (` #59 r))
+  (-<- (` #60 r)) (-=- (` #61 r)) (->- (` #62 r)) (-?- (` #63 r)) (-@- (` #64 r))
+  (-A- (` #65 r)) (-B- (` #66 r)) (-C- (` #67 r)) (-D- (` #68 r)) (-E- (` #69 r))
+  (-F- (` #70 r)) (-G- (` #71 r)) (-H- (` #72 r)) (-I- (` #73 r)) (-J- (` #74 r))
+  (-K- (` #75 r)) (-L- (` #76 r)) (-M- (` #77 r)) (-N- (` #78 r)) (-O- (` #79 r))
+  (-P- (` #80 r)) (-Q- (` #81 r)) (-R- (` #82 r)) (-S- (` #83 r)) (-T- (` #84 r))
+  (-U- (` #85 r)) (-V- (` #86 r)) (-W- (` #87 r)) (-X- (` #88 r)) (-Y- (` #89 r))
+  (-Z- (` #90 r)) (-\- (` #92 r)) (-^- (` #94 r)) (-_- (` #95 r)) (-`- (` #96 r))
+  (-a- (` #97 r)) (-b- (` #98 r)) (-c- (` #99 r)) (-d- (` #100 r)) (-e- (` #101 r))
+  (-f- (` #102 r)) (-g- (` #103 r)) (-h- (` #104 r)) (-i- (` #105 r)) (-j- (` #106 r))
+  (-k- (` #107 r)) (-l- (` #108 r)) (-m- (` #109 r)) (-n- (` #110 r)) (-o- (` #111 r))
+  (-p- (` #112 r)) (-q- (` #113 r)) (-r- (` #114 r)) (-s- (` #115 r)) (-t- (` #116 r))
+  (-u- (` #117 r)) (-v- (` #118 r)) (-w- (` #119 r)) (-x- (` #120 r)) (-y- (` #121 r))
+  (-z- (` #122 r)) (-|- (` #124 r)) (-~- (` #126 r)) (` #0 r)))
 \end{verbatim}
 
-\hypertarget{test8.l2}{%
-\paragraph{test8.l2}\label{test8.l2}}
+\paragraph{test8.l2}\label{test8.l2}
 
 \begin{verbatim}
 [putchar (char A)]
 \end{verbatim}
 
-\hypertarget{shell-7}{%
-\paragraph{shell}\label{shell-7}}
+\paragraph{shell}\label{shell-7}
 
 \begin{verbatim}
 ./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 \
-    backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 - test8.l2
+  backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 - test8.l2
 \end{verbatim}
 
-\hypertarget{strings}{%
-\subsubsection{Strings}\label{strings}}
+\hypertarget{strings}{\subsubsection{Strings}\label{strings}}
 
 The above exposition has purposefully avoided making strings because it
-is tedious to do using only literal and reference arithmetic. The quote
-function takes a list of symbols and returns the sequence of operations
-required to write its ascii encoding into memory. (An extension to this
-rule occurs when instead of a symbol, a fragment that is a list of
-fragments is encountered. In this case the value of the fragment is
-taken as the character to be inserted.) These "operations" are
-essentially reserving enough storage for the bytes of the input, putting
-the characters into that memory, and returning the address of that
-memory. Because the stack-frame of a function is destroyed upon its
+is tedious to individually store each character literal in memory. The
+quote function takes a list of tokens and returns the sequence of
+operations required to write its ascii encoding into memory. (An
+extension to this rule occurs when instead of a token, a fragment that
+is a list of fragments is encountered. In this case the value of the
+fragment is taken as the character to be inserted.) These ``operations''
+are essentially reserving enough storage for the bytes of the input,
+putting the characters into that memory, and returning the address of
+that memory. Because the stack-frame of a function is destroyed upon its
 return, strings implemented in this way should not be returned. Quote is
 implemented below:
 
-\hypertarget{strings.l2}{%
-\paragraph{strings.l2}\label{strings.l2}}
+\paragraph{strings.l2}\label{strings.l2}
 
 \begin{verbatim}
 (function " (l r) (with return
-    {(continuation add-word (str index instrs)
-        (if [emt? $str]
-            {return (`(with dquote:return
-                (,[llst (` begin $r) [llst (` storage $r) (` dquote:str $r)
-                        (with return {(continuation _ (phs num)
-                            (if $num
-                                {_ [lst (` #0 $r) $phs $r] [- $num #1]}
-                                {return $phs})) emt [+[/ $index (unit)]#1]}) $r]
-                    [meta:reverse [lst (`{dquote:return dquote:str}$r) $instrs $r]$r]$r]))
-                        $r)}
+  {(continuation add-word (str index instrs)
+    (if [emt? str]
+      {return (`(with dquote:return
+        (,[llst (` begin r) [llst (` storage r) (` dquote:str r)
+            (with return {(continuation _ (phs num)
+              (if num
+                {_ [lst (` #0 r) phs r] [- num #1]}
+                {return phs})) emt [+[/ index (unit)]#1]}) r]
+          [meta:reverse [lst (`{dquote:return dquote:str}r) instrs r]r]r]))r)}
+    
+    (if (and [emt? [@fst str]] [emt? [@rst str]])
+      {add-word [@rst str] [+ index #1]
+        [lst (`[setb [+ dquote:str (,[value->literal index r])] #0]r) instrs r]}
         
-        (if (and [emt? [@fst $str]] [emt? [@rst $str]])
-            {add-word [@rst $str] [+ $index #1]
-                [lst (`[setb [+ dquote:str (,[value->literal $index $r])] #0]$r) $instrs
-                    $r]}
-                
-        (if (and [emt? [@fst $str]] [symbol? [@frst $str]])
-            {add-word [@rst $str] [+ $index #1]
-                [lst (`[setb [+ dquote:str (,[value->literal $index $r])] #32]$r) $instrs
-                    $r]}
+    (if (and [emt? [@fst str]] [token? [@frst str]])
+      {add-word [@rst str] [+ index #1]
+        [lst (`[setb [+ dquote:str (,[value->literal index r])] #32]r) instrs r]}
+    
+    (if [emt? [@fst str]] {add-word [@rst str] index instrs}
         
-        (if [emt? [@fst $str]] {add-word [@rst $str] $index $instrs}
-                
-        (if [symbol? [@fst $str]]
-            {add-word [lst [@rfst $str] [@rst $str] $r] [+ $index #1]
-                [lst (`[setb [+ dquote:str (,[value->literal $index $r])]
-                    (,[char [lst [lst [@ffst $str] emt $r] emt $r]$r emt])]$r) $instrs $r]}
-            
-            {add-word [@rst $str] [+ $index #1]
-                [lst (`[setb [+ dquote:str (,[value->literal $index $r])] (,[@fst $str])]$r)
-                    $instrs $r]})))))) $l #0 emt}))
+    (if [token? [@fst str]]
+      {add-word [lst [@rfst str] [@rst str] r] [+ index #1]
+        [lst (`[setb [+ dquote:str (,[value->literal index r])]
+          (,[char [lst [lst [@ffst str] emt r] emt r]r emt])]r) instrs r]}
+      
+      {add-word [@rst str] [+ index #1]
+        [lst (`[setb [+ dquote:str (,[value->literal index r])] (,[@fst str])]r)
+          instrs r]})))))) l #0 emt}))
 \end{verbatim}
 
-\hypertarget{test9.l2}{%
-\paragraph{test9.l2}\label{test9.l2}}
+\paragraph{test9.l2}\label{test9.l2}
 
 \begin{verbatim}
 [printf (" This is how the quote macro is used. (# 10) Now we are on a new line because 10
-    is a line feed.)]
+  is a line feed.)]
 \end{verbatim}
 
-\hypertarget{shell-8}{%
-\paragraph{shell}\label{shell-8}}
+\paragraph{shell}\label{shell-8}
 
 \begin{verbatim}
 ./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 \
-    backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 - test9.l2
+  backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 - test9.l2
 \end{verbatim}
 
-\hypertarget{closures}{%
-\subsubsection{Closures}\label{closures}}
+\hypertarget{closures}{\subsubsection{Closures}\label{closures}}
 
 A restricted form of closures can be implemented in L2. The key to their
 implementation is to \texttt{jump} out of the function that is supposed
 to provide the lexical environment. By doing this instead of merely
 returning from the environment function, the stack-pointer and thus the
 stack-frame of the environment are preserved. The following example
-implements a function that receives a single argument and "returns"
+implements a function that receives a single argument and ``returns''
 (more accurately: jumps out) a continuation that adds this value to its
 own argument. But first, the following transformations are needed:
 
@@ -1406,7 +1297,7 @@ own argument. But first, the following transformations are needed:
 (lambda (args ...) expr0)
 ->
 (continuation lambda0 (cont0 args ...)
-    {$cont0 expr0})
+  {cont0 expr0})
 
 (; func0 args ...)
 ->
@@ -1419,48 +1310,42 @@ own argument. But first, the following transformations are needed:
 
 These are implemented and used as follows:
 
-\hypertarget{closures.l2}{%
-\paragraph{closures.l2}\label{closures.l2}}
+\paragraph{closures.l2}\label{closures.l2}
 
 \begin{verbatim}
 (function lambda (l r)
-    (`(continuation lambda0 (,[lst (` cont0 $r) [@fst $l] $r])
-        {$cont0 (,[@frst $l])})$r))
+  (`(continuation lambda0 (,[lst (` cont0 r) [@fst l] r])
+    {cont0 (,[@frst l])})r))
 
 (function ; (l r)
-    (`(with semicolon:return (,[lllst (` invoke $r) [@fst $l] (` semicolon:return $r)
-        [@rst $l] $r]))$r))
+  (`(with semicolon:return
+    (,[lllst (` invoke r) [@fst l] (` semicolon:return r) [@rst l] r]))r))
 
 (function : (l r)
-    (`(with colon:return (,[lllst (` jump $r) [@fst $l] (` colon:return $r) [@rst $l] $r]))
-        $r))
+  (`(with colon:return (,[lllst (` jump r) [@fst l] (` colon:return r) [@rst l] r]))r))
 \end{verbatim}
 
-\hypertarget{test10.l2}{%
-\paragraph{test10.l2}\label{test10.l2}}
+\paragraph{test10.l2}\label{test10.l2}
 
 \begin{verbatim}
 (function adder (cont x)
-    {$cont (lambda (y) [+ $x $y])})
+  {cont (lambda (y) [+ x y])})
 
 (let (add5 (; adder #5)) (add7 (; adder #7))
-    (begin
-        [printf (" %i,) (: $add5 #2)]
-        [printf (" %i,) (: $add7 #3)]
-        [printf (" %i,) (: $add5 #1)]))
+  (begin
+    [printf (" %i,) (: add5 #2)]
+    [printf (" %i,) (: add7 #3)]
+    [printf (" %i,) (: add5 #1)]))
 \end{verbatim}
 
-\hypertarget{shell-9}{%
-\paragraph{shell}\label{shell-9}}
+\paragraph{shell}\label{shell-9}
 
 \begin{verbatim}
 ./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 \
-    backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 closures.l2 - \
-    test10.l2
+  backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 closures.l2 - test10.l2
 \end{verbatim}
 
-\hypertarget{assume}{%
-\subsubsection{Assume}\label{assume}}
+\hypertarget{assume}{\subsubsection{Assume}\label{assume}}
 
 There are far fewer subtle ways to trigger undefined behaviors in L2
 than in other unsafe languages because L2 does not have dereferencing,
@@ -1479,68 +1364,62 @@ following usage of undefined behavior within the function
 (assume x y)
 ->
 (with return
-    {(continuation tempas0 ()
-        (if x {return y} (begin)))})
+  {(continuation tempas0 ()
+    (if x {return y} (begin)))})
 \end{verbatim}
 
 This is implemented as follows:
 
-\hypertarget{assume.l2}{%
-\paragraph{assume.l2}\label{assume.l2}}
+\paragraph{assume.l2}\label{assume.l2}
 
 \begin{verbatim}
 (function assume (l r)
-    (`(with assume:return
-        {(continuation assume:tempas0 ()
-            (if (,[@fst $l]) {assume:return (,[@frst $l])} (begin)))})$r))
+  (`(with assume:return
+    {(continuation assume:tempas0 ()
+      (if (,[@fst l]) {assume:return (,[@frst l])} (begin)))})r))
 \end{verbatim}
 
-\hypertarget{test11.l2}{%
-\paragraph{test11.l2}\label{test11.l2}}
+\paragraph{test11.l2}\label{test11.l2}
 
 \begin{verbatim}
 (function foo (x y)
-    (assume [not [= $x $y]] (begin
-        [setb $x (char A)]
-        [setb $y (char B)]
-        [printf (" %c) [getb $x]])))
+  (assume [not [= x y]] (begin
+    [setb x (char A)]
+    [setb y (char B)]
+    [printf (" %c) [getb x]])))
 
 [foo (" C) (" D)]
 \end{verbatim}
 
-In the function \texttt{foo}, if \texttt{\$x} were equal to
-\texttt{\$y}, then the else branch of the \texttt{assume}'s \texttt{if}
-expression would be taken. Since this branch does nothing,
-\texttt{continuation}'s body expression would finish evaluating. But
-this is the undefined behavior stated in
-\protect\hyperlink{continuation}{the first paragraph of the description
-of the \texttt{continuation} expression}. Therefore an L2 compiler does
-not have to worry about what happens in the case that \texttt{\$x}
-equals \texttt{\$y}. In light of this and the fact that the \texttt{if}
-condition is pure, the whole \texttt{assume} expression can be replaced
-with the first branch of \texttt{assume}'s \texttt{if} expression. And
-more importantly, the the first branch of \texttt{assume}'s \texttt{if}
-expression can be optimized assuming that \texttt{\$x} is not equal to
-\texttt{\$y}. Therefore, a hypothetical optimizing compiler would also
-replace the last \texttt{{[}getb\ \$x{]}}, a load from memory, with
-\texttt{(char\ A)}, a constant.
+In the function \texttt{foo}, if \texttt{x} were equal to \texttt{y},
+then the else branch of the \texttt{assume}'s \texttt{if} expression
+would be taken. Since this branch does nothing, \texttt{continuation}'s
+body expression would finish evaluating. But this is the undefined
+behavior stated in \protect\hyperlink{continuation}{the first paragraph
+of the description of the \texttt{continuation} expression}. Therefore
+an L2 compiler does not have to worry about what happens in the case
+that \texttt{x} equals \texttt{y}. In light of this and the fact that
+the \texttt{if} condition is pure, the whole \texttt{assume} expression
+can be replaced with the first branch of \texttt{assume}'s \texttt{if}
+expression. And more importantly, the the first branch of
+\texttt{assume}'s \texttt{if} expression can be optimized assuming that
+\texttt{x} is not equal to \texttt{y}. Therefore, a hypothetical
+optimizing compiler would also replace the last \texttt{{[}getb\ x{]}},
+a load from memory, with \texttt{(char\ A)}, a constant.
 
-\hypertarget{shell-10}{%
-\paragraph{shell}\label{shell-10}}
+\paragraph{shell}\label{shell-10}
 
 \begin{verbatim}
 ./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 \
-    backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 assume.l2 - \
-    test11.l2
+  backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 assume.l2 - test11.l2
 \end{verbatim}
 
 Note that the \texttt{assume} expression can also be used to achieve C's
 \texttt{restrict} keyword simply by making its condition the conjunction
 of inequalities on the memory locations of the extremeties of the
-"arrays" in question.
+``arrays'' in question.
 
-\hypertarget{fields}{%
-\subsubsection{Fields}\label{fields}}
+\hypertarget{fields}{\subsubsection{Fields}\label{fields}}
 
 L2 has no built-in mechanism for record and union types. The most naive
 way to do record types in L2 would be to create a getter function,
@@ -1626,7 +1505,7 @@ then we get the following outcomes:
 (& car expr) -> (car &-aux expr) -> (&-aux #0 #8 get8b set8b expr) -> [+ expr #0]
 (@ car expr) -> (car @-aux expr) -> (@-aux #0 #8 get8b set8b expr) -> [get8b [+ expr #0]]
 (setf car expr val) -> (car setf-aux expr val) -> (setf-aux #0 #8 get8b set8b expr val) ->
-    [set8b [+ expr #0] val]
+  [set8b [+ expr #0] val]
 
 (offset-of cdr) -> ... -> #8
 (size-of cdr) -> ... -> #8
@@ -1644,61 +1523,66 @@ a helper function, \texttt{mk-field}, that creates them. What follows is
 the implementation of this helper function and the aforementioned
 transformations:
 
-\hypertarget{fields.l2}{%
-\paragraph{fields.l2}\label{fields.l2}}
+\paragraph{fields.l2}\label{fields.l2}
 
 \begin{verbatim}
-(function offset-of (l r) (`((,[@fst $l]) offset-of-aux)$r))
+(function offset-of (l r) (`((,[@fst l]) offset-of-aux)r))
 
-(function offset-of-aux (l r) [@fst $l])
+(function offset-of-aux (l r) [@fst l])
 
-(function size-of (l r) (`((,[@fst $l]) size-of-aux)$r))
+(function size-of (l r) (`((,[@fst l]) size-of-aux)r))
 
-(function size-of-aux (l r) [@frst $l])
+(function size-of-aux (l r) [@frst l])
 
-(function getter-of (l r) (`((,[@fst $l]) getter-of-aux)$r))
+(function getter-of (l r) (`((,[@fst l]) getter-of-aux)r))
 
-(function getter-of-aux (l r) [@frrst $l])
+(function getter-of-aux (l r) [@frrst l])
 
-(function setter-of (l r) (`((,[@fst $l]) setter-of-aux)$r))
+(function setter-of (l r) (`((,[@fst l]) setter-of-aux)r))
 
-(function setter-of-aux (l r) [@frrrst $l])
+(function setter-of-aux (l r) [@frrrst l])
 
-(function & (l r) (`((,[@fst $l]) &-aux (,[@frst $l]))$r))
+(function & (l r) (`((,[@fst l]) &-aux (,[@frst l]))r))
 
-(function &-aux (l r) (`[+ (,[@frrrrst $l]) (,[@fst $l])]$r))
+(function &-aux (l r) (`[+ (,[@frrrrst l]) (,[@fst l])]r))
 
-(function @ (l r) (`((,[@fst $l]) @-aux (,[@frst $l]))$r))
+(function @ (l r) (`((,[@fst l]) @-aux (,[@frst l]))r))
 
-(function @-aux (l r) (`[(,[@frrst $l]) [+ (,[@frrrrst $l]) (,[@fst $l])]]$r))
+(function @-aux (l r) (`[(,[@frrst l]) [+ (,[@frrrrst l]) (,[@fst l])]]r))
 
-(function setf (l r) (`((,[@fst $l]) setf-aux (,[@frst $l]) (,[@frrst $l]))$r))
+(function setf (l r) (`((,[@fst l]) setf-aux (,[@frst l]) (,[@frrst l]))r))
 
-(function setf-aux (l r) (`[(,[@frrrst $l]) [+ (,[@frrrrst $l]) (,[@fst $l])]
-    (,[@frrrrrst $l])]$r))
+(function setf-aux (l r)
+  (`[(,[@frrrst l]) [+ (,[@frrrrst l]) (,[@fst l])] (,[@frrrrrst l])]r))
 
 (function mk-field (l r offset size)
-    [lllllst [@fst $l] [value->literal $offset $r] [value->literal $size $r]
-        (switch = $size (#1 (` get1b $r)) (#2 (` get2b $r)) (#4 (` get4b $r))
-            (#8 (` get8b $r)) (`(null)$r))
-        (switch = $size (#1 (` set1b $r)) (#2 (` set2b $r)) (#4 (` set4b $r))
-            (#8 (` set8b $r)) (`(null)$r))
-        [@rst $l] $r])
+  [lllllst [@fst l] [value->literal offset r] [value->literal size r]
+    (switch = size
+      (#1 (` get1b r))
+      (#2 (` get2b r))
+      (#4 (` get4b r))
+      (#8 (` get8b r))
+      (`(begin)r))
+    (switch = size
+      (#1 (` set1b r))
+      (#2 (` set2b r))
+      (#4 (` set4b r))
+      (#8 (` set8b r))
+      (`(begin)r))
+    [@rst l] r])
 \end{verbatim}
 
-\hypertarget{somefields.l2}{%
-\paragraph{somefields.l2}\label{somefields.l2}}
+\paragraph{somefields.l2}\label{somefields.l2}
 
 \begin{verbatim}
-(function cons-cell (l r) [mk# $r #16])
+(function cons-cell (l r) [mk# r #16])
 
-(function car (l r) [mk-field $l $r #0 #8])
+(function car (l r) [mk-field l r #0 #8])
 
-(function cdr (l r) [mk-field $l $r #8 #8])
+(function cdr (l r) [mk-field l r #8 #8])
 \end{verbatim}
 
-\hypertarget{test12.l2}{%
-\paragraph{test12.l2}\label{test12.l2}}
+\paragraph{test12.l2}\label{test12.l2}
 
 \begin{verbatim}
 (storage mycons (begin) (begin))
@@ -1708,13 +1592,12 @@ transformations:
 [putchar (@ cdr mycons)]
 \end{verbatim}
 
-\hypertarget{shell-11}{%
-\paragraph{shell}\label{shell-11}}
+\paragraph{shell}\label{shell-11}
 
 \begin{verbatim}
 ./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 \
-    backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 assume.l2 fields.l2 \
-    somefields.l2 - test12.l2
+  backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 assume.l2 fields.l2 \
+  somefields.l2 - test12.l2
 \end{verbatim}
 
 Note that there is no struct definition in the code, there are only
