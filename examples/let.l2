@@ -1,29 +1,29 @@
-Reverses the given list. $l is the list to be reversed. $r is the buffer into
+(;; Reverses the given list. l is the list to be reversed. r is the buffer into
 	which the reversed list will be put. Return value is the reversed list.)
 
 (function meta:reverse (l r)
 	(with return
 		{(continuation _ (l reversed)
-			(if [emt? $l]
-				{return $reversed}
-				{_ [@rst $l] [lst [@fst $l] $reversed $r]})) $l emt}))
+			(if [emt? l]
+				{return reversed}
+				{_ [@rst l] [lst [@fst l] reversed r]})) l emt}))
 
-(;; Maps the given list using the given function. $l is the list to be mapped. $ctx
-	is always passed as a second argument to the mapper. $mapper is the two argument
-	function that will be supplied a list item as its first argument and $ctx as its
+(;; Maps the given list using the given function. l is the list to be mapped. ctx
+	is always passed as a second argument to the mapper. mapper is the two argument
+	function that will be supplied a list item as its first argument and ctx as its
 	second argument and will return an argument that will be put into the corresponding
-	position of another list. $r is the buffer into which the list being constructed
+	position of another list. r is the buffer into which the list being constructed
 	will be put. Return value is the mapped list.)
 
 (function meta:map (l ctx mapper r)
 	(with return
 		{(continuation aux (in out)
-			(if [emt? $in]
-				{return [meta:reverse $out $r]}
-				{aux [@rst $in] [lst [$mapper [@fst $in] $ctx] $out $r]})) $l emt}))
+			(if [emt? in]
+				{return [meta:reverse out r]}
+				{aux [@rst in] [lst [mapper [@fst in] ctx] out r]})) l emt}))
 
 (function let (l r)
 	(`(with let:return
-		(,[llst (` jump $r) (`(continuation let:aux
-			(,[meta:map [@rst [meta:reverse $l $r]] (null) @fst $r])
-			{let:return (,[@fst [meta:reverse $l $r]])}) $r) [meta:map [@rst [meta:reverse $l $r]] (null) @frst $r] $r])) $r))
+		(,[llst (` jump r) (`(continuation let:aux (,[meta:map [@rst [meta:reverse l r]] (begin) @fst r]) (begin
+			(storage let:storage (,[@fst [meta:reverse l r]]))
+			{let:return $let:storage})) r) [meta:map [@rst [meta:reverse l r]] (begin) @frst r] r])) r))
