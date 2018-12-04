@@ -34,7 +34,7 @@
 			(let (op1 [make-literal [+ (@ bndg-offset sym) offset] ..])
 				[prepend (make-asmN (movq-mdb-to-reg) (op1 (make-asmN(rbp)()..) dest-reg) ..) c ..])
 			(begin
-				(let (op1 (make-asmN (stval-add-off-to-ref) ([use-symbol sym ..] [make-literal offset ..]) ..))
+				(let (op1 (make-asmN (stval-add-off-to-ref) ([use-binding-aug sym ..] [make-literal offset ..]) ..))
 					[prepend (make-asmN (movq-imm-to-reg) (op1 scratch-reg) ..) c ..])
 				[prepend (make-asmN (movq-mdb-to-reg) ([make-literal #0 ..] scratch-reg dest-reg) ..) c ..])))))
 
@@ -44,7 +44,7 @@
 			(let (op2 [make-literal [+ (@ bndg-offset sym) offset] ..])
 				[prepend (make-asmN (movq-from-reg-into-mdb) (src-reg op2 (make-asmN(rbp)()..)) ..) c ..])
 			(begin
-				(let (op1 (make-asmN (stval-add-off-to-ref) ([use-symbol sym ..] [make-literal offset ..]) ..))
+				(let (op1 (make-asmN (stval-add-off-to-ref) ([use-binding-aug sym ..] [make-literal offset ..]) ..))
 					[prepend (make-asmN (movq-imm-to-reg) (op1 scratch-reg) ..) c ..])
 				[prepend (make-asmN (movq-from-reg-into-mdb) (src-reg [make-literal #0 ..] scratch-reg) ..) c ..])))))
 
@@ -53,22 +53,22 @@
 		[generate-expression (@ expr-condition n) c ..]
 		[prepend (make-asmN (orq-reg-to-reg) ((make-asmN(rax)()..) (make-asmN(rax)()..)) ..) c ..]
 		(storage alternate-symbol [make-binding-aug (static-storage) (local-scope) (defined-state) null-string null-expr ..])
-		(let (op1 (make-asmN (stval-sub-rip-from-ref) ([use-symbol $alternate-symbol ..]) ..))
+		(let (op1 (make-asmN (stval-sub-rip-from-ref) ([use-binding-aug $alternate-symbol ..]) ..))
 			[prepend (make-asmN (je-rel) (op1) ..) c ..])
 		[generate-expression (@ expr-consequent n) c ..]
 		(storage end-symbol [make-binding-aug (static-storage) (local-scope) (defined-state) null-string null-expr ..])
-		(let (op1 (make-asmN (stval-sub-rip-from-ref) ([use-symbol $end-symbol ..]) ..))
+		(let (op1 (make-asmN (stval-sub-rip-from-ref) ([use-binding-aug $end-symbol ..]) ..))
 			[prepend (make-asmN (jmp-rel) (op1) ..) c ..])
-		[prepend (make-asmN (label) ([use-symbol $alternate-symbol ..]) ..) c ..]
+		[prepend (make-asmN (label) ([use-binding-aug $alternate-symbol ..]) ..) c ..]
 		[generate-expression (@ expr-alternate n) c ..]
-		[prepend (make-asmN (label) ([use-symbol $end-symbol ..]) ..) c ..])))
+		[prepend (make-asmN (label) ([use-binding-aug $end-symbol ..]) ..) c ..])))
 
 (function generate-load-address (sym dest-reg c r handler err)
 	(substitute (.. r handler err)
 		(if [= (@ bndg-type sym) (dynamic-storage)]
 			(let (op1 [make-literal (@ bndg-offset sym) ..])
 				[prepend (make-asmN (leaq-of-mdb-into-reg) (op1 (make-asmN(rbp)()..) dest-reg) ..) c ..])
-			[prepend (make-asmN (movq-imm-to-reg) ([use-symbol sym ..] dest-reg) ..) c ..])))
+			[prepend (make-asmN (movq-imm-to-reg) ([use-binding-aug sym ..] dest-reg) ..) c ..])))
 
 (function generate-storage (n c r handler err)
 	(substitute (.. r handler err) (begin
@@ -126,10 +126,10 @@
 			(begin))
 		
 		(storage after-symbol [make-binding-aug (static-storage) (local-scope) (defined-state) null-string null-expr ..])
-		[prepend (make-asmN (jmp-rel) ((make-asmN (stval-sub-rip-from-ref) ([use-symbol $after-symbol ..]) ..)) ..) c ..]
+		[prepend (make-asmN (jmp-rel) ((make-asmN (stval-sub-rip-from-ref) ([use-binding-aug $after-symbol ..]) ..)) ..) c ..]
 		[prepend (make-asmN (label) ((@ expr-cont-instr-ref n)) ..) c ..]
 		[generate-expression (@ expr-expression n) c ..]
-		[prepend (make-asmN (label) ([use-symbol $after-symbol ..]) ..) c ..])))
+		[prepend (make-asmN (label) ([use-binding-aug $after-symbol ..]) ..) c ..])))
 
 (function generate-with (n c r handler err)
 	(substitute (.. r handler err) (begin
@@ -177,7 +177,7 @@
 		[generate-load-address (@ expr-binding-aug(@ expr-reference n)) (make-asmN(rax)()..) c ..]
 		
 		(storage after-symbol [make-binding-aug (static-storage) (local-scope) (defined-state) null-string null-expr ..])
-		[prepend (make-asmN(jmp-rel)((make-asmN(stval-sub-rip-from-ref)([use-symbol $after-symbol ..])..))..) c ..]
+		[prepend (make-asmN(jmp-rel)((make-asmN(stval-sub-rip-from-ref)([use-binding-aug $after-symbol ..])..))..) c ..]
 		[prepend (make-asmN(label)((@ expr-reference n))..) c ..]
 		
 		[prepend (make-asmN(popq-reg)((make-asmN(r11)()..))..) c ..]
@@ -205,7 +205,7 @@
 		[prepend (make-asmN(addq-imm-to-reg)([make-literal [* #6(word-size)]..] (make-asmN(rsp)()..))..) c ..]
 		[prepend (make-asmN(pushq-reg)((make-asmN(r11)()..))..) c ..]
 		[prepend (make-asmN(ret)()..) c ..]
-		[prepend (make-asmN(label)([use-symbol $after-symbol ..])..) c ..])))
+		[prepend (make-asmN(label)([use-binding-aug $after-symbol ..])..) c ..])))
 
 (function generate-invoke (n c r handler err)
 	(substitute (.. r handler err) (begin

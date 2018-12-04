@@ -1,5 +1,5 @@
 (;; Does the relocations specified in the object file in light of the current
-	symbol addresses. The continuation handler is followed and the error buffer
+	binding addresses. The continuation handler is followed and the error buffer
 	referenced by err set to the singleton (object-error) if relocation type
 	is unrecognized. Note: Implementation is hacky since it does not perform
 	checks to confirm that the performed relocations are correct.)
@@ -157,22 +157,22 @@
 	(let (seg-buf ($(loc (unit) (@ sh-link shdr) (@ obj-segs obj))))
 		[+ seg-buf (@ st-name sym)]))
 
-(;; Makes a symbol with the given name and address. name is a string containg
-	the name of the symbol. address is the address of the symbol. reg is the
-	buffer in which the symbol should be constructed. Return value is the
-	constructed symbol.)
+(;; Makes a binding with the given name and address. name is a string containg
+	the name of the binding. address is the address of the binding. reg is the
+	buffer in which the binding should be constructed. Return value is the
+	constructed binding.)
 
-(function make-sym (name address reg handler err) (with return
+(function make-binding (name address reg handler err) (with return
 	(let (sym [buffer-alloc (object-symbol) reg handler err]) (begin
 		(setf bndg-name sym name)
 		(setf bndg-offset sym address)
 		{return sym}))))
 
-(;; Updates the symbols in the given object. obj is the object whose symbols
-	need updating. updates is a list of symbols representing the updates that
+(;; Updates the bindings in the given object. obj is the object whose bindings
+	need updating. updates is a list of bindings representing the updates that
 	need to be applied to obj.)
 
-(function mutate-symbols (obj updates) (begin
+(function mutate-bindings (obj updates) (begin
 	(foreach (update updates)
 		(until (sec-idx #0) [= sec-idx (@ e-shnum(@ obj-ehdr obj))] [+ sec-idx #1] (begin
 			(define (shdr-buf (loc (elf64-shdr) sec-idx (@ obj-shdrs obj)))
@@ -191,9 +191,9 @@
 	(;; If obj was created using load, the following invocation cannot produce an error; hence the unspecified handler arguments.)
 	[do-relocations obj (begin) (begin)]))
 
-(;; Returns the symbols in the given object.)
+(;; Returns the bindings in the given object.)
 
-(function symbols (flag obj reg handler err) (with return (begin
+(function bindings (flag obj reg handler err) (with return (begin
 	(storage syms nil)
 	(until (sec-idx #0) [= sec-idx (@ e-shnum(@ obj-ehdr obj))] [+ sec-idx #1] (begin
 		(define (shdr-buf (loc (elf64-shdr) sec-idx (@ obj-shdrs obj)))
@@ -205,22 +205,22 @@
 				(if (and [= (not(not(or [= (@ st-shndx sym) (shn-undef)] [= (@ st-shndx sym) (shn-common)]))) flag]
 						(or [= (elf64-st-bind (@ st-info sym)) (stb-global)]
 							[= (elf64-st-bind (@ st-info sym)) (stb-weak)]))
-					[prepend [make-sym [name-of obj shdr-buf sym] (@ st-value sym) reg handler err] syms
+					[prepend [make-binding [name-of obj shdr-buf sym] (@ st-value sym) reg handler err] syms
 						reg handler err]
 					(begin))))))))
 		(begin)))))
 	{return $syms})))
 
-(;; Returns a list of the mutable symbols in the given object. obj is the object
-	whose mutable symbols are being queried. reg is the buffer in which the list
-	of mutable symbols will be constructed. Return value is the list of mutable
-	symbols.)
+(;; Returns a list of the mutable bindings in the given object. obj is the object
+	whose mutable bindings are being queried. reg is the buffer in which the list
+	of mutable bindings will be constructed. Return value is the list of mutable
+	bindings.)
 
-(function mutable-symbols (obj reg handler err) [symbols #1 obj reg handler err])
+(function mutable-bindings (obj reg handler err) [bindings #1 obj reg handler err])
 
 (;; Analogous to above.)
 
-(function immutable-symbols (obj reg handler err) [symbols #0 obj reg handler err])
+(function immutable-bindings (obj reg handler err) [bindings #0 obj reg handler err])
 
 (;; Returns the address of the segment of the given object that has a particular
 	name. obj is the object whose segment addresses is being queried. name is
