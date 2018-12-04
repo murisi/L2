@@ -55,11 +55,11 @@ union expression *vlayout_frames(union expression *n, region r) {
 				t->reference.binding_aug->offset = parameter_offset;
 				parameter_offset += WORD_SIZE;
 			}}
-			int symbol_offset = 0;
+			int binding_aug_offset = 0;
 			struct binding_aug *u;
 			foreach(u, reverse(n->function.binding_augs, r)) {
-				symbol_offset -= pad_size(u->size, WORD_SIZE);
-				u->offset = symbol_offset;
+				binding_aug_offset -= pad_size(u->size, WORD_SIZE);
+				u->offset = binding_aug_offset;
 			}
 			break;
 		} case continuation: case with: {
@@ -358,8 +358,8 @@ void generate_expressions(union expression *n, list *c, region r) {
 	}
 }
 
-list generate_program(union expression *n, list *symbols, region r) {
-	*symbols = n->function.binding_augs;
+list generate_program(union expression *n, list *binding_augs, region r) {
+	*binding_augs = n->function.binding_augs;
 	list c = nil;
 	prepend(make_asm1(PUSHQ_REG, make_asm0(RBP, r), r), &c, r);
 	prepend(make_asm2(MOVQ_REG_TO_REG, make_asm0(RSP, r), make_asm0(RBP, r), r), &c, r);
