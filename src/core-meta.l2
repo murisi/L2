@@ -56,25 +56,25 @@
 	[(function aux (s t r)
 		(if [emt? s] [lllst -e- -m- -t- emt r]
 
-		(if (if [emt? s] #0 (if [symbol? s] #0 (if [emt? [@fst s]]
+		(if (if [emt? s] #0 (if [token? s] #0 (if [emt? [@fst s]]
 			#0 (if [char= [@ffst s] -,-] [emt? [@rfst s]] #0))))
 					[@frst s]
 
 		[lllllst [llllllst -i- -n- -v- -o- -k- -e- emt r]
 			[lllst -l- -s- -t- emt r]
-				(if [symbol? s]
+				(if [token? s]
 						[lllst --- [@fst s] --- emt r]
 						[aux [@fst s] t r])
 					[aux [@rst s] t r] t emt r]))) [@fst l] [@frst l] r])
 
-(;; The following function checks if the symbols a and b are equal.)
+(;; The following function checks if the tokens a and b are equal.)
 
-(function symbol= (a b)
+(function token= (a b)
 	(if (and [emt? a] [emt? b])
 		(true)
 		(if (or [emt? a] [emt? b])
 			(false)
-			(and [char= [@fst a] [@fst b]] [symbol= [@rst a] [@rst b]]))))
+			(and [char= [@fst a] [@fst b]] [token= [@rst a] [@rst b]]))))
 
 (;; The following function concatenates lists a and b. A part of the constructed
 	list will lie in the buffer r.)
@@ -89,14 +89,14 @@
 (;; The following macro does the following transformation:
 	(substitute (sym repls ...) frag)
 	->
-	frag but with the fragments repls inserted in order at all the places that the symbol sym occurred.
+	frag but with the fragments repls inserted in order at all the places that the token sym occurred.
 	An example usage is when the arguments a group of functions are called with have a common sublist.)
 
 (function substitute (l r)
 	[(function aux (frag fnd repl r)
-			(if (or [symbol? frag] [emt? frag])
+			(if (or [token? frag] [emt? frag])
 				frag
-				(if (and [symbol? [@fst frag]] [symbol= [@fst frag] fnd])
+				(if (and [token? [@fst frag]] [token= [@fst frag] fnd])
 					[meta:concat repl [@rst frag] r]
 					[lst [aux [@fst frag] fnd repl r] [aux [@rst frag] fnd repl r] r])))
 		[@frst l] [@ffst l] [@rfst l] r])

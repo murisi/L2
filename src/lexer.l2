@@ -21,14 +21,14 @@
 	(char-init m) (char-init n) (char-init o) (char-init p) (char-init q) (char-init r) (char-init s) (char-init t) (char-init u)
 	(char-init v) (char-init w) (char-init x) (char-init y) (char-init z) #0 (char-init |) #0 (char-init ~) #0)
 
-(;; Builds a symbol from a given C-string. str is the C-string that the constructed
-	symbol will be based on. r is the buffer in which the symbol will be constructed.
-	Return value is the constructed symbol.)
+(;; Builds a token from a given C-string. str is the C-string that the constructed
+	token will be based on. r is the buffer in which the token will be constructed.
+	Return value is the constructed token.)
 
-(function build-symbol (str r handler err)
+(function build-token (str r handler err)
 	(loop cons-char (sexprs nil) (strptr str)
 		(if [getb strptr]
-			{cons-char [cons (sym-char [getb strptr]) sexprs r handler err] [+ strptr #1]}
+			{cons-char [cons (tkn-char [getb strptr]) sexprs r handler err] [+ strptr #1]}
 			[reverse sexprs r handler err])))
 
 (;; Moves the supplied index forward to the first non-space character. l2src is a
@@ -43,21 +43,21 @@
 			(begin [set+ pos #1] {find-space})
 			[- l2src-sz $pos])))
 
-(;; If there is a space at the current position in the buffer, then build a symbol
-	containing solely the sigil. Otherwise build a symbol of the form (<sigil>
-	<symbol>) where symbol is the symbol starting at the current position in the
+(;; If there is a space at the current position in the buffer, then build a token
+	containing solely the sigil. Otherwise build a token of the form (<sigil>
+	<token>) where token is the token starting at the current position in the
 	buffer. sigil is a string. l2src is a reference to the start of a buffer
 	containing characters. l2src-sz is the size of the buffer. pos is a reference
-	to the current index in the buffer. r is the buffer into which the symbol
-	should be put. Return value is the constructed symbol.)
+	to the current index in the buffer. r is the buffer into which the token
+	should be put. Return value is the constructed token.)
 
-(function build-sigilled-symbol (sigil l2src l2src-sz pos r handler err) (with return
+(function build-sigilled-token (sigil l2src l2src-sz pos r handler err) (with return
 	(substitute (.. r handler err) (begin
-		(if [= l2src-sz $pos] {return [build-symbol sigil ..]} (begin))
+		(if [= l2src-sz $pos] {return [build-token sigil ..]} (begin))
 		(let (d [getb [+ l2src $pos]])
 			{return (if (or [isspace d] [= d (rparen)] [= d (rbrace)] [= d (rbracket)] [= d (lparen)] [= d (lbrace)] [= d (lbracket)])
-				[build-symbol sigil ..]
-				(list ([build-symbol sigil ..] [build-fragment l2src l2src-sz pos ..]) ..))})))))
+				[build-token sigil ..]
+				(list ([build-token sigil ..] [build-fragment l2src l2src-sz pos ..]) ..))})))))
 
 (;; Builds a fragment list starting at the current position in the buffer and ending
 	at the specified delimiter and then prefixes it with the given primitive.
@@ -66,7 +66,7 @@
 
 (function build-fragment-list (primitive delimeter l2src l2src-sz pos r handler err) (with return
 	(substitute (.. r handler err)
-		(loop cons-frag (sexprs (list ([build-symbol primitive ..]) ..))
+		(loop cons-frag (sexprs (list ([build-token primitive ..]) ..))
 			(let (rem [after-leading-space l2src l2src-sz pos])
 				(if (and rem [= [getb [+ l2src $pos]] delimeter])
 					(begin [set+ pos #1] {return [reverse sexprs ..]})
@@ -89,13 +89,13 @@
 						((lparen) [@cdr [build-fragment-list (" expression) (rparen) l2src l2src-sz pos ..]])
 						((lbrace) [build-fragment-list (" jump) (rbrace) l2src l2src-sz pos ..])
 						((lbracket) [build-fragment-list (" invoke) (rbracket) l2src l2src-sz pos ..])
-						((char $) [build-sigilled-symbol (" $) l2src l2src-sz pos ..])
-						((char #) [build-sigilled-symbol (" #) l2src l2src-sz pos ..])
-						((char ,) [build-sigilled-symbol (" ,) l2src l2src-sz pos ..])
-						((char `) [build-sigilled-symbol (" `) l2src l2src-sz pos ..])
+						((char $) [build-sigilled-token (" $) l2src l2src-sz pos ..])
+						((char #) [build-sigilled-token (" #) l2src l2src-sz pos ..])
+						((char ,) [build-sigilled-token (" ,) l2src l2src-sz pos ..])
+						((char `) [build-sigilled-token (" `) l2src l2src-sz pos ..])
 						
 						[reverse (loop cons-char (l nil) (c c)
-							(let (l [cons (sym-char c) l ..])
+							(let (l [cons (tkn-char c) l ..])
 								(if [= $pos l2src-sz] l
 									(let (c [getb [+ l2src $pos]])
 										(if (or [isspace c] [= c (lparen)] [= c (rparen)] [= c (lbrace)] [= c (rbrace)] [= c (lbracket)] [= c (rbracket)]) l
@@ -103,11 +103,11 @@
 
 (storage character-flag (begin))
 
-(;; Checks if the fragment d is a symbol. A symbol is a non-empty list of characters.)
+(;; Checks if the fragment d is a token. A token is a non-empty list of characters.)
 
-(function i/f:symbol? (d) (and [length d] [= (@ cs-flag[@car d]) character-flag]))
+(function i/f:token? (d) (and [length d] [= (@ cs-flag[@car d]) character-flag]))
 
-(;; Converts the given symbol into an ASCII string. d is the symbol that is to be
+(;; Converts the given token into an ASCII string. d is the token that is to be
 	converted. r is the buffer into which the string should be put. The return value
 	is the constructed string.)
 
@@ -128,8 +128,8 @@
 
 (function copy-fragment (l r handler err)
 	(substitute (.. r handler err)
-		[reverse (if [i/f:symbol? l]
-			(reverse-map (s l) (sym-char (@ cs-character s)) ..)
+		[reverse (if [i/f:token? l]
+			(reverse-map (s l) (tkn-char (@ cs-character s)) ..)
 			(reverse-map (s l) [copy-fragment s ..] ..)) ..]))
 
 (;; Prints the given fragment out to standard output. d is the fragment that is
@@ -138,7 +138,7 @@
 (function print-fragment (d hdl err) (begin
 	[print-char (stdout) (lparen) hdl err]
 	(if [nil? d] (begin) (begin
-		(if [i/f:symbol? d]
+		(if [i/f:token? d]
 			[print-char (stdout) (@ cs-character[@car d]) hdl err]
 			[print-fragment [@car d] hdl err])
 		[print-str (stdout) ("(space).(space)) hdl err]

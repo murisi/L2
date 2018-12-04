@@ -286,7 +286,7 @@ int main(int argc, char *argv[]) {
 		{.name = "@fst", .address = _fst_},
 		{.name = "@rst", .address = _rst_},
 		{.name = "lst", .address = lst},
-		{.name = "symbol?", .address = is_symbol},
+		{.name = "token?", .address = is_symbol},
 		{.name = "emt?", .address = is_nil},
 		{.name = "emt", .address = nil},
 		{.name = "char=", .address = char_equals}

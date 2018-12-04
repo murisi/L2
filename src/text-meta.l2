@@ -17,7 +17,7 @@
 	(-r- (` #114 r)) (-s- (` #115 r)) (-t- (` #116 r)) (-u- (` #117 r)) (-v- (` #118 r)) (-w- (` #119 r)) (-x- (` #120 r))
 	(-y- (` #121 r)) (-z- (` #122 r)) (-|- (` #124 r)) (-~- (` #126 r)) (` #0 r)))
 
-(;; The following function turns text in the form of a list of symbols
+(;; The following function turns text in the form of a list of tokens
 	into code that allocates a buffer on the stack and puts the equivalent
 	C-string into it. So for example, the L2 expression (" Hello world.) is
 	the same as the C literal "Hello world." except that it is allocated on the
@@ -38,13 +38,13 @@
 			{add-word [@rst str] [+ index #1]
 				[lst (`[setb [+ dquote:str (,[value->literal index r])] #0]r) instrs r]}
 				
-		(if (and [emt? [@fst str]] [symbol? [@frst str]])
+		(if (and [emt? [@fst str]] [token? [@frst str]])
 			{add-word [@rst str] [+ index #1]
 				[lst (`[setb [+ dquote:str (,[value->literal index r])] #32]r) instrs r]}
 		
 		(if [emt? [@fst str]] {add-word [@rst str] index instrs}
 				
-		(if [symbol? [@fst str]]
+		(if [token? [@fst str]]
 			{add-word [lst [@rfst str] [@rst str] r] [+ index #1]
 				[lst (`[setb [+ dquote:str (,[value->literal index r])]
 					(,[char [lst [lst [@ffst str] emt r] emt r]r emt])]r) instrs r]}

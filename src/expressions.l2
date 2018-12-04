@@ -255,12 +255,12 @@
 
 (function build-expression (d reg handler err) (substitute (.. reg handler err)
 	(if [= [length d] #0] {handler}
-	(if [i/f:symbol? d] [make-reference [to-string d ..] ..]
+	(if [i/f:token? d] [make-reference [to-string d ..] ..]
 	(switch str= [to-string [@car d] ..]
 		((" with)
 			(if (not [= [length d] #3])
 				{handler (sets err special-form-error d null-fragment)}
-			(if (not [i/f:symbol? [@cadr d]])
+			(if (not [i/f:token? [@cadr d]])
 				{handler (sets err special-form-error d [@cadr d])}
 				[make-with [build-expression [@cadr d] ..] [build-expression [@caddr d] ..] ..])))
 		
@@ -274,12 +274,12 @@
 		((" function) (" continuation)
 			(if (not [= [length d] #4])
 				{handler (sets err special-form-error d null-fragment)}
-			(if (not [i/f:symbol? [@cadr d]])
+			(if (not [i/f:token? [@cadr d]])
 				{handler (sets err special-form-error d [@cadr d])}
-			(if [i/f:symbol? [@caddr d]]
+			(if [i/f:token? [@caddr d]]
 				{handler (sets err special-form-error d [@caddr d])}
 				(let (parameters [reverse (reverse-map (v [@caddr d])
-						(if [i/f:symbol? v]
+						(if [i/f:token? v]
 							[build-expression v ..]
 							{handler (sets err special-form-error d v)}) ..) ..])
 							
@@ -291,7 +291,7 @@
 		((" invoke) (" jump) (" storage)
 			(if [= [length d] #1]
 				{handler (sets err special-form-error d null-fragment)}
-			(if (and [str= [to-string [@car d] ..] (" storage)] (not [i/f:symbol? [@cadr d]]))
+			(if (and [str= [to-string [@car d] ..] (" storage)] (not [i/f:token? [@cadr d]]))
 				{handler (sets err special-form-error d [@cadr d])}
 				[(switch str= [to-string [@car d] ..]
 						((" invoke) make-invoke)
@@ -302,7 +302,7 @@
 		((" literal)
 			(if (not [= [length d] #2])
 				{handler (sets err special-form-error d null-fragment)}
-			(if (or (not [i/f:symbol? [@cadr d]]) (not [= [length [@cadr d]] (build-expression-literal-len)]))
+			(if (or (not [i/f:token? [@cadr d]]) (not [= [length [@cadr d]] (build-expression-literal-len)]))
 				{handler (sets err special-form-error d [@cadr d])}
 				[make-literal (with return
 					{(continuation loop (str i value)
