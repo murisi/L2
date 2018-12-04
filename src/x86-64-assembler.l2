@@ -29,7 +29,7 @@
 		
 	(if (and [= (@ expr-type expr) (-reference-)] [= bytes #8]) (begin
 		(setf r-offset $relas $pos)
-		(setf r-info $relas (elf64-r-info [/[- (@ sym-context(@ expr-symbol expr)) symtab](elf64-sym)] (r-x86-64-64)))
+		(setf r-info $relas (elf64-r-info [/[- (@ bndg-context(@ expr-binding-aug expr)) symtab](elf64-sym)] (r-x86-64-64)))
 		(setf r-addend $relas #0)
 		[set+ relas (elf64-rela)]
 		[mem-write bin pos (storage _ #0) bytes])
@@ -38,7 +38,7 @@
 		(define (ref [@car(@ expr-arguments expr)])
 		(define (offset [@cadr(@ expr-arguments expr)])
 		(setf r-offset $relas $pos)
-		(setf r-info $relas (elf64-r-info [/[- (@ sym-context(@ expr-symbol ref)) symtab](elf64-sym)] (r-x86-64-64)))
+		(setf r-info $relas (elf64-r-info [/[- (@ bndg-context(@ expr-binding-aug ref)) symtab](elf64-sym)] (r-x86-64-64)))
 		(setf r-addend $relas (@ expr-value offset))
 		[set+ relas (elf64-rela)]
 		[mem-write bin pos (storage _ #0) bytes])))
@@ -46,7 +46,7 @@
 	(if (and [= (@ expr-type expr) (-assembly-)] [= (@ expr-opcode expr) (stval-sub-rip-from-ref)] [= bytes #4]) (begin
 		(define (ref [@car(@ expr-arguments expr)])
 		(setf r-offset $relas $pos)
-		(setf r-info $relas (elf64-r-info [/[- (@ sym-context(@ expr-symbol ref)) symtab](elf64-sym)] (r-x86-64-pc32)))
+		(setf r-info $relas (elf64-r-info [/[- (@ bndg-context(@ expr-binding-aug ref)) symtab](elf64-sym)] (r-x86-64-pc32)))
 		(setf r-addend $relas [- #0 bytes])
 		[set+ relas (elf64-rela)]
 		[mem-write bin pos (storage _ #0) bytes]))
@@ -72,8 +72,8 @@
 		(switch = (@ expr-opcode n)
 			((label) (begin
 				(define (label-ref [@car(@ expr-arguments n)])
-				(setf sym-offset (@ expr-symbol label-ref) $pos)
-				(setf st-value (@ sym-context(@ expr-symbol label-ref)) $pos))))
+				(setf bndg-offset (@ expr-binding-aug label-ref) $pos)
+				(setf st-value (@ bndg-context(@ expr-binding-aug label-ref)) $pos))))
 				
 			((leaq-of-mdb-into-reg) (begin
 				(define (opcode (hex 8D))
@@ -179,8 +179,8 @@
 
 (function measure-strtab (generated-expressions symbols)
 	(let (strtab-len (fold (acc #1) (sym symbols)
-			[+ acc (if [not= (@ sym-name sym) null-string]
-				[+ [strlen(@ sym-name sym)] #1]
+			[+ acc (if [not= (@ bndg-name sym) null-string]
+				[+ [strlen(@ bndg-name sym)] #1]
 				#0)]))
 				
 		(fold (acc strtab-len) (e generated-expressions)
@@ -267,28 +267,28 @@
 			(storage bss-ptr #0)
 	
 			(foreach (sym symbols)
-				(if [= (@ sym-scope sym) (local-scope)] (begin
-					(if [not= (@ sym-name sym) null-string]
+				(if [= (@ bndg-scope sym) (local-scope)] (begin
+					(if [not= (@ bndg-name sym) null-string]
 						(begin
-							[strcpy $strtabptr (@ sym-name sym)]
+							[strcpy $strtabptr (@ bndg-name sym)]
 							(setf st-name $sym-ptr [- $strtabptr strtab])
-							[set+ strtabptr [+[strlen(@ sym-name sym)]#1]])
+							[set+ strtabptr [+[strlen(@ bndg-name sym)]#1]])
 						(setf st-name $sym-ptr #0))
 			
 					(setf st-value $sym-ptr $bss-ptr)
-					(setf sym-offset sym $bss-ptr)
-					(setf st-size $sym-ptr (@ sym-size sym))
+					(setf bndg-offset sym $bss-ptr)
+					(setf st-size $sym-ptr (@ bndg-size sym))
 					(setf st-info $sym-ptr (elf64-st-info (stb-local) (stt-notype)))
 					(setf st-other $sym-ptr #0)
 					(setf st-shndx $sym-ptr #5)
-					(setf sym-context sym $sym-ptr)
+					(setf bndg-context sym $sym-ptr)
 					[set+ sym-ptr (elf64-sym)]
-					[set+ bss-ptr [pad-size (@ sym-size sym) (word-size)]])
+					[set+ bss-ptr [pad-size (@ bndg-size sym) (word-size)]])
 					(begin)))
 	
 			(foreach (e generated-expressions)
 				(if (and [= (@ expr-opcode e) (label)]
-						[= (@ sym-scope(@ expr-symbol[@car(@ expr-arguments e)])) (local-scope)]) (begin
+						[= (@ bndg-scope(@ expr-binding-aug[@car(@ expr-arguments e)])) (local-scope)]) (begin
 					(storage ref [@car(@ expr-arguments e)])
 					(if [not= (@ expr-name $ref) null-string]
 						(begin
@@ -302,39 +302,39 @@
 					(setf st-info $sym-ptr (elf64-st-info (stb-local) (stt-notype)))
 					(setf st-other $sym-ptr #0)
 					(setf st-shndx $sym-ptr #2)
-					(setf sym-context (@ expr-symbol $ref) $sym-ptr)
+					(setf bndg-context (@ expr-binding-aug $ref) $sym-ptr)
 					[set+ sym-ptr (elf64-sym)])
 					(begin)))
 	
 			(define (local-symbol-count [/[- $sym-ptr syms](elf64-sym)])
 	
 			(foreach (sym symbols)
-				(if (and [= (@ sym-scope sym) (global-scope)] [= (@ sym-state sym) (defined-state)]) (begin
-					(if [not= (@ sym-name sym) null-string]
+				(if (and [= (@ bndg-scope sym) (global-scope)] [= (@ bndg-state sym) (defined-state)]) (begin
+					(if [not= (@ bndg-name sym) null-string]
 						(begin
-							[strcpy $strtabptr (@ sym-name sym)]
+							[strcpy $strtabptr (@ bndg-name sym)]
 							(setf st-name $sym-ptr [- $strtabptr strtab])
-							[set+ strtabptr [+[strlen(@ sym-name sym)]#1]])
+							[set+ strtabptr [+[strlen(@ bndg-name sym)]#1]])
 						(setf st-name $sym-ptr #0))
 			
 					(setf st-value $sym-ptr $bss-ptr)
-					(setf sym-offset sym $bss-ptr)
-					(setf st-size $sym-ptr (@ sym-size sym))
+					(setf bndg-offset sym $bss-ptr)
+					(setf st-size $sym-ptr (@ bndg-size sym))
 					(setf st-info $sym-ptr (elf64-st-info (stb-global) (stt-notype)))
 					(setf st-other $sym-ptr #0)
 					(setf st-shndx $sym-ptr #5)
-					(setf sym-context sym $sym-ptr)
+					(setf bndg-context sym $sym-ptr)
 					[set+ sym-ptr (elf64-sym)]
-					[set+ bss-ptr [pad-size (@ sym-size sym) (word-size)]])
+					[set+ bss-ptr [pad-size (@ bndg-size sym) (word-size)]])
 					(begin)))
 	
 			(foreach (sym symbols)
-				(if (and [= (@ sym-scope sym) (global-scope)] [= (@ sym-state sym) (undefined-state)]) (begin
-					(if [not= (@ sym-name sym) null-string]
+				(if (and [= (@ bndg-scope sym) (global-scope)] [= (@ bndg-state sym) (undefined-state)]) (begin
+					(if [not= (@ bndg-name sym) null-string]
 						(begin
-							[strcpy $strtabptr (@ sym-name sym)]
+							[strcpy $strtabptr (@ bndg-name sym)]
 							(setf st-name $sym-ptr [- $strtabptr strtab])
-							[set+ strtabptr [+[strlen(@ sym-name sym)]#1]])
+							[set+ strtabptr [+[strlen(@ bndg-name sym)]#1]])
 						(setf st-name $sym-ptr #0))
 			
 					(setf st-value $sym-ptr #0)
@@ -342,13 +342,13 @@
 					(setf st-info $sym-ptr (elf64-st-info (stb-global) (stt-notype)))
 					(setf st-other $sym-ptr #0)
 					(setf st-shndx $sym-ptr (shn-undef))
-					(setf sym-context sym $sym-ptr)
+					(setf bndg-context sym $sym-ptr)
 					[set+ sym-ptr (elf64-sym)])
 					(begin)))
 	
 			(foreach (e generated-expressions)
 				(if (and [= (@ expr-opcode e) (label)]
-						[= (@ sym-scope(@ expr-symbol[@car(@ expr-arguments e)])) (global-scope)]) (begin
+						[= (@ bndg-scope(@ expr-binding-aug[@car(@ expr-arguments e)])) (global-scope)]) (begin
 					(storage ref [@car(@ expr-arguments e)])
 					(if [not= (@ expr-name $ref) null-string]
 						(begin
@@ -362,7 +362,7 @@
 					(setf st-info $sym-ptr (elf64-st-info (stb-global) (stt-notype)))
 					(setf st-other $sym-ptr #0)
 					(setf st-shndx $sym-ptr #2)
-					(setf sym-context (@ expr-symbol $ref) $sym-ptr)
+					(setf bndg-context (@ expr-binding-aug $ref) $sym-ptr)
 					[set+ sym-ptr (elf64-sym)])
 					(begin)))
 	
@@ -489,12 +489,12 @@
 
 (function symbol-offsets-to-addresses (asms symbols obj) (begin
 	(foreach (sym symbols)
-		(if (and [= (@ sym-type sym) (static-storage)] [= (@ sym-state sym) (defined-state)])
-			(setf sym-offset sym [+ (@ sym-offset sym) [segment obj (" .bss)]])
+		(if (and [= (@ bndg-type sym) (static-storage)] [= (@ bndg-state sym) (defined-state)])
+			(setf bndg-offset sym [+ (@ bndg-offset sym) [segment obj (" .bss)]])
 			(begin)))
 	
 	(foreach (l asms)
 		(if [= (@ expr-opcode l) (label)]
-			(let (sym (@ expr-symbol[@car(@ expr-arguments l)]))
-				(setf sym-offset sym [+ (@ sym-offset sym) [segment obj (" .text)]]))
+			(let (sym (@ expr-binding-aug[@car(@ expr-arguments l)]))
+				(setf bndg-offset sym [+ (@ bndg-offset sym) [segment obj (" .text)]]))
 			(begin)))))

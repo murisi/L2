@@ -3,26 +3,26 @@
 		((-function-) (begin
 			(storage parameter-offset-ref [* #2 (word-size)])
 			(foreach (t (@ expr-parameters n)) (begin
-				(setf sym-offset (@ expr-symbol t) $parameter-offset-ref)
+				(setf bndg-offset (@ expr-binding-aug t) $parameter-offset-ref)
 				[set+ parameter-offset-ref (word-size)]))
 				
 			(storage symbol-offset-ref #0)
-			(foreach (u [reverse (@ expr-symbols n) ..]) (begin
-				[set symbol-offset-ref [- $symbol-offset-ref [pad-size (@ sym-size u) (word-size)]]]
-				(setf sym-offset u $symbol-offset-ref)))))
+			(foreach (u [reverse (@ expr-binding-augs n) ..]) (begin
+				[set symbol-offset-ref [- $symbol-offset-ref [pad-size (@ bndg-size u) (word-size)]]]
+				(setf bndg-offset u $symbol-offset-ref)))))
 		
 		((-continuation-) (-with-) (begin
 			(if (@ expr-escapes n) (begin
-				(setf sym-size (@ expr-symbol(@ expr-reference n)) (cont-size))
-				[append (@ expr-symbol(@ expr-reference n)) (& expr-symbols[get-parent-function n]) ..])
+				(setf bndg-size (@ expr-binding-aug(@ expr-reference n)) (cont-size))
+				[append (@ expr-binding-aug(@ expr-reference n)) (& expr-binding-augs[get-parent-function n]) ..])
 				(begin))
 			(foreach (t (@ expr-parameters n)) (begin
-				(setf sym-size (@ expr-symbol t) (word-size))
-				[append (@ expr-symbol t) (& expr-symbols[get-parent-function n]) ..]))))
+				(setf bndg-size (@ expr-binding-aug t) (word-size))
+				[append (@ expr-binding-aug t) (& expr-binding-augs[get-parent-function n]) ..]))))
 		
 		((-storage-) (begin
-			(setf sym-size (@ expr-symbol(@ expr-reference n)) [* [length (@ expr-arguments n)] (word-size)])
-			[append (@ expr-symbol(@ expr-reference n)) (& expr-symbols[get-parent-function n]) ..]))
+			(setf bndg-size (@ expr-binding-aug(@ expr-reference n)) [* [length (@ expr-arguments n)] (word-size)])
+			[append (@ expr-binding-aug(@ expr-reference n)) (& expr-binding-augs[get-parent-function n]) ..]))
 		
 		(begin))
 	
@@ -30,8 +30,8 @@
 
 (function generate-load (sym offset dest-reg scratch-reg c r handler err)
 	(substitute (.. r handler err) (begin
-		(if [= (@ sym-type sym) (dynamic-storage)]
-			(let (op1 [make-literal [+ (@ sym-offset sym) offset] ..])
+		(if [= (@ bndg-type sym) (dynamic-storage)]
+			(let (op1 [make-literal [+ (@ bndg-offset sym) offset] ..])
 				[prepend (make-asmN (movq-mdb-to-reg) (op1 (make-asmN(rbp)()..) dest-reg) ..) c ..])
 			(begin
 				(let (op1 (make-asmN (stval-add-off-to-ref) ([use-symbol sym ..] [make-literal offset ..]) ..))
@@ -40,8 +40,8 @@
 
 (function generate-store (src-reg sym offset scratch-reg c r handler err)
 	(substitute (.. r handler err) (begin
-		(if [= (@ sym-type sym) (dynamic-storage)]
-			(let (op2 [make-literal [+ (@ sym-offset sym) offset] ..])
+		(if [= (@ bndg-type sym) (dynamic-storage)]
+			(let (op2 [make-literal [+ (@ bndg-offset sym) offset] ..])
 				[prepend (make-asmN (movq-from-reg-into-mdb) (src-reg op2 (make-asmN(rbp)()..)) ..) c ..])
 			(begin
 				(let (op1 (make-asmN (stval-add-off-to-ref) ([use-symbol sym ..] [make-literal offset ..]) ..))
@@ -52,11 +52,11 @@
 	(substitute (.. r handler err) (begin
 		[generate-expression (@ expr-condition n) c ..]
 		[prepend (make-asmN (orq-reg-to-reg) ((make-asmN(rax)()..) (make-asmN(rax)()..)) ..) c ..]
-		(storage alternate-symbol [make-symbol (static-storage) (local-scope) (defined-state) null-string null-expr ..])
+		(storage alternate-symbol [make-binding-aug (static-storage) (local-scope) (defined-state) null-string null-expr ..])
 		(let (op1 (make-asmN (stval-sub-rip-from-ref) ([use-symbol $alternate-symbol ..]) ..))
 			[prepend (make-asmN (je-rel) (op1) ..) c ..])
 		[generate-expression (@ expr-consequent n) c ..]
-		(storage end-symbol [make-symbol (static-storage) (local-scope) (defined-state) null-string null-expr ..])
+		(storage end-symbol [make-binding-aug (static-storage) (local-scope) (defined-state) null-string null-expr ..])
 		(let (op1 (make-asmN (stval-sub-rip-from-ref) ([use-symbol $end-symbol ..]) ..))
 			[prepend (make-asmN (jmp-rel) (op1) ..) c ..])
 		[prepend (make-asmN (label) ([use-symbol $alternate-symbol ..]) ..) c ..]
@@ -65,8 +65,8 @@
 
 (function generate-load-address (sym dest-reg c r handler err)
 	(substitute (.. r handler err)
-		(if [= (@ sym-type sym) (dynamic-storage)]
-			(let (op1 [make-literal (@ sym-offset sym) ..])
+		(if [= (@ bndg-type sym) (dynamic-storage)]
+			(let (op1 [make-literal (@ bndg-offset sym) ..])
 				[prepend (make-asmN (leaq-of-mdb-into-reg) (op1 (make-asmN(rbp)()..) dest-reg) ..) c ..])
 			[prepend (make-asmN (movq-imm-to-reg) ([use-symbol sym ..] dest-reg) ..) c ..])))
 
@@ -75,28 +75,28 @@
 		(storage offset-ref #0)
 		(foreach (t (@ expr-arguments n)) (begin
 			[generate-expression t c ..]
-			[generate-store (make-asmN(rax)()..) (@ expr-symbol(@ expr-reference n)) $offset-ref (make-asmN(r11)()..) c ..]
+			[generate-store (make-asmN(rax)()..) (@ expr-binding-aug(@ expr-reference n)) $offset-ref (make-asmN(r11)()..) c ..]
 			[set+ offset-ref (word-size)]))
-		[generate-load-address (@ expr-symbol(@ expr-reference n)) (make-asmN(rax)()..) c ..])))
+		[generate-load-address (@ expr-binding-aug(@ expr-reference n)) (make-asmN(rax)()..) c ..])))
 
 (function generate-reference (n c r handler err)
 	(substitute (.. r handler err)
-		(let (def (@ sym-definition(@ expr-symbol n)))
+		(let (def (@ bndg-definition(@ expr-binding-aug n)))
 			(if (and (or [= (@ expr-type(@ expr-parent def)) (-function-)] [= (@ expr-type(@ expr-parent def)) (-continuation-)])
 					(default wth (find (x (@ expr-parameters(@ expr-parent def))) [= x def] {wth (false)}) (true)))
-				[generate-load (@ expr-symbol n) #0 (make-asmN(rax)()..) (make-asmN(r11)()..) c ..]
-				[generate-load-address (@ expr-symbol n) (make-asmN(rax)()..) c ..]))))
+				[generate-load (@ expr-binding-aug n) #0 (make-asmN(rax)()..) (make-asmN(r11)()..) c ..]
+				[generate-load-address (@ expr-binding-aug n) (make-asmN(rax)()..) c ..]))))
 
 (function generate-store-continuation (n c r handler err)
 	(substitute (.. r handler err) (begin
-		[generate-store (make-asmN(rbx)()..) (@ expr-symbol(@ expr-reference n)) (cont-rbx) (make-asmN(r11)()..) c ..]
-		[generate-store (make-asmN(r12)()..) (@ expr-symbol(@ expr-reference n)) (cont-r12) (make-asmN(r11)()..) c ..]
-		[generate-store (make-asmN(r13)()..) (@ expr-symbol(@ expr-reference n)) (cont-r13) (make-asmN(r11)()..) c ..]
-		[generate-store (make-asmN(r14)()..) (@ expr-symbol(@ expr-reference n)) (cont-r14) (make-asmN(r11)()..) c ..]
-		[generate-store (make-asmN(r15)()..) (@ expr-symbol(@ expr-reference n)) (cont-r15) (make-asmN(r11)()..) c ..]
-		[generate-load-address (@ expr-symbol(@ expr-cont-instr-ref n)) (make-asmN(r10)()..) c ..]
-		[generate-store (make-asmN(r10)()..) (@ expr-symbol(@ expr-reference n)) (cont-cir) (make-asmN(r11)()..) c ..]
-		[generate-store (make-asmN(rbp)()..) (@ expr-symbol(@ expr-reference n)) (cont-rbp) (make-asmN(r11)()..) c ..])))
+		[generate-store (make-asmN(rbx)()..) (@ expr-binding-aug(@ expr-reference n)) (cont-rbx) (make-asmN(r11)()..) c ..]
+		[generate-store (make-asmN(r12)()..) (@ expr-binding-aug(@ expr-reference n)) (cont-r12) (make-asmN(r11)()..) c ..]
+		[generate-store (make-asmN(r13)()..) (@ expr-binding-aug(@ expr-reference n)) (cont-r13) (make-asmN(r11)()..) c ..]
+		[generate-store (make-asmN(r14)()..) (@ expr-binding-aug(@ expr-reference n)) (cont-r14) (make-asmN(r11)()..) c ..]
+		[generate-store (make-asmN(r15)()..) (@ expr-binding-aug(@ expr-reference n)) (cont-r15) (make-asmN(r11)()..) c ..]
+		[generate-load-address (@ expr-binding-aug(@ expr-cont-instr-ref n)) (make-asmN(r10)()..) c ..]
+		[generate-store (make-asmN(r10)()..) (@ expr-binding-aug(@ expr-reference n)) (cont-cir) (make-asmN(r11)()..) c ..]
+		[generate-store (make-asmN(rbp)()..) (@ expr-binding-aug(@ expr-reference n)) (cont-rbp) (make-asmN(r11)()..) c ..])))
 
 (function generate-move-arguments (n offset c r handler err)
 	(substitute (.. r handler err) (begin
@@ -121,11 +121,11 @@
 (function generate-continuation (n c r handler err)
 	(substitute (.. r handler err) (begin
 		(if (@ expr-escapes n) (begin
-			[generate-load-address (@ expr-symbol (@ expr-reference n)) (make-asmN(rax)()..) c ..]
+			[generate-load-address (@ expr-binding-aug (@ expr-reference n)) (make-asmN(rax)()..) c ..]
 			[generate-store-continuation n c ..])
 			(begin))
 		
-		(storage after-symbol [make-symbol (static-storage) (local-scope) (defined-state) null-string null-expr ..])
+		(storage after-symbol [make-binding-aug (static-storage) (local-scope) (defined-state) null-string null-expr ..])
 		[prepend (make-asmN (jmp-rel) ((make-asmN (stval-sub-rip-from-ref) ([use-symbol $after-symbol ..]) ..)) ..) c ..]
 		[prepend (make-asmN (label) ((@ expr-cont-instr-ref n)) ..) c ..]
 		[generate-expression (@ expr-expression n) c ..]
@@ -136,7 +136,7 @@
 		(if (@ expr-escapes n) [generate-store-continuation n c ..] (begin))
 		[generate-expression (@ expr-expression n) c ..]
 		[prepend (make-asmN (label) ((@ expr-cont-instr-ref n)) ..) c ..]
-		[generate-load (@ expr-symbol[@car(@ expr-parameters n)]) #0 (make-asmN(rax)()..) (make-asmN(r10)()..) c ..])))
+		[generate-load (@ expr-binding-aug[@car(@ expr-parameters n)]) #0 (make-asmN(rax)()..) (make-asmN(r10)()..) c ..])))
 
 (function generate-jump (n c r handler err)
 	(substitute (.. r handler err)
@@ -146,7 +146,7 @@
 					[generate-expression (@ expr-reference n) c ..]
 					(begin))
 				(if [length (@ expr-parameters(@ expr-short-circuit n))] (begin
-					[generate-load-address (@ expr-symbol[@car (@ expr-parameters(@ expr-short-circuit n))]) (make-asmN(r11)()..) c ..]
+					[generate-load-address (@ expr-binding-aug[@car (@ expr-parameters(@ expr-short-circuit n))]) (make-asmN(r11)()..) c ..]
 					[generate-move-arguments n #0 c ..])
 					(begin))
 				[prepend (make-asmN (jmp-rel) ((make-asmN (stval-sub-rip-from-ref)
@@ -168,15 +168,15 @@
 	[prepend (make-asmN(movq-imm-to-reg)([make-literal(@ expr-value n)..] (make-asmN(rax)()..))..) c ..]))
 
 (function get-current-offset (func)
-	(if [> [length (@ expr-symbols func)] #0]
-		(@ sym-offset [@car (@ expr-symbols func)])
+	(if [> [length (@ expr-binding-augs func)] #0]
+		(@ bndg-offset [@car (@ expr-binding-augs func)])
 		#0))
 
 (function generate-function (n c r handler err)
 	(substitute (.. r handler err) (begin
-		[generate-load-address (@ expr-symbol(@ expr-reference n)) (make-asmN(rax)()..) c ..]
+		[generate-load-address (@ expr-binding-aug(@ expr-reference n)) (make-asmN(rax)()..) c ..]
 		
-		(storage after-symbol [make-symbol (static-storage) (local-scope) (defined-state) null-string null-expr ..])
+		(storage after-symbol [make-binding-aug (static-storage) (local-scope) (defined-state) null-string null-expr ..])
 		[prepend (make-asmN(jmp-rel)((make-asmN(stval-sub-rip-from-ref)([use-symbol $after-symbol ..])..))..) c ..]
 		[prepend (make-asmN(label)((@ expr-reference n))..) c ..]
 		
@@ -263,7 +263,7 @@
 
 (function generate-program (n symbols r handler err) (with return
 	(substitute (.. r handler err) (begin
-		[set symbols (@ expr-symbols n)]
+		[set symbols (@ expr-binding-augs n)]
 		(storage c nil)
 		[prepend (make-asmN(pushq-reg)((make-asmN(rbp)()..))..) c ..]
 		[prepend (make-asmN(movq-reg-to-reg)((make-asmN(rsp)()..) (make-asmN(rbp)()..))..) c ..]

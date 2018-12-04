@@ -1,15 +1,15 @@
 (storage null-expr (begin))
 
-(storage null-symbol (begin))
+(storage null-binding (begin))
 
-(function make-symbol (type scope state name definition r handler err) (with return
-	(let (sym [buffer-alloc (symbol) r handler err]) (begin
-		(setf sym-type sym type)
-		(setf sym-scope sym scope)
-		(setf sym-state sym state)
-		(setf sym-name sym name)
-		(setf sym-definition sym definition)
-		{return sym}))))
+(function make-binding-aug (type scope state name definition r handler err) (with return
+	(let (bndg [buffer-alloc (binding-aug) r handler err]) (begin
+		(setf bndg-type bndg type)
+		(setf bndg-scope bndg scope)
+		(setf bndg-state bndg state)
+		(setf bndg-name bndg name)
+		(setf bndg-definition bndg definition)
+		{return bndg}))))
 
 (function make-literal (value reg handler err) (with return
 	(let (t [buffer-alloc (expression) reg handler err]) (begin
@@ -23,25 +23,26 @@
 		(setf expr-type ref (-reference-))
 		(setf expr-parent ref null-expr)
 		(setf expr-name ref name)
-		(setf expr-symbol ref null-symbol)
+		(setf expr-binding-aug ref null-binding)
 		{return ref}))))
 
 (;; Makes a reference expression refer to another reference expression. reference
 	is the expression being made to refer. referent is the reference expression
 	being referred to.)
 
-(function refer-reference (reference referent) (setf expr-symbol reference (@ expr-symbol referent)))
+(function refer-reference (reference referent) (setf expr-binding-aug reference (@ expr-binding-aug referent)))
 
-(;; Makes a reference expression attached to the given symbol. sym is the symbol
-	to which the reference will be attached. reg is the buffer into which the
-	the reference expression will be put. Return value is the reference expression.)
+(;; Makes a reference expression attached to the given augmented binding. bndg is
+	the augmented binding to which the reference will be attached. reg is the buffer
+	into which the the reference expression will be put. Return value is the reference
+	expression.)
 
-(function use-symbol (sym reg handler err) (with return
+(function use-symbol (bndg reg handler err) (with return
 	(let (ref [buffer-alloc (expression) reg handler err]) (begin
 		(setf expr-type ref (-reference-))
 		(setf expr-parent ref null-expr)
-		(setf expr-name ref (@ sym-name sym))
-		(setf expr-symbol ref sym)
+		(setf expr-name ref (@ bndg-name bndg))
+		(setf expr-binding-aug ref bndg)
 		{return ref}))))
 
 (function make-begin (expressions reg handler err) (with return
@@ -57,12 +58,12 @@
 		(setf expr-type func (-function-))
 		(setf expr-parent func null-expr)
 		(put expr-reference func ref)
-		(setf expr-symbol ref [make-symbol (static-storage) (local-scope) (defined-state) (@ expr-name ref) ref ..])
+		(setf expr-binding-aug ref [make-binding-aug (static-storage) (local-scope) (defined-state) (@ expr-name ref) ref ..])
 		(setf expr-parameters func params)
 		(foreach (param params) (begin
 			(setf expr-parent param func)
-			(setf expr-symbol param [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ expr-name param) param ..])))
-		(setf expr-symbols func nil)
+			(setf expr-binding-aug param [make-binding-aug (dynamic-storage) (local-scope) (defined-state) (@ expr-name param) param ..])))
+		(setf expr-binding-augs func nil)
 		(put expr-expression func expr)
 		{return func})))))
 
@@ -71,13 +72,13 @@
 		(setf expr-type cont (-continuation-))
 		(setf expr-parent cont null-expr)
 		(setf expr-cont-instr-ref cont
-			[use-symbol [make-symbol (static-storage) (local-scope) (defined-state) null-string null-expr ..] ..])
+			[use-symbol [make-binding-aug (static-storage) (local-scope) (defined-state) null-string null-expr ..] ..])
 		(put expr-reference cont ref)
-		(setf expr-symbol ref [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ expr-name ref) ref ..])
+		(setf expr-binding-aug ref [make-binding-aug (dynamic-storage) (local-scope) (defined-state) (@ expr-name ref) ref ..])
 		(setf expr-parameters cont params)
 		(foreach (param params) (begin
 			(setf expr-parent param cont)
-			(setf expr-symbol param [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ expr-name param) param ..])))
+			(setf expr-binding-aug param [make-binding-aug (dynamic-storage) (local-scope) (defined-state) (@ expr-name param) param ..])))
 		(setf expr-escapes cont (false))
 		(put expr-expression cont expr)
 		{return cont})))))
@@ -87,12 +88,12 @@
 		(setf expr-type wth (-with-))
 		(setf expr-parent wth null-expr)
 		(setf expr-cont-instr-ref wth
-			[use-symbol [make-symbol (static-storage) (local-scope) (defined-state) null-string null-expr ..] ..])
+			[use-symbol [make-binding-aug (static-storage) (local-scope) (defined-state) null-string null-expr ..] ..])
 		(put expr-reference wth ref)
-		(setf expr-symbol ref [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ expr-name ref) ref ..])
+		(setf expr-binding-aug ref [make-binding-aug (dynamic-storage) (local-scope) (defined-state) (@ expr-name ref) ref ..])
 		(let (param [make-reference null-string ..]) (begin
 			(setf expr-parent param wth)
-			(setf expr-symbol param [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ expr-name param) param ..])
+			(setf expr-binding-aug param [make-binding-aug (dynamic-storage) (local-scope) (defined-state) (@ expr-name param) param ..])
 			(setf expr-parameters wth [cons param nil ..])))
 		(setf expr-escapes wth (false))
 		(put expr-expression wth expr)
@@ -121,7 +122,7 @@
 		(setf expr-type u (-storage-))
 		(setf expr-parent u null-expr)
 		(put expr-reference u ref)
-		(setf expr-symbol ref [make-symbol (dynamic-storage) (local-scope) (defined-state) (@ expr-name ref) ref ..])
+		(setf expr-binding-aug ref [make-binding-aug (dynamic-storage) (local-scope) (defined-state) (@ expr-name ref) ref ..])
 		(setf expr-arguments u args)
 		(foreach (arg args) (setf expr-parent arg u))
 		{return u})))))
@@ -160,7 +161,7 @@
 		(setf expr-parent program null-expr)
 		(foreach (expr exprs)
 			(if (or [= (@ expr-type expr) (-function-)] [= (@ expr-type expr) (-storage-)])
-				(setf sym-scope (@ expr-symbol(@ expr-reference expr)) (global-scope))
+				(setf bndg-scope (@ expr-binding-aug(@ expr-reference expr)) (global-scope))
 				(begin)))
 		{return program})))))
 
@@ -228,7 +229,7 @@
 				[print-str (stdout) (@ expr-name s) ..]
 				(begin
 					[print-str (stdout) (" (lparen)reference(space)) ..]
-					[print-uint (stdout) (@ expr-symbol s) ..]
+					[print-uint (stdout) (@ expr-binding-aug s) ..]
 					[print-str (stdout) (" (rparen)) ..])))
 					
 		((-literal-) (begin

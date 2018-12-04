@@ -164,8 +164,8 @@
 
 (function make-sym (name address reg handler err) (with return
 	(let (sym [buffer-alloc (object-symbol) reg handler err]) (begin
-		(setf sym-name sym name)
-		(setf sym-offset sym address)
+		(setf bndg-name sym name)
+		(setf bndg-offset sym address)
 		{return sym}))))
 
 (;; Updates the symbols in the given object. obj is the object whose symbols
@@ -181,11 +181,11 @@
 				(define (syms-buf ($(loc (unit) sec-idx (@ obj-syms obj))))
 				(until (sym-idx #1) [= sym-idx symnum] [+ sym-idx #1] (begin
 					(define (sym (loc (elf64-sym) sym-idx syms-buf))
-					(if (and (not [strcmp [name-of obj shdr-buf sym] (@ sym-name update)])
+					(if (and (not [strcmp [name-of obj shdr-buf sym] (@ bndg-name update)])
 							(or [= (@ st-shndx sym) (shn-undef)] [= (@ st-shndx sym) (shn-common)])
 							(or [= (elf64-st-bind (@ st-info sym)) (stb-global)]
 								[= (elf64-st-bind (@ st-info sym)) (stb-weak)]))
-						(setf st-value sym (@ sym-offset update))
+						(setf st-value sym (@ bndg-offset update))
 						(begin))))))))
 				(begin))))))
 	(;; If obj was created using load, the following invocation cannot produce an error; hence the unspecified handler arguments.)
