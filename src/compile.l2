@@ -1,9 +1,9 @@
-(;; Compiles a program into assembly. program is a program expression. symbols is a reference
-	to a list into which the symbols of the generated code will be put. expr-buf is the buffer
-	into which all the constructed expressions and symbols will be put. Return value is a list
-	of assembly expressions.)
+(;; Compiles a program into assembly. program is a program expression. bindings is a reference
+	to a list into which the augmented bindings of the generated code will be put. expr-buf is the
+	buffer into which all the constructed expressions and bindings will be put. Return value is a
+	list of assembly expressions.)
 	
-(function compile-program (program symbols expr-buf handler err)
+(function compile-program (program bindings expr-buf handler err)
 	(with return (substitute (.. expr-buf handler err) (begin
 		[visit-expressions vfind-multiple-definitions (storage _ program) (storage _ handler err)]
 		[classify-program-bindings (@ expr-expression program)]
@@ -11,27 +11,27 @@
 		[visit-expressions vescape-analysis (storage _ program) (begin)]
 		[classify-program-bindings (@ expr-expression program)]
 		[visit-expressions vlayout-frames (& expr-expression program) (storage _ ..)]
-		{return [generate-program program symbols ..]}))))
+		{return [generate-program program bindings ..]}))))
 
 (;; Loads a program into memory and returns a handle to it. program is a program expression.
 	expr-buf is the buffer into which the results of compilation will be put. obj-buf is the
 	buffer into which the object code will be put. Return value is an object.)
 
 (function load-program (program expr-buf obj-buf handler err) (with return (begin
-	(storage symbols (begin))
-	(define (asms [compile-program program symbols expr-buf handler err])
+	(storage bindings (begin))
+	(define (asms [compile-program program bindings expr-buf handler err])
 	(storage objdest (begin))
 	(storage objdest-sz (begin))
-	[write-elf asms $symbols objdest objdest-sz obj-buf handler err]
+	[write-elf asms $bindings objdest objdest-sz obj-buf handler err]
 	(define (obj [load $objdest $objdest-sz obj-buf handler err])
-	[symbol-offsets-to-addresses asms $symbols obj]
+	[binding-offsets-to-addresses asms $bindings obj]
 	{return obj})))))
 
 (;; Behavior is the same as load-program, but with the following addition: syms is is a list
-	of object symbols, and after the loading is done, the undefined symbols of the loaded
+	of object bindings, and after the loading is done, the undefined bindings of the loaded
 	program will take on the addresses supplied in the list. The handler continuation is
 	followed, and the error buffer referenced by err set to the pair (undefined-reference-error,
-	<missing symbol name>) if there is an undefined binding in the program that is not defined
+	<missing binding name>) if there is an undefined binding in the program that is not defined
 	in syms.)
 
 (function load-program-and-mutate (program syms expr-buf obj-buf handler err) (with return (begin
@@ -80,8 +80,8 @@
 (storage unsupported-ext-error (begin))
 
 (;; Takes a list of L2 and object files and evaluates them in order. srcv is a list of
-	strings containing paths to L2 and object files. symbols is reference to a list of
-	symbols and to it will be added the global variables of the loaded object files and
+	strings containing paths to L2 and object files. bindings is reference to a list of
+	bindings and to it will be added the global variables of the loaded object files and
 	from it the execution environment of the same will be created. expr-buf is the
 	buffer into which expressions read from L2 source files are put. obj-buf is the
 	buffer into which both compiled and read object code is put. The handler continuation
@@ -89,7 +89,7 @@
 	(unsupported-ext-error, <file path string>) if an extension other than .o or .l2 is
 	encountered.)
 
-(function evaluate-files (srcv symbols expr-buf obj-buf handler err) (begin
+(function evaluate-files (srcv bindings expr-buf obj-buf handler err) (begin
 	(storage objects nil)
 	
 	(foreach (src srcv) (begin
@@ -98,7 +98,7 @@
 
 		(if (and [not= dot null-strrchr] [str= dot (" .l2)])
 			[set obj [load-program [generate-metaprogram [make-program [read-expressions src expr-buf handler err]
-				expr-buf handler err] symbols expr-buf obj-buf handler err] expr-buf obj-buf handler err]]
+				expr-buf handler err] bindings expr-buf obj-buf handler err] expr-buf obj-buf handler err]]
 	
 		(if (and [not= dot null-strrchr] [str= dot (" .o)]) (begin
 			(storage obj-sz (begin))
@@ -108,13 +108,13 @@
 			{handler (sets err unsupported-ext-error src)}))
 
 		[append $obj objects obj-buf handler err]
-		[append-list symbols [immutable-bindings $obj obj-buf handler err]])))
+		[append-list bindings [immutable-bindings $obj obj-buf handler err]])))
 
-	(foreach (obj $objects) [mutate-bindings obj $symbols])
+	(foreach (obj $objects) [mutate-bindings obj $bindings])
 	(foreach (obj $objects) [[segment obj (" .text)]])))
 
 (;; Takes a list of L2 source files and compiles them into object files. programs is a
-	list of strings containing paths to L2 source files. syms is a list of symbols
+	list of strings containing paths to L2 source files. syms is a list of bindings
 	pointing to the macros to be used during the meta-expression expansions. expr-buf
 	is the buffer into which constructed expressions will be put. obj-buf is the buffer
 	into which object code will be put.)
@@ -126,11 +126,11 @@
 			(begin
 				(storage program [make-program [read-expressions infn expr-buf handler err] expr-buf handler err])
 				[pre-visit-expressions vgenerate-metas program (storage _ syms expr-buf handler err)]
-				(storage symbols (begin))
-				(define (asms [compile-program $program symbols expr-buf handler err])
+				(storage bindings (begin))
+				(define (asms [compile-program $program bindings expr-buf handler err])
 				(storage objdest (begin))
 				(storage objdest-sz (begin))
-				[write-elf asms $symbols objdest objdest-sz obj-buf handler err]
+				[write-elf asms $bindings objdest objdest-sz obj-buf handler err]
 				(define (outfn [buffer-alloc [+ [strlen infn] #1] obj-buf handler err])
 				[strcpy outfn infn]
 				[strcpy [strrchr outfn (char .)] (" .o)]
@@ -173,7 +173,7 @@
 			(storage programs nil)
 			(foreach (fn [@cdr $dash-list]) [append fn programs $obj-buf handler err])
 			
-			(;; These are all the symbols necessary for metaprogramming. Their
+			(;; These are all the bindings necessary for metaprogramming. Their
 				definitions can be found in list.l2 and lexer.l2.)
 			(storage syms (substitute (.. $obj-buf handler err) (list
 				([make-binding (" -!-)(tkn-char(char !))..]
