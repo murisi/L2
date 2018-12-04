@@ -27,25 +27,25 @@
 	[binding-offsets-to-addresses asms $bindings obj]
 	{return obj})))))
 
-(;; Behavior is the same as load-program, but with the following addition: syms is is a list
+(;; Behavior is the same as load-program, but with the following addition: bndgs is a list
 	of object bindings, and after the loading is done, the undefined bindings of the loaded
 	program will take on the addresses supplied in the list. The handler continuation is
 	followed, and the error buffer referenced by err set to the pair (undefined-reference-error,
 	<missing binding name>) if there is an undefined binding in the program that is not defined
-	in syms.)
+	in bndgs.)
 
-(function load-program-and-mutate (program syms expr-buf obj-buf handler err) (with return (begin
+(function load-program-and-mutate (program bndgs expr-buf obj-buf handler err) (with return (begin
 	(define (obj [load-program program expr-buf obj-buf handler err])
 	(define (temp-reg [create-buffer #0 handler err])
 	(define (ms [mutable-bindings obj temp-reg handler err])
 	
-	(foreach (d ms) (find (x syms) [str= (@ bndg-name d) (@ bndg-name x)] (begin
+	(foreach (d ms) (find (x bndgs) [str= (@ bndg-name d) (@ bndg-name x)] (begin
 		(define (missing-bndg-name (@ bndg-name d))
 		[destroy-buffer temp-reg handler err]
 		{handler (sets err undefined-reference-error missing-bndg-name)}))))
 	
 	[destroy-buffer temp-reg handler err]
-	[mutate-bindings obj syms]
+	[mutate-bindings obj bndgs]
 	{return obj}))))))
 	
 (function read-to-buffer (fn size-out expr-buf handler err) (with return (begin
@@ -114,18 +114,18 @@
 	(foreach (obj $objects) [[segment obj (" .text)]])))
 
 (;; Takes a list of L2 source files and compiles them into object files. programs is a
-	list of strings containing paths to L2 source files. syms is a list of bindings
+	list of strings containing paths to L2 source files. bndgs is a list of bindings
 	pointing to the macros to be used during the meta-expression expansions. expr-buf
 	is the buffer into which constructed expressions will be put. obj-buf is the buffer
 	into which object code will be put.)
 
-(function compile-files (programs syms expr-buf obj-buf handler err)
+(function compile-files (programs bndgs expr-buf obj-buf handler err)
 	(foreach (infn programs) (begin
 		(storage dot [strrchr infn (char .)])
 		(if (and [not= $dot null-strrchr] [str= $dot (" .l2)])
 			(begin
 				(storage program [make-program [read-expressions infn expr-buf handler err] expr-buf handler err])
-				[pre-visit-expressions vgenerate-metas program (storage _ syms expr-buf handler err)]
+				[pre-visit-expressions vgenerate-metas program (storage _ bndgs expr-buf handler err)]
 				(storage bindings (begin))
 				(define (asms [compile-program $program bindings expr-buf handler err])
 				(storage objdest (begin))
@@ -149,7 +149,7 @@
 	prints out the error messages if there are any.)
 
 (begin
-	(;; The buffer into which object code and syms are put)
+	(;; The buffer into which object code and bindings are put)
 	(storage obj-buf (begin))
 	(;; The buffer into which expressions and fragments are put)
 	(storage expr-buf (begin))
@@ -175,7 +175,7 @@
 			
 			(;; These are all the bindings necessary for metaprogramming. Their
 				definitions can be found in list.l2 and lexer.l2.)
-			(storage syms (substitute (.. $obj-buf handler err) (list
+			(storage bndgs (substitute (.. $obj-buf handler err) (list
 				([make-binding (" -!-)(tkn-char(char !))..]
 				[make-binding (" -!-)(tkn-char(char !))..]
 				[make-binding (" -"-)(tkn-char(char "))..]
@@ -274,9 +274,9 @@
 				[make-binding (" char=) i/f:char= ..])..)))
 			
 			(;; Evaluate the metaprogram)
-			[evaluate-files $metaprograms syms $expr-buf $obj-buf handler err]
+			[evaluate-files $metaprograms bndgs $expr-buf $obj-buf handler err]
 			(;; Compile the program in the metaprogram's environment)
-			[compile-files $programs $syms $expr-buf $obj-buf handler err])
+			[compile-files $programs $bndgs $expr-buf $obj-buf handler err])
 			
 		(handler (substitute (.. cleanup err) (switch = (@0 err)
 			(multiple-definition-error (begin

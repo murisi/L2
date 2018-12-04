@@ -105,14 +105,14 @@
 				(if [= (@ expr-binding-aug s) null-binding]
 					(begin
 						(define (stg [make-storage [make-reference (@ expr-name s) ..] nil ..])
-						(define (sym (@ expr-binding-aug(@ expr-reference stg)))
-						(setf bndg-type sym (static-storage))
-						(setf bndg-scope sym (global-scope))
-						(setf bndg-state sym (undefined-state))
+						(define (bndg (@ expr-binding-aug(@ expr-reference stg)))
+						(setf bndg-type bndg (static-storage))
+						(setf bndg-scope bndg (global-scope))
+						(setf bndg-state bndg (undefined-state))
 						(define (rf [get-root-function s])
 						[prepend stg (& expr-expressions(@ expr-expression rf)) ..]
 						(setf expr-parent stg (@ expr-expression rf))
-						(setf expr-binding-aug s sym)
+						(setf expr-binding-aug s bndg)
 						{return s}))))
 				(if (and (or (and [jump-reference? s] [c-reference? (@ bndg-definition(@ expr-binding-aug s))])
 						(and [invoke-reference? s] [function-reference? (@ bndg-definition(@ expr-binding-aug s))]))
@@ -226,9 +226,9 @@
 			(define (bindings (@0 ctx))
 			(define (expr-buf (@1 ctx))
 			
-			(foreach (sym bindings)
-				(if [str= (@ bndg-name sym) (@ expr-name (@ expr-reference s))]
-					{return [vgenerate-metas [build-expression [(@ bndg-offset sym) (@ expr-argument s) expr-buf]
+			(foreach (bndg bindings)
+				(if [str= (@ bndg-name bndg) (@ expr-name (@ expr-reference s))]
+					{return [vgenerate-metas [build-expression [(@ bndg-offset bndg) (@ expr-argument s) expr-buf]
 						expr-buf handler err] ctx]} (begin)))
 			{handler (sets err undefined-reference-error (@ expr-name(@ expr-reference s)))}))))))
 		s))

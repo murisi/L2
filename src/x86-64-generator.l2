@@ -28,23 +28,23 @@
 	
 	{return n}))))
 
-(function generate-load (sym offset dest-reg scratch-reg c r handler err)
+(function generate-load (bndg offset dest-reg scratch-reg c r handler err)
 	(substitute (.. r handler err) (begin
-		(if [= (@ bndg-type sym) (dynamic-storage)]
-			(let (op1 [make-literal [+ (@ bndg-offset sym) offset] ..])
+		(if [= (@ bndg-type bndg) (dynamic-storage)]
+			(let (op1 [make-literal [+ (@ bndg-offset bndg) offset] ..])
 				[prepend (make-asmN (movq-mdb-to-reg) (op1 (make-asmN(rbp)()..) dest-reg) ..) c ..])
 			(begin
-				(let (op1 (make-asmN (stval-add-off-to-ref) ([use-binding-aug sym ..] [make-literal offset ..]) ..))
+				(let (op1 (make-asmN (stval-add-off-to-ref) ([use-binding-aug bndg ..] [make-literal offset ..]) ..))
 					[prepend (make-asmN (movq-imm-to-reg) (op1 scratch-reg) ..) c ..])
 				[prepend (make-asmN (movq-mdb-to-reg) ([make-literal #0 ..] scratch-reg dest-reg) ..) c ..])))))
 
-(function generate-store (src-reg sym offset scratch-reg c r handler err)
+(function generate-store (src-reg bndg offset scratch-reg c r handler err)
 	(substitute (.. r handler err) (begin
-		(if [= (@ bndg-type sym) (dynamic-storage)]
-			(let (op2 [make-literal [+ (@ bndg-offset sym) offset] ..])
+		(if [= (@ bndg-type bndg) (dynamic-storage)]
+			(let (op2 [make-literal [+ (@ bndg-offset bndg) offset] ..])
 				[prepend (make-asmN (movq-from-reg-into-mdb) (src-reg op2 (make-asmN(rbp)()..)) ..) c ..])
 			(begin
-				(let (op1 (make-asmN (stval-add-off-to-ref) ([use-binding-aug sym ..] [make-literal offset ..]) ..))
+				(let (op1 (make-asmN (stval-add-off-to-ref) ([use-binding-aug bndg ..] [make-literal offset ..]) ..))
 					[prepend (make-asmN (movq-imm-to-reg) (op1 scratch-reg) ..) c ..])
 				[prepend (make-asmN (movq-from-reg-into-mdb) (src-reg [make-literal #0 ..] scratch-reg) ..) c ..])))))
 
@@ -63,12 +63,12 @@
 		[generate-expression (@ expr-alternate n) c ..]
 		[prepend (make-asmN (label) ([use-binding-aug $end-binding ..]) ..) c ..])))
 
-(function generate-load-address (sym dest-reg c r handler err)
+(function generate-load-address (bndg dest-reg c r handler err)
 	(substitute (.. r handler err)
-		(if [= (@ bndg-type sym) (dynamic-storage)]
-			(let (op1 [make-literal (@ bndg-offset sym) ..])
+		(if [= (@ bndg-type bndg) (dynamic-storage)]
+			(let (op1 [make-literal (@ bndg-offset bndg) ..])
 				[prepend (make-asmN (leaq-of-mdb-into-reg) (op1 (make-asmN(rbp)()..) dest-reg) ..) c ..])
-			[prepend (make-asmN (movq-imm-to-reg) ([use-binding-aug sym ..] dest-reg) ..) c ..])))
+			[prepend (make-asmN (movq-imm-to-reg) ([use-binding-aug bndg ..] dest-reg) ..) c ..])))
 
 (function generate-storage (n c r handler err)
 	(substitute (.. r handler err) (begin
