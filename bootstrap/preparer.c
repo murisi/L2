@@ -51,7 +51,7 @@ bool reference_equals(union expression *a, union expression *b) {
 	return a == b || (a->reference.name && b->reference.name && !strcmp(a->reference.name, b->reference.name));
 }
 
-struct symbol *symbol_of(union expression *reference) {
+struct binding_aug *symbol_of(union expression *reference) {
 	bool same_func = true;
 	union expression *t;
 	for(t = reference; t != NULL; t = t->base.parent) {
@@ -139,7 +139,7 @@ union expression *vlink_references(union expression *s, void *ctx) {
 		s->reference.symbol = s->reference.symbol ? s->reference.symbol : symbol_of(s);
 		if(!s->reference.symbol) {
 			union expression *stg = make_storage(make_reference(s->reference.name, r), nil, r);
-			struct symbol *sym = stg->storage.reference->reference.symbol;
+			struct binding_aug *sym = stg->storage.reference->reference.symbol;
 			sym->type = static_storage;
 			sym->scope = global_scope;
 			sym->state = undefined_state;
@@ -242,23 +242,23 @@ void pre_visit_expressions(union expression *(*visitor)(union expression *, void
 	}
 }
 
-void classify_program_symbols(union expression *expr) {
+void classify_program_binding_augs(union expression *expr) {
 	switch(expr->base.type) {
 		case begin: {
 			union expression *t;
 			foreach(t, expr->begin.expressions) {
-				classify_program_symbols(t);
+				classify_program_binding_augs(t);
 			}
 			break;
 		} case storage: case jump: case invoke: {
 			if(expr->base.type == storage) {
 				expr->storage.reference->reference.symbol->type = static_storage;
 			} else {
-				classify_program_symbols(expr->invoke.reference);
+				classify_program_binding_augs(expr->invoke.reference);
 			}
 			union expression *t;
 			foreach(t, expr->storage.arguments) {
-				classify_program_symbols(t);
+				classify_program_binding_augs(t);
 			}
 			break;
 		} case continuation: case with: {
@@ -267,21 +267,17 @@ void classify_program_symbols(union expression *expr) {
 			foreach(t, expr->continuation.parameters) {
 				t->reference.symbol->type = static_storage;
 			}
-			classify_program_symbols(expr->continuation.expression);
+			classify_program_binding_augs(expr->continuation.expression);
 			break;
 		} case function: {
 			break;
 		} case _if: {
-			classify_program_symbols(expr->_if.condition);
-			classify_program_symbols(expr->_if.consequent);
-			classify_program_symbols(expr->_if.alternate);
+			classify_program_binding_augs(expr->_if.condition);
+			classify_program_binding_augs(expr->_if.consequent);
+			classify_program_binding_augs(expr->_if.alternate);
 			break;
 		}
 	}
-}
-
-void *_get_(void *ref) {
-	return *((void **) ref);
 }
 
 void _set_(unsigned long *ref, unsigned long val) {
@@ -295,8 +291,8 @@ struct expansion_context {
 	jumpbuf *handler;
 };
 
-bool symbol_equals(object_symbol *sym1, object_symbol *sym2) {
-	return !strcmp(sym1->name, sym2->name);
+bool binding_equals(struct binding *bndg1, struct binding *bndg2) {
+	return !strcmp(bndg1->name, bndg2->name);
 }
 
 Object *load_program_and_mutate(union expression *program, struct expansion_context *ectx);
@@ -304,10 +300,10 @@ Object *load_program_and_mutate(union expression *program, struct expansion_cont
 union expression *vgenerate_metas(union expression *s, void *ctx) {
 	struct expansion_context *ectx = ctx;
 	if(s->base.type == meta) {
-		object_symbol *sym;
-		foreach(sym, ectx->symbols) {
-			if(!strcmp(sym->name, s->meta.reference->reference.name)) {
-				return vgenerate_metas(build_expression(((list (*)(list, region)) sym->address)(s->meta.argument, ectx->expr_buf),
+		struct binding *bndg;
+		foreach(bndg, ectx->symbols) {
+			if(!strcmp(bndg->name, s->meta.reference->reference.name)) {
+				return vgenerate_metas(build_expression(((list (*)(list, region)) bndg->address)(s->meta.argument, ectx->expr_buf),
 					ectx->expr_buf, ectx->handler), ctx);
 			}
 		}

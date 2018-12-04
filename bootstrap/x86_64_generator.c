@@ -56,7 +56,7 @@ union expression *vlayout_frames(union expression *n, region r) {
 				parameter_offset += WORD_SIZE;
 			}}
 			int symbol_offset = 0;
-			struct symbol *u;
+			struct binding_aug *u;
 			foreach(u, reverse(n->function.symbols, r)) {
 				symbol_offset -= pad_size(u->size, WORD_SIZE);
 				u->offset = symbol_offset;
@@ -84,7 +84,7 @@ union expression *vlayout_frames(union expression *n, region r) {
 	return n;
 }
 
-void make_load(struct symbol *sym, int offset, union expression *dest_reg, union expression *scratch_reg, list *c, region r) {
+void make_load(struct binding_aug *sym, int offset, union expression *dest_reg, union expression *scratch_reg, list *c, region r) {
 	if(sym->type == dynamic_storage) {
 		prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(sym->offset + offset, r), make_asm0(RBP, r), dest_reg, r), c, r);
 	} else {
@@ -94,7 +94,7 @@ void make_load(struct symbol *sym, int offset, union expression *dest_reg, union
 	}
 }
 
-void make_store(union expression *src_reg, struct symbol *sym, int offset, union expression *scratch_reg, list *c, region r) {
+void make_store(union expression *src_reg, struct binding_aug *sym, int offset, union expression *scratch_reg, list *c, region r) {
 	if(sym->type == dynamic_storage) {
 		prepend(make_asm3(MOVQ_REG_TO_MDB, src_reg, make_literal(sym->offset + offset, r), make_asm0(RBP, r), r), c, r);
 	} else {
@@ -110,17 +110,17 @@ void sgenerate_ifs(union expression *n, list *c, region r) {
 	generate_expressions(n->_if.condition, c, r);
 	prepend(make_asm2(ORQ_REG_TO_REG, make_asm0(RAX, r), make_asm0(RAX, r), r), c, r);
 	
-	struct symbol *alternate_symbol = make_symbol(static_storage, local_scope, defined_state, NULL, NULL, r);
+	struct binding_aug *alternate_symbol = make_binding_aug(static_storage, local_scope, defined_state, NULL, NULL, r);
 	prepend(make_asm1(JE_REL, make_asm1(LNKR_SUB_RIP_TO_REF, use_symbol(alternate_symbol, r), r), r), c, r);
 	generate_expressions(n->_if.consequent, c, r);
-	struct symbol *end_symbol = make_symbol(static_storage, local_scope, defined_state, NULL, NULL, r);
+	struct binding_aug *end_symbol = make_binding_aug(static_storage, local_scope, defined_state, NULL, NULL, r);
 	prepend(make_asm1(JMP_REL, make_asm1(LNKR_SUB_RIP_TO_REF, use_symbol(end_symbol, r), r), r), c, r);
 	prepend(make_asm1(LABEL, use_symbol(alternate_symbol, r), r), c, r);
 	generate_expressions(n->_if.alternate, c, r);
 	prepend(make_asm1(LABEL, use_symbol(end_symbol, r), r), c, r);
 }
 
-void make_load_address(struct symbol *sym, union expression *dest_reg, list *c, region r) {
+void make_load_address(struct binding_aug *sym, union expression *dest_reg, list *c, region r) {
 	if(sym->type == dynamic_storage) {
 		prepend(make_asm3(LEAQ_MDB_TO_REG, make_literal(sym->offset, r), make_asm0(RBP, r), dest_reg, r), c, r);
 	} else {
@@ -187,7 +187,7 @@ void sgenerate_continuations(union expression *n, list *c, region r) {
 	}
 	
 	//Skip the actual instructions of the continuation
-	struct symbol *after_symbol = make_symbol(static_storage, local_scope, defined_state, NULL, NULL, r);
+	struct binding_aug *after_symbol = make_binding_aug(static_storage, local_scope, defined_state, NULL, NULL, r);
 	prepend(make_asm1(JMP_REL, make_asm1(LNKR_SUB_RIP_TO_REF, use_symbol(after_symbol, r), r), r), c, r);
 	prepend(make_asm1(LABEL, n->continuation.cont_instr_ref, r), c, r);
 	generate_expressions(n->continuation.expression, c, r);
@@ -235,7 +235,7 @@ void sgenerate_literals(union expression *n, list *c, region r) {
 
 int get_current_offset(union expression *function) {
 	if(length(function->function.symbols) > 0) {
-		return ((struct symbol *) function->function.symbols->fst)->offset;
+		return ((struct binding_aug *) function->function.symbols->fst)->offset;
 	} else {
 		return 0;
 	}
@@ -244,7 +244,7 @@ int get_current_offset(union expression *function) {
 void sgenerate_functions(union expression *n, list *c, region r) {
 	make_load_address(n->function.reference->reference.symbol, make_asm0(RAX, r), c, r);
 	
-	struct symbol *after_symbol = make_symbol(static_storage, local_scope, defined_state, NULL, NULL, r);
+	struct binding_aug *after_symbol = make_binding_aug(static_storage, local_scope, defined_state, NULL, NULL, r);
 	
 	prepend(make_asm1(JMP_REL, make_asm1(LNKR_SUB_RIP_TO_REF, use_symbol(after_symbol, r), r), r), c, r);
 	prepend(make_asm1(LABEL, n->function.reference, r), c, r);

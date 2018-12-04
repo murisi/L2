@@ -19,7 +19,7 @@ enum symbol_scope { local_scope, global_scope };
 
 enum symbol_state { undefined_state, defined_state };
 
-struct symbol {
+struct binding_aug {
 	char *name;
 	long int offset;
 	unsigned long int size;
@@ -30,8 +30,8 @@ struct symbol {
 	void *context;
 };
 
-struct symbol *make_symbol(enum symbol_type type, enum symbol_scope scope, enum symbol_state state, char *name, union expression *definition, region r) {
-	struct symbol *sym = buffer_alloc(r, sizeof(struct symbol));
+struct binding_aug *make_binding_aug(enum symbol_type type, enum symbol_scope scope, enum symbol_state state, char *name, union expression *definition, region r) {
+	struct binding_aug *sym = buffer_alloc(r, sizeof(struct binding_aug));
 	sym->type = type;
 	sym->scope = scope;
 	sym->state = state;
@@ -142,7 +142,7 @@ struct reference_expression {
 	union expression *parent;
 	
 	char *name;
-	struct symbol *symbol;
+	struct binding_aug *symbol;
 };
 
 struct meta_expression {
@@ -189,7 +189,7 @@ void refer_reference(union expression *reference, union expression *referent) {
 	reference->reference.symbol = referent->reference.symbol;
 }
 
-union expression *use_symbol(struct symbol *sym, region reg) {
+union expression *use_symbol(struct binding_aug *sym, region reg) {
 	union expression *ref = buffer_alloc(reg, sizeof(union expression));
 	ref->reference.type = reference;
 	ref->reference.parent = NULL;
@@ -234,12 +234,12 @@ union expression *make_function(union expression *ref, list params, union expres
 	func->function.type = function;
 	func->function.parent = NULL;
 	put(func, function.reference, ref);
-	ref->reference.symbol = make_symbol(static_storage, local_scope, defined_state, ref->reference.name, ref, reg);
+	ref->reference.symbol = make_binding_aug(static_storage, local_scope, defined_state, ref->reference.name, ref, reg);
 	func->function.parameters = params;
 	union expression *param;
 	foreach(param, params) {
 		param->base.parent = func;
-		param->reference.symbol = make_symbol(dynamic_storage, local_scope, defined_state, param->reference.name, param, reg);
+		param->reference.symbol = make_binding_aug(dynamic_storage, local_scope, defined_state, param->reference.name, param, reg);
 	}
 	func->function.symbols = nil;
 	put(func, function.expression, expr);
@@ -251,14 +251,14 @@ union expression *make_continuation(union expression *ref, list params, union ex
 	cont->continuation.type = continuation;
 	cont->continuation.parent = NULL;
 	cont->continuation.escapes = false;
-	cont->continuation.cont_instr_ref = use_symbol(make_symbol(static_storage, local_scope, defined_state, NULL, NULL, reg), reg);
+	cont->continuation.cont_instr_ref = use_symbol(make_binding_aug(static_storage, local_scope, defined_state, NULL, NULL, reg), reg);
 	put(cont, continuation.reference, ref);
-	ref->reference.symbol = make_symbol(dynamic_storage, local_scope, defined_state, ref->reference.name, ref, reg);
+	ref->reference.symbol = make_binding_aug(dynamic_storage, local_scope, defined_state, ref->reference.name, ref, reg);
 	cont->continuation.parameters = params;
 	union expression *param;
 	foreach(param, params) {
 		param->base.parent = cont;
-		param->reference.symbol = make_symbol(dynamic_storage, local_scope, defined_state, param->reference.name, param, reg);
+		param->reference.symbol = make_binding_aug(dynamic_storage, local_scope, defined_state, param->reference.name, param, reg);
 	}
 	put(cont, continuation.expression, expr);
 	return cont;
@@ -269,12 +269,12 @@ union expression *make_with(union expression *ref, union expression *expr, regio
 	wth->with.type = with;
 	wth->with.parent = NULL;
 	wth->with.escapes = false;
-	wth->with.cont_instr_ref = use_symbol(make_symbol(static_storage, local_scope, defined_state, NULL, NULL, reg), reg);
+	wth->with.cont_instr_ref = use_symbol(make_binding_aug(static_storage, local_scope, defined_state, NULL, NULL, reg), reg);
 	put(wth, with.reference, ref);
-	ref->reference.symbol = make_symbol(dynamic_storage, local_scope, defined_state, ref->reference.name, ref, reg);
+	ref->reference.symbol = make_binding_aug(dynamic_storage, local_scope, defined_state, ref->reference.name, ref, reg);
 	union expression *param = make_reference(NULL, reg);
 	param->reference.parent = wth;
-	param->reference.symbol = make_symbol(dynamic_storage, local_scope, defined_state, param->reference.name, param, reg);
+	param->reference.symbol = make_binding_aug(dynamic_storage, local_scope, defined_state, param->reference.name, param, reg);
 	wth->with.parameter = lst(param, nil, reg);
 	put(wth, with.expression, expr);
 	return wth;
@@ -345,7 +345,7 @@ union expression *make_storage(union expression *ref, list args, region reg) {
 	u->storage.type = storage;
 	u->storage.parent = NULL;
 	put(u, storage.reference, ref);
-	ref->reference.symbol = make_symbol(dynamic_storage, local_scope, defined_state, ref->reference.name, ref, reg);
+	ref->reference.symbol = make_binding_aug(dynamic_storage, local_scope, defined_state, ref->reference.name, ref, reg);
 	u->storage.arguments = args;
 	union expression *arg;
 	foreach(arg, args) {

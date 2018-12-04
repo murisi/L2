@@ -221,13 +221,13 @@ char *name_of(Object *obj, Elf64_Shdr *shdr, Elf64_Sym *sym) {
 	return obj->segs[shdr->sh_link] + sym->st_name;
 }
 
-typedef struct {
+struct binding {
 	char *name;
 	void *address;
-} object_symbol;
+};
 
-object_symbol *make_object_symbol(char *nm, void *addr, region r) {
-	object_symbol *sym = buffer_alloc(r, sizeof(object_symbol));
+struct binding *make_binding(char *nm, void *addr, region r) {
+	struct binding *sym = buffer_alloc(r, sizeof(struct binding));
 	sym->name = nm;
 	sym->address = addr;
 	return sym;
@@ -237,8 +237,8 @@ object_symbol *make_object_symbol(char *nm, void *addr, region r) {
  * Goes through the loaded object obj and modifies all occurences of symbols
  * with the same name as update to point to the same address as update.
  */
-void mutate_symbols(Object *obj, list updates) {
-	object_symbol *update;
+void mutate_bindings(Object *obj, list updates) {
+	struct binding *update;
 	foreach(update, updates) {
 		int sec;
 		for(sec = 0; sec < obj->ehdr->e_shnum; sec++) {
@@ -259,7 +259,7 @@ void mutate_symbols(Object *obj, list updates) {
 	do_relocations(obj);
 }
 
-list symbols(int flag, Object *obj, region reg) {
+list bindings(int flag, Object *obj, region reg) {
 	list syms = nil;
 	int sec;
 	for(sec = 0; sec < obj->ehdr->e_shnum; sec++) {
@@ -270,7 +270,7 @@ list symbols(int flag, Object *obj, region reg) {
 				if(((obj->syms[sec][sym].st_shndx == SHN_UNDEF || obj->syms[sec][sym].st_shndx == SHN_COMMON) == flag) &&
 					(ELF64_ST_BIND(obj->syms[sec][sym].st_info) == STB_GLOBAL ||
 					ELF64_ST_BIND(obj->syms[sec][sym].st_info) == STB_WEAK)) {
-						object_symbol *symbol = buffer_alloc(reg, sizeof(object_symbol));
+						struct binding *symbol = buffer_alloc(reg, sizeof(struct binding));
 						symbol->name = name_of(obj, &obj->shdrs[sec], &obj->syms[sec][sym]);
 						symbol->address = (void *) obj->syms[sec][sym].st_value;
 						prepend(symbol, &syms, reg);
@@ -284,15 +284,15 @@ list symbols(int flag, Object *obj, region reg) {
 /*
  * See the analogous function for mutable symbols.
  */
-list mutable_symbols(Object *obj, region reg) {
-	return symbols(1, obj, reg);
+list mutable_bindings(Object *obj, region reg) {
+	return bindings(1, obj, reg);
 }
 
 /*
  * See the analogous function for mutable symbols.
  */
-list immutable_symbols(Object *obj, region reg) {
-	return symbols(0, obj, reg);
+list immutable_bindings(Object *obj, region reg) {
+	return bindings(0, obj, reg);
 }
 
 /*

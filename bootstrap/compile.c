@@ -15,36 +15,36 @@ typedef unsigned long int bool;
 #include "x86_64_generator.c"
 #include "x86_64_assembler.c"
 
-list compile_program(union expression *program, struct expansion_context *ectx, list *symbols) {
+list compile_program(union expression *program, struct expansion_context *ectx, list *bindings) {
 	visit_expressions(vfind_multiple_definitions, &program, ectx->handler);
-	classify_program_symbols(program->function.expression);
+	classify_program_binding_augs(program->function.expression);
 	visit_expressions(vlink_references, &program->function.expression, (void* []) {ectx->handler, ectx->expr_buf});
 	visit_expressions(vescape_analysis, &program, NULL);
-	classify_program_symbols(program->function.expression);
+	classify_program_binding_augs(program->function.expression);
 	visit_expressions(vlayout_frames, &program->function.expression, ectx->expr_buf);
-	return generate_program(program, symbols, ectx->expr_buf);
+	return generate_program(program, bindings, ectx->expr_buf);
 }
 
 Object *load_program(union expression *program, struct expansion_context *ectx) {
-	list symbols;
-	list asms = compile_program(program, ectx, &symbols);
+	list bindings;
+	list asms = compile_program(program, ectx, &bindings);
 	unsigned char *objdest; int objdest_sz;
-	write_elf(asms, symbols, &objdest, &objdest_sz, ectx->obj_buf);
+	write_elf(asms, bindings, &objdest, &objdest_sz, ectx->obj_buf);
 	Object *obj = load(objdest, objdest_sz, ectx->obj_buf, ectx->handler);
-	symbol_offsets_to_addresses(asms, symbols, obj);
+	symbol_offsets_to_addresses(asms, bindings, obj);
 	return obj;
 }
 
 Object *load_program_and_mutate(union expression *program, struct expansion_context *ectx) {
 	Object *obj = load_program(program, ectx);
 	region temp_reg = create_buffer(0);
-	list ms = mutable_symbols(obj, temp_reg);
-	struct symbol *missing_sym = not_subset((bool (*)(void *, void *)) symbol_equals, ms, ectx->symbols);
+	list ms = mutable_bindings(obj, temp_reg);
+	struct binding_aug *missing_sym = not_subset((bool (*)(void *, void *)) binding_equals, ms, ectx->symbols);
 	if(missing_sym) {
 		throw_undefined_reference(missing_sym->name, ectx->handler);
 	}
 	destroy_buffer(temp_reg);
-	mutate_symbols(obj, ectx->symbols);
+	mutate_bindings(obj, ectx->symbols);
 	return obj;
 }
 
@@ -83,12 +83,12 @@ void evaluate_files(list metaprograms, struct expansion_context *ectx, jumpbuf *
 			obj = load(obj_buf, obj_sz, ectx->obj_buf, handler);
 		}
 		append(obj, &objects, ectx->obj_buf);
-		append_list(&ectx->symbols, immutable_symbols(obj, ectx->obj_buf));
+		append_list(&ectx->symbols, immutable_bindings(obj, ectx->obj_buf));
 	}
 	
 	Object *obj;
 	{foreach(obj, objects) {
-		mutate_symbols(obj, ectx->symbols);
+		mutate_bindings(obj, ectx->symbols);
 	}}
 	{foreach(obj, objects) {
 		((void (*)()) segment(obj, ".text"))();
@@ -194,7 +194,7 @@ int main(int argc, char *argv[]) {
 		return err->arguments.type;
 	}
 	
-	object_symbol static_bindings_arr[] = {
+	struct binding static_bindings_arr[] = {
 		{.name = "-!-", .address = _char('!')},
 		{.name = "-\"-", .address = _char('"')},
 		{.name = "-#-", .address = _char('#')},
@@ -299,7 +299,7 @@ int main(int argc, char *argv[]) {
 	ectx.symbols = nil;
 	
 	int i;
-	for(i = 0; i < sizeof(static_bindings_arr) / sizeof(object_symbol); i++) {
+	for(i = 0; i < sizeof(static_bindings_arr) / sizeof(struct binding); i++) {
 		prepend(&static_bindings_arr[i], &ectx.symbols, ectx.obj_buf);
 	}
 	for(i = 1; i < argc; i++) {

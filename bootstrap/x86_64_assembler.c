@@ -209,7 +209,7 @@ void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sy
 }
 
 int measure_strtab(list generated_expressions, list symbols) {
-	struct symbol *sym;
+	struct binding_aug *sym;
 	int strtab_len = 1;
 	{foreach(sym, symbols) {
 		if(sym->name) {
@@ -230,7 +230,7 @@ int measure_strtab(list generated_expressions, list symbols) {
 
 int measure_symtab(list generated_expressions, list symbols) {
 	int sym_count = 1;
-	struct symbol *sym;
+	struct binding_aug *sym;
 	{foreach(sym, symbols) {
 		sym_count++;
 	}}
@@ -308,7 +308,7 @@ void write_elf(list generated_expressions, list symbols, unsigned char **bin, in
 	
 	unsigned long bss_ptr = 0;
 	
-	struct symbol *sym;
+	struct binding_aug *sym;
 	{foreach(sym, symbols) {
 		if(sym->scope == local_scope) {
 			if(sym->name) {
@@ -521,7 +521,7 @@ void write_elf(list generated_expressions, list symbols, unsigned char **bin, in
 }
 
 void symbol_offsets_to_addresses(list asms, list symbols, Object *obj) {
-	struct symbol *sym;
+	struct binding_aug *sym;
 	{foreach(sym, symbols) {
 		if(sym->type == static_storage && sym->state == defined_state) {
 			sym->offset += (unsigned long) segment(obj, ".bss");
