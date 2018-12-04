@@ -7,7 +7,7 @@
 	(with return (substitute (.. expr-buf handler err) (begin
 		[visit-expressions vfind-multiple-definitions (storage _ program) (storage _ handler err)]
 		[classify-program-bindings (@ expr-expression program)]
-		[visit-expressions vlink-references (& expr-expression program) (storage _ ..)]
+		[visit-expressions vlink-symbols (& expr-expression program) (storage _ ..)]
 		[visit-expressions vescape-analysis (storage _ program) (begin)]
 		[classify-program-bindings (@ expr-expression program)]
 		[visit-expressions vlayout-frames (& expr-expression program) (storage _ ..)]
@@ -30,7 +30,7 @@
 (;; Behavior is the same as load-program, but with the following addition: bndgs is a list
 	of object bindings, and after the loading is done, the undefined bindings of the loaded
 	program will take on the addresses supplied in the list. The handler continuation is
-	followed, and the error buffer referenced by err set to the pair (undefined-reference-error,
+	followed, and the error buffer referenced by err set to the pair (undefined-symbol-error,
 	<missing binding name>) if there is an undefined binding in the program that is not defined
 	in bndgs.)
 
@@ -42,7 +42,7 @@
 	(foreach (d ms) (find (x bndgs) [str= (@ bndg-name d) (@ bndg-name x)] (begin
 		(define (missing-bndg-name (@ bndg-name d))
 		[destroy-buffer temp-reg handler err]
-		{handler (sets err undefined-reference-error missing-bndg-name)}))))
+		{handler (sets err undefined-symbol-error missing-bndg-name)}))))
 	
 	[destroy-buffer temp-reg handler err]
 	[mutate-bindings obj bndgs]
@@ -291,8 +291,8 @@
 				[print-expression (@2 err) ..]
 				[print-str (stdout) (" .(lf)) ..]))
 			
-			(undefined-reference-error (begin
-				[print-str (stdout) (" Undefined reference:(space)) ..]
+			(undefined-symbol-error (begin
+				[print-str (stdout) (" Undefined symbol:(space)) ..]
 				[print-str (stdout) (@1 err) ..]
 				[print-str (stdout) (" .(lf)) ..]))
 			

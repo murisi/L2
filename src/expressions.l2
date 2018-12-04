@@ -18,32 +18,32 @@
 		(setf expr-value t value)
 		{return t}))))
 
-(function make-reference (name reg handler err) (with return
+(function make-symbol (name reg handler err) (with return
 	(let (ref [buffer-alloc (expression) reg handler err]) (begin
-		(setf expr-type ref (-reference-))
+		(setf expr-type ref (-symbol-))
 		(setf expr-parent ref null-expr)
 		(setf expr-name ref name)
 		(setf expr-binding-aug ref null-binding)
 		{return ref}))))
 
-(;; Makes a reference expression refer to another reference expression. reference
-	is the expression being made to refer. referent is the reference expression
-	being referred to.)
+(;; Binds a symbol expression to another symbol expression. symbol
+	is the expression being made to refer. target is the symbol expression
+	being bound to.)
 
-(function refer-reference (reference referent) (setf expr-binding-aug reference (@ expr-binding-aug referent)))
+(function bind-symbol (symbol target) (setf expr-binding-aug symbol (@ expr-binding-aug target)))
 
-(;; Makes a reference expression attached to the given augmented binding. bndg is
-	the augmented binding to which the reference will be attached. reg is the buffer
-	into which the the reference expression will be put. Return value is the reference
+(;; Makes a symbol expression attached to the given augmented binding. bndg is
+	the augmented binding to which the symbol will be attached. reg is the buffer
+	into which the the symbol expression will be put. Return value is the symbol
 	expression.)
 
 (function use-binding-aug (bndg reg handler err) (with return
-	(let (ref [buffer-alloc (expression) reg handler err]) (begin
-		(setf expr-type ref (-reference-))
-		(setf expr-parent ref null-expr)
-		(setf expr-name ref (@ bndg-name bndg))
-		(setf expr-binding-aug ref bndg)
-		{return ref}))))
+	(let (sym [buffer-alloc (expression) reg handler err]) (begin
+		(setf expr-type sym (-symbol-))
+		(setf expr-parent sym null-expr)
+		(setf expr-name sym (@ bndg-name bndg))
+		(setf expr-binding-aug sym bndg)
+		{return sym}))))
 
 (function make-begin (expressions reg handler err) (with return
 	(let (beg [buffer-alloc (expression) reg handler err]) (begin
@@ -91,7 +91,7 @@
 			[use-binding-aug [make-binding-aug (static-storage) (local-scope) (defined-state) null-string null-expr ..] ..])
 		(put expr-reference wth ref)
 		(setf expr-binding-aug ref [make-binding-aug (dynamic-storage) (local-scope) (defined-state) (@ expr-name ref) ref ..])
-		(let (param [make-reference null-string ..]) (begin
+		(let (param [make-symbol null-string ..]) (begin
 			(setf expr-parent param wth)
 			(setf expr-binding-aug param [make-binding-aug (dynamic-storage) (local-scope) (defined-state) (@ expr-name param) param ..])
 			(setf expr-parameters wth [cons param nil ..])))
@@ -157,7 +157,7 @@
 	has as its expression a begin expression.)
 
 (function make-program (exprs r handler err) (with return (substitute (.. r handler err)
-	(let (program [make-function [make-reference null-string ..] nil [make-begin exprs ..] ..]) (begin
+	(let (program [make-function [make-symbol null-string ..] nil [make-begin exprs ..] ..]) (begin
 		(setf expr-parent program null-expr)
 		(foreach (expr exprs)
 			(if (or [= (@ expr-type expr) (-function-)] [= (@ expr-type expr) (-storage-)])
@@ -224,7 +224,7 @@
 			[print-expression (@ expr-alternate s) ..]
 			[print-str (stdout) (" (rparen)) ..]))
 		
-		((-reference-)
+		((-symbol-)
 			(if [not= (@ expr-name s) null-string]
 				[print-str (stdout) (@ expr-name s) ..]
 				(begin
@@ -256,7 +256,7 @@
 
 (function build-expression (d reg handler err) (substitute (.. reg handler err)
 	(if [= [length d] #0] {handler}
-	(if [i/f:token? d] [make-reference [to-string d ..] ..]
+	(if [i/f:token? d] [make-symbol [to-string d ..] ..]
 	(switch str= [to-string [@car d] ..]
 		((" with)
 			(if (not [= [length d] #3])
