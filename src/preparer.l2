@@ -1,6 +1,6 @@
 (function defined-str= (a b) (and [not= a null-string] [not= b null-string] [str= a b]))
 
-(function named-ref= (a b) [defined-str= (@ expr-name a) (@ expr-name b)])
+(function named-sym= (a b) [defined-str= (@ expr-name a) (@ expr-name b)])
 
 (storage multiple-definition-error (begin))
 
@@ -14,7 +14,7 @@
 					(or [= (@ expr-type f) (-storage-)] [= (@ expr-type f) (-function-)]) temp-reg handler err))
 				(until (partial definitions) [nil? partial] [@cdr partial]
 					(with break
-						(let (_ (find (f (@ cdr partial)) [named-ref= (@ expr-reference f) (@ expr-reference [@car partial])] {break (begin)}))
+						(let (_ (find (f (@ cdr partial)) [named-sym= (@ expr-reference f) (@ expr-reference [@car partial])] {break (begin)}))
 							(let (dup-ref-name (@ expr-name(@ expr-reference[@car partial]))) (begin
 								[destroy-buffer temp-reg]
 								{handler (sets err multiple-definition-error dup-ref-name)}))))))
@@ -25,7 +25,7 @@
 			(let (ref-with-params [cons (@ expr-reference e) (@ expr-parameters e) temp-reg])
 				(until (partial ref-with-params) [nil? partial] [@cdr partial]
 					(with break
-						(let (_ (find (f (@ cdr partial)) [named-ref= f [@car partial]] {break (begin)}))
+						(let (_ (find (f (@ cdr partial)) [named-sym= f [@car partial]] {break (begin)}))
 							(let (dup-ref-name (@ expr-name[@car partial])) (begin
 								[destroy-buffer temp-reg]
 								{handler (sets err multiple-definition-error dup-ref-name)}))))))
@@ -47,26 +47,26 @@
 			((-begin-) (foreach (u (@ expr-expressions t))
 				(if (and (or [= (@ expr-type u) (-function-)] (and [= (@ expr-type u) (-storage-)] (or $same-func
 						[= (@ bndg-type(@ expr-binding-aug(@ expr-reference u))) (static-storage)])))
-						[named-ref= (@ expr-reference u) symbol])
+						[named-sym= (@ expr-reference u) symbol])
 					{return (@ expr-binding-aug(@ expr-reference u))}
 					(begin))))
 			
 			((-function-) (begin
-				(if [named-ref= (@ expr-reference t) symbol]
+				(if [named-sym= (@ expr-reference t) symbol]
 					{return (@ expr-binding-aug(@ expr-reference t))}
 					(foreach (u (@ expr-parameters t))
-						(if (and (or $same-func [= (@ bndg-type(@ expr-binding-aug u)) (static-storage)]) [named-ref= u symbol])
+						(if (and (or $same-func [= (@ bndg-type(@ expr-binding-aug u)) (static-storage)]) [named-sym= u symbol])
 							{return (@ expr-binding-aug u)}
 							(begin))))
 				[set same-func (false)]))
 			
 			((-continuation-) (-with-) (-storage-)
 				(if (and (or $same-func [= (@ bndg-type(@ expr-binding-aug(@ expr-reference t))) (static-storage)])
-						[named-ref= (@ expr-reference t) symbol])
+						[named-sym= (@ expr-reference t) symbol])
 					{return (@ expr-binding-aug(@ expr-reference t))}
 				(if [= (@ expr-type t) (-storage-)] (begin)
 					(foreach (u (@ expr-parameters t))
-						(if (and (or $same-func [= (@ bndg-type(@ expr-binding-aug u)) (static-storage)]) [named-ref= u symbol])
+						(if (and (or $same-func [= (@ bndg-type(@ expr-binding-aug u)) (static-storage)]) [named-sym= u symbol])
 							{return (@ expr-binding-aug u)}
 							(begin))))))
 			
