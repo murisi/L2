@@ -125,11 +125,11 @@
 			[generate-store-continuation n c ..])
 			(begin))
 		
-		(storage after-binding [make-binding-aug (static-storage) (local-scope) (defined-state) null-string null-expr ..])
-		[prepend (make-asmN (jmp-rel) ((make-asmN (lnkr-sub-rip-to-ref) ([use-binding-aug $after-binding ..]) ..)) ..) c ..]
+		(define (after-binding [make-binding-aug (static-storage) (local-scope) (defined-state) null-string null-expr ..])
+		[prepend (make-asmN (jmp-rel) ((make-asmN (lnkr-sub-rip-to-ref) ([use-binding-aug after-binding ..]) ..)) ..) c ..]
 		[prepend (make-asmN (label) ((@ expr-cont-instr-ref n)) ..) c ..]
 		[generate-expression (@ expr-expression n) c ..]
-		[prepend (make-asmN (label) ([use-binding-aug $after-binding ..]) ..) c ..])))
+		[prepend (make-asmN (label) ([use-binding-aug after-binding ..]) ..) c ..]))))
 
 (function generate-with (n c r handler err)
 	(substitute (.. r handler err) (begin
@@ -176,8 +176,8 @@
 	(substitute (.. r handler err) (begin
 		[generate-load-address (@ expr-binding-aug(@ expr-reference n)) (make-asmN(rax)()..) c ..]
 		
-		(storage after-binding [make-binding-aug (static-storage) (local-scope) (defined-state) null-string null-expr ..])
-		[prepend (make-asmN(jmp-rel)((make-asmN(lnkr-sub-rip-to-ref)([use-binding-aug $after-binding ..])..))..) c ..]
+		(define (after-binding [make-binding-aug (static-storage) (local-scope) (defined-state) null-string null-expr ..])
+		[prepend (make-asmN(jmp-rel)((make-asmN(lnkr-sub-rip-to-ref)([use-binding-aug after-binding ..])..))..) c ..]
 		[prepend (make-asmN(label)((@ expr-reference n))..) c ..]
 		
 		[prepend (make-asmN(popq-reg)((make-asmN(r11)()..))..) c ..]
@@ -205,7 +205,7 @@
 		[prepend (make-asmN(addq-imm-to-reg)([make-literal [* #6(word-size)]..] (make-asmN(rsp)()..))..) c ..]
 		[prepend (make-asmN(pushq-reg)((make-asmN(r11)()..))..) c ..]
 		[prepend (make-asmN(ret)()..) c ..]
-		[prepend (make-asmN(label)([use-binding-aug $after-binding ..])..) c ..])))
+		[prepend (make-asmN(label)([use-binding-aug after-binding ..])..) c ..]))))
 
 (function generate-invoke (n c r handler err)
 	(substitute (.. r handler err) (begin
