@@ -184,25 +184,25 @@
 		
 		(begin))))
 
-(function classify-program-symbols (expr)
+(function classify-program-bindings (expr)
 	(switch = (@ expr-type expr)
-		((-begin-) (foreach (t (@ expr-expressions expr)) [classify-program-symbols t]))
+		((-begin-) (foreach (t (@ expr-expressions expr)) [classify-program-bindings t]))
 		
 		((-storage-) (-jump-) (-invoke-) (begin
 			(if [= (@ expr-type expr) (-storage-)]
 				(setf bndg-type (@ expr-binding-aug(@ expr-reference expr)) (static-storage))
-				[classify-program-symbols (@ expr-reference expr)])
-			(foreach (t (@ expr-arguments expr)) [classify-program-symbols t])))
+				[classify-program-bindings (@ expr-reference expr)])
+			(foreach (t (@ expr-arguments expr)) [classify-program-bindings t])))
 		
 		((-continuation-) (-with-) (begin
 			(setf bndg-type (@ expr-binding-aug(@ expr-reference expr)) (static-storage))
 			(foreach (t (@ expr-parameters expr)) (setf bndg-type (@ expr-binding-aug t) (static-storage)))
-			[classify-program-symbols (@ expr-expression expr)]))
+			[classify-program-bindings (@ expr-expression expr)]))
 		
 		((-if-) (begin
-			[classify-program-symbols (@ expr-condition expr)]
-			[classify-program-symbols (@ expr-consequent expr)]
-			[classify-program-symbols (@ expr-alternate expr)]))
+			[classify-program-bindings (@ expr-condition expr)]
+			[classify-program-bindings (@ expr-consequent expr)]
+			[classify-program-bindings (@ expr-alternate expr)]))
 		
 		(begin)))
 
