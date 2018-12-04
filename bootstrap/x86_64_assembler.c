@@ -55,14 +55,14 @@ void write_static_value(char *bin, int *pos, union expression *expr, int bytes, 
 		(*relas)->r_info = ELF64_R_INFO((Elf64_Sym *) expr->reference.symbol->context - symtab, R_X86_64_64);
 		(*relas)->r_addend = 0;
 		(*relas)++;
-	} else if(expr->base.type == assembly && expr->assembly.opcode == STVAL_ADD_OFF_TO_REF && bytes == 8) {
+	} else if(expr->base.type == assembly && expr->assembly.opcode == LNKR_ADD_OFF_TO_REF && bytes == 8) {
 		union expression *ref = expr->assembly.arguments->fst;
 		union expression *offset = expr->assembly.arguments->frst;
 		(*relas)->r_offset = *pos;
 		(*relas)->r_info = ELF64_R_INFO((Elf64_Sym *) ref->reference.symbol->context - symtab, R_X86_64_64);
 		(*relas)->r_addend = offset->literal.value;
 		(*relas)++;
-	} else if(expr->base.type == assembly && expr->assembly.opcode == STVAL_SUB_RIP_FROM_REF && bytes == 4) {
+	} else if(expr->base.type == assembly && expr->assembly.opcode == LNKR_SUB_RIP_TO_REF && bytes == 4) {
 		union expression *ref = expr->assembly.arguments->fst;
 		(*relas)->r_offset = *pos;
 		(*relas)->r_info = ELF64_R_INFO((Elf64_Sym *) ref->reference.symbol->context - symtab, R_X86_64_PC32);
@@ -97,14 +97,14 @@ void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sy
 				label_ref->reference.symbol->offset = (unsigned long) *pos;
 				sym->st_value = *pos;
 				break;
-			} case LEAQ_OF_MDB_INTO_REG: {
+			} case LEAQ_MDB_TO_REG: {
 				unsigned char opcode = 0x8D;
 				int reg = ((union expression *) n->invoke.arguments->frrst)->assembly.opcode; //Dest
 				int rm = ((union expression *) n->invoke.arguments->frst)->assembly.opcode; //Src
 				write_mr_instr(bin, pos, opcode, reg, rm, true, true);
 				write_static_value(bin, pos, n->invoke.arguments->fst, 4, symtab, relas);
 				break;
-			} case MOVQ_FROM_REG_INTO_MDB: {
+			} case MOVQ_REG_TO_MDB: {
 				unsigned char opcode = 0x89;
 				int reg = ((union expression *) n->invoke.arguments->fst)->assembly.opcode; //Src
 				int rm = ((union expression *) n->invoke.arguments->frrst)->assembly.opcode; //Dest
@@ -134,7 +134,7 @@ void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sy
 				int rm = ((union expression *) n->invoke.arguments->fst)->assembly.opcode; //Src
 				write_mr_instr(bin, pos, opcode, reg, rm, false, true);
 				break;
-			} case SUBQ_IMM_FROM_REG: {
+			} case SUBQ_IMM_TO_REG: {
 				unsigned char opcode = 0x81;
 				unsigned char reg = 5;
 				int rm = ((union expression *) n->invoke.arguments->frst)->assembly.opcode; //Dest
