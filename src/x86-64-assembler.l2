@@ -178,20 +178,20 @@
 (storage shstrtab ("(nul).shstrtab(nul).text(nul).strtab(nul).symtab(nul).bss(nul).rela.text(nul)))
 
 (function measure-strtab (generated-expressions symbols)
-	(let (strtab-len (fold-left (acc #1) (sym symbols)
+	(let (strtab-len (fold (acc #1) (sym symbols)
 			[+ acc (if [not= (@ sym-name sym) null-string]
 				[+ [strlen(@ sym-name sym)] #1]
 				#0)]))
 				
-		(fold-left (acc strtab-len) (e generated-expressions)
+		(fold (acc strtab-len) (e generated-expressions)
 			[+ acc (if [= (@ expr-opcode e) (label)]
 				(let (label-str (@ expr-name [@car (@ expr-arguments e)]))
 					(if [not= label-str null-string] [+ [strlen label-str] #1] #0))
 				#0)])))
 
 (function measure-symtab (generated-expressions symbols)
-	(let (sym-count (fold-left (acc #1) (sym symbols) [+ acc #1]))
-		(fold-left (acc sym-count) (e generated-expressions)
+	(let (sym-count (fold (acc #1) (sym symbols) [+ acc #1]))
+		(fold (acc sym-count) (e generated-expressions)
 			[+ acc (if [= (@ expr-opcode e) (label)] #1 #0)])))
 
 (function max-elf-size (generated-expressions symbols)
