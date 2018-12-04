@@ -65,9 +65,9 @@ struct binding_aug *symbol_of(union expression *reference) {
 					//storage expression in ancestral expression that is (in the same stack-frame as the reference
 					//or has static storage).
 					if((u->base.type == function || (u->base.type == storage && (same_func ||
-							u->storage.reference->reference.symbol->type == static_storage))) &&
+							u->storage.reference->reference.binding_aug->type == static_storage))) &&
 							reference_equals(u->function.reference, reference)) {
-						return u->function.reference->reference.symbol;
+						return u->function.reference->reference.binding_aug;
 					}
 				}
 				break;
@@ -75,12 +75,12 @@ struct binding_aug *symbol_of(union expression *reference) {
 				//Either link up to ancestral function expression reference or link up to the parameters of (the
 				//root function or (the function that provides the stack-frame for this reference.) 
 				if(reference_equals(t->function.reference, reference)) {
-					return t->function.reference->reference.symbol;
+					return t->function.reference->reference.binding_aug;
 				}
 				union expression *u;
 				foreach(u, t->function.parameters) {
-					if((same_func || u->reference.symbol->type == static_storage) && reference_equals(u, reference)) {
-						return u->reference.symbol;
+					if((same_func || u->reference.binding_aug->type == static_storage) && reference_equals(u, reference)) {
+						return u->reference.binding_aug;
 					}
 				}
 				same_func = false;
@@ -89,14 +89,14 @@ struct binding_aug *symbol_of(union expression *reference) {
 				//Either link up to (the reference of continuation/with/storage expression in the same stack-frame
 				//or the reference of the same with static storage) or link up to the parameters of a non-storage
 				//expression that are either (in the same stack-fram or have static storage).
-				if((same_func || t->continuation.reference->reference.symbol->type == static_storage) &&
+				if((same_func || t->continuation.reference->reference.binding_aug->type == static_storage) &&
 						reference_equals(t->function.reference, reference)) {
-					return t->function.reference->reference.symbol;
+					return t->function.reference->reference.binding_aug;
 				} else if(t->base.type != storage) {
 					union expression *u;
 					foreach(u, t->function.parameters) {
-						if((same_func || u->reference.symbol->type == static_storage) && reference_equals(u, reference)) {
-							return u->reference.symbol;
+						if((same_func || u->reference.binding_aug->type == static_storage) && reference_equals(u, reference)) {
+							return u->reference.binding_aug;
 						}
 					}
 				}
@@ -124,7 +124,7 @@ bool is_function_reference(union expression *s) {
 }
 
 union expression *target_expression(union expression *s) {
-	return s->reference.symbol->definition->reference.parent;
+	return s->reference.binding_aug->definition->reference.parent;
 }
 
 union expression *root_function_of(union expression *s) {
@@ -136,18 +136,18 @@ union expression *vlink_references(union expression *s, void *ctx) {
 	jumpbuf *handler = ((void **) ctx)[0];
 	region r = ((void **) ctx)[1];
 	if(s->base.type == reference) {
-		s->reference.symbol = s->reference.symbol ? s->reference.symbol : symbol_of(s);
-		if(!s->reference.symbol) {
+		s->reference.binding_aug = s->reference.binding_aug ? s->reference.binding_aug : symbol_of(s);
+		if(!s->reference.binding_aug) {
 			union expression *stg = make_storage(make_reference(s->reference.name, r), nil, r);
-			struct binding_aug *sym = stg->storage.reference->reference.symbol;
+			struct binding_aug *sym = stg->storage.reference->reference.binding_aug;
 			sym->type = static_storage;
 			sym->scope = global_scope;
 			sym->state = undefined_state;
 			prepend(stg, &root_function_of(s)->function.expression->begin.expressions, r);
 			stg->storage.parent = root_function_of(s)->function.expression;
-			s->reference.symbol = sym;
-		} else if(((is_jump_reference(s) && is_c_reference(s->reference.symbol->definition)) ||
-			(is_invoke_reference(s) && is_function_reference(s->reference.symbol->definition))) &&
+			s->reference.binding_aug = sym;
+		} else if(((is_jump_reference(s) && is_c_reference(s->reference.binding_aug->definition)) ||
+			(is_invoke_reference(s) && is_function_reference(s->reference.binding_aug->definition))) &&
 			length(s->reference.parent->jump.arguments) != length(target_expression(s)->continuation.parameters)) {
 				throw_param_count_mismatch(s->reference.parent, target_expression(s), handler);
 		}
@@ -168,7 +168,7 @@ void vescape_analysis_aux(union expression *ref, union expression *target) {
 }
 
 union expression *vescape_analysis(union expression *s, void *ctx) {
-	if(s->base.type == reference && s->reference.symbol->definition != s && is_c_reference(s->reference.symbol->definition)) {
+	if(s->base.type == reference && s->reference.binding_aug->definition != s && is_c_reference(s->reference.binding_aug->definition)) {
 		vescape_analysis_aux(s, target_expression(s));
 	} else if(s->base.type == continuation) {
 		vescape_analysis_aux(s, s);
@@ -252,7 +252,7 @@ void classify_program_binding_augs(union expression *expr) {
 			break;
 		} case storage: case jump: case invoke: {
 			if(expr->base.type == storage) {
-				expr->storage.reference->reference.symbol->type = static_storage;
+				expr->storage.reference->reference.binding_aug->type = static_storage;
 			} else {
 				classify_program_binding_augs(expr->invoke.reference);
 			}
@@ -262,10 +262,10 @@ void classify_program_binding_augs(union expression *expr) {
 			}
 			break;
 		} case continuation: case with: {
-			expr->continuation.reference->reference.symbol->type = static_storage;
+			expr->continuation.reference->reference.binding_aug->type = static_storage;
 			union expression *t;
 			foreach(t, expr->continuation.parameters) {
-				t->reference.symbol->type = static_storage;
+				t->reference.binding_aug->type = static_storage;
 			}
 			classify_program_binding_augs(expr->continuation.expression);
 			break;
@@ -335,7 +335,7 @@ void *init_function(union expression *function_expr, struct expansion_context *e
 	} else {
 		pre_visit_expressions(vgenerate_metas, &function_expr, ectx);
 		load_program_and_mutate(make_program(lst(function_expr, nil, ectx->expr_buf), ectx->expr_buf), ectx);
-		*cache = (void *) function_expr->function.reference->reference.symbol->offset;
+		*cache = (void *) function_expr->function.reference->reference.binding_aug->offset;
 		return *cache;
 	}
 }

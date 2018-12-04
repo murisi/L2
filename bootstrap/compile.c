@@ -31,7 +31,7 @@ Object *load_program(union expression *program, struct expansion_context *ectx) 
 	unsigned char *objdest; int objdest_sz;
 	write_elf(asms, bindings, &objdest, &objdest_sz, ectx->obj_buf);
 	Object *obj = load(objdest, objdest_sz, ectx->obj_buf, ectx->handler);
-	symbol_offsets_to_addresses(asms, bindings, obj);
+	binding_aug_offsets_to_addresses(asms, bindings, obj);
 	return obj;
 }
 
@@ -102,10 +102,10 @@ void compile_files(list programs, struct expansion_context *ectx, jumpbuf *handl
 		if(dot && !strcmp(dot, ".l2")) {
 			union expression *program = make_program(read_expressions(infn, ectx->expr_buf, handler), ectx->expr_buf);
 			pre_visit_expressions(vgenerate_metas, &program, ectx);
-			list symbols;
-			list asms = compile_program(program, ectx, &symbols);
+			list bindings;
+			list asms = compile_program(program, ectx, &bindings);
 			unsigned char *objdest; int objdest_sz;
-			write_elf(asms, symbols, &objdest, &objdest_sz, ectx->obj_buf);
+			write_elf(asms, bindings, &objdest, &objdest_sz, ectx->obj_buf);
 			char *outfn = buffer_alloc(ectx->obj_buf, strlen(infn) + 1);
 			strcpy(outfn, infn);
 			char *dot = strrchr(outfn, '.');

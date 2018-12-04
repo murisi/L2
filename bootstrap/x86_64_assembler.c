@@ -52,20 +52,20 @@ void write_static_value(char *bin, int *pos, union expression *expr, int bytes, 
 		val = expr->literal.value;
 	} else if(expr->base.type == reference && bytes == 8) {
 		(*relas)->r_offset = *pos;
-		(*relas)->r_info = ELF64_R_INFO((Elf64_Sym *) expr->reference.symbol->context - symtab, R_X86_64_64);
+		(*relas)->r_info = ELF64_R_INFO((Elf64_Sym *) expr->reference.binding_aug->context - symtab, R_X86_64_64);
 		(*relas)->r_addend = 0;
 		(*relas)++;
 	} else if(expr->base.type == assembly && expr->assembly.opcode == LNKR_ADD_OFF_TO_REF && bytes == 8) {
 		union expression *ref = expr->assembly.arguments->fst;
 		union expression *offset = expr->assembly.arguments->frst;
 		(*relas)->r_offset = *pos;
-		(*relas)->r_info = ELF64_R_INFO((Elf64_Sym *) ref->reference.symbol->context - symtab, R_X86_64_64);
+		(*relas)->r_info = ELF64_R_INFO((Elf64_Sym *) ref->reference.binding_aug->context - symtab, R_X86_64_64);
 		(*relas)->r_addend = offset->literal.value;
 		(*relas)++;
 	} else if(expr->base.type == assembly && expr->assembly.opcode == LNKR_SUB_RIP_TO_REF && bytes == 4) {
 		union expression *ref = expr->assembly.arguments->fst;
 		(*relas)->r_offset = *pos;
-		(*relas)->r_info = ELF64_R_INFO((Elf64_Sym *) ref->reference.symbol->context - symtab, R_X86_64_PC32);
+		(*relas)->r_info = ELF64_R_INFO((Elf64_Sym *) ref->reference.binding_aug->context - symtab, R_X86_64_PC32);
 		(*relas)->r_addend = -bytes;
 		(*relas)++;
 	}
@@ -93,8 +93,8 @@ void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sy
 		switch(n->assembly.opcode) {
 			case LABEL: {
 				union expression *label_ref = (union expression *) n->assembly.arguments->fst;
-				Elf64_Sym *sym = label_ref->reference.symbol->context;
-				label_ref->reference.symbol->offset = (unsigned long) *pos;
+				Elf64_Sym *sym = label_ref->reference.binding_aug->context;
+				label_ref->reference.binding_aug->offset = (unsigned long) *pos;
 				sym->st_value = *pos;
 				break;
 			} case LEAQ_MDB_TO_REG: {
@@ -331,7 +331,7 @@ void write_elf(list generated_expressions, list symbols, unsigned char **bin, in
 	}}
 	union expression *e;
 	{foreach(e, generated_expressions) {
-		if(e->assembly.opcode == LABEL && ((union expression *) e->assembly.arguments->fst)->reference.symbol->scope == local_scope) {
+		if(e->assembly.opcode == LABEL && ((union expression *) e->assembly.arguments->fst)->reference.binding_aug->scope == local_scope) {
 			union expression *ref = (union expression *) e->assembly.arguments->fst;
 			if(ref->reference.name) {
 				strcpy(strtabptr, ref->reference.name);
@@ -345,7 +345,7 @@ void write_elf(list generated_expressions, list symbols, unsigned char **bin, in
 			sym_ptr->st_info = ELF64_ST_INFO(STB_LOCAL, STT_NOTYPE);
 			sym_ptr->st_other = 0;
 			sym_ptr->st_shndx = 2;
-			ref->reference.symbol->context = sym_ptr;
+			ref->reference.binding_aug->context = sym_ptr;
 			sym_ptr++;
 		}
 	}}
@@ -389,7 +389,7 @@ void write_elf(list generated_expressions, list symbols, unsigned char **bin, in
 		}
 	}}
 	{foreach(e, generated_expressions) {
-		if(e->assembly.opcode == LABEL && ((union expression *) e->assembly.arguments->fst)->reference.symbol->scope == global_scope) {
+		if(e->assembly.opcode == LABEL && ((union expression *) e->assembly.arguments->fst)->reference.binding_aug->scope == global_scope) {
 			union expression *ref = (union expression *) e->assembly.arguments->fst;
 			if(ref->reference.name) {
 				strcpy(strtabptr, ref->reference.name);
@@ -403,7 +403,7 @@ void write_elf(list generated_expressions, list symbols, unsigned char **bin, in
 			sym_ptr->st_info = ELF64_ST_INFO(STB_GLOBAL, STT_NOTYPE);
 			sym_ptr->st_other = 0;
 			sym_ptr->st_shndx = 2;
-			ref->reference.symbol->context = sym_ptr;
+			ref->reference.binding_aug->context = sym_ptr;
 			sym_ptr++;
 		}
 	}}
@@ -520,18 +520,18 @@ void write_elf(list generated_expressions, list symbols, unsigned char **bin, in
 	destroy_buffer(temp_reg);
 }
 
-void symbol_offsets_to_addresses(list asms, list symbols, Object *obj) {
-	struct binding_aug *sym;
-	{foreach(sym, symbols) {
-		if(sym->type == static_storage && sym->state == defined_state) {
-			sym->offset += (unsigned long) segment(obj, ".bss");
+void binding_aug_offsets_to_addresses(list asms, list bindings, Object *obj) {
+	struct binding_aug *bndg;
+	{foreach(bndg, bindings) {
+		if(bndg->type == static_storage && bndg->state == defined_state) {
+			bndg->offset += (unsigned long) segment(obj, ".bss");
 		}
 	}}
 	union expression *l;
 	{foreach(l, asms) {
 		if(l->assembly.opcode == LABEL) {
 			union expression *label_ref = l->assembly.arguments->fst;
-			label_ref->reference.symbol->offset += (unsigned long) segment(obj, ".text");
+			label_ref->reference.binding_aug->offset += (unsigned long) segment(obj, ".text");
 		}
 	}}
 }

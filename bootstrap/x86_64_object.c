@@ -234,7 +234,7 @@ struct binding *make_binding(char *nm, void *addr, region r) {
 }
 
 /*
- * Goes through the loaded object obj and modifies all occurences of symbols
+ * Goes through the loaded object obj and modifies all occurences of bindings
  * with the same name as update to point to the same address as update.
  */
 void mutate_bindings(Object *obj, list updates) {
@@ -282,14 +282,14 @@ list bindings(int flag, Object *obj, region reg) {
 }
 
 /*
- * See the analogous function for mutable symbols.
+ * See the analogous function for mutable bindings.
  */
 list mutable_bindings(Object *obj, region reg) {
 	return bindings(1, obj, reg);
 }
 
 /*
- * See the analogous function for mutable symbols.
+ * See the analogous function for mutable bindings.
  */
 list immutable_bindings(Object *obj, region reg) {
 	return bindings(0, obj, reg);
