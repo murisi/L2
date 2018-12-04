@@ -46,7 +46,7 @@
 		(switch = (@ expr-type t)
 			((-begin-) (foreach (u (@ expr-expressions t))
 				(if (and (or [= (@ expr-type u) (-function-)] (and [= (@ expr-type u) (-storage-)] (or $same-func
-						[= (@ bndg-type(@ expr-binding-aug(@ expr-reference u))) (static-storage)])))
+						[= (@ bndg-storage(@ expr-binding-aug(@ expr-reference u))) (static-storage)])))
 						[named-sym= (@ expr-reference u) symbol])
 					{return (@ expr-binding-aug(@ expr-reference u))}
 					(begin))))
@@ -55,18 +55,18 @@
 				(if [named-sym= (@ expr-reference t) symbol]
 					{return (@ expr-binding-aug(@ expr-reference t))}
 					(foreach (u (@ expr-parameters t))
-						(if (and (or $same-func [= (@ bndg-type(@ expr-binding-aug u)) (static-storage)]) [named-sym= u symbol])
+						(if (and (or $same-func [= (@ bndg-storage(@ expr-binding-aug u)) (static-storage)]) [named-sym= u symbol])
 							{return (@ expr-binding-aug u)}
 							(begin))))
 				[set same-func (false)]))
 			
 			((-continuation-) (-with-) (-storage-)
-				(if (and (or $same-func [= (@ bndg-type(@ expr-binding-aug(@ expr-reference t))) (static-storage)])
+				(if (and (or $same-func [= (@ bndg-storage(@ expr-binding-aug(@ expr-reference t))) (static-storage)])
 						[named-sym= (@ expr-reference t) symbol])
 					{return (@ expr-binding-aug(@ expr-reference t))}
 				(if [= (@ expr-type t) (-storage-)] (begin)
 					(foreach (u (@ expr-parameters t))
-						(if (and (or $same-func [= (@ bndg-type(@ expr-binding-aug u)) (static-storage)]) [named-sym= u symbol])
+						(if (and (or $same-func [= (@ bndg-storage(@ expr-binding-aug u)) (static-storage)]) [named-sym= u symbol])
 							{return (@ expr-binding-aug u)}
 							(begin))))))
 			
@@ -106,7 +106,7 @@
 					(begin
 						(define (stg [make-storage [make-symbol (@ expr-name s) ..] nil ..])
 						(define (bndg (@ expr-binding-aug(@ expr-reference stg)))
-						(setf bndg-type bndg (static-storage))
+						(setf bndg-storage bndg (static-storage))
 						(setf bndg-scope bndg (global-scope))
 						(setf bndg-state bndg (undefined-state))
 						(define (rf [get-root-function s])
@@ -190,13 +190,13 @@
 		
 		((-storage-) (-jump-) (-invoke-) (begin
 			(if [= (@ expr-type expr) (-storage-)]
-				(setf bndg-type (@ expr-binding-aug(@ expr-reference expr)) (static-storage))
+				(setf bndg-storage (@ expr-binding-aug(@ expr-reference expr)) (static-storage))
 				[classify-program-bindings (@ expr-reference expr)])
 			(foreach (t (@ expr-arguments expr)) [classify-program-bindings t])))
 		
 		((-continuation-) (-with-) (begin
-			(setf bndg-type (@ expr-binding-aug(@ expr-reference expr)) (static-storage))
-			(foreach (t (@ expr-parameters expr)) (setf bndg-type (@ expr-binding-aug t) (static-storage)))
+			(setf bndg-storage (@ expr-binding-aug(@ expr-reference expr)) (static-storage))
+			(foreach (t (@ expr-parameters expr)) (setf bndg-storage (@ expr-binding-aug t) (static-storage)))
 			[classify-program-bindings (@ expr-expression expr)]))
 		
 		((-if-) (begin
