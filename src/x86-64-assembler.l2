@@ -34,7 +34,7 @@
 		[set+ relas (elf64-rela)]
 		[mem-write bin pos (storage _ #0) bytes])
 		
-	(if (and [= (@ expr-type expr) (-assembly-)] [= (@ expr-opcode expr) (stval-add-off-to-ref)] [= bytes #8]) (begin
+	(if (and [= (@ expr-type expr) (-assembly-)] [= (@ expr-opcode expr) (lnkr-add-off-to-ref)] [= bytes #8]) (begin
 		(define (ref [@car(@ expr-arguments expr)])
 		(define (offset [@cadr(@ expr-arguments expr)])
 		(setf r-offset $relas $pos)
@@ -43,7 +43,7 @@
 		[set+ relas (elf64-rela)]
 		[mem-write bin pos (storage _ #0) bytes])))
 		
-	(if (and [= (@ expr-type expr) (-assembly-)] [= (@ expr-opcode expr) (stval-sub-rip-from-ref)] [= bytes #4]) (begin
+	(if (and [= (@ expr-type expr) (-assembly-)] [= (@ expr-opcode expr) (lnkr-sub-rip-to-ref)] [= bytes #4]) (begin
 		(define (ref [@car(@ expr-arguments expr)])
 		(setf r-offset $relas $pos)
 		(setf r-info $relas (elf64-r-info [/[- (@ bndg-context(@ expr-binding-aug ref)) symtab](elf64-sym)] (r-x86-64-pc32)))
@@ -75,14 +75,14 @@
 				(setf bndg-offset (@ expr-binding-aug label-ref) $pos)
 				(setf st-value (@ bndg-context(@ expr-binding-aug label-ref)) $pos))))
 				
-			((leaq-of-mdb-into-reg) (begin
+			((leaq-mdb-to-reg) (begin
 				(define (opcode (hex 8D))
 				(define (reg (@ expr-opcode [@caddr (@ expr-arguments n)])) (;; Dest)
 				(define (rm (@ expr-opcode [@cadr (@ expr-arguments n)])) (;; Src)
 				[write-mr-instr bin pos opcode reg rm (true) (true)]
 				[write-static-value bin pos [@car (@ expr-arguments n)] #4 symtab relas])))))
 				
-			((movq-from-reg-into-mdb) (begin
+			((movq-reg-to-mdb) (begin
 				(define (opcode (hex 89))
 				(define (reg (@ expr-opcode [@car (@ expr-arguments n)])) (;; Src)
 				(define (rm (@ expr-opcode [@caddr (@ expr-arguments n)])) (;; Dest)
@@ -112,7 +112,7 @@
 				(define (rm (@ expr-opcode [@car (@ expr-arguments n)])) (;; Src)
 				[write-mr-instr bin pos opcode reg rm (false) (true)])))))
 				
-			((subq-imm-from-reg) (begin
+			((subq-imm-to-reg) (begin
 				(define (opcode (hex 81))
 				(define (reg #5)
 				(define (rm (@ expr-opcode [@cadr (@ expr-arguments n)])) (;; Dest)
