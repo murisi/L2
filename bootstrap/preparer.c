@@ -51,7 +51,7 @@ bool reference_equals(union expression *a, union expression *b) {
 	return a == b || (a->reference.name && b->reference.name && !strcmp(a->reference.name, b->reference.name));
 }
 
-struct binding_aug *symbol_of(union expression *reference) {
+struct binding_aug *binding_aug_of(union expression *reference) {
 	bool same_func = true;
 	union expression *t;
 	for(t = reference; t != NULL; t = t->base.parent) {
@@ -136,7 +136,7 @@ union expression *vlink_references(union expression *s, void *ctx) {
 	jumpbuf *handler = ((void **) ctx)[0];
 	region r = ((void **) ctx)[1];
 	if(s->base.type == reference) {
-		s->reference.binding_aug = s->reference.binding_aug ? s->reference.binding_aug : symbol_of(s);
+		s->reference.binding_aug = s->reference.binding_aug ? s->reference.binding_aug : binding_aug_of(s);
 		if(!s->reference.binding_aug) {
 			union expression *stg = make_storage(make_reference(s->reference.name, r), nil, r);
 			struct binding_aug *sym = stg->storage.reference->reference.binding_aug;

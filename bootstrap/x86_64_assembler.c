@@ -208,12 +208,12 @@ void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sy
 	}
 }
 
-int measure_strtab(list generated_expressions, list symbols) {
-	struct binding_aug *sym;
+int measure_strtab(list generated_expressions, list bindings) {
+	struct binding_aug *bndg;
 	int strtab_len = 1;
-	{foreach(sym, symbols) {
-		if(sym->name) {
-			strtab_len += strlen(sym->name) + 1;
+	{foreach(bndg, bindings) {
+		if(bndg->name) {
+			strtab_len += strlen(bndg->name) + 1;
 		}
 	}}
 	union expression *e;
@@ -228,10 +228,10 @@ int measure_strtab(list generated_expressions, list symbols) {
 	return strtab_len;
 }
 
-int measure_symtab(list generated_expressions, list symbols) {
+int measure_symtab(list generated_expressions, list bindings) {
 	int sym_count = 1;
-	struct binding_aug *sym;
-	{foreach(sym, symbols) {
+	struct binding_aug *bndg;
+	{foreach(bndg, bindings) {
 		sym_count++;
 	}}
 	union expression *e;
@@ -247,17 +247,17 @@ int measure_symtab(list generated_expressions, list symbols) {
 
 #define SH_COUNT 7
 
-int max_elf_size(list generated_expressions, list symbols) {
+int max_elf_size(list generated_expressions, list bindings) {
 	return sizeof(Elf64_Ehdr) + (sizeof(Elf64_Shdr) * SH_COUNT) + pad_size(strvlen(SHSTRTAB), ALIGNMENT) +
 		pad_size(MAX_INSTR_LEN * length(generated_expressions), ALIGNMENT) +
-		pad_size(measure_strtab(generated_expressions, symbols), ALIGNMENT) +
-		(sizeof(Elf64_Sym) * measure_symtab(generated_expressions, symbols)) +
+		pad_size(measure_strtab(generated_expressions, bindings), ALIGNMENT) +
+		(sizeof(Elf64_Sym) * measure_symtab(generated_expressions, bindings)) +
 		(sizeof(Elf64_Rela) * MAX_INSTR_FIELDS * length(generated_expressions));
 }
 
-void write_elf(list generated_expressions, list symbols, unsigned char **bin, int *pos, region elfreg) {
+void write_elf(list generated_expressions, list bindings, unsigned char **bin, int *pos, region elfreg) {
 	*pos = 0;
-	*bin = buffer_alloc(elfreg, max_elf_size(generated_expressions, symbols));
+	*bin = buffer_alloc(elfreg, max_elf_size(generated_expressions, bindings));
 	
 	Elf64_Ehdr ehdr;
 	ehdr.e_ident[EI_MAG0] = ELFMAG0;
@@ -288,8 +288,8 @@ void write_elf(list generated_expressions, list symbols, unsigned char **bin, in
 	ehdr.e_shstrndx = 1;
 	mem_write(*bin, pos, &ehdr, sizeof(Elf64_Ehdr));
 	
-	int strtab_len = measure_strtab(generated_expressions, symbols),
-		sym_count = measure_symtab(generated_expressions, symbols);
+	int strtab_len = measure_strtab(generated_expressions, bindings),
+		sym_count = measure_symtab(generated_expressions, bindings);
 	
 	Elf64_Sym syms[sym_count];
 	Elf64_Sym *sym_ptr = syms;
@@ -308,25 +308,25 @@ void write_elf(list generated_expressions, list symbols, unsigned char **bin, in
 	
 	unsigned long bss_ptr = 0;
 	
-	struct binding_aug *sym;
-	{foreach(sym, symbols) {
-		if(sym->scope == local_scope) {
-			if(sym->name) {
-				strcpy(strtabptr, sym->name);
+	struct binding_aug *bndg;
+	{foreach(bndg, bindings) {
+		if(bndg->scope == local_scope) {
+			if(bndg->name) {
+				strcpy(strtabptr, bndg->name);
 				sym_ptr->st_name = strtabptr - strtab;
-				strtabptr += strlen(sym->name) + 1;
+				strtabptr += strlen(bndg->name) + 1;
 			} else {
 				sym_ptr->st_name = 0;
 			}
 			sym_ptr->st_value = bss_ptr;
-			sym->offset = sym_ptr->st_value;
-			sym_ptr->st_size = sym->size;
+			bndg->offset = sym_ptr->st_value;
+			sym_ptr->st_size = bndg->size;
 			sym_ptr->st_info = ELF64_ST_INFO(STB_LOCAL, STT_NOTYPE);
 			sym_ptr->st_other = 0;
 			sym_ptr->st_shndx = 5;
-			sym->context = sym_ptr;
+			bndg->context = sym_ptr;
 			sym_ptr++;
-			bss_ptr += pad_size(sym->size, WORD_SIZE);
+			bss_ptr += pad_size(bndg->size, WORD_SIZE);
 		}
 	}}
 	union expression *e;
@@ -350,32 +350,32 @@ void write_elf(list generated_expressions, list symbols, unsigned char **bin, in
 		}
 	}}
 	int local_symbol_count = sym_ptr - syms;
-	{foreach(sym, symbols) {
-		if(sym->scope == global_scope && sym->state == defined_state) {
-			if(sym->name) {
-				strcpy(strtabptr, sym->name);
+	{foreach(bndg, bindings) {
+		if(bndg->scope == global_scope && bndg->state == defined_state) {
+			if(bndg->name) {
+				strcpy(strtabptr, bndg->name);
 				sym_ptr->st_name = strtabptr - strtab;
-				strtabptr += strlen(sym->name) + 1;
+				strtabptr += strlen(bndg->name) + 1;
 			} else {
 				sym_ptr->st_name = 0;
 			}
 			sym_ptr->st_value = bss_ptr;
-			sym->offset = sym_ptr->st_value;
-			sym_ptr->st_size = sym->size;
+			bndg->offset = sym_ptr->st_value;
+			sym_ptr->st_size = bndg->size;
 			sym_ptr->st_info = ELF64_ST_INFO(STB_GLOBAL, STT_NOTYPE);
 			sym_ptr->st_other = 0;
 			sym_ptr->st_shndx = 5;
-			sym->context = sym_ptr;
+			bndg->context = sym_ptr;
 			sym_ptr++;
-			bss_ptr += pad_size(sym->size, WORD_SIZE);
+			bss_ptr += pad_size(bndg->size, WORD_SIZE);
 		}
 	}}
-	{foreach(sym, symbols) {
-		if(sym->scope == global_scope && sym->state == undefined_state) {
-			if(sym->name) {
-				strcpy(strtabptr, sym->name);
+	{foreach(bndg, bindings) {
+		if(bndg->scope == global_scope && bndg->state == undefined_state) {
+			if(bndg->name) {
+				strcpy(strtabptr, bndg->name);
 				sym_ptr->st_name = strtabptr - strtab;
-				strtabptr += strlen(sym->name) + 1;
+				strtabptr += strlen(bndg->name) + 1;
 			} else {
 				sym_ptr->st_name = 0;
 			}
@@ -384,7 +384,7 @@ void write_elf(list generated_expressions, list symbols, unsigned char **bin, in
 			sym_ptr->st_info = ELF64_ST_INFO(STB_GLOBAL, STT_NOTYPE);
 			sym_ptr->st_other = 0;
 			sym_ptr->st_shndx = SHN_UNDEF;
-			sym->context = sym_ptr;
+			bndg->context = sym_ptr;
 			sym_ptr++;
 		}
 	}}

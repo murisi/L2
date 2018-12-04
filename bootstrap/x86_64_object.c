@@ -1,6 +1,6 @@
 /*
  * Some functions for loading up object files, querying the addresses of its
- * symbols in memory, and mutating those of its symbols that are mutable.
+ * bindings in memory, and mutating those of its bindings that are mutable.
  * The object files must conform to the ELF-64 Object File Format and the AMD64
  * ILP32 ABI and must not be position independent, that is, it must not use the
  * global offset table or the procedure linkage table.
@@ -270,10 +270,10 @@ list bindings(int flag, Object *obj, region reg) {
 				if(((obj->syms[sec][sym].st_shndx == SHN_UNDEF || obj->syms[sec][sym].st_shndx == SHN_COMMON) == flag) &&
 					(ELF64_ST_BIND(obj->syms[sec][sym].st_info) == STB_GLOBAL ||
 					ELF64_ST_BIND(obj->syms[sec][sym].st_info) == STB_WEAK)) {
-						struct binding *symbol = buffer_alloc(reg, sizeof(struct binding));
-						symbol->name = name_of(obj, &obj->shdrs[sec], &obj->syms[sec][sym]);
-						symbol->address = (void *) obj->syms[sec][sym].st_value;
-						prepend(symbol, &syms, reg);
+						struct binding *bndg = buffer_alloc(reg, sizeof(struct binding));
+						bndg->name = name_of(obj, &obj->shdrs[sec], &obj->syms[sec][sym]);
+						bndg->address = (void *) obj->syms[sec][sym].st_value;
+						prepend(bndg, &syms, reg);
 				}
 			}
 		}
@@ -300,7 +300,7 @@ list immutable_bindings(Object *obj, region reg) {
  * Intended for use with programming languages that execute top-down without
  * an entry point function. Not to be used for programming langauges like C that
  * have a main function; for those cases one should get the address of the
- * symbol "main" and call it.
+ * binding named "main" and call it.
  */
 void *segment(Object *obj, char *name) {
 	if(obj->ehdr->e_shstrndx != SHN_UNDEF) {

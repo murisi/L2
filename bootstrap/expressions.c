@@ -189,7 +189,7 @@ void refer_reference(union expression *reference, union expression *referent) {
 	reference->reference.binding_aug = referent->reference.binding_aug;
 }
 
-union expression *use_symbol(struct binding_aug *sym, region reg) {
+union expression *use_binding(struct binding_aug *sym, region reg) {
 	union expression *ref = buffer_alloc(reg, sizeof(union expression));
 	ref->reference.type = reference;
 	ref->reference.parent = NULL;
@@ -251,7 +251,7 @@ union expression *make_continuation(union expression *ref, list params, union ex
 	cont->continuation.type = continuation;
 	cont->continuation.parent = NULL;
 	cont->continuation.escapes = false;
-	cont->continuation.cont_instr_ref = use_symbol(make_binding_aug(static_storage, local_scope, defined_state, NULL, NULL, reg), reg);
+	cont->continuation.cont_instr_ref = use_binding(make_binding_aug(static_storage, local_scope, defined_state, NULL, NULL, reg), reg);
 	put(cont, continuation.reference, ref);
 	ref->reference.binding_aug = make_binding_aug(dynamic_storage, local_scope, defined_state, ref->reference.name, ref, reg);
 	cont->continuation.parameters = params;
@@ -269,7 +269,7 @@ union expression *make_with(union expression *ref, union expression *expr, regio
 	wth->with.type = with;
 	wth->with.parent = NULL;
 	wth->with.escapes = false;
-	wth->with.cont_instr_ref = use_symbol(make_binding_aug(static_storage, local_scope, defined_state, NULL, NULL, reg), reg);
+	wth->with.cont_instr_ref = use_binding(make_binding_aug(static_storage, local_scope, defined_state, NULL, NULL, reg), reg);
 	put(wth, with.reference, ref);
 	ref->reference.binding_aug = make_binding_aug(dynamic_storage, local_scope, defined_state, ref->reference.name, ref, reg);
 	union expression *param = make_reference(NULL, reg);
