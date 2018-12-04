@@ -29,7 +29,7 @@ struct character chars[][1] = {
 
 #define _char(d) (chars[d])
 
-list build_symbol(char *str, region r) {
+list build_token(char *str, region r) {
 	list sexprs = nil;
 	for(; *str; str++) {
 		append(_char(*str), &sexprs, r);
@@ -44,16 +44,16 @@ int after_leading_space(char *l2src, int l2src_sz, int *pos) {
 
 list build_fragment(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler);
 
-list build_sigilled_symbol(char *sigil, char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
+list build_sigilled_token(char *sigil, char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
 	if(l2src_sz == *pos) {
-		return build_symbol(sigil, r);
+		return build_token(sigil, r);
 	}
 	char d = l2src[*pos];
 	if(isspace(d) || d == ')' || d == '}' || d == ']' || d == '(' || d == '{' || d =='[') {
-		return build_symbol(sigil, r);
+		return build_token(sigil, r);
 	} else {
 		list sexprs = nil;
-		append(build_symbol(sigil, r), &sexprs, r);
+		append(build_token(sigil, r), &sexprs, r);
 		append(build_fragment(l2src, l2src_sz, pos, r, handler), &sexprs, r);
 		return sexprs;
 	}
@@ -61,7 +61,7 @@ list build_sigilled_symbol(char *sigil, char *l2src, int l2src_sz, int *pos, reg
 
 list build_fragment_list(char *primitive, char delimiter, char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
 	list sexprs = nil;
-	append(build_symbol(primitive, r), &sexprs, r);
+	append(build_token(primitive, r), &sexprs, r);
 	
 	while(1) {
 		int rem = after_leading_space(l2src, l2src_sz, pos);
@@ -90,13 +90,13 @@ list build_fragment(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *hand
 	} else if(c == '[') {
 		return build_fragment_list("invoke", ']', l2src, l2src_sz, pos, r, handler);
 	} else if(c == '$') {
-		return build_sigilled_symbol("$", l2src, l2src_sz, pos, r, handler);
+		return build_sigilled_token("$", l2src, l2src_sz, pos, r, handler);
 	} else if(c == '#') {
-		return build_sigilled_symbol("#", l2src, l2src_sz, pos, r, handler);
+		return build_sigilled_token("#", l2src, l2src_sz, pos, r, handler);
 	} else if(c == ',') {
-		return build_sigilled_symbol(",", l2src, l2src_sz, pos, r, handler);
+		return build_sigilled_token(",", l2src, l2src_sz, pos, r, handler);
 	} else if(c == '`') {
-		return build_sigilled_symbol("`", l2src, l2src_sz, pos, r, handler);
+		return build_sigilled_token("`", l2src, l2src_sz, pos, r, handler);
 	} else {
 		list l = nil;
 		do {
@@ -109,7 +109,7 @@ list build_fragment(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *hand
 	}
 }
 
-bool is_symbol(list d) {
+bool is_token(list d) {
 	return length(d) && !((struct character *) d->fst)->flag;
 }
 
@@ -127,7 +127,7 @@ char *to_string(list d, region r) {
 
 list copy_fragment(list l, region r) {
 	list c = nil;
-	if(is_symbol(l)) {
+	if(is_token(l)) {
 		struct character *s;
 		foreach(s, l) {
 			append(_char(s->character), &c, r);
@@ -144,7 +144,7 @@ list copy_fragment(list l, region r) {
 void print_fragment(list d) {
 	write_str(STDOUT, "(");
 	if(!is_nil(d)) {
-		if(is_symbol(d)) {
+		if(is_token(d)) {
 			write_char(STDOUT, ((struct character *) d->fst)->character);
 		} else {
 			print_fragment((list) d->fst);
