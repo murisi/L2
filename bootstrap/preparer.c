@@ -139,13 +139,13 @@ union expression *vlink_references(union expression *s, void *ctx) {
 		s->reference.binding_aug = s->reference.binding_aug ? s->reference.binding_aug : binding_aug_of(s);
 		if(!s->reference.binding_aug) {
 			union expression *stg = make_storage(make_reference(s->reference.name, r), nil, r);
-			struct binding_aug *sym = stg->storage.reference->reference.binding_aug;
-			sym->type = static_storage;
-			sym->scope = global_scope;
-			sym->state = undefined_state;
+			struct binding_aug *bndg = stg->storage.reference->reference.binding_aug;
+			bndg->type = static_storage;
+			bndg->scope = global_scope;
+			bndg->state = undefined_state;
 			prepend(stg, &root_function_of(s)->function.expression->begin.expressions, r);
 			stg->storage.parent = root_function_of(s)->function.expression;
-			s->reference.binding_aug = sym;
+			s->reference.binding_aug = bndg;
 		} else if(((is_jump_reference(s) && is_c_reference(s->reference.binding_aug->definition)) ||
 			(is_invoke_reference(s) && is_function_reference(s->reference.binding_aug->definition))) &&
 			length(s->reference.parent->jump.arguments) != length(target_expression(s)->continuation.parameters)) {

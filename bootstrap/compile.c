@@ -39,9 +39,9 @@ Object *load_program_and_mutate(union expression *program, list bindings, buffer
 	Object *obj = load_program(program, expr_buf, obj_buf, handler);
 	buffer temp_reg = create_buffer(0);
 	list ms = mutable_bindings(obj, temp_reg);
-	struct binding_aug *missing_sym = not_subset((bool (*)(void *, void *)) binding_equals, ms, bindings);
-	if(missing_sym) {
-		throw_undefined_reference(missing_sym->name, handler);
+	struct binding_aug *missing_bndg = not_subset((bool (*)(void *, void *)) binding_equals, ms, bindings);
+	if(missing_bndg) {
+		throw_undefined_reference(missing_bndg->name, handler);
 	}
 	destroy_buffer(temp_reg);
 	mutate_bindings(obj, bindings);

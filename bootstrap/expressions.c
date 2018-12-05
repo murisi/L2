@@ -31,13 +31,13 @@ struct binding_aug {
 };
 
 struct binding_aug *make_binding_aug(enum binding_aug_type type, enum binding_aug_scope scope, enum binding_aug_state state, char *name, union expression *definition, buffer r) {
-	struct binding_aug *sym = buffer_alloc(r, sizeof(struct binding_aug));
-	sym->type = type;
-	sym->scope = scope;
-	sym->state = state;
-	sym->name = name;
-	sym->definition = definition;
-	return sym;
+	struct binding_aug *bndg = buffer_alloc(r, sizeof(struct binding_aug));
+	bndg->type = type;
+	bndg->scope = scope;
+	bndg->state = state;
+	bndg->name = name;
+	bndg->definition = definition;
+	return bndg;
 }
 
 struct base_expression {
@@ -189,12 +189,12 @@ void refer_reference(union expression *reference, union expression *referent) {
 	reference->reference.binding_aug = referent->reference.binding_aug;
 }
 
-union expression *use_binding(struct binding_aug *sym, buffer reg) {
+union expression *use_binding(struct binding_aug *bndg, buffer reg) {
 	union expression *ref = buffer_alloc(reg, sizeof(union expression));
 	ref->reference.type = reference;
 	ref->reference.parent = NULL;
-	ref->reference.name = sym->name;
-	ref->reference.binding_aug = sym;
+	ref->reference.name = bndg->name;
+	ref->reference.binding_aug = bndg;
 	return ref;
 }
 

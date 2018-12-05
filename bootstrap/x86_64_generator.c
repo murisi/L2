@@ -84,21 +84,21 @@ union expression *vlayout_frames(union expression *n, buffer r) {
 	return n;
 }
 
-void make_load(struct binding_aug *sym, int offset, union expression *dest_reg, union expression *scratch_reg, list *c, buffer r) {
-	if(sym->type == dynamic_storage) {
-		prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(sym->offset + offset, r), make_asm0(RBP, r), dest_reg, r), c, r);
+void make_load(struct binding_aug *bndg, int offset, union expression *dest_reg, union expression *scratch_reg, list *c, buffer r) {
+	if(bndg->type == dynamic_storage) {
+		prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(bndg->offset + offset, r), make_asm0(RBP, r), dest_reg, r), c, r);
 	} else {
-		prepend(make_asm2(MOVQ_IMM_TO_REG, make_asm2(LNKR_ADD_OFF_TO_REF, use_binding(sym, r), make_literal(offset, r), r), scratch_reg,
+		prepend(make_asm2(MOVQ_IMM_TO_REG, make_asm2(LNKR_ADD_OFF_TO_REF, use_binding(bndg, r), make_literal(offset, r), r), scratch_reg,
 			r), c, r);
 		prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(0, r), scratch_reg, dest_reg, r), c, r);
 	}
 }
 
-void make_store(union expression *src_reg, struct binding_aug *sym, int offset, union expression *scratch_reg, list *c, buffer r) {
-	if(sym->type == dynamic_storage) {
-		prepend(make_asm3(MOVQ_REG_TO_MDB, src_reg, make_literal(sym->offset + offset, r), make_asm0(RBP, r), r), c, r);
+void make_store(union expression *src_reg, struct binding_aug *bndg, int offset, union expression *scratch_reg, list *c, buffer r) {
+	if(bndg->type == dynamic_storage) {
+		prepend(make_asm3(MOVQ_REG_TO_MDB, src_reg, make_literal(bndg->offset + offset, r), make_asm0(RBP, r), r), c, r);
 	} else {
-		prepend(make_asm2(MOVQ_IMM_TO_REG, make_asm2(LNKR_ADD_OFF_TO_REF, use_binding(sym, r), make_literal(offset, r), r), scratch_reg,
+		prepend(make_asm2(MOVQ_IMM_TO_REG, make_asm2(LNKR_ADD_OFF_TO_REF, use_binding(bndg, r), make_literal(offset, r), r), scratch_reg,
 			r), c, r);
 		prepend(make_asm3(MOVQ_REG_TO_MDB, src_reg, make_literal(0, r), scratch_reg, r), c, r);
 	}
@@ -120,11 +120,11 @@ void sgenerate_ifs(union expression *n, list *c, buffer r) {
 	prepend(make_asm1(LABEL, use_binding(end_binding, r), r), c, r);
 }
 
-void make_load_address(struct binding_aug *sym, union expression *dest_reg, list *c, buffer r) {
-	if(sym->type == dynamic_storage) {
-		prepend(make_asm3(LEAQ_MDB_TO_REG, make_literal(sym->offset, r), make_asm0(RBP, r), dest_reg, r), c, r);
+void make_load_address(struct binding_aug *bndg, union expression *dest_reg, list *c, buffer r) {
+	if(bndg->type == dynamic_storage) {
+		prepend(make_asm3(LEAQ_MDB_TO_REG, make_literal(bndg->offset, r), make_asm0(RBP, r), dest_reg, r), c, r);
 	} else {
-		prepend(make_asm2(MOVQ_IMM_TO_REG, use_binding(sym, r), dest_reg, r), c, r);
+		prepend(make_asm2(MOVQ_IMM_TO_REG, use_binding(bndg, r), dest_reg, r), c, r);
 	}
 }
 
