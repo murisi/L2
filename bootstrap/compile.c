@@ -35,16 +35,16 @@ Object *load_program(union expression *program, buffer expr_buf, buffer obj_buf,
 	return obj;
 }
 
-Object *load_program_and_mutate(union expression *program, list symbols, buffer expr_buf, buffer obj_buf, jumpbuf *handler) {
+Object *load_program_and_mutate(union expression *program, list bindings, buffer expr_buf, buffer obj_buf, jumpbuf *handler) {
 	Object *obj = load_program(program, expr_buf, obj_buf, handler);
 	buffer temp_reg = create_buffer(0);
 	list ms = mutable_bindings(obj, temp_reg);
-	struct binding_aug *missing_sym = not_subset((bool (*)(void *, void *)) binding_equals, ms, symbols);
+	struct binding_aug *missing_sym = not_subset((bool (*)(void *, void *)) binding_equals, ms, bindings);
 	if(missing_sym) {
 		throw_undefined_reference(missing_sym->name, handler);
 	}
 	destroy_buffer(temp_reg);
-	mutate_bindings(obj, symbols);
+	mutate_bindings(obj, bindings);
 	return obj;
 }
 
@@ -63,7 +63,7 @@ list read_expressions(unsigned char *src, buffer expr_buf, jumpbuf *handler) {
 	return expressions;
 }
 
-void evaluate_files(list metaprograms, list *symbols, buffer expr_buf, buffer obj_buf, jumpbuf *handler) {
+void evaluate_files(list metaprograms, list *bindings, buffer expr_buf, buffer obj_buf, jumpbuf *handler) {
 	list objects = nil;
 	char *fn;
 	foreach(fn, metaprograms) {
@@ -72,7 +72,7 @@ void evaluate_files(list metaprograms, list *symbols, buffer expr_buf, buffer ob
 		
 		if(dot && !strcmp(dot, ".l2")) {
 			obj = load_program(generate_metaprogram(make_program(read_expressions(fn, expr_buf, handler), expr_buf),
-				symbols, expr_buf, obj_buf, handler), expr_buf, obj_buf, handler);
+				bindings, expr_buf, obj_buf, handler), expr_buf, obj_buf, handler);
 		} else if(dot && !strcmp(dot, ".o")) {
 			int obj_fd = open(fn, handler);
 			long int obj_sz = size(obj_fd);
@@ -83,25 +83,25 @@ void evaluate_files(list metaprograms, list *symbols, buffer expr_buf, buffer ob
 			obj = load(buf, obj_sz, obj_buf, handler);
 		}
 		append(obj, &objects, obj_buf);
-		append_list(symbols, immutable_bindings(obj, obj_buf));
+		append_list(bindings, immutable_bindings(obj, obj_buf));
 	}
 	
 	Object *obj;
 	{foreach(obj, objects) {
-		mutate_bindings(obj, *symbols);
+		mutate_bindings(obj, *bindings);
 	}}
 	{foreach(obj, objects) {
 		((void (*)()) segment(obj, ".text"))();
 	}}
 }
 
-void compile_files(list programs, list symbols, buffer expr_buf, buffer obj_buf, jumpbuf *handler) {
+void compile_files(list programs, list bndgs, buffer expr_buf, buffer obj_buf, jumpbuf *handler) {
 	char *infn;
 	foreach(infn, programs) {
 		char *dot = strrchr(infn, '.');
 		if(dot && !strcmp(dot, ".l2")) {
 			union expression *program = make_program(read_expressions(infn, expr_buf, handler), expr_buf);
-			pre_visit_expressions(vgenerate_metas, &program, (void * []) {symbols, expr_buf, handler});
+			pre_visit_expressions(vgenerate_metas, &program, (void * []) {bndgs, expr_buf, handler});
 			list bindings;
 			list asms = compile_program(program, &bindings, expr_buf, handler);
 			unsigned char *objdest; int objdest_sz;
@@ -294,11 +294,11 @@ int main(int argc, char *argv[]) {
 	
 	buffer obj_buf = create_buffer(0);
 	buffer expr_buf = create_buffer(0);
-	list symbols = nil;
+	list bndgs = nil;
 	
 	int i;
 	for(i = 0; i < sizeof(static_bindings_arr) / sizeof(struct binding); i++) {
-		prepend(&static_bindings_arr[i], &symbols, obj_buf);
+		prepend(&static_bindings_arr[i], &bndgs, obj_buf);
 	}
 	for(i = 1; i < argc; i++) {
 		if(!strcmp(argv[i], "-")) {
@@ -313,13 +313,13 @@ int main(int argc, char *argv[]) {
 		append(argv[i], &metaprograms, evaluate_buffer);
 	}
 	
-	evaluate_files(metaprograms, &symbols, expr_buf, obj_buf, &evaluate_handler);
+	evaluate_files(metaprograms, &bndgs, expr_buf, obj_buf, &evaluate_handler);
 	
 	list programs = nil;
 	for(i++; i < argc; i++) {
 		append(argv[i], &programs, evaluate_buffer);
 	}
-	compile_files(programs, symbols, expr_buf, obj_buf, &evaluate_handler);
+	compile_files(programs, bndgs, expr_buf, obj_buf, &evaluate_handler);
 	
 	destroy_buffer(expr_buf);
 	destroy_buffer(obj_buf);
