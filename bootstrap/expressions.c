@@ -190,12 +190,12 @@ void bind_symbol(union expression *sym, union expression *target) {
 }
 
 union expression *use_binding(struct binding_aug *bndg, buffer reg) {
-	union expression *ref = buffer_alloc(reg, sizeof(union expression));
-	ref->symbol.type = symbol;
-	ref->symbol.parent = NULL;
-	ref->symbol.name = bndg->name;
-	ref->symbol.binding_aug = bndg;
-	return ref;
+	union expression *sym = buffer_alloc(reg, sizeof(union expression));
+	sym->symbol.type = symbol;
+	sym->symbol.parent = NULL;
+	sym->symbol.name = bndg->name;
+	sym->symbol.binding_aug = bndg;
+	return sym;
 }
 
 union expression *make_begin(list expressions, buffer reg) {

@@ -1,5 +1,5 @@
 enum error_type { arguments, param_count_mismatch, special_form, unexpected_character, multiple_definition, object,
-	missing_file, undefined_reference };
+	missing_file, undefined_symbol };
 
 struct param_count_mismatch_error {
 	int type;
@@ -33,9 +33,9 @@ struct missing_file_error {
 	char *path;
 };
 
-struct undefined_reference_error {
+struct undefined_symbol_error {
 	int type;
-	char *reference_value;
+	char *symbol_value;
 };
 
 struct arguments_error {
@@ -50,7 +50,7 @@ union evaluate_error {
 	struct multiple_definition_error multiple_definition;
 	struct object_error object;
 	struct missing_file_error missing_file;
-	struct undefined_reference_error undefined_reference;
+	struct undefined_symbol_error undefined_symbol;
 };
 
 void throw_arguments(jumpbuf *jb) {
@@ -109,10 +109,10 @@ void throw_missing_file(char *path, jumpbuf *jb) {
 	longjump(jb);
 }
 
-void throw_undefined_reference(char *reference_value, jumpbuf *jb) {
-	struct undefined_reference_error *err = buffer_alloc(jb->ctx, sizeof(struct undefined_reference_error));
-	err->type = undefined_reference;
-	err->reference_value = reference_value;
+void throw_undefined_symbol(char *symbol_value, jumpbuf *jb) {
+	struct undefined_symbol_error *err = buffer_alloc(jb->ctx, sizeof(struct undefined_symbol_error));
+	err->type = undefined_symbol;
+	err->symbol_value = symbol_value;
 	jb->ctx = err;
 	longjump(jb);
 }

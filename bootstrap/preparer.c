@@ -132,7 +132,7 @@ union expression *root_function_of(union expression *s) {
 	return s;
 }
 
-union expression *vlink_references(union expression *s, void *ctx) {
+union expression *vlink_symbols(union expression *s, void *ctx) {
 	jumpbuf *handler = ((void **) ctx)[0];
 	buffer r = ((void **) ctx)[1];
 	if(s->base.type == symbol) {
@@ -303,7 +303,7 @@ union expression *vgenerate_metas(union expression *s, void *ctx) {
 					expr_buf, handler), ctx);
 			}
 		}
-		throw_undefined_reference(s->meta.reference->symbol.name, handler);
+		throw_undefined_symbol(s->meta.reference->symbol.name, handler);
 	} else {
 		return s;
 	}

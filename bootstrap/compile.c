@@ -18,7 +18,7 @@ typedef unsigned long int bool;
 list compile_program(union expression *program, list *bindings, buffer expr_buf, jumpbuf *handler) {
 	visit_expressions(vfind_multiple_definitions, &program, handler);
 	classify_program_binding_augs(program->function.expression);
-	visit_expressions(vlink_references, &program->function.expression, (void* []) {handler, expr_buf});
+	visit_expressions(vlink_symbols, &program->function.expression, (void* []) {handler, expr_buf});
 	visit_expressions(vescape_analysis, &program, NULL);
 	classify_program_binding_augs(program->function.expression);
 	visit_expressions(vlayout_frames, &program->function.expression, expr_buf);
@@ -41,7 +41,7 @@ Object *load_program_and_mutate(union expression *program, list bindings, buffer
 	list ms = mutable_bindings(obj, temp_reg);
 	struct binding_aug *missing_bndg = not_subset((bool (*)(void *, void *)) binding_equals, ms, bindings);
 	if(missing_bndg) {
-		throw_undefined_reference(missing_bndg->name, handler);
+		throw_undefined_symbol(missing_bndg->name, handler);
 	}
 	destroy_buffer(temp_reg);
 	mutate_bindings(obj, bindings);
@@ -184,9 +184,9 @@ int main(int argc, char *argv[]) {
 					"specified. L2 files after the dash are then compiled using the global functions defined before the\n"
 					"dash as macros.\n");
 				break;
-			} case undefined_reference: {
+			} case undefined_symbol: {
 				write_str(STDOUT, "Undefined reference: ");
-				write_str(STDOUT, err->undefined_reference.reference_value);
+				write_str(STDOUT, err->undefined_symbol.symbol_value);
 				write_str(STDOUT, ".\n");
 				break;
 			}
