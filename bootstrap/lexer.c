@@ -29,7 +29,7 @@ struct character chars[][1] = {
 
 #define _char(d) (chars[d])
 
-list build_token(char *str, region r) {
+list build_token(char *str, buffer r) {
 	list sexprs = nil;
 	for(; *str; str++) {
 		append(_char(*str), &sexprs, r);
@@ -42,9 +42,9 @@ int after_leading_space(char *l2src, int l2src_sz, int *pos) {
 	return l2src_sz - *pos;
 }
 
-list build_fragment(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler);
+list build_fragment(char *l2src, int l2src_sz, int *pos, buffer r, jumpbuf *handler);
 
-list build_sigilled_token(char *sigil, char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
+list build_sigilled_token(char *sigil, char *l2src, int l2src_sz, int *pos, buffer r, jumpbuf *handler) {
 	if(l2src_sz == *pos) {
 		return build_token(sigil, r);
 	}
@@ -59,7 +59,7 @@ list build_sigilled_token(char *sigil, char *l2src, int l2src_sz, int *pos, regi
 	}
 }
 
-list build_fragment_list(char *primitive, char delimiter, char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
+list build_fragment_list(char *primitive, char delimiter, char *l2src, int l2src_sz, int *pos, buffer r, jumpbuf *handler) {
 	list sexprs = nil;
 	append(build_token(primitive, r), &sexprs, r);
 	
@@ -74,7 +74,7 @@ list build_fragment_list(char *primitive, char delimiter, char *l2src, int l2src
 	return sexprs;
 }
 
-list build_fragment(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
+list build_fragment(char *l2src, int l2src_sz, int *pos, buffer r, jumpbuf *handler) {
 	if(l2src_sz == *pos) {
 		throw_unexpected_character(0, *pos, handler);
 	}
@@ -113,7 +113,7 @@ bool is_token(list d) {
 	return length(d) && !((struct character *) d->fst)->flag;
 }
 
-char *to_string(list d, region r) {
+char *to_string(list d, buffer r) {
 	char *str = buffer_alloc(r, (length(d) + 1) * sizeof(char));
 	int i = 0;
 	
@@ -125,7 +125,7 @@ char *to_string(list d, region r) {
 	return str;
 }
 
-list copy_fragment(list l, region r) {
+list copy_fragment(list l, buffer r) {
 	list c = nil;
 	if(is_token(l)) {
 		struct character *s;

@@ -10,7 +10,7 @@ union expression *vfind_multiple_definitions(union expression *e, void *ctx) {
 	jumpbuf *handler = ctx;
 	union expression *t;
 	list *partial;
-	region tempreg = create_buffer(0);
+	buffer tempreg = create_buffer(0);
 	switch(e->base.type) {
 		case begin: {
 			list definitions = nil;
@@ -134,7 +134,7 @@ union expression *root_function_of(union expression *s) {
 
 union expression *vlink_references(union expression *s, void *ctx) {
 	jumpbuf *handler = ((void **) ctx)[0];
-	region r = ((void **) ctx)[1];
+	buffer r = ((void **) ctx)[1];
 	if(s->base.type == reference) {
 		s->reference.binding_aug = s->reference.binding_aug ? s->reference.binding_aug : binding_aug_of(s);
 		if(!s->reference.binding_aug) {
@@ -288,18 +288,18 @@ bool binding_equals(struct binding *bndg1, struct binding *bndg2) {
 	return !strcmp(bndg1->name, bndg2->name);
 }
 
-Object *load_program_and_mutate(union expression *program, list symbols, region expr_buf, region obj_buf, jumpbuf *handler);
+Object *load_program_and_mutate(union expression *program, list symbols, buffer expr_buf, buffer obj_buf, jumpbuf *handler);
 
 union expression *vgenerate_metas(union expression *s, void *ctx) {
 	jumpbuf *handler = ((void **) ctx)[2];
-	region expr_buf = ((void **) ctx)[1];
+	buffer expr_buf = ((void **) ctx)[1];
 	list symbols = ((void **) ctx)[0];
 	
 	if(s->base.type == meta) {
 		struct binding *bndg;
 		foreach(bndg, symbols) {
 			if(!strcmp(bndg->name, s->meta.reference->reference.name)) {
-				return vgenerate_metas(build_expression(((list (*)(list, region)) bndg->address)(s->meta.argument, expr_buf),
+				return vgenerate_metas(build_expression(((list (*)(list, buffer)) bndg->address)(s->meta.argument, expr_buf),
 					expr_buf, handler), ctx);
 			}
 		}
@@ -309,7 +309,7 @@ union expression *vgenerate_metas(union expression *s, void *ctx) {
 	}
 }
 
-void *init_storage(unsigned long *data, union expression *storage_expr, list *symbols, region expr_buf, region obj_buf, jumpbuf *handler, void **cache) {
+void *init_storage(unsigned long *data, union expression *storage_expr, list *symbols, buffer expr_buf, buffer obj_buf, jumpbuf *handler, void **cache) {
 	if(*cache) {
 		return *cache;
 	} else {
@@ -325,7 +325,7 @@ void *init_storage(unsigned long *data, union expression *storage_expr, list *sy
 	}
 }
 
-void *init_function(union expression *function_expr, list *symbols, region expr_buf, region obj_buf, jumpbuf *handler, void **cache) {
+void *init_function(union expression *function_expr, list *symbols, buffer expr_buf, buffer obj_buf, jumpbuf *handler, void **cache) {
 	if(*cache) {
 		return *cache;
 	} else {
@@ -336,7 +336,7 @@ void *init_function(union expression *function_expr, list *symbols, region expr_
 	}
 }
 
-void *init_expression(union expression *expr, list *symbols, region expr_buf, region obj_buf, jumpbuf *handler, void **cache) {
+void *init_expression(union expression *expr, list *symbols, buffer expr_buf, buffer obj_buf, jumpbuf *handler, void **cache) {
 	if(*cache) {
 		return *cache;
 	} else {
@@ -347,7 +347,7 @@ void *init_expression(union expression *expr, list *symbols, region expr_buf, re
 	}
 }
 
-union expression *generate_metaprogram(union expression *program, list *symbols, region expr_buf, region obj_buf, jumpbuf *handler) {
+union expression *generate_metaprogram(union expression *program, list *symbols, buffer expr_buf, buffer obj_buf, jumpbuf *handler) {
 	union expression *s;
 	list c = nil;
 	foreach(s, program->function.expression->begin.expressions) {

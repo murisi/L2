@@ -39,7 +39,7 @@ bool is_nil(list s) {
 	w = u; \
 	for(; !is_nil(*w) ? (t = (*w)->fst, true) : false; w = &((*w)->rst))
 
-void *append(void *data, list *l, region reg) {
+void *append(void *data, list *l, buffer reg) {
 	while(!is_nil(*l)) {
 		l = &((*l)->rst);
 	}
@@ -49,7 +49,7 @@ void *append(void *data, list *l, region reg) {
 	return &(*l)->fst;
 }
 
-list lst(void *data, list l, region reg) {
+list lst(void *data, list l, buffer reg) {
 	list ret = buffer_alloc(reg, sizeof(struct _list_));
 	ret->fst = data;
 	ret->rst = l;
@@ -63,7 +63,7 @@ void append_list(list *fst, list snd) {
 	*fst = snd;
 }
 
-void prepend(void *data, list *l, region reg) {
+void prepend(void *data, list *l, buffer reg) {
 	list ret = buffer_alloc(reg, sizeof(struct _list_));
 	ret->fst = data;
 	ret->rst = *l;
@@ -76,7 +76,7 @@ int length(list l) {
 	return size;
 }
 
-list reverse(list l, region reg) {
+list reverse(list l, buffer reg) {
 	list ret = nil;
 	void *data;
 	foreach(data, l) {
@@ -106,7 +106,7 @@ void *not_subset(bool (*pred)(void *, void *), list a, list b) {
 	return NULL;
 }
 
-list map(list l, void *ctx, void* (*mapper)(void *, void *), region reg) {
+list map(list l, void *ctx, void* (*mapper)(void *, void *), buffer reg) {
 	list ret = nil;
 	void *e;
 	foreach(e, l) {
@@ -115,7 +115,7 @@ list map(list l, void *ctx, void* (*mapper)(void *, void *), region reg) {
 	return reverse(ret, reg);
 }
 
-list concat(list a, list b, region reg) {
+list concat(list a, list b, buffer reg) {
 	list res = nil;
 	void *e;
 	{foreach(e, a) {

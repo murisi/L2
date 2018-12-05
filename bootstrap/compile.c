@@ -15,7 +15,7 @@ typedef unsigned long int bool;
 #include "x86_64_generator.c"
 #include "x86_64_assembler.c"
 
-list compile_program(union expression *program, list *bindings, region expr_buf, jumpbuf *handler) {
+list compile_program(union expression *program, list *bindings, buffer expr_buf, jumpbuf *handler) {
 	visit_expressions(vfind_multiple_definitions, &program, handler);
 	classify_program_binding_augs(program->function.expression);
 	visit_expressions(vlink_references, &program->function.expression, (void* []) {handler, expr_buf});
@@ -25,7 +25,7 @@ list compile_program(union expression *program, list *bindings, region expr_buf,
 	return generate_program(program, bindings, expr_buf);
 }
 
-Object *load_program(union expression *program, region expr_buf, region obj_buf, jumpbuf *handler) {
+Object *load_program(union expression *program, buffer expr_buf, buffer obj_buf, jumpbuf *handler) {
 	list bindings;
 	list asms = compile_program(program, &bindings, expr_buf, handler);
 	unsigned char *objdest; int objdest_sz;
@@ -35,9 +35,9 @@ Object *load_program(union expression *program, region expr_buf, region obj_buf,
 	return obj;
 }
 
-Object *load_program_and_mutate(union expression *program, list symbols, region expr_buf, region obj_buf, jumpbuf *handler) {
+Object *load_program_and_mutate(union expression *program, list symbols, buffer expr_buf, buffer obj_buf, jumpbuf *handler) {
 	Object *obj = load_program(program, expr_buf, obj_buf, handler);
-	region temp_reg = create_buffer(0);
+	buffer temp_reg = create_buffer(0);
 	list ms = mutable_bindings(obj, temp_reg);
 	struct binding_aug *missing_sym = not_subset((bool (*)(void *, void *)) binding_equals, ms, symbols);
 	if(missing_sym) {
@@ -48,7 +48,7 @@ Object *load_program_and_mutate(union expression *program, list symbols, region 
 	return obj;
 }
 
-list read_expressions(unsigned char *src, region expr_buf, jumpbuf *handler) {
+list read_expressions(unsigned char *src, buffer expr_buf, jumpbuf *handler) {
 	int fd = open(src, handler);
 	long int src_sz = size(fd);
 	unsigned char *src_buf = buffer_alloc(expr_buf, src_sz);
@@ -63,7 +63,7 @@ list read_expressions(unsigned char *src, region expr_buf, jumpbuf *handler) {
 	return expressions;
 }
 
-void evaluate_files(list metaprograms, list *symbols, region expr_buf, region obj_buf, jumpbuf *handler) {
+void evaluate_files(list metaprograms, list *symbols, buffer expr_buf, buffer obj_buf, jumpbuf *handler) {
 	list objects = nil;
 	char *fn;
 	foreach(fn, metaprograms) {
@@ -95,7 +95,7 @@ void evaluate_files(list metaprograms, list *symbols, region expr_buf, region ob
 	}}
 }
 
-void compile_files(list programs, list symbols, region expr_buf, region obj_buf, jumpbuf *handler) {
+void compile_files(list programs, list symbols, buffer expr_buf, buffer obj_buf, jumpbuf *handler) {
 	char *infn;
 	foreach(infn, programs) {
 		char *dot = strrchr(infn, '.');
@@ -130,10 +130,10 @@ list _rst_(list l) {
 int main(int argc, char *argv[]) {
 	//Initialize the error handler
 	jumpbuf evaluate_handler;
-	region evaluate_region = evaluate_handler.ctx = create_buffer(0);
+	buffer evaluate_buffer = evaluate_handler.ctx = create_buffer(0);
 	setjump(&evaluate_handler);
 	
-	if(evaluate_handler.ctx != evaluate_region) {
+	if(evaluate_handler.ctx != evaluate_buffer) {
 		union evaluate_error *err = (union evaluate_error *) evaluate_handler.ctx;
 		write_str(STDOUT, "Error found: ");
 		switch(err->arguments.type) {
@@ -292,8 +292,8 @@ int main(int argc, char *argv[]) {
 		{.name = "char=", .address = char_equals}
 	};
 	
-	region obj_buf = create_buffer(0);
-	region expr_buf = create_buffer(0);
+	buffer obj_buf = create_buffer(0);
+	buffer expr_buf = create_buffer(0);
 	list symbols = nil;
 	
 	int i;
@@ -310,14 +310,14 @@ int main(int argc, char *argv[]) {
 	}
 	list metaprograms = nil;
 	for(i = 1; strcmp(argv[i], "-"); i++) {
-		append(argv[i], &metaprograms, evaluate_region);
+		append(argv[i], &metaprograms, evaluate_buffer);
 	}
 	
 	evaluate_files(metaprograms, &symbols, expr_buf, obj_buf, &evaluate_handler);
 	
 	list programs = nil;
 	for(i++; i < argc; i++) {
-		append(argv[i], &programs, evaluate_region);
+		append(argv[i], &programs, evaluate_buffer);
 	}
 	compile_files(programs, symbols, expr_buf, obj_buf, &evaluate_handler);
 	

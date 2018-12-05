@@ -30,7 +30,7 @@ struct binding_aug {
 	void *context;
 };
 
-struct binding_aug *make_binding_aug(enum binding_aug_type type, enum binding_aug_scope scope, enum binding_aug_state state, char *name, union expression *definition, region r) {
+struct binding_aug *make_binding_aug(enum binding_aug_type type, enum binding_aug_scope scope, enum binding_aug_state state, char *name, union expression *definition, buffer r) {
 	struct binding_aug *sym = buffer_alloc(r, sizeof(struct binding_aug));
 	sym->type = type;
 	sym->scope = scope;
@@ -169,14 +169,14 @@ union expression {
 	struct assembly_expression assembly;
 };
 
-union expression *make_literal(unsigned long value, region reg) {
+union expression *make_literal(unsigned long value, buffer reg) {
 	union expression *t = buffer_alloc(reg, sizeof(union expression));
 	t->literal.type = literal;
 	t->literal.value = value;
 	return t;
 }
 
-union expression *make_reference(char *name, region reg) {
+union expression *make_reference(char *name, buffer reg) {
 	union expression *ref = buffer_alloc(reg, sizeof(union expression));
 	ref->reference.type = reference;
 	ref->reference.parent = NULL;
@@ -189,7 +189,7 @@ void refer_reference(union expression *reference, union expression *referent) {
 	reference->reference.binding_aug = referent->reference.binding_aug;
 }
 
-union expression *use_binding(struct binding_aug *sym, region reg) {
+union expression *use_binding(struct binding_aug *sym, buffer reg) {
 	union expression *ref = buffer_alloc(reg, sizeof(union expression));
 	ref->reference.type = reference;
 	ref->reference.parent = NULL;
@@ -198,7 +198,7 @@ union expression *use_binding(struct binding_aug *sym, region reg) {
 	return ref;
 }
 
-union expression *make_begin(list expressions, region reg) {
+union expression *make_begin(list expressions, buffer reg) {
 	union expression *beg = buffer_alloc(reg, sizeof(union expression));
 	beg->begin.type = begin;
 	beg->begin.parent = NULL;
@@ -210,15 +210,15 @@ union expression *make_begin(list expressions, region reg) {
 	return beg;
 }
 
-union expression *make_begin0(region reg) {
+union expression *make_begin0(buffer reg) {
 	return make_begin(nil, reg);
 }
 
-union expression *make_begin1(union expression *expr1, region reg) {
+union expression *make_begin1(union expression *expr1, buffer reg) {
 	return make_begin(lst(expr1, nil, reg), reg);
 }
 
-union expression *make_begin2(union expression *expr1, union expression *expr2, region reg) {
+union expression *make_begin2(union expression *expr1, union expression *expr2, buffer reg) {
 	return make_begin(lst(expr1, lst(expr2, nil, reg), reg), reg);
 }
 
@@ -229,7 +229,7 @@ union expression *make_begin2(union expression *expr1, union expression *expr2, 
 	_set_val->base.parent = _set_expr; \
 }
 
-union expression *make_function(union expression *ref, list params, union expression *expr, region reg) {
+union expression *make_function(union expression *ref, list params, union expression *expr, buffer reg) {
 	union expression *func = buffer_alloc(reg, sizeof(union expression));
 	func->function.type = function;
 	func->function.parent = NULL;
@@ -246,7 +246,7 @@ union expression *make_function(union expression *ref, list params, union expres
 	return func;
 }
 
-union expression *make_continuation(union expression *ref, list params, union expression *expr, region reg) {
+union expression *make_continuation(union expression *ref, list params, union expression *expr, buffer reg) {
 	union expression *cont = buffer_alloc(reg, sizeof(union expression));
 	cont->continuation.type = continuation;
 	cont->continuation.parent = NULL;
@@ -264,7 +264,7 @@ union expression *make_continuation(union expression *ref, list params, union ex
 	return cont;
 }
 
-union expression *make_with(union expression *ref, union expression *expr, region reg) {
+union expression *make_with(union expression *ref, union expression *expr, buffer reg) {
 	union expression *wth = buffer_alloc(reg, sizeof(union expression));
 	wth->with.type = with;
 	wth->with.parent = NULL;
@@ -280,7 +280,7 @@ union expression *make_with(union expression *ref, union expression *expr, regio
 	return wth;
 }
 
-union expression *make_asm0(int opcode, region reg) {
+union expression *make_asm0(int opcode, buffer reg) {
 	union expression *u = buffer_alloc(reg, sizeof(union expression));
 	u->assembly.type = assembly;
 	u->assembly.opcode = opcode;
@@ -288,28 +288,28 @@ union expression *make_asm0(int opcode, region reg) {
 	return u;
 }
 
-union expression *make_asm1(int opcode, union expression *arg1, region reg) {
+union expression *make_asm1(int opcode, union expression *arg1, buffer reg) {
 	union expression *u = make_asm0(opcode, reg);
 	u->assembly.arguments = lst(arg1, u->assembly.arguments, reg);
 	arg1->base.parent = u;
 	return u;
 }
 
-union expression *make_asm2(int opcode, union expression *arg1, union expression *arg2, region reg) {
+union expression *make_asm2(int opcode, union expression *arg1, union expression *arg2, buffer reg) {
 	union expression *u = make_asm1(opcode, arg2, reg);
 	u->assembly.arguments = lst(arg1, u->assembly.arguments, reg);
 	arg1->base.parent = u;
 	return u;
 }
 
-union expression *make_asm3(int opcode, union expression *arg1, union expression *arg2, union expression *arg3, region reg) {
+union expression *make_asm3(int opcode, union expression *arg1, union expression *arg2, union expression *arg3, buffer reg) {
 	union expression *u = make_asm2(opcode, arg2, arg3, reg);
 	u->assembly.arguments = lst(arg1, u->assembly.arguments, reg);
 	arg1->base.parent = u;
 	return u;
 }
 
-union expression *make_jump(union expression *ref, list args, region reg) {
+union expression *make_jump(union expression *ref, list args, buffer reg) {
 	union expression *u = buffer_alloc(reg, sizeof(union expression));
 	u->jump.type = jump;
 	u->jump.parent = NULL;
@@ -322,25 +322,25 @@ union expression *make_jump(union expression *ref, list args, region reg) {
 	return u;
 }
 
-union expression *make_jump0(union expression *ref, region reg) {
+union expression *make_jump0(union expression *ref, buffer reg) {
 	return make_jump(ref, nil, reg);
 }
 
-union expression *make_jump1(union expression *ref, union expression *arg1, region reg) {
+union expression *make_jump1(union expression *ref, union expression *arg1, buffer reg) {
 	union expression *u = make_jump0(ref, reg);
 	u->jump.arguments = lst(arg1, u->jump.arguments, reg);
 	arg1->base.parent = u;
 	return u;
 }
 
-union expression *make_jump2(union expression *ref, union expression *arg1, union expression *arg2, region reg) {
+union expression *make_jump2(union expression *ref, union expression *arg1, union expression *arg2, buffer reg) {
 	union expression *u = make_jump1(ref, arg2, reg);
 	u->jump.arguments = lst(arg1, u->jump.arguments, reg);
 	arg1->base.parent = u;
 	return u;
 }
 
-union expression *make_storage(union expression *ref, list args, region reg) {
+union expression *make_storage(union expression *ref, list args, buffer reg) {
 	union expression *u = buffer_alloc(reg, sizeof(union expression));
 	u->storage.type = storage;
 	u->storage.parent = NULL;
@@ -354,7 +354,7 @@ union expression *make_storage(union expression *ref, list args, region reg) {
 	return u;
 }
 
-union expression *make_meta(union expression *ref, list arg, region reg) {
+union expression *make_meta(union expression *ref, list arg, buffer reg) {
 	union expression *u = buffer_alloc(reg, sizeof(union expression));
 	u->meta.type = meta;
 	put(u, meta.reference, ref);
@@ -362,7 +362,7 @@ union expression *make_meta(union expression *ref, list arg, region reg) {
 	return u;
 }
 
-union expression *make_if(union expression *condition, union expression *consequent, union expression *alternate, region reg) {
+union expression *make_if(union expression *condition, union expression *consequent, union expression *alternate, buffer reg) {
 	union expression *u = buffer_alloc(reg, sizeof(union expression));
 	u->_if.type = _if;
 	u->_if.parent = NULL;
@@ -372,7 +372,7 @@ union expression *make_if(union expression *condition, union expression *consequ
 	return u;
 }
 
-union expression *make_invoke(union expression *ref, list args, region reg) {
+union expression *make_invoke(union expression *ref, list args, buffer reg) {
 	union expression *u = buffer_alloc(reg, sizeof(union expression));
 	u->invoke.type = invoke;
 	u->invoke.parent = NULL;
@@ -385,7 +385,7 @@ union expression *make_invoke(union expression *ref, list args, region reg) {
 	return u;
 }
 
-union expression *make_invoke0(union expression *ref, region reg) {
+union expression *make_invoke0(union expression *ref, buffer reg) {
 	union expression *u = buffer_alloc(reg, sizeof(union expression));
 	u->invoke.type = invoke;
 	put(u, invoke.reference, ref);
@@ -393,70 +393,70 @@ union expression *make_invoke0(union expression *ref, region reg) {
 	return u;
 }
 
-union expression *make_invoke1(union expression *ref, union expression *arg1, region reg) {
+union expression *make_invoke1(union expression *ref, union expression *arg1, buffer reg) {
 	union expression *u = make_invoke0(ref, reg);
 	u->invoke.arguments = lst(arg1, u->invoke.arguments, reg);
 	arg1->base.parent = u;
 	return u;
 }
 
-union expression *make_invoke2(union expression *ref, union expression *arg1, union expression *arg2, region reg) {
+union expression *make_invoke2(union expression *ref, union expression *arg1, union expression *arg2, buffer reg) {
 	union expression *u = make_invoke1(ref, arg2, reg);
 	u->invoke.arguments = lst(arg1, u->invoke.arguments, reg);
 	arg1->base.parent = u;
 	return u;
 }
 
-union expression *make_invoke3(union expression *ref, union expression *arg1, union expression *arg2, union expression *arg3, region reg) {
+union expression *make_invoke3(union expression *ref, union expression *arg1, union expression *arg2, union expression *arg3, buffer reg) {
 	union expression *u = make_invoke2(ref, arg2, arg3, reg);
 	u->invoke.arguments = lst(arg1, u->invoke.arguments, reg);
 	arg1->base.parent = u;
 	return u;
 }
 
-union expression *make_invoke4(union expression *ref, union expression *arg1, union expression *arg2, union expression *arg3, union expression *arg4, region reg) {
+union expression *make_invoke4(union expression *ref, union expression *arg1, union expression *arg2, union expression *arg3, union expression *arg4, buffer reg) {
 	union expression *u = make_invoke3(ref, arg2, arg3, arg4, reg);
 	u->invoke.arguments = lst(arg1, u->invoke.arguments, reg);
 	arg1->base.parent = u;
 	return u;
 }
 
-union expression *make_invoke5(union expression *ref, union expression *arg1, union expression *arg2, union expression *arg3, union expression *arg4, union expression *arg5, region reg) {
+union expression *make_invoke5(union expression *ref, union expression *arg1, union expression *arg2, union expression *arg3, union expression *arg4, union expression *arg5, buffer reg) {
 	union expression *u = make_invoke4(ref, arg2, arg3, arg4, arg5, reg);
 	u->invoke.arguments = lst(arg1, u->invoke.arguments, reg);
 	arg1->base.parent = u;
 	return u;
 }
 
-union expression *make_invoke6(union expression *ref, union expression *arg1, union expression *arg2, union expression *arg3, union expression *arg4, union expression *arg5, union expression *arg6, region reg) {
+union expression *make_invoke6(union expression *ref, union expression *arg1, union expression *arg2, union expression *arg3, union expression *arg4, union expression *arg5, union expression *arg6, buffer reg) {
 	union expression *u = make_invoke5(ref, arg2, arg3, arg4, arg5, arg6, reg);
 	u->invoke.arguments = lst(arg1, u->invoke.arguments, reg);
 	arg1->base.parent = u;
 	return u;
 }
 
-union expression *make_invoke7(union expression *ref, union expression *arg1, union expression *arg2, union expression *arg3, union expression *arg4, union expression *arg5, union expression *arg6, union expression *arg7, region reg) {
+union expression *make_invoke7(union expression *ref, union expression *arg1, union expression *arg2, union expression *arg3, union expression *arg4, union expression *arg5, union expression *arg6, union expression *arg7, buffer reg) {
 	union expression *u = make_invoke6(ref, arg2, arg3, arg4, arg5, arg6, arg7, reg);
 	u->invoke.arguments = lst(arg1, u->invoke.arguments, reg);
 	arg1->base.parent = u;
 	return u;
 }
 
-union expression *make_invoke8(union expression *ref, union expression *arg1, union expression *arg2, union expression *arg3, union expression *arg4, union expression *arg5, union expression *arg6, union expression *arg7, union expression *arg8, region reg) {
+union expression *make_invoke8(union expression *ref, union expression *arg1, union expression *arg2, union expression *arg3, union expression *arg4, union expression *arg5, union expression *arg6, union expression *arg7, union expression *arg8, buffer reg) {
 	union expression *u = make_invoke7(ref, arg2, arg3, arg4, arg5, arg6, arg7, arg8, reg);
 	u->invoke.arguments = lst(arg1, u->invoke.arguments, reg);
 	arg1->base.parent = u;
 	return u;
 }
 
-union expression *make_invoke9(union expression *ref, union expression *arg1, union expression *arg2, union expression *arg3, union expression *arg4, union expression *arg5, union expression *arg6, union expression *arg7, union expression *arg8, union expression *arg9, region reg) {
+union expression *make_invoke9(union expression *ref, union expression *arg1, union expression *arg2, union expression *arg3, union expression *arg4, union expression *arg5, union expression *arg6, union expression *arg7, union expression *arg8, union expression *arg9, buffer reg) {
 	union expression *u = make_invoke8(ref, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, reg);
 	u->invoke.arguments = lst(arg1, u->invoke.arguments, reg);
 	arg1->base.parent = u;
 	return u;
 }
 
-union expression *make_program(list exprs, region r) {
+union expression *make_program(list exprs, buffer r) {
 	union expression *program = make_function(make_reference(NULL, r), nil, make_begin(exprs, r), r);
 	program->function.parent = NULL;
 	union expression *expr;
@@ -559,7 +559,7 @@ void print_expression(union expression *s) {
  * happen second, and so on.
  */
 
-union expression *build_expression(list d, region reg, jumpbuf *handler) {
+union expression *build_expression(list d, buffer reg, jumpbuf *handler) {
 	if(length(d) == 0) {
 		throw_special_form(d, NULL, handler);
 	} else if(is_token(d)) {
@@ -601,7 +601,7 @@ union expression *build_expression(list d, region reg, jumpbuf *handler) {
 			}
 			append(build_expression(v, reg, handler), &parameters, reg);
 		}
-		union expression *(*fptr)(union expression *, list, union expression *, region) =
+		union expression *(*fptr)(union expression *, list, union expression *, buffer) =
 			!strcmp(to_string(d->fst, reg), "function") ? make_function : make_continuation;
 		return fptr(build_expression(d->frst, reg, handler), parameters, build_expression(d->frrrst, reg, handler), reg);
 	} else if(!strcmp(to_string(d->fst, reg), "literal")) {
@@ -636,7 +636,7 @@ union expression *build_expression(list d, region reg, jumpbuf *handler) {
 		foreach(v, d->rrst) {
 			append(build_expression(v, reg, handler), &arguments, reg);
 		}
-		union expression *(*fptr)(union expression *, list, region) = !strcmp(to_string(d->fst, reg), "invoke") ? make_invoke :
+		union expression *(*fptr)(union expression *, list, buffer) = !strcmp(to_string(d->fst, reg), "invoke") ? make_invoke :
 			(!strcmp(to_string(d->fst, reg), "jump") ? make_jump : make_storage);
 		return fptr(build_expression(d->frst, reg, handler), arguments, reg);
 	} else {

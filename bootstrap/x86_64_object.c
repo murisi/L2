@@ -77,7 +77,7 @@ void do_relocations(Object *obj) {
  * Store the relocation addends because we may want to do several relocations on
  * the object files.
  */
-void store_addends(Object *obj, region reg, jumpbuf *handler) {
+void store_addends(Object *obj, buffer reg, jumpbuf *handler) {
 	int sec;
 	for(sec = 0; sec < obj->ehdr->e_shnum; sec++) {
 		if(obj->shdrs[sec].sh_type == SHT_RELA) {
@@ -156,7 +156,7 @@ void offsets_to_addresses(Object *obj) {
  * at address mem and require the amount of memory stated by
  * object_required_memory. Returns a handle to manipulate the loaded object.
  */
-Object *read_object(unsigned char *objsrc, int objsrc_sz, region reg, jumpbuf *handler) {
+Object *read_object(unsigned char *objsrc, int objsrc_sz, buffer reg, jumpbuf *handler) {
 	Object *obj = buffer_alloc(reg, sizeof(Object));
 	obj->ehdr = buffer_alloc(reg, sizeof(Elf64_Ehdr));
 	if(objsrc_sz < sizeof(Elf64_Ehdr)) throw_object(handler);
@@ -209,7 +209,7 @@ Object *read_object(unsigned char *objsrc, int objsrc_sz, region reg, jumpbuf *h
  * object code now has a concrete address in memory. Returns a handle to
  * manipulate the loaded object.
  */
-Object *load(unsigned char *objsrc, int objsrc_sz, region reg, jumpbuf *handler) {
+Object *load(unsigned char *objsrc, int objsrc_sz, buffer reg, jumpbuf *handler) {
 	Object *obj = read_object(objsrc, objsrc_sz, reg, handler);
 	offsets_to_addresses(obj);
 	store_addends(obj, reg, handler);
@@ -226,7 +226,7 @@ struct binding {
 	void *address;
 };
 
-struct binding *make_binding(char *nm, void *addr, region r) {
+struct binding *make_binding(char *nm, void *addr, buffer r) {
 	struct binding *sym = buffer_alloc(r, sizeof(struct binding));
 	sym->name = nm;
 	sym->address = addr;
@@ -259,7 +259,7 @@ void mutate_bindings(Object *obj, list updates) {
 	do_relocations(obj);
 }
 
-list bindings(int flag, Object *obj, region reg) {
+list bindings(int flag, Object *obj, buffer reg) {
 	list syms = nil;
 	int sec;
 	for(sec = 0; sec < obj->ehdr->e_shnum; sec++) {
@@ -284,14 +284,14 @@ list bindings(int flag, Object *obj, region reg) {
 /*
  * See the analogous function for mutable bindings.
  */
-list mutable_bindings(Object *obj, region reg) {
+list mutable_bindings(Object *obj, buffer reg) {
 	return bindings(1, obj, reg);
 }
 
 /*
  * See the analogous function for mutable bindings.
  */
-list immutable_bindings(Object *obj, region reg) {
+list immutable_bindings(Object *obj, buffer reg) {
 	return bindings(0, obj, reg);
 }
 

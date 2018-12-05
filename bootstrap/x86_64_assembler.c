@@ -255,7 +255,7 @@ int max_elf_size(list generated_expressions, list bindings) {
 		(sizeof(Elf64_Rela) * MAX_INSTR_FIELDS * length(generated_expressions));
 }
 
-void write_elf(list generated_expressions, list bindings, unsigned char **bin, int *pos, region elfreg) {
+void write_elf(list generated_expressions, list bindings, unsigned char **bin, int *pos, buffer elfreg) {
 	*pos = 0;
 	*bin = buffer_alloc(elfreg, max_elf_size(generated_expressions, bindings));
 	
@@ -411,7 +411,7 @@ void write_elf(list generated_expressions, list bindings, unsigned char **bin, i
 	int text_len, max_text_sec_len = pad_size(MAX_INSTR_LEN * length(generated_expressions), ALIGNMENT),
 		max_rela_sec_len = MAX_INSTR_FIELDS * length(generated_expressions) * sizeof(Elf64_Rela);
 	
-	region temp_reg = create_buffer(0);
+	buffer temp_reg = create_buffer(0);
 	unsigned char *text = buffer_alloc(temp_reg, max_text_sec_len);
 	Elf64_Rela *relas = buffer_alloc(temp_reg, max_rela_sec_len);
 	Elf64_Rela *rela_ptr = relas;

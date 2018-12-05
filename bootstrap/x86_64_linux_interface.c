@@ -186,11 +186,11 @@ unsigned long pad_size(unsigned long x, unsigned long nearest) {
 	return x + (rem ? (nearest - rem) : 0);
 }
 
-typedef void* region;
+typedef void* buffer;
 
-region create_buffer(unsigned long min_capacity) {
+buffer create_buffer(unsigned long min_capacity) {
 	unsigned long len = pad_size(min_capacity + 5 * sizeof(void *), PAGE_SIZE);
-	region reg = mmap(len);
+	buffer reg = mmap(len);
 	((void **) reg)[0] = NULL;
 	((void **) reg)[1] = reg;
 	((void **) reg)[2] = ((void **) reg) + 5;
@@ -201,7 +201,7 @@ region create_buffer(unsigned long min_capacity) {
 
 #define ALIGNMENT 8
 
-void check_region_integrity(region reg) {
+void check_buffer_integrity(buffer reg) {
 	do {
 		if(((void **) reg)[4] != (void *) 0xDEADBEEFDEADBEEFUL) {
 			*((void **) NULL) = NULL;
@@ -211,8 +211,8 @@ void check_region_integrity(region reg) {
 	} while(reg);
 }
 
-void *buffer_alloc(region reg, unsigned long len) {
-	check_region_integrity(reg);
+void *buffer_alloc(buffer reg, unsigned long len) {
+	//check_buffer_integrity(reg);
 	
 	len = pad_size(len, ALIGNMENT);
 	if(((void ***) reg)[1][2] + len > ((void ***) reg)[1][3]) {
@@ -223,17 +223,17 @@ void *buffer_alloc(region reg, unsigned long len) {
 	return mem;
 }
 
-void destroy_buffer(region reg) {
-	check_region_integrity(reg);
+void destroy_buffer(buffer reg) {
+	//check_buffer_integrity(reg);
 	
 	do {
-		region next_reg = ((void **) reg)[0];
+		buffer next_reg = ((void **) reg)[0];
 		munmap(reg, ((void **) reg)[3] - reg);
 		reg = next_reg;
 	} while(reg);
 }
 
-char *rstrcpy(const char *src, region reg) {
+char *rstrcpy(const char *src, buffer reg) {
 	char *dest = buffer_alloc(reg, strlen(src) + 1);
 	unsigned long i;
 	for(i = 0; src[i]; i++) {
