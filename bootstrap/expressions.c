@@ -6,7 +6,7 @@ enum expression_type {
 	_if,
 	begin,
 	literal,
-	reference,
+	symbol,
 	jump,
 	continuation,
 	assembly,
@@ -137,7 +137,7 @@ struct with_expression {
 	bool escapes;
 };
 
-struct reference_expression {
+struct symbol_expression {
 	enum expression_type type;
 	union expression *parent;
 	
@@ -164,7 +164,7 @@ union expression {
 	struct invoke_expression invoke;
 	struct if_expression _if;
 	struct literal_expression literal;
-	struct reference_expression reference;
+	struct symbol_expression symbol;
 	struct meta_expression meta;
 	struct assembly_expression assembly;
 };
@@ -176,25 +176,25 @@ union expression *make_literal(unsigned long value, buffer reg) {
 	return t;
 }
 
-union expression *make_reference(char *name, buffer reg) {
-	union expression *ref = buffer_alloc(reg, sizeof(union expression));
-	ref->reference.type = reference;
-	ref->reference.parent = NULL;
-	ref->reference.name = name;
-	ref->reference.binding_aug = NULL;
-	return ref;
+union expression *make_symbol(char *name, buffer reg) {
+	union expression *sym = buffer_alloc(reg, sizeof(union expression));
+	sym->symbol.type = symbol;
+	sym->symbol.parent = NULL;
+	sym->symbol.name = name;
+	sym->symbol.binding_aug = NULL;
+	return sym;
 }
 
-void refer_reference(union expression *reference, union expression *referent) {
-	reference->reference.binding_aug = referent->reference.binding_aug;
+void bind_symbol(union expression *sym, union expression *target) {
+	sym->symbol.binding_aug = target->symbol.binding_aug;
 }
 
 union expression *use_binding(struct binding_aug *bndg, buffer reg) {
 	union expression *ref = buffer_alloc(reg, sizeof(union expression));
-	ref->reference.type = reference;
-	ref->reference.parent = NULL;
-	ref->reference.name = bndg->name;
-	ref->reference.binding_aug = bndg;
+	ref->symbol.type = symbol;
+	ref->symbol.parent = NULL;
+	ref->symbol.name = bndg->name;
+	ref->symbol.binding_aug = bndg;
 	return ref;
 }
 
@@ -234,12 +234,12 @@ union expression *make_function(union expression *ref, list params, union expres
 	func->function.type = function;
 	func->function.parent = NULL;
 	put(func, function.reference, ref);
-	ref->reference.binding_aug = make_binding_aug(static_storage, local_scope, defined_state, ref->reference.name, ref, reg);
+	ref->symbol.binding_aug = make_binding_aug(static_storage, local_scope, defined_state, ref->symbol.name, ref, reg);
 	func->function.parameters = params;
 	union expression *param;
 	foreach(param, params) {
 		param->base.parent = func;
-		param->reference.binding_aug = make_binding_aug(dynamic_storage, local_scope, defined_state, param->reference.name, param, reg);
+		param->symbol.binding_aug = make_binding_aug(dynamic_storage, local_scope, defined_state, param->symbol.name, param, reg);
 	}
 	func->function.binding_augs = nil;
 	put(func, function.expression, expr);
@@ -253,12 +253,12 @@ union expression *make_continuation(union expression *ref, list params, union ex
 	cont->continuation.escapes = false;
 	cont->continuation.cont_instr_ref = use_binding(make_binding_aug(static_storage, local_scope, defined_state, NULL, NULL, reg), reg);
 	put(cont, continuation.reference, ref);
-	ref->reference.binding_aug = make_binding_aug(dynamic_storage, local_scope, defined_state, ref->reference.name, ref, reg);
+	ref->symbol.binding_aug = make_binding_aug(dynamic_storage, local_scope, defined_state, ref->symbol.name, ref, reg);
 	cont->continuation.parameters = params;
 	union expression *param;
 	foreach(param, params) {
 		param->base.parent = cont;
-		param->reference.binding_aug = make_binding_aug(dynamic_storage, local_scope, defined_state, param->reference.name, param, reg);
+		param->symbol.binding_aug = make_binding_aug(dynamic_storage, local_scope, defined_state, param->symbol.name, param, reg);
 	}
 	put(cont, continuation.expression, expr);
 	return cont;
@@ -271,10 +271,10 @@ union expression *make_with(union expression *ref, union expression *expr, buffe
 	wth->with.escapes = false;
 	wth->with.cont_instr_ref = use_binding(make_binding_aug(static_storage, local_scope, defined_state, NULL, NULL, reg), reg);
 	put(wth, with.reference, ref);
-	ref->reference.binding_aug = make_binding_aug(dynamic_storage, local_scope, defined_state, ref->reference.name, ref, reg);
-	union expression *param = make_reference(NULL, reg);
-	param->reference.parent = wth;
-	param->reference.binding_aug = make_binding_aug(dynamic_storage, local_scope, defined_state, param->reference.name, param, reg);
+	ref->symbol.binding_aug = make_binding_aug(dynamic_storage, local_scope, defined_state, ref->symbol.name, ref, reg);
+	union expression *param = make_symbol(NULL, reg);
+	param->symbol.parent = wth;
+	param->symbol.binding_aug = make_binding_aug(dynamic_storage, local_scope, defined_state, param->symbol.name, param, reg);
 	wth->with.parameter = lst(param, nil, reg);
 	put(wth, with.expression, expr);
 	return wth;
@@ -345,7 +345,7 @@ union expression *make_storage(union expression *ref, list args, buffer reg) {
 	u->storage.type = storage;
 	u->storage.parent = NULL;
 	put(u, storage.reference, ref);
-	ref->reference.binding_aug = make_binding_aug(dynamic_storage, local_scope, defined_state, ref->reference.name, ref, reg);
+	ref->symbol.binding_aug = make_binding_aug(dynamic_storage, local_scope, defined_state, ref->symbol.name, ref, reg);
 	u->storage.arguments = args;
 	union expression *arg;
 	foreach(arg, args) {
@@ -457,12 +457,12 @@ union expression *make_invoke9(union expression *ref, union expression *arg1, un
 }
 
 union expression *make_program(list exprs, buffer r) {
-	union expression *program = make_function(make_reference(NULL, r), nil, make_begin(exprs, r), r);
+	union expression *program = make_function(make_symbol(NULL, r), nil, make_begin(exprs, r), r);
 	program->function.parent = NULL;
 	union expression *expr;
 	foreach(expr, exprs) {
 		if(expr->base.type == function || expr->base.type == storage) {
-			expr->function.reference->reference.binding_aug->scope = global_scope;
+			expr->function.reference->symbol.binding_aug->scope = global_scope;
 		}
 	}
 	return program;
@@ -522,12 +522,12 @@ void print_expression(union expression *s) {
 			print_expression(s->_if.alternate);
 			write_str(STDOUT, ")");
 			break;
-		} case reference: {
-			if(s->reference.name) {
-				write_str(STDOUT, s->reference.name);
+		} case symbol: {
+			if(s->symbol.name) {
+				write_str(STDOUT, s->symbol.name);
 			} else {
 				write_str(STDOUT, "(reference ");
-				write_ulong(STDOUT, (unsigned long) s->reference.binding_aug);
+				write_ulong(STDOUT, (unsigned long) s->symbol.binding_aug);
 				write_str(STDOUT, ")");
 			}
 			break;
@@ -563,7 +563,7 @@ union expression *build_expression(list d, buffer reg, jumpbuf *handler) {
 	if(length(d) == 0) {
 		throw_special_form(d, NULL, handler);
 	} else if(is_token(d)) {
-		return make_reference(to_string(d, reg), reg);
+		return make_symbol(to_string(d, reg), reg);
 	} else if(!strcmp(to_string(d->fst, reg), "with")) {
 		if(length(d) != 3) {
 			throw_special_form(d, NULL, handler);
