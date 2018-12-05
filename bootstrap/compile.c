@@ -15,36 +15,36 @@ typedef unsigned long int bool;
 #include "x86_64_generator.c"
 #include "x86_64_assembler.c"
 
-list compile_program(union expression *program, struct expansion_context *ectx, list *bindings) {
-	visit_expressions(vfind_multiple_definitions, &program, ectx->handler);
+list compile_program(union expression *program, list *bindings, region expr_buf, jumpbuf *handler) {
+	visit_expressions(vfind_multiple_definitions, &program, handler);
 	classify_program_binding_augs(program->function.expression);
-	visit_expressions(vlink_references, &program->function.expression, (void* []) {ectx->handler, ectx->expr_buf});
+	visit_expressions(vlink_references, &program->function.expression, (void* []) {handler, expr_buf});
 	visit_expressions(vescape_analysis, &program, NULL);
 	classify_program_binding_augs(program->function.expression);
-	visit_expressions(vlayout_frames, &program->function.expression, ectx->expr_buf);
-	return generate_program(program, bindings, ectx->expr_buf);
+	visit_expressions(vlayout_frames, &program->function.expression, expr_buf);
+	return generate_program(program, bindings, expr_buf);
 }
 
-Object *load_program(union expression *program, struct expansion_context *ectx) {
+Object *load_program(union expression *program, region expr_buf, region obj_buf, jumpbuf *handler) {
 	list bindings;
-	list asms = compile_program(program, ectx, &bindings);
+	list asms = compile_program(program, &bindings, expr_buf, handler);
 	unsigned char *objdest; int objdest_sz;
-	write_elf(asms, bindings, &objdest, &objdest_sz, ectx->obj_buf);
-	Object *obj = load(objdest, objdest_sz, ectx->obj_buf, ectx->handler);
+	write_elf(asms, bindings, &objdest, &objdest_sz, obj_buf);
+	Object *obj = load(objdest, objdest_sz, obj_buf, handler);
 	binding_aug_offsets_to_addresses(asms, bindings, obj);
 	return obj;
 }
 
-Object *load_program_and_mutate(union expression *program, struct expansion_context *ectx) {
-	Object *obj = load_program(program, ectx);
+Object *load_program_and_mutate(union expression *program, list symbols, region expr_buf, region obj_buf, jumpbuf *handler) {
+	Object *obj = load_program(program, expr_buf, obj_buf, handler);
 	region temp_reg = create_buffer(0);
 	list ms = mutable_bindings(obj, temp_reg);
-	struct binding_aug *missing_sym = not_subset((bool (*)(void *, void *)) binding_equals, ms, ectx->symbols);
+	struct binding_aug *missing_sym = not_subset((bool (*)(void *, void *)) binding_equals, ms, symbols);
 	if(missing_sym) {
-		throw_undefined_reference(missing_sym->name, ectx->handler);
+		throw_undefined_reference(missing_sym->name, handler);
 	}
 	destroy_buffer(temp_reg);
-	mutate_bindings(obj, ectx->symbols);
+	mutate_bindings(obj, symbols);
 	return obj;
 }
 
@@ -63,7 +63,7 @@ list read_expressions(unsigned char *src, region expr_buf, jumpbuf *handler) {
 	return expressions;
 }
 
-void evaluate_files(list metaprograms, struct expansion_context *ectx, jumpbuf *handler) {
+void evaluate_files(list metaprograms, list *symbols, region expr_buf, region obj_buf, jumpbuf *handler) {
 	list objects = nil;
 	char *fn;
 	foreach(fn, metaprograms) {
@@ -71,42 +71,42 @@ void evaluate_files(list metaprograms, struct expansion_context *ectx, jumpbuf *
 		char *dot = strrchr(fn, '.');
 		
 		if(dot && !strcmp(dot, ".l2")) {
-			obj = load_program(generate_metaprogram(make_program(read_expressions(fn, ectx->expr_buf, handler), ectx->expr_buf),
-				ectx), ectx);
+			obj = load_program(generate_metaprogram(make_program(read_expressions(fn, expr_buf, handler), expr_buf),
+				symbols, expr_buf, obj_buf, handler), expr_buf, obj_buf, handler);
 		} else if(dot && !strcmp(dot, ".o")) {
 			int obj_fd = open(fn, handler);
 			long int obj_sz = size(obj_fd);
-			unsigned char *obj_buf = buffer_alloc(ectx->obj_buf, obj_sz);
-			read(obj_fd, obj_buf, obj_sz);
+			unsigned char *buf = buffer_alloc(obj_buf, obj_sz);
+			read(obj_fd, buf, obj_sz);
 			close(obj_fd);
 			
-			obj = load(obj_buf, obj_sz, ectx->obj_buf, handler);
+			obj = load(buf, obj_sz, obj_buf, handler);
 		}
-		append(obj, &objects, ectx->obj_buf);
-		append_list(&ectx->symbols, immutable_bindings(obj, ectx->obj_buf));
+		append(obj, &objects, obj_buf);
+		append_list(symbols, immutable_bindings(obj, obj_buf));
 	}
 	
 	Object *obj;
 	{foreach(obj, objects) {
-		mutate_bindings(obj, ectx->symbols);
+		mutate_bindings(obj, *symbols);
 	}}
 	{foreach(obj, objects) {
 		((void (*)()) segment(obj, ".text"))();
 	}}
 }
 
-void compile_files(list programs, struct expansion_context *ectx, jumpbuf *handler) {
+void compile_files(list programs, list symbols, region expr_buf, region obj_buf, jumpbuf *handler) {
 	char *infn;
 	foreach(infn, programs) {
 		char *dot = strrchr(infn, '.');
 		if(dot && !strcmp(dot, ".l2")) {
-			union expression *program = make_program(read_expressions(infn, ectx->expr_buf, handler), ectx->expr_buf);
-			pre_visit_expressions(vgenerate_metas, &program, ectx);
+			union expression *program = make_program(read_expressions(infn, expr_buf, handler), expr_buf);
+			pre_visit_expressions(vgenerate_metas, &program, (void * []) {symbols, expr_buf, handler});
 			list bindings;
-			list asms = compile_program(program, ectx, &bindings);
+			list asms = compile_program(program, &bindings, expr_buf, handler);
 			unsigned char *objdest; int objdest_sz;
-			write_elf(asms, bindings, &objdest, &objdest_sz, ectx->obj_buf);
-			char *outfn = buffer_alloc(ectx->obj_buf, strlen(infn) + 1);
+			write_elf(asms, bindings, &objdest, &objdest_sz, obj_buf);
+			char *outfn = buffer_alloc(obj_buf, strlen(infn) + 1);
 			strcpy(outfn, infn);
 			char *dot = strrchr(outfn, '.');
 			strcpy(dot, ".o");
@@ -292,15 +292,13 @@ int main(int argc, char *argv[]) {
 		{.name = "char=", .address = char_equals}
 	};
 	
-	struct expansion_context ectx;
-	ectx.obj_buf = create_buffer(0);
-	ectx.expr_buf = create_buffer(0);
-	ectx.handler = &evaluate_handler;
-	ectx.symbols = nil;
+	region obj_buf = create_buffer(0);
+	region expr_buf = create_buffer(0);
+	list symbols = nil;
 	
 	int i;
 	for(i = 0; i < sizeof(static_bindings_arr) / sizeof(struct binding); i++) {
-		prepend(&static_bindings_arr[i], &ectx.symbols, ectx.obj_buf);
+		prepend(&static_bindings_arr[i], &symbols, obj_buf);
 	}
 	for(i = 1; i < argc; i++) {
 		if(!strcmp(argv[i], "-")) {
@@ -308,22 +306,22 @@ int main(int argc, char *argv[]) {
 		}
 	}
 	if(i == argc) {
-		throw_arguments(ectx.handler);
+		throw_arguments(&evaluate_handler);
 	}
 	list metaprograms = nil;
 	for(i = 1; strcmp(argv[i], "-"); i++) {
 		append(argv[i], &metaprograms, evaluate_region);
 	}
 	
-	evaluate_files(metaprograms, &ectx, &evaluate_handler);
+	evaluate_files(metaprograms, &symbols, expr_buf, obj_buf, &evaluate_handler);
 	
 	list programs = nil;
 	for(i++; i < argc; i++) {
 		append(argv[i], &programs, evaluate_region);
 	}
-	compile_files(programs, &ectx, &evaluate_handler);
+	compile_files(programs, symbols, expr_buf, obj_buf, &evaluate_handler);
 	
-	destroy_buffer(ectx.expr_buf);
-	destroy_buffer(ectx.obj_buf);
+	destroy_buffer(expr_buf);
+	destroy_buffer(obj_buf);
 	return 0;
 }

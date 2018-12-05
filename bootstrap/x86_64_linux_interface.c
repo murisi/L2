@@ -212,7 +212,7 @@ void check_region_integrity(region reg) {
 }
 
 void *buffer_alloc(region reg, unsigned long len) {
-	//check_region_integrity(reg);
+	check_region_integrity(reg);
 	
 	len = pad_size(len, ALIGNMENT);
 	if(((void ***) reg)[1][2] + len > ((void ***) reg)[1][3]) {
@@ -224,7 +224,7 @@ void *buffer_alloc(region reg, unsigned long len) {
 }
 
 void destroy_buffer(region reg) {
-	//check_region_integrity(reg);
+	check_region_integrity(reg);
 	
 	do {
 		region next_reg = ((void **) reg)[0];

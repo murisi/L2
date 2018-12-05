@@ -284,112 +284,114 @@ void _set_(unsigned long *ref, unsigned long val) {
 	*ref = val;
 }
 
-struct expansion_context {
-	list symbols;
-	region expr_buf;
-	region obj_buf;
-	jumpbuf *handler;
-};
-
 bool binding_equals(struct binding *bndg1, struct binding *bndg2) {
 	return !strcmp(bndg1->name, bndg2->name);
 }
 
-Object *load_program_and_mutate(union expression *program, struct expansion_context *ectx);
+Object *load_program_and_mutate(union expression *program, list symbols, region expr_buf, region obj_buf, jumpbuf *handler);
 
 union expression *vgenerate_metas(union expression *s, void *ctx) {
-	struct expansion_context *ectx = ctx;
+	jumpbuf *handler = ((void **) ctx)[2];
+	region expr_buf = ((void **) ctx)[1];
+	list symbols = ((void **) ctx)[0];
+	
 	if(s->base.type == meta) {
 		struct binding *bndg;
-		foreach(bndg, ectx->symbols) {
+		foreach(bndg, symbols) {
 			if(!strcmp(bndg->name, s->meta.reference->reference.name)) {
-				return vgenerate_metas(build_expression(((list (*)(list, region)) bndg->address)(s->meta.argument, ectx->expr_buf),
-					ectx->expr_buf, ectx->handler), ctx);
+				return vgenerate_metas(build_expression(((list (*)(list, region)) bndg->address)(s->meta.argument, expr_buf),
+					expr_buf, handler), ctx);
 			}
 		}
-		throw_undefined_reference(s->meta.reference->reference.name, ectx->handler);
+		throw_undefined_reference(s->meta.reference->reference.name, handler);
 	} else {
 		return s;
 	}
 }
 
-void *init_storage(unsigned long *data, union expression *storage_expr, struct expansion_context *ectx, void **cache) {
+void *init_storage(unsigned long *data, union expression *storage_expr, list *symbols, region expr_buf, region obj_buf, jumpbuf *handler, void **cache) {
 	if(*cache) {
 		return *cache;
 	} else {
 		list sets = nil;
 		union expression *arg;
 		foreach(arg, storage_expr->storage.arguments) {
-			pre_visit_expressions(vgenerate_metas, &arg, ectx);
-			append(make_invoke2(make_literal((unsigned long) _set_, ectx->expr_buf),
-				make_literal((unsigned long) data++, ectx->expr_buf), arg, ectx->expr_buf), &sets, ectx->expr_buf);
+			pre_visit_expressions(vgenerate_metas, &arg, (void *[]) {*symbols, expr_buf, handler});
+			append(make_invoke2(make_literal((unsigned long) _set_, expr_buf),
+				make_literal((unsigned long) data++, expr_buf), arg, expr_buf), &sets, expr_buf);
 		}
-		*cache = segment(load_program_and_mutate(make_program(sets, ectx->expr_buf), ectx), ".text");
+		*cache = segment(load_program_and_mutate(make_program(sets, expr_buf), *symbols, expr_buf, obj_buf, handler), ".text");
 		return *cache;
 	}
 }
 
-void *init_function(union expression *function_expr, struct expansion_context *ectx, void **cache) {
+void *init_function(union expression *function_expr, list *symbols, region expr_buf, region obj_buf, jumpbuf *handler, void **cache) {
 	if(*cache) {
 		return *cache;
 	} else {
-		pre_visit_expressions(vgenerate_metas, &function_expr, ectx);
-		load_program_and_mutate(make_program(lst(function_expr, nil, ectx->expr_buf), ectx->expr_buf), ectx);
+		pre_visit_expressions(vgenerate_metas, &function_expr, (void *[]) {*symbols, expr_buf, handler});
+		load_program_and_mutate(make_program(lst(function_expr, nil, expr_buf), expr_buf), *symbols, expr_buf, obj_buf, handler);
 		*cache = (void *) function_expr->function.reference->reference.binding_aug->offset;
 		return *cache;
 	}
 }
 
-void *init_expression(union expression *expr, struct expansion_context *ectx, void **cache) {
+void *init_expression(union expression *expr, list *symbols, region expr_buf, region obj_buf, jumpbuf *handler, void **cache) {
 	if(*cache) {
 		return *cache;
 	} else {
-		pre_visit_expressions(vgenerate_metas, &expr, ectx);
-		*cache = segment(load_program_and_mutate(make_program(lst(expr, nil, ectx->expr_buf), ectx->expr_buf), ectx), ".text");
+		pre_visit_expressions(vgenerate_metas, &expr, (void *[]) {*symbols, expr_buf, handler});
+		*cache = segment(load_program_and_mutate(make_program(lst(expr, nil, expr_buf), expr_buf),
+			*symbols, expr_buf, obj_buf, handler), ".text");
 		return *cache;
 	}
 }
 
-union expression *generate_metaprogram(union expression *program, struct expansion_context *ectx) {
+union expression *generate_metaprogram(union expression *program, list *symbols, region expr_buf, region obj_buf, jumpbuf *handler) {
 	union expression *s;
 	list c = nil;
 	foreach(s, program->function.expression->begin.expressions) {
-		void **cache = buffer_alloc(ectx->obj_buf, sizeof(void *));
+		void **cache = buffer_alloc(obj_buf, sizeof(void *));
 		*cache = NULL;
 		if(s->base.type == storage) {
 			list args = nil;
 			int i;
 			for(i = 0; i < length(s->storage.arguments); i++) {
-				prepend(make_begin(nil, ectx->expr_buf), &args, ectx->expr_buf);
+				prepend(make_begin(nil, expr_buf), &args, expr_buf);
 			}
-			union expression *storage_ref = make_reference(s->storage.reference->reference.name, ectx->expr_buf);
-			append(make_storage(storage_ref, args, ectx->expr_buf), &c, ectx->expr_buf);
-			union expression *storage_ref_arg = make_reference(NULL, ectx->expr_buf);
+			union expression *storage_ref = make_reference(s->storage.reference->reference.name, expr_buf);
+			append(make_storage(storage_ref, args, expr_buf), &c, expr_buf);
+			union expression *storage_ref_arg = make_reference(NULL, expr_buf);
 			refer_reference(storage_ref_arg, storage_ref);
-			append(make_invoke0(make_invoke4(make_literal((unsigned long) init_storage, ectx->expr_buf), storage_ref_arg,
-				make_literal((unsigned long) s, ectx->expr_buf), make_literal((unsigned long) ectx, ectx->expr_buf),
-				make_literal((unsigned long) cache, ectx->expr_buf), ectx->expr_buf), ectx->expr_buf), &c, ectx->expr_buf);
+			append(make_invoke0(make_invoke7(make_literal((unsigned long) init_storage, expr_buf), storage_ref_arg,
+				make_literal((unsigned long) s, expr_buf), make_literal((unsigned long) symbols, expr_buf),
+				make_literal((unsigned long) expr_buf, expr_buf), make_literal((unsigned long) obj_buf, expr_buf),
+				make_literal((unsigned long) handler, expr_buf), make_literal((unsigned long) cache, expr_buf), expr_buf), expr_buf),
+				&c, expr_buf);
 		} else if(s->base.type == function) {
 			list params = nil, args = nil;
 			int i;
 			for(i = 0; i < length(s->function.parameters); i++) {
-				prepend(make_reference(NULL, ectx->expr_buf), &params, ectx->expr_buf);
-				prepend(make_reference(NULL, ectx->expr_buf), &args, ectx->expr_buf);
+				prepend(make_reference(NULL, expr_buf), &params, expr_buf);
+				prepend(make_reference(NULL, expr_buf), &args, expr_buf);
 			}
-			append(make_function(make_reference(s->function.reference->reference.name, ectx->expr_buf), params,
-				make_invoke(make_invoke3(make_literal((unsigned long) init_function, ectx->expr_buf),
-					make_literal((unsigned long) s, ectx->expr_buf), make_literal((unsigned long) ectx, ectx->expr_buf),
-					make_literal((unsigned long) cache, ectx->expr_buf), ectx->expr_buf), args, ectx->expr_buf), ectx->expr_buf), &c,
-					ectx->expr_buf);
+			append(make_function(make_reference(s->function.reference->reference.name, expr_buf), params,
+				make_invoke(make_invoke6(make_literal((unsigned long) init_function, expr_buf),
+					make_literal((unsigned long) s, expr_buf), make_literal((unsigned long) symbols, expr_buf),
+					make_literal((unsigned long) expr_buf, expr_buf), make_literal((unsigned long) obj_buf, expr_buf),
+					make_literal((unsigned long) handler, expr_buf), make_literal((unsigned long) cache, expr_buf), expr_buf),
+					args, expr_buf), expr_buf), &c, expr_buf);
 			union expression *a, *t;
 			foreachzipped(a, t, params, args) {
 				refer_reference(t, a);
 			}
 		} else {
-			append(make_invoke0(make_invoke3(make_literal((unsigned long) init_expression, ectx->expr_buf),
-				make_literal((unsigned long) s, ectx->expr_buf), make_literal((unsigned long) ectx, ectx->expr_buf),
-				make_literal((unsigned long) cache, ectx->expr_buf), ectx->expr_buf), ectx->expr_buf), &c, ectx->expr_buf);
+			append(make_invoke0(make_invoke6(make_literal((unsigned long) init_expression, expr_buf),
+				make_literal((unsigned long) s, expr_buf), make_literal((unsigned long) symbols, expr_buf),
+				make_literal((unsigned long) expr_buf, expr_buf), make_literal((unsigned long) obj_buf, expr_buf),
+				make_literal((unsigned long) handler, expr_buf), make_literal((unsigned long) cache, expr_buf), expr_buf), expr_buf),
+				&c, expr_buf);
 		}
 	}
-	return make_program(c, ectx->expr_buf);
+	return make_program(c, expr_buf);
 }
