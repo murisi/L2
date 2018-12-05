@@ -143,7 +143,7 @@ bool equals(void *a, void *b) {
 	return a == b;
 }
 
-void sgenerate_references(union expression *n, list *c, buffer r) {
+void sgenerate_symbols(union expression *n, list *c, buffer r) {
 	union expression *def = n->symbol.binding_aug->definition;
 	if((def->symbol.parent->base.type == function || def->symbol.parent->base.type == continuation) &&
 		exists(equals, &def->symbol.parent->function.parameters, def)) {
@@ -337,7 +337,7 @@ void generate_expressions(union expression *n, list *c, buffer r) {
 			sgenerate_jumps(n, c, r);
 			break;
 		} case symbol: {
-			sgenerate_references(n, c, r);
+			sgenerate_symbols(n, c, r);
 			break;
 		} case storage: {
 			sgenerate_storage_expressions(n, c, r);
