@@ -159,7 +159,7 @@ void make_store_continuation(union expression *n, list *c, buffer r) {
 	make_store(make_asm0(R13, r), n->continuation.reference->symbol.binding_aug, CONT_R13, make_asm0(R11, r), c, r);
 	make_store(make_asm0(R14, r), n->continuation.reference->symbol.binding_aug, CONT_R14, make_asm0(R11, r), c, r);
 	make_store(make_asm0(R15, r), n->continuation.reference->symbol.binding_aug, CONT_R15, make_asm0(R11, r), c, r);
-	make_load_address(n->continuation.cont_instr_ref->symbol.binding_aug, make_asm0(R10, r), c, r);
+	make_load_address(n->continuation.cont_instr_bndg, make_asm0(R10, r), c, r);
 	make_store(make_asm0(R10, r), n->continuation.reference->symbol.binding_aug, CONT_CIR, make_asm0(R11, r), c, r);
 	make_store(make_asm0(RBP, r), n->continuation.reference->symbol.binding_aug, CONT_RBP, make_asm0(R11, r), c, r);
 }
@@ -189,7 +189,7 @@ void sgenerate_continuations(union expression *n, list *c, buffer r) {
 	//Skip the actual instructions of the continuation
 	struct binding_aug *after_binding = make_binding_aug(static_storage, local_scope, defined_state, NULL, NULL, r);
 	prepend(make_asm1(JMP_REL, make_asm1(LNKR_SUB_RIP_TO_REF, use_binding(after_binding, r), r), r), c, r);
-	prepend(make_asm1(LABEL, n->continuation.cont_instr_ref, r), c, r);
+	prepend(make_asm1(LABEL, use_binding(n->continuation.cont_instr_bndg, r), r), c, r);
 	generate_expressions(n->continuation.expression, c, r);
 	prepend(make_asm1(LABEL, use_binding(after_binding, r), r), c, r);
 }
@@ -199,7 +199,7 @@ void sgenerate_withs(union expression *n, list *c, buffer r) {
 		make_store_continuation(n, c, r);
 	}
 	generate_expressions(n->with.expression, c, r);
-	prepend(make_asm1(LABEL, n->continuation.cont_instr_ref, r), c, r);
+	prepend(make_asm1(LABEL, use_binding(n->continuation.cont_instr_bndg, r), r), c, r);
 	make_load(((union expression *) n->with.parameter->fst)->symbol.binding_aug, 0, make_asm0(RAX, r), make_asm0(R10, r), c, r);
 }
 
@@ -213,7 +213,8 @@ void sgenerate_jumps(union expression *n, list *c, buffer r) {
 				make_asm0(R11, r), c, r);
 			move_arguments(n, 0, c, r);
 		}
-		prepend(make_asm1(JMP_REL, make_asm1(LNKR_SUB_RIP_TO_REF, n->jump.short_circuit->continuation.cont_instr_ref, r), r), c, r);
+		prepend(make_asm1(JMP_REL, make_asm1(LNKR_SUB_RIP_TO_REF,
+			use_binding(n->jump.short_circuit->continuation.cont_instr_bndg, r), r), r), c, r);
 	} else {
 		generate_expressions(n->jump.reference, c, r);
 		prepend(make_asm2(MOVQ_REG_TO_REG, make_asm0(RAX, r), make_asm0(R11, r), r), c, r);

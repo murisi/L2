@@ -121,7 +121,7 @@ struct continuation_expression {
 	union expression *expression;
 	list parameters; //void * = union expression *
 	
-	union expression *cont_instr_ref;
+	struct binding_aug *cont_instr_bndg;
 	bool escapes;
 };
 
@@ -133,7 +133,7 @@ struct with_expression {
 	union expression *expression;
 	list parameter; //void * = union expression *
 	
-	union expression *cont_instr_ref;
+	struct binding_aug *cont_instr_bndg;
 	bool escapes;
 };
 
@@ -251,7 +251,7 @@ union expression *make_continuation(union expression *ref, list params, union ex
 	cont->continuation.type = continuation;
 	cont->continuation.parent = NULL;
 	cont->continuation.escapes = false;
-	cont->continuation.cont_instr_ref = use_binding(make_binding_aug(static_storage, local_scope, defined_state, NULL, NULL, reg), reg);
+	cont->continuation.cont_instr_bndg = make_binding_aug(static_storage, local_scope, defined_state, NULL, NULL, reg);
 	put(cont, continuation.reference, ref);
 	ref->symbol.binding_aug = make_binding_aug(dynamic_storage, local_scope, defined_state, ref->symbol.name, ref, reg);
 	cont->continuation.parameters = params;
@@ -269,7 +269,7 @@ union expression *make_with(union expression *ref, union expression *expr, buffe
 	wth->with.type = with;
 	wth->with.parent = NULL;
 	wth->with.escapes = false;
-	wth->with.cont_instr_ref = use_binding(make_binding_aug(static_storage, local_scope, defined_state, NULL, NULL, reg), reg);
+	wth->with.cont_instr_bndg = make_binding_aug(static_storage, local_scope, defined_state, NULL, NULL, reg);
 	put(wth, with.reference, ref);
 	ref->symbol.binding_aug = make_binding_aug(dynamic_storage, local_scope, defined_state, ref->symbol.name, ref, reg);
 	union expression *param = make_symbol(NULL, reg);
