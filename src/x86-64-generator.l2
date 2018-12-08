@@ -159,26 +159,6 @@
 		[set+ src-offset (word-size)]
 		[set+ dest-offset (word-size)])))))
 
-(function generate-move-arguments (n offset c r handler err)
-	(substitute (.. r handler err) (begin
-		[prepend (make-asmN(pushq-reg)((make-asmN(r11)()..))..) c ..]
-		(foreach (t [reverse (@ expr-arguments n) ..]) (begin
-			[generate-expression t c ..]
-			[prepend (make-asmN(pushq-reg)((make-asmN(rax)()..))..) c ..]))
-		
-		[prepend (make-asmN (movq-mdb-to-reg) ([make-literal [* [length (@ expr-arguments n)] (word-size)] ..] (make-asmN(rsp)()..)
-			(make-asmN(r11)()..)) ..) c ..]
-		
-		(storage offset-ref offset)
-		
-		(foreach (t (@ expr-arguments n)) (begin
-			[prepend (make-asmN(popq-reg)((make-asmN(rax)()..))..) c ..]
-			[prepend (make-asmN (movq-reg-to-mdb)
-				((make-asmN(rax)()..) [make-literal $offset-ref ..] (make-asmN(r11)()..)) ..) c ..]
-			[set+ offset-ref (word-size)]))
-		
-		[prepend (make-asmN(popq-reg)((make-asmN(r11)()..))..) c ..])))
-
 (function generate-continuation (n c r handler err)
 	(substitute (.. r handler err) (begin
 		(if (@ expr-escapes n) (begin
@@ -277,9 +257,17 @@
 
 (function generate-invoke (n c r handler err)
 	(substitute (.. r handler err) (begin
-		(foreach (t [reverse (@ expr-arguments n) ..]) (begin
-			[generate-expression t c ..]
-			[prepend (make-asmN(pushq-reg)((make-asmN(rax)()..))..) c ..]))
+		[cond-push-relative-storage n c ..]
+		[generate-args-to-buffer n c ..]
+		(if (@ expr-contains-with n)
+			(loop move-args (offset [* [length (@ expr-arguments n)] (word-size)])
+				(if offset (begin
+					(define (offset [- offset (word-size)])
+					[generate-load (@ expr-temp-storage-bndg n) offset (make-asmN(r11)()..) (make-asmN(r10)()..) c ..]
+					[prepend (make-asmN(pushq-reg) ((make-asmN(r11)()..)) ..) c ..]
+					{move-args offset}))
+					(begin)))
+			(begin))
 		
 		[generate-expression (@ expr-reference n) c ..]
 		[prepend (make-asmN(movq-reg-to-reg)((make-asmN(rax)()..) (make-asmN(r11)()..))..) c ..]

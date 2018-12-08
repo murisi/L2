@@ -341,8 +341,8 @@ void sgenerate_invokes(union expression *n, list *c, buffer r) {
 		//If invoke expression "contains" a with expression, then it may be the case that sub-expressions
 		//tamper with the stack pointer. If so, then we can use the stack-pointer safely only after the
 		//sub-expressions have finished evaluating.
-		int offset = length(n->invoke.arguments) * WORD_SIZE;
-		while(offset) {
+		int offset;
+		for(offset = length(n->invoke.arguments) * WORD_SIZE; offset; ) {
 			offset -= WORD_SIZE;
 			make_load(n->invoke.temp_storage_bndg, offset, make_asm0(R11, r), make_asm0(R10, r), c, r);
 			prepend(make_asm1(PUSHQ_REG, make_asm0(R11, r), r), c, r);
