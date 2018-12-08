@@ -58,11 +58,11 @@
 		(setf expr-type func (-function-))
 		(setf expr-parent func null-expr)
 		(put expr-reference func ref)
-		(setf expr-binding-aug ref [make-binding-aug (static-storage) (local-scope) (defined-state) (@ expr-name ref) ref ..])
+		(setf expr-binding-aug ref [make-binding-aug (absolute-storage) (local-scope) (defined-state) (@ expr-name ref) ref ..])
 		(setf expr-parameters func params)
 		(foreach (param params) (begin
 			(setf expr-parent param func)
-			(setf expr-binding-aug param [make-binding-aug (dynamic-storage) (local-scope) (defined-state) (@ expr-name param) param ..])))
+			(setf expr-binding-aug param [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) (@ expr-name param) param ..])))
 		(setf expr-binding-augs func nil)
 		(put expr-expression func expr)
 		{return func})))))
@@ -71,13 +71,13 @@
 	(substitute (.. reg handler err) (let (cont [buffer-alloc (expression) ..]) (begin
 		(setf expr-type cont (-continuation-))
 		(setf expr-parent cont null-expr)
-		(setf expr-cont-instr-bndg cont [make-binding-aug (static-storage) (local-scope) (defined-state) null-string null-expr ..])
+		(setf expr-cont-instr-bndg cont [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr ..])
 		(put expr-reference cont ref)
-		(setf expr-binding-aug ref [make-binding-aug (dynamic-storage) (local-scope) (defined-state) (@ expr-name ref) ref ..])
+		(setf expr-binding-aug ref [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) (@ expr-name ref) ref ..])
 		(setf expr-parameters cont params)
 		(foreach (param params) (begin
 			(setf expr-parent param cont)
-			(setf expr-binding-aug param [make-binding-aug (dynamic-storage) (local-scope) (defined-state) (@ expr-name param) param ..])))
+			(setf expr-binding-aug param [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) (@ expr-name param) param ..])))
 		(setf expr-escapes cont (false))
 		(put expr-expression cont expr)
 		{return cont})))))
@@ -86,12 +86,12 @@
 	(substitute (.. reg handler err) (let (wth [buffer-alloc (expression) ..]) (begin
 		(setf expr-type wth (-with-))
 		(setf expr-parent wth null-expr)
-		(setf expr-cont-instr-bndg wth [make-binding-aug (static-storage) (local-scope) (defined-state) null-string null-expr ..])
+		(setf expr-cont-instr-bndg wth [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr ..])
 		(put expr-reference wth ref)
-		(setf expr-binding-aug ref [make-binding-aug (dynamic-storage) (local-scope) (defined-state) (@ expr-name ref) ref ..])
+		(setf expr-binding-aug ref [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) (@ expr-name ref) ref ..])
 		(let (param [make-symbol null-string ..]) (begin
 			(setf expr-parent param wth)
-			(setf expr-binding-aug param [make-binding-aug (dynamic-storage) (local-scope) (defined-state) (@ expr-name param) param ..])
+			(setf expr-binding-aug param [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) (@ expr-name param) param ..])
 			(setf expr-parameters wth [cons param nil ..])))
 		(setf expr-escapes wth (false))
 		(put expr-expression wth expr)
@@ -106,21 +106,23 @@
 		{return u}))))
 
 (function make-jump (ref args reg handler err) (with return
-	(let (u [buffer-alloc (expression) reg handler err]) (begin
+	(substitute (.. reg handler err) (let (u [buffer-alloc (expression) ..]) (begin
 		(setf expr-type u (-jump-))
 		(setf expr-parent u null-expr)
 		(setf expr-short-circuit u null-expr)
 		(put expr-reference u ref)
+		(setf expr-contains-with u (true))
+		(setf expr-temp-storage-bndg u [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) null-string u ..])
 		(setf expr-arguments u args)
 		(foreach (arg args) (setf expr-parent arg u))
-		{return u}))))
+		{return u})))))
 
 (function make-storage (ref args reg handler err) (with return
 	(substitute (.. reg handler err) (let (u [buffer-alloc (expression) ..]) (begin
 		(setf expr-type u (-storage-))
 		(setf expr-parent u null-expr)
 		(put expr-reference u ref)
-		(setf expr-binding-aug ref [make-binding-aug (dynamic-storage) (local-scope) (defined-state) (@ expr-name ref) ref ..])
+		(setf expr-binding-aug ref [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) (@ expr-name ref) ref ..])
 		(setf expr-arguments u args)
 		(foreach (arg args) (setf expr-parent arg u))
 		{return u})))))
@@ -142,13 +144,15 @@
 		{return u}))))
 
 (function make-invoke (ref args reg handler err) (with return
-	(let (u [buffer-alloc (expression) reg handler err]) (begin
+	(substitute (.. reg handler err) (let (u [buffer-alloc (expression) ..]) (begin
 		(setf expr-type u (-invoke-))
 		(setf expr-parent u null-expr)
 		(put expr-reference u ref)
+		(setf expr-contains-with u (true))
+		(setf expr-temp-storage-bndg u [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) null-string u ..])
 		(setf expr-arguments u args)
 		(foreach (arg args) (setf expr-parent arg u))
-		{return u}))))
+		{return u})))))
 
 (;; Builds a program from a list of expressions. exprs is the list of expressions
 	from which the program will be built. A program is a function with no parent that

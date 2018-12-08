@@ -46,7 +46,7 @@
 		(switch = (@ expr-type t)
 			((-begin-) (foreach (u (@ expr-expressions t))
 				(if (and (or [= (@ expr-type u) (-function-)] (and [= (@ expr-type u) (-storage-)] (or $same-func
-						[= (@ bndg-storage(@ expr-binding-aug(@ expr-reference u))) (static-storage)])))
+						[= (@ bndg-storage(@ expr-binding-aug(@ expr-reference u))) (absolute-storage)])))
 						[named-sym= (@ expr-reference u) symbol])
 					{return (@ expr-binding-aug(@ expr-reference u))}
 					(begin))))
@@ -55,18 +55,18 @@
 				(if [named-sym= (@ expr-reference t) symbol]
 					{return (@ expr-binding-aug(@ expr-reference t))}
 					(foreach (u (@ expr-parameters t))
-						(if (and (or $same-func [= (@ bndg-storage(@ expr-binding-aug u)) (static-storage)]) [named-sym= u symbol])
+						(if (and (or $same-func [= (@ bndg-storage(@ expr-binding-aug u)) (absolute-storage)]) [named-sym= u symbol])
 							{return (@ expr-binding-aug u)}
 							(begin))))
 				[set same-func (false)]))
 			
 			((-continuation-) (-with-) (-storage-)
-				(if (and (or $same-func [= (@ bndg-storage(@ expr-binding-aug(@ expr-reference t))) (static-storage)])
+				(if (and (or $same-func [= (@ bndg-storage(@ expr-binding-aug(@ expr-reference t))) (absolute-storage)])
 						[named-sym= (@ expr-reference t) symbol])
 					{return (@ expr-binding-aug(@ expr-reference t))}
 				(if [= (@ expr-type t) (-storage-)] (begin)
 					(foreach (u (@ expr-parameters t))
-						(if (and (or $same-func [= (@ bndg-storage(@ expr-binding-aug u)) (static-storage)]) [named-sym= u symbol])
+						(if (and (or $same-func [= (@ bndg-storage(@ expr-binding-aug u)) (absolute-storage)]) [named-sym= u symbol])
 							{return (@ expr-binding-aug u)}
 							(begin))))))
 			
@@ -106,7 +106,7 @@
 					(begin
 						(define (stg [make-storage [make-symbol (@ expr-name s) ..] nil ..])
 						(define (bndg (@ expr-binding-aug(@ expr-reference stg)))
-						(setf bndg-storage bndg (static-storage))
+						(setf bndg-storage bndg (absolute-storage))
 						(setf bndg-scope bndg (global-scope))
 						(setf bndg-state bndg (undefined-state))
 						(define (rf [get-root-function s])
@@ -190,19 +190,43 @@
 		
 		((-storage-) (-jump-) (-invoke-) (begin
 			(if [= (@ expr-type expr) (-storage-)]
-				(setf bndg-storage (@ expr-binding-aug(@ expr-reference expr)) (static-storage))
-				[classify-program-bindings (@ expr-reference expr)])
+				(setf bndg-storage (@ expr-binding-aug(@ expr-reference expr)) (absolute-storage))
+				(begin
+					(setf bndg-storage (@ expr-temp-storage-bndg expr) (absolute-storage))
+					[classify-program-bindings (@ expr-reference expr)]))
 			(foreach (t (@ expr-arguments expr)) [classify-program-bindings t])))
 		
 		((-continuation-) (-with-) (begin
-			(setf bndg-storage (@ expr-binding-aug(@ expr-reference expr)) (static-storage))
-			(foreach (t (@ expr-parameters expr)) (setf bndg-storage (@ expr-binding-aug t) (static-storage)))
+			(setf bndg-storage (@ expr-binding-aug(@ expr-reference expr)) (absolute-storage))
+			(foreach (t (@ expr-parameters expr)) (setf bndg-storage (@ expr-binding-aug t) (absolute-storage)))
 			[classify-program-bindings (@ expr-expression expr)]))
 		
 		((-if-) (begin
 			[classify-program-bindings (@ expr-condition expr)]
 			[classify-program-bindings (@ expr-consequent expr)]
 			[classify-program-bindings (@ expr-alternate expr)]))
+		
+		(begin)))
+
+(function contains-with-analysis (s)
+	(switch = (@ expr-type s)
+		((-begin-) (fold (acc (false)) (x (@ expr-expressions s)) (or acc [contains-with-analysis x])))
+		
+		((-if-) (or [contains-with-analysis (@ expr-condition s)]
+			[contains-with-analysis (@ expr-consequent s)]
+			[contains-with-analysis (@ expr-alternate s)]))
+		
+		((-function-) (-continuation-) (-with-)
+			(let (_ [contains-with-analysis (@ expr-expression s)])
+				[= (@ expr-type s) (-with-)]))
+		
+		((-storage-) (fold (acc (false)) (x (@ expr-arguments s)) (or acc [contains-with-analysis x])))
+		
+		((-jump-) (-invoke-)
+			(let (contains-with (fold (acc [contains-with-analysis (@ expr-reference s)]) (x (@ expr-arguments s))
+					(or acc [contains-with-analysis x])))
+				(let (_ (setf expr-contains-with s contains-with))
+					(if [= (@ expr-type s) (-jump-)] (false) contains-with))))
 		
 		(begin)))
 
