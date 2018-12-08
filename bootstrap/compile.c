@@ -17,6 +17,7 @@ typedef unsigned long int bool;
 
 list compile_program(union expression *program, list *bindings, buffer expr_buf, jumpbuf *handler) {
 	visit_expressions(vfind_multiple_definitions, &program, handler);
+	contains_with_analysis(program);
 	classify_program_binding_augs(program->function.expression);
 	visit_expressions(vlink_symbols, &program->function.expression, (void* []) {handler, expr_buf});
 	visit_expressions(vescape_analysis, &program, NULL);
@@ -185,7 +186,7 @@ int main(int argc, char *argv[]) {
 					"dash as macros.\n");
 				break;
 			} case undefined_symbol: {
-				write_str(STDOUT, "Undefined reference: ");
+				write_str(STDOUT, "Undefined symbol: ");
 				write_str(STDOUT, err->undefined_symbol.symbol_value);
 				write_str(STDOUT, ".\n");
 				break;

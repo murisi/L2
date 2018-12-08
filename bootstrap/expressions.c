@@ -13,7 +13,7 @@ enum expression_type {
 	meta
 };
 
-enum binding_aug_type { static_storage, dynamic_storage };
+enum binding_aug_type { absolute_storage, frame_relative_storage, top_relative_storage };
 
 enum binding_aug_scope { local_scope, global_scope };
 
@@ -74,6 +74,9 @@ struct invoke_expression {
 	
 	union expression *reference;
 	list arguments; // void * = union expression *
+	
+	bool contains_with;
+	struct binding_aug *temp_storage_bndg;
 };
 
 struct jump_expression {
@@ -82,6 +85,9 @@ struct jump_expression {
 	
 	union expression *reference;
 	list arguments;
+	
+	bool contains_with;
+	struct binding_aug *temp_storage_bndg;
 	
 	union expression *short_circuit;
 };
@@ -234,12 +240,12 @@ union expression *make_function(union expression *ref, list params, union expres
 	func->function.type = function;
 	func->function.parent = NULL;
 	put(func, function.reference, ref);
-	ref->symbol.binding_aug = make_binding_aug(static_storage, local_scope, defined_state, ref->symbol.name, ref, reg);
+	ref->symbol.binding_aug = make_binding_aug(absolute_storage, local_scope, defined_state, ref->symbol.name, ref, reg);
 	func->function.parameters = params;
 	union expression *param;
 	foreach(param, params) {
 		param->base.parent = func;
-		param->symbol.binding_aug = make_binding_aug(dynamic_storage, local_scope, defined_state, param->symbol.name, param, reg);
+		param->symbol.binding_aug = make_binding_aug(frame_relative_storage, local_scope, defined_state, param->symbol.name, param, reg);
 	}
 	func->function.binding_augs = nil;
 	put(func, function.expression, expr);
@@ -251,14 +257,14 @@ union expression *make_continuation(union expression *ref, list params, union ex
 	cont->continuation.type = continuation;
 	cont->continuation.parent = NULL;
 	cont->continuation.escapes = false;
-	cont->continuation.cont_instr_bndg = make_binding_aug(static_storage, local_scope, defined_state, NULL, NULL, reg);
+	cont->continuation.cont_instr_bndg = make_binding_aug(absolute_storage, local_scope, defined_state, NULL, NULL, reg);
 	put(cont, continuation.reference, ref);
-	ref->symbol.binding_aug = make_binding_aug(dynamic_storage, local_scope, defined_state, ref->symbol.name, ref, reg);
+	ref->symbol.binding_aug = make_binding_aug(frame_relative_storage, local_scope, defined_state, ref->symbol.name, ref, reg);
 	cont->continuation.parameters = params;
 	union expression *param;
 	foreach(param, params) {
 		param->base.parent = cont;
-		param->symbol.binding_aug = make_binding_aug(dynamic_storage, local_scope, defined_state, param->symbol.name, param, reg);
+		param->symbol.binding_aug = make_binding_aug(frame_relative_storage, local_scope, defined_state, param->symbol.name, param, reg);
 	}
 	put(cont, continuation.expression, expr);
 	return cont;
@@ -269,12 +275,12 @@ union expression *make_with(union expression *ref, union expression *expr, buffe
 	wth->with.type = with;
 	wth->with.parent = NULL;
 	wth->with.escapes = false;
-	wth->with.cont_instr_bndg = make_binding_aug(static_storage, local_scope, defined_state, NULL, NULL, reg);
+	wth->with.cont_instr_bndg = make_binding_aug(absolute_storage, local_scope, defined_state, NULL, NULL, reg);
 	put(wth, with.reference, ref);
-	ref->symbol.binding_aug = make_binding_aug(dynamic_storage, local_scope, defined_state, ref->symbol.name, ref, reg);
+	ref->symbol.binding_aug = make_binding_aug(frame_relative_storage, local_scope, defined_state, ref->symbol.name, ref, reg);
 	union expression *param = make_symbol(NULL, reg);
 	param->symbol.parent = wth;
-	param->symbol.binding_aug = make_binding_aug(dynamic_storage, local_scope, defined_state, param->symbol.name, param, reg);
+	param->symbol.binding_aug = make_binding_aug(frame_relative_storage, local_scope, defined_state, param->symbol.name, param, reg);
 	wth->with.parameter = lst(param, nil, reg);
 	put(wth, with.expression, expr);
 	return wth;
@@ -314,6 +320,8 @@ union expression *make_jump(union expression *ref, list args, buffer reg) {
 	u->jump.type = jump;
 	u->jump.parent = NULL;
 	put(u, jump.reference, ref);
+	u->jump.contains_with = true;
+	u->jump.temp_storage_bndg = make_binding_aug(frame_relative_storage, local_scope, defined_state, NULL, u, reg);
 	u->jump.arguments = args;
 	union expression *arg;
 	foreach(arg, args) {
@@ -345,7 +353,7 @@ union expression *make_storage(union expression *ref, list args, buffer reg) {
 	u->storage.type = storage;
 	u->storage.parent = NULL;
 	put(u, storage.reference, ref);
-	ref->symbol.binding_aug = make_binding_aug(dynamic_storage, local_scope, defined_state, ref->symbol.name, ref, reg);
+	ref->symbol.binding_aug = make_binding_aug(frame_relative_storage, local_scope, defined_state, ref->symbol.name, ref, reg);
 	u->storage.arguments = args;
 	union expression *arg;
 	foreach(arg, args) {
@@ -377,6 +385,8 @@ union expression *make_invoke(union expression *ref, list args, buffer reg) {
 	u->invoke.type = invoke;
 	u->invoke.parent = NULL;
 	put(u, invoke.reference, ref);
+	u->invoke.contains_with = true;
+	u->invoke.temp_storage_bndg = make_binding_aug(frame_relative_storage, local_scope, defined_state, NULL, u, reg);
 	u->invoke.arguments = args;
 	union expression *arg;
 	foreach(arg, args) {
@@ -386,11 +396,7 @@ union expression *make_invoke(union expression *ref, list args, buffer reg) {
 }
 
 union expression *make_invoke0(union expression *ref, buffer reg) {
-	union expression *u = buffer_alloc(reg, sizeof(union expression));
-	u->invoke.type = invoke;
-	put(u, invoke.reference, ref);
-	u->invoke.arguments = nil;
-	return u;
+	return make_invoke(ref, nil, reg);
 }
 
 union expression *make_invoke1(union expression *ref, union expression *arg1, buffer reg) {

@@ -65,7 +65,7 @@ struct binding_aug *binding_aug_of(union expression *reference) {
 					//storage expression in ancestral expression that is (in the same stack-frame as the reference
 					//or has static storage).
 					if((u->base.type == function || (u->base.type == storage && (same_func ||
-							u->storage.reference->symbol.binding_aug->type == static_storage))) &&
+							u->storage.reference->symbol.binding_aug->type == absolute_storage))) &&
 							reference_equals(u->function.reference, reference)) {
 						return u->function.reference->symbol.binding_aug;
 					}
@@ -79,7 +79,7 @@ struct binding_aug *binding_aug_of(union expression *reference) {
 				}
 				union expression *u;
 				foreach(u, t->function.parameters) {
-					if((same_func || u->symbol.binding_aug->type == static_storage) && reference_equals(u, reference)) {
+					if((same_func || u->symbol.binding_aug->type == absolute_storage) && reference_equals(u, reference)) {
 						return u->symbol.binding_aug;
 					}
 				}
@@ -89,13 +89,13 @@ struct binding_aug *binding_aug_of(union expression *reference) {
 				//Either link up to (the reference of continuation/with/storage expression in the same stack-frame
 				//or the reference of the same with static storage) or link up to the parameters of a non-storage
 				//expression that are either (in the same stack-fram or have static storage).
-				if((same_func || t->continuation.reference->symbol.binding_aug->type == static_storage) &&
+				if((same_func || t->continuation.reference->symbol.binding_aug->type == absolute_storage) &&
 						reference_equals(t->function.reference, reference)) {
 					return t->function.reference->symbol.binding_aug;
 				} else if(t->base.type != storage) {
 					union expression *u;
 					foreach(u, t->function.parameters) {
-						if((same_func || u->symbol.binding_aug->type == static_storage) && reference_equals(u, reference)) {
+						if((same_func || u->symbol.binding_aug->type == absolute_storage) && reference_equals(u, reference)) {
 							return u->symbol.binding_aug;
 						}
 					}
@@ -140,7 +140,7 @@ union expression *vlink_symbols(union expression *s, void *ctx) {
 		if(!s->symbol.binding_aug) {
 			union expression *stg = make_storage(make_symbol(s->symbol.name, r), nil, r);
 			struct binding_aug *bndg = stg->storage.reference->symbol.binding_aug;
-			bndg->type = static_storage;
+			bndg->type = absolute_storage;
 			bndg->scope = global_scope;
 			bndg->state = undefined_state;
 			prepend(stg, &root_function_of(s)->function.expression->begin.expressions, r);
@@ -175,6 +175,48 @@ union expression *vescape_analysis(union expression *s, void *ctx) {
 
 	}
 	return s;
+}
+
+bool contains_with_analysis(union expression *s) {
+	bool contains_with = false;
+	switch(s->base.type) {
+		case begin: {
+			union expression *t;
+			foreach(t, s->begin.expressions) {
+				contains_with |= contains_with_analysis(t);
+			}
+			break;
+		} case _if: {
+			contains_with |= contains_with_analysis(s->_if.condition);
+			contains_with |= contains_with_analysis(s->_if.consequent);
+			contains_with |= contains_with_analysis(s->_if.alternate);
+			break;
+		} case function: case continuation: case with: {
+			contains_with_analysis(s->function.expression);
+			if(s->base.type == with) {
+				contains_with = true;
+			}
+			break;
+		} case storage: {
+			union expression *t;
+			foreach(t, s->invoke.arguments) {
+				contains_with |= contains_with_analysis(t);
+			}
+			break;
+		} case jump: case invoke: {
+			contains_with |= contains_with_analysis(s->invoke.reference);
+			union expression *t;
+			foreach(t, s->invoke.arguments) {
+				contains_with |= contains_with_analysis(t);
+			}
+			s->invoke.contains_with = contains_with;
+			if(s->base.type == jump) {
+				contains_with = false;
+			}
+			break;
+		}
+	}
+	return contains_with;
 }
 
 void visit_expressions(union expression *(*visitor)(union expression *, void *), union expression **s, void *ctx) {
@@ -252,8 +294,9 @@ void classify_program_binding_augs(union expression *expr) {
 			break;
 		} case storage: case jump: case invoke: {
 			if(expr->base.type == storage) {
-				expr->storage.reference->symbol.binding_aug->type = static_storage;
+				expr->storage.reference->symbol.binding_aug->type = absolute_storage;
 			} else {
+				expr->invoke.temp_storage_bndg->type = absolute_storage;
 				classify_program_binding_augs(expr->invoke.reference);
 			}
 			union expression *t;
@@ -262,10 +305,10 @@ void classify_program_binding_augs(union expression *expr) {
 			}
 			break;
 		} case continuation: case with: {
-			expr->continuation.reference->symbol.binding_aug->type = static_storage;
+			expr->continuation.reference->symbol.binding_aug->type = absolute_storage;
 			union expression *t;
 			foreach(t, expr->continuation.parameters) {
-				t->symbol.binding_aug->type = static_storage;
+				t->symbol.binding_aug->type = absolute_storage;
 			}
 			classify_program_binding_augs(expr->continuation.expression);
 			break;

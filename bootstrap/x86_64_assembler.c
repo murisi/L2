@@ -523,7 +523,7 @@ void write_elf(list generated_expressions, list bindings, unsigned char **bin, i
 void binding_aug_offsets_to_addresses(list asms, list bindings, Object *obj) {
 	struct binding_aug *bndg;
 	{foreach(bndg, bindings) {
-		if(bndg->type == static_storage && bndg->state == defined_state) {
+		if(bndg->type == absolute_storage && bndg->state == defined_state) {
 			bndg->offset += (unsigned long) segment(obj, ".bss");
 		}
 	}}

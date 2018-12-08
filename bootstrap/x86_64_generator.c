@@ -79,28 +79,52 @@ union expression *vlayout_frames(union expression *n, buffer r) {
 			union expression *parent_function = get_parent_function(n);
 			append(n->storage.reference->symbol.binding_aug, &parent_function->function.binding_augs, r);
 			break;
+		} case jump: case invoke: {
+			n->invoke.temp_storage_bndg->size = WORD_SIZE * length(n->invoke.arguments);
+			if(n->invoke.contains_with) {
+				union expression *parent_function = get_parent_function(n);
+				append(n->invoke.temp_storage_bndg, &parent_function->function.binding_augs, r);
+			} else {
+				n->invoke.temp_storage_bndg->type = top_relative_storage;
+				n->invoke.temp_storage_bndg->offset = 0;
+			}
+			break;
 		}
 	}
 	return n;
 }
 
-void make_load(struct binding_aug *bndg, int offset, union expression *dest_reg, union expression *scratch_reg, list *c, buffer r) {
-	if(bndg->type == dynamic_storage) {
-		prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(bndg->offset + offset, r), make_asm0(RBP, r), dest_reg, r), c, r);
-	} else {
-		prepend(make_asm2(MOVQ_IMM_TO_REG, make_asm2(LNKR_ADD_OFF_TO_REF, use_binding(bndg, r), make_literal(offset, r), r), scratch_reg,
-			r), c, r);
-		prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(0, r), scratch_reg, dest_reg, r), c, r);
+void make_load(struct binding_aug *bndg, unsigned long offset, union expression *dest_reg, union expression *scratch_reg, list *c, buffer r) {
+	switch(bndg->type) {
+		case frame_relative_storage: {
+			prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(bndg->offset + offset, r), make_asm0(RBP, r), dest_reg, r), c, r);
+			break;
+		} case absolute_storage: {
+			prepend(make_asm2(MOVQ_IMM_TO_REG, make_asm2(LNKR_ADD_OFF_TO_REF, use_binding(bndg, r), make_literal(offset, r), r), scratch_reg,
+				r), c, r);
+			prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(0, r), scratch_reg, dest_reg, r), c, r);
+			break;
+		} case top_relative_storage: {
+			prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(bndg->offset + offset, r), make_asm0(RSP, r), dest_reg, r), c, r);
+			break;
+		}
 	}
 }
 
-void make_store(union expression *src_reg, struct binding_aug *bndg, int offset, union expression *scratch_reg, list *c, buffer r) {
-	if(bndg->type == dynamic_storage) {
-		prepend(make_asm3(MOVQ_REG_TO_MDB, src_reg, make_literal(bndg->offset + offset, r), make_asm0(RBP, r), r), c, r);
-	} else {
-		prepend(make_asm2(MOVQ_IMM_TO_REG, make_asm2(LNKR_ADD_OFF_TO_REF, use_binding(bndg, r), make_literal(offset, r), r), scratch_reg,
-			r), c, r);
-		prepend(make_asm3(MOVQ_REG_TO_MDB, src_reg, make_literal(0, r), scratch_reg, r), c, r);
+void make_store(union expression *src_reg, struct binding_aug *bndg, unsigned long offset, union expression *scratch_reg, list *c, buffer r) {
+	switch(bndg->type) {
+		case frame_relative_storage: {
+			prepend(make_asm3(MOVQ_REG_TO_MDB, src_reg, make_literal(bndg->offset + offset, r), make_asm0(RBP, r), r), c, r);
+			break;
+		} case absolute_storage: {
+			prepend(make_asm2(MOVQ_IMM_TO_REG, make_asm2(LNKR_ADD_OFF_TO_REF, use_binding(bndg, r), make_literal(offset, r), r), scratch_reg,
+				r), c, r);
+			prepend(make_asm3(MOVQ_REG_TO_MDB, src_reg, make_literal(0, r), scratch_reg, r), c, r);
+			break;
+		} case top_relative_storage: {
+			prepend(make_asm3(MOVQ_REG_TO_MDB, src_reg, make_literal(bndg->offset + offset, r), make_asm0(RSP, r), r), c, r);
+			break;
+		}
 	}
 }
 
@@ -110,10 +134,10 @@ void sgenerate_ifs(union expression *n, list *c, buffer r) {
 	generate_expressions(n->_if.condition, c, r);
 	prepend(make_asm2(ORQ_REG_TO_REG, make_asm0(RAX, r), make_asm0(RAX, r), r), c, r);
 	
-	struct binding_aug *alternate_binding = make_binding_aug(static_storage, local_scope, defined_state, NULL, NULL, r);
+	struct binding_aug *alternate_binding = make_binding_aug(absolute_storage, local_scope, defined_state, NULL, NULL, r);
 	prepend(make_asm1(JE_REL, make_asm1(LNKR_SUB_RIP_TO_REF, use_binding(alternate_binding, r), r), r), c, r);
 	generate_expressions(n->_if.consequent, c, r);
-	struct binding_aug *end_binding = make_binding_aug(static_storage, local_scope, defined_state, NULL, NULL, r);
+	struct binding_aug *end_binding = make_binding_aug(absolute_storage, local_scope, defined_state, NULL, NULL, r);
 	prepend(make_asm1(JMP_REL, make_asm1(LNKR_SUB_RIP_TO_REF, use_binding(end_binding, r), r), r), c, r);
 	prepend(make_asm1(LABEL, use_binding(alternate_binding, r), r), c, r);
 	generate_expressions(n->_if.alternate, c, r);
@@ -121,10 +145,17 @@ void sgenerate_ifs(union expression *n, list *c, buffer r) {
 }
 
 void make_load_address(struct binding_aug *bndg, union expression *dest_reg, list *c, buffer r) {
-	if(bndg->type == dynamic_storage) {
-		prepend(make_asm3(LEAQ_MDB_TO_REG, make_literal(bndg->offset, r), make_asm0(RBP, r), dest_reg, r), c, r);
-	} else {
-		prepend(make_asm2(MOVQ_IMM_TO_REG, use_binding(bndg, r), dest_reg, r), c, r);
+	switch(bndg->type) {
+		case frame_relative_storage: {
+			prepend(make_asm3(LEAQ_MDB_TO_REG, make_literal(bndg->offset, r), make_asm0(RBP, r), dest_reg, r), c, r);
+			break;
+		} case absolute_storage: {
+			prepend(make_asm2(MOVQ_IMM_TO_REG, use_binding(bndg, r), dest_reg, r), c, r);
+			break;
+		} case top_relative_storage: {
+			prepend(make_asm3(LEAQ_MDB_TO_REG, make_literal(bndg->offset, r), make_asm0(RSP, r), dest_reg, r), c, r);
+			break;
+		}
 	}
 }
 
@@ -164,20 +195,37 @@ void make_store_continuation(union expression *n, list *c, buffer r) {
 	make_store(make_asm0(RBP, r), n->continuation.reference->symbol.binding_aug, CONT_RBP, make_asm0(R11, r), c, r);
 }
 
-void move_arguments(union expression *n, int offset, list *c, buffer r) {
-	prepend(make_asm1(PUSHQ_REG, make_asm0(R11, r), r), c, r);
-	union expression *t;
-	{foreach(t, reverse(n->jump.arguments, r)) {
-		generate_expressions(t, c, r);
-		prepend(make_asm1(PUSHQ_REG, make_asm0(RAX, r), r), c, r);
-	}}
-	prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(length(n->jump.arguments) * WORD_SIZE, r), make_asm0(RSP, r), make_asm0(R11, r), r), c, r);
-	foreach(t, n->jump.arguments) {
-		prepend(make_asm1(POPQ_REG, make_asm0(RAX, r), r), c, r);
-		prepend(make_asm3(MOVQ_REG_TO_MDB, make_asm0(RAX, r), make_literal(offset, r), make_asm0(R11, r), r), c, r);
-		offset += WORD_SIZE;
+void cond_push_relative_storage(union expression *n, list *c, buffer r) {
+	if(n->jump.temp_storage_bndg->type == top_relative_storage) {
+		prepend(make_asm2(SUBQ_IMM_TO_REG, make_literal(length(n->jump.arguments) * WORD_SIZE, r), make_asm0(RSP, r), r), c, r);
 	}
-	prepend(make_asm1(POPQ_REG, make_asm0(R11, r), r), c, r);
+}
+
+void cond_pop_relative_storage(union expression *n, list *c, buffer r) {
+	if(n->jump.temp_storage_bndg->type == top_relative_storage) {
+		prepend(make_asm2(ADDQ_IMM_TO_REG, make_literal(length(n->jump.arguments) * WORD_SIZE, r), make_asm0(RSP, r), r), c, r);
+	}
+}
+
+void generate_args_to_buffer(union expression *n, list *c, buffer r) {
+	int offset = 0;
+	union expression *t;
+	{foreach(t, n->jump.arguments) {
+		generate_expressions(t, c, r);
+		make_store(make_asm0(RAX, r), n->jump.temp_storage_bndg, offset, make_asm0(R10, r), c, r);
+		offset += WORD_SIZE;
+	}}
+}
+
+void generate_buffer_to_dest(union expression *n, union expression *dest_reg, int offset, list *c, buffer r) {
+	int tmp_offset = 0;
+	union expression *t;
+	foreach(t, n->jump.arguments) {
+		make_load(n->jump.temp_storage_bndg, tmp_offset, make_asm0(RAX, r), make_asm0(R10, r), c, r);
+		prepend(make_asm3(MOVQ_REG_TO_MDB, make_asm0(RAX, r), make_literal(offset, r), dest_reg, r), c, r);
+		offset += WORD_SIZE;
+		tmp_offset += WORD_SIZE;
+	}
 }
 
 void sgenerate_continuations(union expression *n, list *c, buffer r) {
@@ -187,7 +235,7 @@ void sgenerate_continuations(union expression *n, list *c, buffer r) {
 	}
 	
 	//Skip the actual instructions of the continuation
-	struct binding_aug *after_binding = make_binding_aug(static_storage, local_scope, defined_state, NULL, NULL, r);
+	struct binding_aug *after_binding = make_binding_aug(absolute_storage, local_scope, defined_state, NULL, NULL, r);
 	prepend(make_asm1(JMP_REL, make_asm1(LNKR_SUB_RIP_TO_REF, use_binding(after_binding, r), r), r), c, r);
 	prepend(make_asm1(LABEL, use_binding(n->continuation.cont_instr_bndg, r), r), c, r);
 	generate_expressions(n->continuation.expression, c, r);
@@ -209,16 +257,23 @@ void sgenerate_jumps(union expression *n, list *c, buffer r) {
 			generate_expressions(n->jump.reference, c, r);
 		}
 		if(length(n->jump.short_circuit->continuation.parameters) > 0) {
+			cond_push_relative_storage(n, c, r);
+			generate_args_to_buffer(n, c, r);
 			make_load_address(((union expression *) n->jump.short_circuit->continuation.parameters->fst)->symbol.binding_aug,
 				make_asm0(R11, r), c, r);
-			move_arguments(n, 0, c, r);
+			generate_buffer_to_dest(n, make_asm0(R11, r), 0, c, r);
+			cond_pop_relative_storage(n, c, r);
 		}
 		prepend(make_asm1(JMP_REL, make_asm1(LNKR_SUB_RIP_TO_REF,
 			use_binding(n->jump.short_circuit->continuation.cont_instr_bndg, r), r), r), c, r);
 	} else {
+		cond_push_relative_storage(n, c, r);
+		generate_args_to_buffer(n, c, r);
 		generate_expressions(n->jump.reference, c, r);
 		prepend(make_asm2(MOVQ_REG_TO_REG, make_asm0(RAX, r), make_asm0(R11, r), r), c, r);
-		move_arguments(n, CONT_SIZE, c, r);
+		generate_buffer_to_dest(n, make_asm0(R11, r), CONT_SIZE, c, r);
+		cond_pop_relative_storage(n, c, r);
+		
 		prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(CONT_RBX, r), make_asm0(R11, r), make_asm0(RBX, r), r), c, r);
 		prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(CONT_R12, r), make_asm0(R11, r), make_asm0(R12, r), r), c, r);
 		prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(CONT_R13, r), make_asm0(R11, r), make_asm0(R13, r), r), c, r);
@@ -245,7 +300,7 @@ int get_current_offset(union expression *function) {
 void sgenerate_functions(union expression *n, list *c, buffer r) {
 	make_load_address(n->function.reference->symbol.binding_aug, make_asm0(RAX, r), c, r);
 	
-	struct binding_aug *after_binding = make_binding_aug(static_storage, local_scope, defined_state, NULL, NULL, r);
+	struct binding_aug *after_binding = make_binding_aug(absolute_storage, local_scope, defined_state, NULL, NULL, r);
 	
 	prepend(make_asm1(JMP_REL, make_asm1(LNKR_SUB_RIP_TO_REF, use_binding(after_binding, r), r), r), c, r);
 	prepend(make_asm1(LABEL, n->function.reference, r), c, r);
@@ -280,10 +335,18 @@ void sgenerate_functions(union expression *n, list *c, buffer r) {
 
 void sgenerate_invokes(union expression *n, list *c, buffer r) {
 	//Push arguments onto stack
-	union expression *t;
-	foreach(t, reverse(n->invoke.arguments, r)) {
-		generate_expressions(t, c, r);
-		prepend(make_asm1(PUSHQ_REG, make_asm0(RAX, r), r), c, r);
+	cond_push_relative_storage(n, c, r);
+	generate_args_to_buffer(n, c, r);
+	if(n->invoke.contains_with) {
+		//If invoke expression "contains" a with expression, then it may be the case that sub-expressions
+		//tamper with the stack pointer. If so, then we can use the stack-pointer safely only after the
+		//sub-expressions have finished evaluating.
+		int offset = length(n->invoke.arguments) * WORD_SIZE;
+		while(offset) {
+			offset -= WORD_SIZE;
+			make_load(n->invoke.temp_storage_bndg, offset, make_asm0(R11, r), make_asm0(R10, r), c, r);
+			prepend(make_asm1(PUSHQ_REG, make_asm0(R11, r), r), c, r);
+		}
 	}
 	generate_expressions(n->invoke.reference, c, r);
 	prepend(make_asm2(MOVQ_REG_TO_REG, make_asm0(RAX, r), make_asm0(R11, r), r), c, r);
