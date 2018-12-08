@@ -11,16 +11,15 @@ There are [9 language primitives](#expressions) and for each one of them I descr
 | **[Getting Started](#getting-started)** | [Expressions](#expressions) | [Examples/Reductions](#examplesreductions) |
 |:--- |:--- |:--- |
 | [Building L2](#building-l2) | [Begin](#begin) | [Commenting](#commenting) |
-| [The Compiler](#the-compiler) | [Literal](#literal) | [Dereferencing](#dereferencing) |
-| **[Syntactic Sugar](#syntactic-sugar)** | [Storage](#storage) | [Numbers](#numbers) |
-| **[Internal Representation](#internal-representation)** | [If](#if) | [Backquoting](#backquoting) |
-| | [Function](#function) | [Variable Binding](#variable-binding) |
-| | [Invoke](#invoke) | [Boolean Expressions](#boolean-expressions) |
-| | [With](#with) | [Switch Expression](#switch-expression) |
-| | [Continuation](#continuation) | [Characters](#characters) |
-| | [Jump](#jump) | [Strings](#strings) |
-| | [Meta](#meta) | [Closures](#closures) |
-| | | [Assume](#assume) |
+| [The Compiler](#the-compiler) | [Literal](#literal) | [Numbers](#numbers) |
+| **[Syntactic Sugar](#syntactic-sugar)** | [Storage](#storage) | [Backquoting](#backquoting) |
+| **[Internal Representation](#internal-representation)** | [If](#if) | [Variable Binding](#variable-binding) |
+| | [Function](#function) | [Boolean Expressions](#boolean-expressions) |
+| | [Invoke](#invoke) | [Switch Expression](#switch-expression) |
+| | [With](#with) | [Characters](#characters) |
+| | [Continuation](#continuation) | [Strings](#strings) |
+| | [Jump](#jump) | [Closures](#closures) |
+| | [Meta](#meta) | [Assume](#assume) |
 | | | [Fields](#fields) |
 
 ## Getting Started
@@ -285,35 +284,6 @@ L2 has no built-in mechanism for commenting code written in it. The following co
 ./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 - test1.l2
 ```
 
-### Dereferencing
-So far, we have been writing `[get x]` in order to get the value at the address `x`. Given the frequency with which dereferencing happens, writing `[get x]` all the time can greatly increase the amount of code required to get a task done. The following function `$` implements an abbreviation for dereferencing.
-
-#### dereference.l2
-```racket
-(function $ (var r)
-	[llst
-		[llllllst -i- -n- -v- -o- -k- -e- emt r]
-		[lllst -g- -e- -t- emt r]
-		var r])
-```
-#### test2.l2
-```racket
-(storage a (literal 0...01000001))
-(storage c a)
-[putchar $$c]
-```
-##### or equivalently
-```racket
-(storage a (literal 0...01000001))
-(storage c a)
-[putchar [get [get c]]]
-```
-#### shell
-```shell
-./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 - test2.l2
-```
-Note that in the above code that `a` and `c` have global scope. This is because the storage expressions are top-level.
-
 ### Numbers
 Integer literals prove to be quite tedious in L2 as can be seen from some of the examples in the expressions section. The following function, `#`, implements decimal arithmetic for x86-64 by reading in a token in base 10 and writing out the equivalent fragment in base 2:
 
@@ -410,9 +380,8 @@ Variable binding is enabled by the `continuation` expression. `continuation` is 
 (let (params args) ... expr0)
 ->
 (with let:return
-	{(continuation let:aux (params ...) (begin
-		(storage let:storage expr0)
-		{let:return $let:storage})) vals ...})
+	{(continuation let:aux (params ...)
+		{let:return expr0}) vals ...})
 ```
 It is implemented and used as follows:
 #### let.l2
@@ -443,9 +412,8 @@ It is implemented and used as follows:
 
 (function let (l r)
 	(`(with let:return
-		(,[llst (` jump r) (`(continuation let:aux (,[meta:map [@rst [meta:reverse l r]] (begin) @fst r]) (begin
-			(storage let:storage (,[@fst [meta:reverse l r]]))
-			{let:return $let:storage})) r) [meta:map [@rst [meta:reverse l r]] (begin) @frst r] r])) r))
+		(,[llst (` jump r) (`(continuation let:aux (,[meta:map [@rst [meta:reverse l r]] (begin) @fst r])
+			{let:return (,[@fst [meta:reverse l r]])}) r) [meta:map [@rst [meta:reverse l r]] (begin) @frst r] r])) r))
 ```
 #### test5.l2
 ```
