@@ -126,27 +126,26 @@ L2's \protect\hyperlink{jump}{continuations}.
 \protect\hyperlink{commenting}{Commenting}\tabularnewline
 \protect\hyperlink{the-compiler}{The Compiler} &
 \protect\hyperlink{literal}{Literal} &
-\protect\hyperlink{dereferencing}{Dereferencing}\tabularnewline
+\protect\hyperlink{numbers}{Numbers}\tabularnewline
 \textbf{\protect\hyperlink{syntactic-sugar}{Syntactic Sugar}} &
 \protect\hyperlink{storage}{Storage} &
-\protect\hyperlink{numbers}{Numbers}\tabularnewline
+\protect\hyperlink{backquoting}{Backquoting}\tabularnewline
 \textbf{\protect\hyperlink{internal-representation}{Internal
 Representation}} & \protect\hyperlink{if}{If} &
-\protect\hyperlink{backquoting}{Backquoting}\tabularnewline
+\protect\hyperlink{boolean-expressions}{Boolean
+Expressions}\tabularnewline
 & \protect\hyperlink{function}{Function} &
 \protect\hyperlink{variable-binding}{Variable Binding}\tabularnewline
 & \protect\hyperlink{invoke}{Invoke} &
-\protect\hyperlink{boolean-expressions}{Boolean
-Expressions}\tabularnewline
+\protect\hyperlink{characters}{Characters}\tabularnewline
 & \protect\hyperlink{with}{With} &
 \protect\hyperlink{switch-expression}{Switch Expression}\tabularnewline
 & \protect\hyperlink{continuation}{Continuation} &
-\protect\hyperlink{characters}{Characters}\tabularnewline
-& \protect\hyperlink{jump}{Jump} &
 \protect\hyperlink{strings}{Strings}\tabularnewline
-& \protect\hyperlink{meta}{Meta} &
+& \protect\hyperlink{jump}{Jump} &
 \protect\hyperlink{closures}{Closures}\tabularnewline
-& & \protect\hyperlink{assume}{Assume}\tabularnewline
+& \protect\hyperlink{meta}{Meta} &
+\protect\hyperlink{assume}{Assume}\tabularnewline
 & & \protect\hyperlink{fields}{Fields}\tabularnewline
 \bottomrule
 \end{longtable}
@@ -789,50 +788,6 @@ be ignored. Its implementation and use follows:
 ./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 - test1.l2
 \end{verbatim}
 
-\hypertarget{dereferencing}{\subsubsection{Dereferencing}\label{dereferencing}}
-
-So far, we have been writing \texttt{{[}get\ x{]}} in order to get the
-value at the address \texttt{x}. Given the frequency with which
-dereferencing happens, writing \texttt{{[}get\ x{]}} all the time can
-greatly increase the amount of code required to get a task done. The
-following function \texttt{\$} implements an abbreviation for
-dereferencing.
-
-\paragraph{dereference.l2}\label{dereference.l2}
-
-\begin{verbatim}
-(function $ (var r)
-  [llst
-    [llllllst -i- -n- -v- -o- -k- -e- emt r]
-    [lllst -g- -e- -t- emt r]
-    var r])
-\end{verbatim}
-
-\paragraph{test2.l2}\label{test2.l2}
-
-\begin{verbatim}
-(storage a (literal 0...01000001))
-(storage c a)
-[putchar $$c]
-\end{verbatim}
-
-\subparagraph{or equivalently}\label{or-equivalently}
-
-\begin{verbatim}
-(storage a (literal 0...01000001))
-(storage c a)
-[putchar [get [get c]]]
-\end{verbatim}
-
-\paragraph{shell}\label{shell-1}
-
-\begin{verbatim}
-./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 - test2.l2
-\end{verbatim}
-
-Note that in the above code that \texttt{a} and \texttt{c} have global
-scope. This is because the storage expressions are top-level.
-
 \hypertarget{numbers}{\subsubsection{Numbers}\label{numbers}}
 
 Integer literals prove to be quite tedious in L2 as can be seen from
@@ -892,8 +847,7 @@ token in base 10 and writing out the equivalent fragment in base 2:
 \paragraph{shell}\label{shell-2}
 
 \begin{verbatim}
-./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 - \
-  test3.l2
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 numbers64.l2 - test3.l2
 \end{verbatim}
 
 \hypertarget{backquoting}{\subsubsection{Backquoting}\label{backquoting}}
@@ -949,8 +903,8 @@ fragment. Backquote can be implemented and used as follows:
 \paragraph{shell}\label{shell-3}
 
 \begin{verbatim}
-./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 \
-  backquote.l2 anotherfunction.l2 - test4.l2
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 numbers64.l2 backquote.l2 \
+  anotherfunction.l2 - test4.l2
 \end{verbatim}
 
 \hypertarget{variable-binding}{\subsubsection{Variable
@@ -967,9 +921,8 @@ following transformation:
 (let (params args) ... expr0)
 ->
 (with let:return
-  {(continuation let:aux (params ...) (begin
-    (storage let:storage expr0)
-    {let:return $let:storage})) vals ...})
+  {(continuation let:aux (params ...)
+    {let:return expr0}) vals ...})
 \end{verbatim}
 
 It is implemented and used as follows:
@@ -1004,9 +957,8 @@ It is implemented and used as follows:
 (function let (l r)
   (`(with let:return
     (,[llst (` jump r)
-      (`(continuation let:aux (,[meta:map [@rst [meta:reverse l r]] (begin) @fst r]) (begin
-        (storage let:storage (,[@fst [meta:reverse l r]]))
-        {let:return $let:storage})) r)
+      (`(continuation let:aux (,[meta:map [@rst [meta:reverse l r]] (begin) @fst r])
+        {let:return (,[@fst [meta:reverse l r]])}) r)
       [meta:map [@rst [meta:reverse l r]] (begin) @frst r] r])) r))
 \end{verbatim}
 
@@ -1030,8 +982,8 @@ one.
 \paragraph{shell}\label{shell-4}
 
 \begin{verbatim}
-./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 \
-  backquote.l2 let.l2 - test5.l2
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 numbers64.l2 backquote.l2 \
+  let.l2 - test5.l2
 \end{verbatim}
 
 \hypertarget{boolean-expressions}{\subsubsection{Boolean
@@ -1114,8 +1066,8 @@ These transformations are implemented and used as follows:
 \paragraph{shell}\label{shell-5}
 
 \begin{verbatim}
-./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 \
-  backquote.l2 let.l2 boolean.l2 - test6.l2
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 numbers64.l2 backquote.l2 \
+  let.l2 boolean.l2 - test6.l2
 \end{verbatim}
 
 \hypertarget{switch-expression}{\subsubsection{Switch
@@ -1171,8 +1123,8 @@ It is implemented and used as follows:
 \paragraph{shell}\label{shell-6}
 
 \begin{verbatim}
-./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 \
-  backquote.l2 let.l2 boolean.l2 switch.l2 - test7.l2
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 numbers64.l2 backquote.l2 \
+  let.l2 boolean.l2 switch.l2 - test7.l2
 \end{verbatim}
 
 \hypertarget{characters}{\subsubsection{Characters}\label{characters}}
@@ -1215,8 +1167,8 @@ using the \texttt{\#} expression. Its implementation and use follows:
 \paragraph{shell}\label{shell-7}
 
 \begin{verbatim}
-./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 \
-  backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 - test8.l2
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 numbers64.l2 backquote.l2 \
+  let.l2 boolean.l2 switch.l2 characters.l2 - test8.l2
 \end{verbatim}
 
 \hypertarget{strings}{\subsubsection{Strings}\label{strings}}
@@ -1278,8 +1230,8 @@ implemented below:
 \paragraph{shell}\label{shell-8}
 
 \begin{verbatim}
-./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 \
-  backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 - test9.l2
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 numbers64.l2 backquote.l2 \
+  let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 - test9.l2
 \end{verbatim}
 
 \hypertarget{closures}{\subsubsection{Closures}\label{closures}}
@@ -1341,8 +1293,8 @@ These are implemented and used as follows:
 \paragraph{shell}\label{shell-9}
 
 \begin{verbatim}
-./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 \
-  backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 closures.l2 - test10.l2
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 numbers64.l2 backquote.l2 \
+  let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 closures.l2 - test10.l2
 \end{verbatim}
 
 \hypertarget{assume}{\subsubsection{Assume}\label{assume}}
@@ -1410,8 +1362,8 @@ a load from memory, with \texttt{(char\ A)}, a constant.
 \paragraph{shell}\label{shell-10}
 
 \begin{verbatim}
-./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 \
-  backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 assume.l2 - test11.l2
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 numbers64.l2 backquote.l2 \
+  let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 assume.l2 - test11.l2
 \end{verbatim}
 
 Note that the \texttt{assume} expression can also be used to achieve C's
@@ -1595,9 +1547,9 @@ transformations:
 \paragraph{shell}\label{shell-11}
 
 \begin{verbatim}
-./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 \
-  backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 assume.l2 fields.l2 \
-  somefields.l2 - test12.l2
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 numbers64.l2 backquote.l2 \
+  let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 assume.l2 fields.l2 somefields.l2 - \
+  test12.l2
 \end{verbatim}
 
 Note that there is no struct definition in the code, there are only
