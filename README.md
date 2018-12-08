@@ -332,7 +332,7 @@ Integer literals prove to be quite tedious in L2 as can be seen from some of the
 ```
 #### shell
 ```shell
-./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 - test3.l2
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 numbers64.l2 - test3.l2
 ```
 
 ### Backquoting
@@ -371,7 +371,7 @@ The `foo` example in the internal representation section shows how tedious writi
 ```
 #### shell
 ```shell
-./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 anotherfunction.l2 - test4.l2
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 numbers64.l2 backquote.l2 anotherfunction.l2 - test4.l2
 ```
 
 ### Variable Binding
@@ -427,7 +427,7 @@ Note in the above code that `what?` is only able to access `x` because `x` is de
 
 #### shell
 ```shell
-./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 - test5.l2
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 numbers64.l2 backquote.l2 let.l2 - test5.l2
 ```
 
 ### Boolean Expressions
@@ -494,7 +494,7 @@ These transformations are implemented and used as follows:
 ```
 #### shell
 ```shell
-./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 boolean.l2 - test6.l2
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 numbers64.l2 backquote.l2 let.l2 boolean.l2 - test6.l2
 ```
 
 ### Switch Expression
@@ -537,7 +537,7 @@ It is implemented and used as follows:
 ```
 #### shell
 ```shell
-./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 boolean.l2 switch.l2 - test7.l2
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 numbers64.l2 backquote.l2 let.l2 boolean.l2 switch.l2 - test7.l2
 ```
 
 ### Characters
@@ -566,7 +566,7 @@ With `#` implemented, a somewhat more readable implementation of characters is p
 ```
 #### shell
 ```shell
-./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 - test8.l2
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 numbers64.l2 backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 - test8.l2
 ```
 
 ### Strings
@@ -609,7 +609,7 @@ The above exposition has purposefully avoided making strings because it is tedio
 ```
 #### shell
 ```shell
-./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 - test9.l2
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 numbers64.l2 backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 - test9.l2
 ```
 
 ### Closures
@@ -654,7 +654,7 @@ These are implemented and used as follows:
 ```
 #### shell
 ```shell
-./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 closures.l2 - test10.l2
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 numbers64.l2 backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 closures.l2 - test10.l2
 ```
 
 ### Assume
@@ -688,7 +688,7 @@ In the function `foo`, if `x` were equal to `y`, then the else branch of the `as
 
 #### shell
 ```shell
-./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 assume.l2 - test11.l2
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 numbers64.l2 backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 assume.l2 - test11.l2
 ```
 Note that the `assume` expression can also be used to achieve C's `restrict` keyword simply by making its condition the conjunction of inequalities on the memory locations of the extremeties of the "arrays" in question.
 
@@ -825,6 +825,6 @@ To recapitulate, we localized and separated out the definition of a field from t
 ```
 #### shell
 ```shell
-./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 dereference.l2 numbers64.l2 backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 assume.l2 fields.l2 somefields.l2 - test12.l2
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 numbers64.l2 backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 assume.l2 fields.l2 somefields.l2 - test12.l2
 ```
 Note that there is no struct definition in the code, there are only definitions of the fields we need to work with. The negative consequence of this is that we lose C's type safety and portability. The positive consequences are that we gain control over the struct packing, we are now able to use the same field definitions across several conceptually different structs, and that we can overlap our fields in completely arbitrary ways.
