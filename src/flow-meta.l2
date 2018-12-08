@@ -64,15 +64,13 @@
 	(let (params args) ... expr0)
 	->
 	(with let:return
-		{(continuation let:aux (params ...) (begin
-			(storage let:storage expr0)
-			{let:return $let:storage})) vals ...}))
+		{(continuation let:aux (params ...)
+			{let:return expr0}) vals ...}))
 
 (function let (l r)
 	(`(with let:return
-		(,[llst (` jump r) (`(continuation let:aux (,[meta:map [@rst [meta:reverse l r]] (begin) @fst r]) (begin
-			(storage let:storage (,[@fst [meta:reverse l r]]))
-			{let:return $let:storage})) r) [meta:map [@rst [meta:reverse l r]] (begin) @frst r] r])) r))
+		(,[llst (` jump r) (`(continuation let:aux (,[meta:map [@rst [meta:reverse l r]] (begin) @fst r])
+			{let:return (,[@fst [meta:reverse l r]])}) r) [meta:map [@rst [meta:reverse l r]] (begin) @frst r] r])) r))
 
 (;; The following function implements the switch expression by doing the
 	following transformation:
@@ -107,9 +105,7 @@
 (function while (l r)
 	(`(with while:return {(continuation while:aux (while:val)
 		(if (,[@fst l])
-			(begin
-				(storage while:storage (,[@frst l]))
-				{while:aux $while:storage})
+			{while:aux (,[@frst l])}
 			{while:return while:val})) (begin)})r))
 
 (;; The following macro is roughly analogous to C's for-loop. The difference is
@@ -144,16 +140,14 @@
 	(loop cont (params args) ... expr0)
 	->
 	(with loop:return
-		{(continuation cont (params ...) (begin
-			(storage loop:storage expr0)
-			{loop:return $loop:storage})) vals ...}))
+		{(continuation cont (params ...)
+			{loop:return expr0}) vals ...}))
 
 (function loop (l r)
 	(let (bindings [meta:reverse [@rst [meta:reverse [@rst l] r]] r])
 		(`(with loop:return
-			(,[llst (` jump r) (`(continuation (,[@fst l]) (,[meta:map bindings (begin) @fst r]) (begin
-				(storage loop:storage (,[@fst [meta:reverse l r]]))
-				{loop:return $loop:storage})) r) [meta:map bindings (begin) @frst r] r])) r)))
+			(,[llst (` jump r) (`(continuation (,[@fst l]) (,[meta:map bindings (begin) @fst r])
+				{loop:return (,[@fst [meta:reverse l r]])}) r) [meta:map bindings (begin) @frst r] r])) r)))
 
 (function define (l r)
 	(`(with define:return
