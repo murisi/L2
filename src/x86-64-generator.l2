@@ -43,12 +43,11 @@
 				(let (op1 [make-literal [+ (@ bndg-offset bndg) offset] ..])
 					[prepend (make-asmN (movq-mdb-to-reg) (op1 (make-asmN(rbp)()..) dest-reg) ..) c ..]))
 					
-			((absolute-storage)
-				(begin
-					(let (op1 (make-asmN (lnkr-add-off-to-ref) ([use-binding-aug bndg ..] [make-literal offset ..]) ..))
-						[prepend (make-asmN (movq-imm-to-reg) (op1 scratch-reg) ..) c ..])
-					[prepend (make-asmN (movq-mdb-to-reg) ([make-literal #0 ..] scratch-reg dest-reg) ..) c ..]))
-					
+			((absolute-storage) (begin
+				(let (op1 (make-asmN (lnkr-add-off-to-ref) ([use-binding-aug bndg ..] [make-literal offset ..]) ..))
+					[prepend (make-asmN (movq-imm-to-reg) (op1 scratch-reg) ..) c ..])
+				[prepend (make-asmN (movq-mdb-to-reg) ([make-literal #0 ..] scratch-reg dest-reg) ..) c ..]))
+				
 			((top-relative-storage)
 				(let (op1 [make-literal [+ (@ bndg-offset bndg) offset] ..])
 					[prepend (make-asmN (movq-mdb-to-reg) (op1 (make-asmN(rsp)()..) dest-reg) ..) c ..]))
@@ -62,12 +61,11 @@
 				(let (op2 [make-literal [+ (@ bndg-offset bndg) offset] ..])
 					[prepend (make-asmN (movq-reg-to-mdb) (src-reg op2 (make-asmN(rbp)()..)) ..) c ..]))
 					
-			((absolute-storage)
-				(begin
-					(let (op1 (make-asmN (lnkr-add-off-to-ref) ([use-binding-aug bndg ..] [make-literal offset ..]) ..))
-						[prepend (make-asmN (movq-imm-to-reg) (op1 scratch-reg) ..) c ..])
-					[prepend (make-asmN (movq-reg-to-mdb) (src-reg [make-literal #0 ..] scratch-reg) ..) c ..]))
-					
+			((absolute-storage) (begin
+				(let (op1 (make-asmN (lnkr-add-off-to-ref) ([use-binding-aug bndg ..] [make-literal offset ..]) ..))
+					[prepend (make-asmN (movq-imm-to-reg) (op1 scratch-reg) ..) c ..])
+				[prepend (make-asmN (movq-reg-to-mdb) (src-reg [make-literal #0 ..] scratch-reg) ..) c ..]))
+				
 			((top-relative-storage)
 				(let (op2 [make-literal [+ (@ bndg-offset bndg) offset] ..])
 					[prepend (make-asmN (movq-reg-to-mdb) (src-reg op2 (make-asmN(rsp)()..)) ..) c ..]))
@@ -78,16 +76,16 @@
 	(substitute (.. r handler err) (begin
 		[generate-expression (@ expr-condition n) c ..]
 		[prepend (make-asmN (orq-reg-to-reg) ((make-asmN(rax)()..) (make-asmN(rax)()..)) ..) c ..]
-		(storage alternate-binding [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr ..])
-		(let (op1 (make-asmN (lnkr-sub-rip-to-ref) ([use-binding-aug $alternate-binding ..]) ..))
+		(define (alternate-binding [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr ..])
+		(let (op1 (make-asmN (lnkr-sub-rip-to-ref) ([use-binding-aug alternate-binding ..]) ..))
 			[prepend (make-asmN (je-rel) (op1) ..) c ..])
 		[generate-expression (@ expr-consequent n) c ..]
-		(storage end-binding [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr ..])
-		(let (op1 (make-asmN (lnkr-sub-rip-to-ref) ([use-binding-aug $end-binding ..]) ..))
+		(define (end-binding [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr ..])
+		(let (op1 (make-asmN (lnkr-sub-rip-to-ref) ([use-binding-aug end-binding ..]) ..))
 			[prepend (make-asmN (jmp-rel) (op1) ..) c ..])
-		[prepend (make-asmN (label) ([use-binding-aug $alternate-binding ..]) ..) c ..]
+		[prepend (make-asmN (label) ([use-binding-aug alternate-binding ..]) ..) c ..]
 		[generate-expression (@ expr-alternate n) c ..]
-		[prepend (make-asmN (label) ([use-binding-aug $end-binding ..]) ..) c ..])))
+		[prepend (make-asmN (label) ([use-binding-aug end-binding ..]) ..) c ..])))))
 
 (function generate-load-address (bndg dest-reg c r handler err)
 	(substitute (.. r handler err)
@@ -304,18 +302,18 @@
 		(foreach (t (@ expr-expressions n)) [generate-expression t c ..])))
 
 (function generate-expression (n c r handler err)
-	(substitute (.. r handler err) (switch = (@ expr-type n)
-		((-begin-) [generate-begin n c ..])
-		((-continuation-) [generate-continuation n c ..])
-		((-with-) [generate-with n c ..])
-		((-jump-) [generate-jump n c ..])
-		((-symbol-) [generate-reference n c ..])
-		((-storage-) [generate-storage n c ..])
-		((-if-) [generate-if n c ..])
-		((-literal-) [generate-literal n c ..])
-		((-function-) [generate-function n c ..])
-		((-invoke-) [generate-invoke n c ..])
-		(begin))))
+	(substitute (.. r handler err) [(switch = (@ expr-type n)
+		((-begin-) generate-begin)
+		((-continuation-) generate-continuation)
+		((-with-) generate-with)
+		((-jump-) generate-jump)
+		((-symbol-) generate-reference)
+		((-storage-) generate-storage)
+		((-if-) generate-if)
+		((-literal-) generate-literal)
+		((-function-) generate-function)
+		((-invoke-) generate-invoke)
+		(begin)) n c ..]))
 
 (function generate-program (n bindings r handler err) (with return
 	(substitute (.. r handler err) (begin
