@@ -1,12 +1,10 @@
-(function mem-write (mem idx bytes cnt) (with return
-	(let (end [+ $idx cnt])
-		{(continuation loop (bytes)
-			(if [= $idx end]
-				{return (begin)}
-				(begin
-					[setb [+ mem $idx] [getb bytes]]
-					[set+ idx #1]
-					{loop [+ bytes #1]}))) bytes})))
+(function mem-write (mem idx bytes cnt) (with return (begin
+	(define (end [+ $idx cnt])
+	(loop write-bytes (bytes bytes)
+		(if [= $idx end] (begin) (begin
+			[setb [+ mem $idx] [getb bytes]]
+			[set+ idx #1]
+			{write-bytes [+ bytes #1]})))))))
 
 (function write-mr-instr (bin pos opcode reg rm m rexw) (begin
 	(define (mod (if m #2 #3))
