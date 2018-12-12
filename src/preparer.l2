@@ -9,28 +9,28 @@
 	(define (err (@1 ctx))
 	
 	(switch = (@ expr-type e)
-		((-begin-) (let (temp-reg [create-buffer #0]) (begin
-			(let (definitions (reverse-filter (f (@ expr-expressions e))
+		((-begin-) (begin
+			(define (temp-reg [create-buffer #0])
+			(define (definitions (reverse-filter (f (@ expr-expressions e))
 					(or [= (@ expr-type f) (-storage-)] [= (@ expr-type f) (-function-)]) temp-reg handler err))
-				(until (partial definitions) [nil? partial] [@cdr partial]
-					(with break
-						(let (_ (find (f (@ cdr partial)) [named-sym= (@ expr-reference f) (@ expr-reference [@car partial])] {break (begin)}))
-							(let (dup-ref-name (@ expr-name(@ expr-reference[@car partial]))) (begin
-								[destroy-buffer temp-reg]
-								{handler (sets err multiple-definition-error dup-ref-name)}))))))
+			(until (partial definitions) [nil? partial] [@cdr partial] (with break (begin
+				(find (f (@ cdr partial)) [named-sym= (@ expr-reference f) (@ expr-reference [@car partial])] {break (begin)})
+				(define (dup-ref-name (@ expr-name(@ expr-reference[@car partial])))
+				[destroy-buffer temp-reg]
+				{handler (sets err multiple-definition-error dup-ref-name)}))))
 			[destroy-buffer temp-reg]
-			{return e})))
+			{return e}))))
 		
-		((-continuation-) (-function-) (let (temp-reg [create-buffer #0]) (begin
-			(let (ref-with-params [cons (@ expr-reference e) (@ expr-parameters e) temp-reg])
-				(until (partial ref-with-params) [nil? partial] [@cdr partial]
-					(with break
-						(let (_ (find (f (@ cdr partial)) [named-sym= f [@car partial]] {break (begin)}))
-							(let (dup-ref-name (@ expr-name[@car partial])) (begin
-								[destroy-buffer temp-reg]
-								{handler (sets err multiple-definition-error dup-ref-name)}))))))
+		((-continuation-) (-function-) (begin
+			(define (temp-reg [create-buffer #0])
+			(define (ref-with-params [cons (@ expr-reference e) (@ expr-parameters e) temp-reg])
+			(until (partial ref-with-params) [nil? partial] [@cdr partial] (with break (begin
+				(find (f (@ cdr partial)) [named-sym= f [@car partial]] {break (begin)})
+				(define (dup-ref-name (@ expr-name[@car partial]))
+				[destroy-buffer temp-reg]
+				{handler (sets err multiple-definition-error dup-ref-name)}))))
 			[destroy-buffer temp-reg]
-			{return e})))
+			{return e}))))
 		
 		{return e}))))))
 
