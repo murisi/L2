@@ -31,116 +31,118 @@ jmp l2rt_end
 
 get:
 get8b:
-movq 0(%rdi), %rax
+movq 0(%rcx), %rax
 ret
 
 getb:
 get1b:
 xorq %rax, %rax
-movb 0(%rdi), %al
+movb 0(%rcx), %al
 ret
 
 get2b:
 xorq %rax, %rax
-movw 0(%rdi), %ax
+movw 0(%rcx), %ax
 ret
 
 get4b:
 xorq %rax, %rax
-movl 0(%rdi), %eax
+movl 0(%rcx), %eax
 ret
 
 set:
 set8b:
-movq %rsi, 0(%rdi)
+movq %rdx, 0(%rcx)
 ret
 
 setb:
 set1b:
-movq %rsi, %rax
-movb %al, 0(%rdi)
+movq %rdx, %rax
+movb %al, 0(%rcx)
 ret
 
 set2b:
-movq %rsi, %rax
-movw %ax, 0(%rdi)
+movq %rdx, %rax
+movw %ax, 0(%rcx)
 ret
 
 set4b:
-movq %rsi, %rax
-movl %eax, 0(%rdi)
+movq %rdx, %rax
+movl %eax, 0(%rcx)
 ret
 
 add:
-movq %rdi, %rax
-addq %rsi, %rax
+movq %rcx, %rax
+addq %rdx, %rax
 ret
 
 subtract:
-movq %rdi, %rax
-subq %rsi, %rax
+movq %rcx, %rax
+subq %rdx, %rax
 ret
 
 multiply:
-movq %rdi, %rax
-mulq %rsi
+movq %rcx, %rax
+mulq %rdx
 ret
 
 divide:
+movq %rdx, %r8
 xorq %rdx, %rdx
-movq %rdi, %rax
-divq %rsi
+movq %rcx, %rax
+divq %r8
 ret
 
 rem:
+movq %rdx, %r8
 xorq %rdx, %rdx
-movq %rdi, %rax
-divq %rsi
+movq %rcx, %rax
+divq %r8
 movq %rdx, %rax
 ret
 
 equals:
 xorq %rax, %rax
-subq %rsi, %rdi
+subq %rdx, %rcx
 setz %al
 ret
 
 greaterthan:
 xorq %rax, %rax
-subq %rdi, %rsi
+subq %rcx, %rdx
 setc %al
 ret
 
 lesserthan:
 xorq %rax, %rax
-subq %rsi, %rdi
+subq %rdx, %rcx
 setc %al
 ret
 
 leftshift:
-movq %rdi, %rax
-movq %rsi, %rcx
+movq %rcx, %rax
+movq %rdx, %rcx
 shl %cl, %rax
 ret
 
 rightshift:
-movq %rdi, %rax
-movq %rsi, %rcx
+movq %rcx, %rax
+movq %rdx, %rcx
 shr %cl, %rax
 ret
 
 land:
-movq %rdi, %rax
-andq %rsi, %rax
+movq %rcx, %rax
+andq %rdx, %rax
 ret
 
 lor:
-movq %rdi, %rax
-orq %rsi, %rax
+movq %rcx, %rax
+orq %rdx, %rax
 ret
 
 lnot:
-movq %rdi, %rax
+movq %rcx, %rax
 notq %rax
 ret
 
@@ -163,15 +165,20 @@ jmp *8(%rsi)
  * this function.
  */
 syscall:
-	movq %rdi, %rax
-	movq %rsi, %rdi
-	movq %rdx, %rsi
-	movq %rcx, %rdx
-	movq %r8, %r10
-	movq %r9, %r8
-	movq 8(%rsp), %r9
-	syscall
-	ret
+movq %rcx, 8(%rsp)
+movq %rdx, 16(%rsp)
+movq %r8, 24(%rsp)
+movq %r9, 32(%rsp)
+
+movq 8(%rsp), %rax
+movq 16(%rsp), %rdi
+movq 24(%rsp), %rsi
+movq 32(%rsp), %rdx
+movq 40(%rsp), %rcx
+movq 48(%rsp), %r8
+movq 56(%rsp), %r9
+syscall
+ret
 
 l2rt_end:
 ret

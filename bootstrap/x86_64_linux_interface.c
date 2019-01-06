@@ -30,12 +30,13 @@
 typedef struct {
 	void *rbp;
 	void *cir;
-	void *rsi;
 	void *r14;
 	void *r13;
 	void *rbx;
 	void *r12;
 	void *r15;
+	void *rdi;
+	void *rsi;
 	void *rsp;
 	void *ctx; //For data that you want to transfer through jumps
 } jumpbuf;
