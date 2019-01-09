@@ -15,13 +15,18 @@ syscall:
 	movq %r9, 32(%rsp)
 
 	movq 8(%rsp), %rax
-	movq 16(%rsp), %rdi
-	movq 24(%rsp), %rsi
 	movq 32(%rsp), %rdx
-	movq 40(%rsp), %rcx
+	movq 40(%rsp), %r10
 	movq 48(%rsp), %r8
 	movq 56(%rsp), %r9
+	
+	movq %rdi, 8(%rsp)
+	movq %rsi, 32(%rsp)
+	movq 16(%rsp), %rdi
+	movq 24(%rsp), %rsi
 	syscall
+	movq 8(%rsp), %rdi
+	movq 32(%rsp), %rsi
 	ret
 
 setjump:
