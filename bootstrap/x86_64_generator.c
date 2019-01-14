@@ -334,16 +334,21 @@ unsigned long max(unsigned long a, unsigned long b) {
 }
 
 void sgenerate_invokes(union expression *n, list *c, buffer r) {
-	if(length(n->invoke.arguments) < 4) {
+	//Push arguments onto stack
+	if(!n->invoke.contains_with && length(n->invoke.arguments) < 4) {
 		prepend(make_asm2(SUBQ_IMM_TO_REG, make_literal(WORD_SIZE * (4 - length(n->invoke.arguments)), r), make_asm0(RSP, r), r), c, r);
 	}
-	//Push arguments onto stack
 	cond_push_relative_storage(n, c, r);
 	generate_args_to_buffer(n, c, r);
+	generate_expressions(n->invoke.reference, c, r);
+	
 	if(n->invoke.contains_with) {
 		//If invoke expression "contains" a with expression, then it may be the case that sub-expressions
 		//tamper with the stack pointer. If so, then we can use the stack-pointer safely only after the
 		//sub-expressions have finished evaluating.
+		if(length(n->invoke.arguments) < 4) {
+			prepend(make_asm2(SUBQ_IMM_TO_REG, make_literal(WORD_SIZE * (4 - length(n->invoke.arguments)), r), make_asm0(RSP, r), r), c, r);
+		}
 		int offset;
 		for(offset = length(n->invoke.arguments) * WORD_SIZE; offset; ) {
 			offset -= WORD_SIZE;
@@ -351,14 +356,12 @@ void sgenerate_invokes(union expression *n, list *c, buffer r) {
 			prepend(make_asm1(PUSHQ_REG, make_asm0(R11, r), r), c, r);
 		}
 	}
-	generate_expressions(n->invoke.reference, c, r);
-	prepend(make_asm2(MOVQ_REG_TO_REG, make_asm0(RAX, r), make_asm0(R11, r), r), c, r);
 	
 	prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(0, r), make_asm0(RSP, r), make_asm0(RCX, r), r), c, r);
 	prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(8, r), make_asm0(RSP, r), make_asm0(RDX, r), r), c, r);
 	prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(16, r), make_asm0(RSP, r), make_asm0(R8, r), r), c, r);
 	prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(24, r), make_asm0(RSP, r), make_asm0(R9, r), r), c, r);
-	prepend(make_asm1(CALL_REG, make_asm0(R11, r), r), c, r);
+	prepend(make_asm1(CALL_REG, make_asm0(RAX, r), r), c, r);
 	prepend(make_asm2(ADDQ_IMM_TO_REG, make_literal(WORD_SIZE * max(length(n->invoke.arguments), 4), r), make_asm0(RSP, r), r), c, r);
 }
 
