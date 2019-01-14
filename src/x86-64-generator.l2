@@ -26,11 +26,15 @@
 		
 		((-jump-) (-invoke-) (begin
 			(setf bndg-size (@ expr-temp-storage-bndg n) [* (word-size) [length (@ expr-arguments n)]])
-			(if (@ expr-contains-with n)
-				[append (@ expr-temp-storage-bndg n) (& expr-binding-augs[get-parent-function n]) ..]
-				(begin
+			(switch = (@ expr-contains-flag n)
+				((contains-with)
+					[append (@ expr-temp-storage-bndg n) (& expr-binding-augs[get-parent-function n]) ..])
+				((contains-jump)
+					(setf bndg-storage (@ expr-temp-storage-bndg n) (nil-storage)))
+				((contains-none) (begin
 					(setf bndg-storage (@ expr-temp-storage-bndg n) (top-relative-storage))
-					(setf bndg-offset (@ expr-temp-storage-bndg n) #0)))))
+					(setf bndg-offset (@ expr-temp-storage-bndg n) #0)))
+				(begin))))
 		
 		(begin))
 	
@@ -249,14 +253,14 @@
 
 (function generate-invoke (n c r handler err)
 	(substitute (.. r handler err) (begin
-		(if (and (not (@ expr-contains-with n)) [< [length(@ expr-arguments n)] #4])
+		(if (and [= (@ expr-contains-flag n) (contains-none)] [< [length(@ expr-arguments n)] #4])
 			[prepend (make-asmN(subq-imm-to-reg) ([make-literal [* [- #4 [length(@ expr-arguments n)]] (word-size)] ..] (make-asmN(rsp)()..)) ..) c ..]
 			(begin))
 		[cond-push-relative-storage n c ..]
 		[generate-args-to-buffer n c ..]
 		[generate-expression (@ expr-reference n) c ..]
 		
-		(if (@ expr-contains-with n)
+		(if [= (@ expr-contains-flag n) (contains-with)]
 			(begin
 				(if [< [length(@ expr-arguments n)] #4]
 					[prepend (make-asmN(subq-imm-to-reg) ([make-literal [* [- #4 [length(@ expr-arguments n)]] (word-size)] ..] (make-asmN(rsp)()..)) ..) c ..]
