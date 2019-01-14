@@ -177,46 +177,52 @@ union expression *vescape_analysis(union expression *s, void *ctx) {
 	return s;
 }
 
-bool contains_with_analysis(union expression *s) {
-	bool contains_with = false;
+unsigned long containment_analysis(union expression *s) {
+	unsigned long contains_flag = CONTAINS_NONE;
 	switch(s->base.type) {
 		case begin: {
 			union expression *t;
 			foreach(t, s->begin.expressions) {
-				contains_with |= contains_with_analysis(t);
+				contains_flag |= containment_analysis(t);
 			}
 			break;
 		} case _if: {
-			contains_with |= contains_with_analysis(s->_if.condition);
-			contains_with |= contains_with_analysis(s->_if.consequent);
-			contains_with |= contains_with_analysis(s->_if.alternate);
+			contains_flag |= containment_analysis(s->_if.condition);
+			unsigned long consequent_flag = containment_analysis(s->_if.consequent);
+			unsigned long alternate_flag = containment_analysis(s->_if.alternate);
+			if(consequent_flag + alternate_flag == 1) {
+				contains_flag = CONTAINS_WITH;
+			} else {
+				contains_flag |= consequent_flag;
+				contains_flag |= alternate_flag;
+			}
 			break;
 		} case function: case continuation: case with: {
-			contains_with_analysis(s->function.expression);
+			containment_analysis(s->function.expression);
 			if(s->base.type == with) {
-				contains_with = true;
+				contains_flag = CONTAINS_WITH;
 			}
 			break;
 		} case storage: {
 			union expression *t;
 			foreach(t, s->invoke.arguments) {
-				contains_with |= contains_with_analysis(t);
+				contains_flag |= containment_analysis(t);
 			}
 			break;
 		} case jump: case invoke: {
-			contains_with |= contains_with_analysis(s->invoke.reference);
+			contains_flag |= containment_analysis(s->invoke.reference);
 			union expression *t;
 			foreach(t, s->invoke.arguments) {
-				contains_with |= contains_with_analysis(t);
+				contains_flag |= containment_analysis(t);
 			}
-			s->invoke.contains_with = contains_with;
+			s->invoke.contains_flag = contains_flag;
 			if(s->base.type == jump) {
-				contains_with = false;
+				contains_flag = CONTAINS_JUMP;
 			}
 			break;
 		}
 	}
-	return contains_with;
+	return contains_flag;
 }
 
 void visit_expressions(union expression *(*visitor)(union expression *, void *), union expression **s, void *ctx) {

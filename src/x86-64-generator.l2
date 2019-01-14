@@ -26,11 +26,15 @@
 		
 		((-jump-) (-invoke-) (begin
 			(setf bndg-size (@ expr-temp-storage-bndg n) [* (word-size) [length (@ expr-arguments n)]])
-			(if (@ expr-contains-with n)
-				[append (@ expr-temp-storage-bndg n) (& expr-binding-augs[get-parent-function n]) ..]
-				(begin
+			(switch = (@ expr-contains-flag n)
+				((contains-with)
+					[append (@ expr-temp-storage-bndg n) (& expr-binding-augs[get-parent-function n]) ..])
+				((contains-jump)
+					(setf bndg-storage (@ expr-temp-storage-bndg n) (nil-storage)))
+				((contains-none) (begin
 					(setf bndg-storage (@ expr-temp-storage-bndg n) (top-relative-storage))
-					(setf bndg-offset (@ expr-temp-storage-bndg n) #0)))))
+					(setf bndg-offset (@ expr-temp-storage-bndg n) #0)))
+				(begin))))
 		
 		(begin))
 	
@@ -112,7 +116,7 @@
 			[set+ offset-ref (word-size)]))
 		[generate-load-address (@ expr-binding-aug(@ expr-reference n)) (make-asmN(rax)()..) c ..])))
 
-(function generate-reference (n c r handler err)
+(function generate-symbol (n c r handler err)
 	(substitute (.. r handler err)
 		(let (def (@ bndg-definition(@ expr-binding-aug n)))
 			(if (and (or [= (@ expr-type(@ expr-parent def)) (-function-)] [= (@ expr-type(@ expr-parent def)) (-continuation-)])
@@ -257,7 +261,7 @@
 	(substitute (.. r handler err) (begin
 		[cond-push-relative-storage n c ..]
 		[generate-args-to-buffer n c ..]
-		(if (@ expr-contains-with n)
+		(if [= (@ expr-contains-flag n) (contains-with)]
 			(loop move-args (offset [* [length (@ expr-arguments n)] (word-size)])
 				(if offset (begin
 					(define (offset [- offset (word-size)])
@@ -307,7 +311,7 @@
 		((-continuation-) generate-continuation)
 		((-with-) generate-with)
 		((-jump-) generate-jump)
-		((-symbol-) generate-reference)
+		((-symbol-) generate-symbol)
 		((-storage-) generate-storage)
 		((-if-) generate-if)
 		((-literal-) generate-literal)
