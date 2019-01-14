@@ -17,7 +17,7 @@ typedef unsigned long int bool;
 
 list compile_program(union expression *program, list *bindings, buffer expr_buf, jumpbuf *handler) {
 	visit_expressions(vfind_multiple_definitions, &program, handler);
-	contains_with_analysis(program);
+	containment_analysis(program);
 	classify_program_binding_augs(program->function.expression);
 	visit_expressions(vlink_symbols, &program->function.expression, (void* []) {handler, expr_buf});
 	visit_expressions(vescape_analysis, &program, NULL);

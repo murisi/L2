@@ -13,7 +13,7 @@ enum expression_type {
 	meta
 };
 
-enum binding_aug_type { absolute_storage, frame_relative_storage, top_relative_storage };
+enum binding_aug_type { absolute_storage, frame_relative_storage, top_relative_storage, nil_storage };
 
 enum binding_aug_scope { local_scope, global_scope };
 
@@ -68,6 +68,10 @@ struct storage_expression {
 	list arguments; // void * = union expression *
 };
 
+#define CONTAINS_NONE 0UL
+#define CONTAINS_JUMP 1UL
+#define CONTAINS_WITH 3UL
+
 struct invoke_expression {
 	enum expression_type type;
 	union expression *parent;
@@ -75,7 +79,7 @@ struct invoke_expression {
 	union expression *reference;
 	list arguments; // void * = union expression *
 	
-	bool contains_with;
+	unsigned long contains_flag;
 	struct binding_aug *temp_storage_bndg;
 };
 
@@ -86,7 +90,7 @@ struct jump_expression {
 	union expression *reference;
 	list arguments;
 	
-	bool contains_with;
+	unsigned long contains_flag;
 	struct binding_aug *temp_storage_bndg;
 	
 	union expression *short_circuit;
@@ -320,7 +324,7 @@ union expression *make_jump(union expression *ref, list args, buffer reg) {
 	u->jump.type = jump;
 	u->jump.parent = NULL;
 	put(u, jump.reference, ref);
-	u->jump.contains_with = true;
+	u->jump.contains_flag = CONTAINS_WITH;
 	u->jump.temp_storage_bndg = make_binding_aug(frame_relative_storage, local_scope, defined_state, NULL, u, reg);
 	u->jump.arguments = args;
 	union expression *arg;
@@ -385,7 +389,7 @@ union expression *make_invoke(union expression *ref, list args, buffer reg) {
 	u->invoke.type = invoke;
 	u->invoke.parent = NULL;
 	put(u, invoke.reference, ref);
-	u->invoke.contains_with = true;
+	u->invoke.contains_flag = CONTAINS_WITH;
 	u->invoke.temp_storage_bndg = make_binding_aug(frame_relative_storage, local_scope, defined_state, NULL, u, reg);
 	u->invoke.arguments = args;
 	union expression *arg;

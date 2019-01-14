@@ -83,12 +83,19 @@ union expression *vlayout_frames(union expression *n, buffer r) {
 			break;
 		} case jump: case invoke: {
 			n->invoke.temp_storage_bndg->size = WORD_SIZE * length(n->invoke.arguments);
-			if(n->invoke.contains_with) {
-				union expression *parent_function = get_parent_function(n);
-				append(n->invoke.temp_storage_bndg, &parent_function->function.binding_augs, r);
-			} else {
-				n->invoke.temp_storage_bndg->type = top_relative_storage;
-				n->invoke.temp_storage_bndg->offset = 0;
+			switch(n->invoke.contains_flag) {
+				case CONTAINS_WITH: {
+					union expression *parent_function = get_parent_function(n);
+					append(n->invoke.temp_storage_bndg, &parent_function->function.binding_augs, r);
+					break;
+				} case CONTAINS_JUMP: {
+					n->invoke.temp_storage_bndg->type = nil_storage;
+					break;
+				} case CONTAINS_NONE: {
+					n->invoke.temp_storage_bndg->type = top_relative_storage;
+					n->invoke.temp_storage_bndg->offset = 0;
+					break;
+				}
 			}
 			break;
 		}
@@ -335,14 +342,14 @@ unsigned long max(unsigned long a, unsigned long b) {
 
 void sgenerate_invokes(union expression *n, list *c, buffer r) {
 	//Push arguments onto stack
-	if(!n->invoke.contains_with && length(n->invoke.arguments) < 4) {
+	if(n->invoke.contains_flag == CONTAINS_NONE && length(n->invoke.arguments) < 4) {
 		prepend(make_asm2(SUBQ_IMM_TO_REG, make_literal(WORD_SIZE * (4 - length(n->invoke.arguments)), r), make_asm0(RSP, r), r), c, r);
 	}
 	cond_push_relative_storage(n, c, r);
 	generate_args_to_buffer(n, c, r);
 	generate_expressions(n->invoke.reference, c, r);
 	
-	if(n->invoke.contains_with) {
+	if(n->invoke.contains_flag == CONTAINS_WITH) {
 		//If invoke expression "contains" a with expression, then it may be the case that sub-expressions
 		//tamper with the stack pointer. If so, then we can use the stack-pointer safely only after the
 		//sub-expressions have finished evaluating.
