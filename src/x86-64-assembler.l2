@@ -368,11 +368,11 @@
 			(define (max-text-sec-len [pad-size [* (write-elf-max-instr-len) [length generated-expressions]] (write-elf-alignment)])
 			(define (max-rela-sec-len [* (write-elf-max-instr-fields) [* [length generated-expressions] (elf64-rela)]])
 			
-			(storage text [buffer-alloc max-text-sec-len $temp-buf cleanup err])
-			(storage relas [buffer-alloc max-rela-sec-len $temp-buf cleanup err])
-			(storage rela-ptr $relas)
+			(define (text [buffer-alloc max-text-sec-len $temp-buf cleanup err])
+			(define (relas [buffer-alloc max-rela-sec-len $temp-buf cleanup err])
+			(storage rela-ptr relas)
 			
-			[assemble generated-expressions $text text-len syms rela-ptr]
+			[assemble generated-expressions text text-len syms rela-ptr]
 			
 			(;; Mandatory undefined section)
 			(define (undef-shdr [buffer-alloc (elf64-shdr) $temp-buf cleanup err])
@@ -463,7 +463,7 @@
 			(setf sh-flags rela-shdr #0)
 			(setf sh-addr rela-shdr #0)
 			(setf sh-offset rela-shdr [+ (@ sh-offset bss-shdr) #0])
-			(setf sh-size rela-shdr [- $rela-ptr $relas])
+			(setf sh-size rela-shdr [- $rela-ptr relas])
 			(setf sh-link rela-shdr #4)
 			(setf sh-info rela-shdr #2)
 			(setf sh-addralign rela-shdr #0)
@@ -471,10 +471,10 @@
 			[mem-write $bin pos rela-shdr (elf64-shdr)]
 	
 			[mem-write $bin pos shstrtab-padded shstrtab-padded-len]
-			[mem-write $bin pos $text max-text-sec-len]
+			[mem-write $bin pos text max-text-sec-len]
 			[mem-write $bin pos strtab strtab-padded-len]
 			[mem-write $bin pos syms [* sym-count (elf64-sym)]]
-			[mem-write $bin pos $relas [- $rela-ptr $relas]])))))))))))))))))))
+			[mem-write $bin pos relas [- $rela-ptr relas]])))))))))))))))))))))
 			
 		(cleanup [destroy-buffer $temp-buf return-cont err])
 		
