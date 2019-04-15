@@ -1,3 +1,148 @@
+(;; A complete description for bindings that will be put into generated object files.)
+
+(function binding-aug (l r) [mk# r #48])
+
+(function bndg-name (l r) [mk-field l r #0 #8])
+(function bndg-offset (l r) [mk-field l r #8 #8])
+(function bndg-size (l r) [mk-field l r #16 #8])
+(function bndg-definition (l r) [mk-field l r #24 #8])
+(function bndg-context (l r) [mk-field l r #32 #8])
+(function bndg-storage (l r) [mk-field l r #40 #1])
+(function bndg-scope (l r) [mk-field l r #41 #1])
+(function bndg-state (l r) [mk-field l r #42 #1])
+
+(;; Valid values for bndg-storage)
+
+(function absolute-storage (l r) [mk# r #0])
+(function frame-relative-storage (l r) [mk# r #1])
+(function top-relative-storage (l r) [mk# r #2])
+(function nil-storage (l r) [mk# r #3])
+
+(;; Valid values for bndg-scope)
+
+(function local-scope (l r) [mk# r #0])
+(function global-scope (l r) [mk# r #1])
+
+(;; Valid values for bndg-state)
+
+(function undefined-state (l r) [mk# r #0])
+(function defined-state (l r) [mk# r #1])
+
+(;; A complete representation for L2 expressions as they are found in L2 source files.)
+
+(function expression (l r) [mk# r #56])
+
+(function expr-type (l r) [mk-field l r #0 #8])
+(function expr-parent (l r) [mk-field l r #8 #8])
+(;; Only for type(s) (-begin-))
+(function expr-expressions (l r) [mk-field l r #16 #8])
+(;; Only for type(s) (-assembly-))
+(function expr-opcode (l r) [mk-field l r #16 #8])
+(;; Only for type(s) (-assembly-) (-storage-) (-invoke-) (-jump-))
+(function expr-arguments (l r) [mk-field l r #24 #8])
+(;; Only for type(s) (-storage-) (-invoke-) (-jump-) (-function-) (-continuation-) (-with-) (-meta-))
+(function expr-reference (l r) [mk-field l r #16 #8])
+(;; Only for type(s) (-jump-))
+(function expr-short-circuit (l r) [mk-field l r #48 #8])
+(;; Only for type(s) (-if-))
+(function expr-condition (l r) [mk-field l r #16 #8])
+(function expr-consequent (l r) [mk-field l r #24 #8])
+(function expr-alternate (l r) [mk-field l r #32 #8])
+(;; Only for type(s) (-literal-))
+(function expr-value (l r) [mk-field l r #16 #8])
+(;; Only for type(s) (-function-) (-continuation-) (-with-))
+(function expr-expression (l r) [mk-field l r #24 #8])
+(function expr-parameters (l r) [mk-field l r #32 #8])
+(;; Only for type(s) (-function-))
+(function expr-binding-augs (l r) [mk-field l r #40 #8])
+(;; Only for type(s) (-continuation-) (-with-))
+(function expr-cont-instr-bndg (l r) [mk-field l r #40 #8])
+(function expr-escapes (l r) [mk-field l r #48 #8])
+(;; Only for type(s) (-symbol-))
+(function expr-name (l r) [mk-field l r #16 #8])
+(function expr-binding-aug (l r) [mk-field l r #24 #8])
+(;; Only for type(s) (-meta-))
+(function expr-argument (l r) [mk-field l r #24 #8])
+(;; Only for type(s) (-invoke-) (-jump-))
+(function expr-contains-flag (l r) [mk-field l r #32 #8])
+(function expr-temp-storage-bndg (l r) [mk-field l r #40 #8])
+
+(;; Valid values for expr-type.)
+
+(function -storage- (l r) [mk# r #0])
+(function -function- (l r) [mk# r #1])
+(function -with- (l r) [mk# r #2])
+(function -invoke- (l r) [mk# r #3])
+(function -if- (l r) [mk# r #4])
+(function -begin- (l r) [mk# r #5])
+(function -literal- (l r) [mk# r #6])
+(function -symbol- (l r) [mk# r #7])
+(function -jump- (l r) [mk# r #8])
+(function -continuation- (l r) [mk# r #9])
+(function -assembly- (l r) [mk# r #10])
+(function -meta- (l r) [mk# r #11])
+
+(;; Valid values for expr-contains-flag.)
+
+(function contains-none (l r) [mk# r #0])
+(function contains-jump (l r) [mk# r #1])
+(function contains-with (l r) [mk# r #3])
+
+(;; Convenience functions for making L2 expressions. They save you from having
+	to construct parameter and argument lists separately from the construction of
+	the expression.)
+
+(;; Usage (make-functionN ref-expr (param-exprs ...) expr buf handler err))
+
+(function make-functionN (l r)
+	[lllllst (` invoke r) (` make-function r) [@fst l] [list [lst [@frst l] [@rrrst l] r] r]
+		[@frrst l] [@rrrst l] r])
+
+(;; Analogous to above.)
+
+(function make-continuationN (l r)
+	[lllllst (` invoke r) (` make-continuation r) [@fst l] [list [lst [@frst l] [@rrrst l] r] r]
+		[@frrst l] [@rrrst l] r])
+
+(;; Usage (make-asmN opcode (arg-exprs ...) buf handler err))
+
+(function make-asmN (l r)
+	[llllst (` invoke r) (` make-asm r) [@fst l] [list [lst [@frst l] [@rrst l] r] r] [@rrst l] r])
+
+(;; Analogous to above.)
+
+(function make-jumpN (l r)
+	[llllst (` invoke r) (` make-jump r) [@fst l] [list [lst [@frst l] [@rrst l] r] r] [@rrst l] r])
+
+(;; Analogous to above.)
+
+(function make-invokeN (l r)
+	[llllst (` invoke r) (` make-invoke r) [@fst l] [list [lst [@frst l] [@rrst l] r] r] [@rrst l] r])
+
+(;; Macro takes a reference to an expression as its first argument and an
+	expression as its second argument. Produces code to obtain parent of expression
+	referenced by first argument, set that to be the parent of the second expression,
+	and put the second expression at the address referenced by the first argument.)
+
+(function replace-expression (l r)
+	(`(let (replace-expression:orig (,[@fst l]))
+		(let (replace-expression:parent (@ expr-parent $replace-expression:orig))
+			(let (replace-expression:repl (,[@frst l])) (begin
+				(setf expr-parent replace-expression:repl replace-expression:parent)
+				[set replace-expression:orig replace-expression:repl]))))r))
+
+(;; The meta-expression (put field expr1 expr2) is the same as (setf field expr1 expr2)
+	except that it also sets the parent of expr2 to be expr1.)
+
+(function put (l r)
+	(`(let (put:parent (,[@frst l])) (put:repl (,[@frrst l])) (begin
+		(setf (,[@fst l]) put:parent put:repl)
+		(setf expr-parent put:repl put:parent)))r))
+
+(;; Constant against which the length of a literal expression is checked.)
+
+(function build-expression-literal-len (l r) [mk# r #64])
+
 (storage null-expr (begin))
 
 (storage null-binding (begin))
