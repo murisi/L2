@@ -91,9 +91,6 @@ void evaluate_files(list metaprograms, list *bindings, buffer expr_buf, buffer o
 	{foreach(obj, objects) {
 		mutate_bindings(obj, *bindings);
 	}}
-	{foreach(obj, objects) {
-		((void (*)()) segment(obj, ".text"))();
-	}}
 }
 
 void compile_files(list programs, list bndgs, buffer expr_buf, buffer obj_buf, jumpbuf *handler) {
@@ -301,25 +298,13 @@ int main(int argc, char *argv[]) {
 	for(i = 0; i < sizeof(static_bindings_arr) / sizeof(struct binding); i++) {
 		prepend(&static_bindings_arr[i], &bndgs, obj_buf);
 	}
-	for(i = 1; i < argc; i++) {
-		if(!strcmp(argv[i], "-")) {
-			break;
-		}
-	}
-	if(i == argc) {
-		throw_arguments(&evaluate_handler);
-	}
-	list metaprograms = nil;
-	for(i = 1; strcmp(argv[i], "-"); i++) {
-		append(argv[i], &metaprograms, evaluate_buffer);
-	}
-	
-	evaluate_files(metaprograms, &bndgs, expr_buf, obj_buf, &evaluate_handler);
 	
 	list programs = nil;
-	for(i++; i < argc; i++) {
+	for(i = 1; i < argc; i++) {
 		append(argv[i], &programs, evaluate_buffer);
 	}
+	
+	evaluate_files(programs, &bndgs, expr_buf, obj_buf, &evaluate_handler);
 	compile_files(programs, bndgs, expr_buf, obj_buf, &evaluate_handler);
 	
 	destroy_buffer(expr_buf);

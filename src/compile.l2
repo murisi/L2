@@ -111,8 +111,7 @@
 		[append $obj objects obj-buf handler err]
 		[append-list bindings [immutable-bindings $obj obj-buf handler err]])))
 
-	(foreach (obj $objects) [mutate-bindings obj $bindings])
-	(foreach (obj $objects) [[segment obj (" .text)]])))
+	(foreach (obj $objects) [mutate-bindings obj $bindings])))
 
 (;; Takes a list of L2 source files and compiles them into object files. programs is a
 	list of strings containing paths to L2 source files. bndgs is a list of bindings
@@ -163,16 +162,6 @@
 			[set expr-buf [create-buffer #0 cleanup-obj-buf err]]
 			
 			(storage args [@cdr[argv $obj-buf handler err]])
-			(storage dash-list (find (x $args) [str= x (" -)] {handler (sets err arguments-error)}))
-			
-			(storage metaprograms nil)
-			(with break (foreach (fn $args)
-				(if [str= fn (" -)]
-					{break (begin)}
-					[append fn metaprograms $obj-buf handler err])))
-			
-			(storage programs nil)
-			(foreach (fn [@cdr $dash-list]) [append fn programs $obj-buf handler err])
 			
 			(;; These are all the bindings necessary for metaprogramming. Their
 				definitions can be found in list.l2 and lexer.l2.)
@@ -275,9 +264,9 @@
 				[make-binding (" char=) i/f:char= ..])..)))
 			
 			(;; Evaluate the metaprogram)
-			[evaluate-files $metaprograms bndgs $expr-buf $obj-buf handler err]
+			[evaluate-files $args bndgs $expr-buf $obj-buf handler err]
 			(;; Compile the program in the metaprogram's environment)
-			[compile-files $programs $bndgs $expr-buf $obj-buf handler err])
+			[compile-files $args $bndgs $expr-buf $obj-buf handler err])
 			
 		(handler (substitute (.. cleanup err) (switch = (@0 err)
 			(multiple-definition-error (begin
