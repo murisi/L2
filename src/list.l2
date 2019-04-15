@@ -1,131 +1,131 @@
 (;; Takes two lists of the same length and produces a list of pairs of which the
-	first element comes from the first list and the second element comes from the
-	second list. a is the list from which the first elements of the zip will
-	come from. b is the list from which the second elements of the zip will come
-	from.)
+  first element comes from the first list and the second element comes from the
+  second list. a is the list from which the first elements of the zip will
+  come from. b is the list from which the second elements of the zip will come
+  from.)
 
 (function meta:zip (a b r) (with return
-	{(continuation aux (output a b)
-		(if (not [emt? a])
-			{aux [lst [llst [@fst a] [@fst b] emt r] output r] [@rst a] [@rst b]}
-			{return [meta:reverse output r]})) emt a b}))
+  {(continuation aux (output a b)
+    (if (not [emt? a])
+      {aux [lst [llst [@fst a] [@fst b] emt r] output r] [@rst a] [@rst b]}
+      {return [meta:reverse output r]})) emt a b}))
 
 (;; A zipped foreach macro. The syntax is as follows:
-	(foreach (v1 l1) (v2 l2) ... (vN lN) expr) where l1, l2, ..., lN must have the same size.)
+  (foreach (v1 l1) (v2 l2) ... (vN lN) expr) where l1, l2, ..., lN must have the same size.)
 
 (function foreach (s r)
-	(let (bindings [meta:reverse [@rst [meta:reverse s r]] r]) (body [@fst [meta:reverse s r]])
-			(labels (with return {(continuation aux (index-refs ref input-pairs)
-				(if (not [emt? input-pairs])
-					{aux [lst ref index-refs r]
-						[meta:reverse [lst -1- [meta:reverse ref r]r]r]
-						[@rst input-pairs]}
-					{return [meta:reverse index-refs r]})) emt (` foreach:v r) [@rst [meta:reverse s r]]}))
-		(`(with foreach:return (,[llst (` jump r)
-			[llllst (` continuation r) (` foreach:loop r) labels
-				(`(if (not [nil? foreach:v])
-					(,[lllst (` begin r)
-						[lst (` let r) [meta:reverse [lst body [meta:map [meta:zip [meta:map bindings (begin) @fst r] labels r]
-								r (function make-binding (a r) (`((,[@fst a]) [@car (,[@frst a])])r))r]r]r]r]
-						[llst (` jump r) (` foreach:loop r) [meta:map labels r (function make-update (a r) (`[@cdr ,a]r))r] r] emt r])
-					{foreach:return (begin)})r) emt r] [meta:map bindings (begin) @frst r]r]))r)))
+  (let (bindings [meta:reverse [@rst [meta:reverse s r]] r]) (body [@fst [meta:reverse s r]])
+      (labels (with return {(continuation aux (index-refs ref input-pairs)
+        (if (not [emt? input-pairs])
+          {aux [lst ref index-refs r]
+            [meta:reverse [lst -1- [meta:reverse ref r]r]r]
+            [@rst input-pairs]}
+          {return [meta:reverse index-refs r]})) emt (` foreach:v r) [@rst [meta:reverse s r]]}))
+    (`(with foreach:return (,[llst (` jump r)
+      [llllst (` continuation r) (` foreach:loop r) labels
+        (`(if (not [nil? foreach:v])
+          (,[lllst (` begin r)
+            [lst (` let r) [meta:reverse [lst body [meta:map [meta:zip [meta:map bindings (begin) @fst r] labels r]
+                r (function make-binding (a r) (`((,[@fst a]) [@car (,[@frst a])])r))r]r]r]r]
+            [llst (` jump r) (` foreach:loop r) [meta:map labels r (function make-update (a r) (`[@cdr ,a]r))r] r] emt r])
+          {foreach:return (begin)})r) emt r] [meta:map bindings (begin) @frst r]r]))r)))
 
 (;; Like a C-array initializer, but for lists. Does the following transformation:
-	(list (expr1 expr2 ... exprN) r handler err)
-	->
-	[cons expr1 [cons expr2 [... [cons exprN nil r handler err] ...] r handler err] r handler err])
+  (list (expr1 expr2 ... exprN) r handler err)
+  ->
+  [cons expr1 [cons expr2 [... [cons exprN nil r handler err] ...] r handler err] r handler err])
 
 (function list (l r)
-	(with return {(continuation loop (out in)
-			(if [emt? in]
-				{return out}
-				{loop [llllst (` invoke r) (` cons r) [@fst in] out [@rst l] r] [@rst in]}))
-		(` nil r) [meta:reverse [@fst l] r]}))
+  (with return {(continuation loop (out in)
+      (if [emt? in]
+        {return out}
+        {loop [llllst (` invoke r) (` cons r) [@fst in] out [@rst l] r] [@rst in]}))
+    (` nil r) [meta:reverse [@fst l] r]}))
 
 (;; A macro to do a reverse map. Does the following transformation:
-	(reverse-map (x l) expr ctx ...)
-	->
-	(with reverse-map:return
-		{(continuation reverse-map:loop (reverse-map:l reverse-map:acc)
-			(if [nil? reverse-map:l]
-				{reverse-map:return reverse-map:acc}
-				{reverse-map:loop
-					[@cdr reverse-map:l]
-					[cons (let (x [@car reverse-map:l]) expr) reverse-map:acc ctx ...]})) l nil}))
+  (reverse-map (x l) expr ctx ...)
+  ->
+  (with reverse-map:return
+    {(continuation reverse-map:loop (reverse-map:l reverse-map:acc)
+      (if [nil? reverse-map:l]
+        {reverse-map:return reverse-map:acc}
+        {reverse-map:loop
+          [@cdr reverse-map:l]
+          [cons (let (x [@car reverse-map:l]) expr) reverse-map:acc ctx ...]})) l nil}))
 
 (function reverse-map (l r)
-	(`(with reverse-map:return
-		{(continuation reverse-map:loop (reverse-map:l reverse-map:acc)
-			(if [nil? reverse-map:l]
-				{reverse-map:return reverse-map:acc}
-				{reverse-map:loop
-					[@cdr reverse-map:l]
-					(,[llllst (` invoke r) (` cons r) (`(let ((,[@ffst l]) [@car reverse-map:l]) (,[@frst l]))r) (` reverse-map:acc r)
-						[@rrst l] r])})) (,[@frfst l]) nil})r))
+  (`(with reverse-map:return
+    {(continuation reverse-map:loop (reverse-map:l reverse-map:acc)
+      (if [nil? reverse-map:l]
+        {reverse-map:return reverse-map:acc}
+        {reverse-map:loop
+          [@cdr reverse-map:l]
+          (,[llllst (` invoke r) (` cons r) (`(let ((,[@ffst l]) [@car reverse-map:l]) (,[@frst l]))r) (` reverse-map:acc r)
+            [@rrst l] r])})) (,[@frfst l]) nil})r))
 
 (;; A macro to do a reverse filter. Does the following transformation:
-	(reverse-filter (x l) expr ctx ...)
-	->
-	(with reverse-filter:return
-		{(continuation reverse-filter:loop (reverse-filter:l reverse-filter:acc)
-			(if [nil? reverse-filter:l]
-				{reverse-filter:return reverse-filter:acc}
-				{reverse-filter:loop
-					[@cdr reverse-filter:l]
-					(if (let (x [@car reverse-filter:l]) expr)
-						[cons [@car reverse-filter:l] reverse-filter:acc ctx ...]
-						reverse-filter:acc)})) l nil}))
+  (reverse-filter (x l) expr ctx ...)
+  ->
+  (with reverse-filter:return
+    {(continuation reverse-filter:loop (reverse-filter:l reverse-filter:acc)
+      (if [nil? reverse-filter:l]
+        {reverse-filter:return reverse-filter:acc}
+        {reverse-filter:loop
+          [@cdr reverse-filter:l]
+          (if (let (x [@car reverse-filter:l]) expr)
+            [cons [@car reverse-filter:l] reverse-filter:acc ctx ...]
+            reverse-filter:acc)})) l nil}))
 
 (function reverse-filter (l r)
-	(`(with reverse-filter:return
-		{(continuation reverse-filter:loop (reverse-filter:l reverse-filter:acc)
-			(if [nil? reverse-filter:l]
-				{reverse-filter:return reverse-filter:acc}
-				{reverse-filter:loop
-					[@cdr reverse-filter:l]
-					(if (let ((,[@ffst l]) [@car reverse-filter:l]) (,[@frst l]))
-						(,[llllst (` invoke r) (` cons r) (`[@car reverse-filter:l]r) (` reverse-filter:acc r) [@rrst l] r])
-						reverse-filter:acc)})) (,[@frfst l]) nil})r))
+  (`(with reverse-filter:return
+    {(continuation reverse-filter:loop (reverse-filter:l reverse-filter:acc)
+      (if [nil? reverse-filter:l]
+        {reverse-filter:return reverse-filter:acc}
+        {reverse-filter:loop
+          [@cdr reverse-filter:l]
+          (if (let ((,[@ffst l]) [@car reverse-filter:l]) (,[@frst l]))
+            (,[llllst (` invoke r) (` cons r) (`[@car reverse-filter:l]r) (` reverse-filter:acc r) [@rrst l] r])
+            reverse-filter:acc)})) (,[@frfst l]) nil})r))
 
 (;; A macro to do a reverse map. Does the following transformation:
-	(fold (y acc) (x l) expr)
-	->
-	(with fold:return
-		{(continuation fold:loop (fold:acc fold:l)
-			(if [nil? fold:l]
-				{fold:return fold:acc}
-				{fold:loop
-					(let (y fold:acc) (x [@car fold:l]) expr)
-					[@cdr fold:l]})) acc l}))
+  (fold (y acc) (x l) expr)
+  ->
+  (with fold:return
+    {(continuation fold:loop (fold:acc fold:l)
+      (if [nil? fold:l]
+        {fold:return fold:acc}
+        {fold:loop
+          (let (y fold:acc) (x [@car fold:l]) expr)
+          [@cdr fold:l]})) acc l}))
 
 (function fold (l r)
-	(`(with fold:return
-		{(continuation fold:loop (fold:acc fold:l)
-			(if [nil? fold:l]
-				{fold:return fold:acc}
-				{fold:loop
-					(let ((,[@ffst l]) fold:acc) ((,[@ffrst l]) [@car fold:l]) (,[@frrst l]))
-					[@cdr fold:l]})) (,[@frfst l]) (,[@frfrst l])})r))
+  (`(with fold:return
+    {(continuation fold:loop (fold:acc fold:l)
+      (if [nil? fold:l]
+        {fold:return fold:acc}
+        {fold:loop
+          (let ((,[@ffst l]) fold:acc) ((,[@ffrst l]) [@car fold:l]) (,[@frrst l]))
+          [@cdr fold:l]})) (,[@frfst l]) (,[@frfrst l])})r))
 
 (;; A macro to do a find. Does the following transformation:
-	(find (x l) expr err-expr)
-	->
-	(with find:return
-		{(continuation find:loop (find:l)
-			(if [nil? find:l]
-				err-expr
-				(if (let (x [@car find:l]) expr)
-					{find:return find:l}
-					{find:loop [@cdr find:l]}))) l}))
+  (find (x l) expr err-expr)
+  ->
+  (with find:return
+    {(continuation find:loop (find:l)
+      (if [nil? find:l]
+        err-expr
+        (if (let (x [@car find:l]) expr)
+          {find:return find:l}
+          {find:loop [@cdr find:l]}))) l}))
 
 (function find (l r)
-	(`(with find:return
-		{(continuation find:loop (find:l)
-			(if [nil? find:l]
-				(,[@frrst l])
-				(if (let ((,[@ffst l]) [@car find:l]) (,[@frst l]))
-					{find:return find:l}
-					{find:loop [@cdr find:l]}))) (,[@frfst l])})r))
+  (`(with find:return
+    {(continuation find:loop (find:l)
+      (if [nil? find:l]
+        (,[@frrst l])
+        (if (let ((,[@ffst l]) [@car find:l]) (,[@frst l]))
+          {find:return find:l}
+          {find:loop [@cdr find:l]}))) (,[@frfst l])})r))
 
 (function list-struct (l r) [mk# r #16])
 
@@ -134,8 +134,8 @@
 (function cdr (l r) [mk-field l r #8 #8])
 
 (;; Convenience functions for accessing elements of program internal lists.
-	Note that the @fst and @rst functions are list accessor functions only for
-	the fragments supplied to macros.)
+  Note that the @fst and @rst functions are list accessor functions only for
+  the fragments supplied to macros.)
 
 (function @car (l) (@ car l))
 
@@ -166,59 +166,59 @@
 (function nil? (l) [= [@cdr l] l])
 
 (;; Appends an item to the given list. data is the data that is to be appended.
-	l is a reference to the list that is to be appended to. r is the buffer into
-	which the extension is being placed.)
+  l is a reference to the list that is to be appended to. r is the buffer into
+  which the extension is being placed.)
 
 (function append (data l r handler err) (with return
-	{(continuation loop (l)
-		(if (not [nil? $l])
-			{loop (& cdr $l)}
-			(begin
-				[set l [buffer-alloc (list-struct) r handler err]]
-				(setf car $l data)
-				(setf cdr $l nil)
-				{return (& car $l)}))) l}))
+  {(continuation loop (l)
+    (if (not [nil? $l])
+      {loop (& cdr $l)}
+      (begin
+        [set l [buffer-alloc (list-struct) r handler err]]
+        (setf car $l data)
+        (setf cdr $l nil)
+        {return (& car $l)}))) l}))
 
 (;; Makes a new list with the given head and tail. data is what is going to be
-	put at the head. rest is the list that will be the tail of the new list. r
-	is the buffer into which the extension is being placed. Return value is the
-	new list.)
+  put at the head. rest is the list that will be the tail of the new list. r
+  is the buffer into which the extension is being placed. Return value is the
+  new list.)
 
 (function cons (data rest r handler err) (with return
-	(let (l [buffer-alloc (list-struct) r handler err]) (begin
-		(setf car l data)
-		(setf cdr l rest)
-		{return l}))))
+  (let (l [buffer-alloc (list-struct) r handler err]) (begin
+    (setf car l data)
+    (setf cdr l rest)
+    {return l}))))
 
 (;; Appends the second list onto the first list. fst-ref is a reference to the
-	list that will be appended to. snd is the list that will be appended.)
+  list that will be appended to. snd is the list that will be appended.)
 
 (function append-list (fst-ref snd) (with return
-	{(continuation loop (fst-ref)
-		(if [nil? $fst-ref]
-			{return [set fst-ref snd]}
-			{loop (& cdr $fst-ref)})) fst-ref}))
+  {(continuation loop (fst-ref)
+    (if [nil? $fst-ref]
+      {return [set fst-ref snd]}
+      {loop (& cdr $fst-ref)})) fst-ref}))
 
 (;; Analogous to append above.)
 
 (function prepend (data l-ref r handler err)
-	(let (ret [buffer-alloc (list-struct) r handler err]) (begin
-		(setf car ret data)
-		(setf cdr ret $l-ref)
-		[set l-ref ret])))
+  (let (ret [buffer-alloc (list-struct) r handler err]) (begin
+    (setf car ret data)
+    (setf cdr ret $l-ref)
+    [set l-ref ret])))
 
 (;; Computes the length of the given list. l is the list whose length will be
-	computed.)
+  computed.)
 
 (function length (l) (with return
-	{(continuation loop (l size)
-		(if [nil? l]
-			{return size}
-			{loop [@cdr l] [+ #1 size]})) l #0}))
+  {(continuation loop (l size)
+    (if [nil? l]
+      {return size}
+      {loop [@cdr l] [+ #1 size]})) l #0}))
 
 (;; Constructs a reverse of the given list. l is the list that is to be reversed.
-	r is the buffer into which the reversed list should be placed. Return value
-	is the reversed list.)
+  r is the buffer into which the reversed list should be placed. Return value
+  is the reversed list.)
 
 (function reverse (l r handler err) (reverse-map (x l) x r handler err))
 

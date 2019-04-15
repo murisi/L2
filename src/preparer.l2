@@ -5,72 +5,72 @@
 (storage multiple-definition-error (begin))
 
 (function vfind-multiple-definitions (e ctx) (with return (begin
-	(define (handler (@0 ctx))
-	(define (err (@1 ctx))
-	
-	(switch = (@ expr-type e)
-		((-begin-) (begin
-			(define (temp-reg [create-buffer #0])
-			(define (definitions (reverse-filter (f (@ expr-expressions e))
-					(or [= (@ expr-type f) (-storage-)] [= (@ expr-type f) (-function-)]) temp-reg handler err))
-			(until (partial definitions) [nil? partial] [@cdr partial] (with break (begin
-				(find (f (@ cdr partial)) [named-sym= (@ expr-reference f) (@ expr-reference [@car partial])] {break (begin)})
-				(define (dup-ref-name (@ expr-name(@ expr-reference[@car partial])))
-				[destroy-buffer temp-reg]
-				{handler (sets err multiple-definition-error dup-ref-name)}))))
-			[destroy-buffer temp-reg]))))
-		
-		((-continuation-) (-function-) (begin
-			(define (temp-reg [create-buffer #0])
-			(define (ref-with-params [cons (@ expr-reference e) (@ expr-parameters e) temp-reg])
-			(until (partial ref-with-params) [nil? partial] [@cdr partial] (with break (begin
-				(find (f (@ cdr partial)) [named-sym= f [@car partial]] {break (begin)})
-				(define (dup-ref-name (@ expr-name[@car partial]))
-				[destroy-buffer temp-reg]
-				{handler (sets err multiple-definition-error dup-ref-name)}))))
-			[destroy-buffer temp-reg]))))
-		
-		(begin))
-		{return e})))))
+  (define (handler (@0 ctx))
+  (define (err (@1 ctx))
+  
+  (switch = (@ expr-type e)
+    ((-begin-) (begin
+      (define (temp-reg [create-buffer #0])
+      (define (definitions (reverse-filter (f (@ expr-expressions e))
+          (or [= (@ expr-type f) (-storage-)] [= (@ expr-type f) (-function-)]) temp-reg handler err))
+      (until (partial definitions) [nil? partial] [@cdr partial] (with break (begin
+        (find (f (@ cdr partial)) [named-sym= (@ expr-reference f) (@ expr-reference [@car partial])] {break (begin)})
+        (define (dup-ref-name (@ expr-name(@ expr-reference[@car partial])))
+        [destroy-buffer temp-reg]
+        {handler (sets err multiple-definition-error dup-ref-name)}))))
+      [destroy-buffer temp-reg]))))
+    
+    ((-continuation-) (-function-) (begin
+      (define (temp-reg [create-buffer #0])
+      (define (ref-with-params [cons (@ expr-reference e) (@ expr-parameters e) temp-reg])
+      (until (partial ref-with-params) [nil? partial] [@cdr partial] (with break (begin
+        (find (f (@ cdr partial)) [named-sym= f [@car partial]] {break (begin)})
+        (define (dup-ref-name (@ expr-name[@car partial]))
+        [destroy-buffer temp-reg]
+        {handler (sets err multiple-definition-error dup-ref-name)}))))
+      [destroy-buffer temp-reg]))))
+    
+    (begin))
+    {return e})))))
 
 (function get-parent-function (n) (with return
-	{(continuation loop (n)
-		(if [= (@ expr-type n) (-function-)]
-			{return n}
-			{loop (@ expr-parent n)})) (@ expr-parent n)}))
+  {(continuation loop (n)
+    (if [= (@ expr-type n) (-function-)]
+      {return n}
+      {loop (@ expr-parent n)})) (@ expr-parent n)}))
 
 (function binding-of (symbol) (with return (begin
-	(storage same-func (true))
-	(until (t symbol) [= t null-expr] (@ expr-parent t)
-		(switch = (@ expr-type t)
-			((-begin-) (foreach (u (@ expr-expressions t))
-				(if (and (or [= (@ expr-type u) (-function-)] (and [= (@ expr-type u) (-storage-)] (or $same-func
-						[= (@ bndg-storage(@ expr-binding-aug(@ expr-reference u))) (absolute-storage)])))
-						[named-sym= (@ expr-reference u) symbol])
-					{return (@ expr-binding-aug(@ expr-reference u))}
-					(begin))))
-			
-			((-function-) (begin
-				(if [named-sym= (@ expr-reference t) symbol]
-					{return (@ expr-binding-aug(@ expr-reference t))}
-					(foreach (u (@ expr-parameters t))
-						(if (and (or $same-func [= (@ bndg-storage(@ expr-binding-aug u)) (absolute-storage)]) [named-sym= u symbol])
-							{return (@ expr-binding-aug u)}
-							(begin))))
-				[set same-func (false)]))
-			
-			((-continuation-) (-with-) (-storage-)
-				(if (and (or $same-func [= (@ bndg-storage(@ expr-binding-aug(@ expr-reference t))) (absolute-storage)])
-						[named-sym= (@ expr-reference t) symbol])
-					{return (@ expr-binding-aug(@ expr-reference t))}
-				(if [= (@ expr-type t) (-storage-)] (begin)
-					(foreach (u (@ expr-parameters t))
-						(if (and (or $same-func [= (@ bndg-storage(@ expr-binding-aug u)) (absolute-storage)]) [named-sym= u symbol])
-							{return (@ expr-binding-aug u)}
-							(begin))))))
-			
-			(begin)))
-	{return null-binding})))
+  (storage same-func (true))
+  (until (t symbol) [= t null-expr] (@ expr-parent t)
+    (switch = (@ expr-type t)
+      ((-begin-) (foreach (u (@ expr-expressions t))
+        (if (and (or [= (@ expr-type u) (-function-)] (and [= (@ expr-type u) (-storage-)] (or $same-func
+            [= (@ bndg-storage(@ expr-binding-aug(@ expr-reference u))) (absolute-storage)])))
+            [named-sym= (@ expr-reference u) symbol])
+          {return (@ expr-binding-aug(@ expr-reference u))}
+          (begin))))
+      
+      ((-function-) (begin
+        (if [named-sym= (@ expr-reference t) symbol]
+          {return (@ expr-binding-aug(@ expr-reference t))}
+          (foreach (u (@ expr-parameters t))
+            (if (and (or $same-func [= (@ bndg-storage(@ expr-binding-aug u)) (absolute-storage)]) [named-sym= u symbol])
+              {return (@ expr-binding-aug u)}
+              (begin))))
+        [set same-func (false)]))
+      
+      ((-continuation-) (-with-) (-storage-)
+        (if (and (or $same-func [= (@ bndg-storage(@ expr-binding-aug(@ expr-reference t))) (absolute-storage)])
+            [named-sym= (@ expr-reference t) symbol])
+          {return (@ expr-binding-aug(@ expr-reference t))}
+        (if [= (@ expr-type t) (-storage-)] (begin)
+          (foreach (u (@ expr-parameters t))
+            (if (and (or $same-func [= (@ bndg-storage(@ expr-binding-aug u)) (absolute-storage)]) [named-sym= u symbol])
+              {return (@ expr-binding-aug u)}
+              (begin))))))
+      
+      (begin)))
+  {return null-binding})))
 
 (function jump-reference? (s) (and [= (@ expr-type(@ expr-parent s)) (-jump-)] [= (@ expr-reference(@ expr-parent s)) s]))
 
@@ -79,271 +79,271 @@
 (function function-reference? (s) (and [= (@ expr-type(@ expr-parent s)) (-function-)] [= (@ expr-reference(@ expr-parent s)) s]))
 
 (function c-reference? (s)
-	(and (or [= (@ expr-type(@ expr-parent s)) (-continuation-)] [= (@ expr-type(@ expr-parent s)) (-with-)])
-		[= (@ expr-reference(@ expr-parent s)) s]))
+  (and (or [= (@ expr-type(@ expr-parent s)) (-continuation-)] [= (@ expr-type(@ expr-parent s)) (-with-)])
+    [= (@ expr-reference(@ expr-parent s)) s]))
 
 (function get-target-expression (s) (@ expr-parent(@ bndg-definition(@ expr-binding-aug s))))
 
 (function get-root-function (s) (with return
-	{(continuation loop (s parent)
-		(if [not= parent null-expr]
-			{loop parent (@ expr-parent parent)}
-			{return s})) s (@ expr-parent s)}))
+  {(continuation loop (s parent)
+    (if [not= parent null-expr]
+      {loop parent (@ expr-parent parent)}
+      {return s})) s (@ expr-parent s)}))
 
 (storage param-count-mismatch-error (begin))
 
 (function vlink-symbols (s ctx) (with return (begin
-	(define (handler (@1 ctx))
-	(define (r (@0 ctx))
-	(define (err (@2 ctx))
-	
-	(substitute (.. r handler err)
-		(if [= (@ expr-type s) (-symbol-)]
-			(begin
-				(setf expr-binding-aug s (if [not= (@ expr-binding-aug s) null-binding] (@ expr-binding-aug s) [binding-of s]))
-				(if [= (@ expr-binding-aug s) null-binding]
-					(begin
-						(define (stg [make-storage [make-symbol (@ expr-name s) ..] nil ..])
-						(define (bndg (@ expr-binding-aug(@ expr-reference stg)))
-						(setf bndg-storage bndg (absolute-storage))
-						(setf bndg-scope bndg (global-scope))
-						(setf bndg-state bndg (undefined-state))
-						(define (rf [get-root-function s])
-						[prepend stg (& expr-expressions(@ expr-expression rf)) ..]
-						(setf expr-parent stg (@ expr-expression rf))
-						(setf expr-binding-aug s bndg)
-						{return s}))))
-				(if (and (or (and [jump-reference? s] [c-reference? (@ bndg-definition(@ expr-binding-aug s))])
-						(and [invoke-reference? s] [function-reference? (@ bndg-definition(@ expr-binding-aug s))]))
-						(not [= [length(@ expr-arguments(@ expr-parent s))] [length(@ expr-parameters[get-target-expression s])]]))
-					{handler (sets err param-count-mismatch-error (@ expr-parent s) [get-target-expression s])}
-					{return s})))
-		(if (and (or (and [= (@ expr-type s) (-continuation-)] [jump-reference? s])
-				(and [= (@ expr-type s) (-function-)] [invoke-reference? s]))
-				(not [= [length (@ expr-arguments(@ expr-parent s))] [length (@ expr-parameters s)]]))
-			{handler (sets err param-count-mismatch-error (@ expr-parent s) s)}
-			{return s})))))))))
+  (define (handler (@1 ctx))
+  (define (r (@0 ctx))
+  (define (err (@2 ctx))
+  
+  (substitute (.. r handler err)
+    (if [= (@ expr-type s) (-symbol-)]
+      (begin
+        (setf expr-binding-aug s (if [not= (@ expr-binding-aug s) null-binding] (@ expr-binding-aug s) [binding-of s]))
+        (if [= (@ expr-binding-aug s) null-binding]
+          (begin
+            (define (stg [make-storage [make-symbol (@ expr-name s) ..] nil ..])
+            (define (bndg (@ expr-binding-aug(@ expr-reference stg)))
+            (setf bndg-storage bndg (absolute-storage))
+            (setf bndg-scope bndg (global-scope))
+            (setf bndg-state bndg (undefined-state))
+            (define (rf [get-root-function s])
+            [prepend stg (& expr-expressions(@ expr-expression rf)) ..]
+            (setf expr-parent stg (@ expr-expression rf))
+            (setf expr-binding-aug s bndg)
+            {return s}))))
+        (if (and (or (and [jump-reference? s] [c-reference? (@ bndg-definition(@ expr-binding-aug s))])
+            (and [invoke-reference? s] [function-reference? (@ bndg-definition(@ expr-binding-aug s))]))
+            (not [= [length(@ expr-arguments(@ expr-parent s))] [length(@ expr-parameters[get-target-expression s])]]))
+          {handler (sets err param-count-mismatch-error (@ expr-parent s) [get-target-expression s])}
+          {return s})))
+    (if (and (or (and [= (@ expr-type s) (-continuation-)] [jump-reference? s])
+        (and [= (@ expr-type s) (-function-)] [invoke-reference? s]))
+        (not [= [length (@ expr-arguments(@ expr-parent s))] [length (@ expr-parameters s)]]))
+      {handler (sets err param-count-mismatch-error (@ expr-parent s) s)}
+      {return s})))))))))
 
 (function vescape-analysis-aux (ref target)
-	(if [jump-reference? ref]
-		(setf expr-short-circuit (@ expr-parent ref) target)
-		(setf expr-escapes target (true))))
+  (if [jump-reference? ref]
+    (setf expr-short-circuit (@ expr-parent ref) target)
+    (setf expr-escapes target (true))))
 
 (function vescape-analysis (s ctx) (with return (begin
-	(if (and [= (@ expr-type s) (-symbol-)] (not [= (@ bndg-definition(@ expr-binding-aug s)) s])
-			[c-reference? (@ bndg-definition(@ expr-binding-aug s))])
-		[vescape-analysis-aux s [get-target-expression s]]
-	(if [= (@ expr-type s) (-continuation-)]
-		[vescape-analysis-aux s s]
-		(begin)))
-	{return s})))
+  (if (and [= (@ expr-type s) (-symbol-)] (not [= (@ bndg-definition(@ expr-binding-aug s)) s])
+      [c-reference? (@ bndg-definition(@ expr-binding-aug s))])
+    [vescape-analysis-aux s [get-target-expression s]]
+  (if [= (@ expr-type s) (-continuation-)]
+    [vescape-analysis-aux s s]
+    (begin)))
+  {return s})))
 
 (function visit-expressions (visitor s ctx) (begin
-	(switch = (@ expr-type $s)
-		((-begin-)
-			(until (partial (@ expr-expressions $s)) [nil? partial] [@cdr partial]
-				[visit-expressions visitor (& car partial) ctx]))
-		
-		((-if-) (begin
-			[visit-expressions visitor (& expr-condition $s) ctx]
-			[visit-expressions visitor (& expr-consequent $s) ctx]
-			[visit-expressions visitor (& expr-alternate $s) ctx]))
-		
-		((-function-) (-continuation-) (-with-)
-			[visit-expressions visitor (& expr-expression $s) ctx])
-		
-		((-jump-) (-invoke-) (-storage-) (begin
-			(if [= (@ expr-type $s) (-storage-)] (begin) [visit-expressions visitor (& expr-reference $s) ctx])
-			(until (partial (@ expr-arguments $s)) [nil? partial] [@cdr partial]
-				[visit-expressions visitor (& car partial) ctx])))
-		
-		(begin))
-	(replace-expression s [visitor $s ctx])))
+  (switch = (@ expr-type $s)
+    ((-begin-)
+      (until (partial (@ expr-expressions $s)) [nil? partial] [@cdr partial]
+        [visit-expressions visitor (& car partial) ctx]))
+    
+    ((-if-) (begin
+      [visit-expressions visitor (& expr-condition $s) ctx]
+      [visit-expressions visitor (& expr-consequent $s) ctx]
+      [visit-expressions visitor (& expr-alternate $s) ctx]))
+    
+    ((-function-) (-continuation-) (-with-)
+      [visit-expressions visitor (& expr-expression $s) ctx])
+    
+    ((-jump-) (-invoke-) (-storage-) (begin
+      (if [= (@ expr-type $s) (-storage-)] (begin) [visit-expressions visitor (& expr-reference $s) ctx])
+      (until (partial (@ expr-arguments $s)) [nil? partial] [@cdr partial]
+        [visit-expressions visitor (& car partial) ctx])))
+    
+    (begin))
+  (replace-expression s [visitor $s ctx])))
 
 (function pre-visit-expressions (visitor s ctx) (begin
-	(replace-expression s [visitor $s ctx])
-	
-	(switch = (@ expr-type $s)
-		((-begin-)
-			(until (partial (@ expr-expressions $s)) [nil? partial] [@cdr partial]
-				[pre-visit-expressions visitor (& car partial) ctx]))
-		
-		((-if-) (begin
-			[pre-visit-expressions visitor (& expr-condition $s) ctx]
-			[pre-visit-expressions visitor (& expr-consequent $s) ctx]
-			[pre-visit-expressions visitor (& expr-alternate $s) ctx]))
-		
-		((-function-) (-continuation-) (-with-)
-			[pre-visit-expressions visitor (& expr-expression $s) ctx])
-		
-		((-jump-) (-invoke-) (-storage-) (begin
-			(if [= (@ expr-type $s) (-storage-)] (begin) [pre-visit-expressions visitor (& expr-reference $s) ctx])
-			(until (partial (@ expr-arguments $s)) [nil? partial] [@cdr partial]
-				[pre-visit-expressions visitor (& car partial) ctx])))
-		
-		(begin))))
+  (replace-expression s [visitor $s ctx])
+  
+  (switch = (@ expr-type $s)
+    ((-begin-)
+      (until (partial (@ expr-expressions $s)) [nil? partial] [@cdr partial]
+        [pre-visit-expressions visitor (& car partial) ctx]))
+    
+    ((-if-) (begin
+      [pre-visit-expressions visitor (& expr-condition $s) ctx]
+      [pre-visit-expressions visitor (& expr-consequent $s) ctx]
+      [pre-visit-expressions visitor (& expr-alternate $s) ctx]))
+    
+    ((-function-) (-continuation-) (-with-)
+      [pre-visit-expressions visitor (& expr-expression $s) ctx])
+    
+    ((-jump-) (-invoke-) (-storage-) (begin
+      (if [= (@ expr-type $s) (-storage-)] (begin) [pre-visit-expressions visitor (& expr-reference $s) ctx])
+      (until (partial (@ expr-arguments $s)) [nil? partial] [@cdr partial]
+        [pre-visit-expressions visitor (& car partial) ctx])))
+    
+    (begin))))
 
 (function classify-program-bindings (expr)
-	(switch = (@ expr-type expr)
-		((-begin-) (foreach (t (@ expr-expressions expr)) [classify-program-bindings t]))
-		
-		((-storage-) (-jump-) (-invoke-) (begin
-			(if [= (@ expr-type expr) (-storage-)]
-				(setf bndg-storage (@ expr-binding-aug(@ expr-reference expr)) (absolute-storage))
-				(begin
-					(setf bndg-storage (@ expr-temp-storage-bndg expr) (absolute-storage))
-					[classify-program-bindings (@ expr-reference expr)]))
-			(foreach (t (@ expr-arguments expr)) [classify-program-bindings t])))
-		
-		((-continuation-) (-with-) (begin
-			(setf bndg-storage (@ expr-binding-aug(@ expr-reference expr)) (absolute-storage))
-			(foreach (t (@ expr-parameters expr)) (setf bndg-storage (@ expr-binding-aug t) (absolute-storage)))
-			[classify-program-bindings (@ expr-expression expr)]))
-		
-		((-if-) (begin
-			[classify-program-bindings (@ expr-condition expr)]
-			[classify-program-bindings (@ expr-consequent expr)]
-			[classify-program-bindings (@ expr-alternate expr)]))
-		
-		(begin)))
+  (switch = (@ expr-type expr)
+    ((-begin-) (foreach (t (@ expr-expressions expr)) [classify-program-bindings t]))
+    
+    ((-storage-) (-jump-) (-invoke-) (begin
+      (if [= (@ expr-type expr) (-storage-)]
+        (setf bndg-storage (@ expr-binding-aug(@ expr-reference expr)) (absolute-storage))
+        (begin
+          (setf bndg-storage (@ expr-temp-storage-bndg expr) (absolute-storage))
+          [classify-program-bindings (@ expr-reference expr)]))
+      (foreach (t (@ expr-arguments expr)) [classify-program-bindings t])))
+    
+    ((-continuation-) (-with-) (begin
+      (setf bndg-storage (@ expr-binding-aug(@ expr-reference expr)) (absolute-storage))
+      (foreach (t (@ expr-parameters expr)) (setf bndg-storage (@ expr-binding-aug t) (absolute-storage)))
+      [classify-program-bindings (@ expr-expression expr)]))
+    
+    ((-if-) (begin
+      [classify-program-bindings (@ expr-condition expr)]
+      [classify-program-bindings (@ expr-consequent expr)]
+      [classify-program-bindings (@ expr-alternate expr)]))
+    
+    (begin)))
 
 (function containment-analysis (s)
-	(switch = (@ expr-type s)
-		((-begin-) (fold (acc (contains-none)) (x (@ expr-expressions s)) [lor acc [containment-analysis x]]))
-		
-		((-if-)
-			(let (condition-flag [containment-analysis (@ expr-condition s)])
-					(consequent-flag [containment-analysis (@ expr-consequent s)])
-					(alternate-flag [containment-analysis (@ expr-alternate s)])
-				(if [= [+ consequent-flag alternate-flag] #1]
-					(contains-with)
-					[lor condition-flag [lor consequent-flag alternate-flag]])))
-		
-		((-function-) (-continuation-) (-with-)
-			(let (_ [containment-analysis (@ expr-expression s)])
-				(if [= (@ expr-type s) (-with-)] (contains-with) (contains-none))))
-		
-		((-storage-) (fold (acc (contains-none)) (x (@ expr-arguments s)) [lor acc [containment-analysis x]]))
-		
-		((-jump-) (-invoke-)
-			(let (contains-flag (fold (acc [containment-analysis (@ expr-reference s)]) (x (@ expr-arguments s))
-					[lor acc [containment-analysis x]]))
-				(let (_ (setf expr-contains-flag s contains-flag))
-					(if [= (@ expr-type s) (-jump-)] (contains-jump) contains-flag))))
-		
+  (switch = (@ expr-type s)
+    ((-begin-) (fold (acc (contains-none)) (x (@ expr-expressions s)) [lor acc [containment-analysis x]]))
+    
+    ((-if-)
+      (let (condition-flag [containment-analysis (@ expr-condition s)])
+          (consequent-flag [containment-analysis (@ expr-consequent s)])
+          (alternate-flag [containment-analysis (@ expr-alternate s)])
+        (if [= [+ consequent-flag alternate-flag] #1]
+          (contains-with)
+          [lor condition-flag [lor consequent-flag alternate-flag]])))
+    
+    ((-function-) (-continuation-) (-with-)
+      (let (_ [containment-analysis (@ expr-expression s)])
+        (if [= (@ expr-type s) (-with-)] (contains-with) (contains-none))))
+    
+    ((-storage-) (fold (acc (contains-none)) (x (@ expr-arguments s)) [lor acc [containment-analysis x]]))
+    
+    ((-jump-) (-invoke-)
+      (let (contains-flag (fold (acc [containment-analysis (@ expr-reference s)]) (x (@ expr-arguments s))
+          [lor acc [containment-analysis x]]))
+        (let (_ (setf expr-contains-flag s contains-flag))
+          (if [= (@ expr-type s) (-jump-)] (contains-jump) contains-flag))))
+    
     (begin)))
 
 (storage undefined-symbol-error (begin))
 
 (;; This function replaces meta-expressions with the code generated by calling
-	the corresponding macros. s is the input expression. ctx is a tuple, let
-	us unpack it to (bindings expr-buf handler err). bindings is a list of global
-	bindings. expr-buf is the buffer where the fragments and expressions
-	generated by macros will be put. Return value is s if s is not a meta-
-	expression, otherwise it is the output of the meta-program. The continuation
-	handler is followed and err set to a tuple starting with
-	undefined-symbol-error and followed by a string containg the name of the
-	undefined symbol in the case that an undefined macro is used.)
+  the corresponding macros. s is the input expression. ctx is a tuple, let
+  us unpack it to (bindings expr-buf handler err). bindings is a list of global
+  bindings. expr-buf is the buffer where the fragments and expressions
+  generated by macros will be put. Return value is s if s is not a meta-
+  expression, otherwise it is the output of the meta-program. The continuation
+  handler is followed and err set to a tuple starting with
+  undefined-symbol-error and followed by a string containg the name of the
+  undefined symbol in the case that an undefined macro is used.)
 
 (function vgenerate-metas (s ctx)
-	(if [= (@ expr-type s) (-meta-)]
-		(with return (begin
-			(define (handler (@2 ctx))
-			(define (err (@3 ctx))
-			(define (bindings (@0 ctx))
-			(define (expr-buf (@1 ctx))
-			
-			(foreach (bndg bindings)
-				(if [str= (@ bndg-name bndg) (@ expr-name (@ expr-reference s))]
-					{return [vgenerate-metas [build-expression [(@ bndg-offset bndg) (@ expr-argument s) expr-buf]
-						expr-buf handler err] ctx]} (begin)))
-			{handler (sets err undefined-symbol-error (@ expr-name(@ expr-reference s)))}))))))
-		s))
+  (if [= (@ expr-type s) (-meta-)]
+    (with return (begin
+      (define (handler (@2 ctx))
+      (define (err (@3 ctx))
+      (define (bindings (@0 ctx))
+      (define (expr-buf (@1 ctx))
+      
+      (foreach (bndg bindings)
+        (if [str= (@ bndg-name bndg) (@ expr-name (@ expr-reference s))]
+          {return [vgenerate-metas [build-expression [(@ bndg-offset bndg) (@ expr-argument s) expr-buf]
+            expr-buf handler err] ctx]} (begin)))
+      {handler (sets err undefined-symbol-error (@ expr-name(@ expr-reference s)))}))))))
+    s))
 
 (;; This function handles the lazy compilation of expressions that are neither
-	storage nor function ones. It merely compiles its source and then puts a
-	handle to it in the cache to facilitate for future executions. expr is the
-	expression as it was given in the source. bindings is a reference to the
-	list of global bindings that are visible to this expression. expr-buf is the
-	buffer where the assembly expressions corresponding to expr will be put.
-	obj-buf is where the object code corresponding to expr will be put. Return
-	value is a handle to the object code.)
+  storage nor function ones. It merely compiles its source and then puts a
+  handle to it in the cache to facilitate for future executions. expr is the
+  expression as it was given in the source. bindings is a reference to the
+  list of global bindings that are visible to this expression. expr-buf is the
+  buffer where the assembly expressions corresponding to expr will be put.
+  obj-buf is where the object code corresponding to expr will be put. Return
+  value is a handle to the object code.)
 
 (function init-expression (expr bindings expr-buf obj-buf handler err cache)
-	(if [not= $cache null-cache] $cache (with return (substitute (.. expr-buf handler err) (begin
-		(storage expr-ref expr)
-		[pre-visit-expressions vgenerate-metas expr-ref (storage _ $bindings ..)]
-		[set cache [segment [load-program-and-mutate [make-program [cons $expr-ref nil ..] ..] $bindings expr-buf obj-buf
-			handler err] (" .text)]]
-		{return $cache})))))
+  (if [not= $cache null-cache] $cache (with return (substitute (.. expr-buf handler err) (begin
+    (storage expr-ref expr)
+    [pre-visit-expressions vgenerate-metas expr-ref (storage _ $bindings ..)]
+    [set cache [segment [load-program-and-mutate [make-program [cons $expr-ref nil ..] ..] $bindings expr-buf obj-buf
+      handler err] (" .text)]]
+    {return $cache})))))
 
 (function init-storage (data storage-expr bindings expr-buf obj-buf handler err cache)
-	(if [not= $cache null-cache] $cache (with return (substitute (.. expr-buf handler err) (begin
-		(storage sets nil)
-		(storage data-ref data)
-		(foreach (arg (@ expr-arguments storage-expr)) (begin
-			(storage arg-ref arg)
-			[pre-visit-expressions vgenerate-metas arg-ref (storage _ $bindings ..)]
-			[append (make-invokeN [make-literal set ..] ([make-literal $data-ref ..] $arg-ref) ..) sets ..]
-			[set+ data-ref (unit)]))
-		[set cache [segment [load-program-and-mutate [make-program $sets ..] $bindings expr-buf obj-buf handler err] (" .text)]]
-		{return $cache})))))
+  (if [not= $cache null-cache] $cache (with return (substitute (.. expr-buf handler err) (begin
+    (storage sets nil)
+    (storage data-ref data)
+    (foreach (arg (@ expr-arguments storage-expr)) (begin
+      (storage arg-ref arg)
+      [pre-visit-expressions vgenerate-metas arg-ref (storage _ $bindings ..)]
+      [append (make-invokeN [make-literal set ..] ([make-literal $data-ref ..] $arg-ref) ..) sets ..]
+      [set+ data-ref (unit)]))
+    [set cache [segment [load-program-and-mutate [make-program $sets ..] $bindings expr-buf obj-buf handler err] (" .text)]]
+    {return $cache})))))
 
 (function init-function (function-expr bindings expr-buf obj-buf handler err cache)
-	(if [not= $cache null-cache] $cache (with return (substitute (.. expr-buf handler err) (begin
-		(storage function-expr-ref function-expr)
-		[pre-visit-expressions vgenerate-metas function-expr-ref (storage _ $bindings ..)]
-		[load-program-and-mutate [make-program [cons $function-expr-ref nil ..] ..] $bindings expr-buf obj-buf handler err]
-		[set cache (@ bndg-offset (@ expr-binding-aug (@ expr-reference $function-expr-ref)))]
-		{return $cache})))))
+  (if [not= $cache null-cache] $cache (with return (substitute (.. expr-buf handler err) (begin
+    (storage function-expr-ref function-expr)
+    [pre-visit-expressions vgenerate-metas function-expr-ref (storage _ $bindings ..)]
+    [load-program-and-mutate [make-program [cons $function-expr-ref nil ..] ..] $bindings expr-buf obj-buf handler err]
+    [set cache (@ bndg-offset (@ expr-binding-aug (@ expr-reference $function-expr-ref)))]
+    {return $cache})))))
 
 (storage null-cache (begin))
 
 (;; From the supplied meta-program expressions, makes a lazy meta-program. That
-	is, this function turns the supplied code into last minute requests for
-	compilation followed by execution. program is a list of expressions
-	representing the metaprogram. bindings is a reference to the list of bindings
-	that will be visible to the meta-program during its execution. expr-buf
-	if the buffer that the generated metaprogram expressions should be be put
-	into. obj-buf is the buffer into which the object code generated by the
-	lazy compilation will be put into. handler and err will also be used if
-	there are any failures in the lazy compilation. Return value is a program
-	expression representing the meta-program.)
-	
+  is, this function turns the supplied code into last minute requests for
+  compilation followed by execution. program is a list of expressions
+  representing the metaprogram. bindings is a reference to the list of bindings
+  that will be visible to the meta-program during its execution. expr-buf
+  if the buffer that the generated metaprogram expressions should be be put
+  into. obj-buf is the buffer into which the object code generated by the
+  lazy compilation will be put into. handler and err will also be used if
+  there are any failures in the lazy compilation. Return value is a program
+  expression representing the meta-program.)
+  
 (function generate-metaprogram (program bindings expr-buf obj-buf handler err)
-	(substitute (.. expr-buf handler err)
-		[make-program [reverse (fold (c nil) (s (@ expr-expressions (@ expr-expression program)))
-			(with break (begin
-				(define (cache [buffer-alloc (unit) obj-buf handler err])
-				[set cache null-cache]
-				
-				(if [= (@ expr-type s) (-storage-)]
-					(define (args (reverse-map (_ (@ expr-arguments s)) [make-begin nil ..] ..))
-					(define (storage-ref [make-symbol (@ expr-name (@ expr-reference s)) ..])
-					(define (c [cons [make-storage storage-ref args ..] c ..])
-					(define (storage-ref-arg [make-symbol null-string ..])
-					[bind-symbol storage-ref-arg storage-ref]
-					(define (init-invoke (make-invokeN (make-invokeN [make-literal init-storage ..] (storage-ref-arg [make-literal s ..]
-						[make-literal bindings ..] [make-literal expr-buf ..] [make-literal obj-buf ..] [make-literal handler ..]
-						[make-literal err ..] [make-literal cache ..]) ..) () ..))
-					(define (c [cons init-invoke c ..])
-					{break c}))))))
-			
-				(if [= (@ expr-type s) (-function-)]
-					(define (params (reverse-map (_ (@ expr-parameters s)) [make-symbol null-string ..] ..))
-					(define (args (reverse-map (_ (@ expr-parameters s)) [make-symbol null-string ..] ..))
-					(define (thunk [make-function [make-symbol (@ expr-name (@ expr-reference s)) ..] params
-						[make-invoke (make-invokeN [make-literal init-function ..] ([make-literal s ..] [make-literal bindings ..]
-						[make-literal expr-buf ..] [make-literal obj-buf ..] [make-literal handler ..] [make-literal err ..]
-						[make-literal cache ..]) ..) args ..] ..])
-					(foreach (a params) (t args) [bind-symbol t a])
-					(define (c [cons thunk c ..])
-					{break c}))))
-		
-				(begin
-					(define (init-invoke (make-invokeN (make-invokeN [make-literal init-expression ..] ([make-literal s ..]
-						[make-literal bindings ..] [make-literal expr-buf ..] [make-literal obj-buf ..] [make-literal handler ..]
-						[make-literal err ..] [make-literal cache ..]) ..) () ..))
-					(define (c [cons init-invoke c ..])
-					{break c}))))))))) ..] ..]))
+  (substitute (.. expr-buf handler err)
+    [make-program [reverse (fold (c nil) (s (@ expr-expressions (@ expr-expression program)))
+      (with break (begin
+        (define (cache [buffer-alloc (unit) obj-buf handler err])
+        [set cache null-cache]
+        
+        (if [= (@ expr-type s) (-storage-)]
+          (define (args (reverse-map (_ (@ expr-arguments s)) [make-begin nil ..] ..))
+          (define (storage-ref [make-symbol (@ expr-name (@ expr-reference s)) ..])
+          (define (c [cons [make-storage storage-ref args ..] c ..])
+          (define (storage-ref-arg [make-symbol null-string ..])
+          [bind-symbol storage-ref-arg storage-ref]
+          (define (init-invoke (make-invokeN (make-invokeN [make-literal init-storage ..] (storage-ref-arg [make-literal s ..]
+            [make-literal bindings ..] [make-literal expr-buf ..] [make-literal obj-buf ..] [make-literal handler ..]
+            [make-literal err ..] [make-literal cache ..]) ..) () ..))
+          (define (c [cons init-invoke c ..])
+          {break c}))))))
+      
+        (if [= (@ expr-type s) (-function-)]
+          (define (params (reverse-map (_ (@ expr-parameters s)) [make-symbol null-string ..] ..))
+          (define (args (reverse-map (_ (@ expr-parameters s)) [make-symbol null-string ..] ..))
+          (define (thunk [make-function [make-symbol (@ expr-name (@ expr-reference s)) ..] params
+            [make-invoke (make-invokeN [make-literal init-function ..] ([make-literal s ..] [make-literal bindings ..]
+            [make-literal expr-buf ..] [make-literal obj-buf ..] [make-literal handler ..] [make-literal err ..]
+            [make-literal cache ..]) ..) args ..] ..])
+          (foreach (a params) (t args) [bind-symbol t a])
+          (define (c [cons thunk c ..])
+          {break c}))))
+    
+        (begin
+          (define (init-invoke (make-invokeN (make-invokeN [make-literal init-expression ..] ([make-literal s ..]
+            [make-literal bindings ..] [make-literal expr-buf ..] [make-literal obj-buf ..] [make-literal handler ..]
+            [make-literal err ..] [make-literal cache ..]) ..) () ..))
+          (define (c [cons init-invoke c ..])
+          {break c}))))))))) ..] ..]))
 

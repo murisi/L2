@@ -1,130 +1,130 @@
 (;; What follows is a struct for representing fragment characters. It is
-	conceptually in union with the list-struct.)
+  conceptually in union with the list-struct.)
 
 (function character-struct (l r) [mk# r #16])
 
 (;; This field should be set to character-flag to indicate that a given reference
-	is a character rather than a list.)
-	
+  is a character rather than a list.)
+  
 (function cs-flag (l r) [mk-field l r #8 #8])
 
 (;; This field contains the ASCII character represented by the this fragment
-	character.)
-	
+  character.)
+  
 (function cs-character (l r) [mk-field l r #0 #8])
 
 (;; Returns a reference to a fragment character representing the supplied
-	ASCII character.)
+  ASCII character.)
 
 (function char-init (s r) (`(storage _ (char (,[@fst s])) character-flag)r))
 
 (;; Returns the fragment character representing the supplied ASCII
-	character.)
+  character.)
 
 (function tkn-char (s r) (`($(loc (unit) (,[@fst s]) characters))r))
 
 (storage null-fragment (begin))
 
 (;; Checks if two fragment characters are equal. a is a fragment character. b
-	is a fragment character. Return value is (true) if they are equal and (false)
-	otherwise.)
+  is a fragment character. Return value is (true) if they are equal and (false)
+  otherwise.)
 
 (function i/f:char= (a b) [= (@ cs-character a) (@ cs-character b)])
 
 (;; Following array is used to lookup fragment character corresponding to ASCII character.)
 
 (storage characters
-	#0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 (char-init !) (char-init ")
-	(char-init #) (char-init $) (char-init %) (char-init &) (char-init ') #0 #0 (char-init *) (char-init +) (char-init ,)
-	(char-init -) (char-init .) (char-init /) (char-init 0) (char-init 1) (char-init 2) (char-init 3) (char-init 4) (char-init 5)
-	(char-init 6) (char-init 7) (char-init 8) (char-init 9) (char-init :) (char-init ;) (char-init <) (char-init =) (char-init >)
-	(char-init ?) (char-init @) (char-init A) (char-init B) (char-init C) (char-init D) (char-init E) (char-init F) (char-init G)
-	(char-init H) (char-init I) (char-init J) (char-init K) (char-init L) (char-init M) (char-init N) (char-init O) (char-init P)
-	(char-init Q) (char-init R) (char-init S) (char-init T) (char-init U) (char-init V) (char-init W) (char-init X) (char-init Y)
-	(char-init Z) #0 (char-init \) #0 (char-init ^) (char-init _) (char-init `) (char-init a) (char-init b) (char-init c)
-	(char-init d) (char-init e) (char-init f) (char-init g) (char-init h) (char-init i) (char-init j) (char-init k) (char-init l)
-	(char-init m) (char-init n) (char-init o) (char-init p) (char-init q) (char-init r) (char-init s) (char-init t) (char-init u)
-	(char-init v) (char-init w) (char-init x) (char-init y) (char-init z) #0 (char-init |) #0 (char-init ~) #0)
+  #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 (char-init !) (char-init ")
+  (char-init #) (char-init $) (char-init %) (char-init &) (char-init ') #0 #0 (char-init *) (char-init +) (char-init ,)
+  (char-init -) (char-init .) (char-init /) (char-init 0) (char-init 1) (char-init 2) (char-init 3) (char-init 4) (char-init 5)
+  (char-init 6) (char-init 7) (char-init 8) (char-init 9) (char-init :) (char-init ;) (char-init <) (char-init =) (char-init >)
+  (char-init ?) (char-init @) (char-init A) (char-init B) (char-init C) (char-init D) (char-init E) (char-init F) (char-init G)
+  (char-init H) (char-init I) (char-init J) (char-init K) (char-init L) (char-init M) (char-init N) (char-init O) (char-init P)
+  (char-init Q) (char-init R) (char-init S) (char-init T) (char-init U) (char-init V) (char-init W) (char-init X) (char-init Y)
+  (char-init Z) #0 (char-init \) #0 (char-init ^) (char-init _) (char-init `) (char-init a) (char-init b) (char-init c)
+  (char-init d) (char-init e) (char-init f) (char-init g) (char-init h) (char-init i) (char-init j) (char-init k) (char-init l)
+  (char-init m) (char-init n) (char-init o) (char-init p) (char-init q) (char-init r) (char-init s) (char-init t) (char-init u)
+  (char-init v) (char-init w) (char-init x) (char-init y) (char-init z) #0 (char-init |) #0 (char-init ~) #0)
 
 (;; Builds a token from a given C-string. str is the C-string that the constructed
-	token will be based on. r is the buffer in which the token will be constructed.
-	Return value is the constructed token.)
+  token will be based on. r is the buffer in which the token will be constructed.
+  Return value is the constructed token.)
 
 (function build-token (str r handler err)
-	(loop cons-char (sexprs nil) (strptr str)
-		(if [getb strptr]
-			{cons-char [cons (tkn-char [getb strptr]) sexprs r handler err] [+ strptr #1]}
-			[reverse sexprs r handler err])))
+  (loop cons-char (sexprs nil) (strptr str)
+    (if [getb strptr]
+      {cons-char [cons (tkn-char [getb strptr]) sexprs r handler err] [+ strptr #1]}
+      [reverse sexprs r handler err])))
 
 (;; Moves the supplied index forward to the first non-space character. l2src is a
-	reference to the beginning of a buffer containing characters. l2src-sz contains
-	the size in bytes of the buffer. pos is the reference to an index integer that
-	will be increased. Return value is the number of remaining characters in the
-	buffer.)
+  reference to the beginning of a buffer containing characters. l2src-sz contains
+  the size in bytes of the buffer. pos is the reference to an index integer that
+  will be increased. Return value is the number of remaining characters in the
+  buffer.)
 
 (function after-leading-space (l2src l2src-sz pos)
-	(loop find-space
-		(if (and [< $pos l2src-sz] [isspace [getb[+ l2src $pos]]])
-			(begin [set+ pos #1] {find-space})
-			[- l2src-sz $pos])))
+  (loop find-space
+    (if (and [< $pos l2src-sz] [isspace [getb[+ l2src $pos]]])
+      (begin [set+ pos #1] {find-space})
+      [- l2src-sz $pos])))
 
 (;; If there is a space at the current position in the buffer, then build a token
-	containing solely the sigil. Otherwise build a token of the form (<sigil>
-	<token>) where token is the token starting at the current position in the
-	buffer. sigil is a string. l2src is a reference to the start of a buffer
-	containing characters. l2src-sz is the size of the buffer. pos is a reference
-	to the current index in the buffer. r is the buffer into which the token
-	should be put. Return value is the constructed token.)
+  containing solely the sigil. Otherwise build a token of the form (<sigil>
+  <token>) where token is the token starting at the current position in the
+  buffer. sigil is a string. l2src is a reference to the start of a buffer
+  containing characters. l2src-sz is the size of the buffer. pos is a reference
+  to the current index in the buffer. r is the buffer into which the token
+  should be put. Return value is the constructed token.)
 
 (function build-sigilled-token (sigil l2src l2src-sz pos r handler err) (with return
-	(substitute (.. r handler err) (begin
-		(if [= l2src-sz $pos] {return [build-token sigil ..]} (begin))
-		(let (d [getb [+ l2src $pos]])
-			{return (if (or [isspace d] [= d (rparen)] [= d (rbrace)] [= d (rbracket)] [= d (lparen)] [= d (lbrace)] [= d (lbracket)])
-				[build-token sigil ..]
-				(list ([build-token sigil ..] [build-fragment l2src l2src-sz pos ..]) ..))})))))
+  (substitute (.. r handler err) (begin
+    (if [= l2src-sz $pos] {return [build-token sigil ..]} (begin))
+    (let (d [getb [+ l2src $pos]])
+      {return (if (or [isspace d] [= d (rparen)] [= d (rbrace)] [= d (rbracket)] [= d (lparen)] [= d (lbrace)] [= d (lbracket)])
+        [build-token sigil ..]
+        (list ([build-token sigil ..] [build-fragment l2src l2src-sz pos ..]) ..))})))))
 
 (;; Builds a fragment list starting at the current position in the buffer and ending
-	at the specified delimiter and then prefixes it with the given primitive.
-	primitive is a string. delimiter is an ascii character. For rest of parameters,
-	see above.)
+  at the specified delimiter and then prefixes it with the given primitive.
+  primitive is a string. delimiter is an ascii character. For rest of parameters,
+  see above.)
 
 (function build-fragment-list (primitive delimeter l2src l2src-sz pos r handler err) (with return
-	(substitute (.. r handler err)
-		(loop cons-frag (sexprs (list ([build-token primitive ..]) ..))
-			(let (rem [after-leading-space l2src l2src-sz pos])
-				(if (and rem [= [getb [+ l2src $pos]] delimeter])
-					(begin [set+ pos #1] {return [reverse sexprs ..]})
-					{cons-frag [cons [build-fragment l2src l2src-sz pos ..] sexprs ..]}))))))
+  (substitute (.. r handler err)
+    (loop cons-frag (sexprs (list ([build-token primitive ..]) ..))
+      (let (rem [after-leading-space l2src l2src-sz pos])
+        (if (and rem [= [getb [+ l2src $pos]] delimeter])
+          (begin [set+ pos #1] {return [reverse sexprs ..]})
+          {cons-frag [cons [build-fragment l2src l2src-sz pos ..] sexprs ..]}))))))
 
 (storage unexpected-char-error (begin))
 
 (;; Builds a fragment starting at the current position in the buffer. For parameters,
-	see above.)
+  see above.)
 
 (function build-fragment (l2src l2src-sz pos r handler err) (with return
-	(substitute (.. r handler err) (if [= l2src-sz $pos]
-		{handler (sets err unexpected-char-error #0 $pos)}
-		(let (c [getb [+ l2src $pos]])
-			(if (or [isspace c] [= c (rparen)] [= c (rbrace)] [= c (rbracket)])
-				{handler (sets err unexpected-char-error c $pos)}
-				(begin
-					[set+ pos #1]
-					{return (switch = c
-						((lparen) [@cdr [build-fragment-list (" expression) (rparen) l2src l2src-sz pos ..]])
-						((lbrace) [build-fragment-list (" jump) (rbrace) l2src l2src-sz pos ..])
-						((lbracket) [build-fragment-list (" invoke) (rbracket) l2src l2src-sz pos ..])
-						((char $) [build-sigilled-token (" $) l2src l2src-sz pos ..])
-						((char #) [build-sigilled-token (" #) l2src l2src-sz pos ..])
-						((char ,) [build-sigilled-token (" ,) l2src l2src-sz pos ..])
-						((char `) [build-sigilled-token (" `) l2src l2src-sz pos ..])
-						
-						[reverse (loop cons-char (l nil) (c c)
-							(let (l [cons (tkn-char c) l ..])
-								(if [= $pos l2src-sz] l
-									(let (c [getb [+ l2src $pos]])
-										(if (or [isspace c] [= c (lparen)] [= c (rparen)] [= c (lbrace)] [= c (rbrace)] [= c (lbracket)] [= c (rbracket)]) l
-											(begin [set+ pos #1] {cons-char l c})))))) ..])})))))))
+  (substitute (.. r handler err) (if [= l2src-sz $pos]
+    {handler (sets err unexpected-char-error #0 $pos)}
+    (let (c [getb [+ l2src $pos]])
+      (if (or [isspace c] [= c (rparen)] [= c (rbrace)] [= c (rbracket)])
+        {handler (sets err unexpected-char-error c $pos)}
+        (begin
+          [set+ pos #1]
+          {return (switch = c
+            ((lparen) [@cdr [build-fragment-list (" expression) (rparen) l2src l2src-sz pos ..]])
+            ((lbrace) [build-fragment-list (" jump) (rbrace) l2src l2src-sz pos ..])
+            ((lbracket) [build-fragment-list (" invoke) (rbracket) l2src l2src-sz pos ..])
+            ((char $) [build-sigilled-token (" $) l2src l2src-sz pos ..])
+            ((char #) [build-sigilled-token (" #) l2src l2src-sz pos ..])
+            ((char ,) [build-sigilled-token (" ,) l2src l2src-sz pos ..])
+            ((char `) [build-sigilled-token (" `) l2src l2src-sz pos ..])
+            
+            [reverse (loop cons-char (l nil) (c c)
+              (let (l [cons (tkn-char c) l ..])
+                (if [= $pos l2src-sz] l
+                  (let (c [getb [+ l2src $pos]])
+                    (if (or [isspace c] [= c (lparen)] [= c (rparen)] [= c (lbrace)] [= c (rbrace)] [= c (lbracket)] [= c (rbracket)]) l
+                      (begin [set+ pos #1] {cons-char l c})))))) ..])})))))))
 
 (storage character-flag (begin))
 
@@ -133,40 +133,40 @@
 (function i/f:token? (d) (and [length d] [= (@ cs-flag[@car d]) character-flag]))
 
 (;; Converts the given token into an ASCII string. d is the token that is to be
-	converted. r is the buffer into which the string should be put. The return value
-	is the constructed string.)
+  converted. r is the buffer into which the string should be put. The return value
+  is the constructed string.)
 
 (function to-string (d r handler err) (with return
-	(let (str [buffer-alloc [+ [length d] #1] r handler err])
-		(loop put-char (d d) (i #0)
-			(if [nil? d]
-				(begin
-					[setb [+ str i] (nul)]
-					{return str})
-				(begin
-					[setb [+ str i] (@ cs-character [@car d])]
-					{put-char [@cdr d] [+ i #1]}))))))
+  (let (str [buffer-alloc [+ [length d] #1] r handler err])
+    (loop put-char (d d) (i #0)
+      (if [nil? d]
+        (begin
+          [setb [+ str i] (nul)]
+          {return str})
+        (begin
+          [setb [+ str i] (@ cs-character [@car d])]
+          {put-char [@cdr d] [+ i #1]}))))))
 
 (;; Copies the given fragment into the given buffer. l is the fragment that is to
-	be copied. r is the buffer into which the fragment should be copied. The return
-	value is the copied fragment.)
+  be copied. r is the buffer into which the fragment should be copied. The return
+  value is the copied fragment.)
 
 (function copy-fragment (l r handler err)
-	(substitute (.. r handler err)
-		[reverse (if [i/f:token? l]
-			(reverse-map (s l) (tkn-char (@ cs-character s)) ..)
-			(reverse-map (s l) [copy-fragment s ..] ..)) ..]))
+  (substitute (.. r handler err)
+    [reverse (if [i/f:token? l]
+      (reverse-map (s l) (tkn-char (@ cs-character s)) ..)
+      (reverse-map (s l) [copy-fragment s ..] ..)) ..]))
 
 (;; Prints the given fragment out to standard output. d is the fragment that is
-	to be printed.)
+  to be printed.)
 
 (function print-fragment (d hdl err) (begin
-	[print-char (stdout) (lparen) hdl err]
-	(if [nil? d] (begin) (begin
-		(if [i/f:token? d]
-			[print-char (stdout) (@ cs-character[@car d]) hdl err]
-			[print-fragment [@car d] hdl err])
-		[print-str (stdout) ("(space).(space)) hdl err]
-		[print-fragment [@cdr d] hdl err]))
-	[print-char (stdout) (rparen) hdl err]))
+  [print-char (stdout) (lparen) hdl err]
+  (if [nil? d] (begin) (begin
+    (if [i/f:token? d]
+      [print-char (stdout) (@ cs-character[@car d]) hdl err]
+      [print-fragment [@car d] hdl err])
+    [print-str (stdout) ("(space).(space)) hdl err]
+    [print-fragment [@cdr d] hdl err]))
+  [print-char (stdout) (rparen) hdl err]))
 

@@ -1,340 +1,340 @@
 (;; Compiles a program into assembly. program is a program expression. bindings is a reference
-	to a list into which the augmented bindings of the generated code will be put. expr-buf is the
-	buffer into which all the constructed expressions and bindings will be put. Return value is a
-	list of assembly expressions.)
-	
+  to a list into which the augmented bindings of the generated code will be put. expr-buf is the
+  buffer into which all the constructed expressions and bindings will be put. Return value is a
+  list of assembly expressions.)
+  
 (function compile-program (program bindings expr-buf handler err)
-	(with return (substitute (.. expr-buf handler err) (begin
-		[visit-expressions vfind-multiple-definitions (storage _ program) (storage _ handler err)]
-		[containment-analysis program]
-		[classify-program-bindings (@ expr-expression program)]
-		[visit-expressions vlink-symbols (& expr-expression program) (storage _ ..)]
-		[visit-expressions vescape-analysis (storage _ program) (begin)]
-		[classify-program-bindings (@ expr-expression program)]
-		[visit-expressions vlayout-frames (& expr-expression program) (storage _ ..)]
-		{return [generate-program program bindings ..]}))))
+  (with return (substitute (.. expr-buf handler err) (begin
+    [visit-expressions vfind-multiple-definitions (storage _ program) (storage _ handler err)]
+    [containment-analysis program]
+    [classify-program-bindings (@ expr-expression program)]
+    [visit-expressions vlink-symbols (& expr-expression program) (storage _ ..)]
+    [visit-expressions vescape-analysis (storage _ program) (begin)]
+    [classify-program-bindings (@ expr-expression program)]
+    [visit-expressions vlayout-frames (& expr-expression program) (storage _ ..)]
+    {return [generate-program program bindings ..]}))))
 
 (;; Loads a program into memory and returns a handle to it. program is a program expression.
-	expr-buf is the buffer into which the results of compilation will be put. obj-buf is the
-	buffer into which the object code will be put. Return value is an object.)
+  expr-buf is the buffer into which the results of compilation will be put. obj-buf is the
+  buffer into which the object code will be put. Return value is an object.)
 
 (function load-program (program expr-buf obj-buf handler err) (with return (begin
-	(storage bindings (begin))
-	(define (asms [compile-program program bindings expr-buf handler err])
-	(storage objdest (begin))
-	(storage objdest-sz (begin))
-	[write-elf asms $bindings objdest objdest-sz obj-buf handler err]
-	(define (obj [load $objdest $objdest-sz obj-buf handler err])
-	[binding-offsets-to-addresses asms $bindings obj]
-	{return obj})))))
+  (storage bindings (begin))
+  (define (asms [compile-program program bindings expr-buf handler err])
+  (storage objdest (begin))
+  (storage objdest-sz (begin))
+  [write-elf asms $bindings objdest objdest-sz obj-buf handler err]
+  (define (obj [load $objdest $objdest-sz obj-buf handler err])
+  [binding-offsets-to-addresses asms $bindings obj]
+  {return obj})))))
 
 (;; Behavior is the same as load-program, but with the following addition: bndgs is a list
-	of object bindings, and after the loading is done, the undefined bindings of the loaded
-	program will take on the addresses supplied in the list. The handler continuation is
-	followed, and the error buffer referenced by err set to the pair (undefined-symbol-error,
-	<missing binding name>) if there is an undefined binding in the program that is not defined
-	in bndgs.)
+  of object bindings, and after the loading is done, the undefined bindings of the loaded
+  program will take on the addresses supplied in the list. The handler continuation is
+  followed, and the error buffer referenced by err set to the pair (undefined-symbol-error,
+  <missing binding name>) if there is an undefined binding in the program that is not defined
+  in bndgs.)
 
 (function load-program-and-mutate (program bndgs expr-buf obj-buf handler err) (with return (begin
-	(define (obj [load-program program expr-buf obj-buf handler err])
-	(define (temp-reg [create-buffer #0 handler err])
-	(define (ms [mutable-bindings obj temp-reg handler err])
-	
-	(foreach (d ms) (find (x bndgs) [str= (@ bndg-name d) (@ bndg-name x)] (begin
-		(define (missing-bndg-name (@ bndg-name d))
-		[destroy-buffer temp-reg handler err]
-		{handler (sets err undefined-symbol-error missing-bndg-name)}))))
-	
-	[destroy-buffer temp-reg handler err]
-	[mutate-bindings obj bndgs]
-	{return obj}))))))
-	
+  (define (obj [load-program program expr-buf obj-buf handler err])
+  (define (temp-reg [create-buffer #0 handler err])
+  (define (ms [mutable-bindings obj temp-reg handler err])
+  
+  (foreach (d ms) (find (x bndgs) [str= (@ bndg-name d) (@ bndg-name x)] (begin
+    (define (missing-bndg-name (@ bndg-name d))
+    [destroy-buffer temp-reg handler err]
+    {handler (sets err undefined-symbol-error missing-bndg-name)}))))
+  
+  [destroy-buffer temp-reg handler err]
+  [mutate-bindings obj bndgs]
+  {return obj}))))))
+  
 (function read-to-buffer (fn size-out expr-buf handler err) (with return (begin
-	(storage fd (begin))
-	(storage src-buf (begin))
-	
-	(fallthrough
-		(begin
-			[set fd [open fn handler err]]
-			[set size-out [size $fd close-file err]]
-			[set src-buf [buffer-alloc $size-out expr-buf close-file err]]
-			[read $fd $src-buf $size-out close-file err])
-			
-		(close-file (begin
-			[close $fd handler err]
-			(if [= (@0 err) no-error] {return $src-buf} {handler (begin)})))))))
+  (storage fd (begin))
+  (storage src-buf (begin))
+  
+  (fallthrough
+    (begin
+      [set fd [open fn handler err]]
+      [set size-out [size $fd close-file err]]
+      [set src-buf [buffer-alloc $size-out expr-buf close-file err]]
+      [read $fd $src-buf $size-out close-file err])
+      
+    (close-file (begin
+      [close $fd handler err]
+      (if [= (@0 err) no-error] {return $src-buf} {handler (begin)})))))))
 
 (;; Reads a list of expressions from a given file. fn is a string containing the filename.
-	expr-buf is the buffer into which the constructed expressions will be put. Return value
-	is a list of expressions.)
+  expr-buf is the buffer into which the constructed expressions will be put. Return value
+  is a list of expressions.)
 
 (function read-expressions (fn expr-buf handler err) (with return (substitute (.. expr-buf handler err) (begin
-	(storage src-sz (begin))
-	(define (src-buf [read-to-buffer fn src-sz ..])
-	(storage pos #0)
-	
-	(loop cons-expr (expressions nil)
-		(if [after-leading-space src-buf $src-sz pos]
-			{cons-expr [cons [build-expression [build-fragment src-buf $src-sz pos ..] ..] expressions ..]}
-			{return [reverse expressions ..]})))))))
+  (storage src-sz (begin))
+  (define (src-buf [read-to-buffer fn src-sz ..])
+  (storage pos #0)
+  
+  (loop cons-expr (expressions nil)
+    (if [after-leading-space src-buf $src-sz pos]
+      {cons-expr [cons [build-expression [build-fragment src-buf $src-sz pos ..] ..] expressions ..]}
+      {return [reverse expressions ..]})))))))
 
 (storage unsupported-ext-error (begin))
 
 (;; Takes a list of L2 and object files and evaluates them in order. srcv is a list of
-	strings containing paths to L2 and object files. bindings is reference to a list of
-	bindings and to it will be added the global variables of the loaded object files and
-	from it the execution environment of the same will be created. expr-buf is the
-	buffer into which expressions read from L2 source files are put. obj-buf is the
-	buffer into which both compiled and read object code is put. The handler continuation
-	is followed, and error buffer referenced by err is set to the pair
-	(unsupported-ext-error, <file path string>) if an extension other than .o or .l2 is
-	encountered.)
+  strings containing paths to L2 and object files. bindings is reference to a list of
+  bindings and to it will be added the global variables of the loaded object files and
+  from it the execution environment of the same will be created. expr-buf is the
+  buffer into which expressions read from L2 source files are put. obj-buf is the
+  buffer into which both compiled and read object code is put. The handler continuation
+  is followed, and error buffer referenced by err is set to the pair
+  (unsupported-ext-error, <file path string>) if an extension other than .o or .l2 is
+  encountered.)
 
 (function evaluate-files (srcv bindings expr-buf obj-buf handler err) (begin
-	(storage objects nil)
-	
-	(foreach (src srcv) (begin
-		(storage obj (begin))
-		(define (dot [strrchr src (char .)])
+  (storage objects nil)
+  
+  (foreach (src srcv) (begin
+    (storage obj (begin))
+    (define (dot [strrchr src (char .)])
 
-		(if (and [not= dot null-strrchr] [str= dot (" .l2)])
-			[set obj [load-program [generate-metaprogram [make-program [read-expressions src expr-buf handler err]
-				expr-buf handler err] bindings expr-buf obj-buf handler err] expr-buf obj-buf handler err]]
-	
-		(if (and [not= dot null-strrchr] [str= dot (" .o)]) (begin
-			(storage obj-sz (begin))
-			(storage buf [read-to-buffer src obj-sz obj-buf handler err])
-			[set obj [load $buf $obj-sz obj-buf handler err]])
-	
-			{handler (sets err unsupported-ext-error src)}))
+    (if (and [not= dot null-strrchr] [str= dot (" .l2)])
+      [set obj [load-program [generate-metaprogram [make-program [read-expressions src expr-buf handler err]
+        expr-buf handler err] bindings expr-buf obj-buf handler err] expr-buf obj-buf handler err]]
+  
+    (if (and [not= dot null-strrchr] [str= dot (" .o)]) (begin
+      (storage obj-sz (begin))
+      (storage buf [read-to-buffer src obj-sz obj-buf handler err])
+      [set obj [load $buf $obj-sz obj-buf handler err]])
+  
+      {handler (sets err unsupported-ext-error src)}))
 
-		[append $obj objects obj-buf handler err]
-		[append-list bindings [immutable-bindings $obj obj-buf handler err]])))
+    [append $obj objects obj-buf handler err]
+    [append-list bindings [immutable-bindings $obj obj-buf handler err]])))
 
-	(foreach (obj $objects) [mutate-bindings obj $bindings])))
+  (foreach (obj $objects) [mutate-bindings obj $bindings])))
 
 (;; Takes a list of L2 source files and compiles them into object files. programs is a
-	list of strings containing paths to L2 source files. bndgs is a list of bindings
-	pointing to the macros to be used during the meta-expression expansions. expr-buf
-	is the buffer into which constructed expressions will be put. obj-buf is the buffer
-	into which object code will be put.)
+  list of strings containing paths to L2 source files. bndgs is a list of bindings
+  pointing to the macros to be used during the meta-expression expansions. expr-buf
+  is the buffer into which constructed expressions will be put. obj-buf is the buffer
+  into which object code will be put.)
 
 (function compile-files (programs bndgs expr-buf obj-buf handler err)
-	(foreach (infn programs) (begin
-		(storage dot [strrchr infn (char .)])
-		(if (and [not= $dot null-strrchr] [str= $dot (" .l2)])
-			(begin
-				(storage program [make-program [read-expressions infn expr-buf handler err] expr-buf handler err])
-				[pre-visit-expressions vgenerate-metas program (storage _ bndgs expr-buf handler err)]
-				(storage bindings (begin))
-				(define (asms [compile-program $program bindings expr-buf handler err])
-				(storage objdest (begin))
-				(storage objdest-sz (begin))
-				[write-elf asms $bindings objdest objdest-sz obj-buf handler err]
-				(define (outfn [buffer-alloc [+ [strlen infn] #1] obj-buf handler err])
-				[strcpy outfn infn]
-				[strcpy [strrchr outfn (char .)] (" .o)]
-				(define (fd [create outfn handler err])
-				[print fd $objdest $objdest-sz]
-				[close fd handler err]))))
-			(begin)))))
+  (foreach (infn programs) (begin
+    (storage dot [strrchr infn (char .)])
+    (if (and [not= $dot null-strrchr] [str= $dot (" .l2)])
+      (begin
+        (storage program [make-program [read-expressions infn expr-buf handler err] expr-buf handler err])
+        [pre-visit-expressions vgenerate-metas program (storage _ bndgs expr-buf handler err)]
+        (storage bindings (begin))
+        (define (asms [compile-program $program bindings expr-buf handler err])
+        (storage objdest (begin))
+        (storage objdest-sz (begin))
+        [write-elf asms $bindings objdest objdest-sz obj-buf handler err]
+        (define (outfn [buffer-alloc [+ [strlen infn] #1] obj-buf handler err])
+        [strcpy outfn infn]
+        [strcpy [strrchr outfn (char .)] (" .o)]
+        (define (fd [create outfn handler err])
+        [print fd $objdest $objdest-sz]
+        [close fd handler err]))))
+      (begin)))))
 
 (storage arguments-error (begin))
 
 (storage no-error (begin))
 
 (;; This is where program execution starts. The following code essentially loads up and
-	executes the code specified in the command line arguments and then compiles the
-	separately specified code using the already loaded up functions as macros. It also
-	prints out the error messages if there are any.)
+  executes the code specified in the command line arguments and then compiles the
+  separately specified code using the already loaded up functions as macros. It also
+  prints out the error messages if there are any.)
 
 (begin
-	(;; The buffer into which object code and bindings are put)
-	(storage obj-buf (begin))
-	(;; The buffer into which expressions and fragments are put)
-	(storage expr-buf (begin))
-	(;; The buffer into which errors are put)
-	(storage err no-error (begin) (begin) (begin) (begin))
-	
-	(fallthrough
-		(begin
-			[set obj-buf [create-buffer #0 exit-cont err]]
-			[set expr-buf [create-buffer #0 cleanup-obj-buf err]]
-			
-			(storage args [@cdr[argv $obj-buf handler err]])
-			
-			(;; These are all the bindings necessary for metaprogramming. Their
-				definitions can be found in list.l2 and lexer.l2.)
-			(storage bndgs (substitute (.. $obj-buf handler err) (list
-				([make-binding (" -!-)(tkn-char(char !))..]
-				[make-binding (" -!-)(tkn-char(char !))..]
-				[make-binding (" -"-)(tkn-char(char "))..]
-				[make-binding (" -#-)(tkn-char(char #))..]
-				[make-binding (" -$-)(tkn-char(char $))..]
-				[make-binding (" -%-)(tkn-char(char %))..]
-				[make-binding (" -&-)(tkn-char(char &))..]
-				[make-binding (" -'-)(tkn-char(char '))..]
-				[make-binding (" -*-)(tkn-char(char *))..]
-				[make-binding (" -+-)(tkn-char(char +))..]
-				[make-binding (" -,-)(tkn-char(char ,))..]
-				[make-binding (" ---)(tkn-char(char -))..]
-				[make-binding (" -.-)(tkn-char(char .))..]
-				[make-binding (" -/-)(tkn-char(char /))..]
-				[make-binding (" -0-)(tkn-char(char 0))..]
-				[make-binding (" -1-)(tkn-char(char 1))..]
-				[make-binding (" -2-)(tkn-char(char 2))..]
-				[make-binding (" -3-)(tkn-char(char 3))..]
-				[make-binding (" -4-)(tkn-char(char 4))..]
-				[make-binding (" -5-)(tkn-char(char 5))..]
-				[make-binding (" -6-)(tkn-char(char 6))..]
-				[make-binding (" -7-)(tkn-char(char 7))..]
-				[make-binding (" -8-)(tkn-char(char 8))..]
-				[make-binding (" -9-)(tkn-char(char 9))..]
-				[make-binding (" -:-)(tkn-char(char :))..]
-				[make-binding (" -;-)(tkn-char(char ;))..]
-				[make-binding (" -<-)(tkn-char(char <))..]
-				[make-binding (" -=-)(tkn-char(char =))..]
-				[make-binding (" ->-)(tkn-char(char >))..]
-				[make-binding (" -?-)(tkn-char(char ?))..]
-				[make-binding (" -@-)(tkn-char(char @))..]
-				[make-binding (" -A-)(tkn-char(char A))..]
-				[make-binding (" -B-)(tkn-char(char B))..]
-				[make-binding (" -C-)(tkn-char(char C))..]
-				[make-binding (" -D-)(tkn-char(char D))..]
-				[make-binding (" -E-)(tkn-char(char E))..]
-				[make-binding (" -F-)(tkn-char(char F))..]
-				[make-binding (" -G-)(tkn-char(char G))..]
-				[make-binding (" -H-)(tkn-char(char H))..]
-				[make-binding (" -I-)(tkn-char(char I))..]
-				[make-binding (" -J-)(tkn-char(char J))..]
-				[make-binding (" -K-)(tkn-char(char K))..]
-				[make-binding (" -L-)(tkn-char(char L))..]
-				[make-binding (" -M-)(tkn-char(char M))..]
-				[make-binding (" -N-)(tkn-char(char N))..]
-				[make-binding (" -O-)(tkn-char(char O))..]
-				[make-binding (" -P-)(tkn-char(char P))..]
-				[make-binding (" -Q-)(tkn-char(char Q))..]
-				[make-binding (" -R-)(tkn-char(char R))..]
-				[make-binding (" -S-)(tkn-char(char S))..]
-				[make-binding (" -T-)(tkn-char(char T))..]
-				[make-binding (" -U-)(tkn-char(char U))..]
-				[make-binding (" -V-)(tkn-char(char V))..]
-				[make-binding (" -W-)(tkn-char(char W))..]
-				[make-binding (" -X-)(tkn-char(char X))..]
-				[make-binding (" -Y-)(tkn-char(char Y))..]
-				[make-binding (" -Z-)(tkn-char(char Z))..]
-				[make-binding (" -\-)(tkn-char(char \))..]
-				[make-binding (" -^-)(tkn-char(char ^))..]
-				[make-binding (" -_-)(tkn-char(char _))..]
-				[make-binding (" -`-)(tkn-char(char `))..]
-				[make-binding (" -a-)(tkn-char(char a))..]
-				[make-binding (" -b-)(tkn-char(char b))..]
-				[make-binding (" -c-)(tkn-char(char c))..]
-				[make-binding (" -d-)(tkn-char(char d))..]
-				[make-binding (" -e-)(tkn-char(char e))..]
-				[make-binding (" -f-)(tkn-char(char f))..]
-				[make-binding (" -g-)(tkn-char(char g))..]
-				[make-binding (" -h-)(tkn-char(char h))..]
-				[make-binding (" -i-)(tkn-char(char i))..]
-				[make-binding (" -j-)(tkn-char(char j))..]
-				[make-binding (" -k-)(tkn-char(char k))..]
-				[make-binding (" -l-)(tkn-char(char l))..]
-				[make-binding (" -m-)(tkn-char(char m))..]
-				[make-binding (" -n-)(tkn-char(char n))..]
-				[make-binding (" -o-)(tkn-char(char o))..]
-				[make-binding (" -p-)(tkn-char(char p))..]
-				[make-binding (" -q-)(tkn-char(char q))..]
-				[make-binding (" -r-)(tkn-char(char r))..]
-				[make-binding (" -s-)(tkn-char(char s))..]
-				[make-binding (" -t-)(tkn-char(char t))..]
-				[make-binding (" -u-)(tkn-char(char u))..]
-				[make-binding (" -v-)(tkn-char(char v))..]
-				[make-binding (" -w-)(tkn-char(char w))..]
-				[make-binding (" -x-)(tkn-char(char x))..]
-				[make-binding (" -y-)(tkn-char(char y))..]
-				[make-binding (" -z-)(tkn-char(char z))..]
-				[make-binding (" -|-)(tkn-char(char |))..]
-				[make-binding (" -~-)(tkn-char(char ~))..]
-				[make-binding (" @fst) @car ..]
-				[make-binding (" @rst) @cdr ..]
-				[make-binding (" lst) cons ..]
-				[make-binding (" token?) i/f:token? ..]
-				[make-binding (" emt?) nil? ..]
-				[make-binding (" emt) nil ..]
-				[make-binding (" char=) i/f:char= ..])..)))
-			
-			(;; Evaluate the metaprogram)
-			[evaluate-files $args bndgs $expr-buf $obj-buf handler err]
-			(;; Compile the program in the metaprogram's environment)
-			[compile-files $args $bndgs $expr-buf $obj-buf handler err])
-			
-		(handler (substitute (.. cleanup err) (switch = (@0 err)
-			(multiple-definition-error (begin
-				[print-str (stdout) (" The definition of(space)) ..]
-				[print-str (stdout) (@1 err) ..]
-				[print-str (stdout) (" (space)erroneously occured multiple times.(lf)) ..]))
-				
-			(param-count-mismatch-error (begin
-				[print-str (stdout) (" The number of arguments in(space)) ..]
-				[print-expression (@1 err) ..]
-				[print-str (stdout) (" (space)does not match the number of parameters in(space)) ..]
-				[print-expression (@2 err) ..]
-				[print-str (stdout) (" .(lf)) ..]))
-			
-			(undefined-symbol-error (begin
-				[print-str (stdout) (" Undefined symbol:(space)) ..]
-				[print-str (stdout) (@1 err) ..]
-				[print-str (stdout) (" .(lf)) ..]))
-			
-			(special-form-error (if [not= (@2 err) null-fragment]
-				(begin
-					[print-str (stdout) (" The subexpression(space)) ..]
-					[print-fragment (@2 err) ..]
-					[print-str (stdout) (" (space)does not satisfy the requirements of the expression(space)) ..]
-					[print-fragment (@1 err) ..]
-					[print-str (stdout) (" .(lf)) ..])
-				(begin
-					[print-str (stdout) (" The expression(space)) ..]
-					[print-fragment (@1 err) ..]
-					[print-str (stdout) (" (space)has an incorrect number of subexpressions.(lf)) ..])))
-			
-			(unexpected-char-error (begin
-				[print-str (stdout) (" Unexpectedly read(space)) ..]
-				[print-char (stdout) (@1 err) ..]
-				[print-str (stdout) (" (space)at(space)) ..]
-				[print-uint (stdout) (@2 err) ..]
-				[print-str (stdout) (" .(lf)) ..]))
-			
-			(file-access-error (if [not= (@1 err) null-string]
-				(begin
-					[print-str (stdout) (" Inaccessable file:(space)) ..]
-					[print-str (stdout) (@1 err) ..]
-					[print-str (stdout) (" .(lf)) ..])
-				[print-str (stdout) (" Inaccessable file.) ..]))
-			
-			(unsupported-ext-error (begin
-				[print-str (stdout) (" File has unsupported extension:(space)) ..]
-				[print-str (stdout) (@1 err) ..]
-				[print-str (stdout) (" .(lf)) ..]))
-			
-			(arguments-error [print-str (stdout)
-				(" Bad command line arguments.(lf)
-				Usage: l2compile(space)(lparen)metaprogram.l2 | metaprogram.o(rparen) ... - program.l2 ...(lf)
-				Outcome: Compiles each L2 file before the dash into an object file, then links all the object files(lf)
-				before the dash together, and then executes each object file before the dash in the order they were(lf)
-				specified. L2 files after the dash are then compiled using the global functions defined before the(lf)
-				dash as macros.(lf)) ..])
-			
-			(memory-access-error [print-str (stdout) (" Memory access error.(lf)) ..])
-			
-			(object-error [print-str (stdout) (" Bad object file supplied.(lf)) ..])
-				
-			(begin))))
-		
-		(cleanup (begin))
-		
-		(cleanup-expr-buf [destroy-buffer $expr-buf])
-		
-		(cleanup-obj-buf [destroy-buffer $obj-buf])
-		
-		(exit-cont [exit (if [= (@0 err) no-error] #0 #1)])))
+  (;; The buffer into which object code and bindings are put)
+  (storage obj-buf (begin))
+  (;; The buffer into which expressions and fragments are put)
+  (storage expr-buf (begin))
+  (;; The buffer into which errors are put)
+  (storage err no-error (begin) (begin) (begin) (begin))
+  
+  (fallthrough
+    (begin
+      [set obj-buf [create-buffer #0 exit-cont err]]
+      [set expr-buf [create-buffer #0 cleanup-obj-buf err]]
+      
+      (storage args [@cdr[argv $obj-buf handler err]])
+      
+      (;; These are all the bindings necessary for metaprogramming. Their
+        definitions can be found in list.l2 and lexer.l2.)
+      (storage bndgs (substitute (.. $obj-buf handler err) (list
+        ([make-binding (" -!-)(tkn-char(char !))..]
+        [make-binding (" -!-)(tkn-char(char !))..]
+        [make-binding (" -"-)(tkn-char(char "))..]
+        [make-binding (" -#-)(tkn-char(char #))..]
+        [make-binding (" -$-)(tkn-char(char $))..]
+        [make-binding (" -%-)(tkn-char(char %))..]
+        [make-binding (" -&-)(tkn-char(char &))..]
+        [make-binding (" -'-)(tkn-char(char '))..]
+        [make-binding (" -*-)(tkn-char(char *))..]
+        [make-binding (" -+-)(tkn-char(char +))..]
+        [make-binding (" -,-)(tkn-char(char ,))..]
+        [make-binding (" ---)(tkn-char(char -))..]
+        [make-binding (" -.-)(tkn-char(char .))..]
+        [make-binding (" -/-)(tkn-char(char /))..]
+        [make-binding (" -0-)(tkn-char(char 0))..]
+        [make-binding (" -1-)(tkn-char(char 1))..]
+        [make-binding (" -2-)(tkn-char(char 2))..]
+        [make-binding (" -3-)(tkn-char(char 3))..]
+        [make-binding (" -4-)(tkn-char(char 4))..]
+        [make-binding (" -5-)(tkn-char(char 5))..]
+        [make-binding (" -6-)(tkn-char(char 6))..]
+        [make-binding (" -7-)(tkn-char(char 7))..]
+        [make-binding (" -8-)(tkn-char(char 8))..]
+        [make-binding (" -9-)(tkn-char(char 9))..]
+        [make-binding (" -:-)(tkn-char(char :))..]
+        [make-binding (" -;-)(tkn-char(char ;))..]
+        [make-binding (" -<-)(tkn-char(char <))..]
+        [make-binding (" -=-)(tkn-char(char =))..]
+        [make-binding (" ->-)(tkn-char(char >))..]
+        [make-binding (" -?-)(tkn-char(char ?))..]
+        [make-binding (" -@-)(tkn-char(char @))..]
+        [make-binding (" -A-)(tkn-char(char A))..]
+        [make-binding (" -B-)(tkn-char(char B))..]
+        [make-binding (" -C-)(tkn-char(char C))..]
+        [make-binding (" -D-)(tkn-char(char D))..]
+        [make-binding (" -E-)(tkn-char(char E))..]
+        [make-binding (" -F-)(tkn-char(char F))..]
+        [make-binding (" -G-)(tkn-char(char G))..]
+        [make-binding (" -H-)(tkn-char(char H))..]
+        [make-binding (" -I-)(tkn-char(char I))..]
+        [make-binding (" -J-)(tkn-char(char J))..]
+        [make-binding (" -K-)(tkn-char(char K))..]
+        [make-binding (" -L-)(tkn-char(char L))..]
+        [make-binding (" -M-)(tkn-char(char M))..]
+        [make-binding (" -N-)(tkn-char(char N))..]
+        [make-binding (" -O-)(tkn-char(char O))..]
+        [make-binding (" -P-)(tkn-char(char P))..]
+        [make-binding (" -Q-)(tkn-char(char Q))..]
+        [make-binding (" -R-)(tkn-char(char R))..]
+        [make-binding (" -S-)(tkn-char(char S))..]
+        [make-binding (" -T-)(tkn-char(char T))..]
+        [make-binding (" -U-)(tkn-char(char U))..]
+        [make-binding (" -V-)(tkn-char(char V))..]
+        [make-binding (" -W-)(tkn-char(char W))..]
+        [make-binding (" -X-)(tkn-char(char X))..]
+        [make-binding (" -Y-)(tkn-char(char Y))..]
+        [make-binding (" -Z-)(tkn-char(char Z))..]
+        [make-binding (" -\-)(tkn-char(char \))..]
+        [make-binding (" -^-)(tkn-char(char ^))..]
+        [make-binding (" -_-)(tkn-char(char _))..]
+        [make-binding (" -`-)(tkn-char(char `))..]
+        [make-binding (" -a-)(tkn-char(char a))..]
+        [make-binding (" -b-)(tkn-char(char b))..]
+        [make-binding (" -c-)(tkn-char(char c))..]
+        [make-binding (" -d-)(tkn-char(char d))..]
+        [make-binding (" -e-)(tkn-char(char e))..]
+        [make-binding (" -f-)(tkn-char(char f))..]
+        [make-binding (" -g-)(tkn-char(char g))..]
+        [make-binding (" -h-)(tkn-char(char h))..]
+        [make-binding (" -i-)(tkn-char(char i))..]
+        [make-binding (" -j-)(tkn-char(char j))..]
+        [make-binding (" -k-)(tkn-char(char k))..]
+        [make-binding (" -l-)(tkn-char(char l))..]
+        [make-binding (" -m-)(tkn-char(char m))..]
+        [make-binding (" -n-)(tkn-char(char n))..]
+        [make-binding (" -o-)(tkn-char(char o))..]
+        [make-binding (" -p-)(tkn-char(char p))..]
+        [make-binding (" -q-)(tkn-char(char q))..]
+        [make-binding (" -r-)(tkn-char(char r))..]
+        [make-binding (" -s-)(tkn-char(char s))..]
+        [make-binding (" -t-)(tkn-char(char t))..]
+        [make-binding (" -u-)(tkn-char(char u))..]
+        [make-binding (" -v-)(tkn-char(char v))..]
+        [make-binding (" -w-)(tkn-char(char w))..]
+        [make-binding (" -x-)(tkn-char(char x))..]
+        [make-binding (" -y-)(tkn-char(char y))..]
+        [make-binding (" -z-)(tkn-char(char z))..]
+        [make-binding (" -|-)(tkn-char(char |))..]
+        [make-binding (" -~-)(tkn-char(char ~))..]
+        [make-binding (" @fst) @car ..]
+        [make-binding (" @rst) @cdr ..]
+        [make-binding (" lst) cons ..]
+        [make-binding (" token?) i/f:token? ..]
+        [make-binding (" emt?) nil? ..]
+        [make-binding (" emt) nil ..]
+        [make-binding (" char=) i/f:char= ..])..)))
+      
+      (;; Evaluate the metaprogram)
+      [evaluate-files $args bndgs $expr-buf $obj-buf handler err]
+      (;; Compile the program in the metaprogram's environment)
+      [compile-files $args $bndgs $expr-buf $obj-buf handler err])
+      
+    (handler (substitute (.. cleanup err) (switch = (@0 err)
+      (multiple-definition-error (begin
+        [print-str (stdout) (" The definition of(space)) ..]
+        [print-str (stdout) (@1 err) ..]
+        [print-str (stdout) (" (space)erroneously occured multiple times.(lf)) ..]))
+        
+      (param-count-mismatch-error (begin
+        [print-str (stdout) (" The number of arguments in(space)) ..]
+        [print-expression (@1 err) ..]
+        [print-str (stdout) (" (space)does not match the number of parameters in(space)) ..]
+        [print-expression (@2 err) ..]
+        [print-str (stdout) (" .(lf)) ..]))
+      
+      (undefined-symbol-error (begin
+        [print-str (stdout) (" Undefined symbol:(space)) ..]
+        [print-str (stdout) (@1 err) ..]
+        [print-str (stdout) (" .(lf)) ..]))
+      
+      (special-form-error (if [not= (@2 err) null-fragment]
+        (begin
+          [print-str (stdout) (" The subexpression(space)) ..]
+          [print-fragment (@2 err) ..]
+          [print-str (stdout) (" (space)does not satisfy the requirements of the expression(space)) ..]
+          [print-fragment (@1 err) ..]
+          [print-str (stdout) (" .(lf)) ..])
+        (begin
+          [print-str (stdout) (" The expression(space)) ..]
+          [print-fragment (@1 err) ..]
+          [print-str (stdout) (" (space)has an incorrect number of subexpressions.(lf)) ..])))
+      
+      (unexpected-char-error (begin
+        [print-str (stdout) (" Unexpectedly read(space)) ..]
+        [print-char (stdout) (@1 err) ..]
+        [print-str (stdout) (" (space)at(space)) ..]
+        [print-uint (stdout) (@2 err) ..]
+        [print-str (stdout) (" .(lf)) ..]))
+      
+      (file-access-error (if [not= (@1 err) null-string]
+        (begin
+          [print-str (stdout) (" Inaccessable file:(space)) ..]
+          [print-str (stdout) (@1 err) ..]
+          [print-str (stdout) (" .(lf)) ..])
+        [print-str (stdout) (" Inaccessable file.) ..]))
+      
+      (unsupported-ext-error (begin
+        [print-str (stdout) (" File has unsupported extension:(space)) ..]
+        [print-str (stdout) (@1 err) ..]
+        [print-str (stdout) (" .(lf)) ..]))
+      
+      (arguments-error [print-str (stdout)
+        (" Bad command line arguments.(lf)
+        Usage: l2compile(space)(lparen)metaprogram.l2 | metaprogram.o(rparen) ... - program.l2 ...(lf)
+        Outcome: Compiles each L2 file before the dash into an object file, then links all the object files(lf)
+        before the dash together, and then executes each object file before the dash in the order they were(lf)
+        specified. L2 files after the dash are then compiled using the global functions defined before the(lf)
+        dash as macros.(lf)) ..])
+      
+      (memory-access-error [print-str (stdout) (" Memory access error.(lf)) ..])
+      
+      (object-error [print-str (stdout) (" Bad object file supplied.(lf)) ..])
+        
+      (begin))))
+    
+    (cleanup (begin))
+    
+    (cleanup-expr-buf [destroy-buffer $expr-buf])
+    
+    (cleanup-obj-buf [destroy-buffer $obj-buf])
+    
+    (exit-cont [exit (if [= (@0 err) no-error] #0 #1)])))
