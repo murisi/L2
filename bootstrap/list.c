@@ -16,7 +16,7 @@ typedef struct _list_* list;
 struct _list_ nil[] = {{ NULL, nil }};
 
 bool is_nil(list s) {
-  return s->rst == s ? true : false;
+  return s == nil ? true : false;
 }
 
 #define foreach(t, u) \

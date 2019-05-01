@@ -1,3 +1,18 @@
+list var(buffer reg) {
+  list ret = buffer_alloc(reg, sizeof(struct _list_));
+  ret->fst = NULL;
+  ret->rst = ret;
+  return ret;
+}
+
+bool is_var(list s) {
+  return s != nil && s->rst == s ? true : false;
+}
+
+bool var_equals(list a, list b) {
+  return a == b ? true : false;
+}
+
 struct character {
   char character;
   void *flag;

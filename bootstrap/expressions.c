@@ -9,6 +9,7 @@ enum expression_type {
   symbol,
   jump,
   continuation,
+  constrain,
   assembly,
   meta
 };
@@ -43,11 +44,15 @@ struct binding_aug *make_binding_aug(enum binding_aug_type type, enum binding_au
 struct base_expression {
   enum expression_type type;
   union expression *parent;
+  list signature;
+  unsigned int lowlink;
 };
 
 struct begin_expression {
   enum expression_type type;
   union expression *parent;
+  list signature;
+  unsigned int lowlink;
   
   list expressions; // void * = struct expression *
 };
@@ -55,6 +60,8 @@ struct begin_expression {
 struct assembly_expression {
   enum expression_type type;
   union expression *parent;
+  list signature;
+  unsigned int lowlink;
   
   unsigned long opcode;
   list arguments; // void * = union expression *
@@ -63,6 +70,8 @@ struct assembly_expression {
 struct storage_expression {
   enum expression_type type;
   union expression *parent;
+  list signature;
+  unsigned int lowlink;
   
   union expression *reference;
   list arguments; // void * = union expression *
@@ -75,6 +84,8 @@ struct storage_expression {
 struct invoke_expression {
   enum expression_type type;
   union expression *parent;
+  list signature;
+  unsigned int lowlink;
   
   union expression *reference;
   list arguments; // void * = union expression *
@@ -86,6 +97,8 @@ struct invoke_expression {
 struct jump_expression {
   enum expression_type type;
   union expression *parent;
+  list signature;
+  unsigned int lowlink;
   
   union expression *reference;
   list arguments;
@@ -99,6 +112,8 @@ struct jump_expression {
 struct if_expression {
   enum expression_type type;
   union expression *parent;
+  list signature;
+  unsigned int lowlink;
   
   union expression *condition;
   union expression *consequent;
@@ -108,6 +123,8 @@ struct if_expression {
 struct literal_expression {
   enum expression_type type;
   union expression *parent;
+  list signature;
+  unsigned int lowlink;
   
   long int value;
 };
@@ -115,6 +132,8 @@ struct literal_expression {
 struct function_expression {
   enum expression_type type;
   union expression *parent;
+  list signature;
+  unsigned int lowlink;
   
   union expression *reference;
   union expression *expression;
@@ -126,6 +145,8 @@ struct function_expression {
 struct continuation_expression {
   enum expression_type type;
   union expression *parent;
+  list signature;
+  unsigned int lowlink;
   
   union expression *reference;
   union expression *expression;
@@ -138,6 +159,8 @@ struct continuation_expression {
 struct with_expression {
   enum expression_type type;
   union expression *parent;
+  list signature;
+  unsigned int lowlink;
   
   union expression *reference;
   union expression *expression;
@@ -150,6 +173,8 @@ struct with_expression {
 struct symbol_expression {
   enum expression_type type;
   union expression *parent;
+  list signature;
+  unsigned int lowlink;
   
   char *name;
   struct binding_aug *binding_aug;
@@ -158,9 +183,21 @@ struct symbol_expression {
 struct meta_expression {
   enum expression_type type;
   union expression *parent;
+  list signature;
+  unsigned int lowlink;
   
   union expression *reference;
   list argument;
+};
+
+struct constrain_expression {
+  enum expression_type type;
+  union expression *parent;
+  list signature;
+  unsigned int lowlink;
+  
+  union expression *reference;
+  union expression *expression;
 };
 
 union expression {
@@ -177,11 +214,14 @@ union expression {
   struct symbol_expression symbol;
   struct meta_expression meta;
   struct assembly_expression assembly;
+  struct constrain_expression constrain;
 };
 
 union expression *make_literal(unsigned long value, buffer reg) {
   union expression *t = buffer_alloc(reg, sizeof(union expression));
   t->literal.type = literal;
+  t->literal.signature = var(reg);
+  t->literal.lowlink = 0;
   t->literal.value = value;
   return t;
 }
@@ -189,6 +229,8 @@ union expression *make_literal(unsigned long value, buffer reg) {
 union expression *make_symbol(char *name, buffer reg) {
   union expression *sym = buffer_alloc(reg, sizeof(union expression));
   sym->symbol.type = symbol;
+  sym->symbol.signature = var(reg);
+  sym->symbol.lowlink = 0;
   sym->symbol.parent = NULL;
   sym->symbol.name = name;
   sym->symbol.binding_aug = NULL;
@@ -211,6 +253,8 @@ union expression *use_binding(struct binding_aug *bndg, buffer reg) {
 union expression *make_begin(list expressions, buffer reg) {
   union expression *beg = buffer_alloc(reg, sizeof(union expression));
   beg->begin.type = begin;
+  beg->begin.signature = var(reg);
+  beg->begin.lowlink = 0;
   beg->begin.parent = NULL;
   beg->begin.expressions = expressions;
   union expression *expr;
@@ -242,6 +286,8 @@ union expression *make_begin2(union expression *expr1, union expression *expr2, 
 union expression *make_function(union expression *ref, list params, union expression *expr, buffer reg) {
   union expression *func = buffer_alloc(reg, sizeof(union expression));
   func->function.type = function;
+  func->function.signature = var(reg);
+  func->function.lowlink = 0;
   func->function.parent = NULL;
   put(func, function.reference, ref);
   ref->symbol.binding_aug = make_binding_aug(absolute_storage, local_scope, defined_state, ref->symbol.name, ref, reg);
@@ -259,6 +305,8 @@ union expression *make_function(union expression *ref, list params, union expres
 union expression *make_continuation(union expression *ref, list params, union expression *expr, buffer reg) {
   union expression *cont = buffer_alloc(reg, sizeof(union expression));
   cont->continuation.type = continuation;
+  cont->continuation.signature = var(reg);
+  cont->continuation.lowlink = 0;
   cont->continuation.parent = NULL;
   cont->continuation.escapes = false;
   cont->continuation.cont_instr_bndg = make_binding_aug(absolute_storage, local_scope, defined_state, NULL, NULL, reg);
@@ -277,6 +325,8 @@ union expression *make_continuation(union expression *ref, list params, union ex
 union expression *make_with(union expression *ref, union expression *expr, buffer reg) {
   union expression *wth = buffer_alloc(reg, sizeof(union expression));
   wth->with.type = with;
+  wth->with.signature = var(reg);
+  wth->with.lowlink = 0;
   wth->with.parent = NULL;
   wth->with.escapes = false;
   wth->with.cont_instr_bndg = make_binding_aug(absolute_storage, local_scope, defined_state, NULL, NULL, reg);
@@ -322,6 +372,8 @@ union expression *make_asm3(int opcode, union expression *arg1, union expression
 union expression *make_jump(union expression *ref, list args, buffer reg) {
   union expression *u = buffer_alloc(reg, sizeof(union expression));
   u->jump.type = jump;
+  u->jump.signature = var(reg);
+  u->jump.lowlink = 0;
   u->jump.parent = NULL;
   put(u, jump.reference, ref);
   u->jump.contains_flag = CONTAINS_WITH;
@@ -355,6 +407,8 @@ union expression *make_jump2(union expression *ref, union expression *arg1, unio
 union expression *make_storage(union expression *ref, list args, buffer reg) {
   union expression *u = buffer_alloc(reg, sizeof(union expression));
   u->storage.type = storage;
+  u->storage.signature = var(reg);
+  u->storage.lowlink = 0;
   u->storage.parent = NULL;
   put(u, storage.reference, ref);
   ref->symbol.binding_aug = make_binding_aug(frame_relative_storage, local_scope, defined_state, ref->symbol.name, ref, reg);
@@ -369,14 +423,29 @@ union expression *make_storage(union expression *ref, list args, buffer reg) {
 union expression *make_meta(union expression *ref, list arg, buffer reg) {
   union expression *u = buffer_alloc(reg, sizeof(union expression));
   u->meta.type = meta;
+  u->meta.signature = var(reg);
+  u->meta.parent = NULL;
   put(u, meta.reference, ref);
   u->meta.argument = arg;
+  return u;
+}
+
+union expression *make_constrain(union expression *ref, union expression *expr, buffer reg) {
+  union expression *u = buffer_alloc(reg, sizeof(union expression));
+  u->constrain.type = constrain;
+  u->constrain.signature = var(reg);
+  u->constrain.lowlink = 0;
+  u->constrain.parent = NULL;
+  put(u, constrain.reference, ref);
+  put(u, constrain.expression, expr);
   return u;
 }
 
 union expression *make_if(union expression *condition, union expression *consequent, union expression *alternate, buffer reg) {
   union expression *u = buffer_alloc(reg, sizeof(union expression));
   u->_if.type = _if;
+  u->_if.signature = var(reg);
+  u->_if.lowlink = 0;
   u->_if.parent = NULL;
   put(u, _if.condition, condition);
   put(u, _if.consequent, consequent);
@@ -387,6 +456,8 @@ union expression *make_if(union expression *condition, union expression *consequ
 union expression *make_invoke(union expression *ref, list args, buffer reg) {
   union expression *u = buffer_alloc(reg, sizeof(union expression));
   u->invoke.type = invoke;
+  u->invoke.signature = var(reg);
+  u->invoke.lowlink = 0;
   u->invoke.parent = NULL;
   put(u, invoke.reference, ref);
   u->invoke.contains_flag = CONTAINS_WITH;
@@ -532,6 +603,13 @@ void print_expression(union expression *s) {
       print_expression(s->_if.alternate);
       write_str(STDOUT, ")");
       break;
+    } case constrain: {
+      write_str(STDOUT, "(constrain ");
+      print_expression(s->constrain.reference);
+      write_str(STDOUT, " ");
+      print_expression(s->constrain.expression);
+      write_str(STDOUT, ")");
+      break;
     } case symbol: {
       if(s->symbol.name) {
         write_str(STDOUT, s->symbol.name);
@@ -649,6 +727,11 @@ union expression *build_expression(list d, buffer reg, jumpbuf *handler) {
     union expression *(*fptr)(union expression *, list, buffer) = !strcmp(to_string(d->fst, reg), "invoke") ? make_invoke :
       (!strcmp(to_string(d->fst, reg), "jump") ? make_jump : make_storage);
     return fptr(build_expression(d->frst, reg, handler), arguments, reg);
+  } else if(!strcmp(to_string(d->fst, reg), "constrain")) {
+    if(length(d) != 3) {
+      throw_special_form(d, NULL, handler);
+    }
+    return make_constrain(build_expression(d->frst, reg, handler), build_expression(d->frrst, reg, handler), reg);
   } else {
     return make_meta(build_expression(d->fst, reg, handler), d->rst, reg);
   }

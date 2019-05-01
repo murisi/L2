@@ -119,6 +119,10 @@ bool is_c_reference(union expression *s) {
   return (s->base.parent->base.type == continuation || s->base.parent->base.type == with) && s->base.parent->continuation.reference == s;
 }
 
+bool is_continuation_reference(union expression *s) {
+  return s->base.parent->base.type == continuation && s->base.parent->continuation.reference == s;
+}
+
 bool is_function_reference(union expression *s) {
   return s->base.parent->base.type == function && s->base.parent->function.reference == s;
 }
@@ -177,6 +181,74 @@ union expression *vescape_analysis(union expression *s, void *ctx) {
   return s;
 }
 
+list dependencies(union expression *s, buffer r) {
+  list deps = nil;
+  if(s->base.parent != NULL && s->base.parent->base.type == constrain) {
+    prepend(s->base.parent, &deps, r);
+  }
+  switch(s->base.type) {
+    case begin: {
+      union expression *t;
+      foreach(t, s->begin.expressions) {
+        prepend(t, &deps, r);
+      }
+      break;
+    } case _if: {
+      prepend(s->_if.condition, &deps, r);
+      prepend(s->_if.consequent, &deps, r);
+      prepend(s->_if.alternate, &deps, r);
+      break;
+    } case function: case continuation: case with: {
+      prepend(s->function.expression, &deps, r);
+      break;
+    } case storage: case jump: case invoke: {
+      prepend(s->storage.reference, &deps, r);
+      union expression *t;
+      foreach(t, s->storage.arguments) {
+        prepend(t, &deps, r);
+      }
+      break;
+    } case symbol: {
+      union expression *definition = s->symbol.binding_aug->definition;
+      if(definition->symbol.parent) {
+        prepend(definition->symbol.parent, &deps, r);
+      }
+      break;
+    } case constrain: {
+      prepend(s->constrain.expression, &deps, r);
+      break;
+    }
+  }
+  return deps;
+}
+
+void construct_sccs(union expression *s, int preorder, list *stack, list *sccs, buffer r) {
+  if(s->function.lowlink == 0) {
+    list marker = *stack;
+    s->function.lowlink = preorder;
+    union expression *t;
+    {foreach(t, dependencies(s, r)) {
+      construct_sccs(t, preorder + 1, stack, sccs, r);
+      if(t->base.lowlink < s->base.lowlink) {
+        s->base.lowlink = t->base.lowlink;
+      }
+    }}
+    prepend(s, stack, r);
+    
+    if(s->base.lowlink == preorder) {
+      list scc = nil, *t;
+      union expression *u;
+      foreachlist(t, u, stack) {
+        if(*t == marker) break;
+        prepend(u, &scc, r);
+        u->base.lowlink = -1;
+      }
+      *stack = marker;
+      prepend(scc, sccs, r);
+    }
+  }
+}
+
 unsigned long containment_analysis(union expression *s) {
   unsigned long contains_flag = CONTAINS_NONE;
   switch(s->base.type) {
@@ -205,7 +277,7 @@ unsigned long containment_analysis(union expression *s) {
       break;
     } case storage: {
       union expression *t;
-      foreach(t, s->invoke.arguments) {
+      foreach(t, s->storage.arguments) {
         contains_flag |= containment_analysis(t);
       }
       break;
@@ -250,6 +322,9 @@ void visit_expressions(union expression *(*visitor)(union expression *, void *),
         visit_expressions(visitor, t, ctx);
       }
       break;
+    } case constrain: {
+      visit_expressions(visitor, &(*s)->constrain.expression, ctx);
+      break;
     }
   }
   union expression *parent = (*s)->base.parent;
@@ -285,6 +360,9 @@ void pre_visit_expressions(union expression *(*visitor)(union expression *, void
       foreachaddress(t, (*s)->invoke.arguments) {
         pre_visit_expressions(visitor, t, ctx);
       }
+      break;
+    } case constrain: {
+      pre_visit_expressions(visitor, &(*s)->constrain.expression, ctx);
       break;
     }
   }
@@ -339,20 +417,30 @@ bool binding_equals(struct binding *bndg1, struct binding *bndg2) {
 
 Object *load_program_and_mutate(union expression *program, list bindings, buffer expr_buf, buffer obj_buf, jumpbuf *handler);
 
+union expression *generate_metaprogram(union expression *program, list *bindings, buffer expr_buf, buffer obj_buf, jumpbuf *handler);
+
+void *preprocessed_expression_address(union expression *s, list bindings, buffer expr_buf, buffer obj_buf, jumpbuf *handler) {
+  union expression *expr_container = make_function(make_symbol(NULL, expr_buf), nil, s, expr_buf);
+  union expression *expr_container_program = make_program(lst(expr_container, nil, expr_buf), expr_buf);
+  union expression *program_preprocessed = generate_metaprogram(expr_container_program, &bindings, expr_buf, obj_buf, handler);
+  load_program_and_mutate(program_preprocessed, bindings, expr_buf, obj_buf, handler);
+  union expression *expr_container_preprocessed = program_preprocessed->function.expression->begin.expressions->fst;
+  void* (*container_addr)() = (void *) expr_container_preprocessed->function.reference->symbol.binding_aug->offset;
+  return container_addr();
+}
+
 union expression *vgenerate_metas(union expression *s, void *ctx) {
   jumpbuf *handler = ((void **) ctx)[2];
   buffer expr_buf = ((void **) ctx)[1];
   list bindings = ((void **) ctx)[0];
   
   if(s->base.type == meta) {
-    struct binding *bndg;
-    foreach(bndg, bindings) {
-      if(!strcmp(bndg->name, s->meta.reference->symbol.name)) {
-        return vgenerate_metas(build_expression(((list (*)(list, buffer)) bndg->address)(s->meta.argument, expr_buf),
-          expr_buf, handler), ctx);
-      }
-    }
-    throw_undefined_symbol(s->meta.reference->symbol.name, handler);
+    list (*macro)(list, buffer) = preprocessed_expression_address(s->meta.reference, bindings, expr_buf, expr_buf, handler);
+    return vgenerate_metas(build_expression(macro(s->meta.argument, expr_buf), expr_buf, handler), ctx);
+  } else if(s->base.type == constrain) {
+    list (*macro)(buffer) = preprocessed_expression_address(s->constrain.reference, bindings, expr_buf, expr_buf, handler);
+    s->constrain.signature = macro(expr_buf);
+    return s;
   } else {
     return s;
   }
@@ -444,3 +532,4 @@ union expression *generate_metaprogram(union expression *program, list *bindings
   }
   return make_program(c, expr_buf);
 }
+

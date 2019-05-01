@@ -20,6 +20,25 @@ list compile_program(union expression *program, list *bindings, buffer expr_buf,
   containment_analysis(program);
   classify_program_binding_augs(program->function.expression);
   visit_expressions(vlink_symbols, &program->function.expression, (void* []) {handler, expr_buf});
+  
+  list stack = nil, sccs = nil;
+  construct_sccs(program, 1, &stack, &sccs, expr_buf);
+  list scc;
+  write_str(STDOUT, "------------------------------------\n");
+  foreach(scc, sccs) {
+    bool disp = false;
+    union expression *e;
+    foreach(e, scc) {
+      if((e->base.type == function || e->base.type == continuation || e->base.type == with || e->base.type == storage) && e->function.reference->symbol.name != NULL) {
+        write_str(STDOUT, e->function.reference->symbol.name);
+        write_str(STDOUT, ", ");
+        disp = true;
+      }
+    }
+    if(disp) write_str(STDOUT, "\n");
+  }
+  
+  
   visit_expressions(vescape_analysis, &program, NULL);
   classify_program_binding_augs(program->function.expression);
   visit_expressions(vlayout_frames, &program->function.expression, expr_buf);
@@ -100,6 +119,7 @@ void compile_files(list programs, list bndgs, buffer expr_buf, buffer obj_buf, j
     if(dot && !strcmp(dot, ".l2")) {
       union expression *program = make_program(read_expressions(infn, expr_buf, handler), expr_buf);
       pre_visit_expressions(vgenerate_metas, &program, (void * []) {bndgs, expr_buf, handler});
+      
       list bindings;
       list asms = compile_program(program, &bindings, expr_buf, handler);
       unsigned char *objdest; int objdest_sz;
@@ -287,7 +307,10 @@ int main(int argc, char *argv[]) {
     {.name = "token?", .address = is_token},
     {.name = "emt?", .address = is_nil},
     {.name = "emt", .address = nil},
-    {.name = "char=", .address = char_equals}
+    {.name = "char=", .address = char_equals},
+    {.name = "var=", .address = var_equals},
+    {.name = "var?", .address = is_var},
+    {.name = "var", .address = var}
   };
   
   buffer obj_buf = create_buffer(0);
