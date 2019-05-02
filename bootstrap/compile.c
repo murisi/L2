@@ -20,25 +20,7 @@ list compile_program(union expression *program, list *bindings, buffer expr_buf,
   containment_analysis(program);
   classify_program_binding_augs(program->function.expression);
   visit_expressions(vlink_symbols, &program->function.expression, (void* []) {handler, expr_buf});
-  
-  list stack = nil, sccs = nil;
-  construct_sccs(program, 1, &stack, &sccs, expr_buf);
-  list scc;
-  write_str(STDOUT, "------------------------------------\n");
-  foreach(scc, sccs) {
-    bool disp = false;
-    union expression *e;
-    foreach(e, scc) {
-      if((e->base.type == function || e->base.type == continuation || e->base.type == with || e->base.type == storage) && e->function.reference->symbol.name != NULL) {
-        write_str(STDOUT, e->function.reference->symbol.name);
-        write_str(STDOUT, ", ");
-        disp = true;
-      }
-    }
-    if(disp) write_str(STDOUT, "\n");
-  }
-  
-  
+  infer_types(program, expr_buf);
   visit_expressions(vescape_analysis, &program, NULL);
   classify_program_binding_augs(program->function.expression);
   visit_expressions(vlayout_frames, &program->function.expression, expr_buf);

@@ -125,7 +125,7 @@ list build_fragment(char *l2src, int l2src_sz, int *pos, buffer r, jumpbuf *hand
 }
 
 bool is_token(list d) {
-  return length(d) && !((struct character *) d->fst)->flag;
+  return !is_var(d) && length(d) && !((struct character *) d->fst)->flag;
 }
 
 char *to_string(list d, buffer r) {
@@ -141,31 +141,40 @@ char *to_string(list d, buffer r) {
 }
 
 list copy_fragment(list l, buffer r) {
-  list c = nil;
-  if(is_token(l)) {
+  if(is_var(l)) {
+    return var(r);
+  } else if(is_token(l)) {
+    list c = nil;
     struct character *s;
     foreach(s, l) {
       append(_char(s->character), &c, r);
     }
+    return c;
   } else {
-    list s;
+    list c, s;
     foreach(s, l) {
       append(copy_fragment(s, r), &c, r);
     }
+    return c;
   }
-  return c;
 }
 
 void print_fragment(list d) {
-  write_str(STDOUT, "(");
-  if(!is_nil(d)) {
-    if(is_token(d)) {
-      write_char(STDOUT, ((struct character *) d->fst)->character);
-    } else {
-      print_fragment((list) d->fst);
+  if(is_var(d)) {
+    write_str(STDOUT, "!");
+    write_ulong(STDOUT, (long) d % 8192);
+  } else if(is_token(d)) {
+    struct character *t;
+    foreach(t, d) {
+      write_char(STDOUT, t->character);
     }
-    write_str(STDOUT, " . ");
-    print_fragment(d->rst);
+  } else {
+    write_str(STDOUT, "(");
+    list t;
+    foreach(t, d) {
+      print_fragment((list) t);
+      write_str(STDOUT, " ");
+    }
+    write_str(STDOUT, ")"); 
   }
-  write_str(STDOUT, ")"); 
 }

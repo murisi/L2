@@ -249,6 +249,95 @@ void construct_sccs(union expression *s, int preorder, list *stack, list *sccs, 
   }
 }
 
+void infer_types(union expression *program, buffer expr_buf) {
+  list stack = nil, sccs = nil;
+  construct_sccs(program, 1, &stack, &sccs, expr_buf);
+  list scc;
+  write_str(STDOUT, "------------------------------------\n");
+  foreach(scc, sccs) {
+    union expression *e;
+    foreach(e, scc) {
+      if(e->base.type == function) {
+        list params_signature = nil;
+        union expression *param;
+        foreach(param, e->function.parameters) {
+          append(param->symbol.signature, &params_signature, expr_buf);
+        }
+        list func_signature = lst(build_token("function", expr_buf),
+          lst(params_signature, lst(e->function.expression->base.signature, nil, expr_buf), expr_buf), expr_buf);
+        write_str(STDOUT, "Function Rule: ");
+        print_fragment(e->function.signature);
+        write_str(STDOUT, " = ");
+        print_fragment(func_signature);
+        write_str(STDOUT, "\n");
+      } else if(e->base.type == continuation) {
+        list params_signature = nil;
+        union expression *param;
+        foreach(param, e->continuation.parameters) {
+          append(param->symbol.signature, &params_signature, expr_buf);
+        }
+        list cont_signature = lst(build_token("continuation", expr_buf),
+          lst(params_signature, nil, expr_buf), expr_buf);
+        write_str(STDOUT, "Continuation Rule: ");
+        print_fragment(e->continuation.signature);
+        write_str(STDOUT, " = ");
+        print_fragment(cont_signature);
+        write_str(STDOUT, "\n");
+      } else if(e->base.type == constrain) {
+        write_str(STDOUT, "Constrain Rule: ");
+        print_fragment(e->constrain.signature);
+        write_str(STDOUT, " = ");
+        print_fragment(e->constrain.expression->base.signature);
+      } else if(e->base.type == invoke) {
+        list params_signature = nil;
+        union expression *arg;
+        foreach(arg, e->invoke.arguments) {
+          append(arg->base.signature, &params_signature, expr_buf);
+        }
+        list func_signature = lst(build_token("function", expr_buf),
+          lst(params_signature, lst(e->invoke.signature, nil, expr_buf), expr_buf), expr_buf);
+        write_str(STDOUT, "Invoke Rule: ");
+        print_fragment(e->invoke.reference->base.signature);
+        write_str(STDOUT, " = ");
+        print_fragment(func_signature);
+        write_str(STDOUT, "\n");
+      } else if(e->base.type == jump) {
+        list params_signature = nil;
+        union expression *arg;
+        foreach(arg, e->jump.arguments) {
+          append(arg->base.signature, &params_signature, expr_buf);
+        }
+        list cont_signature = lst(build_token("continuation", expr_buf),
+          lst(params_signature, nil, expr_buf), expr_buf);
+        write_str(STDOUT, "Jump Rule: ");
+        print_fragment(e->jump.reference->base.signature);
+        write_str(STDOUT, " = ");
+        print_fragment(cont_signature);
+        write_str(STDOUT, "\n");
+      } else if(e->base.type == with) {
+        list cont_signature = lst(build_token("continuation", expr_buf),
+          lst(lst(e->with.signature, nil, expr_buf), nil, expr_buf), expr_buf);
+        write_str(STDOUT, "With Rule: ");
+        print_fragment(e->with.reference->symbol.signature);
+        write_str(STDOUT, " = ");
+        print_fragment(cont_signature);
+        write_str(STDOUT, "\n");
+      } else if(e->base.type == _if) {
+        write_str(STDOUT, "If Rule 1: ");
+        print_fragment(e->_if.consequent->base.signature);
+        write_str(STDOUT, " = ");
+        print_fragment(e->_if.alternate->base.signature);
+        write_str(STDOUT, "\n");
+        write_str(STDOUT, "If Rule 2: ");
+        print_fragment(e->_if.signature);
+        write_str(STDOUT, " = ");
+        print_fragment(e->_if.consequent->base.signature);
+        write_str(STDOUT, "\n");
+      }
+    }
+  }
+}
+
 unsigned long containment_analysis(union expression *s) {
   unsigned long contains_flag = CONTAINS_NONE;
   switch(s->base.type) {
