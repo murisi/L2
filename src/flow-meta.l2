@@ -51,7 +51,14 @@
   position of another list. r is the buffer into which the list being constructed
   will be put. Return value is the mapped list.)
 
-(function meta:map (l ctx mapper r)
+(function meta:map (l mapper r)
+  (with return
+    {(continuation aux (in out)
+      (if [emt? in]
+        {return [meta:reverse out r]}
+        {aux [@rst in] [lst [mapper [@fst in]] out r]})) l emt}))
+
+(function meta:map2 (l ctx mapper r)
   (with return
     {(continuation aux (in out)
       (if [emt? in]
@@ -69,8 +76,8 @@
 
 (function let (l r)
   (`(with let:return
-    (,[llst (` jump r) (`(continuation let:aux (,[meta:map [@rst [meta:reverse l r]] (begin) @fst r])
-      {let:return (,[@fst [meta:reverse l r]])}) r) [meta:map [@rst [meta:reverse l r]] (begin) @frst r] r])) r))
+    (,[llst (` jump r) (`(continuation let:aux (,[meta:map [@rst [meta:reverse l r]] @fst r])
+      {let:return (,[@fst [meta:reverse l r]])}) r) [meta:map [@rst [meta:reverse l r]] @frst r] r])) r))
 
 (;; The following function implements the switch expression by doing the
   following transformation:
@@ -94,7 +101,7 @@
         (if [emt? remaining]
           {return else-clause}
           {aux [@rst remaining]
-            (`(if (,[lst (` or r) [meta:map [@rst [meta:reverse [@fst remaining] r]] r
+            (`(if (,[lst (` or r) [meta:map2 [@rst [meta:reverse [@fst remaining] r]] r
                 (function _ (e r) [llllst (` invoke r) (` switch:= r) (` switch:val r) e emt r]) r] r])
               (,[@fst [meta:reverse [@fst remaining] r]]) ,else-clause) r)}))
         [@rst [meta:reverse [@rrst l] r]] [@fst [meta:reverse l r]]})))r))
@@ -146,8 +153,8 @@
 (function loop (l r)
   (let (bindings [meta:reverse [@rst [meta:reverse [@rst l] r]] r])
     (`(with loop:return
-      (,[llst (` jump r) (`(continuation (,[@fst l]) (,[meta:map bindings (begin) @fst r])
-        {loop:return (,[@fst [meta:reverse l r]])}) r) [meta:map bindings (begin) @frst r] r])) r)))
+      (,[llst (` jump r) (`(continuation (,[@fst l]) (,[meta:map bindings @fst r])
+        {loop:return (,[@fst [meta:reverse l r]])}) r) [meta:map bindings @frst r] r])) r)))
 
 (;; The following function implements variable binding by do the following
   transformation:

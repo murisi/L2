@@ -140,6 +140,19 @@ char *to_string(list d, buffer r) {
   return str;
 }
 
+bool token_equals(list a, list b) {
+  if(length(a) != length(b)) {
+    return false;
+  }
+  struct character *x, *y;
+  foreachzipped(x, y, a, b) {
+    if(x->character != y->character) {
+      return false;
+    }
+  }
+  return true;
+}
+
 list copy_fragment(list l, buffer r) {
   if(is_var(l)) {
     return var(r);
@@ -178,3 +191,4 @@ void print_fragment(list d) {
     write_str(STDOUT, ")"); 
   }
 }
+

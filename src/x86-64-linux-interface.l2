@@ -44,7 +44,7 @@
 (;; Contains magic debug value.)
 (function buf-magic-dbg (l r) [mk-field l r #32 #8])
 
-(function exit (code) [syscall (sys-exit) code])
+(function exit (code) [syscall (sys-exit) code (begin) (begin) (begin) (begin) (begin)])
 
 (function strlen (str) (with return
   {(continuation loop (i)
@@ -117,13 +117,13 @@
 (storage file-access-error (begin))
 
 (function open (path handler err)
-  (let (ret [syscall (sys-open) path (o-rdonly)])
+  (let (ret [syscall (sys-open) path (o-rdonly) (begin) (begin) (begin) (begin)])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
       {handler (sets err file-access-error path)}
       ret)))
 
 (function create (path handler err)
-  (let (ret [syscall (sys-open) path [lor (o-wronly) (o-creat)] [lor (s-irwxu) [lor (s-irwxg) (s-irwxo)]]])
+  (let (ret [syscall (sys-open) path [lor (o-wronly) (o-creat)] [lor (s-irwxu) [lor (s-irwxg) (s-irwxo)]]  (begin) (begin) (begin)])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
       {handler (sets err file-access-error path)}
       ret)))
@@ -131,7 +131,7 @@
 (storage null-string (begin))
 
 (function print (fd d len handler err)
-  (let (ret [syscall (sys-write) fd d len])
+  (let (ret [syscall (sys-write) fd d len (begin) (begin) (begin)])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
       {handler (sets err file-access-error null-string)}
       ret)))
@@ -159,13 +159,13 @@
   [print fd [+ str [+ $j #1]] [- #19 $j] handler err]))
 
 (function read (fd buf cnt handler err)
-  (let (ret [syscall (sys-read) fd buf cnt])
+  (let (ret [syscall (sys-read) fd buf cnt (begin) (begin) (begin)])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
       {handler (sets err file-access-error null-string)}
       ret)))
 
 (function close (fd handler err)
-  (let (ret [syscall (sys-close) fd])
+  (let (ret [syscall (sys-close) fd (begin) (begin) (begin) (begin) (begin)])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
       {handler (sets err file-access-error null-string)}
       ret)))
@@ -173,7 +173,7 @@
 (function size (fd handler err) (with return (begin
   (storage statbuf (begin)(begin)(begin)(begin)(begin)(begin)(begin)(begin)(begin)
     (begin)(begin)(begin)(begin)(begin)(begin)(begin)(begin)(begin))
-  (let (ret [syscall (sys-fstat) fd statbuf])
+  (let (ret [syscall (sys-fstat) fd statbuf (begin) (begin) (begin) (begin)])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
       {handler (sets err file-access-error null-string)}
       {return [get [+ statbuf #48]]})))))
@@ -192,7 +192,7 @@
   value at ptr and having an extent of the value given at len.)
 
 (function munmap (ptr len handler err)
-  (let (ret [syscall (sys-munmap) ptr len])
+  (let (ret [syscall (sys-munmap) ptr len (begin) (begin) (begin) (begin)])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
       {handler (sets err memory-access-error)}
       ret)))
@@ -281,3 +281,4 @@
     (cleanup (begin
       [close $f handler err]
       (if [= (@0 err) no-error] {return $retval} {handler (begin)})))))))
+

@@ -167,6 +167,10 @@ void close(int fd) {
   syscall(SYS_CLOSE, fd);
 }
 
+void exit(int ret) {
+  syscall(SYS_EXIT, ret);
+}
+
 long int size(int fd) {
   long int statbuf[18];
   syscall(SYS_FSTAT, fd, statbuf);
