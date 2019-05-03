@@ -316,16 +316,44 @@ void construct_sccs(union expression *s, int preorder, list *stack, list *sccs, 
   }
 }
 
-bool unify(list x, list y, buffer reg) {
+bool occurs_in(list var, list val) {
+  list varl = get_var(var);
+  list vall = is_var(val) ? get_var(val) : val;
+  
+  if(is_var(vall)) {
+    return var_equals(varl, vall);
+  } else if(is_token(vall)) {
+    return false;
+  } else {
+    list a;
+    foreach(a, vall) {
+      if(occurs_in(varl, a)) {
+        return true;
+      }
+    }
+    return false;
+  }
+}
+
+bool unify_var(list var, list val) {
+  if(!occurs_in(var, val)) {
+    set_var(var, val);
+    return true;
+  } else {
+    return false;
+  }
+}
+
+bool unify(list x, list y) {
   list xl = is_var(x) ? get_var(x) : x;
   list yl = is_var(y) ? get_var(y) : y;
   
-   if(is_var(xl)) {
-    set_var(xl, yl);
+  if(is_var(xl) && is_var(yl) && var_equals(xl, yl)) {
     return true;
+  } else if(is_var(xl)) {
+    return unify_var(xl, yl);
   } else if(is_var(yl)) {
-    set_var(yl, xl);
-    return true;
+    return unify_var(yl, xl);
   } else if(is_token(xl) && is_token(y)) {
     return token_equals(xl, yl);
   } else if(is_token(xl) || is_token(y)) {
@@ -333,7 +361,7 @@ bool unify(list x, list y, buffer reg) {
   } else if(length(xl) == length(yl)) {
     list a, b;
     foreachzipped(a, b, xl, yl) {
-      if(!unify(a, b, reg)) {
+      if(!unify(a, b)) {
         return false;
       }
     }
@@ -365,12 +393,19 @@ list scoped_signature(union expression *e, list scc, buffer reg) {
 }
 
 void infer_types(union expression *program, buffer expr_buf, jumpbuf *handler) {
+  // These (parameterized) types are the only ones built into L2
+  list function_token = build_token("function", expr_buf);
+  list continuation_token = build_token("continuation", expr_buf);
+  
+  // Type inferencing is done on strongly connected components
   list stack = nil, sccs = nil, scc;
   visit_expressions(vfind_dependencies, &program, expr_buf);
   construct_sccs(program, 1, &stack, &sccs, expr_buf);
+  
   foreach(scc, sccs) {
     union expression *e;
     {foreach(e, scc) {
+      // The left-hand-sides and right-hand-sides of the signature equations.
       list lhss = nil, rhss = nil;
       switch(e->base.type) {
         case function: {
@@ -380,8 +415,8 @@ void infer_types(union expression *program, buffer expr_buf, jumpbuf *handler) {
             append(param->symbol.signature, &params_signature, expr_buf);
           }
           prepend(e->function.signature, &lhss, expr_buf);
-          prepend(lst(build_token("function", expr_buf),
-            lst(params_signature, lst(e->function.expression->base.signature, nil, expr_buf), expr_buf), expr_buf), &rhss, expr_buf);
+          prepend(lst(function_token, lst(params_signature,
+            lst(e->function.expression->base.signature, nil, expr_buf), expr_buf), expr_buf), &rhss, expr_buf);
           
           prepend(e->function.signature, &lhss, expr_buf);
           prepend(e->function.reference->symbol.signature, &rhss, expr_buf);
@@ -393,7 +428,7 @@ void infer_types(union expression *program, buffer expr_buf, jumpbuf *handler) {
             append(param->symbol.signature, &params_signature, expr_buf);
           }
           prepend(e->continuation.signature, &lhss, expr_buf);
-          prepend(lst(build_token("continuation", expr_buf), lst(params_signature, nil, expr_buf), expr_buf), &rhss, expr_buf);
+          prepend(lst(continuation_token, lst(params_signature, nil, expr_buf), expr_buf), &rhss, expr_buf);
           
           prepend(e->continuation.signature, &lhss, expr_buf);
           prepend(e->continuation.reference->symbol.signature, &rhss, expr_buf);
@@ -409,8 +444,8 @@ void infer_types(union expression *program, buffer expr_buf, jumpbuf *handler) {
             append(scoped_signature(arg, scc, expr_buf), &params_signature, expr_buf);
           }
           prepend(scoped_signature(e->invoke.reference, scc, expr_buf), &lhss, expr_buf);
-          prepend(lst(build_token("function", expr_buf),
-            lst(params_signature, lst(e->invoke.signature, nil, expr_buf), expr_buf), expr_buf), &rhss, expr_buf);
+          prepend(lst(function_token, lst(params_signature,
+            lst(e->invoke.signature, nil, expr_buf), expr_buf), expr_buf), &rhss, expr_buf);
           break;
         } case jump: {
           list params_signature = nil;
@@ -419,12 +454,11 @@ void infer_types(union expression *program, buffer expr_buf, jumpbuf *handler) {
             append(scoped_signature(arg, scc, expr_buf), &params_signature, expr_buf);
           }
           prepend(scoped_signature(e->jump.reference, scc, expr_buf), &lhss, expr_buf);
-          prepend(lst(build_token("continuation", expr_buf), lst(params_signature, nil, expr_buf), expr_buf), &rhss, expr_buf);
+          prepend(lst(continuation_token, lst(params_signature, nil, expr_buf), expr_buf), &rhss, expr_buf);
           break;
         } case with: {
           prepend(e->with.reference->symbol.signature, &lhss, expr_buf);
-          prepend(lst(build_token("continuation", expr_buf),
-            lst(lst(e->with.signature, nil, expr_buf), nil, expr_buf), expr_buf), &rhss, expr_buf);
+          prepend(lst(continuation_token, lst(lst(e->with.signature, nil, expr_buf), nil, expr_buf), expr_buf), &rhss, expr_buf);
           break;
         } case _if: {
           list consequent_sig = scoped_signature(e->_if.consequent, scc, expr_buf);
@@ -442,7 +476,7 @@ void infer_types(union expression *program, buffer expr_buf, jumpbuf *handler) {
       }
       list lhs, rhs;
       foreachzipped(lhs, rhs, lhss, rhss) {
-        if(!unify(lhs, rhs, expr_buf)) {
+        if(!unify(lhs, rhs)) {
           throw_unification(substitute_variables(lhs, expr_buf), substitute_variables(rhs, expr_buf), e, handler);
         }
       }

@@ -137,7 +137,11 @@
   Note that the @fst and @rst functions are list accessor functions only for
   the fragments supplied to macros.)
 
+(constrain @car (\(r) (let (et [var r]) (`(function ((list ,et)) ,et)r))))
+
 (function @car (l) (@ car l))
+
+(constrain @cdr (\(r) (let (et [var r]) (`(function ((list ,et)) (list ,et))r))))
 
 (function @cdr (l) (@ cdr l))
 
@@ -161,13 +165,20 @@
 
 (function @cadddddr (l) [@car [@cdddddr l]])
 
+(constrain nil (\(r) (`(list (,[var r]))r)))
+
 (storage nil (begin) nil)
+
+(constrain nil? (\(r) (`(function ((list (,[var r]))) (,[var r]))r)))
 
 (function nil? (l) [= [@cdr l] l])
 
 (;; Appends an item to the given list. data is the data that is to be appended.
   l is a reference to the list that is to be appended to. r is the buffer into
   which the extension is being placed.)
+
+(constrain append (\(r)
+  (let (et [var r]) (`(function (,et (list ,et) buffer (,[var r]) (,[var r])) (ref ,et))r))))
 
 (function append (data l r handler err) (with return
   {(continuation loop (l)
@@ -183,6 +194,9 @@
   put at the head. rest is the list that will be the tail of the new list. r
   is the buffer into which the extension is being placed. Return value is the
   new list.)
+
+(constrain cons (\(r)
+  (let (et [var r]) (`(function (,et (list ,et) buffer (,[var r]) (,[var r])) (list ,et))r))))
 
 (function cons (data rest r handler err) (with return
   (let (l [buffer-alloc (list-struct) r handler err]) (begin
@@ -206,7 +220,7 @@
 
 (constrain prepend (\(r)
   (let (et [var r])
-    (`(function (,et (ref (list ,et)) buffer (,[var r]) error) (,[var r]))r))))
+    (`(function (,et (ref (list ,et)) buffer (,[var r]) (,[var r])) (,[var r]))r))))
 
 (function prepend (data l-ref r handler err)
   (let (ret [buffer-alloc (list-struct) r handler err]) (begin
