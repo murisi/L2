@@ -630,7 +630,9 @@ void print_expression(union expression *s) {
       break;
     } case constrain: {
       write_str(STDOUT, "(constrain ");
-      print_expression(s->constrain.reference);
+      //Printing the signature seems to be more hepful than printing expression that
+      //created it.
+      print_fragment(s->constrain.signature);
       write_str(STDOUT, " ");
       print_expression(s->constrain.expression);
       write_str(STDOUT, ")");

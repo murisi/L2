@@ -371,6 +371,7 @@ void infer_types(union expression *program, buffer expr_buf) {
   foreach(scc, sccs) {
     union expression *e;
     {foreach(e, scc) {
+      list lhss = nil, rhss = nil;
       switch(e->base.type) {
         case function: {
           list params_signature = nil;
@@ -378,11 +379,9 @@ void infer_types(union expression *program, buffer expr_buf) {
           foreach(param, e->function.parameters) {
             append(param->symbol.signature, &params_signature, expr_buf);
           }
-          list func_signature = lst(build_token("function", expr_buf),
-            lst(params_signature, lst(e->function.expression->base.signature, nil, expr_buf), expr_buf), expr_buf);
-          if(!unify(e->function.signature, func_signature, expr_buf)) {
-            write_str(STDOUT, "(failure)");exit(1);
-          }
+          prepend(e->function.signature, &lhss, expr_buf);
+          prepend(lst(build_token("function", expr_buf),
+            lst(params_signature, lst(e->function.expression->base.signature, nil, expr_buf), expr_buf), expr_buf), &rhss, expr_buf);
           break;
         } case continuation: {
           list params_signature = nil;
@@ -390,19 +389,12 @@ void infer_types(union expression *program, buffer expr_buf) {
           foreach(param, e->continuation.parameters) {
             append(param->symbol.signature, &params_signature, expr_buf);
           }
-          list cont_signature = lst(build_token("continuation", expr_buf), lst(params_signature, nil, expr_buf), expr_buf);
-          
-          if(!unify(e->continuation.signature, cont_signature, expr_buf)) {
-            write_str(STDOUT, "(failure)");exit(2);
-          }
+          prepend(e->continuation.signature, &lhss, expr_buf);
+          prepend(lst(build_token("continuation", expr_buf), lst(params_signature, nil, expr_buf), expr_buf), &rhss, expr_buf);
           break;
         } case constrain: {
-          if(!unify(e->constrain.signature, e->constrain.expression->base.signature, expr_buf)) {
-            print_fragment(substitute_variables(e->constrain.signature, expr_buf));
-            write_str(STDOUT, " = ");
-            print_fragment(substitute_variables(e->constrain.expression->base.signature, expr_buf));
-            write_str(STDOUT, "(failure)");exit(3);
-          }
+          prepend(e->constrain.signature, &lhss, expr_buf);
+          prepend(e->constrain.expression->base.signature, &rhss, expr_buf);
           break;
         } case invoke: {
           list params_signature = nil;
@@ -410,11 +402,9 @@ void infer_types(union expression *program, buffer expr_buf) {
           foreach(arg, e->invoke.arguments) {
             append(scoped_signature(arg, scc, expr_buf), &params_signature, expr_buf);
           }
-          list func_signature = lst(build_token("function", expr_buf),
-            lst(params_signature, lst(e->invoke.signature, nil, expr_buf), expr_buf), expr_buf);
-          if(!unify(scoped_signature(e->invoke.reference, scc, expr_buf), func_signature, expr_buf)) {
-            write_str(STDOUT, "(failure)");exit(4);
-          }
+          prepend(scoped_signature(e->invoke.reference, scc, expr_buf), &lhss, expr_buf);
+          prepend(lst(build_token("function", expr_buf),
+            lst(params_signature, lst(e->invoke.signature, nil, expr_buf), expr_buf), expr_buf), &rhss, expr_buf);
           break;
         } case jump: {
           list params_signature = nil;
@@ -422,43 +412,39 @@ void infer_types(union expression *program, buffer expr_buf) {
           foreach(arg, e->jump.arguments) {
             append(scoped_signature(arg, scc, expr_buf), &params_signature, expr_buf);
           }
-          list cont_signature = lst(build_token("continuation", expr_buf), lst(params_signature, nil, expr_buf), expr_buf);
-          
-          if(!unify(scoped_signature(e->jump.reference, scc, expr_buf), cont_signature, expr_buf)) {
-            write_str(STDOUT, "(failure)");exit(5);
-          }
+          prepend(scoped_signature(e->jump.reference, scc, expr_buf), &lhss, expr_buf);
+          prepend(lst(build_token("continuation", expr_buf), lst(params_signature, nil, expr_buf), expr_buf), &rhss, expr_buf);
           break;
         } case with: {
-          list cont_signature = lst(build_token("continuation", expr_buf),
-            lst(lst(e->with.signature, nil, expr_buf), nil, expr_buf), expr_buf);
-          
-          if(!unify(e->with.reference->symbol.signature, cont_signature, expr_buf)) {
-            write_str(STDOUT, "(failure)");exit(6);
-          }
+          prepend(e->with.reference->symbol.signature, &lhss, expr_buf);
+          prepend(lst(build_token("continuation", expr_buf),
+            lst(lst(e->with.signature, nil, expr_buf), nil, expr_buf), expr_buf), &rhss, expr_buf);
           break;
         } case _if: {
           list consequent_sig = scoped_signature(e->_if.consequent, scc, expr_buf);
           list alternate_sig = scoped_signature(e->_if.alternate, scc, expr_buf);
-          if(!unify(consequent_sig, alternate_sig, expr_buf)) {
-            write_str(STDOUT, "(failure)");exit(7);
-          }
-          if(!unify(e->_if.signature, consequent_sig, expr_buf)) {
-            write_str(STDOUT, "(failure)");exit(8);
-          }
+          prepend(consequent_sig, &lhss, expr_buf);
+          prepend(alternate_sig, &rhss, expr_buf);
+          prepend(e->_if.signature, &lhss, expr_buf);
+          prepend(consequent_sig, &rhss, expr_buf);
           break;
         } case symbol: {
-          if(!unify(e->symbol.signature, e->symbol.binding_aug->definition->symbol.signature, expr_buf)) {
-            union expression *h;
-            foreach(h, scc) {
-              print_expression(h);
-              write_str(STDOUT, "\n");
-            }
-            write_str(STDOUT, "\n");
-            print_expression(e); write_str(STDOUT, "\n");
-            print_expression(e->base.parent); write_str(STDOUT, "\n");
-            print_expression(e->base.parent->base.parent); write_str(STDOUT, "\n");
-            write_str(STDOUT, "(failure)");exit(9);
-          }
+          prepend(e->symbol.signature, &lhss, expr_buf);
+          prepend(e->symbol.binding_aug->definition->symbol.signature, &rhss, expr_buf);
+          break;
+        }
+      }
+      list lhs, rhs;
+      foreachzipped(lhs, rhs, lhss, rhss) {
+        if(!unify(lhs, rhs, expr_buf)) {
+          write_str(STDOUT, "Cannot solve the following equation:\n");
+          print_fragment(substitute_variables(lhs, expr_buf));
+          write_str(STDOUT, " = ");
+          print_fragment(substitute_variables(rhs, expr_buf));
+          write_str(STDOUT, "\nThe above equation was generated from the following expression:\n");
+          print_expression(e);
+          write_str(STDOUT, "\n");
+          exit(1);
         }
       }
     }}
