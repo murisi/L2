@@ -1,3 +1,74 @@
+void visit_expressions(union expression *(*visitor)(union expression *, void *), union expression **s, void *ctx) {
+  switch((*s)->base.type) {
+    case begin: {
+      union expression **t;
+      foreachaddress(t, (*s)->begin.expressions) {
+        visit_expressions(visitor, t, ctx);
+      }
+      break;
+    } case _if: {
+      visit_expressions(visitor, &(*s)->_if.condition, ctx);
+      visit_expressions(visitor, &(*s)->_if.consequent, ctx);
+      visit_expressions(visitor, &(*s)->_if.alternate, ctx);
+      break;
+    } case function: case continuation: case with: {
+      visit_expressions(visitor, &(*s)->function.expression, ctx);
+      break;
+    } case jump: case invoke: case storage: {
+      if((*s)->base.type != storage) {
+        visit_expressions(visitor, &(*s)->invoke.reference, ctx);
+      }
+      union expression **t;
+      foreachaddress(t, (*s)->invoke.arguments) {
+        visit_expressions(visitor, t, ctx);
+      }
+      break;
+    } case constrain: {
+      visit_expressions(visitor, &(*s)->constrain.expression, ctx);
+      break;
+    }
+  }
+  union expression *parent = (*s)->base.parent;
+  *s = (*visitor)(*s, ctx);
+  (*s)->base.parent = parent;
+}
+
+void pre_visit_expressions(union expression *(*visitor)(union expression *, void *), union expression **s, void *ctx) {
+  union expression *parent = (*s)->base.parent;
+  *s = (*visitor)(*s, ctx);
+  (*s)->base.parent = parent;
+  
+  switch((*s)->base.type) {
+    case begin: {
+      union expression **t;
+      foreachaddress(t, (*s)->begin.expressions) {
+        pre_visit_expressions(visitor, t, ctx);
+      }
+      break;
+    } case _if: {
+      pre_visit_expressions(visitor, &(*s)->_if.condition, ctx);
+      pre_visit_expressions(visitor, &(*s)->_if.consequent, ctx);
+      pre_visit_expressions(visitor, &(*s)->_if.alternate, ctx);
+      break;
+    } case function: case continuation: case with: {
+      pre_visit_expressions(visitor, &(*s)->function.expression, ctx);
+      break;
+    } case jump: case invoke: case storage: {
+      if((*s)->base.type != storage) {
+        pre_visit_expressions(visitor, &(*s)->invoke.reference, ctx);
+      }
+      union expression **t;
+      foreachaddress(t, (*s)->invoke.arguments) {
+        pre_visit_expressions(visitor, t, ctx);
+      }
+      break;
+    } case constrain: {
+      pre_visit_expressions(visitor, &(*s)->constrain.expression, ctx);
+      break;
+    }
+  }
+}
+
 bool defined_string_equals(char *a, char *b) {
   return a && b && !strcmp(a, b);
 }
@@ -181,45 +252,41 @@ union expression *vescape_analysis(union expression *s, void *ctx) {
   return s;
 }
 
-list dependencies(union expression *s, buffer r) {
-  list deps = nil;
-  if(s->base.parent != NULL && s->base.parent->base.type == constrain) {
-    prepend(s->base.parent, &deps, r);
-  }
+union expression *vfind_dependencies(union expression *s, buffer r) {
   switch(s->base.type) {
     case begin: {
       union expression *t;
       foreach(t, s->begin.expressions) {
-        prepend(t, &deps, r);
+        prepend(t, &s->begin.dependencies, r);
       }
       break;
     } case _if: {
-      prepend(s->_if.condition, &deps, r);
-      prepend(s->_if.consequent, &deps, r);
-      prepend(s->_if.alternate, &deps, r);
+      prepend(s->_if.condition, &s->_if.dependencies, r);
+      prepend(s->_if.consequent, &s->_if.dependencies, r);
+      prepend(s->_if.alternate, &s->_if.dependencies, r);
       break;
     } case function: case continuation: case with: {
-      prepend(s->function.expression, &deps, r);
+      prepend(s->function.expression, &s->function.dependencies, r);
       break;
     } case storage: case jump: case invoke: {
-      prepend(s->storage.reference, &deps, r);
+      prepend(s->storage.reference, &s->storage.dependencies, r);
       union expression *t;
       foreach(t, s->storage.arguments) {
-        prepend(t, &deps, r);
+        prepend(t, &s->storage.dependencies, r);
       }
       break;
     } case symbol: {
       union expression *definition = s->symbol.binding_aug->definition;
-      if(definition->symbol.parent) {
-        prepend(definition->symbol.parent, &deps, r);
-      }
+      prepend(definition->symbol.parent, &s->symbol.dependencies, r);
+      prepend(s, &definition->symbol.parent->base.dependencies, r);
       break;
     } case constrain: {
-      prepend(s->constrain.expression, &deps, r);
+      prepend(s->constrain.expression, &s->constrain.dependencies, r);
+      prepend(s, &s->constrain.expression->base.dependencies, r);
       break;
     }
   }
-  return deps;
+  return s;
 }
 
 void construct_sccs(union expression *s, int preorder, list *stack, list *sccs, buffer r) {
@@ -227,7 +294,7 @@ void construct_sccs(union expression *s, int preorder, list *stack, list *sccs, 
     list marker = *stack;
     s->function.lowlink = preorder;
     union expression *t;
-    {foreach(t, dependencies(s, r)) {
+    {foreach(t, s->base.dependencies) {
       construct_sccs(t, preorder + 1, stack, sccs, r);
       if(t->base.lowlink < s->base.lowlink) {
         s->base.lowlink = t->base.lowlink;
@@ -318,9 +385,11 @@ list scoped_signature(union expression *e, list scc, buffer reg) {
 }
 
 void infer_types(union expression *program, buffer expr_buf) {
-  list stack = nil, sccs = nil, unifications = nil, scc;
+  list stack = nil, sccs = nil, scc;
+  visit_expressions(vfind_dependencies, &program, expr_buf);
   construct_sccs(program, 1, &stack, &sccs, expr_buf);
   foreach(scc, sccs) {
+    list unifications = nil;
     union expression *e;
     {foreach(e, scc) {
       switch(e->base.type) {
@@ -349,6 +418,9 @@ void infer_types(union expression *program, buffer expr_buf) {
           break;
         } case constrain: {
           if(!unify(e->constrain.signature, e->constrain.expression->base.signature, &unifications, expr_buf)) {
+            print_fragment(substitute_variables(e->constrain.signature, unifications, expr_buf));
+            write_str(STDOUT, " = ");
+            print_fragment(substitute_variables(e->constrain.expression->base.signature, unifications, expr_buf));
             write_str(STDOUT, "(failure)");exit(1);
           }
           break;
@@ -460,77 +532,6 @@ unsigned long containment_analysis(union expression *s) {
     }
   }
   return contains_flag;
-}
-
-void visit_expressions(union expression *(*visitor)(union expression *, void *), union expression **s, void *ctx) {
-  switch((*s)->base.type) {
-    case begin: {
-      union expression **t;
-      foreachaddress(t, (*s)->begin.expressions) {
-        visit_expressions(visitor, t, ctx);
-      }
-      break;
-    } case _if: {
-      visit_expressions(visitor, &(*s)->_if.condition, ctx);
-      visit_expressions(visitor, &(*s)->_if.consequent, ctx);
-      visit_expressions(visitor, &(*s)->_if.alternate, ctx);
-      break;
-    } case function: case continuation: case with: {
-      visit_expressions(visitor, &(*s)->function.expression, ctx);
-      break;
-    } case jump: case invoke: case storage: {
-      if((*s)->base.type != storage) {
-        visit_expressions(visitor, &(*s)->invoke.reference, ctx);
-      }
-      union expression **t;
-      foreachaddress(t, (*s)->invoke.arguments) {
-        visit_expressions(visitor, t, ctx);
-      }
-      break;
-    } case constrain: {
-      visit_expressions(visitor, &(*s)->constrain.expression, ctx);
-      break;
-    }
-  }
-  union expression *parent = (*s)->base.parent;
-  *s = (*visitor)(*s, ctx);
-  (*s)->base.parent = parent;
-}
-
-void pre_visit_expressions(union expression *(*visitor)(union expression *, void *), union expression **s, void *ctx) {
-  union expression *parent = (*s)->base.parent;
-  *s = (*visitor)(*s, ctx);
-  (*s)->base.parent = parent;
-  
-  switch((*s)->base.type) {
-    case begin: {
-      union expression **t;
-      foreachaddress(t, (*s)->begin.expressions) {
-        pre_visit_expressions(visitor, t, ctx);
-      }
-      break;
-    } case _if: {
-      pre_visit_expressions(visitor, &(*s)->_if.condition, ctx);
-      pre_visit_expressions(visitor, &(*s)->_if.consequent, ctx);
-      pre_visit_expressions(visitor, &(*s)->_if.alternate, ctx);
-      break;
-    } case function: case continuation: case with: {
-      pre_visit_expressions(visitor, &(*s)->function.expression, ctx);
-      break;
-    } case jump: case invoke: case storage: {
-      if((*s)->base.type != storage) {
-        pre_visit_expressions(visitor, &(*s)->invoke.reference, ctx);
-      }
-      union expression **t;
-      foreachaddress(t, (*s)->invoke.arguments) {
-        pre_visit_expressions(visitor, t, ctx);
-      }
-      break;
-    } case constrain: {
-      pre_visit_expressions(visitor, &(*s)->constrain.expression, ctx);
-      break;
-    }
-  }
 }
 
 void classify_program_binding_augs(union expression *expr) {

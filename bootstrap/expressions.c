@@ -46,6 +46,7 @@ struct base_expression {
   union expression *parent;
   list signature;
   unsigned int lowlink;
+  list dependencies;
 };
 
 struct begin_expression {
@@ -53,6 +54,7 @@ struct begin_expression {
   union expression *parent;
   list signature;
   unsigned int lowlink;
+  list dependencies;
   
   list expressions; // void * = struct expression *
 };
@@ -62,6 +64,7 @@ struct assembly_expression {
   union expression *parent;
   list signature;
   unsigned int lowlink;
+  list dependencies;
   
   unsigned long opcode;
   list arguments; // void * = union expression *
@@ -72,6 +75,7 @@ struct storage_expression {
   union expression *parent;
   list signature;
   unsigned int lowlink;
+  list dependencies;
   
   union expression *reference;
   list arguments; // void * = union expression *
@@ -86,6 +90,7 @@ struct invoke_expression {
   union expression *parent;
   list signature;
   unsigned int lowlink;
+  list dependencies;
   
   union expression *reference;
   list arguments; // void * = union expression *
@@ -99,6 +104,7 @@ struct jump_expression {
   union expression *parent;
   list signature;
   unsigned int lowlink;
+  list dependencies;
   
   union expression *reference;
   list arguments;
@@ -114,6 +120,7 @@ struct if_expression {
   union expression *parent;
   list signature;
   unsigned int lowlink;
+  list dependencies;
   
   union expression *condition;
   union expression *consequent;
@@ -125,6 +132,7 @@ struct literal_expression {
   union expression *parent;
   list signature;
   unsigned int lowlink;
+  list dependencies;
   
   long int value;
 };
@@ -134,6 +142,7 @@ struct function_expression {
   union expression *parent;
   list signature;
   unsigned int lowlink;
+  list dependencies;
   
   union expression *reference;
   union expression *expression;
@@ -147,6 +156,7 @@ struct continuation_expression {
   union expression *parent;
   list signature;
   unsigned int lowlink;
+  list dependencies;
   
   union expression *reference;
   union expression *expression;
@@ -161,6 +171,7 @@ struct with_expression {
   union expression *parent;
   list signature;
   unsigned int lowlink;
+  list dependencies;
   
   union expression *reference;
   union expression *expression;
@@ -175,6 +186,7 @@ struct symbol_expression {
   union expression *parent;
   list signature;
   unsigned int lowlink;
+  list dependencies;
   
   char *name;
   struct binding_aug *binding_aug;
@@ -185,6 +197,7 @@ struct meta_expression {
   union expression *parent;
   list signature;
   unsigned int lowlink;
+  list dependencies;
   
   union expression *reference;
   list argument;
@@ -195,6 +208,7 @@ struct constrain_expression {
   union expression *parent;
   list signature;
   unsigned int lowlink;
+  list dependencies;
   
   union expression *reference;
   union expression *expression;
@@ -222,6 +236,7 @@ union expression *make_literal(unsigned long value, buffer reg) {
   t->literal.type = literal;
   t->literal.signature = var(reg);
   t->literal.lowlink = 0;
+  t->literal.dependencies = nil;
   t->literal.value = value;
   return t;
 }
@@ -231,6 +246,7 @@ union expression *make_symbol(char *name, buffer reg) {
   sym->symbol.type = symbol;
   sym->symbol.signature = var(reg);
   sym->symbol.lowlink = 0;
+  sym->symbol.dependencies = nil;
   sym->symbol.parent = NULL;
   sym->symbol.name = name;
   sym->symbol.binding_aug = NULL;
@@ -255,6 +271,7 @@ union expression *make_begin(list expressions, buffer reg) {
   beg->begin.type = begin;
   beg->begin.signature = var(reg);
   beg->begin.lowlink = 0;
+  beg->begin.dependencies = nil;
   beg->begin.parent = NULL;
   beg->begin.expressions = expressions;
   union expression *expr;
@@ -288,6 +305,7 @@ union expression *make_function(union expression *ref, list params, union expres
   func->function.type = function;
   func->function.signature = var(reg);
   func->function.lowlink = 0;
+  func->function.dependencies = nil;
   func->function.parent = NULL;
   put(func, function.reference, ref);
   ref->symbol.binding_aug = make_binding_aug(absolute_storage, local_scope, defined_state, ref->symbol.name, ref, reg);
@@ -307,6 +325,7 @@ union expression *make_continuation(union expression *ref, list params, union ex
   cont->continuation.type = continuation;
   cont->continuation.signature = var(reg);
   cont->continuation.lowlink = 0;
+  cont->continuation.dependencies = nil;
   cont->continuation.parent = NULL;
   cont->continuation.escapes = false;
   cont->continuation.cont_instr_bndg = make_binding_aug(absolute_storage, local_scope, defined_state, NULL, NULL, reg);
@@ -327,6 +346,7 @@ union expression *make_with(union expression *ref, union expression *expr, buffe
   wth->with.type = with;
   wth->with.signature = var(reg);
   wth->with.lowlink = 0;
+  wth->with.dependencies = nil;
   wth->with.parent = NULL;
   wth->with.escapes = false;
   wth->with.cont_instr_bndg = make_binding_aug(absolute_storage, local_scope, defined_state, NULL, NULL, reg);
@@ -374,6 +394,7 @@ union expression *make_jump(union expression *ref, list args, buffer reg) {
   u->jump.type = jump;
   u->jump.signature = var(reg);
   u->jump.lowlink = 0;
+  u->jump.dependencies = nil;
   u->jump.parent = NULL;
   put(u, jump.reference, ref);
   u->jump.contains_flag = CONTAINS_WITH;
@@ -409,6 +430,7 @@ union expression *make_storage(union expression *ref, list args, buffer reg) {
   u->storage.type = storage;
   u->storage.signature = var(reg);
   u->storage.lowlink = 0;
+  u->storage.dependencies = nil;
   u->storage.parent = NULL;
   put(u, storage.reference, ref);
   ref->symbol.binding_aug = make_binding_aug(frame_relative_storage, local_scope, defined_state, ref->symbol.name, ref, reg);
@@ -435,6 +457,7 @@ union expression *make_constrain(union expression *ref, union expression *expr, 
   u->constrain.type = constrain;
   u->constrain.signature = var(reg);
   u->constrain.lowlink = 0;
+  u->constrain.dependencies = nil;
   u->constrain.parent = NULL;
   put(u, constrain.reference, ref);
   put(u, constrain.expression, expr);
@@ -446,6 +469,7 @@ union expression *make_if(union expression *condition, union expression *consequ
   u->_if.type = _if;
   u->_if.signature = var(reg);
   u->_if.lowlink = 0;
+  u->_if.dependencies = nil;
   u->_if.parent = NULL;
   put(u, _if.condition, condition);
   put(u, _if.consequent, consequent);
@@ -458,6 +482,7 @@ union expression *make_invoke(union expression *ref, list args, buffer reg) {
   u->invoke.type = invoke;
   u->invoke.signature = var(reg);
   u->invoke.lowlink = 0;
+  u->invoke.dependencies = nil;
   u->invoke.parent = NULL;
   put(u, invoke.reference, ref);
   u->invoke.contains_flag = CONTAINS_WITH;
