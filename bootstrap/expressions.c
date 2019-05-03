@@ -452,7 +452,7 @@ union expression *make_meta(union expression *ref, list arg, buffer reg) {
   return u;
 }
 
-union expression *make_constrain(union expression *ref, union expression *expr, buffer reg) {
+union expression *make_constrain(union expression *expr, union expression *ref, buffer reg) {
   union expression *u = buffer_alloc(reg, sizeof(union expression));
   u->constrain.type = constrain;
   u->constrain.signature = var(reg);
@@ -632,9 +632,9 @@ void print_expression(union expression *s) {
       write_str(STDOUT, "(constrain ");
       //Printing the signature seems to be more hepful than printing expression that
       //created it.
-      print_fragment(s->constrain.signature);
-      write_str(STDOUT, " ");
       print_expression(s->constrain.expression);
+      write_str(STDOUT, " ");
+      print_fragment(s->constrain.signature);
       write_str(STDOUT, ")");
       break;
     } case symbol: {

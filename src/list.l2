@@ -193,6 +193,9 @@
 (;; Appends the second list onto the first list. fst-ref is a reference to the
   list that will be appended to. snd is the list that will be appended.)
 
+(constrain append-list (\(r)
+  (let (et [var r]) (`(function ((ref (list ,et)) (list ,et)) (,[var r]))r))))
+
 (function append-list (fst-ref snd) (with return
   {(continuation loop (fst-ref)
     (if [nil? $fst-ref]
@@ -200,6 +203,10 @@
       {loop (& cdr $fst-ref)})) fst-ref}))
 
 (;; Analogous to append above.)
+
+(constrain prepend (\(r)
+  (let (et [var r])
+    (`(function (,et (ref (list ,et)) buffer (,[var r]) error) (,[var r]))r))))
 
 (function prepend (data l-ref r handler err)
   (let (ret [buffer-alloc (list-struct) r handler err]) (begin
@@ -209,6 +216,9 @@
 
 (;; Computes the length of the given list. l is the list whose length will be
   computed.)
+
+(constrain length (\(r)
+  (let (et [var r]) (nt [var r]) (`(function ((list ,et)) ,nt)r))))
 
 (function length (l) (with return
   {(continuation loop (l size)
@@ -221,8 +231,4 @@
   is the reversed list.)
 
 (function reverse (l r handler err) (reverse-map (x l) x r handler err))
-
-(constrain (function _(r) (` dudette r)) aaaa)
-
-(constrain (function _(r) (` dudetter r)) aaaa)
 

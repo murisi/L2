@@ -382,6 +382,9 @@ void infer_types(union expression *program, buffer expr_buf, jumpbuf *handler) {
           prepend(e->function.signature, &lhss, expr_buf);
           prepend(lst(build_token("function", expr_buf),
             lst(params_signature, lst(e->function.expression->base.signature, nil, expr_buf), expr_buf), expr_buf), &rhss, expr_buf);
+          
+          prepend(e->function.signature, &lhss, expr_buf);
+          prepend(e->function.reference->symbol.signature, &rhss, expr_buf);
           break;
         } case continuation: {
           list params_signature = nil;
@@ -391,6 +394,9 @@ void infer_types(union expression *program, buffer expr_buf, jumpbuf *handler) {
           }
           prepend(e->continuation.signature, &lhss, expr_buf);
           prepend(lst(build_token("continuation", expr_buf), lst(params_signature, nil, expr_buf), expr_buf), &rhss, expr_buf);
+          
+          prepend(e->continuation.signature, &lhss, expr_buf);
+          prepend(e->continuation.reference->symbol.signature, &rhss, expr_buf);
           break;
         } case constrain: {
           prepend(e->constrain.signature, &lhss, expr_buf);
