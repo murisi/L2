@@ -389,6 +389,10 @@ void sgenerate_begins(union expression *n, list *c, buffer r) {
   }
 }
 
+void sgenerate_constrains(union expression *n, list *c, buffer r) {
+  generate_expressions(n->constrain.expression, c, r);
+}
+
 void generate_expressions(union expression *n, list *c, buffer r) {
   switch(n->base.type) {
     case begin: {
@@ -420,6 +424,9 @@ void generate_expressions(union expression *n, list *c, buffer r) {
       break;
     } case invoke: {
       sgenerate_invokes(n, c, r);
+      break;
+    } case constrain: {
+      sgenerate_constrains(n, c, r);
       break;
     }
   }

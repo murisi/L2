@@ -496,6 +496,9 @@ unsigned long containment_analysis(union expression *s) {
         contains_flag |= containment_analysis(t);
       }
       break;
+    } case constrain: {
+      contains_flag |= containment_analysis(s->constrain.expression);
+      break;
     } case _if: {
       contains_flag |= containment_analysis(s->_if.condition);
       unsigned long consequent_flag = containment_analysis(s->_if.consequent);
@@ -542,6 +545,9 @@ void classify_program_binding_augs(union expression *expr) {
       foreach(t, expr->begin.expressions) {
         classify_program_binding_augs(t);
       }
+      break;
+    } case constrain: {
+      classify_program_binding_augs(expr->constrain.expression);
       break;
     } case storage: case jump: case invoke: {
       if(expr->base.type == storage) {

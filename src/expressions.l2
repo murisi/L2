@@ -143,6 +143,8 @@
 
 (function build-expression-literal-len (l r) [mk# r #64])
 
+(constrain null-expr (\(r) (` expr r)))
+
 (storage null-expr (begin))
 
 (storage null-binding (begin))
@@ -156,12 +158,16 @@
     (setf bndg-definition bndg definition)
     {return bndg}))))
 
+(constrain make-literal (\(r) (with-vars (a b c) (`(function (,a buffer ,b ,c) expr)r)r)))
+
 (function make-literal (value reg handler err) (with return
   (let (t [buffer-alloc (expression) reg handler err]) (begin
     (setf expr-type t (-literal-))
     (setf expr-parent t null-expr)
     (setf expr-value t value)
     {return t}))))
+
+(constrain make-symbol (\(r) (with-vars (b c) (`(function (string buffer ,b ,c) expr)r)r)))
 
 (function make-symbol (name reg handler err) (with return
   (let (sym [buffer-alloc (expression) reg handler err]) (begin
@@ -190,6 +196,8 @@
     (setf expr-binding-aug sym bndg)
     {return sym}))))
 
+(constrain make-begin (\(r) (with-vars (b c) (`(function ((list expr) buffer ,b ,c) expr)r)r)))
+
 (function make-begin (expressions reg handler err) (with return
   (let (beg [buffer-alloc (expression) reg handler err]) (begin
     (setf expr-type beg (-begin-))
@@ -197,6 +205,8 @@
     (setf expr-expressions beg expressions)
     (foreach (expr expressions) (setf expr-parent expr beg))
     {return beg}))))
+
+(constrain make-function (\(r) (with-vars (b c) (`(function (expr (list expr) expr buffer ,b ,c) expr)r)r)))
 
 (function make-function (ref params expr reg handler err) (with return
   (substitute (.. reg handler err) (let (func [buffer-alloc (expression) ..]) (begin
@@ -212,6 +222,8 @@
     (put expr-expression func expr)
     {return func})))))
 
+(constrain make-continuation (\(r) (with-vars (b c) (`(function (expr (list expr) expr buffer ,b ,c) expr)r)r)))
+
 (function make-continuation (ref params expr reg handler err) (with return
   (substitute (.. reg handler err) (let (cont [buffer-alloc (expression) ..]) (begin
     (setf expr-type cont (-continuation-))
@@ -226,6 +238,8 @@
     (setf expr-escapes cont (false))
     (put expr-expression cont expr)
     {return cont})))))
+
+(constrain make-with (\(r) (with-vars (b c) (`(function (expr expr buffer ,b ,c) expr)r)r)))
 
 (function make-with (ref expr reg handler err) (with return
   (substitute (.. reg handler err) (let (wth [buffer-alloc (expression) ..]) (begin
@@ -250,6 +264,8 @@
     (foreach (arg arguments) (setf expr-parent arg u))
     {return u}))))
 
+(constrain make-jump (\(r) (with-vars (b c) (`(function (expr (list expr) buffer ,b ,c) expr)r)r)))
+
 (function make-jump (ref args reg handler err) (with return
   (substitute (.. reg handler err) (let (u [buffer-alloc (expression) ..]) (begin
     (setf expr-type u (-jump-))
@@ -262,6 +278,8 @@
     (foreach (arg args) (setf expr-parent arg u))
     {return u})))))
 
+(constrain make-storage (\(r) (with-vars (b c) (`(function (expr (list expr) buffer ,b ,c) expr)r)r)))
+
 (function make-storage (ref args reg handler err) (with return
   (substitute (.. reg handler err) (let (u [buffer-alloc (expression) ..]) (begin
     (setf expr-type u (-storage-))
@@ -272,12 +290,16 @@
     (foreach (arg args) (setf expr-parent arg u))
     {return u})))))
 
+(constrain make-meta (\(r) (with-vars (b c) (`(function (expr expr buffer ,b ,c) expr)r)r)))
+
 (function make-meta (ref arg reg handler err) (with return
   (let (u [buffer-alloc (expression) reg handler err]) (begin
     (setf expr-type u (-meta-))
     (put expr-reference u ref)
     (setf expr-argument u arg)
     {return u}))))
+
+(constrain make-if (\(r) (with-vars (b c) (`(function (expr expr expr buffer ,b ,c) expr)r)r)))
 
 (function make-if (condition consequent alternate reg handler err) (with return
   (let (u [buffer-alloc (expression) reg handler err]) (begin
@@ -287,6 +309,8 @@
     (put expr-consequent u consequent)
     (put expr-alternate u alternate)
     {return u}))))
+
+(constrain make-invoke (\(r) (with-vars (b c) (`(function (expr (list expr) buffer ,b ,c) expr)r)r)))
 
 (function make-invoke (ref args reg handler err) (with return
   (substitute (.. reg handler err) (let (u [buffer-alloc (expression) ..]) (begin
@@ -303,6 +327,8 @@
   from which the program will be built. A program is a function with no parent that
   has as its expression a begin expression.)
 
+(constrain make-program (\(r) (with-vars (b c) (`(function ((list expr) buffer ,b ,c) expr)r)r)))
+
 (function make-program (exprs r handler err) (with return (substitute (.. r handler err)
   (let (program [make-function [make-symbol null-string ..] nil [make-begin exprs ..] ..]) (begin
     (setf expr-parent program null-expr)
@@ -314,6 +340,8 @@
 
 (;; Prints the given expression as it would be written in an L2 source file.
   s is an expression.)
+
+(constrain print-expression (\(r) (with-vars (a b c) (`(function (expr ,a ,b) ,c)r)r)))
 
 (function print-expression (s hdl err) (substitute (.. hdl err)
   (switch = (@ expr-type s)
@@ -464,3 +492,4 @@
             [to-string [@cadr d] ..] (build-expression-literal-len) #0}) ..])))
     
     [make-meta [build-expression [@car d] ..] [@cdr d] ..])))))
+
