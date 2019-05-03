@@ -316,35 +316,15 @@ void construct_sccs(union expression *s, int preorder, list *stack, list *sccs, 
   }
 }
 
-struct unification {
-  list variable;
-  list value;
-  struct unification *parent;
-};
-
-list lookup(list x, list unifications) {
-  struct unification *u;
-  foreach(u, unifications) {
-    if(x == u->variable && u->variable != u->value) {
-      return lookup(u->value, unifications);
-    }
-  }
-  return x;
-}
-
-bool unify(list x, list y, list *unifications, buffer reg) {
-  list xl = lookup(x, *unifications), yl = lookup(y, *unifications);
+bool unify(list x, list y, buffer reg) {
+  list xl = is_var(x) ? get_var(x) : x;
+  list yl = is_var(y) ? get_var(y) : y;
+  
    if(is_var(xl)) {
-    struct unification *u = buffer_alloc(reg, sizeof(struct unification));
-    u->variable = xl;
-    u->value = yl;
-    prepend(u, unifications, reg);
+    set_var(xl, yl);
     return true;
   } else if(is_var(yl)) {
-    struct unification *u = buffer_alloc(reg, sizeof(struct unification));
-    u->variable = yl;
-    u->value = xl;
-    prepend(u, unifications, reg);
+    set_var(yl, xl);
     return true;
   } else if(is_token(xl) && is_token(y)) {
     return token_equals(xl, yl);
@@ -353,7 +333,7 @@ bool unify(list x, list y, list *unifications, buffer reg) {
   } else if(length(xl) == length(yl)) {
     list a, b;
     foreachzipped(a, b, xl, yl) {
-      if(!unify(a, b, unifications, reg)) {
+      if(!unify(a, b, reg)) {
         return false;
       }
     }
@@ -363,14 +343,14 @@ bool unify(list x, list y, list *unifications, buffer reg) {
   }
 }
 
-list substitute_variables(list fragment, list unifications, buffer reg) {
-  list d = lookup(fragment, unifications);
+list substitute_variables(list fragment, buffer reg) {
+  list d = is_var(fragment) ? get_var(fragment) : fragment;
   if(is_var(d) || is_token(d)) {
     return d;
   } else {
     list res = nil, t;
     foreach(t, d) {
-      append(substitute_variables(t, unifications, reg), &res, reg);
+      append(substitute_variables(t, reg), &res, reg);
     }
     return res;
   }
@@ -389,7 +369,6 @@ void infer_types(union expression *program, buffer expr_buf) {
   visit_expressions(vfind_dependencies, &program, expr_buf);
   construct_sccs(program, 1, &stack, &sccs, expr_buf);
   foreach(scc, sccs) {
-    list unifications = nil;
     union expression *e;
     {foreach(e, scc) {
       switch(e->base.type) {
@@ -401,7 +380,7 @@ void infer_types(union expression *program, buffer expr_buf) {
           }
           list func_signature = lst(build_token("function", expr_buf),
             lst(params_signature, lst(e->function.expression->base.signature, nil, expr_buf), expr_buf), expr_buf);
-          if(!unify(e->function.signature, func_signature, &unifications, expr_buf)) {
+          if(!unify(e->function.signature, func_signature, expr_buf)) {
             write_str(STDOUT, "(failure)");exit(1);
           }
           break;
@@ -412,16 +391,17 @@ void infer_types(union expression *program, buffer expr_buf) {
             append(param->symbol.signature, &params_signature, expr_buf);
           }
           list cont_signature = lst(build_token("continuation", expr_buf), lst(params_signature, nil, expr_buf), expr_buf);
-          if(!unify(e->continuation.signature, cont_signature, &unifications, expr_buf)) {
-            write_str(STDOUT, "(failure)");exit(1);
+          
+          if(!unify(e->continuation.signature, cont_signature, expr_buf)) {
+            write_str(STDOUT, "(failure)");exit(2);
           }
           break;
         } case constrain: {
-          if(!unify(e->constrain.signature, e->constrain.expression->base.signature, &unifications, expr_buf)) {
-            print_fragment(substitute_variables(e->constrain.signature, unifications, expr_buf));
+          if(!unify(e->constrain.signature, e->constrain.expression->base.signature, expr_buf)) {
+            print_fragment(substitute_variables(e->constrain.signature, expr_buf));
             write_str(STDOUT, " = ");
-            print_fragment(substitute_variables(e->constrain.expression->base.signature, unifications, expr_buf));
-            write_str(STDOUT, "(failure)");exit(1);
+            print_fragment(substitute_variables(e->constrain.expression->base.signature, expr_buf));
+            write_str(STDOUT, "(failure)");exit(3);
           }
           break;
         } case invoke: {
@@ -432,8 +412,8 @@ void infer_types(union expression *program, buffer expr_buf) {
           }
           list func_signature = lst(build_token("function", expr_buf),
             lst(params_signature, lst(e->invoke.signature, nil, expr_buf), expr_buf), expr_buf);
-          if(!unify(scoped_signature(e->invoke.reference, scc, expr_buf), func_signature, &unifications, expr_buf)) {
-            write_str(STDOUT, "(failure)");exit(1);
+          if(!unify(scoped_signature(e->invoke.reference, scc, expr_buf), func_signature, expr_buf)) {
+            write_str(STDOUT, "(failure)");exit(4);
           }
           break;
         } case jump: {
@@ -443,29 +423,31 @@ void infer_types(union expression *program, buffer expr_buf) {
             append(scoped_signature(arg, scc, expr_buf), &params_signature, expr_buf);
           }
           list cont_signature = lst(build_token("continuation", expr_buf), lst(params_signature, nil, expr_buf), expr_buf);
-          if(!unify(scoped_signature(e->jump.reference, scc, expr_buf), cont_signature, &unifications, expr_buf)) {
-            write_str(STDOUT, "(failure)");exit(1);
+          
+          if(!unify(scoped_signature(e->jump.reference, scc, expr_buf), cont_signature, expr_buf)) {
+            write_str(STDOUT, "(failure)");exit(5);
           }
           break;
         } case with: {
           list cont_signature = lst(build_token("continuation", expr_buf),
             lst(lst(e->with.signature, nil, expr_buf), nil, expr_buf), expr_buf);
-          if(!unify(e->with.reference->symbol.signature, cont_signature, &unifications, expr_buf)) {
-            write_str(STDOUT, "(failure)");exit(1);
+          
+          if(!unify(e->with.reference->symbol.signature, cont_signature, expr_buf)) {
+            write_str(STDOUT, "(failure)");exit(6);
           }
           break;
         } case _if: {
           list consequent_sig = scoped_signature(e->_if.consequent, scc, expr_buf);
           list alternate_sig = scoped_signature(e->_if.alternate, scc, expr_buf);
-          if(!unify(consequent_sig, alternate_sig, &unifications, expr_buf)) {
-            write_str(STDOUT, "(failure)");exit(1);
+          if(!unify(consequent_sig, alternate_sig, expr_buf)) {
+            write_str(STDOUT, "(failure)");exit(7);
           }
-          if(!unify(e->_if.signature, consequent_sig, &unifications, expr_buf)) {
-            write_str(STDOUT, "(failure)");exit(1);
+          if(!unify(e->_if.signature, consequent_sig, expr_buf)) {
+            write_str(STDOUT, "(failure)");exit(8);
           }
           break;
         } case symbol: {
-          if(!unify(e->symbol.signature, e->symbol.binding_aug->definition->symbol.signature, &unifications, expr_buf)) {
+          if(!unify(e->symbol.signature, e->symbol.binding_aug->definition->symbol.signature, expr_buf)) {
             union expression *h;
             foreach(h, scc) {
               print_expression(h);
@@ -475,13 +457,13 @@ void infer_types(union expression *program, buffer expr_buf) {
             print_expression(e); write_str(STDOUT, "\n");
             print_expression(e->base.parent); write_str(STDOUT, "\n");
             print_expression(e->base.parent->base.parent); write_str(STDOUT, "\n");
-            write_str(STDOUT, "(failure)");exit(1);
+            write_str(STDOUT, "(failure)");exit(9);
           }
         }
       }
     }}
     foreach(e, scc) {
-      e->base.signature = substitute_variables(e->base.signature, unifications, expr_buf);
+      e->base.signature = substitute_variables(e->base.signature, expr_buf);
     }
   }
 }

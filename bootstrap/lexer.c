@@ -1,6 +1,6 @@
 list var(buffer reg) {
   list ret = buffer_alloc(reg, sizeof(struct _list_));
-  ret->fst = NULL;
+  ret->fst = ret;
   ret->rst = ret;
   return ret;
 }
@@ -11,6 +11,24 @@ bool is_var(list s) {
 
 bool var_equals(list a, list b) {
   return a == b ? true : false;
+}
+
+void set_var(list var, list val) {
+  list final_var;
+  do {
+    final_var = var;
+    var = var->fst;
+  } while(is_var(var) && var != final_var);
+  final_var->fst = val;
+}
+
+list get_var(list var) {
+  list final_var;
+  do {
+    final_var = var;
+    var = var->fst;
+  } while(is_var(var) && var != final_var);
+  return final_var->fst;
 }
 
 struct character {
