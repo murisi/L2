@@ -1,5 +1,5 @@
-enum error_type { arguments, param_count_mismatch, special_form, unexpected_character, multiple_definition, object,
-  missing_file, undefined_symbol };
+enum error_type { unification, arguments, param_count_mismatch, special_form,
+  unexpected_character, multiple_definition, object, missing_file, undefined_symbol };
 
 struct param_count_mismatch_error {
   int type;
@@ -42,6 +42,13 @@ struct arguments_error {
   int type;
 };
 
+struct unification_error {
+  int type;
+  list lhs;
+  list rhs;
+  union expression *expr;
+};
+
 union evaluate_error {
   struct arguments_error arguments;
   struct param_count_mismatch_error param_count_mismatch;
@@ -51,6 +58,7 @@ union evaluate_error {
   struct object_error object;
   struct missing_file_error missing_file;
   struct undefined_symbol_error undefined_symbol;
+  struct unification_error unification;
 };
 
 void throw_arguments(jumpbuf *jb) {
@@ -116,3 +124,14 @@ void throw_undefined_symbol(char *symbol_value, jumpbuf *jb) {
   jb->ctx = err;
   longjump(jb);
 }
+
+void throw_unification(list lhs, list rhs, union expression *expr, jumpbuf *jb) {
+  struct unification_error *err = buffer_alloc(jb->ctx, sizeof(struct unification_error));
+  err->type = unification;
+  err->lhs = lhs;
+  err->rhs = rhs;
+  err->expr = expr;
+  jb->ctx = err;
+  longjump(jb);
+}
+

@@ -20,7 +20,7 @@ list compile_program(union expression *program, list *bindings, buffer expr_buf,
   containment_analysis(program);
   classify_program_binding_augs(program->function.expression);
   visit_expressions(vlink_symbols, &program->function.expression, (void* []) {handler, expr_buf});
-  infer_types(program, expr_buf);
+  infer_types(program, expr_buf, handler);
   visit_expressions(vescape_analysis, &program, NULL);
   classify_program_binding_augs(program->function.expression);
   visit_expressions(vlayout_frames, &program->function.expression, expr_buf);
@@ -188,6 +188,15 @@ int main(int argc, char *argv[]) {
         write_str(STDOUT, "Undefined symbol: ");
         write_str(STDOUT, err->undefined_symbol.symbol_value);
         write_str(STDOUT, ".\n");
+        break;
+      } case unification: {
+        write_str(STDOUT, "Cannot solve the following equation:\n");
+        print_fragment(err->unification.lhs);
+        write_str(STDOUT, " = ");
+        print_fragment(err->unification.rhs);
+        write_str(STDOUT, "\nThe above equation was generated from the following expression:\n");
+        print_expression(err->unification.expr);
+        write_str(STDOUT, "\n");
         break;
       }
     }

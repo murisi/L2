@@ -364,7 +364,7 @@ list scoped_signature(union expression *e, list scc, buffer reg) {
   }
 }
 
-void infer_types(union expression *program, buffer expr_buf) {
+void infer_types(union expression *program, buffer expr_buf, jumpbuf *handler) {
   list stack = nil, sccs = nil, scc;
   visit_expressions(vfind_dependencies, &program, expr_buf);
   construct_sccs(program, 1, &stack, &sccs, expr_buf);
@@ -437,14 +437,7 @@ void infer_types(union expression *program, buffer expr_buf) {
       list lhs, rhs;
       foreachzipped(lhs, rhs, lhss, rhss) {
         if(!unify(lhs, rhs, expr_buf)) {
-          write_str(STDOUT, "Cannot solve the following equation:\n");
-          print_fragment(substitute_variables(lhs, expr_buf));
-          write_str(STDOUT, " = ");
-          print_fragment(substitute_variables(rhs, expr_buf));
-          write_str(STDOUT, "\nThe above equation was generated from the following expression:\n");
-          print_expression(e);
-          write_str(STDOUT, "\n");
-          exit(1);
+          throw_unification(substitute_variables(lhs, expr_buf), substitute_variables(rhs, expr_buf), e, handler);
         }
       }
     }}
