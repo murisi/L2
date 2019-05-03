@@ -354,9 +354,9 @@ bool unify(list x, list y) {
     return unify_var(xl, yl);
   } else if(is_var(yl)) {
     return unify_var(yl, xl);
-  } else if(is_token(xl) && is_token(y)) {
+  } else if(is_token(xl) && is_token(yl)) {
     return token_equals(xl, yl);
-  } else if(is_token(xl) || is_token(y)) {
+  } else if(is_token(xl) || is_token(yl)) {
     return false;
   } else if(length(xl) == length(yl)) {
     list a, b;
@@ -402,7 +402,7 @@ void infer_types(union expression *program, buffer expr_buf, jumpbuf *handler) {
   visit_expressions(vfind_dependencies, &program, expr_buf);
   construct_sccs(program, 1, &stack, &sccs, expr_buf);
   
-  foreach(scc, sccs) {
+  foreach(scc, reverse(sccs, expr_buf)) {
     union expression *e;
     {foreach(e, scc) {
       // The left-hand-sides and right-hand-sides of the signature equations.

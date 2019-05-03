@@ -182,7 +182,7 @@ list copy_fragment(list l, buffer r) {
     }
     return c;
   } else {
-    list c, s;
+    list c = nil, s;
     foreach(s, l) {
       append(copy_fragment(s, r), &c, r);
     }
