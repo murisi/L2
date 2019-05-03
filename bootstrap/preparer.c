@@ -296,34 +296,33 @@ bool unify(list x, list y, list *unifications, buffer reg) {
   }
 }
 
-void print_fragment2(list d, list unifications) {
-  d = lookup(d, unifications);
-  if(is_var(d)) {
-    write_str(STDOUT, "!");
-    write_ulong(STDOUT, (long) d % 8192);
-  } else if(is_token(d)) {
-    struct character *t;
-    foreach(t, d) {
-      write_char(STDOUT, t->character);
-    }
+list substitute_variables(list fragment, list unifications, buffer reg) {
+  list d = lookup(fragment, unifications);
+  if(is_var(d) || is_token(d)) {
+    return d;
   } else {
-    write_str(STDOUT, "(");
-    list t;
+    list res = nil, t;
     foreach(t, d) {
-      print_fragment2((list) t, unifications);
-      write_str(STDOUT, " ");
+      append(substitute_variables(t, unifications, reg), &res, reg);
     }
-    write_str(STDOUT, ")"); 
+    return res;
+  }
+}
+
+list scoped_signature(union expression *e, list scc, buffer reg) {
+  if(exists(equals, &scc, e)) {
+    return e->base.signature;
+  } else {
+    return copy_fragment(e->base.signature, reg);
   }
 }
 
 void infer_types(union expression *program, buffer expr_buf) {
   list stack = nil, sccs = nil, unifications = nil, scc;
   construct_sccs(program, 1, &stack, &sccs, expr_buf);
-  write_str(STDOUT, "------------------------------------\n");
   foreach(scc, sccs) {
     union expression *e;
-    foreach(e, scc) {
+    {foreach(e, scc) {
       switch(e->base.type) {
         case function: {
           list params_signature = nil;
@@ -333,18 +332,9 @@ void infer_types(union expression *program, buffer expr_buf) {
           }
           list func_signature = lst(build_token("function", expr_buf),
             lst(params_signature, lst(e->function.expression->base.signature, nil, expr_buf), expr_buf), expr_buf);
-          write_str(STDOUT, "Function Rule: ");
-          print_fragment(e->function.signature);
-          write_str(STDOUT, " = ");
-          print_fragment(func_signature);
-          
-          write_str(STDOUT, " ");
-          if(unify(e->function.signature, func_signature, &unifications, expr_buf)) {
-            write_str(STDOUT, "(success)");
-          } else {
+          if(!unify(e->function.signature, func_signature, &unifications, expr_buf)) {
             write_str(STDOUT, "(failure)");exit(1);
           }
-          write_str(STDOUT, "\n");
           break;
         } case continuation: {
           list params_signature = nil;
@@ -352,139 +342,74 @@ void infer_types(union expression *program, buffer expr_buf) {
           foreach(param, e->continuation.parameters) {
             append(param->symbol.signature, &params_signature, expr_buf);
           }
-          list cont_signature = lst(build_token("continuation", expr_buf),
-            lst(params_signature, nil, expr_buf), expr_buf);
-          write_str(STDOUT, "Continuation Rule: ");
-          print_fragment(e->continuation.signature);
-          write_str(STDOUT, " = ");
-          print_fragment(cont_signature);
-          
-          write_str(STDOUT, " ");
-          if(unify(e->continuation.signature, cont_signature, &unifications, expr_buf)) {
-            write_str(STDOUT, "(success)");
-          } else {
+          list cont_signature = lst(build_token("continuation", expr_buf), lst(params_signature, nil, expr_buf), expr_buf);
+          if(!unify(e->continuation.signature, cont_signature, &unifications, expr_buf)) {
             write_str(STDOUT, "(failure)");exit(1);
           }
-          write_str(STDOUT, "\n");
           break;
         } case constrain: {
-          write_str(STDOUT, "Constrain Rule: ");
-          print_fragment(e->constrain.signature);
-          write_str(STDOUT, " = ");
-          print_fragment(e->constrain.expression->base.signature);
-          
-          write_str(STDOUT, " ");
-          if(unify(e->constrain.signature, e->constrain.expression->base.signature, &unifications, expr_buf)) {
-            write_str(STDOUT, "(success)");
-          } else {
+          if(!unify(e->constrain.signature, e->constrain.expression->base.signature, &unifications, expr_buf)) {
             write_str(STDOUT, "(failure)");exit(1);
           }
-          write_str(STDOUT, "\n");
           break;
         } case invoke: {
           list params_signature = nil;
           union expression *arg;
           foreach(arg, e->invoke.arguments) {
-            append(arg->base.signature, &params_signature, expr_buf);
+            append(scoped_signature(arg, scc, expr_buf), &params_signature, expr_buf);
           }
           list func_signature = lst(build_token("function", expr_buf),
             lst(params_signature, lst(e->invoke.signature, nil, expr_buf), expr_buf), expr_buf);
-          write_str(STDOUT, "Invoke Rule: ");
-          print_fragment(e->invoke.reference->base.signature);
-          write_str(STDOUT, " = ");
-          print_fragment(func_signature);
-          
-          write_str(STDOUT, " ");
-          if(unify(e->invoke.reference->base.signature, func_signature, &unifications, expr_buf)) {
-            write_str(STDOUT, "(success)");
-          } else {
+          if(!unify(scoped_signature(e->invoke.reference, scc, expr_buf), func_signature, &unifications, expr_buf)) {
             write_str(STDOUT, "(failure)");exit(1);
           }
-          write_str(STDOUT, "\n");
           break;
         } case jump: {
           list params_signature = nil;
           union expression *arg;
           foreach(arg, e->jump.arguments) {
-            append(arg->base.signature, &params_signature, expr_buf);
+            append(scoped_signature(arg, scc, expr_buf), &params_signature, expr_buf);
           }
-          list cont_signature = lst(build_token("continuation", expr_buf),
-            lst(params_signature, nil, expr_buf), expr_buf);
-          write_str(STDOUT, "Jump Rule: ");
-          print_fragment(e->jump.reference->base.signature);
-          write_str(STDOUT, " = ");
-          print_fragment(cont_signature);
-          
-          write_str(STDOUT, " ");
-          if(unify(e->jump.reference->base.signature, cont_signature, &unifications, expr_buf)) {
-            write_str(STDOUT, "(success)");
-          } else {
+          list cont_signature = lst(build_token("continuation", expr_buf), lst(params_signature, nil, expr_buf), expr_buf);
+          if(!unify(scoped_signature(e->jump.reference, scc, expr_buf), cont_signature, &unifications, expr_buf)) {
             write_str(STDOUT, "(failure)");exit(1);
           }
-          write_str(STDOUT, "\n");
           break;
         } case with: {
           list cont_signature = lst(build_token("continuation", expr_buf),
             lst(lst(e->with.signature, nil, expr_buf), nil, expr_buf), expr_buf);
-          write_str(STDOUT, "With Rule: ");
-          print_fragment(e->with.reference->symbol.signature);
-          write_str(STDOUT, " = ");
-          print_fragment(cont_signature);
-          
-          write_str(STDOUT, " ");
-          if(unify(e->with.reference->symbol.signature, cont_signature, &unifications, expr_buf)) {
-            write_str(STDOUT, "(success)");
-          } else {
+          if(!unify(e->with.reference->symbol.signature, cont_signature, &unifications, expr_buf)) {
             write_str(STDOUT, "(failure)");exit(1);
           }
-          write_str(STDOUT, "\n");
           break;
         } case _if: {
-          write_str(STDOUT, "If Rule 1: ");
-          print_fragment(e->_if.consequent->base.signature);
-          write_str(STDOUT, " = ");
-          print_fragment(e->_if.alternate->base.signature);
-          
-          write_str(STDOUT, " ");
-          if(unify(e->_if.consequent->base.signature, e->_if.alternate->base.signature, &unifications, expr_buf)) {
-            write_str(STDOUT, "(success)");
-          } else {
+          list consequent_sig = scoped_signature(e->_if.consequent, scc, expr_buf);
+          list alternate_sig = scoped_signature(e->_if.alternate, scc, expr_buf);
+          if(!unify(consequent_sig, alternate_sig, &unifications, expr_buf)) {
             write_str(STDOUT, "(failure)");exit(1);
           }
-          write_str(STDOUT, "\n");
-          
-          write_str(STDOUT, "If Rule 2: ");
-          print_fragment(e->_if.signature);
-          write_str(STDOUT, " = ");
-          print_fragment(e->_if.consequent->base.signature);
-          
-          write_str(STDOUT, " ");
-          if(unify(e->_if.signature, e->_if.consequent->base.signature, &unifications, expr_buf)) {
-            write_str(STDOUT, "(success)");
-          } else {
+          if(!unify(e->_if.signature, consequent_sig, &unifications, expr_buf)) {
             write_str(STDOUT, "(failure)");exit(1);
           }
-          write_str(STDOUT, "\n");
           break;
         } case symbol: {
-          write_str(STDOUT, "Symbol Rule: ");
-          print_fragment2(e->symbol.signature, unifications);
-          write_str(STDOUT, " = ");
-          print_fragment2(e->symbol.binding_aug->definition->symbol.signature, unifications);
-          
-          write_str(STDOUT, " ");
-          if(unify(e->symbol.signature, e->symbol.binding_aug->definition->symbol.signature, &unifications, expr_buf)) {
-            write_str(STDOUT, "(success)");
-          } else {
+          if(!unify(e->symbol.signature, e->symbol.binding_aug->definition->symbol.signature, &unifications, expr_buf)) {
+            union expression *h;
+            foreach(h, scc) {
+              print_expression(h);
+              write_str(STDOUT, "\n");
+            }
             write_str(STDOUT, "\n");
             print_expression(e); write_str(STDOUT, "\n");
             print_expression(e->base.parent); write_str(STDOUT, "\n");
             print_expression(e->base.parent->base.parent); write_str(STDOUT, "\n");
             write_str(STDOUT, "(failure)");exit(1);
           }
-          write_str(STDOUT, "\n");
         }
       }
+    }}
+    foreach(e, scc) {
+      e->base.signature = substitute_variables(e->base.signature, unifications, expr_buf);
     }
   }
 }

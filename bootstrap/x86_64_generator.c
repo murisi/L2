@@ -177,10 +177,6 @@ void sgenerate_storage_expressions(union expression *n, list *c, buffer r) {
   make_load_address(n->storage.reference->symbol.binding_aug, make_asm0(RAX, r), c, r);
 }
 
-bool equals(void *a, void *b) {
-  return a == b;
-}
-
 void sgenerate_symbols(union expression *n, list *c, buffer r) {
   union expression *def = n->symbol.binding_aug->definition;
   if((def->symbol.parent->base.type == function || def->symbol.parent->base.type == continuation) &&

@@ -85,6 +85,10 @@ list reverse(list l, buffer reg) {
   return ret;
 }
 
+bool equals(void *a, void *b) {
+  return a == b;
+}
+
 list *exists(bool (*pred)(void *, void *), list *l, void *ctx) {
   void *d;
   list *s;
@@ -126,3 +130,4 @@ list concat(list a, list b, buffer reg) {
   }}
   return reverse(res, reg);
 }
+
