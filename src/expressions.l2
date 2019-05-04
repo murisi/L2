@@ -40,7 +40,7 @@
 (function expr-opcode (l r) [mk-field l r #16 #8])
 (;; Only for type(s) (-assembly-) (-storage-) (-invoke-) (-jump-))
 (function expr-arguments (l r) [mk-field l r #24 #8])
-(;; Only for type(s) (-storage-) (-invoke-) (-jump-) (-function-) (-continuation-) (-with-) (-meta-))
+(;; Only for type(s) (-storage-) (-invoke-) (-jump-) (-function-) (-continuation-) (-with-) (-meta-) (-constrain-))
 (function expr-reference (l r) [mk-field l r #16 #8])
 (;; Only for type(s) (-jump-))
 (function expr-short-circuit (l r) [mk-field l r #48 #8])
@@ -50,8 +50,9 @@
 (function expr-alternate (l r) [mk-field l r #32 #8])
 (;; Only for type(s) (-literal-))
 (function expr-value (l r) [mk-field l r #16 #8])
-(;; Only for type(s) (-function-) (-continuation-) (-with-))
+(;; Only for type(s) (-function-) (-continuation-) (-with-) (-constrain-))
 (function expr-expression (l r) [mk-field l r #24 #8])
+(;; Only for type(s) (-function-) (-continuation-) (-with-))
 (function expr-parameters (l r) [mk-field l r #32 #8])
 (;; Only for type(s) (-function-))
 (function expr-binding-augs (l r) [mk-field l r #40 #8])
@@ -81,6 +82,7 @@
 (function -continuation- (l r) [mk# r #9])
 (function -assembly- (l r) [mk# r #10])
 (function -meta- (l r) [mk# r #11])
+(function -constrain- (l r) [mk# r #12])
 
 (;; Valid values for expr-contains-flag.)
 
@@ -290,13 +292,24 @@
     (foreach (arg args) (setf expr-parent arg u))
     {return u})))))
 
-(constrain make-meta (\(r) (with-vars (b c) (`(function (expr expr buffer ,b ,c) expr)r)r)))
+(constrain make-meta (\(r) (with-vars (a b c) (`(function (expr ,a buffer ,b ,c) expr)r)r)))
 
 (function make-meta (ref arg reg handler err) (with return
   (let (u [buffer-alloc (expression) reg handler err]) (begin
     (setf expr-type u (-meta-))
+    (setf expr-parent u null-expr)
     (put expr-reference u ref)
     (setf expr-argument u arg)
+    {return u}))))
+
+(constrain make-constrain (\(r) (with-vars (b c) (`(function (expr expr buffer ,b ,c) expr)r)r)))
+
+(function make-constrain (expr ref reg handler err) (with return
+  (let (u [buffer-alloc (expression) reg handler err]) (begin
+    (setf expr-type u (-constrain-))
+    (setf expr-parent u null-expr)
+    (put expr-reference u ref)
+    (put expr-expression u expr)
     {return u}))))
 
 (constrain make-if (\(r) (with-vars (b c) (`(function (expr expr expr buffer ,b ,c) expr)r)r)))
@@ -399,6 +412,13 @@
       [print-expression (@ expr-alternate s) ..]
       [print-str (stdout) (" (rparen)) ..]))
     
+    ((-constrain-) (begin
+      [print-str (stdout) (" (lparen)constrain(space)) ..]
+      [print-expression (@ expr-expression s) ..]
+      [print-str (stdout) (" (space)) ..]
+      [print-expression (@ expr-reference s) ..]
+      [print-str (stdout) (" (rparen)) ..]))
+    
     ((-symbol-)
       (if [not= (@ expr-name s) null-string]
         [print-str (stdout) (@ expr-name s) ..]
@@ -490,6 +510,11 @@
                 {loop [+ str #1] [- i #1] [<< value #1]}
                 {handler (sets err special-form-error d [@cadr d])}))))
             [to-string [@cadr d] ..] (build-expression-literal-len) #0}) ..])))
+    
+    ((" constrain)
+      (if (not [= [length d] #3])
+        {handler (sets err special-form-error d null-fragment)}
+        [make-constrain [build-expression [@cadr d] ..] [build-expression [@caddr d] ..] ..]))
     
     [make-meta [build-expression [@car d] ..] [@cdr d] ..])))))
 
