@@ -137,14 +137,7 @@ int main(int argc, char *argv[]) {
     union evaluate_error *err = (union evaluate_error *) evaluate_handler.ctx;
     write_str(STDOUT, "Error found: ");
     switch(err->arguments.type) {
-      case param_count_mismatch: {
-        write_str(STDOUT, "The number of arguments in ");
-        print_expression(err->param_count_mismatch.src_expression);
-        write_str(STDOUT, " does not match the number of parameters in ");
-        print_expression(err->param_count_mismatch.dest_expression);
-        write_str(STDOUT, ".\n");
-        break;
-      } case special_form: {
+      case special_form: {
         if(err->special_form.subexpression_list) {
           write_str(STDOUT, "The subexpression ");
           print_fragment(err->special_form.subexpression_list);

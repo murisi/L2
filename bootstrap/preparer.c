@@ -221,15 +221,7 @@ union expression *vlink_symbols(union expression *s, void *ctx) {
       prepend(stg, &root_function_of(s)->function.expression->begin.expressions, r);
       stg->storage.parent = root_function_of(s)->function.expression;
       s->symbol.binding_aug = bndg;
-    } else if(((is_jump_reference(s) && is_c_reference(s->symbol.binding_aug->definition)) ||
-      (is_invoke_reference(s) && is_function_reference(s->symbol.binding_aug->definition))) &&
-      length(s->symbol.parent->jump.arguments) != length(target_expression(s)->continuation.parameters)) {
-        throw_param_count_mismatch(s->symbol.parent, target_expression(s), handler);
     }
-  } else if(((s->base.type == continuation && is_jump_reference(s)) ||
-    (s->base.type == function && is_invoke_reference(s))) &&
-    length(s->continuation.parent->jump.arguments) != length(s->continuation.parameters)) {
-      throw_param_count_mismatch(s->continuation.parent, s, handler);
   }
   return s;
 }

@@ -1,12 +1,6 @@
 enum error_type { unification, arguments, param_count_mismatch, special_form,
   unexpected_character, multiple_definition, object, missing_file, undefined_symbol };
 
-struct param_count_mismatch_error {
-  int type;
-  union expression *src_expression;
-  union expression *dest_expression;
-};
-
 struct special_form_error {
   int type;
   list expression_list;
@@ -51,7 +45,6 @@ struct unification_error {
 
 union evaluate_error {
   struct arguments_error arguments;
-  struct param_count_mismatch_error param_count_mismatch;
   struct special_form_error special_form;
   struct unexpected_character_error unexpected_character;
   struct multiple_definition_error multiple_definition;
@@ -64,15 +57,6 @@ union evaluate_error {
 void throw_arguments(jumpbuf *jb) {
   struct arguments_error *err = buffer_alloc(jb->ctx, sizeof(struct arguments_error));
   err->type = arguments;
-  jb->ctx = err;
-  longjump(jb);
-}
-
-void throw_param_count_mismatch(union expression *src_expression, union expression *dest_expression, jumpbuf *jb) {
-  struct param_count_mismatch_error *err = buffer_alloc(jb->ctx, sizeof(struct param_count_mismatch_error));
-  err->type = param_count_mismatch;
-  err->src_expression = src_expression;
-  err->dest_expression = dest_expression;
   jb->ctx = err;
   longjump(jb);
 }
