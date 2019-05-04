@@ -11,7 +11,7 @@ void visit_expressions(union expression *(*visitor)(union expression *, void *),
       visit_expressions(visitor, &(*s)->_if.consequent, ctx);
       visit_expressions(visitor, &(*s)->_if.alternate, ctx);
       break;
-    } case function: case continuation: case with: {
+    } case function: case continuation: case with: case constrain: {
       visit_expressions(visitor, &(*s)->function.expression, ctx);
       break;
     } case jump: case invoke: case storage: {
@@ -22,9 +22,6 @@ void visit_expressions(union expression *(*visitor)(union expression *, void *),
       foreachaddress(t, (*s)->invoke.arguments) {
         visit_expressions(visitor, t, ctx);
       }
-      break;
-    } case constrain: {
-      visit_expressions(visitor, &(*s)->constrain.expression, ctx);
       break;
     }
   }
@@ -50,7 +47,7 @@ void pre_visit_expressions(union expression *(*visitor)(union expression *, void
       pre_visit_expressions(visitor, &(*s)->_if.consequent, ctx);
       pre_visit_expressions(visitor, &(*s)->_if.alternate, ctx);
       break;
-    } case function: case continuation: case with: {
+    } case function: case continuation: case with: case constrain: {
       pre_visit_expressions(visitor, &(*s)->function.expression, ctx);
       break;
     } case jump: case invoke: case storage: {
@@ -61,9 +58,6 @@ void pre_visit_expressions(union expression *(*visitor)(union expression *, void
       foreachaddress(t, (*s)->invoke.arguments) {
         pre_visit_expressions(visitor, t, ctx);
       }
-      break;
-    } case constrain: {
-      pre_visit_expressions(visitor, &(*s)->constrain.expression, ctx);
       break;
     }
   }
@@ -188,10 +182,6 @@ bool is_invoke_reference(union expression *s) {
 
 bool is_c_reference(union expression *s) {
   return (s->base.parent->base.type == continuation || s->base.parent->base.type == with) && s->base.parent->continuation.reference == s;
-}
-
-bool is_continuation_reference(union expression *s) {
-  return s->base.parent->base.type == continuation && s->base.parent->continuation.reference == s;
 }
 
 bool is_function_reference(union expression *s) {

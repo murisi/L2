@@ -153,7 +153,7 @@
       [visit-expressions visitor (& expr-consequent $s) ctx]
       [visit-expressions visitor (& expr-alternate $s) ctx]))
     
-    ((-function-) (-continuation-) (-with-)
+    ((-function-) (-continuation-) (-with-) (-constrain-)
       [visit-expressions visitor (& expr-expression $s) ctx])
     
     ((-jump-) (-invoke-) (-storage-) (begin
@@ -177,7 +177,7 @@
       [pre-visit-expressions visitor (& expr-consequent $s) ctx]
       [pre-visit-expressions visitor (& expr-alternate $s) ctx]))
     
-    ((-function-) (-continuation-) (-with-)
+    ((-function-) (-continuation-) (-with-) (-constrain-)
       [pre-visit-expressions visitor (& expr-expression $s) ctx])
     
     ((-jump-) (-invoke-) (-storage-) (begin
@@ -190,6 +190,8 @@
 (function classify-program-bindings (expr)
   (switch = (@ expr-type expr)
     ((-begin-) (foreach (t (@ expr-expressions expr)) [classify-program-bindings t]))
+    
+    ((-constrain-) [classify-program-bindings (@ expr-expression expr)])
     
     ((-storage-) (-jump-) (-invoke-) (begin
       (if [= (@ expr-type expr) (-storage-)]
@@ -214,6 +216,8 @@
 (function containment-analysis (s)
   (switch = (@ expr-type s)
     ((-begin-) (fold (acc (contains-none)) (x (@ expr-expressions s)) [lor acc [containment-analysis x]]))
+    
+    ((-constrain-) [containment-analysis (@ expr-expression s)])
     
     ((-if-)
       (let (condition-flag [containment-analysis (@ expr-condition s)])
