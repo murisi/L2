@@ -299,17 +299,16 @@ void construct_sccs(union expression *s, int preorder, list *stack, list *sccs, 
 }
 
 bool occurs_in(list var, list val) {
-  list varl = get_var(var);
-  list vall = is_var(val) ? get_var(val) : val;
+  list eval = evaluate(val);
   
-  if(is_var(vall)) {
-    return var_equals(varl, vall);
-  } else if(is_token(vall)) {
+  if(is_var(eval)) {
+    return var_equals(var, eval);
+  } else if(is_token(eval)) {
     return false;
   } else {
     list a;
-    foreach(a, vall) {
-      if(occurs_in(varl, a)) {
+    foreach(a, eval) {
+      if(occurs_in(var, a)) {
         return true;
       }
     }
@@ -319,7 +318,7 @@ bool occurs_in(list var, list val) {
 
 bool unify_var(list var, list val) {
   if(!occurs_in(var, val)) {
-    set_var(var, val);
+    set_val(var, val);
     return true;
   } else {
     return false;
@@ -327,8 +326,8 @@ bool unify_var(list var, list val) {
 }
 
 bool unify(list x, list y) {
-  list xl = is_var(x) ? get_var(x) : x;
-  list yl = is_var(y) ? get_var(y) : y;
+  list xl = evaluate(x);
+  list yl = evaluate(y);
   
   if(is_var(xl) && is_var(yl) && var_equals(xl, yl)) {
     return true;
@@ -350,19 +349,6 @@ bool unify(list x, list y) {
     return true;
   } else {
     return false;
-  }
-}
-
-list substitute_variables(list fragment, buffer reg) {
-  list d = is_var(fragment) ? get_var(fragment) : fragment;
-  if(is_var(d) || is_token(d)) {
-    return d;
-  } else {
-    list res = nil, t;
-    foreach(t, d) {
-      append(substitute_variables(t, reg), &res, reg);
-    }
-    return res;
   }
 }
 
@@ -460,12 +446,12 @@ void infer_types(union expression *program, buffer expr_buf, jumpbuf *handler) {
       list lhs, rhs;
       foreachzipped(lhs, rhs, lhss, rhss) {
         if(!unify(lhs, rhs)) {
-          throw_unification(substitute_variables(lhs, expr_buf), substitute_variables(rhs, expr_buf), e, handler);
+          throw_unification(recursive_evaluate(lhs, expr_buf), recursive_evaluate(rhs, expr_buf), e, handler);
         }
       }
     }}
     foreach(e, scc) {
-      e->base.signature = substitute_variables(e->base.signature, expr_buf);
+      e->base.signature = recursive_evaluate(e->base.signature, expr_buf);
     }
   }
 }

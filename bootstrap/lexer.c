@@ -1,34 +1,17 @@
-list var(buffer reg) {
-  list ret = buffer_alloc(reg, sizeof(struct _list_));
-  ret->fst = ret;
-  ret->rst = ret;
-  return ret;
-}
-
 bool is_var(list s) {
-  return s != nil && s->rst == s ? true : false;
+  return !is_nil(s) && s->rst == s ? true : false;
 }
 
 bool var_equals(list a, list b) {
   return a == b ? true : false;
 }
 
-void set_var(list var, list val) {
-  list final_var;
-  do {
-    final_var = var;
-    var = var->fst;
-  } while(is_var(var) && var != final_var);
-  final_var->fst = val;
+void set_val(list var, list val) {
+  var->fst = val;
 }
 
-list get_var(list var) {
-  list final_var;
-  do {
-    final_var = var;
-    var = var->fst;
-  } while(is_var(var) && var != final_var);
-  return final_var->fst;
+list get_val(list var) {
+  return var->fst;
 }
 
 struct character {
@@ -169,6 +152,34 @@ bool token_equals(list a, list b) {
     }
   }
   return true;
+}
+
+list var(buffer reg) {
+  list ret = buffer_alloc(reg, sizeof(struct _list_));
+  ret->fst = ret;
+  ret->rst = ret;
+  return ret;
+}
+
+list evaluate(list val) {
+  list next_val;
+  while(is_var(val) && val != (next_val = get_val(val))) {
+    val = next_val;
+  }
+  return val;
+}
+
+list recursive_evaluate(list fragment, buffer reg) {
+  list d = evaluate(fragment);
+  if(is_var(d) || is_token(d)) {
+    return d;
+  } else {
+    list res = nil, t;
+    foreach(t, d) {
+      append(recursive_evaluate(t, reg), &res, reg);
+    }
+    return res;
+  }
 }
 
 list copy_fragment(list l, list *old_vars, list *new_vars, buffer r) {
