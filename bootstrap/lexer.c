@@ -171,9 +171,17 @@ bool token_equals(list a, list b) {
   return true;
 }
 
-list copy_fragment(list l, buffer r) {
+list copy_fragment(list l, list *old_vars, list *new_vars, buffer r) {
   if(is_var(l)) {
-    return var(r);
+    list ov, nv;
+    foreachzipped(ov, nv, *old_vars, *new_vars) {
+      if(ov == l) {
+        return nv;
+      }
+    }
+    prepend(l, old_vars, r);
+    prepend(var(r), new_vars, r);
+    return (*new_vars)->fst;
   } else if(is_token(l)) {
     list c = nil;
     struct character *s;
@@ -184,7 +192,7 @@ list copy_fragment(list l, buffer r) {
   } else {
     list c = nil, s;
     foreach(s, l) {
-      append(copy_fragment(s, r), &c, r);
+      append(copy_fragment(s, old_vars, new_vars, r), &c, r);
     }
     return c;
   }

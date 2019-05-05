@@ -370,7 +370,8 @@ list scoped_signature(union expression *e, list scc, buffer reg) {
   if(exists(equals, &scc, e)) {
     return e->base.signature;
   } else {
-    return copy_fragment(e->base.signature, reg);
+    list old_vars = nil, new_vars = nil;
+    return copy_fragment(e->base.signature, &old_vars, &new_vars, reg);
   }
 }
 
