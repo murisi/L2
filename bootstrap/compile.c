@@ -69,6 +69,10 @@ void evaluate_files(list metaprograms, list *bindings, buffer expr_buf, buffer o
   list objects = nil;
   char *fn;
   foreach(fn, metaprograms) {
+    write_str(STDOUT, "Processing ");
+    write_str(STDOUT, fn);
+    write_str(STDOUT, "...\n");
+    
     Object *obj;
     char *dot = strrchr(fn, '.');
     
