@@ -116,104 +116,98 @@ bool reference_equals(union expression *a, union expression *b) {
   return a == b || (a->symbol.name && b->symbol.name && !strcmp(a->symbol.name, b->symbol.name));
 }
 
-struct binding_aug *binding_aug_of(union expression *reference) {
-  bool same_func = true;
-  union expression *t;
-  for(t = reference; t != NULL; t = t->base.parent) {
-    //Goal of following logic is to maximize what is in the scope of a reference without the overhead of access
-    //links.
-    switch(t->base.type) {
-      case begin: {
-        union expression *u;
-        foreach(u, t->begin.expressions) {
-          //Either link up to function expression contained in ancestral begin expression or link up to
-          //storage expression in ancestral expression that is (in the same stack-frame as the reference
-          //or has static storage).
-          if((u->base.type == function || (u->base.type == storage && (same_func ||
-              u->storage.reference->symbol.binding_aug->type == absolute_storage))) &&
-              reference_equals(u->function.reference, reference)) {
-            return u->function.reference->symbol.binding_aug;
-          }
+bool assign_binding(union expression *s, list bindings) {
+  struct binding_aug *ba;
+  {foreach(ba, bindings) {
+    if(ba->name && s->symbol.name && !strcmp(ba->name, s->symbol.name)) {
+      s->symbol.binding_aug = ba;
+      return true;
+    }
+  }}
+  return false;
+}
+
+void link_symbols(union expression *s, bool static_storage, list *undefined_bindings, list static_bindings, list dynamic_bindings, buffer r) {
+  list *bindings = static_storage ? &static_bindings : &dynamic_bindings;
+  switch(s->base.type) {
+    case begin: {
+      union expression *t;
+      {foreach(t, s->begin.expressions) {
+        if(t->base.type == storage) {
+          prepend(t->storage.reference->symbol.binding_aug, bindings, r);
+        } else if(t->base.type == function) {
+          prepend(t->storage.reference->symbol.binding_aug, &static_bindings, r);
         }
-        break;
-      } case function: {
-        //Either link up to ancestral function expression reference or link up to the parameters of (the
-        //root function or (the function that provides the stack-frame for this reference.) 
-        if(reference_equals(t->function.reference, reference)) {
-          return t->function.reference->symbol.binding_aug;
-        }
-        union expression *u;
-        foreach(u, t->function.parameters) {
-          if((same_func || u->symbol.binding_aug->type == absolute_storage) && reference_equals(u, reference)) {
-            return u->symbol.binding_aug;
-          }
-        }
-        same_func = false;
-        break;
-      } case continuation: case with: case storage: {
-        //Either link up to (the reference of continuation/with/storage expression in the same stack-frame
-        //or the reference of the same with static storage) or link up to the parameters of a non-storage
-        //expression that are either (in the same stack-fram or have static storage).
-        if((same_func || t->continuation.reference->symbol.binding_aug->type == absolute_storage) &&
-            reference_equals(t->function.reference, reference)) {
-          return t->function.reference->symbol.binding_aug;
-        } else if(t->base.type != storage) {
-          union expression *u;
-          foreach(u, t->function.parameters) {
-            if((same_func || u->symbol.binding_aug->type == absolute_storage) && reference_equals(u, reference)) {
-              return u->symbol.binding_aug;
-            }
-          }
-        }
-        break;
+      }}
+      foreach(t, s->begin.expressions) {
+        link_symbols(t, static_storage, undefined_bindings, static_bindings, dynamic_bindings, r);
       }
+      break;
+    } case function: {
+      prepend(s->function.reference->symbol.binding_aug, &static_bindings, r);
+      dynamic_bindings = nil;
+      union expression *u;
+      foreach(u, s->function.parameters) {
+        prepend(u->symbol.binding_aug, &dynamic_bindings, r);
+      }
+      link_symbols(s->function.expression, false, undefined_bindings, static_bindings, dynamic_bindings, r);
+      break;
+    } case with: case continuation: {
+      prepend(s->function.reference->symbol.binding_aug, bindings, r);
+      union expression *u;
+      foreach(u, s->function.parameters) {
+        prepend(u->symbol.binding_aug, bindings, r);
+      }
+      link_symbols(s->function.expression, static_storage, undefined_bindings, static_bindings, dynamic_bindings, r);
+      break;
+    } case storage: {
+      prepend(s->storage.reference->symbol.binding_aug, bindings, r);
+      union expression *u;
+      foreach(u, s->storage.arguments) {
+        link_symbols(u, static_storage, undefined_bindings, static_bindings, dynamic_bindings, r);
+      }
+      break;
+    } case symbol: {
+      if(!s->symbol.binding_aug && !assign_binding(s, dynamic_bindings)&&
+        !assign_binding(s, static_bindings) && !assign_binding(s, *undefined_bindings)) {
+          union expression *stg = make_storage(make_symbol(s->symbol.name, r), nil, r);
+          struct binding_aug *bndg = stg->storage.reference->symbol.binding_aug;
+          bndg->type = absolute_storage;
+          bndg->scope = global_scope;
+          bndg->state = undefined_state;
+          s->symbol.binding_aug = bndg;
+          prepend(s->symbol.binding_aug, undefined_bindings, r);
+      }
+      break;
+    } case _if: {
+      link_symbols(s->_if.condition, static_storage, undefined_bindings, static_bindings, dynamic_bindings, r);
+      link_symbols(s->_if.consequent, static_storage, undefined_bindings, static_bindings, dynamic_bindings, r);
+      link_symbols(s->_if.alternate, static_storage, undefined_bindings, static_bindings, dynamic_bindings, r);
+      break;
+    } case invoke: case jump: {
+      link_symbols(s->invoke.reference, static_storage, undefined_bindings, static_bindings, dynamic_bindings, r);
+      union expression *u;
+      foreach(u, s->invoke.arguments) {
+        link_symbols(u, static_storage, undefined_bindings, static_bindings, dynamic_bindings, r);
+      }
+      break;
+    } case constrain: {
+      link_symbols(s->constrain.expression, static_storage, undefined_bindings, static_bindings, dynamic_bindings, r);
+      break;
     }
   }
-  return NULL;
 }
 
 bool is_jump_reference(union expression *s) {
   return s->base.parent->base.type == jump && s->base.parent->jump.reference == s;
 }
 
-bool is_invoke_reference(union expression *s) {
-  return s->base.parent->base.type == invoke && s->base.parent->invoke.reference == s;
-}
-
 bool is_c_reference(union expression *s) {
   return (s->base.parent->base.type == continuation || s->base.parent->base.type == with) && s->base.parent->continuation.reference == s;
 }
 
-bool is_function_reference(union expression *s) {
-  return s->base.parent->base.type == function && s->base.parent->function.reference == s;
-}
-
 union expression *target_expression(union expression *s) {
   return s->symbol.binding_aug->definition->symbol.parent;
-}
-
-union expression *root_function_of(union expression *s) {
-  for(; s->base.parent; s = s->base.parent);
-  return s;
-}
-
-union expression *vlink_symbols(union expression *s, void *ctx) {
-  jumpbuf *handler = ((void **) ctx)[0];
-  buffer r = ((void **) ctx)[1];
-  if(s->base.type == symbol) {
-    s->symbol.binding_aug = s->symbol.binding_aug ? s->symbol.binding_aug : binding_aug_of(s);
-    if(!s->symbol.binding_aug) {
-      union expression *stg = make_storage(make_symbol(s->symbol.name, r), nil, r);
-      struct binding_aug *bndg = stg->storage.reference->symbol.binding_aug;
-      bndg->type = absolute_storage;
-      bndg->scope = global_scope;
-      bndg->state = undefined_state;
-      prepend(stg, &root_function_of(s)->function.expression->begin.expressions, r);
-      stg->storage.parent = root_function_of(s)->function.expression;
-      s->symbol.binding_aug = bndg;
-    }
-  }
-  return s;
 }
 
 void vescape_analysis_aux(union expression *ref, union expression *target) {
@@ -551,10 +545,6 @@ void classify_program_binding_augs(union expression *expr) {
 
 void _set_(unsigned long *ref, unsigned long val) {
   *ref = val;
-}
-
-bool binding_equals(struct binding *bndg1, struct binding *bndg2) {
-  return !strcmp(bndg1->name, bndg2->name);
 }
 
 Object *load_program_and_mutate(union expression *program, list bindings, buffer expr_buf, buffer obj_buf, jumpbuf *handler);

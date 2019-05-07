@@ -19,7 +19,9 @@ list compile_program(union expression *program, list *bindings, buffer expr_buf,
   visit_expressions(vfind_multiple_definitions, &program, handler);
   containment_analysis(program);
   classify_program_binding_augs(program->function.expression);
-  visit_expressions(vlink_symbols, &program->function.expression, (void* []) {handler, expr_buf});
+  list undefined_bindings = nil;
+  link_symbols(program->function.expression, true, &undefined_bindings, nil, nil, expr_buf);
+  append_list(&program->function.binding_augs, undefined_bindings);
   infer_types(program, expr_buf, handler);
   visit_expressions(vescape_analysis, &program, NULL);
   classify_program_binding_augs(program->function.expression);
@@ -35,6 +37,10 @@ Object *load_program(union expression *program, buffer expr_buf, buffer obj_buf,
   Object *obj = load(objdest, objdest_sz, obj_buf, handler);
   binding_aug_offsets_to_addresses(asms, bindings, obj);
   return obj;
+}
+
+bool binding_equals(struct binding *bndg1, struct binding *bndg2) {
+  return !strcmp(bndg1->name, bndg2->name);
 }
 
 Object *load_program_and_mutate(union expression *program, list bindings, buffer expr_buf, buffer obj_buf, jumpbuf *handler) {
