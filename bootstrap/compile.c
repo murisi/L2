@@ -22,7 +22,6 @@ list compile_program(union expression *program, list *bindings, buffer expr_buf,
   list undefined_bindings = nil;
   link_symbols(program->function.expression, true, &undefined_bindings, nil, nil, expr_buf);
   append_list(&program->function.binding_augs, undefined_bindings);
-  infer_types(program, expr_buf, handler);
   visit_expressions(vescape_analysis, &program, NULL);
   classify_program_binding_augs(program->function.expression);
   visit_expressions(vlayout_frames, &program->function.expression, expr_buf);
@@ -106,24 +105,44 @@ void evaluate_files(list metaprograms, list *bindings, buffer expr_buf, buffer o
 
 void compile_files(list programs, list bndgs, buffer expr_buf, buffer obj_buf, jumpbuf *handler) {
   char *infn;
+  list file_names = nil, progs_exprs = nil, all_exprs = nil;
   foreach(infn, programs) {
     char *dot = strrchr(infn, '.');
     if(dot && !strcmp(dot, ".l2")) {
+      prepend(infn, &file_names, expr_buf);
       union expression *program = make_program(read_expressions(infn, expr_buf, handler), expr_buf);
       pre_visit_expressions(vgenerate_metas, &program, (void * []) {bndgs, expr_buf, handler});
-      
-      list bindings;
-      list asms = compile_program(program, &bindings, expr_buf, handler);
-      unsigned char *objdest; int objdest_sz;
-      write_elf(asms, bindings, &objdest, &objdest_sz, obj_buf);
-      char *outfn = buffer_alloc(obj_buf, strlen(infn) + 1);
-      strcpy(outfn, infn);
-      char *dot = strrchr(outfn, '.');
-      strcpy(dot, ".o");
-      int fd = create(outfn, handler);
-      write(fd, objdest, objdest_sz);
-      close(fd);
+      list exprs = program->function.expression->begin.expressions;
+      prepend(exprs, &progs_exprs, expr_buf);
+      union expression *e;
+      foreach(e, exprs) {
+        prepend(e, &all_exprs, expr_buf);
+      }
     }
+  }
+  union expression *entire_program = make_program(all_exprs, expr_buf);
+  visit_expressions(vfind_multiple_definitions, &entire_program, handler);
+  list undefined_bindings = nil;
+  link_symbols(entire_program->function.expression, true, &undefined_bindings, nil, nil, expr_buf);
+  infer_types(entire_program, expr_buf, handler);
+  list global_bindings = global_binding_augs_of(entire_program, expr_buf);
+  pre_visit_expressions(vunlink_symbols, &entire_program, global_bindings);
+  pre_visit_expressions(vunlink_symbols, &entire_program, undefined_bindings);
+  
+  list exprs;
+  foreachzipped(infn, exprs, file_names, progs_exprs) {
+    union expression *program = make_program(exprs, expr_buf);
+    list bindings;
+    list asms = compile_program(program, &bindings, expr_buf, handler);
+    unsigned char *objdest; int objdest_sz;
+    write_elf(asms, bindings, &objdest, &objdest_sz, obj_buf);
+    char *outfn = buffer_alloc(obj_buf, strlen(infn) + 1);
+    strcpy(outfn, infn);
+    char *dot = strrchr(outfn, '.');
+    strcpy(dot, ".o");
+    int fd = create(outfn, handler);
+    write(fd, objdest, objdest_sz);
+    close(fd);
   }
 }
 

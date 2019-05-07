@@ -116,6 +116,27 @@ bool reference_equals(union expression *a, union expression *b) {
   return a == b || (a->symbol.name && b->symbol.name && !strcmp(a->symbol.name, b->symbol.name));
 }
 
+list global_binding_augs_of(union expression *prog, buffer r) {
+  list binding_augs = nil;
+  union expression *t;
+  foreach(t, prog->function.expression->begin.expressions) {
+    if(t->base.type == function || t->base.type == storage) {
+      prepend(t->function.reference->symbol.binding_aug, &binding_augs, r);
+    }
+  }
+  return binding_augs;
+}
+
+union expression *vunlink_symbols(union expression *s, void *ctx) {
+  list blacklist = ctx;
+  if(s->base.type == symbol) {
+    if(exists(equals, &blacklist, s->symbol.binding_aug)) {
+      s->symbol.binding_aug = NULL;
+    }
+  }
+  return s;
+}
+
 bool assign_binding(union expression *s, list bindings) {
   struct binding_aug *ba;
   {foreach(ba, bindings) {
