@@ -562,13 +562,23 @@ Object *load_program_and_mutate(union expression *program, list bindings, buffer
 union expression *generate_metaprogram(union expression *program, list *bindings, buffer expr_buf, buffer obj_buf, jumpbuf *handler);
 
 void *preprocessed_expression_address(union expression *s, list bindings, buffer expr_buf, buffer obj_buf, jumpbuf *handler) {
-  union expression *expr_container = make_function(make_symbol(NULL, expr_buf), nil, s, expr_buf);
-  union expression *expr_container_program = make_program(lst(expr_container, nil, expr_buf), expr_buf);
-  union expression *program_preprocessed = generate_metaprogram(expr_container_program, &bindings, expr_buf, obj_buf, handler);
-  load_program_and_mutate(program_preprocessed, bindings, expr_buf, obj_buf, handler);
-  union expression *expr_container_preprocessed = program_preprocessed->function.expression->begin.expressions->fst;
-  void* (*container_addr)() = (void *) expr_container_preprocessed->function.reference->symbol.binding_aug->offset;
-  return container_addr();
+  if(s->base.type == symbol) {
+    struct binding *bndg;
+    foreach(bndg, bindings) {
+      if(!strcmp(bndg->name, s->symbol.name)) {
+        return bndg->address;
+      }
+    }
+    throw_undefined_symbol(s->meta.reference->symbol.name, handler);
+  } else {
+    union expression *expr_container = make_function(make_symbol(NULL, expr_buf), nil, s, expr_buf);
+    union expression *expr_container_program = make_program(lst(expr_container, nil, expr_buf), expr_buf);
+    union expression *program_preprocessed = generate_metaprogram(expr_container_program, &bindings, expr_buf, obj_buf, handler);
+    load_program_and_mutate(program_preprocessed, bindings, expr_buf, obj_buf, handler);
+    union expression *expr_container_preprocessed = program_preprocessed->function.expression->begin.expressions->fst;
+    void* (*container_addr)() = (void *) expr_container_preprocessed->function.reference->symbol.binding_aug->offset;
+    return container_addr();
+  }
 }
 
 union expression *vgenerate_metas(union expression *s, void *ctx) {
