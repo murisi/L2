@@ -1,14 +1,23 @@
 (;; x86-64 Linux specific constants.)
 
-(function sys-read (l r) [mk# r #0])
-(function sys-write (l r) [mk# r #1])
-(function sys-open (l r) [mk# r #2])
-(function sys-close (l r) [mk# r #3])
-(function sys-fstat (l r) [mk# r #5])
-(function sys-mmap (l r) [mk# r #9])
-(function sys-munmap (l r) [mk# r #11])
-(function sys-exit (l r) [mk# r #60])
-(function sys-clock-gettime (l r) [mk# r #228])
+(function sys-read (l r) [mk## #0 (\(r) (` syscall-num r)) r])
+
+(function sys-write (l r) [mk## #1 (\(r) (` syscall-num r)) r])
+
+(function sys-open (l r) [mk## #2 (\(r) (` syscall-num r)) r])
+
+(function sys-close (l r) [mk## #3 (\(r) (` syscall-num r)) r])
+
+(function sys-fstat (l r) [mk## #5 (\(r) (` syscall-num r)) r])
+
+(function sys-mmap (l r) [mk## #9 (\(r) (` syscall-num r)) r])
+
+(function sys-munmap (l r) [mk## #11 (\(r) (` syscall-num r)) r])
+
+(function sys-exit (l r) [mk## #60 (\(r) (` syscall-num r)) r])
+
+(function sys-clock-gettime (l r) [mk## #228 (\(r) (` syscall-num r)) r])
+
 (function o-rdonly (l r) [mk# r #0])
 (function o-wronly (l r) [mk# r #1])
 (function o-rdwr (l r) [mk# r #2])
@@ -56,6 +65,8 @@
 (function buf-magic-dbg (l r) [property #32 8b (\(r) (` buffer r)) (\(s r) [var r]) l r])
 
 (;; --------------------------------------------------------------------------)
+
+(constrain syscall (\(r) (with-vars (a b c d e f g) (`(function (syscall-num ,a ,b ,c ,d ,e ,f) ,g)r)r)))
 
 (function exit (code) [syscall (sys-exit) code (begin) (begin) (begin) (begin) (begin)])
 
