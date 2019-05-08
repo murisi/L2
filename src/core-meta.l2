@@ -130,6 +130,8 @@
 
 (function mk# (r value) [value->literal value r])
 
+(function mk## (value sig r) (`(constrain (,[value->literal value r]) (,[value->literal sig r]))r))
+
 (;; A set of macros to provide struct functionality in L2. The most naive way
   to do structs in L2 would be to create a getter function, setter function,
   and offset calculation function for every field where these functions
@@ -217,7 +219,13 @@
   (the fifth item in the fragment l) and a value (the sixth item in the
   fragment l).)
 
-(function setf-aux (l r) (`[(,[@frrrst l]) [+ (,[@frrrrrrst l]) (,[@fst l])] (,[@frrrrrrrst l])]r))
+(function setf-aux (l r)
+  (`[(constrain (\(k q) [(,[@frrrst l]) [+ k (,[@fst l])] q]) (\(s)
+        (with-vars (a)
+          (let (obj-sig [(,[@frrrrst l]) s])
+            (let (prop-sig [(,[@frrrrrst l]) obj-sig s])
+              (`(function (,obj-sig ,prop-sig) ,a)s)))s)))
+      (,[@frrrrrrst l]) (,[@frrrrrrrst l])]r))
 
 (function 1b (f r) [f (`(#1 get1b set1b)r)])
 
