@@ -8,6 +8,22 @@
 
 (function vbl= (a b) [= a b])
 
+(constrain frag->list (\(r) (`(function (frag) (list frag))r)))
+
+(function frag->list (x) [cast x])
+
+(constrain list->fragment (\(r) (`(function ((list frag)) frag)r)))
+
+(function list->fragment (x) [cast x])
+
+(constrain token->fragment (\(r) (`(function ((list tchar)) frag)r)))
+
+(function token->fragment (x) [cast x])
+
+(constrain fragment->token (\(r) (`(function (frag) (list tchar))r)))
+
+(function fragment->token (x) [cast x])
+
 (;; What follows is a struct for representing fragment characters. It is
   conceptually in union with the list-struct.)
 
@@ -31,7 +47,7 @@
 (;; Returns the fragment character representing the supplied ASCII
   character.)
 
-(function tkn-char (s r) (`($(loc (unit) (,[@fst s]) characters))r))
+(function tkn-char (s r) (`(constrain ($(loc (unit) (,[@fst s]) characters)) (\(r) (` tchar r)))r))
 
 (storage null-fragment (begin))
 
@@ -60,6 +76,8 @@
   token will be based on. r is the buffer in which the token will be constructed.
   Return value is the constructed token.)
 
+(constrain build-token (\(r) (with-vars (a b c d) (`(function (,a ,b ,c ,d) (list tchar))r)r)))
+
 (function build-token (str r handler err)
   (loop cons-char (sexprs nil) (strptr str)
     (if [getb strptr]
@@ -86,13 +104,15 @@
   to the current index in the buffer. r is the buffer into which the token
   should be put. Return value is the constructed token.)
 
+(constrain build-sigilled-token (\(r) (with-vars (a b c d e f g) (`(function (,a ,b ,c ,d ,e ,f ,g) frag)r)r)))
+
 (function build-sigilled-token (sigil l2src l2src-sz pos r handler err) (with return
   (substitute (.. r handler err) (begin
-    (if [= l2src-sz $pos] {return [build-token sigil ..]} (begin))
+    (if [= l2src-sz $pos] {return [token->fragment [build-token sigil ..]]} (begin))
     (let (d [getb [+ l2src $pos]])
       {return (if (or [isspace d] [= d (rparen)] [= d (rbrace)] [= d (rbracket)] [= d (lparen)] [= d (lbrace)] [= d (lbracket)])
-        [build-token sigil ..]
-        (list ([build-token sigil ..] [build-fragment l2src l2src-sz pos ..]) ..))})))))
+        [token->fragment [build-token sigil ..]]
+        [list->fragment (list ([token->fragment [build-token sigil ..]] [build-fragment l2src l2src-sz pos ..]) ..)])})))))
 
 (;; Builds a fragment list starting at the current position in the buffer and ending
   at the specified delimiter and then prefixes it with the given primitive.
@@ -101,7 +121,7 @@
 
 (function build-fragment-list (primitive delimeter l2src l2src-sz pos r handler err) (with return
   (substitute (.. r handler err)
-    (loop cons-frag (sexprs (list ([build-token primitive ..]) ..))
+    (loop cons-frag (sexprs (list ([token->fragment [build-token primitive ..]]) ..))
       (let (rem [after-leading-space l2src l2src-sz pos])
         (if (and rem [= [getb [+ l2src $pos]] delimeter])
           (begin [set+ pos #1] {return [reverse sexprs ..]})
@@ -112,6 +132,8 @@
 (;; Builds a fragment starting at the current position in the buffer. For parameters,
   see above.)
 
+(constrain build-fragment (\(r) (with-vars (a b c d e f) (`(function (,a ,b ,c ,d ,e ,f) frag)r)r)))
+
 (function build-fragment (l2src l2src-sz pos r handler err) (with return
   (substitute (.. r handler err) (if [= l2src-sz $pos]
     {handler (sets err unexpected-char-error #0 $pos)}
@@ -121,30 +143,36 @@
         (begin
           [set+ pos #1]
           {return (switch = c
-            ((lparen) [@cdr [build-fragment-list (" expression) (rparen) l2src l2src-sz pos ..]])
-            ((lbrace) [build-fragment-list (" jump) (rbrace) l2src l2src-sz pos ..])
-            ((lbracket) [build-fragment-list (" invoke) (rbracket) l2src l2src-sz pos ..])
+            ((lparen) [list->fragment [@cdr [build-fragment-list (" expression) (rparen) l2src l2src-sz pos ..]]])
+            ((lbrace) [list->fragment [build-fragment-list (" jump) (rbrace) l2src l2src-sz pos ..]])
+            ((lbracket) [list->fragment [build-fragment-list (" invoke) (rbracket) l2src l2src-sz pos ..]])
             ((char $) [build-sigilled-token (" $) l2src l2src-sz pos ..])
             ((char #) [build-sigilled-token (" #) l2src l2src-sz pos ..])
             ((char ,) [build-sigilled-token (" ,) l2src l2src-sz pos ..])
             ((char `) [build-sigilled-token (" `) l2src l2src-sz pos ..])
             
-            [reverse (loop cons-char (l nil) (c c)
+            [token->fragment [reverse (loop cons-char (l nil) (c c)
               (let (l [cons (tkn-char c) l ..])
                 (if [= $pos l2src-sz] l
                   (let (c [getb [+ l2src $pos]])
                     (if (or [isspace c] [= c (lparen)] [= c (rparen)] [= c (lbrace)] [= c (rbrace)] [= c (lbracket)] [= c (rbracket)]) l
-                      (begin [set+ pos #1] {cons-char l c})))))) ..])})))))))
+                      (begin [set+ pos #1] {cons-char l c})))))) ..]])})))))))
 
 (storage character-flag (begin))
 
 (;; Checks if the fragment d is a token. A token is a non-empty list of characters.)
 
-(function i/f:token? (d) (and [length d] [= (@ cs-flag[@car d]) character-flag]))
+(constrain i/f:token? (\(r) (with-vars (a) (`(function (frag) ,a)r)r)))
+
+(function i/f:token? (e)
+  (let (d [fragment->token e])
+    (and [length d] [= (@ cs-flag[@car d]) character-flag])))
 
 (;; Converts the given token into an ASCII string. d is the token that is to be
   converted. r is the buffer into which the string should be put. The return value
   is the constructed string.)
+
+(constrain to-string (\(r) (with-vars (a b) (`(function ((list tchar) buffer ,a ,b) string)r)r)))
 
 (function to-string (d r handler err) (with return
   (let (str [buffer-alloc [+ [length d] #1] r handler err])
@@ -161,22 +189,26 @@
   be copied. r is the buffer into which the fragment should be copied. The return
   value is the copied fragment.)
 
+(constrain copy-fragment (\(r) (with-vars (b c) (`(function (frag buffer ,b ,c) frag)r)r)))
+
 (function copy-fragment (l r handler err)
   (substitute (.. r handler err)
-    [reverse (if [i/f:token? l]
-      (reverse-map (s l) (tkn-char (@ cs-character s)) ..)
-      (reverse-map (s l) [copy-fragment s ..] ..)) ..]))
+    (if [i/f:token? l]
+      [token->fragment [reverse (reverse-map (s [fragment->token l]) (tkn-char (@ cs-character s)) ..) ..]]
+      [list->fragment [reverse (reverse-map (s [frag->list l]) [copy-fragment s ..] ..) ..]])))
 
 (;; Prints the given fragment out to standard output. d is the fragment that is
   to be printed.)
 
-(function print-fragment (d hdl err) (begin
-  [print-char (stdout) (lparen) hdl err]
-  (if [nil? d] (begin) (begin
-    (if [i/f:token? d]
-      [print-char (stdout) (@ cs-character[@car d]) hdl err]
-      [print-fragment [@car d] hdl err])
-    [print-str (stdout) ("(space).(space)) hdl err]
-    [print-fragment [@cdr d] hdl err]))
-  [print-char (stdout) (rparen) hdl err]))
+(constrain print-fragment (\(r) (with-vars (b c a) (`(function (frag ,b ,c) ,a)r)r)))
+
+(function print-fragment (d hdl err)
+  (if [i/f:token? d]
+    (foreach (t [fragment->token d]) [print-char (stdout) (@ cs-character t) hdl err])
+    (begin
+      [print-char (stdout) (lparen) hdl err]
+      (foreach (fl [frag->list d]) (begin
+        [print-fragment fl hdl err]
+        [print-str (stdout) ("(space)) hdl err]))
+      [print-char (stdout) (rparen) hdl err])))
 

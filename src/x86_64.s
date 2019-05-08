@@ -25,6 +25,7 @@
 .global lnot
 .global allocate
 .global syscall
+.global cast
 
 .text
 jmp l2rt_end
@@ -142,6 +143,10 @@ ret
 lnot:
 movq %rdi, %rax
 notq %rax
+ret
+
+cast:
+movq %rdi, %rax
 ret
 
 allocate:
