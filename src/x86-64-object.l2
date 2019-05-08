@@ -22,6 +22,8 @@
   is unrecognized. Note: Implementation is hacky since it does not perform
   checks to confirm that the performed relocations are correct.)
 
+(constrain do-relocations (\(r) (with-vars (a b c) (`(function (obj ,a ,b) ,c)r)r)))
+
 (function do-relocations (obj handler err)
   (until (sec-idx #0) [= sec-idx (@ e-shnum(@ obj-ehdr obj))] [+ sec-idx #1] (begin
     (define (shdr-buf (loc (elf64-shdr) sec-idx (@ obj-shdrs obj)))
@@ -56,6 +58,8 @@
   relocation, which is a problem because the future relocations may depend on
   the value of the addend.)
 
+(constrain store-addends (\(r) (with-vars (a b c) (`(function (obj buffer ,a ,b) ,c)r)r)))
+
 (function store-addends (obj reg handler err)
   (until (sec-idx #0) [= sec-idx (@ e-shnum(@ obj-ehdr obj))] [+ sec-idx #1] (begin
     (define (shdr-buf (loc (elf64-shdr) sec-idx (@ obj-shdrs obj)))
@@ -87,6 +91,8 @@
 (;; The offsets specified in the object file need to be turned into addresses for
   the code to execute correctly.)
 
+(constrain offsets-to-addresses (\(r) (with-vars (c) (`(function (obj) ,c)r)r)))
+
 (function offsets-to-addresses (obj)
   (until (sec-idx #0) [= sec-idx (@ e-shnum(@ obj-ehdr obj))] [+ sec-idx #1] (begin
     (define (shdr-buf (loc (elf64-shdr) sec-idx (@ obj-shdrs obj)))
@@ -115,6 +121,8 @@
 (;; Reformats the raw object code into a format more amenable for extraction of
   information and updating. Constructs an object containing everything of interest
   in the object code in the buffer reg and returns it.)
+
+(constrain read-object (\(r) (with-vars (c d e f) (`(function (,c ,d buffer ,e ,f) obj)r)r)))
 
 (function read-object (objsrc objsrc-sz reg handler err) (with return (begin
   (define (obj [buffer-alloc (object) reg handler err])
@@ -164,12 +172,16 @@
   reg is the buffer in which our handle will be constructed. Return value is
   a handle to the object.)
 
+(constrain load (\(r) (with-vars (c d e f) (`(function (,c ,d buffer ,e ,f) obj)r)r)))
+
 (function load (objsrc objsrc-sz reg handler err) (with return
   (let (obj [read-object objsrc objsrc-sz reg handler err]) (begin
       [offsets-to-addresses obj]
       [store-addends obj reg handler err]
       [do-relocations obj handler err]
       {return obj}))))
+
+(constrain name-of (\(r) (`(function (obj elf64-shdr elf64-sym) string)r)))
 
 (function name-of (obj shdr sym)
   (let (seg-buf ($(loc (unit) (@ sh-link shdr) (@ obj-segs obj))))
@@ -180,6 +192,8 @@
   buffer in which the binding should be constructed. Return value is the
   constructed binding.)
 
+(constrain make-binding (\(r) (with-vars (a b c) (`(function (string ,a buffer ,b ,c) bndg-aug)r)r)))
+
 (function make-binding (name address reg handler err) (with return
   (let (sym [buffer-alloc (binding) reg handler err]) (begin
     (setf bndg-name sym name)
@@ -189,6 +203,8 @@
 (;; Updates the bindings in the given object. obj is the object whose bindings
   need updating. updates is a list of bindings representing the updates that
   need to be applied to obj.)
+
+(constrain mutate-bindings (\(r) (with-vars (a) (`(function (obj (list bndg-aug)) ,a)r)r)))
 
 (function mutate-bindings (obj updates) (begin
   (foreach (update updates)
@@ -210,6 +226,8 @@
   [do-relocations obj (begin) (begin)]))
 
 (;; Returns the bindings in the given object.)
+
+(constrain bindings (\(r) (with-vars (a b c) (`(function (,a obj buffer ,b ,c) (list bndg-aug))r)r)))
 
 (function bindings (flag obj reg handler err) (with return (begin
   (storage syms nil)
@@ -234,15 +252,21 @@
   of mutable bindings will be constructed. Return value is the list of mutable
   bindings.)
 
+(constrain mutable-bindings (\(r) (with-vars (b c) (`(function (obj buffer ,b ,c) (list bndg-aug))r)r)))
+
 (function mutable-bindings (obj reg handler err) [bindings #1 obj reg handler err])
 
 (;; Analogous to above.)
+
+(constrain immutable-bindings (\(r) (with-vars (b c) (`(function (obj buffer ,b ,c) (list bndg-aug))r)r)))
 
 (function immutable-bindings (obj reg handler err) [bindings #0 obj reg handler err])
 
 (;; Returns the address of the segment of the given object that has a particular
   name. obj is the object whose segment addresses is being queried. name is
   the name of the segment that is to be found.)
+
+(constrain segment (\(r) (with-vars (a) (`(function (obj string) ,a)r)r)))
 
 (function segment (obj name) (with return
   (if [= (@ e-shstrndx(@ obj-ehdr obj)) (shn-undef)] (begin) (begin
