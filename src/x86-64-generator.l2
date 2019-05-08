@@ -126,6 +126,8 @@
           
       (begin))))
 
+(constrain generate-if (\(r) (with-vars (a b c) (`(function (expr (ref (list expr)) buffer ,a ,b) ,c)r)r)))
+
 (function generate-if (n c r handler err)
   (substitute (.. r handler err) (begin
     [generate-expression (@ expr-condition n) c ..]
@@ -157,6 +159,8 @@
           
       (begin))))
 
+(constrain generate-storage (\(r) (with-vars (a b c) (`(function (expr (ref (list expr)) buffer ,a ,b) ,c)r)r)))
+
 (function generate-storage (n c r handler err)
   (substitute (.. r handler err) (begin
     (storage offset-ref #0)
@@ -165,6 +169,8 @@
       [generate-store (make-asmN(rax)()..) (@ expr-binding-aug(@ expr-reference n)) $offset-ref (make-asmN(r11)()..) c ..]
       [set+ offset-ref (word-size)]))
     [generate-load-address (@ expr-binding-aug(@ expr-reference n)) (make-asmN(rax)()..) c ..])))
+
+(constrain generate-symbol (\(r) (with-vars (a b c) (`(function (expr (ref (list expr)) buffer ,a ,b) ,c)r)r)))
 
 (function generate-symbol (n c r handler err)
   (substitute (.. r handler err)
@@ -211,6 +217,8 @@
     [set+ src-offset (word-size)]
     [set+ dest-offset (word-size)])))))
 
+(constrain generate-continuation (\(r) (with-vars (a b c) (`(function (expr (ref (list expr)) buffer ,a ,b) ,c)r)r)))
+
 (function generate-continuation (n c r handler err)
   (substitute (.. r handler err) (begin
     (if (@ expr-escapes n) (begin
@@ -224,12 +232,16 @@
     [generate-expression (@ expr-expression n) c ..]
     [prepend (make-asmN (label) ([use-binding-aug after-binding ..]) ..) c ..]))))
 
+(constrain generate-with (\(r) (with-vars (a b c) (`(function (expr (ref (list expr)) buffer ,a ,b) ,c)r)r)))
+
 (function generate-with (n c r handler err)
   (substitute (.. r handler err) (begin
     (if (@ expr-escapes n) [generate-store-continuation n c ..] (begin))
     [generate-expression (@ expr-expression n) c ..]
     [prepend (make-asmN (label) ([use-binding-aug (@ expr-cont-instr-bndg n) ..]) ..) c ..]
     [generate-load (@ expr-binding-aug[@car(@ expr-parameters n)]) #0 (make-asmN(rax)()..) (make-asmN(r10)()..) c ..])))
+
+(constrain generate-jump (\(r) (with-vars (a b c) (`(function (expr (ref (list expr)) buffer ,a ,b) ,c)r)r)))
 
 (function generate-jump (n c r handler err)
   (substitute (.. r handler err)
@@ -264,6 +276,8 @@
         [prepend (make-asmN(movq-mdb-to-reg)([make-literal(cont-rbp)..] (make-asmN(r11)()..) (make-asmN(rbp)()..))..) c ..]
         [prepend (make-asmN(jmp-to-reg)((make-asmN(r10)()..))..) c ..]))))
 
+(constrain generate-literal (\(r) (with-vars (a b c) (`(function (expr (ref (list expr)) buffer ,a ,b) ,c)r)r)))
+
 (function generate-literal (n c r handler err) (substitute (.. r handler err)
   [prepend (make-asmN(movq-imm-to-reg)([make-literal(@ expr-value n)..] (make-asmN(rax)()..))..) c ..]))
 
@@ -271,6 +285,8 @@
   (if [> [length (@ expr-binding-augs func)] #0]
     (@ bndg-offset [@car (@ expr-binding-augs func)])
     #0))
+
+(constrain generate-function (\(r) (with-vars (a b c) (`(function (expr (ref (list expr)) buffer ,a ,b) ,c)r)r)))
 
 (function generate-function (n c r handler err)
   (substitute (.. r handler err) (begin
@@ -306,6 +322,8 @@
     [prepend (make-asmN(pushq-reg)((make-asmN(r11)()..))..) c ..]
     [prepend (make-asmN(ret)()..) c ..]
     [prepend (make-asmN(label)([use-binding-aug after-binding ..])..) c ..]))))
+
+(constrain generate-invoke (\(r) (with-vars (a b c) (`(function (expr (ref (list expr)) buffer ,a ,b) ,c)r)r)))
 
 (function generate-invoke (n c r handler err)
   (substitute (.. r handler err) (begin
@@ -351,13 +369,19 @@
         [prepend (make-asmN(addq-imm-to-reg)([make-literal drop ..] (make-asmN(rsp)()..))..) c ..])
       (begin)))))
 
+(constrain generate-begin (\(r) (with-vars (a b c) (`(function (expr (ref (list expr)) buffer ,a ,b) ,c)r)r)))
+
 (function generate-begin (n c r handler err)
   (substitute (.. r handler err)
     (foreach (t (@ expr-expressions n)) [generate-expression t c ..])))
 
+(constrain generate-constrain (\(r) (with-vars (a b c) (`(function (expr (ref (list expr)) buffer ,a ,b) ,c)r)r)))
+
 (function generate-constrain (n c r handler err)
   (substitute (.. r handler err)
     [generate-expression (@ expr-expression n) c ..]))
+
+(constrain generate-expression (\(r) (with-vars (a b c) (`(function (expr (ref (list expr)) buffer ,a ,b) ,c)r)r)))
 
 (function generate-expression (n c r handler err)
   (substitute (.. r handler err) [(switch = (@ expr-type n)
@@ -373,6 +397,8 @@
     ((-invoke-) generate-invoke)
     ((-constrain-) generate-constrain)
     (begin)) n c ..]))
+
+(constrain generate-program (\(r) (with-vars (a b c) (`(function (expr (ref (list expr)) buffer ,a ,b) ,c)r)r)))
 
 (function generate-program (n bindings r handler err) (with return
   (substitute (.. r handler err) (begin

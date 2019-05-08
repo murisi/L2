@@ -46,11 +46,15 @@
 
 (function exit (code) [syscall (sys-exit) code (begin) (begin) (begin) (begin) (begin)])
 
+(constrain strlen (\(r) (with-vars (a) (`(function (string) ,a)r)r)))
+
 (function strlen (str) (with return
   {(continuation loop (i)
     (if [getb [+ str i]]
       {loop [+ i #1]}
       {return i})) #0}))
+
+(constrain strvlen (\(r) (with-vars (a) (`(function (string) ,a)r)r)))
 
 (function strvlen (str) (with return
   {(continuation loop (i)
@@ -69,13 +73,19 @@
         {return null-strrchr}
         {loop [- t #1]}))) t}))))
 
+(constrain strcmp (\(r) (with-vars (a) (`(function (string string) ,a)r)r)))
+
 (function strcmp (s1 s2) (with return
   {(continuation loop (s1 s2)
     (if (and [getb s1] [getb s2] [= [getb s1] [getb s2]])
       {loop [+ s1 #1] [+ s2 #1]}
       {return [- [getb s1] [getb s2]]})) s1 s2}))
 
+(constrain str= (\(r) (with-vars (a) (`(function (string string) ,a)r)r)))
+
 (function str= (s1 s2) (not [strcmp s1 s2]))
+
+(constrain strcpy (\(r) (with-vars (a) (`(function (string string) ,a)r)r)))
 
 (function strcpy (dest src) (with return
   {(continuation loop (dest src) (begin
@@ -116,11 +126,15 @@
 
 (storage file-access-error (begin))
 
+(constrain open (\(r) (with-vars (b c) (`(function (string ,b ,c) fd)r)r)))
+
 (function open (path handler err)
   (let (ret [syscall (sys-open) path (o-rdonly) (begin) (begin) (begin) (begin)])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
       {handler (sets err file-access-error path)}
       ret)))
+
+(constrain create (\(r) (with-vars (b c) (`(function (string ,b ,c) fd)r)r)))
 
 (function create (path handler err)
   (let (ret [syscall (sys-open) path [lor (o-wronly) (o-creat)] [lor (s-irwxu) [lor (s-irwxg) (s-irwxo)]]  (begin) (begin) (begin)])
@@ -128,7 +142,11 @@
       {handler (sets err file-access-error path)}
       ret)))
 
+(constrain null-string (\(r) (` string r)))
+
 (storage null-string (begin))
+
+(constrain print (\(r) (with-vars (a b c d e) (`(function (fd ,a ,b ,c ,d) ,e)r)r)))
 
 (function print (fd d len handler err)
   (let (ret [syscall (sys-write) fd d len (begin) (begin) (begin)])
@@ -136,9 +154,15 @@
       {handler (sets err file-access-error null-string)}
       ret)))
 
+(constrain print-str (\(r) (with-vars (b c e) (`(function (fd string ,b ,c) ,e)r)r)))
+
 (function print-str (fd str handler err) [print fd str [strlen str] handler err])
 
+(constrain print-str (\(r) (with-vars (a b c e) (`(function (fd ,a ,b ,c) ,e)r)r)))
+
 (function print-char (fd ch handler err) [print fd (storage _ ch) #1 handler err])
+
+(constrain print-uint (\(r) (with-vars (a b c e) (`(function (fd ,a ,b ,c) ,e)r)r)))
 
 (function print-uint (fd i handler err) (begin
   (storage j #19)
@@ -158,17 +182,23 @@
     [set j [- $j #1]]))
   [print fd [+ str [+ $j #1]] [- #19 $j] handler err]))
 
+(constrain read (\(r) (with-vars (a b c d e) (`(function (fd ,a ,b ,c ,d) ,e)r)r)))
+
 (function read (fd buf cnt handler err)
   (let (ret [syscall (sys-read) fd buf cnt (begin) (begin) (begin)])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
       {handler (sets err file-access-error null-string)}
       ret)))
 
+(constrain close (\(r) (with-vars (a b c) (`(function (fd ,a ,b) ,c)r)r)))
+
 (function close (fd handler err)
   (let (ret [syscall (sys-close) fd (begin) (begin) (begin) (begin) (begin)])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
       {handler (sets err file-access-error null-string)}
       ret)))
+
+(constrain size (\(r) (with-vars (a b c) (`(function (fd ,a ,b) ,c)r)r)))
 
 (function size (fd handler err) (with return (begin
   (storage statbuf (begin)(begin)(begin)(begin)(begin)(begin)(begin)(begin)(begin)
@@ -198,6 +228,8 @@
       ret)))
 
 (function pad-size (x nearest) (let (r [rem x nearest]) [+ x (if r [- nearest r] #0)]))
+
+(constrain null-element (\(r) (` buffer r)))
 
 (storage null-element (begin))
 
