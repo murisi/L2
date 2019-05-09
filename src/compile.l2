@@ -55,22 +55,17 @@
 
 (constrain read-to-buffer (\(r) (with-vars (a b d) (`(function (string ,a buffer ,b) ,d)r)r)))
 
-(function read-to-buffer (fn size-out expr-buf handler) (with return (begin
-  (storage fd (begin))
-  (storage src-buf (begin))
-  
-  (fallthrough
-    (let (_ (begin
-        [set fd [open fn handler]]
-        [set size-out [size $fd close-file]]
-        [set src-buf [buffer-alloc $size-out expr-buf close-file]]
-        [read $fd $src-buf $size-out close-file]))
+(function read-to-buffer (fn size-out expr-buf handler)
+  (let (fd [open fn handler])
+    (fallthrough
+        (let (_ [set size-out [size fd close-file]])
+        (let (src-buf [buffer-alloc $size-out expr-buf close-file])
+        (let (_ [read fd src-buf $size-out close-file])
+        (values no-error src-buf))))
         
-      (values no-error))
-      
-    (close-file err (begin
-      [close $fd handler]
-      (if [= (@0 err) no-error] {return $src-buf} {handler err})))))))
+      (close-file err
+        (let (_ [close fd handler])
+        (if [= (@0 err) no-error] (@1 err) {handler err}))))))
 
 (;; Reads a list of expressions from a given file. fn is a string containing the filename.
   expr-buf is the buffer into which the constructed expressions will be put. Return value
