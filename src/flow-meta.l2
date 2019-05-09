@@ -148,12 +148,11 @@
         exprN-1)))
     exprN))
 
-(function fallthrough (l r) (with return
-  {(continuation loop (acc exprs)
+(function fallthrough (l r)
+  (loop do-layer (acc [@fst l]) (exprs [@rst l])
       (if [emt? exprs]
-        {return acc}
-        {loop (`(let ((,[@frfst exprs]) (with (,[@ffst exprs]) ,acc)) (,[@frrfst exprs]))r) [@rst exprs]}))
-    [@fst l] [@rst l]}))
+        acc
+        {do-layer (`(let ((,[@frfst exprs]) (with (,[@ffst exprs]) ,acc)) (,[@frrfst exprs]))r) [@rst exprs]})))
 
 (;; The following function implements variable binding by do the following
   transformation:
@@ -175,16 +174,9 @@
   
   (define (name val) exprs ...)
   ->
-  (with define:return
-    {(continuation define:cont (name) (begin
-      exprs ...
-      {define:return (begin)})) val}))
+  (let (name val) (begin exprs ...)))
 
-(function define (l r)
-  (`(with define:return
-    {(continuation define:cont ((,[@ffst l]))
-      (,[lst (` begin r)
-        [meta:reverse [lst (`{define:return (begin)}r) [meta:reverse [@rst l] r] r] r] r])) (,[@frfst l])})r))
+(function define (l r) (`(let (,[@fst l]) (,[lst (` begin r) [@rst l] r]))r))
 
 (;; The following function implements the following transformation:
   
