@@ -28,13 +28,17 @@
 
 (function write-elf-max-instr-fields (l r) [mk# r #2])
 
-(function mem-write (mem idx bytes cnt) (with return (begin
+(constrain mem-write (\(r) (with-vars (a b c d) (`(function (,a (ref ,b) ,c ,d) ())r)r)))
+
+(function mem-write (mem idx bytes cnt) (begin
   (define (end [+ $idx cnt])
   (loop write-bytes (bytes bytes)
     (if [= $idx end] (begin) (begin
       [setb [+ mem $idx] [getb bytes]]
       [set+ idx #1]
-      {write-bytes [+ bytes #1]})))))))
+      {write-bytes [+ bytes #1]}))))))
+
+(constrain write-mr-instr (\(r) (with-vars (a b c d e f g) (`(function (,a (ref ,b) ,c ,d ,e ,f ,g) ())r)r)))
 
 (function write-mr-instr (bin pos opcode reg rm m rexw) (begin
   (define (mod (if m #2 #3))
@@ -50,6 +54,8 @@
   [mem-write bin pos (storage _ opcode) #1]
   [mem-write bin pos (storage _ modrm) #1]
   (if has-sib [mem-write bin pos (storage _ sib) #1] (begin)))))))))))))
+
+(constrain write-static-value (\(r) (with-vars (a b c d e f) (`(function (,a (ref ,b) ,c ,d ,e ,f) ())r)r)))
 
 (function write-static-value (bin pos expr bytes symtab relas)
   (if [= (@ expr-type expr) (-literal-)] (begin
@@ -81,6 +87,8 @@
     
     (begin))))))
 
+(constrain write-o-instr (\(r) (with-vars (a b c d) (`(function (,a (ref ,b) ,c ,d) ())r)r)))
+
 (function write-o-instr (bin pos opcode reg) (begin
   (define (rd [land (hex 7) reg])
   (define (opcoderd [+ opcode rd])
@@ -93,6 +101,8 @@
     [mem-write bin pos (storage _ rex) #1]))
     (begin))
   [mem-write bin pos (storage _ opcoderd) #1]))))))))
+
+(constrain assemble (\(r) (with-vars (a b c d) (`(function ((list expr) ,a (ref ,b) ,c ,d) ())r)r)))
 
 (function assemble (generated-expressions bin pos symtab relas) (begin
   [set pos #0]
@@ -205,6 +215,8 @@
 
 (storage shstrtab ("(nul).shstrtab(nul).text(nul).strtab(nul).symtab(nul).bss(nul).rela.text(nul)))
 
+(constrain measure-strtab (\(r) (with-vars (a) (`(function ((list expr) (list bndg-aug)) ,a)r)r)))
+
 (function measure-strtab (generated-expressions symbols)
   (let (strtab-len (fold (acc #1) (sym symbols)
       [+ acc (if [not= (@ bndg-name sym) null-string]
@@ -217,10 +229,14 @@
           (if [not= label-str null-string] [+ [strlen label-str] #1] #0))
         #0)])))
 
+(constrain measure-symtab (\(r) (with-vars (a) (`(function ((list expr) (list bndg-aug)) ,a)r)r)))
+
 (function measure-symtab (generated-expressions symbols)
   (let (sym-count (fold (acc #1) (sym symbols) [+ acc #1]))
     (fold (acc sym-count) (e generated-expressions)
       [+ acc (if [= (@ expr-code e) (label)] #1 #0)])))
+
+(constrain max-elf-size (\(r) (with-vars (a) (`(function ((list expr) (list bndg-aug)) ,a)r)r)))
 
 (function max-elf-size (generated-expressions symbols)
   [+ (elf64-ehdr) [+ [* (elf64-shdr) (write-elf-sh-count)] [+ [pad-size [strvlen $shstrtab] (write-elf-alignment)]
@@ -235,6 +251,8 @@
   to where a reference to the generated object code should be put. pos is a
   reference to where the size of the generated object code should be put. reg
   is the buffer into which the generated object code should be put.)
+
+(constrain write-elf (\(r) (with-vars (a b c d) (`(function ((list expr) (list bndg-aug) ,a (ref ,b) buffer ,c ,d) ())r)r)))
 
 (function write-elf (generated-expressions symbols bin pos reg handler err) (begin
   (storage temp-buf (begin))
@@ -514,6 +532,8 @@
   that has now been loaded into addresses. asms is a list of assembly expressions
   containing bindings that need to be converted. bindings is a list of augmented
   bindings corresponding to the assembly expressions that also need to be converted.)
+
+(constrain binding-offsets-to-addresses (\(r) (`(function ((list expr) (list bndg-aug) obj) ())r)))
 
 (function binding-offsets-to-addresses (asms bindings obj) (begin
   (foreach (sym bindings)
