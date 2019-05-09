@@ -282,8 +282,12 @@
   (substitute (.. r handler err) (begin
     (if (@ expr-escapes n) [generate-store-continuation n c ..] (begin))
     [generate-expression (@ expr-expression n) c ..]
+    (define (end-binding [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr ..])
+    (let (op1 (make-asmN (lnkr-sub-rip-to-ref) ([use-binding-aug end-binding ..]) ..))
+      [prepend (make-asmN (jmp-rel) (op1) ..) c ..])
     [prepend (make-asmN (label) ([use-binding-aug (@ expr-cont-instr-bndg n) ..]) ..) c ..]
-    [generate-load (@ expr-binding-aug[@car(@ expr-parameters n)]) #0 (make-asmN(rax)()..) (make-asmN(r10)()..) c ..])))
+    [generate-load (@ expr-binding-aug[@car(@ expr-parameters n)]) #0 (make-asmN(rax)()..) (make-asmN(r10)()..) c ..]
+    [prepend (make-asmN (label) ([use-binding-aug end-binding ..]) ..) c ..]))))
 
 (constrain generate-jump (\(r) (with-vars (a b) (`(function (expr (ref (list expr)) buffer ,a ,b) ())r)r)))
 

@@ -136,10 +136,19 @@
 
 (;; The following function implements the following transformation:
   
-  (fallthrough expr (labels exprs) ...)
+  (fallthrough expr (labels (args) exprs) ...)
   ->
-  (begin (with labelN ... (begin (with label0
-    expr) expr0) ... ) exprN))
+  (let (argN (with labelN
+      (let (argN-1 (with labelN-1
+          ...
+              (let (arg1 (with label1
+                  (let (arg0 (with label0
+                      expr))
+                    expr0)))
+                expr1)
+            ...))
+        exprN-1)))
+    exprN))
 
 (function fallthrough (l r) (with return
   {(continuation loop (acc exprs)

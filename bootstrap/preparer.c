@@ -443,6 +443,9 @@ void infer_types(union expression *program, buffer expr_buf, jumpbuf *handler) {
         } case with: {
           prepend(e->with.reference->symbol.signature, &lhss, expr_buf);
           prepend(lst(continuation_token, lst(lst(e->with.signature, nil, expr_buf), nil, expr_buf), expr_buf), &rhss, expr_buf);
+          
+          prepend(e->with.signature, &lhss, expr_buf);
+          prepend(e->with.expression->base.signature, &rhss, expr_buf);
           break;
         } case _if: {
           list consequent_sig = scoped_signature(e->_if.consequent, scc, expr_buf);

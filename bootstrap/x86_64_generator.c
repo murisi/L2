@@ -250,8 +250,11 @@ void sgenerate_withs(union expression *n, list *c, buffer r) {
     make_store_continuation(n, c, r);
   }
   generate_expressions(n->with.expression, c, r);
+  struct binding_aug *end_binding = make_binding_aug(absolute_storage, local_scope, defined_state, NULL, NULL, r);
+  prepend(make_asm1(JMP_REL, make_asm1(LNKR_SUB_RIP_TO_REF, use_binding(end_binding, r), r), r), c, r);
   prepend(make_asm1(LABEL, use_binding(n->continuation.cont_instr_bndg, r), r), c, r);
   make_load(((union expression *) n->with.parameter->fst)->symbol.binding_aug, 0, make_asm0(RAX, r), make_asm0(R10, r), c, r);
+  prepend(make_asm1(LABEL, use_binding(end_binding, r), r), c, r);
 }
 
 void sgenerate_jumps(union expression *n, list *c, buffer r) {
