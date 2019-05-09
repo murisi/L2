@@ -357,21 +357,17 @@
 
 (constrain argv (\(r) (with-vars (a) (`(function (buffer ,a) (list string))r)r)))
 
-(function argv (reg handler) (with return (begin
-  (storage f (begin))
-  (storage retval (begin))
-  (fallthrough
-    (let (_ (begin
-        [set f [open (" /proc/self/cmdline) handler]]
-        (storage buf [buffer-alloc (arg-max) reg cleanup])
-        (storage bytes-rem [read $f $buf (arg-max) cleanup])
-        [set retval (with break {(continuation loop (buf bytes-rem args)
+(function argv (reg handler)
+  (let (f [open (" /proc/self/cmdline) handler])
+    (fallthrough
+        (let (buf [buffer-alloc (arg-max) reg cleanup])
+        (let (bytes-rem [read f buf (arg-max) cleanup])
+        (storage _ no-error (with break {(continuation loop (buf bytes-rem args)
           (if bytes-rem
             {loop [+ buf [+ [strlen buf] #1]] [- bytes-rem [+ [strlen buf] #1]] [cons buf args reg cleanup]}
-            {break [reverse args reg cleanup]})) $buf $bytes-rem nil})]))
-      (values no-error))
-    
-    (cleanup err (begin
-      [close $f handler]
-      (if [= (@0 err) no-error] {return $retval} {handler err})))))))
+            {break [reverse args reg cleanup]})) buf bytes-rem nil}))))
+      
+      (cleanup err
+        (let (_ [close f handler])
+        (if [= (@0 err) no-error] (@1 err) {handler err}))))))
 
