@@ -22,7 +22,7 @@
   is unrecognized. Note: Implementation is hacky since it does not perform
   checks to confirm that the performed relocations are correct.)
 
-(constrain do-relocations (\(r) (with-vars (a b c) (`(function (obj ,a ,b) ,c)r)r)))
+(constrain do-relocations (\(r) (with-vars (a b) (`(function (obj ,a ,b) ())r)r)))
 
 (function do-relocations (obj handler err)
   (until (sec-idx #0) [= sec-idx (@ e-shnum(@ obj-ehdr obj))] [+ sec-idx #1] (begin
@@ -58,7 +58,7 @@
   relocation, which is a problem because the future relocations may depend on
   the value of the addend.)
 
-(constrain store-addends (\(r) (with-vars (a b c) (`(function (obj buffer ,a ,b) ,c)r)r)))
+(constrain store-addends (\(r) (with-vars (a b) (`(function (obj buffer ,a ,b) ())r)r)))
 
 (function store-addends (obj reg handler err)
   (until (sec-idx #0) [= sec-idx (@ e-shnum(@ obj-ehdr obj))] [+ sec-idx #1] (begin
@@ -91,7 +91,7 @@
 (;; The offsets specified in the object file need to be turned into addresses for
   the code to execute correctly.)
 
-(constrain offsets-to-addresses (\(r) (with-vars (c) (`(function (obj) ,c)r)r)))
+(constrain offsets-to-addresses (\(r) (`(function (obj) ())r)))
 
 (function offsets-to-addresses (obj)
   (until (sec-idx #0) [= sec-idx (@ e-shnum(@ obj-ehdr obj))] [+ sec-idx #1] (begin
@@ -204,7 +204,7 @@
   need updating. updates is a list of bindings representing the updates that
   need to be applied to obj.)
 
-(constrain mutate-bindings (\(r) (with-vars (a) (`(function (obj (list bndg-aug)) ,a)r)r)))
+(constrain mutate-bindings (\(r) (`(function (obj (list bndg-aug)) ())r)))
 
 (function mutate-bindings (obj updates) (begin
   (foreach (update updates)
