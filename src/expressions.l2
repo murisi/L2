@@ -569,16 +569,15 @@
           {handler (values special-form-error d null-fragment)}
         (if (or (not [i/f:token? [@cadr d]]) (not [= [length [frag->list [@cadr d]]] (build-expression-literal-len)]))
           {handler (values special-form-error d [@cadr d])}
-          [make-literal (with return
-            {(continuation loop (str i value)
-                (if [= i #0]
-                  {return value}
-                (if [= [getb str] (char 1)]
-                  {loop [+ str #1] [- i #1] [+ [<< value #1] #1]}
-                (if [= [getb str] (char 0)]
-                  {loop [+ str #1] [- i #1] [<< value #1]}
-                  {handler (values special-form-error d [@cadr d])}))))
-              [to-string [fragment->token [@cadr d]] ..] (build-expression-literal-len) #0}) ..])))
+          [make-literal
+            (loop build-num (str [to-string [fragment->token [@cadr d]] ..]) (i (build-expression-literal-len)) (value #0)
+              (if [= i #0]
+                value
+              (if [= [getb str] (char 1)]
+                {build-num [+ str #1] [- i #1] [+ [<< value #1] #1]}
+              (if [= [getb str] (char 0)]
+                {build-num [+ str #1] [- i #1] [<< value #1]}
+                {handler (values special-form-error d [@cadr d])})))) ..])))
       
       ((" constrain)
         (if (not [= [length d] #3])

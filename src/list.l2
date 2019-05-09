@@ -36,11 +36,10 @@
   [cons expr1 [cons expr2 [... [cons exprN nil r handler] ...] r handler] r handler])
 
 (function list (l r)
-  (with return {(continuation loop (out in)
-      (if [emt? in]
-        {return out}
-        {loop [llllst (` invoke r) (` cons r) [@fst in] out [@rst l] r] [@rst in]}))
-    (` nil r) [meta:reverse [@fst l] r]}))
+  (loop add-item (out (` nil r)) (in [meta:reverse [@fst l] r])
+    (if [emt? in]
+      out
+      {add-item [llllst (` invoke r) (` cons r) [@fst in] out [@rst l] r] [@rst in]})))
 
 (;; A macro to do a reverse map. Does the following transformation:
   (reverse-map (x l) expr ctx ...)

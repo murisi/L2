@@ -11,12 +11,11 @@
   it leaving the rest unevaluated. If all the arguments are zero, then
   it returns (false).)
 
-(function or (l r) (with return
-  {(continuation loop (l sexpr)
-      (if [emt? l]
-        {return sexpr}
-        {loop [@rst l] (`(let (or:temp (,[@fst l])) (if or:temp or:temp (, sexpr r)))r)}))
-    [meta:reverse l r] (`(false)r)}))
+(function or (l r)
+  (loop prepend-or (l [meta:reverse l r]) (sexpr (`(false)r))
+    (if [emt? l]
+      sexpr
+      {prepend-or [@rst l] (`(let (or:temp (,[@fst l])) (if or:temp or:temp (, sexpr r)))r)})))
 
 (;; The following macro returns the first zero argument supplied to it
   leaving the rest unevaluated. If all the arguments are non-zero, then
