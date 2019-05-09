@@ -66,7 +66,7 @@
       [set src-buf [buffer-alloc $size-out expr-buf close-file err]]
       [read $fd $src-buf $size-out close-file err])
       
-    (close-file (begin
+    (close-file _ (begin
       [close $fd handler err]
       (if [= (@0 err) no-error] {return $src-buf} {handler (begin)})))))))
 
@@ -283,7 +283,7 @@
       (;; Compile the program in the metaprogram's environment)
       [compile-files $args $bndgs $expr-buf $obj-buf handler err])
       
-    (handler (substitute (.. cleanup err) (switch = (@0 err)
+    (handler _ (substitute (.. cleanup err) (switch = (@0 err)
       (multiple-definition-error (begin
         [print-str (stdout) (" The definition of(space)) ..]
         [print-str (stdout) (@1 err) ..]
@@ -346,10 +346,11 @@
         
       (begin))))
     
-    (cleanup (begin))
+    (cleanup _ (begin))
     
-    (cleanup-expr-buf [destroy-buffer $expr-buf (begin) (begin)])
+    (cleanup-expr-buf _ [destroy-buffer $expr-buf (begin) (begin)])
     
-    (cleanup-obj-buf [destroy-buffer $obj-buf (begin) (begin)])
+    (cleanup-obj-buf _ [destroy-buffer $obj-buf (begin) (begin)])
     
-    (exit-cont [exit (if [= (@0 err) no-error] #0 #1)])))
+    (exit-cont _ [exit (if [= (@0 err) no-error] #0 #1)])))
+
