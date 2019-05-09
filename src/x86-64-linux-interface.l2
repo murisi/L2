@@ -362,10 +362,11 @@
     (fallthrough
         (let (buf [buffer-alloc (arg-max) reg cleanup])
         (let (bytes-rem [read f buf (arg-max) cleanup])
-        (storage _ no-error (with break {(continuation loop (buf bytes-rem args)
-          (if bytes-rem
-            {loop [+ buf [+ [strlen buf] #1]] [- bytes-rem [+ [strlen buf] #1]] [cons buf args reg cleanup]}
-            {break [reverse args reg cleanup]})) buf bytes-rem nil}))))
+        (storage _ no-error
+          (loop get-arg (buf buf) (bytes-rem bytes-rem) (args nil)
+            (if bytes-rem
+              {get-arg [+ buf [+ [strlen buf] #1]] [- bytes-rem [+ [strlen buf] #1]] [cons buf args reg cleanup]}
+              [reverse args reg cleanup])))))
       
       (cleanup err
         (let (_ [close f handler])
