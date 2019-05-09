@@ -36,11 +36,11 @@
 
 (constrain get-parent-function (\(r) (`(function (expr) expr)r)))
 
-(function get-parent-function (n) (with return
-  {(continuation loop (n)
+(function get-parent-function (n)
+  (loop move-up (n (@ expr-parent n))
     (if [= (@ expr-type n) (-function-)]
-      {return n}
-      {loop (@ expr-parent n)})) (@ expr-parent n)}))
+      n
+      {move-up (@ expr-parent n)})))
 
 (function binding-of (symbol) (with return (begin
   (storage same-func (true))
@@ -87,11 +87,11 @@
 
 (function get-target-expression (s) (@ expr-parent(@ bndg-definition(@ expr-binding-aug s))))
 
-(function get-root-function (s) (with return
-  {(continuation loop (s parent)
+(function get-root-function (s)
+  (loop move-up (s s) (parent (@ expr-parent s))
     (if [not= parent null-expr]
-      {loop parent (@ expr-parent parent)}
-      {return s})) s (@ expr-parent s)}))
+      {move-up parent (@ expr-parent parent)}
+      s)))
 
 (storage param-count-mismatch-error (begin))
 
