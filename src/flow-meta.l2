@@ -21,12 +21,11 @@
   leaving the rest unevaluated. If all the arguments are non-zero, then
   it returns (true).)
 
-(function and (l r) (with return
-  {(continuation loop (l sexpr)
-      (if [emt? l]
-        {return sexpr}
-        {loop [@rst l] (`(let (and:temp (,[@fst l])) (if and:temp (, sexpr r) and:temp))r)}))
-    [meta:reverse l r] (`(true)r)}))
+(function and (l r)
+  (loop prepend-and (l [meta:reverse l r]) (sexpr (`(true)r))
+    (if [emt? l]
+      sexpr
+      {prepend-and [@rst l] (`(let (and:temp (,[@fst l])) (if and:temp (, sexpr r) and:temp))r)})))
 
 (;; The following macro returns (false) if the single argument supplied to it
   is non-zero. Otherwise it returns (true).)
