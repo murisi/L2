@@ -22,9 +22,9 @@
   is unrecognized. Note: Implementation is hacky since it does not perform
   checks to confirm that the performed relocations are correct.)
 
-(constrain do-relocations (\(r) (with-vars (a b) (`(function (obj ,a ,b) ())r)r)))
+(constrain do-relocations (\(r) (with-vars (a) (`(function (obj ,a) ())r)r)))
 
-(function do-relocations (obj handler err)
+(function do-relocations (obj handler)
   (until (sec-idx #0) [= sec-idx (@ e-shnum(@ obj-ehdr obj))] [+ sec-idx #1] (begin
     (define (shdr-buf (loc (elf64-shdr) sec-idx (@ obj-shdrs obj)))
     (if (or [= (@ sh-type shdr-buf) (sht-rela)] [= (@ sh-type shdr-buf) (sht-rel)]) (begin
@@ -50,7 +50,7 @@
           ((r-x86-64-pc8) [memcpy (@ r-offset rela) (storage _[-[+(@ st-value sym)addend](@ r-offset rela)])#1])
           ((r-x86-64-size32) [memcpy (@ r-offset rela) (storage _[+(@ st-size sym)addend]) #4])
           ((r-x86-64-size64) [memcpy (@ r-offset rela) (storage _[+(@ st-size sym)addend]) #8])
-          {handler (sets err object-error)})))))))))))
+          {handler (values object-error)})))))))))))
       (begin))))))
 
 (;; Stores the relocation addends somewhere out of the way because it may be the
@@ -58,16 +58,16 @@
   relocation, which is a problem because the future relocations may depend on
   the value of the addend.)
 
-(constrain store-addends (\(r) (with-vars (a b) (`(function (obj buffer ,a ,b) ())r)r)))
+(constrain store-addends (\(r) (with-vars (a) (`(function (obj buffer ,a) ())r)r)))
 
-(function store-addends (obj reg handler err)
+(function store-addends (obj reg handler)
   (until (sec-idx #0) [= sec-idx (@ e-shnum(@ obj-ehdr obj))] [+ sec-idx #1] (begin
     (define (shdr-buf (loc (elf64-shdr) sec-idx (@ obj-shdrs obj)))
     (if [= (@ sh-type shdr-buf) (sht-rela)] (begin
       (define (relanum [/ (@ sh-size shdr-buf) (@ sh-entsize shdr-buf)])
       (define (relas-buf ($(loc (unit) sec-idx (@ obj-relas obj))))
       (define (addends-buf (loc (unit) sec-idx (@ obj-addends obj)))
-      [set addends-buf [buffer-alloc [* relanum (elf64-sxword)] reg handler err]]
+      [set addends-buf [buffer-alloc [* relanum (elf64-sxword)] reg handler]]
       (until (rela-idx #0) [= rela-idx relanum] [+ rela-idx #1]
         (let (rela (loc (elf64-rela) rela-idx relas-buf))
           [set8b (loc (elf64-sxword) rela-idx $addends-buf) (@ r-addend rela)]))))))
@@ -76,14 +76,14 @@
       (define (relanum [/ (@ sh-size shdr-buf) (@ sh-entsize shdr-buf)])
       (define (relas-buf ($(loc (unit) sec-idx (@ obj-relas obj))))
       (define (addends-buf (loc (unit) sec-idx (@ obj-addends obj)))
-      [set addends-buf [buffer-alloc [* relanum (elf64-sxword)] reg handler err]]
+      [set addends-buf [buffer-alloc [* relanum (elf64-sxword)] reg handler]]
       (until (rela-idx #0) [= rela-idx relanum] [+ rela-idx #1]
         (let (rela (loc (elf64-rela) rela-idx relas-buf))
           [(switch = (elf64-r-type (@ r-info rela))
               ((r-x86-64-8) set1b) ((r-x86-64-pc8) set1b) ((r-x86-64-16) set2b) ((r-x86-64-pc16) set2b)
               ((r-x86-64-pc32) set4b) ((r-x86-64-32) set4b) ((r-x86-64-32s) set4b) ((r-x86-64-size32) set4b)
               ((r-x86-64-64) set8b) ((r-x86-64-size64) set8b) ((r-x86-64-glob-dat) set8b)
-              ((r-x86-64-jump-slot) set8b) {handler (sets err object-error)})
+              ((r-x86-64-jump-slot) set8b) {handler (values object-error)})
             (loc (elf64-sxword) rela-idx $addends-buf) (@ r-offset rela)]))))))
             
     (begin)))))))
@@ -122,24 +122,24 @@
   information and updating. Constructs an object containing everything of interest
   in the object code in the buffer reg and returns it.)
 
-(constrain read-object (\(r) (with-vars (c d e f) (`(function (,c ,d buffer ,e ,f) obj)r)r)))
+(constrain read-object (\(r) (with-vars (c d e) (`(function (,c ,d buffer ,e) obj)r)r)))
 
-(function read-object (objsrc objsrc-sz reg handler err) (with return (begin
-  (define (obj [buffer-alloc (object) reg handler err])
-  (if [< objsrc-sz (elf64-ehdr)] {handler (sets err object-error)} (begin))
-  (setf obj-ehdr obj [buffer-alloc (elf64-ehdr) reg handler err])
+(function read-object (objsrc objsrc-sz reg handler) (with return (begin
+  (define (obj [buffer-alloc (object) reg handler])
+  (if [< objsrc-sz (elf64-ehdr)] {handler (values object-error)} (begin))
+  (setf obj-ehdr obj [buffer-alloc (elf64-ehdr) reg handler])
   [memcpy (@ obj-ehdr obj) objsrc (elf64-ehdr)]
-  (setf obj-shdrs obj [buffer-alloc [* (@ e-shnum(@ obj-ehdr obj)) (elf64-shdr)] reg handler err])
-  (setf obj-syms obj [buffer-alloc [* (@ e-shnum(@ obj-ehdr obj)) (unit)] reg handler err])
-  (setf obj-relas obj [buffer-alloc [* (@ e-shnum(@ obj-ehdr obj)) (unit)] reg handler err])
-  (setf obj-addends obj [buffer-alloc [* (@ e-shnum(@ obj-ehdr obj)) (unit)] reg handler err])
-  (setf obj-segs obj [buffer-alloc [* (@ e-shnum(@ obj-ehdr obj)) (unit)] reg handler err])
+  (setf obj-shdrs obj [buffer-alloc [* (@ e-shnum(@ obj-ehdr obj)) (elf64-shdr)] reg handler])
+  (setf obj-syms obj [buffer-alloc [* (@ e-shnum(@ obj-ehdr obj)) (unit)] reg handler])
+  (setf obj-relas obj [buffer-alloc [* (@ e-shnum(@ obj-ehdr obj)) (unit)] reg handler])
+  (setf obj-addends obj [buffer-alloc [* (@ e-shnum(@ obj-ehdr obj)) (unit)] reg handler])
+  (setf obj-segs obj [buffer-alloc [* (@ e-shnum(@ obj-ehdr obj)) (unit)] reg handler])
   
   (until (sec-idx #0) [= sec-idx (@ e-shnum(@ obj-ehdr obj))] [+ sec-idx #1] (begin
     (define (shdr-buf (loc (elf64-shdr) sec-idx (@ obj-shdrs obj)))
     (define (seg-buf (loc (unit) sec-idx (@ obj-segs obj)))
     [memcpy shdr-buf [+ objsrc (loc (@ e-shentsize(@ obj-ehdr obj)) sec-idx (@ e-shoff(@ obj-ehdr obj)))] (elf64-shdr)]
-    [set seg-buf [buffer-alloc (@ sh-size shdr-buf) reg handler err]]
+    [set seg-buf [buffer-alloc (@ sh-size shdr-buf) reg handler]]
     
     (if [= (@ sh-type shdr-buf) (sht-nobits)] (begin)
       [memcpy $seg-buf [+ objsrc (@ sh-offset shdr-buf)] (@ sh-size shdr-buf)])
@@ -148,7 +148,7 @@
       (define (symnum [/ (@ sh-size shdr-buf) (@ sh-entsize shdr-buf)])
       (define (syms-buf (loc (unit) sec-idx (@ obj-syms obj)))
       (;; Following code copies recognized information from the symbol table into (@ obj-syms obj))
-      [set syms-buf [buffer-alloc [* symnum (elf64-sym)] reg handler err]]
+      [set syms-buf [buffer-alloc [* symnum (elf64-sym)] reg handler]]
       (until (sym-idx #0) [= sym-idx symnum] [+ sym-idx #1]
         [memcpy (loc (elf64-sym) sym-idx $syms-buf) (loc (@ sh-entsize shdr-buf) sym-idx $seg-buf)
           (elf64-sym)]))))
@@ -157,7 +157,7 @@
       (define (relanum [/ (@ sh-size shdr-buf) (@ sh-entsize shdr-buf)])
       (define (relas-buf (loc (unit) sec-idx (@ obj-relas obj)))
       (;; Following code copies recognized information from the relocations into (@ obj-relas obj))
-      [set relas-buf [buffer-alloc [* relanum (elf64-rela)] reg handler err]]
+      [set relas-buf [buffer-alloc [* relanum (elf64-rela)] reg handler]]
       (until (rela-idx #0) [= rela-idx relanum] [+ rela-idx #1]
         [memcpy (loc (elf64-rela) rela-idx $relas-buf) (loc (@ sh-entsize shdr-buf) rela-idx $seg-buf)
           (if [= (@ sh-type shdr-buf) (sht-rela)] (elf64-rela) (elf64-rel))]))))
@@ -172,13 +172,13 @@
   reg is the buffer in which our handle will be constructed. Return value is
   a handle to the object.)
 
-(constrain load (\(r) (with-vars (c d e f) (`(function (,c ,d buffer ,e ,f) obj)r)r)))
+(constrain load (\(r) (with-vars (c d e) (`(function (,c ,d buffer ,e) obj)r)r)))
 
-(function load (objsrc objsrc-sz reg handler err) (with return
-  (let (obj [read-object objsrc objsrc-sz reg handler err]) (begin
+(function load (objsrc objsrc-sz reg handler) (with return
+  (let (obj [read-object objsrc objsrc-sz reg handler]) (begin
       [offsets-to-addresses obj]
-      [store-addends obj reg handler err]
-      [do-relocations obj handler err]
+      [store-addends obj reg handler]
+      [do-relocations obj handler]
       {return obj}))))
 
 (constrain name-of (\(r) (`(function (obj elf64-shdr elf64-sym) string)r)))
@@ -192,10 +192,10 @@
   buffer in which the binding should be constructed. Return value is the
   constructed binding.)
 
-(constrain make-binding (\(r) (with-vars (a b c) (`(function (string ,a buffer ,b ,c) bndg-aug)r)r)))
+(constrain make-binding (\(r) (with-vars (a b) (`(function (string ,a buffer ,b) bndg-aug)r)r)))
 
-(function make-binding (name address reg handler err) (with return
-  (let (sym [buffer-alloc (binding) reg handler err]) (begin
+(function make-binding (name address reg handler) (with return
+  (let (sym [buffer-alloc (binding) reg handler]) (begin
     (setf bndg-name sym name)
     (setf bndg-offset sym address)
     {return sym}))))
@@ -223,13 +223,13 @@
             (begin))))))))
         (begin))))))
   (;; If obj was created using load, the following invocation cannot produce an error; hence the unspecified handler arguments.)
-  [do-relocations obj (begin) (begin)]))
+  [do-relocations obj (begin)]))
 
 (;; Returns the bindings in the given object.)
 
-(constrain bindings (\(r) (with-vars (a b c) (`(function (,a obj buffer ,b ,c) (list bndg-aug))r)r)))
+(constrain bindings (\(r) (with-vars (a b) (`(function (,a obj buffer ,b) (list bndg-aug))r)r)))
 
-(function bindings (flag obj reg handler err) (with return (begin
+(function bindings (flag obj reg handler) (with return (begin
   (storage syms nil)
   (until (sec-idx #0) [= sec-idx (@ e-shnum(@ obj-ehdr obj))] [+ sec-idx #1] (begin
     (define (shdr-buf (loc (elf64-shdr) sec-idx (@ obj-shdrs obj)))
@@ -241,8 +241,8 @@
         (if (and [= (not(not(or [= (@ st-shndx sym) (shn-undef)] [= (@ st-shndx sym) (shn-common)]))) flag]
             (or [= (elf64-st-bind (@ st-info sym)) (stb-global)]
               [= (elf64-st-bind (@ st-info sym)) (stb-weak)]))
-          [prepend [make-binding [name-of obj shdr-buf sym] (@ st-value sym) reg handler err] syms
-            reg handler err]
+          [prepend [make-binding [name-of obj shdr-buf sym] (@ st-value sym) reg handler] syms
+            reg handler]
           (begin))))))))
     (begin)))))
   {return $syms})))
@@ -252,15 +252,15 @@
   of mutable bindings will be constructed. Return value is the list of mutable
   bindings.)
 
-(constrain mutable-bindings (\(r) (with-vars (b c) (`(function (obj buffer ,b ,c) (list bndg-aug))r)r)))
+(constrain mutable-bindings (\(r) (with-vars (b) (`(function (obj buffer ,b) (list bndg-aug))r)r)))
 
-(function mutable-bindings (obj reg handler err) [bindings #1 obj reg handler err])
+(function mutable-bindings (obj reg handler) [bindings #1 obj reg handler])
 
 (;; Analogous to above.)
 
-(constrain immutable-bindings (\(r) (with-vars (b c) (`(function (obj buffer ,b ,c) (list bndg-aug))r)r)))
+(constrain immutable-bindings (\(r) (with-vars (b) (`(function (obj buffer ,b) (list bndg-aug))r)r)))
 
-(function immutable-bindings (obj reg handler err) [bindings #0 obj reg handler err])
+(function immutable-bindings (obj reg handler) [bindings #0 obj reg handler])
 
 (;; Returns the address of the segment of the given object that has a particular
   name. obj is the object whose segment addresses is being queried. name is

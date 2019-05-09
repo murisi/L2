@@ -31,9 +31,9 @@
           {foreach:return (begin)})r) emt r] [meta:map bindings @frst r]r]))r)))
 
 (;; Like a C-array initializer, but for lists. Does the following transformation:
-  (list (expr1 expr2 ... exprN) r handler err)
+  (list (expr1 expr2 ... exprN) r handler)
   ->
-  [cons expr1 [cons expr2 [... [cons exprN nil r handler err] ...] r handler err] r handler err])
+  [cons expr1 [cons expr2 [... [cons exprN nil r handler] ...] r handler] r handler])
 
 (function list (l r)
   (with return {(continuation loop (out in)
@@ -177,14 +177,14 @@
   l is a reference to the list that is to be appended to. r is the buffer into
   which the extension is being placed.)
 
-(constrain append (\(r) (with-vars (et b c) (`(function (,et (ref (list ,et)) buffer ,b ,c) (ref ,et))r)r)))
+(constrain append (\(r) (with-vars (et b) (`(function (,et (ref (list ,et)) buffer ,b) (ref ,et))r)r)))
 
-(function append (data l r handler err) (with return
+(function append (data l r handler) (with return
   {(continuation loop (l)
     (if (not [nil? $l])
       {loop (& cdr $l)}
       (begin
-        [set l [buffer-alloc (list-struct) r handler err]]
+        [set l [buffer-alloc (list-struct) r handler]]
         (setf car $l data)
         (setf cdr $l nil)
         {return (& car $l)}))) l}))
@@ -194,10 +194,10 @@
   is the buffer into which the extension is being placed. Return value is the
   new list.)
 
-(constrain cons (\(r) (with-vars (et a b) (`(function (,et (list ,et) buffer ,a ,b) (list ,et))r)r)))
+(constrain cons (\(r) (with-vars (et a) (`(function (,et (list ,et) buffer ,a) (list ,et))r)r)))
 
-(function cons (data rest r handler err) (with return
-  (let (l [buffer-alloc (list-struct) r handler err]) (begin
+(function cons (data rest r handler) (with return
+  (let (l [buffer-alloc (list-struct) r handler]) (begin
     (setf car l data)
     (setf cdr l rest)
     {return l}))))
@@ -215,10 +215,10 @@
 
 (;; Analogous to append above.)
 
-(constrain prepend (\(r) (with-vars (et a b) (`(function (,et (ref (list ,et)) buffer ,a ,b) ())r)r)))
+(constrain prepend (\(r) (with-vars (et a) (`(function (,et (ref (list ,et)) buffer ,a) ())r)r)))
 
-(function prepend (data l-ref r handler err)
-  (let (ret [buffer-alloc (list-struct) r handler err]) (begin
+(function prepend (data l-ref r handler)
+  (let (ret [buffer-alloc (list-struct) r handler]) (begin
     (setf car ret data)
     (setf cdr ret $l-ref)
     [set l-ref ret])))
@@ -238,7 +238,7 @@
   r is the buffer into which the reversed list should be placed. Return value
   is the reversed list.)
 
-(constrain reverse (\(r) (with-vars (et a b) (`(function ((list ,et) buffer ,a ,b) (list ,et))r)r)))
+(constrain reverse (\(r) (with-vars (et a) (`(function ((list ,et) buffer ,a) (list ,et))r)r)))
 
-(function reverse (l r handler err) (reverse-map (x l) x r handler err))
+(function reverse (l r handler) (reverse-map (x l) x r handler))
 

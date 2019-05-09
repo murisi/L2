@@ -174,45 +174,45 @@
 
 (storage file-access-error (begin))
 
-(constrain open (\(r) (with-vars (b c) (`(function (string ,b ,c) fd)r)r)))
+(constrain open (\(r) (with-vars (b) (`(function (string ,b) fd)r)r)))
 
-(function open (path handler err)
+(function open (path handler)
   (let (ret [syscall (sys-open) path (o-rdonly) (begin) (begin) (begin) (begin)])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
-      {handler (sets err file-access-error path)}
+      {handler (values file-access-error path)}
       ret)))
 
-(constrain create (\(r) (with-vars (b c) (`(function (string ,b ,c) fd)r)r)))
+(constrain create (\(r) (with-vars (b) (`(function (string ,b) fd)r)r)))
 
-(function create (path handler err)
+(function create (path handler)
   (let (ret [syscall (sys-open) path [lor (o-wronly) (o-creat)] [lor (s-irwxu) [lor (s-irwxg) (s-irwxo)]]  (begin) (begin) (begin)])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
-      {handler (sets err file-access-error path)}
+      {handler (values file-access-error path)}
       ret)))
 
 (constrain null-string (\(r) (` string r)))
 
 (storage null-string (begin))
 
-(constrain print (\(r) (with-vars (a b c d e) (`(function (fd ,a ,b ,c ,d) ,e)r)r)))
+(constrain print (\(r) (with-vars (a b c e) (`(function (fd ,a ,b ,c) ,e)r)r)))
 
-(function print (fd d len handler err)
+(function print (fd d len handler)
   (let (ret [syscall (sys-write) fd d len (begin) (begin) (begin)])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
-      {handler (sets err file-access-error null-string)}
+      {handler (values file-access-error null-string)}
       ret)))
 
-(constrain print-str (\(r) (with-vars (b c e) (`(function (fd string ,b ,c) ,e)r)r)))
+(constrain print-str (\(r) (with-vars (b e) (`(function (fd string ,b) ,e)r)r)))
 
-(function print-str (fd str handler err) [print fd str [strlen str] handler err])
+(function print-str (fd str handler) [print fd str [strlen str] handler])
 
-(constrain print-str (\(r) (with-vars (a b c e) (`(function (fd ,a ,b ,c) ,e)r)r)))
+(constrain print-str (\(r) (with-vars (a b e) (`(function (fd ,a ,b) ,e)r)r)))
 
-(function print-char (fd ch handler err) [print fd (storage _ ch) #1 handler err])
+(function print-char (fd ch handler) [print fd (storage _ ch) #1 handler])
 
-(constrain print-uint (\(r) (with-vars (a b c e) (`(function (fd ,a ,b ,c) ,e)r)r)))
+(constrain print-uint (\(r) (with-vars (a b e) (`(function (fd ,a ,b) ,e)r)r)))
 
-(function print-uint (fd i handler err) (begin
+(function print-uint (fd i handler) (begin
   (storage j #19)
   (storage str (begin) (begin) (begin))
   (until (i i) [= i #0] [/ i #10] (begin
@@ -228,51 +228,51 @@
       (#1 (char 1))
       (char 0))]
     [set j [- $j #1]]))
-  [print fd [+ str [+ $j #1]] [- #19 $j] handler err]))
+  [print fd [+ str [+ $j #1]] [- #19 $j] handler]))
 
-(constrain read (\(r) (with-vars (a b c d e) (`(function (fd ,a ,b ,c ,d) ,e)r)r)))
+(constrain read (\(r) (with-vars (a b c e) (`(function (fd ,a ,b ,c) ,e)r)r)))
 
-(function read (fd buf cnt handler err)
+(function read (fd buf cnt handler)
   (let (ret [syscall (sys-read) fd buf cnt (begin) (begin) (begin)])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
-      {handler (sets err file-access-error null-string)}
+      {handler (values file-access-error null-string)}
       ret)))
 
-(constrain close (\(r) (with-vars (a b c) (`(function (fd ,a ,b) ,c)r)r)))
+(constrain close (\(r) (with-vars (a c) (`(function (fd ,a) ,c)r)r)))
 
-(function close (fd handler err)
+(function close (fd handler)
   (let (ret [syscall (sys-close) fd (begin) (begin) (begin) (begin) (begin)])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
-      {handler (sets err file-access-error null-string)}
+      {handler (values file-access-error null-string)}
       ret)))
 
-(constrain size (\(r) (with-vars (a b c) (`(function (fd ,a ,b) ,c)r)r)))
+(constrain size (\(r) (with-vars (a c) (`(function (fd ,a) ,c)r)r)))
 
-(function size (fd handler err) (with return (begin
+(function size (fd handler) (with return (begin
   (storage statbuf (begin)(begin)(begin)(begin)(begin)(begin)(begin)(begin)(begin)
     (begin)(begin)(begin)(begin)(begin)(begin)(begin)(begin)(begin))
   (let (ret [syscall (sys-fstat) fd statbuf (begin) (begin) (begin) (begin)])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
-      {handler (sets err file-access-error null-string)}
+      {handler (values file-access-error null-string)}
       {return [get [+ statbuf #48]]})))))
 
 (storage memory-access-error (begin))
 
 (;; Creates a new virtual address mapping of the size in bytes given at len.)
 
-(function mmap (len handler err)
+(function mmap (len handler)
   (let (ret [syscall (sys-mmap) #0 len [lor (prot-read) (prot-write)] [lor (map-private) (map-anonymous)] [lnot #0] #0])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
-      {handler (sets err memory-access-error)}
+      {handler (values memory-access-error)}
       ret)))
 
 (;; Deletes virtual address mappings coinciding with the range starting with the
   value at ptr and having an extent of the value given at len.)
 
-(function munmap (ptr len handler err)
+(function munmap (ptr len handler)
   (let (ret [syscall (sys-munmap) ptr len (begin) (begin) (begin) (begin)])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
-      {handler (sets err memory-access-error)}
+      {handler (values memory-access-error)}
       ret)))
 
 (function pad-size (x nearest) (let (r [rem x nearest]) [+ x (if r [- nearest r] #0)]))
@@ -284,11 +284,11 @@
 (;; Creates a new buffer with a minimum capacity in bytes given by the value at
   min-capacity.)
 
-(constrain create-buffer (\(r) (with-vars (a b c) (`(function (,a ,b ,c) buffer)r)r)))
+(constrain create-buffer (\(r) (with-vars (a b) (`(function (,a ,b) buffer)r)r)))
 
-(function create-buffer (min-capacity handler err) (with return
+(function create-buffer (min-capacity handler) (with return
   (let (len [pad-size [+ min-capacity (buffer-element)] (page-size)])
-    (let (reg [mmap len handler err]) (begin
+    (let (reg [mmap len handler]) (begin
       (setf buf-next-elt reg null-element)
       (setf buf-last-elt reg reg)
       (setf buf-curr-pos reg [+ reg (buffer-element)])
@@ -311,15 +311,15 @@
   integer at len. The only way to deallocate this memory is destroy the entire
   buffer at reg.)
 
-(constrain buffer-alloc (\(r) (with-vars (a b c d) (`(function (,a buffer ,b ,c) ,d)r)r)))
+(constrain buffer-alloc (\(r) (with-vars (a b d) (`(function (,a buffer ,b) ,d)r)r)))
 
-(function buffer-alloc (len reg handler err) (with return
+(function buffer-alloc (len reg handler) (with return
   (let (len [pad-size len (alloc-alignment)]) (begin
     (;;[check-buffer-integrity reg])
     (storage last-elt-ref (@ buf-last-elt reg))
     (if [> [+(@ buf-curr-pos $last-elt-ref)len] (@ buf-end-pos $last-elt-ref)]
       (begin
-        (setf buf-next-elt $last-elt-ref [create-buffer [+ len [* #2[-(@ buf-end-pos $last-elt-ref) $last-elt-ref]]] handler err])
+        (setf buf-next-elt $last-elt-ref [create-buffer [+ len [* #2[-(@ buf-end-pos $last-elt-ref) $last-elt-ref]]] handler])
         (setf buf-last-elt reg (@ buf-next-elt $last-elt-ref))
         [set last-elt-ref (@ buf-next-elt $last-elt-ref)])
       (begin))
@@ -331,13 +331,13 @@
   function, it is invalid to read or write data to the memory allocated on
   this region.)
 
-(constrain destroy-buffer (\(r) (with-vars (b c) (`(function (buffer ,b ,c) ())r)r)))
+(constrain destroy-buffer (\(r) (with-vars (b) (`(function (buffer ,b) ())r)r)))
 
-(function destroy-buffer (reg handler err) (with return (begin
+(function destroy-buffer (reg handler) (with return (begin
   (;;[check-buffer-integrity reg])
   {(continuation loop (reg)
     (let (next-reg (@ buf-next-elt reg)) (begin
-      [munmap reg [- (@ buf-end-pos reg) reg] handler err]
+      [munmap reg [- (@ buf-end-pos reg) reg] handler]
       (if [= next-reg null-element]
         {return (begin)}
         {loop next-reg})))) reg})))
@@ -345,32 +345,33 @@
 (;; Returns a C-string that is a copy of the one at src. The returned string and
   its dependencies will all reside in the region reg.)
 
-(constrain rstrcpy (\(r) (with-vars (a b) (`(function (string buffer ,a ,b) string)r)r)))
+(constrain rstrcpy (\(r) (with-vars (a) (`(function (string buffer ,a) string)r)r)))
 
-(function rstrcpy (src reg handler err) (with return
-  (let (dest [buffer-alloc [+[strlen src]#1] reg handler err]) (begin
+(function rstrcpy (src reg handler) (with return
+  (let (dest [buffer-alloc [+[strlen src]#1] reg handler]) (begin
     [strcpy dest src]
     {return dest}))))
 
 (;; Returns a list containing the the command line arguments. The returned list
   and its dependencies will all reside in the region reg.)
 
-(constrain argv (\(r) (with-vars (a b) (`(function (buffer ,a ,b) (list string))r)r)))
+(constrain argv (\(r) (with-vars (a) (`(function (buffer ,a) (list string))r)r)))
 
-(function argv (reg handler err) (with return (begin
+(function argv (reg handler) (with return (begin
   (storage f (begin))
   (storage retval (begin))
   (fallthrough
-    (begin
-      [set f [open (" /proc/self/cmdline) handler err]]
-      (storage buf [buffer-alloc (arg-max) reg cleanup err])
-      (storage bytes-rem [read $f $buf (arg-max) cleanup err])
-      [set retval (with break {(continuation loop (buf bytes-rem args)
-        (if bytes-rem
-          {loop [+ buf [+ [strlen buf] #1]] [- bytes-rem [+ [strlen buf] #1]] [cons buf args reg cleanup err]}
-          {break [reverse args reg cleanup err]})) $buf $bytes-rem nil})])
-          
-    (cleanup _ (begin
-      [close $f handler err]
-      (if [= (@0 err) no-error] {return $retval} {handler (begin)})))))))
+    (let (_ (begin
+        [set f [open (" /proc/self/cmdline) handler]]
+        (storage buf [buffer-alloc (arg-max) reg cleanup])
+        (storage bytes-rem [read $f $buf (arg-max) cleanup])
+        [set retval (with break {(continuation loop (buf bytes-rem args)
+          (if bytes-rem
+            {loop [+ buf [+ [strlen buf] #1]] [- bytes-rem [+ [strlen buf] #1]] [cons buf args reg cleanup]}
+            {break [reverse args reg cleanup]})) $buf $bytes-rem nil})]))
+      (values no-error))
+    
+    (cleanup err (begin
+      [close $f handler]
+      (if [= (@0 err) no-error] {return $retval} {handler err})))))))
 

@@ -1,5 +1,5 @@
-(function vbl (r handler err) (with return (begin
-  (let (l [buffer-alloc (list-struct) r handler err]) (begin
+(function vbl (r handler) (with return (begin
+  (let (l [buffer-alloc (list-struct) r handler]) (begin
     (setf car l l)
     (setf cdr l l)
     {return l})))))
@@ -76,13 +76,13 @@
   token will be based on. r is the buffer in which the token will be constructed.
   Return value is the constructed token.)
 
-(constrain build-token (\(r) (with-vars (c d) (`(function (string buffer ,c ,d) (list tchar))r)r)))
+(constrain build-token (\(r) (with-vars (c) (`(function (string buffer ,c) (list tchar))r)r)))
 
-(function build-token (str r handler err)
+(function build-token (str r handler)
   (loop cons-char (sexprs nil) (strptr str)
     (if [getb strptr]
-      {cons-char [cons (tkn-char [getb strptr]) sexprs r handler err] [+ strptr #1]}
-      [reverse sexprs r handler err])))
+      {cons-char [cons (tkn-char [getb strptr]) sexprs r handler] [+ strptr #1]}
+      [reverse sexprs r handler])))
 
 (;; Moves the supplied index forward to the first non-space character. l2src is a
   reference to the beginning of a buffer containing characters. l2src-sz contains
@@ -104,10 +104,10 @@
   to the current index in the buffer. r is the buffer into which the token
   should be put. Return value is the constructed token.)
 
-(constrain build-sigilled-token (\(r) (with-vars (a b c d e f g) (`(function (,a ,b ,c ,d ,e ,f ,g) frag)r)r)))
+(constrain build-sigilled-token (\(r) (with-vars (a b c d e f) (`(function (,a ,b ,c ,d ,e ,f) frag)r)r)))
 
-(function build-sigilled-token (sigil l2src l2src-sz pos r handler err) (with return
-  (substitute (.. r handler err) (begin
+(function build-sigilled-token (sigil l2src l2src-sz pos r handler) (with return
+  (substitute (.. r handler) (begin
     (if [= l2src-sz $pos] {return [token->fragment [build-token sigil ..]]} (begin))
     (let (d [getb [+ l2src $pos]])
       {return (if (or [isspace d] [= d (rparen)] [= d (rbrace)] [= d (rbracket)] [= d (lparen)] [= d (lbrace)] [= d (lbracket)])
@@ -119,10 +119,10 @@
   primitive is a string. delimiter is an ascii character. For rest of parameters,
   see above.)
 
-(constrain build-fragment-list (\(r) (with-vars (a b c d e f) (`(function (string ,a ,b ,c ,d buffer ,e ,f) (list frag))r)r)))
+(constrain build-fragment-list (\(r) (with-vars (a b c d e) (`(function (string ,a ,b ,c ,d buffer ,e) (list frag))r)r)))
 
-(function build-fragment-list (primitive delimeter l2src l2src-sz pos r handler err) (with return
-  (substitute (.. r handler err)
+(function build-fragment-list (primitive delimeter l2src l2src-sz pos r handler) (with return
+  (substitute (.. r handler)
     (loop cons-frag (sexprs (list ([token->fragment [build-token primitive ..]]) ..))
       (let (rem [after-leading-space l2src l2src-sz pos])
         (if (and rem [= [getb [+ l2src $pos]] delimeter])
@@ -134,14 +134,14 @@
 (;; Builds a fragment starting at the current position in the buffer. For parameters,
   see above.)
 
-(constrain build-fragment (\(r) (with-vars (a b c d e f) (`(function (,a ,b ,c ,d ,e ,f) frag)r)r)))
+(constrain build-fragment (\(r) (with-vars (a b c d e) (`(function (,a ,b ,c ,d ,e) frag)r)r)))
 
-(function build-fragment (l2src l2src-sz pos r handler err) (with return
-  (substitute (.. r handler err) (if [= l2src-sz $pos]
-    {handler (sets err unexpected-char-error #0 $pos)}
+(function build-fragment (l2src l2src-sz pos r handler) (with return
+  (substitute (.. r handler) (if [= l2src-sz $pos]
+    {handler (values unexpected-char-error #0 $pos)}
     (let (c [getb [+ l2src $pos]])
       (if (or [isspace c] [= c (rparen)] [= c (rbrace)] [= c (rbracket)])
-        {handler (sets err unexpected-char-error c $pos)}
+        {handler (values unexpected-char-error c $pos)}
         (begin
           [set+ pos #1]
           {return (switch = c
@@ -174,10 +174,10 @@
   converted. r is the buffer into which the string should be put. The return value
   is the constructed string.)
 
-(constrain to-string (\(r) (with-vars (a b) (`(function ((list tchar) buffer ,a ,b) string)r)r)))
+(constrain to-string (\(r) (with-vars (a) (`(function ((list tchar) buffer ,a) string)r)r)))
 
-(function to-string (d r handler err) (with return
-  (let (str [buffer-alloc [+ [length d] #1] r handler err])
+(function to-string (d r handler) (with return
+  (let (str [buffer-alloc [+ [length d] #1] r handler])
     (loop put-char (d d) (i #0)
       (if [nil? d]
         (begin
@@ -191,10 +191,10 @@
   be copied. r is the buffer into which the fragment should be copied. The return
   value is the copied fragment.)
 
-(constrain copy-fragment (\(r) (with-vars (b c) (`(function (frag buffer ,b ,c) frag)r)r)))
+(constrain copy-fragment (\(r) (with-vars (b) (`(function (frag buffer ,b) frag)r)r)))
 
-(function copy-fragment (l r handler err)
-  (substitute (.. r handler err)
+(function copy-fragment (l r handler)
+  (substitute (.. r handler)
     (if [i/f:token? l]
       [token->fragment [reverse (reverse-map (s [fragment->token l]) (tkn-char (@ cs-character s)) ..) ..]]
       [list->fragment [reverse (reverse-map (s [frag->list l]) [copy-fragment s ..] ..) ..]])))
@@ -202,15 +202,15 @@
 (;; Prints the given fragment out to standard output. d is the fragment that is
   to be printed.)
 
-(constrain print-fragment (\(r) (with-vars (b c) (`(function (frag ,b ,c) ())r)r)))
+(constrain print-fragment (\(r) (with-vars (b) (`(function (frag ,b) ())r)r)))
 
-(function print-fragment (d hdl err)
+(function print-fragment (d hdl)
   (if [i/f:token? d]
-    (foreach (t [fragment->token d]) [print-char (stdout) (@ cs-character t) hdl err])
+    (foreach (t [fragment->token d]) [print-char (stdout) (@ cs-character t) hdl])
     (begin
-      [print-char (stdout) (lparen) hdl err]
+      [print-char (stdout) (lparen) hdl]
       (foreach (fl [frag->list d]) (begin
-        [print-fragment fl hdl err]
-        [print-str (stdout) ("(space)) hdl err]))
-      [print-char (stdout) (rparen) hdl err])))
+        [print-fragment fl hdl]
+        [print-str (stdout) ("(space)) hdl]))
+      [print-char (stdout) (rparen) hdl])))
 
