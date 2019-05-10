@@ -140,6 +140,8 @@
     (begin)))
   {return s})))
 
+(constrain visit-expressions (\(r) (with-vars (a) (`(function ((function (expr ,a) expr) (ref expr) ,a) ())r)r)))
+
 (function visit-expressions (visitor s ctx) (begin
   (switch = (@ expr-type $s)
     ((-begin-)
@@ -161,6 +163,8 @@
     
     (begin))
   (replace-expression s [visitor $s ctx])))
+
+(constrain pre-visit-expressions (\(r) (with-vars (a) (`(function ((function (expr ,a) expr) (ref expr) ,a) ())r)r)))
 
 (function pre-visit-expressions (visitor s ctx) (begin
   (replace-expression s [visitor $s ctx])
@@ -184,6 +188,8 @@
         [pre-visit-expressions visitor (& car partial) ctx])))
     
     (begin))))
+
+(constrain classify-program-bindings (\(r) (`(function (expr) ())r)))
 
 (function classify-program-bindings (expr)
   (switch = (@ expr-type expr)
@@ -210,6 +216,8 @@
       [classify-program-bindings (@ expr-alternate expr)]))
     
     (begin)))
+
+(constrain containment-analysis (\(r) (with-vars (a) (`(function (expr) ,a)r)r)))
 
 (function containment-analysis (s)
   (switch = (@ expr-type s)
@@ -295,6 +303,8 @@
   obj-buf is where the object code corresponding to expr will be put. Return
   value is a handle to the object code.)
 
+(constrain init-expression (\(r) (with-vars (a b) (`(function (expr (ref (list bndg-aug)) buffer ,a (ref ,b)) ,b)r)r)))
+
 (function init-expression (expr bindings buf handler cache)
   (if [not= $cache null-cache] $cache (with return (substitute (.. buf handler) (begin
     (storage expr-ref expr)
@@ -302,6 +312,8 @@
     [set cache [segment [load-program-and-mutate [make-program [cons $expr-ref nil ..] ..] $bindings buf
       handler] (" .text)]]
     {return $cache})))))
+
+(constrain init-storage (\(r) (with-vars (c a b) (`(function (,c expr (ref (list bndg-aug)) buffer ,a (ref ,b)) ,b)r)r)))
 
 (function init-storage (data storage-expr bindings buf handler cache)
   (if [not= $cache null-cache] $cache (with return (substitute (.. buf handler) (begin
@@ -314,6 +326,8 @@
       [set+ data-ref (unit)]))
     [set cache [segment [load-program-and-mutate [make-program $sets ..] $bindings buf handler] (" .text)]]
     {return $cache})))))
+
+(constrain init-function (\(r) (with-vars (a b) (`(function (expr (ref (list bndg-aug)) buffer ,a (ref ,b)) ,b)r)r)))
 
 (function init-function (function-expr bindings buf handler cache)
   (if [not= $cache null-cache] $cache (with return (substitute (.. buf handler) (begin
@@ -335,7 +349,9 @@
   lazy compilation will be put into. handler and err will also be used if
   there are any failures in the lazy compilation. Return value is a program
   expression representing the meta-program.)
-  
+
+(constrain generate-metaprogram (\(r) (with-vars (a) (`(function (expr (ref (list bndg-aug)) buffer ,a) expr)r)r)))
+
 (function generate-metaprogram (program bindings buf handler)
   (substitute (.. buf handler)
     [make-program [reverse (fold (c nil) (s (@ expr-expressions (@ expr-expression program)))
