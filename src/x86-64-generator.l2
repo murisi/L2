@@ -92,47 +92,50 @@
 
 (function cont-rbp (l r) [mk# r [* #0 (word-size)]])
 
-(function vlayout-frames (n r) (with return (substitute (.. (@0 r) (@1 r)) (begin
-  (switch = (@ expr-type n)
-    ((-function-) (begin
-      (storage parameter-offset-ref [* #2 (word-size)])
-      (foreach (t (@ expr-parameters n)) (begin
-        (setf bndg-offset (@ expr-binding-aug t) $parameter-offset-ref)
-        [set+ parameter-offset-ref (word-size)]))
-        
-      (storage binding-offset-ref #0)
-      (foreach (u [reverse (@ expr-binding-augs n) ..]) (begin
-        [set- binding-offset-ref [pad-size (@ bndg-size u) (word-size)]]
-        (setf bndg-offset u $binding-offset-ref)))))
+(constrain vlayout-frames (\(r) (with-vars (a) (`(function (expr (values buffer ,a)) expr)r)r)))
+
+(function vlayout-frames (n ctx) (with return
+  (bind ctx (r handler) (substitute (.. r handler) (begin
+    (switch = (@ expr-type n)
+      ((-function-) (begin
+        (storage parameter-offset-ref [* #2 (word-size)])
+        (foreach (t (@ expr-parameters n)) (begin
+          (setf bndg-offset (@ expr-binding-aug t) $parameter-offset-ref)
+          [set+ parameter-offset-ref (word-size)]))
+          
+        (storage binding-offset-ref #0)
+        (foreach (u [reverse (@ expr-binding-augs n) ..]) (begin
+          [set- binding-offset-ref [pad-size (@ bndg-size u) (word-size)]]
+          (setf bndg-offset u $binding-offset-ref)))))
+      
+      ((-continuation-) (-with-) (begin
+        (if (@ expr-escapes n) (begin
+          (setf bndg-size (@ expr-binding-aug(@ expr-reference n)) (cont-size))
+          [append (@ expr-binding-aug(@ expr-reference n)) (& expr-binding-augs[get-parent-function n]) ..])
+          (begin))
+        (foreach (t (@ expr-parameters n)) (begin
+          (setf bndg-size (@ expr-binding-aug t) (word-size))
+          [append (@ expr-binding-aug t) (& expr-binding-augs[get-parent-function n]) ..]))))
+      
+      ((-storage-) (begin
+        (setf bndg-size (@ expr-binding-aug(@ expr-reference n)) [* [length (@ expr-arguments n)] (word-size)])
+        [append (@ expr-binding-aug(@ expr-reference n)) (& expr-binding-augs[get-parent-function n]) ..]))
+      
+      ((-jump-) (-invoke-) (begin
+        (setf bndg-size (@ expr-temp-storage-bndg n) [* (word-size) [length (@ expr-arguments n)]])
+        (switch = (@ expr-contains-flag n)
+          ((contains-with)
+            [append (@ expr-temp-storage-bndg n) (& expr-binding-augs[get-parent-function n]) ..])
+          ((contains-jump)
+            (setf bndg-storage (@ expr-temp-storage-bndg n) (nil-storage)))
+          ((contains-none) (begin
+            (setf bndg-storage (@ expr-temp-storage-bndg n) (top-relative-storage))
+            (setf bndg-offset (@ expr-temp-storage-bndg n) #0)))
+          (begin))))
+      
+      (begin))
     
-    ((-continuation-) (-with-) (begin
-      (if (@ expr-escapes n) (begin
-        (setf bndg-size (@ expr-binding-aug(@ expr-reference n)) (cont-size))
-        [append (@ expr-binding-aug(@ expr-reference n)) (& expr-binding-augs[get-parent-function n]) ..])
-        (begin))
-      (foreach (t (@ expr-parameters n)) (begin
-        (setf bndg-size (@ expr-binding-aug t) (word-size))
-        [append (@ expr-binding-aug t) (& expr-binding-augs[get-parent-function n]) ..]))))
-    
-    ((-storage-) (begin
-      (setf bndg-size (@ expr-binding-aug(@ expr-reference n)) [* [length (@ expr-arguments n)] (word-size)])
-      [append (@ expr-binding-aug(@ expr-reference n)) (& expr-binding-augs[get-parent-function n]) ..]))
-    
-    ((-jump-) (-invoke-) (begin
-      (setf bndg-size (@ expr-temp-storage-bndg n) [* (word-size) [length (@ expr-arguments n)]])
-      (switch = (@ expr-contains-flag n)
-        ((contains-with)
-          [append (@ expr-temp-storage-bndg n) (& expr-binding-augs[get-parent-function n]) ..])
-        ((contains-jump)
-          (setf bndg-storage (@ expr-temp-storage-bndg n) (nil-storage)))
-        ((contains-none) (begin
-          (setf bndg-storage (@ expr-temp-storage-bndg n) (top-relative-storage))
-          (setf bndg-offset (@ expr-temp-storage-bndg n) #0)))
-        (begin))))
-    
-    (begin))
-  
-  {return n}))))
+    {return n})))))
 
 (function generate-load (bndg offset dest-reg scratch-reg c r handler)
   (substitute (.. r handler)
