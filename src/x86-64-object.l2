@@ -50,7 +50,7 @@
           ((r-x86-64-pc8) [memcpy (@ r-offset rela) (storage _[-[+(@ st-value sym)addend](@ r-offset rela)])#1])
           ((r-x86-64-size32) [memcpy (@ r-offset rela) (storage _[+(@ st-size sym)addend]) #4])
           ((r-x86-64-size64) [memcpy (@ r-offset rela) (storage _[+(@ st-size sym)addend]) #8])
-          {handler (values object-error)})))))))))))
+          {handler (storage _ object-error)})))))))))))
       (begin))))))
 
 (;; Stores the relocation addends somewhere out of the way because it may be the
@@ -83,7 +83,7 @@
               ((r-x86-64-8) set1b) ((r-x86-64-pc8) set1b) ((r-x86-64-16) set2b) ((r-x86-64-pc16) set2b)
               ((r-x86-64-pc32) set4b) ((r-x86-64-32) set4b) ((r-x86-64-32s) set4b) ((r-x86-64-size32) set4b)
               ((r-x86-64-64) set8b) ((r-x86-64-size64) set8b) ((r-x86-64-glob-dat) set8b)
-              ((r-x86-64-jump-slot) set8b) {handler (values object-error)})
+              ((r-x86-64-jump-slot) set8b) {handler (storage _ object-error)})
             (loc (elf64-sxword) rela-idx $addends-buf) (@ r-offset rela)]))))))
             
     (begin)))))))
@@ -126,7 +126,7 @@
 
 (function read-object (objsrc objsrc-sz reg handler) (with return (begin
   (define (obj [buffer-alloc (object) reg handler])
-  (if [< objsrc-sz (elf64-ehdr)] {handler (values object-error)} (begin))
+  (if [< objsrc-sz (elf64-ehdr)] {handler (storage _ object-error)} (begin))
   (setf obj-ehdr obj [buffer-alloc (elf64-ehdr) reg handler])
   [memcpy (@ obj-ehdr obj) objsrc (elf64-ehdr)]
   (setf obj-shdrs obj [buffer-alloc [* (@ e-shnum(@ obj-ehdr obj)) (elf64-shdr)] reg handler])

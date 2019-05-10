@@ -520,33 +520,33 @@
 (function build-expression (d reg handler) (substitute (.. reg handler)
   (if [i/f:token? d] [make-symbol [to-string [fragment->token d] ..] ..]
   (let (d [frag->list d])
-    (if [= [length d] #0] {handler (values special-form-error d null-fragment)}
+    (if [= [length d] #0] {handler (storage _ special-form-error d null-fragment)}
     (switch str= [to-string [fragment->token [@car d]] ..]
       ((" with)
         (if (not [= [length d] #3])
-          {handler (values special-form-error d null-fragment)}
+          {handler (storage _ special-form-error d null-fragment)}
         (if (not [i/f:token? [@cadr d]])
-          {handler (values special-form-error d [@cadr d])}
+          {handler (storage _ special-form-error d [@cadr d])}
           [make-with [build-expression [@cadr d] ..] [build-expression [@caddr d] ..] ..])))
       
       ((" begin) [make-begin [reverse (reverse-map (v [@cdr d]) [build-expression v ..] ..) ..] ..])
       
       ((" if)
         (if (not [= [length d] #4])
-          {handler (values special-form-error d null-fragment)}
+          {handler (storage _ special-form-error d null-fragment)}
           [make-if [build-expression [@cadr d] ..] [build-expression [@caddr d] ..] [build-expression [@cadddr d] ..] ..]))
       
       ((" function) (" continuation)
         (if (not [= [length d] #4])
-          {handler (values special-form-error d null-fragment)}
+          {handler (storage _ special-form-error d null-fragment)}
         (if (not [i/f:token? [@cadr d]])
-          {handler (values special-form-error d [@cadr d])}
+          {handler (storage _ special-form-error d [@cadr d])}
         (if [i/f:token? [@caddr d]]
-          {handler (values special-form-error d [@caddr d])}
+          {handler (storage _ special-form-error d [@caddr d])}
           (let (parameters [reverse (reverse-map (v [frag->list [@caddr d]])
               (if [i/f:token? v]
                 [build-expression v ..]
-                {handler (values special-form-error d v)}) ..) ..])
+                {handler (storage _ special-form-error d v)}) ..) ..])
                 
             [(switch str= [to-string [fragment->token [@car d]] ..]
                 ((" function) make-function)
@@ -555,9 +555,9 @@
       
       ((" invoke) (" jump) (" storage)
         (if [= [length d] #1]
-          {handler (values special-form-error d null-fragment)}
+          {handler (storage _ special-form-error d null-fragment)}
         (if (and [str= [to-string [fragment->token [@car d]] ..] (" storage)] (not [i/f:token? [@cadr d]]))
-          {handler (values special-form-error d [@cadr d])}
+          {handler (storage _ special-form-error d [@cadr d])}
           [(switch str= [to-string [fragment->token [@car d]] ..]
               ((" invoke) make-invoke)
               ((" jump) make-jump)
@@ -566,9 +566,9 @@
       
       ((" literal)
         (if (not [= [length d] #2])
-          {handler (values special-form-error d null-fragment)}
+          {handler (storage _ special-form-error d null-fragment)}
         (if (or (not [i/f:token? [@cadr d]]) (not [= [length [frag->list [@cadr d]]] (build-expression-literal-len)]))
-          {handler (values special-form-error d [@cadr d])}
+          {handler (storage _ special-form-error d [@cadr d])}
           [make-literal
             (loop build-num (str [to-string [fragment->token [@cadr d]] ..]) (i (build-expression-literal-len)) (value #0)
               (if [= i #0]
@@ -577,11 +577,11 @@
                 {build-num [+ str #1] [- i #1] [+ [<< value #1] #1]}
               (if [= [getb str] (char 0)]
                 {build-num [+ str #1] [- i #1] [<< value #1]}
-                {handler (values special-form-error d [@cadr d])})))) ..])))
+                {handler (storage _ special-form-error d [@cadr d])})))) ..])))
       
       ((" constrain)
         (if (not [= [length d] #3])
-          {handler (values special-form-error d null-fragment)}
+          {handler (storage _ special-form-error d null-fragment)}
           [make-constrain [build-expression [@cadr d] ..] [build-expression [@caddr d] ..] ..]))
       
       [make-meta [build-expression [@car d] ..] [@cdr d] ..]))))))

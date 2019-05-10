@@ -47,7 +47,7 @@
   (foreach (d ms) (find (x bndgs) [str= (@ bndg-name d) (@ bndg-name x)] (begin
     (define (missing-bndg-name (@ bndg-name d))
     [destroy-buffer temp-reg handler]
-    {handler (values undefined-symbol-error missing-bndg-name)}))))
+    {handler (storage _ undefined-symbol-error missing-bndg-name)}))))
   
   [destroy-buffer temp-reg handler]
   [mutate-bindings obj bndgs]
@@ -61,7 +61,7 @@
         (let (_ [set size-out [size fd close-file]])
         (let (src-buf [buffer-alloc $size-out buf close-file])
         (let (_ [read fd src-buf $size-out close-file])
-        (values no-error src-buf))))
+        (storage _ no-error src-buf))))
         
       (close-file err
         (let (_ [close fd handler])
@@ -112,7 +112,7 @@
       (storage obj-buf [read-to-buffer src obj-sz buf handler])
       [set obj [load $obj-buf $obj-sz buf handler]])
   
-      {handler (values unsupported-ext-error src)}))
+      {handler (storage _ unsupported-ext-error src)}))
 
     [append $obj objects buf handler]
     [append-list bindings [immutable-bindings $obj buf handler]])))
@@ -268,7 +268,7 @@
             [evaluate-files args bndgs buf handler]
             (;; Compile the program in the metaprogram's environment)
             [compile-files args $bndgs buf handler])))
-          (values no-error))
+          (storage _ no-error))
         
         (handler err (let (_ (substitute (.. cleanup) (switch = (@0 err)
             (multiple-definition-error (begin
@@ -332,7 +332,7 @@
             (object-error [print-str (stdout) (" Bad object file supplied.(lf)) ..])
               
             (begin))))
-          (values no-error)))
+          (storage _ no-error)))
   
         (cleanup err (let (_ [destroy-buffer buf exit-cont]) err))))
   

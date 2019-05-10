@@ -18,7 +18,7 @@
         (find (f (@ cdr partial)) [named-sym= (@ expr-reference f) (@ expr-reference [@car partial])] {break (begin)})
         (define (dup-ref-name (@ expr-name(@ expr-reference[@car partial])))
         [destroy-buffer temp-reg handler]
-        {handler (values multiple-definition-error dup-ref-name)}))))
+        {handler (storage _ multiple-definition-error dup-ref-name)}))))
       [destroy-buffer temp-reg handler]))))
     
     ((-continuation-) (-function-) (begin
@@ -28,7 +28,7 @@
         (find (f (@ cdr partial)) [named-sym= f [@car partial]] {break (begin)})
         (define (dup-ref-name (@ expr-name[@car partial]))
         [destroy-buffer temp-reg handler]
-        {handler (values multiple-definition-error dup-ref-name)}))))
+        {handler (storage _ multiple-definition-error dup-ref-name)}))))
       [destroy-buffer temp-reg handler]))))
     
     (begin))
@@ -118,12 +118,12 @@
         (if (and (or (and [jump-reference? s] [c-reference? (@ bndg-definition(@ expr-binding-aug s))])
             (and [invoke-reference? s] [function-reference? (@ bndg-definition(@ expr-binding-aug s))]))
             (not [= [length(@ expr-arguments(@ expr-parent s))] [length(@ expr-parameters[get-target-expression s])]]))
-          {handler (values param-count-mismatch-error (@ expr-parent s) [get-target-expression s])}
+          {handler (storage _ param-count-mismatch-error (@ expr-parent s) [get-target-expression s])}
           {return s})))
     (if (and (or (and [= (@ expr-type s) (-continuation-)] [jump-reference? s])
         (and [= (@ expr-type s) (-function-)] [invoke-reference? s]))
         (not [= [length (@ expr-arguments(@ expr-parent s))] [length (@ expr-parameters s)]]))
-      {handler (values param-count-mismatch-error (@ expr-parent s) s)}
+      {handler (storage _ param-count-mismatch-error (@ expr-parent s) s)}
       {return s}))))))))
 
 (function vescape-analysis-aux (ref target)
@@ -252,7 +252,7 @@
           (foreach (bndg bindings)
             (if [str= (@ bndg-name bndg) (@ expr-name s)]
               {return (@ bndg-offset bndg)} (begin)))
-          {handler (values undefined-symbol-error (@ expr-name s))})
+          {handler (storage _ undefined-symbol-error (@ expr-name s))})
         (begin
           (define (expr-container [make-function [make-symbol null-string ..] nil s ..])
           (define (expr-container-program [make-program [cons expr-container nil ..] ..])

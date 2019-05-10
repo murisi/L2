@@ -176,7 +176,7 @@
 (function open (path handler)
   (let (ret [syscall (sys-open) path (o-rdonly) (begin) (begin) (begin) (begin)])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
-      {handler (values file-access-error path)}
+      {handler (storage _ file-access-error path)}
       ret)))
 
 (constrain create (\(r) (with-vars (b) (`(function (string ,b) fd)r)r)))
@@ -184,7 +184,7 @@
 (function create (path handler)
   (let (ret [syscall (sys-open) path [lor (o-wronly) (o-creat)] [lor (s-irwxu) [lor (s-irwxg) (s-irwxo)]]  (begin) (begin) (begin)])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
-      {handler (values file-access-error path)}
+      {handler (storage _ file-access-error path)}
       ret)))
 
 (constrain null-string (\(r) (` string r)))
@@ -196,7 +196,7 @@
 (function print (fd d len handler)
   (let (ret [syscall (sys-write) fd d len (begin) (begin) (begin)])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
-      {handler (values file-access-error null-string)}
+      {handler (storage _ file-access-error null-string)}
       ret)))
 
 (constrain print-str (\(r) (with-vars (b e) (`(function (fd string ,b) ,e)r)r)))
@@ -232,7 +232,7 @@
 (function read (fd buf cnt handler)
   (let (ret [syscall (sys-read) fd buf cnt (begin) (begin) (begin)])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
-      {handler (values file-access-error null-string)}
+      {handler (storage _ file-access-error null-string)}
       ret)))
 
 (constrain close (\(r) (with-vars (a c) (`(function (fd ,a) ,c)r)r)))
@@ -240,7 +240,7 @@
 (function close (fd handler)
   (let (ret [syscall (sys-close) fd (begin) (begin) (begin) (begin) (begin)])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
-      {handler (values file-access-error null-string)}
+      {handler (storage _ file-access-error null-string)}
       ret)))
 
 (constrain size (\(r) (with-vars (a c) (`(function (fd ,a) ,c)r)r)))
@@ -250,7 +250,7 @@
     (begin)(begin)(begin)(begin)(begin)(begin)(begin)(begin)(begin))
   (let (ret [syscall (sys-fstat) fd statbuf (begin) (begin) (begin) (begin)])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
-      {handler (values file-access-error null-string)}
+      {handler (storage _ file-access-error null-string)}
       {return [get [+ statbuf #48]]})))))
 
 (storage memory-access-error (begin))
@@ -260,7 +260,7 @@
 (function mmap (len handler)
   (let (ret [syscall (sys-mmap) #0 len [lor (prot-read) (prot-write)] [lor (map-private) (map-anonymous)] [lnot #0] #0])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
-      {handler (values memory-access-error)}
+      {handler (storage _ memory-access-error)}
       ret)))
 
 (;; Deletes virtual address mappings coinciding with the range starting with the
@@ -269,7 +269,7 @@
 (function munmap (ptr len handler)
   (let (ret [syscall (sys-munmap) ptr len (begin) (begin) (begin) (begin)])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
-      {handler (values memory-access-error)}
+      {handler (storage _ memory-access-error)}
       ret)))
 
 (function pad-size (x nearest) (let (r [rem x nearest]) [+ x (if r [- nearest r] #0)]))
