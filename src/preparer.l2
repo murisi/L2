@@ -242,8 +242,8 @@
 (storage undefined-symbol-error (begin))
 
 (function preprocessed-expression-address (l r)
-  (`(\(s bindings expr-buf obj-buf handler) (with return
-    (substitute (.. expr-buf handler)
+  (`(\(s bindings buf handler) (with return
+    (substitute (.. buf handler)
       (if [= (@ expr-type s) (-symbol-)]
         (begin
           (;; If the expression, s, is a mere symbol, then we can just lookup its value in
@@ -256,8 +256,8 @@
         (begin
           (define (expr-container [make-function [make-symbol null-string ..] nil s ..])
           (define (expr-container-program [make-program [cons expr-container nil ..] ..])
-          (define (program-preprocessed [generate-metaprogram expr-container-program (storage _ bindings) expr-buf obj-buf handler])
-          [load-program-and-mutate program-preprocessed bindings expr-buf obj-buf handler]
+          (define (program-preprocessed [generate-metaprogram expr-container-program (storage _ bindings) buf handler])
+          [load-program-and-mutate program-preprocessed bindings buf handler]
           (define (expr-container-preprocessed [@car (@ expr-expressions (@ expr-expression program-preprocessed))])
           {return [(@ bndg-offset (@ expr-binding-aug (@ expr-reference expr-container-preprocessed)))]})))))))))r))
 
@@ -270,19 +270,19 @@
   handler is followed.)
 
 (;;((-constrain-) (with return
-      (define (macro [(preprocessed-expression-address) (@ expr-reference s) bindings expr-buf expr-buf handler])
-      (setf expr-signature s [macro expr-buf])
+      (define (macro [(preprocessed-expression-address) (@ expr-reference s) bindings buf handler])
+      (setf expr-signature s [macro buf])
       {return s}))))
 
 (function vgenerate-metas (s ctx)
   (let (handler (@2 ctx))
   (let (bindings (@0 ctx))
-  (let (expr-buf (@1 ctx))
+  (let (buf (@1 ctx))
   
   (switch = (@ expr-type s)
     ((-meta-)
-      (let (macro [(preprocessed-expression-address) (@ expr-reference s) bindings expr-buf expr-buf handler])
-        [vgenerate-metas [build-expression [macro (@ expr-argument s) expr-buf] expr-buf handler] ctx]))
+      (let (macro [(preprocessed-expression-address) (@ expr-reference s) bindings buf handler])
+        [vgenerate-metas [build-expression [macro (@ expr-argument s) buf] buf handler] ctx]))
     
     s)))))
 
@@ -295,16 +295,16 @@
   obj-buf is where the object code corresponding to expr will be put. Return
   value is a handle to the object code.)
 
-(function init-expression (expr bindings expr-buf obj-buf handler cache)
-  (if [not= $cache null-cache] $cache (with return (substitute (.. expr-buf handler) (begin
+(function init-expression (expr bindings buf handler cache)
+  (if [not= $cache null-cache] $cache (with return (substitute (.. buf handler) (begin
     (storage expr-ref expr)
     [pre-visit-expressions vgenerate-metas expr-ref (storage _ $bindings ..)]
-    [set cache [segment [load-program-and-mutate [make-program [cons $expr-ref nil ..] ..] $bindings expr-buf obj-buf
+    [set cache [segment [load-program-and-mutate [make-program [cons $expr-ref nil ..] ..] $bindings buf
       handler] (" .text)]]
     {return $cache})))))
 
-(function init-storage (data storage-expr bindings expr-buf obj-buf handler cache)
-  (if [not= $cache null-cache] $cache (with return (substitute (.. expr-buf handler) (begin
+(function init-storage (data storage-expr bindings buf handler cache)
+  (if [not= $cache null-cache] $cache (with return (substitute (.. buf handler) (begin
     (storage sets nil)
     (storage data-ref data)
     (foreach (arg (@ expr-arguments storage-expr)) (begin
@@ -312,14 +312,14 @@
       [pre-visit-expressions vgenerate-metas arg-ref (storage _ $bindings ..)]
       [append (make-invokeN [make-literal set ..] ([make-literal $data-ref ..] $arg-ref) ..) sets ..]
       [set+ data-ref (unit)]))
-    [set cache [segment [load-program-and-mutate [make-program $sets ..] $bindings expr-buf obj-buf handler] (" .text)]]
+    [set cache [segment [load-program-and-mutate [make-program $sets ..] $bindings buf handler] (" .text)]]
     {return $cache})))))
 
-(function init-function (function-expr bindings expr-buf obj-buf handler cache)
-  (if [not= $cache null-cache] $cache (with return (substitute (.. expr-buf handler) (begin
+(function init-function (function-expr bindings buf handler cache)
+  (if [not= $cache null-cache] $cache (with return (substitute (.. buf handler) (begin
     (storage function-expr-ref function-expr)
     [pre-visit-expressions vgenerate-metas function-expr-ref (storage _ $bindings ..)]
-    [load-program-and-mutate [make-program [cons $function-expr-ref nil ..] ..] $bindings expr-buf obj-buf handler]
+    [load-program-and-mutate [make-program [cons $function-expr-ref nil ..] ..] $bindings buf handler]
     [set cache (@ bndg-offset (@ expr-binding-aug (@ expr-reference $function-expr-ref)))]
     {return $cache})))))
 
@@ -336,11 +336,11 @@
   there are any failures in the lazy compilation. Return value is a program
   expression representing the meta-program.)
   
-(function generate-metaprogram (program bindings expr-buf obj-buf handler)
-  (substitute (.. expr-buf handler)
+(function generate-metaprogram (program bindings buf handler)
+  (substitute (.. buf handler)
     [make-program [reverse (fold (c nil) (s (@ expr-expressions (@ expr-expression program)))
       (with break (begin
-        (define (cache [buffer-alloc (unit) obj-buf handler])
+        (define (cache [buffer-alloc (unit) buf handler])
         [set cache null-cache]
         
         (if [= (@ expr-type s) (-storage-)]
@@ -350,7 +350,7 @@
           (define (storage-ref-arg [make-symbol null-string ..])
           [bind-symbol storage-ref-arg storage-ref]
           (define (init-invoke (make-invokeN (make-invokeN [make-literal init-storage ..] (storage-ref-arg [make-literal s ..]
-            [make-literal bindings ..] [make-literal expr-buf ..] [make-literal obj-buf ..] [make-literal handler ..]
+            [make-literal bindings ..] [make-literal buf ..] [make-literal handler ..]
             [make-literal cache ..]) ..) () ..))
           (define (c [cons init-invoke c ..])
           {break c}))))))
@@ -360,16 +360,14 @@
           (define (args (reverse-map (_ (@ expr-parameters s)) [make-symbol null-string ..] ..))
           (define (thunk [make-function [make-symbol (@ expr-name (@ expr-reference s)) ..] params
             [make-invoke (make-invokeN [make-literal init-function ..] ([make-literal s ..] [make-literal bindings ..]
-            [make-literal expr-buf ..] [make-literal obj-buf ..] [make-literal handler ..] [make-literal cache ..]) ..)
-            args ..] ..])
+            [make-literal buf ..] [make-literal handler ..] [make-literal cache ..]) ..) args ..] ..])
           (foreach (a params) (t args) [bind-symbol t a])
           (define (c [cons thunk c ..])
           {break c}))))
     
         (begin
           (define (init-invoke (make-invokeN (make-invokeN [make-literal init-expression ..] ([make-literal s ..]
-            [make-literal bindings ..] [make-literal expr-buf ..] [make-literal obj-buf ..] [make-literal handler ..]
-            [make-literal cache ..]) ..) () ..))
+            [make-literal bindings ..] [make-literal buf ..] [make-literal handler ..] [make-literal cache ..]) ..) () ..))
           (define (c [cons init-invoke c ..])
           {break c}))))))))) ..] ..]))
 
