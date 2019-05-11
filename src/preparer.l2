@@ -218,6 +218,42 @@
         (begin))))
       (begin))))
 
+(constrain occurs-in? (\(r) (with-vars (a) (`(function (vbl frag) ,a)r)r)))
+
+(function occurs-in? (var val)
+  (let (eval [evaluate val])
+    (if [vbl? eval]
+      [var= var [frag->vbl eval]]
+    (if [i/f:token? eval]
+      (false)
+      (not [nil? (find (a [frag->list eval]) [occurs-in? var a])])))))
+
+(constrain unify-var (\(r) (with-vars (a) (`(function (vbl frag) ,a)r)r)))
+
+(function unify-var (var val)
+  (if (not [occurs-in? var val])
+    (let (_ [set-val var val]) (true))
+    (false)))
+
+(constrain unify (\(r) (with-vars (a) (`(function (frag frag) ,a)r)r)))
+
+(function unify (x y)
+  (let (xl [evaluate x]) (yl [evaluate y])
+    (if (and [vbl? xl] [vbl? yl] [vbl= [frag->vbl xl] [frag->vbl yl]]) (true)
+    (if [vbl? xl] [unify-var [frag->vbl xl] yl]
+    (if [vbl? yl] [unify-var [frag->vbl yl] xl]
+    (if (and [i/f:token? xl] [i/f:token? yl]) [i/f:token= [frag->token xl] [frag->token yl]]
+    (if (or [i/f:token? xl] [i/f:token? yl]) (false)
+    (let (xl [frag->list xl]) (yl [frag->list yl])
+      (if [= [length xl] [length yl]]
+        (loop do-unify (xl xl) (yl yl)
+          (if [nil? xl]
+            (true)
+          (if (not [unify [@car xl] [@car yl]])
+            (false)
+            {do-unify [@cdr xl] [@cdr yl]})))
+        (false))))))))))
+
 (constrain visit-expressions (\(r) (with-vars (a) (`(function ((function (expr ,a) expr) (ref expr) ,a) ())r)r)))
 
 (function visit-expressions (visitor s ctx) (begin
