@@ -53,10 +53,24 @@
           {add-binding [lst (@ expr-binding-aug (@ expr-reference t)) binding-augs r handler] [@cdr exprs]}
           {add-binding binding-augs [@cdr exprs]})))))
 
-(function vunlink-symbols (s blacklist)
-  (if (and [= (@ expr-type s) (-symbol-)] (not [nil? (find (x blacklist) [= x (@ expr-binding-aug s)])]))
-    (let (_ (setf expr-binding-aug s null-binding)) s)
-    s))
+(constrain vunlink-symbols (\(r) (`(function (expr (values (list bndg-aug))) expr)r)))
+
+(function vunlink-symbols (s ctx)
+  (bind ctx (blacklist)
+    (if (and [= (@ expr-type s) (-symbol-)] (not [nil? (find (x blacklist) [= x (@ expr-binding-aug s)])]))
+      (let (_ (setf expr-binding-aug s null-binding)) s)
+      s)))
+
+(constrain assign-binding (\(r) (with-vars (a) (`(function (expr (list bndg-aug)) ,a)r)r)))
+
+(function assign-binding (s bindings)
+  (loop find (bindings bindings)
+    (if [nil? bindings]
+      (false)
+      (let (ba [@car bindings])
+        (if (and (@ bndg-name ba) (@ expr-name s) [str= (@ bndg-name ba) (@ expr-name s)])
+          (let (_ (setf expr-binding-aug s ba)) (true))
+          {find [@cdr bindings]})))))
 
 (function binding-of (symbol) (with return (begin
   (storage same-func (true))
