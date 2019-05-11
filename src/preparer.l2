@@ -68,42 +68,75 @@
     (if [nil? bindings]
       (false)
       (let (ba [@car bindings])
-        (if (and (@ bndg-name ba) (@ expr-name s) [str= (@ bndg-name ba) (@ expr-name s)])
+        (if (and [not= (@ bndg-name ba) null-string] [not= (@ expr-name s) null-string]
+            [str= (@ bndg-name ba) (@ expr-name s)])
           (let (_ (setf expr-binding-aug s ba)) (true))
           {find [@cdr bindings]})))))
 
-(function binding-of (symbol) (with return (begin
-  (storage same-func (true))
-  (until (t symbol) [= t null-expr] (@ expr-parent t)
-    (switch = (@ expr-type t)
-      ((-begin-) (foreach (u (@ expr-expressions t))
-        (if (and (or [= (@ expr-type u) (-function-)] (and [= (@ expr-type u) (-storage-)] (or $same-func
-            [= (@ bndg-storage(@ expr-binding-aug(@ expr-reference u))) (absolute-storage)])))
-            [named-sym= (@ expr-reference u) symbol])
-          {return (@ expr-binding-aug(@ expr-reference u))}
-          (begin))))
+(constrain link-symbols
+  (\(r) (with-vars (a b) (`(function (expr ,a (ref (list bndg-aug)) (list bndg-aug) (list bndg-aug) buffer ,b) ())r)r)))
+
+(function link-symbols (s static-storage undefined-bindings static-bindings dynamic-bindings r handler)
+  (substitute (.. r handler) (begin
+    (constrain statics-ref (\(r) (`(ref (list bndg-aug))r)))
+    (storage statics-ref static-bindings)
+    (constrain dynamics-ref (\(r) (`(ref (list bndg-aug))r)))
+    (storage dynamics-ref dynamic-bindings)
+    (define (bindings-ref (if static-storage statics-ref dynamics-ref))
+    
+    (switch = (@ expr-type s)
+      ((-begin-) (begin
+        (foreach (t (@ expr-expressions s))
+          (if [= (@ expr-type t) (-storage-)]
+            [prepend (@ expr-binding-aug (@ expr-reference t)) bindings-ref ..]
+          (if [= (@ expr-type t) (-function-)]
+            [prepend (@ expr-binding-aug (@ expr-reference t)) statics-ref ..]
+            (begin))))
+        (foreach (t (@ expr-expressions s))
+          [link-symbols t static-storage undefined-bindings $statics-ref $dynamics-ref ..])))
       
       ((-function-) (begin
-        (if [named-sym= (@ expr-reference t) symbol]
-          {return (@ expr-binding-aug(@ expr-reference t))}
-          (foreach (u (@ expr-parameters t))
-            (if (and (or $same-func [= (@ bndg-storage(@ expr-binding-aug u)) (absolute-storage)]) [named-sym= u symbol])
-              {return (@ expr-binding-aug u)}
-              (begin))))
-        [set same-func (false)]))
+        [prepend (@ expr-binding-aug (@ expr-reference s)) statics-ref ..]
+        [set dynamics-ref nil]
+        (foreach (u (@ expr-parameters s)) [prepend (@ expr-binding-aug u) dynamics-ref ..])
+        [link-symbols (@ expr-expression s) (false) undefined-bindings $statics-ref $dynamics-ref ..]))
       
-      ((-continuation-) (-with-) (-storage-)
-        (if (and (or $same-func [= (@ bndg-storage(@ expr-binding-aug(@ expr-reference t))) (absolute-storage)])
-            [named-sym= (@ expr-reference t) symbol])
-          {return (@ expr-binding-aug(@ expr-reference t))}
-        (if [= (@ expr-type t) (-storage-)] (begin)
-          (foreach (u (@ expr-parameters t))
-            (if (and (or $same-func [= (@ bndg-storage(@ expr-binding-aug u)) (absolute-storage)]) [named-sym= u symbol])
-              {return (@ expr-binding-aug u)}
-              (begin))))))
+      ((-with-) (-continuation-) (begin
+        [prepend (@ expr-binding-aug (@ expr-reference s)) bindings-ref ..]
+        (foreach (u (@ expr-parameters s)) [prepend (@ expr-binding-aug u) bindings-ref ..])
+        [link-symbols (@ expr-expression s) static-storage undefined-bindings $statics-ref $dynamics-ref ..]))
       
-      (begin)))
-  {return null-binding})))
+      ((-storage-) (begin
+        [prepend (@ expr-binding-aug (@ expr-reference s)) bindings-ref ..]
+        (foreach (u (@ expr-arguments s))
+          [link-symbols u static-storage undefined-bindings $statics-ref $dynamics-ref ..])))
+      
+      ((-symbol-)
+        (if (and [= (@ expr-binding-aug s) null-binding] (not [assign-binding s $dynamics-ref])
+            (not [assign-binding s $statics-ref]) (not [assign-binding s $undefined-bindings])) (begin
+          (define (stg [make-storage [make-symbol (@ expr-name s) ..] nil ..])
+          (define (bndg (@ expr-binding-aug (@ expr-reference stg)))
+          (setf bndg-storage bndg (absolute-storage))
+          (setf bndg-scope bndg (global-scope))
+          (setf bndg-state bndg (undefined-state))
+          (setf expr-binding-aug s bndg)
+          [prepend (@ expr-binding-aug s) undefined-bindings ..])))
+          (begin)))
+      
+      ((-if-) (begin
+        [link-symbols (@ expr-condition s) static-storage undefined-bindings $statics-ref $dynamics-ref ..]
+        [link-symbols (@ expr-consequent s) static-storage undefined-bindings $statics-ref $dynamics-ref ..]
+        [link-symbols (@ expr-alternate s) static-storage undefined-bindings $statics-ref $dynamics-ref ..]))
+      
+      ((-invoke-) (-jump-) (begin
+        [link-symbols (@ expr-reference s) static-storage undefined-bindings $statics-ref $dynamics-ref ..]
+        (foreach (u (@ expr-arguments s))
+          [link-symbols u static-storage undefined-bindings $statics-ref $dynamics-ref ..])))
+      
+      ((-constrain-)
+        [link-symbols (@ expr-expression s) static-storage undefined-bindings $statics-ref $dynamics-ref ..])
+      
+      (begin))))))
 
 (function jump-reference? (s) (and [= (@ expr-type(@ expr-parent s)) (-jump-)] [= (@ expr-reference(@ expr-parent s)) s]))
 
@@ -124,37 +157,6 @@
       s)))
 
 (storage param-count-mismatch-error (begin))
-
-(constrain vlink-symbols (\(r) (with-vars (a) (`(function (expr (values buffer ,a)) expr)r)r)))
-
-(function vlink-symbols (s ctx) (with return
-  (bind ctx (r handler)
-    (substitute (.. r handler)
-      (if [= (@ expr-type s) (-symbol-)]
-        (begin
-          (setf expr-binding-aug s (if [not= (@ expr-binding-aug s) null-binding] (@ expr-binding-aug s) [binding-of s]))
-          (if [= (@ expr-binding-aug s) null-binding]
-            (begin
-              (define (stg [make-storage [make-symbol (@ expr-name s) ..] nil ..])
-              (define (bndg (@ expr-binding-aug(@ expr-reference stg)))
-              (setf bndg-storage bndg (absolute-storage))
-              (setf bndg-scope bndg (global-scope))
-              (setf bndg-state bndg (undefined-state))
-              (define (rf [get-root-function s])
-              [prepend stg (& expr-expressions(@ expr-expression rf)) ..]
-              (setf expr-parent stg (@ expr-expression rf))
-              (setf expr-binding-aug s bndg)
-              {return s}))))
-          (if (and (or (and [jump-reference? s] [c-reference? (@ bndg-definition(@ expr-binding-aug s))])
-              (and [invoke-reference? s] [function-reference? (@ bndg-definition(@ expr-binding-aug s))]))
-              (not [= [length(@ expr-arguments(@ expr-parent s))] [length(@ expr-parameters[get-target-expression s])]]))
-            {handler (storage _ param-count-mismatch-error (@ expr-parent s) [get-target-expression s])}
-            {return s})))
-      (if (and (or (and [= (@ expr-type s) (-continuation-)] [jump-reference? s])
-          (and [= (@ expr-type s) (-function-)] [invoke-reference? s]))
-          (not [= [length (@ expr-arguments(@ expr-parent s))] [length (@ expr-parameters s)]]))
-        {handler (storage _ param-count-mismatch-error (@ expr-parent s) s)}
-        {return s}))))))
 
 (function vescape-analysis-aux (ref target)
   (if [jump-reference? ref]
