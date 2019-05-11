@@ -223,7 +223,7 @@
 (function occurs-in? (var val)
   (let (eval [evaluate val])
     (if [vbl? eval]
-      [var= var [frag->vbl eval]]
+      [vbl= var [frag->vbl eval]]
     (if [i/f:token? eval]
       (false)
       (not [nil? (find (a [frag->list eval]) [occurs-in? var a])])))))
@@ -242,7 +242,7 @@
     (if (and [vbl? xl] [vbl? yl] [vbl= [frag->vbl xl] [frag->vbl yl]]) (true)
     (if [vbl? xl] [unify-var [frag->vbl xl] yl]
     (if [vbl? yl] [unify-var [frag->vbl yl] xl]
-    (if (and [i/f:token? xl] [i/f:token? yl]) [i/f:token= [frag->token xl] [frag->token yl]]
+    (if (and [i/f:token? xl] [i/f:token? yl]) [i/f:token= [fragment->token xl] [fragment->token yl]]
     (if (or [i/f:token? xl] [i/f:token? yl]) (false)
     (let (xl [frag->list xl]) (yl [frag->list yl])
       (if [= [length xl] [length yl]]
@@ -261,6 +261,8 @@
     (@ expr-signature e)
     [copy-fragment (@ expr-signature e) (storage _ nil) (storage _ nil) r handler]))
 
+(storage unification-error (begin))
+
 (function infer-types (program buf handler)
   (substitute (.. buf handler) (begin
     (;; Type inferencing is done on strongly connected components)
@@ -269,7 +271,7 @@
     [visit-expressions vfind-dependencies (storage _ program) (values ..)]
     [construct-sccs program #1 stack sccs ..]
     
-    (foreach (scc [reverse $sccs ..])
+    (foreach (scc [reverse $sccs ..]) (begin
       (foreach (e scc) (let (equations
           (let (function-token [token->fragment [build-token (" function) ..]])
           (let (continuation-token [token->fragment [build-token (" continuation) ..]])
@@ -321,8 +323,14 @@
             ((-symbol-)
               (list ((values (@ expr-signature e) (@ expr-signature (@ bndg-definition (@ expr-binding-aug e))))) ..))
             
-            (begin)))))
-        (foreach (equ equations) (begin))))))))))
+            nil))))
+        
+        (foreach (equ equations)
+          (bind equ (lhs rhs)
+            (if [unify lhs rhs] (begin)
+              {handler (storage _ unification-error [recursive-evaluate lhs ..] [recursive-evaluate rhs ..] e)})))))
+      
+      (foreach (e scc) (setf expr-signature e [recursive-evaluate (@ expr-signature e) ..])))))))))
 
 (constrain visit-expressions (\(r) (with-vars (a) (`(function ((function (expr ,a) expr) (ref expr) ,a) ())r)r)))
 
