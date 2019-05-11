@@ -48,7 +48,7 @@
 
 (function expr-parent (l r) [property #8 8b (\(r) (` expr r)) (\(s r) (` expr r)) l r])
 
-(function expr-signature (l r) [property #16 8b (\(r) (` expr r)) (\(s r) [var r]) l r])
+(function expr-signature (l r) [property #16 8b (\(r) (` expr r)) (\(s r) (` frag r)) l r])
 
 (function expr-lowlink (l r) [property #24 8b (\(r) (` expr r)) (\(s r) [var r]) l r])
 
@@ -234,6 +234,9 @@
   (let (t [buffer-alloc (expression) reg handler]) (begin
     (setf expr-type t (-literal-))
     (setf expr-parent t null-expr)
+    (setf expr-signature t [vbl->frag [vbl reg handler]])
+    (setf expr-lowlink t #0)
+    (setf expr-dependencies t nil)
     (setf expr-value t value)
     {return t}))))
 
@@ -243,6 +246,9 @@
   (let (sym [buffer-alloc (expression) reg handler]) (begin
     (setf expr-type sym (-symbol-))
     (setf expr-parent sym null-expr)
+    (setf expr-signature sym [vbl->frag [vbl reg handler]])
+    (setf expr-lowlink sym #0)
+    (setf expr-dependencies sym nil)
     (setf expr-name sym name)
     (setf expr-binding-aug sym null-binding)
     {return sym}))))
@@ -276,6 +282,9 @@
   (let (beg [buffer-alloc (expression) reg handler]) (begin
     (setf expr-type beg (-begin-))
     (setf expr-parent beg null-expr)
+    (setf expr-signature beg [vbl->frag [vbl reg handler]])
+    (setf expr-lowlink beg #0)
+    (setf expr-dependencies beg nil)
     (setf expr-expressions beg expressions)
     (foreach (expr expressions) (setf expr-parent expr beg))
     {return beg}))))
@@ -286,6 +295,9 @@
   (substitute (.. reg handler) (let (func [buffer-alloc (expression) ..]) (begin
     (setf expr-type func (-function-))
     (setf expr-parent func null-expr)
+    (setf expr-signature func [vbl->frag [vbl reg handler]])
+    (setf expr-lowlink func #0)
+    (setf expr-dependencies func nil)
     (put expr-reference func ref)
     (setf expr-binding-aug ref [make-binding-aug (absolute-storage) (local-scope) (defined-state) (@ expr-name ref) ref ..])
     (setf expr-parameters func params)
@@ -302,6 +314,9 @@
   (substitute (.. reg handler) (let (cont [buffer-alloc (expression) ..]) (begin
     (setf expr-type cont (-continuation-))
     (setf expr-parent cont null-expr)
+    (setf expr-signature cont [vbl->frag [vbl reg handler]])
+    (setf expr-lowlink cont #0)
+    (setf expr-dependencies cont nil)
     (setf expr-cont-instr-bndg cont [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr ..])
     (put expr-reference cont ref)
     (setf expr-binding-aug ref [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) (@ expr-name ref) ref ..])
@@ -319,6 +334,9 @@
   (substitute (.. reg handler) (let (wth [buffer-alloc (expression) ..]) (begin
     (setf expr-type wth (-with-))
     (setf expr-parent wth null-expr)
+    (setf expr-signature wth [vbl->frag [vbl reg handler]])
+    (setf expr-lowlink wth #0)
+    (setf expr-dependencies wth nil)
     (setf expr-cont-instr-bndg wth [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr ..])
     (put expr-reference wth ref)
     (setf expr-binding-aug ref [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) (@ expr-name ref) ref ..])
@@ -346,6 +364,9 @@
   (substitute (.. reg handler) (let (u [buffer-alloc (expression) ..]) (begin
     (setf expr-type u (-jump-))
     (setf expr-parent u null-expr)
+    (setf expr-signature u [vbl->frag [vbl reg handler]])
+    (setf expr-lowlink u #0)
+    (setf expr-dependencies u nil)
     (setf expr-short-circuit u null-expr)
     (put expr-reference u ref)
     (setf expr-contains-flag u (contains-with))
@@ -360,6 +381,9 @@
   (substitute (.. reg handler) (let (u [buffer-alloc (expression) ..]) (begin
     (setf expr-type u (-storage-))
     (setf expr-parent u null-expr)
+    (setf expr-signature u [vbl->frag [vbl reg handler]])
+    (setf expr-lowlink u #0)
+    (setf expr-dependencies u nil)
     (put expr-reference u ref)
     (setf expr-binding-aug ref [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) (@ expr-name ref) ref ..])
     (setf expr-arguments u args)
@@ -372,6 +396,9 @@
   (let (u [buffer-alloc (expression) reg handler]) (begin
     (setf expr-type u (-meta-))
     (setf expr-parent u null-expr)
+    (setf expr-signature u [vbl->frag [vbl reg handler]])
+    (setf expr-lowlink u #0)
+    (setf expr-dependencies u nil)
     (put expr-reference u ref)
     (setf expr-argument u arg)
     {return u}))))
@@ -382,6 +409,9 @@
   (let (u [buffer-alloc (expression) reg handler]) (begin
     (setf expr-type u (-constrain-))
     (setf expr-parent u null-expr)
+    (setf expr-signature u [vbl->frag [vbl reg handler]])
+    (setf expr-lowlink u #0)
+    (setf expr-dependencies u nil)
     (put expr-reference u ref)
     (put expr-expression u expr)
     {return u}))))
@@ -392,6 +422,9 @@
   (let (u [buffer-alloc (expression) reg handler]) (begin
     (setf expr-type u (-if-))
     (setf expr-parent u null-expr)
+    (setf expr-signature u [vbl->frag [vbl reg handler]])
+    (setf expr-lowlink u #0)
+    (setf expr-dependencies u nil)
     (put expr-condition u condition)
     (put expr-consequent u consequent)
     (put expr-alternate u alternate)
@@ -403,6 +436,9 @@
   (substitute (.. reg handler) (let (u [buffer-alloc (expression) ..]) (begin
     (setf expr-type u (-invoke-))
     (setf expr-parent u null-expr)
+    (setf expr-signature u [vbl->frag [vbl reg handler]])
+    (setf expr-lowlink u #0)
+    (setf expr-dependencies u nil)
     (put expr-reference u ref)
     (setf expr-contains-flag u (contains-with))
     (setf expr-temp-storage-bndg u [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) null-string u ..])
@@ -490,7 +526,7 @@
       [print-str (stdout) (" (lparen)constrain(space)) ..]
       [print-expression (@ expr-expression s) ..]
       [print-str (stdout) (" (space)) ..]
-      [print-expression (@ expr-reference s) ..]
+      [print-fragment (@ expr-signature s) ..]
       [print-str (stdout) (" (rparen)) ..]))
     
     ((-symbol-)
