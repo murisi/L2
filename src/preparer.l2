@@ -140,21 +140,11 @@
 
 (function jump-reference? (s) (and [= (@ expr-type(@ expr-parent s)) (-jump-)] [= (@ expr-reference(@ expr-parent s)) s]))
 
-(function invoke-reference? (s) (and [= (@ expr-type(@ expr-parent s)) (-invoke-)] [= (@ expr-reference(@ expr-parent s)) s]))
-
-(function function-reference? (s) (and [= (@ expr-type(@ expr-parent s)) (-function-)] [= (@ expr-reference(@ expr-parent s)) s]))
-
 (function c-reference? (s)
   (and (or [= (@ expr-type(@ expr-parent s)) (-continuation-)] [= (@ expr-type(@ expr-parent s)) (-with-)])
     [= (@ expr-reference(@ expr-parent s)) s]))
 
 (function get-target-expression (s) (@ expr-parent(@ bndg-definition(@ expr-binding-aug s))))
-
-(function get-root-function (s)
-  (loop move-up (s s) (parent (@ expr-parent s))
-    (if [not= parent null-expr]
-      {move-up parent (@ expr-parent parent)}
-      s)))
 
 (storage param-count-mismatch-error (begin))
 
@@ -171,6 +161,38 @@
     [vescape-analysis-aux s s]
     (begin)))
   {return s})))
+
+(constrain vfind-dependencies (\(r) (with-vars (a) (`(function (expr (values buffer ,a)) expr)r)r)))
+
+(function vfind-dependencies (s ctx)
+  (bind ctx (r handler) (substitute (.. r handler)
+    (let (_ (switch = (@ expr-type s)
+        ((-begin-)
+          (foreach (t (@ expr-expressions s)) [prepend t (& expr-dependencies s) ..]))
+        
+        ((-if-) (begin
+          [prepend (@ expr-condition s) (& expr-dependencies s) ..]
+          [prepend (@ expr-consequent s) (& expr-dependencies s) ..]
+          [prepend (@ expr-alternate s) (& expr-dependencies s) ..]))
+        
+        ((-function-) (-continuation-) (-with-)
+          [prepend (@ expr-expression s) (& expr-dependencies s) ..])
+        
+        ((-storage-) (-jump-) (-invoke-) (begin
+          [prepend (@ expr-reference s) (& expr-dependencies s) ..]
+          (foreach (t (@ expr-arguments s)) [prepend t (& expr-dependencies s) ..])))
+        
+        ((-symbol-) (begin
+          (define (definition (@ bndg-definition (@ expr-binding-aug s)))
+          [prepend (@ expr-parent definition) (& expr-dependencies s) ..]
+          [prepend s (& expr-dependencies (@ expr-parent definition)) ..])))
+        
+        ((-constrain-) (begin
+          [prepend (@ expr-expression s) (& expr-dependencies s) ..]
+          [prepend s (& expr-dependencies (@ expr-expression s)) ..]))
+        
+        (begin)))
+      s))))
 
 (constrain visit-expressions (\(r) (with-vars (a) (`(function ((function (expr ,a) expr) (ref expr) ,a) ())r)r)))
 
