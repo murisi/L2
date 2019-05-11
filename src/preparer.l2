@@ -254,6 +254,13 @@
             {do-unify [@cdr xl] [@cdr yl]})))
         (false))))))))))
 
+(constrain scoped-signature (\(r) (with-vars (a) (`(function (expr (list expr) buffer ,a) frag)r)r)))
+
+(function scoped-signature (e scc r handler)
+  (if (not [nil? (find (x scc) [= x e])])
+    (@ expr-signature e)
+    [copy-fragment (@ expr-signature e) (storage _ nil) (storage _ nil) r handler]))
+
 (constrain visit-expressions (\(r) (with-vars (a) (`(function ((function (expr ,a) expr) (ref expr) ,a) ())r)r)))
 
 (function visit-expressions (visitor s ctx) (begin
@@ -391,22 +398,21 @@
   expression, otherwise it is the output of the meta-program. The continuation
   handler is followed.)
 
-(;;((-constrain-) (with return
-      (define (macro [(preprocessed-expression-address) (@ expr-reference s) bindings buf handler])
-      (setf expr-signature s [macro buf])
-      {return s}))))
+(constrain vgenerate-metas (\(r) (with-vars (a) (`(function (expr (values (list bndg-aug) buffer ,a)) expr)r)r)))
 
 (function vgenerate-metas (s ctx)
-  (let (handler (@2 ctx))
-  (let (bindings (@0 ctx))
-  (let (buf (@1 ctx))
-  
-  (switch = (@ expr-type s)
-    ((-meta-)
-      (let (macro [(preprocessed-expression-address) (@ expr-reference s) bindings buf handler])
-        [vgenerate-metas [build-expression [macro (@ expr-argument s) buf] buf handler] ctx]))
-    
-    s)))))
+  (bind ctx (bindings buf handler)
+    (switch = (@ expr-type s)
+      ((-meta-)
+        (let (macro [(preprocessed-expression-address) (@ expr-reference s) bindings buf handler])
+          [vgenerate-metas [build-expression [macro (@ expr-argument s) buf] buf handler] ctx]))
+      
+      ((-constrain-)
+        (let (macro [(preprocessed-expression-address) (@ expr-reference s) bindings buf handler])
+          (let (_ (setf expr-signature s [macro buf]))
+            s)))
+      
+      s)))
 
 (;; This function handles the lazy compilation of expressions that are neither
   storage nor function ones. It merely compiles its source and then puts a
@@ -422,7 +428,7 @@
 (function init-expression (expr bindings buf handler cache)
   (if [not= $cache null-cache] $cache (with return (substitute (.. buf handler) (begin
     (storage expr-ref expr)
-    [pre-visit-expressions vgenerate-metas expr-ref (storage _ $bindings ..)]
+    [pre-visit-expressions vgenerate-metas expr-ref (values $bindings ..)]
     [set cache [segment [load-program-and-mutate [make-program [cons $expr-ref nil ..] ..] $bindings buf
       handler] (" .text)]]
     {return $cache})))))
@@ -435,7 +441,7 @@
     (storage data-ref data)
     (foreach (arg (@ expr-arguments storage-expr)) (begin
       (storage arg-ref arg)
-      [pre-visit-expressions vgenerate-metas arg-ref (storage _ $bindings ..)]
+      [pre-visit-expressions vgenerate-metas arg-ref (values $bindings ..)]
       [append (make-invokeN [make-literal set ..] ([make-literal $data-ref ..] $arg-ref) ..) sets ..]
       [set+ data-ref (unit)]))
     [set cache [segment [load-program-and-mutate [make-program $sets ..] $bindings buf handler] (" .text)]]
@@ -446,7 +452,7 @@
 (function init-function (function-expr bindings buf handler cache)
   (if [not= $cache null-cache] $cache (with return (substitute (.. buf handler) (begin
     (storage function-expr-ref function-expr)
-    [pre-visit-expressions vgenerate-metas function-expr-ref (storage _ $bindings ..)]
+    [pre-visit-expressions vgenerate-metas function-expr-ref (values $bindings ..)]
     [load-program-and-mutate [make-program [cons $function-expr-ref nil ..] ..] $bindings buf handler]
     [set cache (@ bndg-offset (@ expr-binding-aug (@ expr-reference $function-expr-ref)))]
     {return $cache})))))
