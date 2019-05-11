@@ -14,21 +14,21 @@
       (define (temp-reg [create-buffer #0 handler])
       (define (definitions (reverse-filter (f (@ expr-expressions e))
           (or [= (@ expr-type f) (-storage-)] [= (@ expr-type f) (-function-)]) temp-reg handler))
-      (until (partial definitions) [nil? partial] [@cdr partial] (with break (begin
-        (find (f (@ cdr partial)) [named-sym= (@ expr-reference f) (@ expr-reference [@car partial])] {break (begin)})
-        (define (dup-ref-name (@ expr-name(@ expr-reference[@car partial])))
-        [destroy-buffer temp-reg handler]
-        {handler (storage _ multiple-definition-error dup-ref-name)}))))
+      (until (partial definitions) [nil? partial] [@cdr partial]
+        (if [nil? (find (f (@ cdr partial)) [named-sym= (@ expr-reference f) (@ expr-reference [@car partial])])] (begin)
+          (define (dup-ref-name (@ expr-name(@ expr-reference[@car partial])))
+          [destroy-buffer temp-reg handler]
+          {handler (storage _ multiple-definition-error dup-ref-name)})))
       [destroy-buffer temp-reg handler]))))
     
     ((-continuation-) (-function-) (begin
       (define (temp-reg [create-buffer #0 handler])
       (define (ref-with-params [cons (@ expr-reference e) (@ expr-parameters e) temp-reg handler])
-      (until (partial ref-with-params) [nil? partial] [@cdr partial] (with break (begin
-        (find (f (@ cdr partial)) [named-sym= f [@car partial]] {break (begin)})
-        (define (dup-ref-name (@ expr-name[@car partial]))
-        [destroy-buffer temp-reg handler]
-        {handler (storage _ multiple-definition-error dup-ref-name)}))))
+      (until (partial ref-with-params) [nil? partial] [@cdr partial]
+        (if [nil? (find (f (@ cdr partial)) [named-sym= f [@car partial]])] (begin)
+          (define (dup-ref-name (@ expr-name[@car partial]))
+          [destroy-buffer temp-reg handler]
+          {handler (storage _ multiple-definition-error dup-ref-name)})))
       [destroy-buffer temp-reg handler]))))
     
     (begin))
@@ -52,6 +52,11 @@
         (if (or [= (@ expr-type t) (-function-)] [= (@ expr-type t) (-storage-)])
           {add-binding [lst (@ expr-binding-aug (@ expr-reference t)) binding-augs r handler] [@cdr exprs]}
           {add-binding binding-augs [@cdr exprs]})))))
+
+(function vunlink-symbols (s blacklist)
+  (if (and [= (@ expr-type s) (-symbol-)] (not [nil? (find (x blacklist) [= x (@ expr-binding-aug s)])]))
+    (let (_ (setf expr-binding-aug s null-binding)) s)
+    s))
 
 (function binding-of (symbol) (with return (begin
   (storage same-func (true))

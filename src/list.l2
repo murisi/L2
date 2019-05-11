@@ -102,12 +102,12 @@
           [@cdr fold:l]})) (,[@frfst l]) (,[@frfrst l])})r))
 
 (;; A macro to do a find. Does the following transformation:
-  (find (x l) expr err-expr)
+  (find (x l) expr)
   ->
   (with find:return
     {(continuation find:loop (find:l)
       (if [nil? find:l]
-        err-expr
+        {find:return nil}
         (if (let (x [@car find:l]) expr)
           {find:return find:l}
           {find:loop [@cdr find:l]}))) l}))
@@ -116,7 +116,7 @@
   (`(with find:return
     {(continuation find:loop (find:l)
       (if [nil? find:l]
-        (,[@frrst l])
+        {find:return nil}
         (if (let ((,[@ffst l]) [@car find:l]) (,[@frst l]))
           {find:return find:l}
           {find:loop [@cdr find:l]}))) (,[@frfst l])})r))
