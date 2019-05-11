@@ -217,6 +217,8 @@
 
 (storage null-binding (begin))
 
+(constrain make-binding-aug (\(r) (with-vars (a) (`(function (bndg-storage bndg-scope bndg-state string expr buffer ,a) bndg-aug)r)r)))
+
 (function make-binding-aug (type scope state name definition r handler) (with return
   (let (bndg [buffer-alloc (binding-aug) r handler]) (begin
     (setf bndg-storage bndg type)
@@ -249,12 +251,16 @@
   is the expression being bound. target is the symbol expression
   being bound to.)
 
+(constrain bind-symbol (\(r) (`(function (expr expr) ())r)))
+
 (function bind-symbol (symbol target) (setf expr-binding-aug symbol (@ expr-binding-aug target)))
 
 (;; Makes a symbol expression attached to the given augmented binding. bndg is
   the augmented binding to which the symbol will be attached. reg is the buffer
   into which the the symbol expression will be put. Return value is the symbol
   expression.)
+
+(constrain use-binding-aug (\(r) (with-vars (b) (`(function (bndg-aug buffer ,b) expr)r)r)))
 
 (function use-binding-aug (bndg reg handler) (with return
   (let (sym [buffer-alloc (expression) reg handler]) (begin
@@ -323,6 +329,8 @@
     (setf expr-escapes wth (false))
     (put expr-expression wth expr)
     {return wth})))))
+
+(constrain make-asm (\(r) (with-vars (b) (`(function (expr-code (list expr) buffer ,b) expr)r)r)))
 
 (function make-asm (code arguments reg handler) (with return
   (let (u [buffer-alloc (expression) reg handler]) (begin
