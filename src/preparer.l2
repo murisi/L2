@@ -78,10 +78,8 @@
 
 (function link-symbols (s static-storage undefined-bindings static-bindings dynamic-bindings r handler)
   (substitute (.. r handler) (begin
-    (constrain statics-ref (\(r) (`(ref (list bndg-aug))r)))
-    (storage statics-ref static-bindings)
-    (constrain dynamics-ref (\(r) (`(ref (list bndg-aug))r)))
-    (storage dynamics-ref dynamic-bindings)
+    (define (statics-ref (storage _ static-bindings))
+    (define (dynamics-ref (storage _ dynamic-bindings))
     (define (bindings-ref (if static-storage statics-ref dynamics-ref))
     
     (switch = (@ expr-type s)
@@ -136,7 +134,7 @@
       ((-constrain-)
         [link-symbols (@ expr-expression s) static-storage undefined-bindings $statics-ref $dynamics-ref ..])
       
-      (begin))))))
+      (begin))))))))
 
 (function jump-reference? (s) (and [= (@ expr-type(@ expr-parent s)) (-jump-)] [= (@ expr-reference(@ expr-parent s)) s]))
 
@@ -262,6 +260,8 @@
     [copy-fragment (@ expr-signature e) (storage _ nil) (storage _ nil) r handler]))
 
 (storage unification-error (begin))
+
+(constrain infer-types (\(r) (with-vars (a) (`(function (expr buffer ,a) ())r)r)))
 
 (function infer-types (program buf handler)
   (substitute (.. buf handler) (begin
