@@ -42,6 +42,17 @@
       n
       {move-up (@ expr-parent n)})))
 
+(constrain global-binding-augs-of (\(r) (with-vars (a) (`(function (expr buffer ,a) (list bndg-aug))r)r)))
+
+(function global-binding-augs-of (prog r handler)
+  (loop add-binding (binding-augs nil) (exprs (@ expr-expressions (@ expr-expression prog)))
+    (if [nil? exprs]
+      binding-augs
+      (let (t [@car exprs])
+        (if (or [= (@ expr-type t) (-function-)] [= (@ expr-type t) (-storage-)])
+          {add-binding [lst (@ expr-binding-aug (@ expr-reference t)) binding-augs r handler] [@cdr exprs]}
+          {add-binding binding-augs [@cdr exprs]})))))
+
 (function binding-of (symbol) (with return (begin
   (storage same-func (true))
   (until (t symbol) [= t null-expr] (@ expr-parent t)
