@@ -194,6 +194,30 @@
         (begin)))
       s))))
 
+(constrain construct-sccs (\(r) (with-vars (a b) (`(function (expr ,a (ref (list expr)) (ref (list (list expr))) buffer ,b) ())r)r)))
+
+(function construct-sccs (s preorder stack sccs r handler)
+  (substitute (.. r handler)
+    (if [= (@ expr-lowlink s) #0] (begin
+      (define (marker $stack)
+      (setf expr-lowlink s preorder)
+      (foreach (t (@ expr-dependencies s)) (begin
+        [construct-sccs t [+ preorder #1] stack sccs ..]
+        (if [< (@ expr-lowlink t) (@ expr-lowlink s)]
+          (setf expr-lowlink s (@ expr-lowlink t))
+          (begin))))
+      [prepend s stack ..]
+      
+      (if [= (@ expr-lowlink s) preorder] (begin
+        [prepend (loop add (t $stack) (scc nil)
+          (if [= t marker] scc
+            (define (u [@car t])
+            (setf expr-lowlink u [- #0 #1])
+            {add [@cdr t] [cons u scc ..]}))) sccs ..]
+        [set stack marker])
+        (begin))))
+      (begin))))
+
 (constrain visit-expressions (\(r) (with-vars (a) (`(function ((function (expr ,a) expr) (ref expr) ,a) ())r)r)))
 
 (function visit-expressions (visitor s ctx) (begin
