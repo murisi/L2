@@ -133,7 +133,7 @@
 (constrain strcpy (\(r) (with-vars (a) (`(function (string string) ,a)r)r)))
 
 (function strcpy (dest src)
-  (loop do-cpy (dest dest) (src src) (begin
+  (loop do-cpy (dest dest) (src src) (do
     [setb dest [getb src]]
     (if [getb dest]
       {do-cpy [+ dest #1] [+ src #1]}
@@ -142,7 +142,7 @@
 (function memcpy (dest src n)
   (loop do-cpy (dest dest) (src src) (n n)
     (if n
-      (begin
+      (do
         [setb dest [getb src]]
         {do-cpy [+ dest #1] [+ src #1] [- n #1]})
       (undefined))))
@@ -150,7 +150,7 @@
 (function memset (s c n)
   (loop do-set (s s) (n n)
     (if n
-      (begin
+      (do
         [setb s c]
         {do-set [+ s #1] [- n #1]})
       (undefined))))
@@ -209,10 +209,10 @@
 
 (constrain print-uint (\(r) (with-vars (a b e) (`(function (fd ,a ,b) ,e)r)r)))
 
-(function print-uint (fd i handler) (begin
-  (storage j #19)
-  (storage str (undefined) (undefined) (undefined))
-  (until (i i) [= i #0] [/ i #10] (begin
+(function print-uint (fd i handler)
+  (let (j (storage _ #19))
+  (let (str (storage _ (undefined) (undefined) (undefined))) (do
+  (until (i i) [= i #0] [/ i #10] (do
     [setb [+ str $j] (switch = [rem i #10]
       (#9 (char 9))
       (#8 (char 8))
@@ -225,7 +225,7 @@
       (#1 (char 1))
       (char 0))]
     [set j [- $j #1]]))
-  [print fd [+ str [+ $j #1]] [- #19 $j] handler]))
+  [print fd [+ str [+ $j #1]] [- #19 $j] handler]))))
 
 (constrain read (\(r) (with-vars (a b c e) (`(function (fd ,a ,b ,c) ,e)r)r)))
 
@@ -245,13 +245,13 @@
 
 (constrain size (\(r) (with-vars (a c) (`(function (fd ,a) ,c)r)r)))
 
-(function size (fd handler) (with return (begin
-  (storage statbuf (undefined)(undefined)(undefined)(undefined)(undefined)(undefined)(undefined)(undefined)(undefined)
-    (undefined)(undefined)(undefined)(undefined)(undefined)(undefined)(undefined)(undefined)(undefined))
+(function size (fd handler)
+  (let (statbuf (storage _ (undefined)(undefined)(undefined)(undefined)(undefined)(undefined)(undefined)(undefined)(undefined)
+    (undefined)(undefined)(undefined)(undefined)(undefined)(undefined)(undefined)(undefined)(undefined)))
   (let (ret [syscall (sys-fstat) fd statbuf (undefined) (undefined) (undefined) (undefined)])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
       {handler (storage _ file-access-error null-string)}
-      {return [get [+ statbuf #48]]})))))
+      [get [+ statbuf #48]]))))
 
 (storage memory-access-error (undefined))
 
@@ -283,15 +283,15 @@
 
 (constrain create-buffer (\(r) (with-vars (a b) (`(function (,a ,b) buffer)r)r)))
 
-(function create-buffer (min-capacity handler) (with return
+(function create-buffer (min-capacity handler)
   (let (len [pad-size [+ min-capacity (buffer-element)] (page-size)])
-    (let (reg [mmap len handler]) (begin
+    (let (reg [mmap len handler]) (do
       (setf buf-next-elt reg null-element)
       (setf buf-last-elt reg reg)
       (setf buf-curr-pos reg [+ reg (buffer-element)])
       (setf buf-end-pos reg [+ reg len])
       (setf buf-magic-dbg reg (hex DEADBEEFDEADBEEF))
-      {return reg})))))
+      reg))))
 
 (;; Allocates memory in the buffer at reg of an amount in bytes equal to the
   integer at len. The only way to deallocate this memory is destroy the entire
@@ -299,19 +299,18 @@
 
 (constrain buffer-alloc (\(r) (with-vars (a b d) (`(function (,a buffer ,b) ,d)r)r)))
 
-(function buffer-alloc (len reg handler) (with return
-  (let (len [pad-size len (alloc-alignment)]) (begin
-    (;;[check-buffer-integrity reg])
-    (storage last-elt-ref (@ buf-last-elt reg))
-    (if [> [+(@ buf-curr-pos $last-elt-ref)len] (@ buf-end-pos $last-elt-ref)]
-      (begin
-        (setf buf-next-elt $last-elt-ref [create-buffer [+ len [* #2[-(@ buf-end-pos $last-elt-ref) $last-elt-ref]]] handler])
-        (setf buf-last-elt reg (@ buf-next-elt $last-elt-ref))
-        [set last-elt-ref (@ buf-next-elt $last-elt-ref)])
-      (undefined))
-    
-    (setf buf-curr-pos $last-elt-ref [+(@ buf-curr-pos $last-elt-ref)len])
-    {return [-(@ buf-curr-pos $last-elt-ref)len]}))))
+(function buffer-alloc (len reg handler)
+  (let (len [pad-size len (alloc-alignment)])
+  (let (last-elt-ref (storage _ (@ buf-last-elt reg))) (do
+  (if [> [+(@ buf-curr-pos $last-elt-ref)len] (@ buf-end-pos $last-elt-ref)]
+    (do
+      (setf buf-next-elt $last-elt-ref [create-buffer [+ len [* #2[-(@ buf-end-pos $last-elt-ref) $last-elt-ref]]] handler])
+      (setf buf-last-elt reg (@ buf-next-elt $last-elt-ref))
+      [set last-elt-ref (@ buf-next-elt $last-elt-ref)])
+    (undefined))
+  
+  (setf buf-curr-pos $last-elt-ref [+(@ buf-curr-pos $last-elt-ref)len])
+  [-(@ buf-curr-pos $last-elt-ref)len]))))
 
 (;; Releases the memory associated with the buffer reg. After a call to this
   function, it is invalid to read or write data to the memory allocated on
@@ -321,7 +320,7 @@
 
 (function destroy-buffer (reg handler)
   (loop do-destroy (reg reg)
-    (let (next-reg (@ buf-next-elt reg)) (begin
+    (let (next-reg (@ buf-next-elt reg)) (do
       [munmap reg [- (@ buf-end-pos reg) reg] handler]
       (if [= next-reg null-element]
         (undefined)
@@ -332,10 +331,10 @@
 
 (constrain rstrcpy (\(r) (with-vars (a) (`(function (string buffer ,a) string)r)r)))
 
-(function rstrcpy (src reg handler) (with return
-  (let (dest [buffer-alloc [+[strlen src]#1] reg handler]) (begin
+(function rstrcpy (src reg handler)
+  (let (dest [buffer-alloc [+[strlen src]#1] reg handler]) (do
     [strcpy dest src]
-    {return dest}))))
+    dest)))
 
 (;; Returns a list containing the the command line arguments. The returned list
   and its dependencies will all reside in the region reg.)
