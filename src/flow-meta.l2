@@ -7,6 +7,8 @@
 
 (function true (l r) [mk# r #1])
 
+(function undefined (l r) [mk# r (hex DEADBEEF)])
+
 (;; The following macro returns the first non-zero argument supplied to
   it leaving the rest unevaluated. If all the arguments are zero, then
   it returns (false).)
@@ -186,4 +188,21 @@
     (function \:self (params ...) body))
 
 (function \ (l r) (`(function \:self (,[@fst l]) (,[@frst l]))r))
+
+(;; The following function implements sequencing by doing the following transformation:
+    
+    (do expr1 expr2 ... exprN)
+    ->
+    (with do:return
+      {(continuation do:cont (do:arg)
+        {(continuation do:cont (do:arg)
+          {...
+            {(continuation do:cont (do:arg) {do:return do:arg}) exprN}...}) expr2}) expr1}))
+
+(function do (l r)
+  (`(with do:return
+    (,(loop make-do (acc (`{do:return do:arg}r)) (exprs [meta:reverse l r])
+        (if [emt? exprs]
+          acc
+          {make-do (`{(continuation do:cont (do:arg) ,acc) (,[@fst exprs])}r) [@rst exprs]}))))r))
 

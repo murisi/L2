@@ -30,188 +30,187 @@
 
 (constrain mem-write (\(r) (with-vars (a b c d) (`(function (,a (ref ,b) ,c ,d) ())r)r)))
 
-(function mem-write (mem idx bytes cnt) (begin
-  (define (end [+ $idx cnt])
+(function mem-write (mem idx bytes cnt)
+  (let (end [+ $idx cnt])
   (loop write-bytes (bytes bytes)
-    (if [= $idx end] (begin) (begin
+    (if [= $idx end] (undefined) (do
       [setb [+ mem $idx] [getb bytes]]
       [set+ idx #1]
-      {write-bytes [+ bytes #1]}))))))
+      {write-bytes [+ bytes #1]})))))
 
 (constrain write-mr-instr (\(r) (with-vars (a b c d e f g) (`(function (,a (ref ,b) ,c ,d ,e ,f ,g) ())r)r)))
 
-(function write-mr-instr (bin pos opcode reg rm m rexw) (begin
-  (define (mod (if m #2 #3))
-  (define (modrm [lor [<< mod (instr-mod)] [lor [<< [land reg (hex 7)] (instr-reg)] [<< [land rm (hex 7)] (instr-rm)]]])
-  (define (has-sib (and m (or [= rm (rsp)] [= rm (r12)])))
-  (define (sib (if has-sib [lor [<< #4 (instr-index)] [lor [<< [land rm (hex 7)] (instr-base)] [<< #0 (instr-ss)]]] (begin)))
-  (define (rex [<< #4 #4])
-  (define (rex (if rexw [lor rex [<< #1 (rex-w)]] rex))
-  (define (rex (if [land reg (hex 8)] [lor rex [<< #1 (rex-r)]] rex))
-  (define (rex [lor rex [<< #0 (rex-x)]])
-  (define (rex (if [land rm (hex 8)] [lor rex [<< #1 (rex-b)]] rex))
+(function write-mr-instr (bin pos opcode reg rm m rexw)
+  (let (mod (if m #2 #3))
+  (let (modrm [lor [<< mod (instr-mod)] [lor [<< [land reg (hex 7)] (instr-reg)] [<< [land rm (hex 7)] (instr-rm)]]])
+  (let (has-sib (and m (or [= rm (rsp)] [= rm (r12)])))
+  (let (sib (if has-sib [lor [<< #4 (instr-index)] [lor [<< [land rm (hex 7)] (instr-base)] [<< #0 (instr-ss)]]] (undefined)))
+  (let (rex [<< #4 #4])
+  (let (rex (if rexw [lor rex [<< #1 (rex-w)]] rex))
+  (let (rex (if [land reg (hex 8)] [lor rex [<< #1 (rex-r)]] rex))
+  (let (rex [lor rex [<< #0 (rex-x)]])
+  (let (rex (if [land rm (hex 8)] [lor rex [<< #1 (rex-b)]] rex)) (do
   [mem-write bin pos (storage _ rex) #1]
   [mem-write bin pos (storage _ opcode) #1]
   [mem-write bin pos (storage _ modrm) #1]
-  (if has-sib [mem-write bin pos (storage _ sib) #1] (begin)))))))))))))
+  (if has-sib [mem-write bin pos (storage _ sib) #1] (undefined)))))))))))))
 
 (constrain write-static-value (\(r) (with-vars (a b c d e f) (`(function (,a (ref ,b) ,c ,d ,e ,f) ())r)r)))
 
 (function write-static-value (bin pos expr bytes symtab relas)
-  (if [= (@ expr-type expr) (-literal-)] (begin
-    [mem-write bin pos (storage _(@ expr-value expr)) bytes])
+  (if [= (@ expr-type expr) (-literal-)]
+    [mem-write bin pos (storage _(@ expr-value expr)) bytes]
     
-  (if (and [= (@ expr-type expr) (-symbol-)] [= bytes #8]) (begin
+  (if (and [= (@ expr-type expr) (-symbol-)] [= bytes #8]) (do
     (setf r-offset $relas $pos)
     (setf r-info $relas (elf64-r-info [/[- (@ bndg-context(@ expr-binding-aug expr)) symtab](elf64-sym)] (r-x86-64-64)))
     (setf r-addend $relas #0)
     [set+ relas (elf64-rela)]
     [mem-write bin pos (storage _ #0) bytes])
     
-  (if (and [= (@ expr-type expr) (-assembly-)] [= (@ expr-code expr) (lnkr-add-off-to-ref)] [= bytes #8]) (begin
-    (define (ref [@car(@ expr-arguments expr)])
-    (define (offset [@cadr(@ expr-arguments expr)])
+  (if (and [= (@ expr-type expr) (-assembly-)] [= (@ expr-code expr) (lnkr-add-off-to-ref)] [= bytes #8])
+    (let (ref [@car(@ expr-arguments expr)])
+    (let (offset [@cadr(@ expr-arguments expr)]) (do
     (setf r-offset $relas $pos)
     (setf r-info $relas (elf64-r-info [/[- (@ bndg-context(@ expr-binding-aug ref)) symtab](elf64-sym)] (r-x86-64-64)))
     (setf r-addend $relas (@ expr-value offset))
     [set+ relas (elf64-rela)]
     [mem-write bin pos (storage _ #0) bytes])))
     
-  (if (and [= (@ expr-type expr) (-assembly-)] [= (@ expr-code expr) (lnkr-sub-rip-to-ref)] [= bytes #4]) (begin
-    (define (ref [@car(@ expr-arguments expr)])
+  (if (and [= (@ expr-type expr) (-assembly-)] [= (@ expr-code expr) (lnkr-sub-rip-to-ref)] [= bytes #4])
+    (let (ref [@car(@ expr-arguments expr)]) (do
     (setf r-offset $relas $pos)
     (setf r-info $relas (elf64-r-info [/[- (@ bndg-context(@ expr-binding-aug ref)) symtab](elf64-sym)] (r-x86-64-pc32)))
     (setf r-addend $relas [- #0 bytes])
     [set+ relas (elf64-rela)]
     [mem-write bin pos (storage _ #0) bytes]))
     
-    (begin))))))
+    (undefined))))))
 
 (constrain write-o-instr (\(r) (with-vars (a b c d) (`(function (,a (ref ,b) ,c ,d) ())r)r)))
 
-(function write-o-instr (bin pos opcode reg) (begin
-  (define (rd [land (hex 7) reg])
-  (define (opcoderd [+ opcode rd])
-  (define (rex [<< #4 #4])
-  (define (rex [lor rex [<< #0 (rex-w)]])
-  (define (rex [lor rex [<< #0 (rex-r)]])
-  (define (rex [lor rex [<< #0 (rex-x)]])
-  (if [land reg (hex 8)] (begin
-    (define (rex [lor rex [<< #1 (rex-b)]])
-    [mem-write bin pos (storage _ rex) #1]))
-    (begin))
+(function write-o-instr (bin pos opcode reg)
+  (let (rd [land (hex 7) reg])
+  (let (opcoderd [+ opcode rd])
+  (let (rex [<< #4 #4])
+  (let (rex [lor rex [<< #0 (rex-w)]])
+  (let (rex [lor rex [<< #0 (rex-r)]])
+  (let (rex [lor rex [<< #0 (rex-x)]]) (do
+  (if [land reg (hex 8)]
+    (let (rex [lor rex [<< #1 (rex-b)]]) [mem-write bin pos (storage _ rex) #1])
+    (undefined))
   [mem-write bin pos (storage _ opcoderd) #1]))))))))
 
 (constrain assemble (\(r) (with-vars (a b c d) (`(function ((list expr) ,a (ref ,b) ,c ,d) ())r)r)))
 
-(function assemble (generated-expressions bin pos symtab relas) (begin
+(function assemble (generated-expressions bin pos symtab relas) (do
   [set pos #0]
   (foreach (n generated-expressions)
     (switch = (@ expr-code n)
-      ((label) (begin
-        (define (label-ref [@car(@ expr-arguments n)])
+      ((label)
+        (let (label-ref [@car(@ expr-arguments n)]) (do
         (setf bndg-offset (@ expr-binding-aug label-ref) $pos)
         (setf st-value (@ bndg-context(@ expr-binding-aug label-ref)) $pos))))
         
-      ((leaq-mdb-to-reg) (begin
-        (define (opcode (hex 8D))
-        (define (reg (@ expr-code [@caddr (@ expr-arguments n)])) (;; Dest)
-        (define (rm (@ expr-code [@cadr (@ expr-arguments n)])) (;; Src)
+      ((leaq-mdb-to-reg)
+        (let (opcode (hex 8D))
+        (let (reg (@ expr-code [@caddr (@ expr-arguments n)]))
+        (let (rm (@ expr-code [@cadr (@ expr-arguments n)])) (do
         [write-mr-instr bin pos opcode reg rm (true) (true)]
         [write-static-value bin pos [@car (@ expr-arguments n)] #4 symtab relas])))))
         
-      ((movq-reg-to-mdb) (begin
-        (define (opcode (hex 89))
-        (define (reg (@ expr-code [@car (@ expr-arguments n)])) (;; Src)
-        (define (rm (@ expr-code [@caddr (@ expr-arguments n)])) (;; Dest)
+      ((movq-reg-to-mdb)
+        (let (opcode (hex 89))
+        (let (reg (@ expr-code [@car (@ expr-arguments n)]))
+        (let (rm (@ expr-code [@caddr (@ expr-arguments n)])) (do
         [write-mr-instr bin pos opcode reg rm (true) (true)]
         [write-static-value bin pos [@cadr (@ expr-arguments n)] #4 symtab relas])))))
         
-      ((jmp-rel) (begin
-        (define (opcode (hex E9))
+      ((jmp-rel)
+        (let (opcode (hex E9)) (do
         [mem-write bin pos (storage _ opcode) #1]
         [write-static-value bin pos [@car (@ expr-arguments n)] #4 symtab relas])))
         
-      ((movq-mdb-to-reg) (begin
-        (define (opcode (hex 8B))
-        (define (reg (@ expr-code [@caddr (@ expr-arguments n)])) (;; Dest)
-        (define (rm (@ expr-code [@cadr (@ expr-arguments n)])) (;; Src)
+      ((movq-mdb-to-reg)
+        (let (opcode (hex 8B))
+        (let (reg (@ expr-code [@caddr (@ expr-arguments n)]))
+        (let (rm (@ expr-code [@cadr (@ expr-arguments n)])) (do
         [write-mr-instr bin pos opcode reg rm (true) (true)]
         [write-static-value bin pos [@car (@ expr-arguments n)] #4 symtab relas])))))
         
-      ((pushq-reg) (begin
-        (define (opcode (hex 50))
-        (define (reg (@ expr-code [@car (@ expr-arguments n)])) (;; Dest)
-        [write-o-instr bin pos opcode reg]))))
+      ((pushq-reg)
+        (let (opcode (hex 50))
+        (let (reg (@ expr-code [@car (@ expr-arguments n)]))
+        [write-o-instr bin pos opcode reg])))
         
-      ((movq-reg-to-reg) (begin
-        (define (opcode (hex 8B))
-        (define (reg (@ expr-code [@cadr (@ expr-arguments n)])) (;; Dest)
-        (define (rm (@ expr-code [@car (@ expr-arguments n)])) (;; Src)
-        [write-mr-instr bin pos opcode reg rm (false) (true)])))))
+      ((movq-reg-to-reg)
+        (let (opcode (hex 8B))
+        (let (reg (@ expr-code [@cadr (@ expr-arguments n)]))
+        (let (rm (@ expr-code [@car (@ expr-arguments n)]))
+        [write-mr-instr bin pos opcode reg rm (false) (true)]))))
         
-      ((subq-imm-to-reg) (begin
-        (define (opcode (hex 81))
-        (define (reg #5)
-        (define (rm (@ expr-code [@cadr (@ expr-arguments n)])) (;; Dest)
+      ((subq-imm-to-reg)
+        (let (opcode (hex 81))
+        (let (reg #5)
+        (let (rm (@ expr-code [@cadr (@ expr-arguments n)])) (do
         [write-mr-instr bin pos opcode reg rm (false) (true)]
         [mem-write bin pos (& expr-value [@car (@ expr-arguments n)]) #4])))))
         
-      ((addq-imm-to-reg) (begin
-        (define (opcode (hex 81))
-        (define (reg #0)
-        (define (rm (@ expr-code [@cadr (@ expr-arguments n)])) (;; Dest)
+      ((addq-imm-to-reg)
+        (let (opcode (hex 81))
+        (let (reg #0)
+        (let (rm (@ expr-code [@cadr (@ expr-arguments n)])) (do
         [write-mr-instr bin pos opcode reg rm (false) (true)]
         [mem-write bin pos (& expr-value [@car (@ expr-arguments n)]) #4])))))
         
-      ((popq-reg) (begin
-        (define (opcode (hex 58))
-        (define (reg (@ expr-code [@car (@ expr-arguments n)])) (;; Dest)
-        [write-o-instr bin pos opcode reg]))))
+      ((popq-reg)
+        (let (opcode (hex 58))
+        (let (reg (@ expr-code [@car (@ expr-arguments n)]))
+        [write-o-instr bin pos opcode reg])))
         
       ((leave) [mem-write bin pos (storage opcode (hex C9)) #1])
         
       ((ret) [mem-write bin pos (storage opcode (hex C3)) #1])
         
-      ((jmp-to-reg) (begin
-        (define (opcode (hex FF))
-        (define (reg #4)
-        (define (rm (@ expr-code [@car (@ expr-arguments n)]))
-        [write-mr-instr bin pos opcode reg rm (false) (false)])))))
+      ((jmp-to-reg)
+        (let (opcode (hex FF))
+        (let (reg #4)
+        (let (rm (@ expr-code [@car (@ expr-arguments n)]))
+        [write-mr-instr bin pos opcode reg rm (false) (false)]))))
         
-      ((je-rel) (begin
+      ((je-rel) (do
         [mem-write bin pos (storage opcode1 (hex 0F)) #1]
         [mem-write bin pos (storage opcode2 (hex 84)) #1]
         [write-static-value bin pos [@car (@ expr-arguments n)] #4 symtab relas]))
         
-      ((orq-reg-to-reg) (begin
-        (define (opcode (hex 0B))
-        (define (reg (@ expr-code [@cadr (@ expr-arguments n)])) (;; Dest)
-        (define (rm (@ expr-code [@car (@ expr-arguments n)])) (;; Src)
-        [write-mr-instr bin pos opcode reg rm (false) (true)])))))
+      ((orq-reg-to-reg)
+        (let (opcode (hex 0B))
+        (let (reg (@ expr-code [@cadr (@ expr-arguments n)]))
+        (let (rm (@ expr-code [@car (@ expr-arguments n)]))
+        [write-mr-instr bin pos opcode reg rm (false) (true)]))))
         
-      ((movq-imm-to-reg) (begin
-        (define (opcode (hex B8))
-        (define (imm-expr [@car (@ expr-arguments n)])
-        (define (reg (@ expr-code [@cadr (@ expr-arguments n)])) (;; Dest)
-        (define (rd [land (hex 7) reg])
-        (define (opcoderd [+ opcode rd])
-        (define (rex [<< #4 #4])
-        (define (rex [lor rex [<< #1 (rex-w)]])
-        (define (rex [lor rex [<< #0 (rex-r)]])
-        (define (rex [lor rex [<< #0 (rex-x)]])
-        (define (rex (if [land reg (hex 8)] [lor rex [<< #1 (rex-b)]] rex))
+      ((movq-imm-to-reg)
+        (let (opcode (hex B8))
+        (let (imm-expr [@car (@ expr-arguments n)])
+        (let (reg (@ expr-code [@cadr (@ expr-arguments n)])) (;; Dest)
+        (let (rd [land (hex 7) reg])
+        (let (opcoderd [+ opcode rd])
+        (let (rex [<< #4 #4])
+        (let (rex [lor rex [<< #1 (rex-w)]])
+        (let (rex [lor rex [<< #0 (rex-r)]])
+        (let (rex [lor rex [<< #0 (rex-x)]])
+        (let (rex (if [land reg (hex 8)] [lor rex [<< #1 (rex-b)]] rex)) (do
         [mem-write bin pos (storage _ rex) #1]
         [mem-write bin pos (storage _ opcoderd) #1]
         [write-static-value bin pos imm-expr #8 symtab relas]))))))))))))
         
-      ((call-reg) (begin
-        (define (opcode (hex FF))
-        (define (reg #2)
-        (define (rm (@ expr-code [@car (@ expr-arguments n)]))
-        [write-mr-instr bin pos opcode reg rm (false) (false)])))))
+      ((call-reg)
+        (let (opcode (hex FF))
+        (let (reg #2)
+        (let (rm (@ expr-code [@car (@ expr-arguments n)]))
+        [write-mr-instr bin pos opcode reg rm (false) (false)]))))
       
-      (begin)))))
+      (undefined)))))
 
 (storage shstrtab ("(nul).shstrtab(nul).text(nul).strtab(nul).symtab(nul).bss(nul).rela.text(nul)))
 
@@ -257,11 +256,11 @@
 (function write-elf (generated-expressions symbols bin pos reg handler)
   (let (temp-buf [create-buffer #0 handler])
     (fallthrough
-      (let (_ (begin
+      (let (_ (do
           [set pos #0]
           [set bin [buffer-alloc [max-elf-size generated-expressions symbols] reg cleanup]]
           
-          (define (ehdr [buffer-alloc (elf64-ehdr) temp-buf cleanup])
+          (let (ehdr [buffer-alloc (elf64-ehdr) temp-buf cleanup]) (do
           (setf ei-mag0 (& e-ident ehdr) (elfmag0))
           (setf ei-mag1 (& e-ident ehdr) (elfmag1))
           (setf ei-mag2 (& e-ident ehdr) (elfmag2))
@@ -289,11 +288,11 @@
           (setf e-shstrndx ehdr #1)
           [mem-write $bin pos ehdr (elf64-ehdr)]
           
-          (define (strtab-len [measure-strtab generated-expressions symbols])
-          (define (sym-count [measure-symtab generated-expressions symbols])
+          (let (strtab-len [measure-strtab generated-expressions symbols])
+          (let (sym-count [measure-symtab generated-expressions symbols])
       
-          (define (syms [buffer-alloc [* sym-count (elf64-sym)] temp-buf cleanup])
-          (storage sym-ptr syms)
+          (let (syms [buffer-alloc [* sym-count (elf64-sym)] temp-buf cleanup])
+          (let (sym-ptr (storage _ syms)) (do
           (;; Mandatory undefined symbol)
           (setf st-name $sym-ptr #0)
           (setf st-value $sym-ptr #0)
@@ -303,18 +302,18 @@
           (setf st-shndx $sym-ptr (shn-undef))
           [set+ sym-ptr (elf64-sym)]
       
-          (define (strtab-padded-len [pad-size strtab-len (write-elf-alignment)])
-          (define (strtab [buffer-alloc strtab-padded-len temp-buf cleanup])
-          (storage strtabptr strtab)
+          (let (strtab-padded-len [pad-size strtab-len (write-elf-alignment)])
+          (let (strtab [buffer-alloc strtab-padded-len temp-buf cleanup])
+          (let (strtabptr (storage _ strtab)) (do
           [setb $strtabptr #0]
           [set+ strtabptr #1]
       
-          (storage bss-ptr #0)
+          (let (bss-ptr (storage _ #0)) (do
       
           (foreach (sym symbols)
-            (if [= (@ bndg-scope sym) (local-scope)] (begin
+            (if [= (@ bndg-scope sym) (local-scope)] (do
               (if [not= (@ bndg-name sym) null-string]
-                (begin
+                (do
                   [strcpy $strtabptr (@ bndg-name sym)]
                   (setf st-name $sym-ptr [- $strtabptr strtab])
                   [set+ strtabptr [+[strlen(@ bndg-name sym)]#1]])
@@ -329,14 +328,14 @@
               (setf bndg-context sym $sym-ptr)
               [set+ sym-ptr (elf64-sym)]
               [set+ bss-ptr [pad-size (@ bndg-size sym) (word-size)]])
-              (begin)))
+              (undefined)))
       
           (foreach (e generated-expressions)
             (if (and [= (@ expr-code e) (label)]
-                [= (@ bndg-scope(@ expr-binding-aug[@car(@ expr-arguments e)])) (local-scope)]) (begin
-              (storage ref [@car(@ expr-arguments e)])
+                [= (@ bndg-scope(@ expr-binding-aug[@car(@ expr-arguments e)])) (local-scope)])
+              (let (ref (storage _ [@car(@ expr-arguments e)])) (do
               (if [not= (@ expr-name $ref) null-string]
-                (begin
+                (do
                   [strcpy $strtabptr (@ expr-name $ref)]
                   (setf st-name $sym-ptr [- $strtabptr strtab])
                   [set+ strtabptr [+[strlen(@ expr-name $ref)]#1]])
@@ -348,15 +347,15 @@
               (setf st-other $sym-ptr #0)
               (setf st-shndx $sym-ptr #2)
               (setf bndg-context (@ expr-binding-aug $ref) $sym-ptr)
-              [set+ sym-ptr (elf64-sym)])
-              (begin)))
+              [set+ sym-ptr (elf64-sym)]))
+              (undefined)))
       
-          (define (local-symbol-count [/[- $sym-ptr syms](elf64-sym)])
+          (let (local-symbol-count [/[- $sym-ptr syms](elf64-sym)]) (do
       
           (foreach (sym symbols)
-            (if (and [= (@ bndg-scope sym) (global-scope)] [= (@ bndg-state sym) (defined-state)]) (begin
+            (if (and [= (@ bndg-scope sym) (global-scope)] [= (@ bndg-state sym) (defined-state)]) (do
               (if [not= (@ bndg-name sym) null-string]
-                (begin
+                (do
                   [strcpy $strtabptr (@ bndg-name sym)]
                   (setf st-name $sym-ptr [- $strtabptr strtab])
                   [set+ strtabptr [+[strlen(@ bndg-name sym)]#1]])
@@ -371,12 +370,12 @@
               (setf bndg-context sym $sym-ptr)
               [set+ sym-ptr (elf64-sym)]
               [set+ bss-ptr [pad-size (@ bndg-size sym) (word-size)]])
-              (begin)))
+              (undefined)))
       
           (foreach (sym symbols)
-            (if (and [= (@ bndg-scope sym) (global-scope)] [= (@ bndg-state sym) (undefined-state)]) (begin
+            (if (and [= (@ bndg-scope sym) (global-scope)] [= (@ bndg-state sym) (undefined-state)]) (do
               (if [not= (@ bndg-name sym) null-string]
-                (begin
+                (do
                   [strcpy $strtabptr (@ bndg-name sym)]
                   (setf st-name $sym-ptr [- $strtabptr strtab])
                   [set+ strtabptr [+[strlen(@ bndg-name sym)]#1]])
@@ -389,14 +388,14 @@
               (setf st-shndx $sym-ptr (shn-undef))
               (setf bndg-context sym $sym-ptr)
               [set+ sym-ptr (elf64-sym)])
-              (begin)))
+              (undefined)))
       
           (foreach (e generated-expressions)
             (if (and [= (@ expr-code e) (label)]
-                [= (@ bndg-scope(@ expr-binding-aug[@car(@ expr-arguments e)])) (global-scope)]) (begin
-              (storage ref [@car(@ expr-arguments e)])
+                [= (@ bndg-scope(@ expr-binding-aug[@car(@ expr-arguments e)])) (global-scope)])
+              (let (ref (storage _ [@car(@ expr-arguments e)])) (do
               (if [not= (@ expr-name $ref) null-string]
-                (begin
+                (do
                   [strcpy $strtabptr (@ expr-name $ref)]
                   (setf st-name $sym-ptr [- $strtabptr strtab])
                   [set+ strtabptr [+[strlen(@ expr-name $ref)]#1]])
@@ -408,21 +407,21 @@
               (setf st-other $sym-ptr #0)
               (setf st-shndx $sym-ptr #2)
               (setf bndg-context (@ expr-binding-aug $ref) $sym-ptr)
-              [set+ sym-ptr (elf64-sym)])
-              (begin)))
+              [set+ sym-ptr (elf64-sym)]))
+              (undefined)))
       
-          (storage text-len (begin))
-          (define (max-text-sec-len [pad-size [* (write-elf-max-instr-len) [length generated-expressions]] (write-elf-alignment)])
-          (define (max-rela-sec-len [* (write-elf-max-instr-fields) [* [length generated-expressions] (elf64-rela)]])
+          (let (text-len (storage _ (undefined)))
+          (let (max-text-sec-len [pad-size [* (write-elf-max-instr-len) [length generated-expressions]] (write-elf-alignment)])
+          (let (max-rela-sec-len [* (write-elf-max-instr-fields) [* [length generated-expressions] (elf64-rela)]])
           
-          (define (text [buffer-alloc max-text-sec-len temp-buf cleanup])
-          (define (relas [buffer-alloc max-rela-sec-len temp-buf cleanup])
-          (storage rela-ptr relas)
+          (let (text [buffer-alloc max-text-sec-len temp-buf cleanup])
+          (let (relas [buffer-alloc max-rela-sec-len temp-buf cleanup])
+          (let (rela-ptr (storage _ relas)) (do
           
           [assemble generated-expressions text text-len syms rela-ptr]
           
           (;; Mandatory undefined section)
-          (define (undef-shdr [buffer-alloc (elf64-shdr) temp-buf cleanup])
+          (let (undef-shdr [buffer-alloc (elf64-shdr) temp-buf cleanup]) (do
           (setf sh-name undef-shdr #0)
           (setf sh-type undef-shdr (sht-null))
           (setf sh-flags undef-shdr #0)
@@ -435,11 +434,11 @@
           (setf sh-entsize undef-shdr #0)
           [mem-write $bin pos undef-shdr (elf64-shdr)]
       
-          (define (shstrtab-padded-len [pad-size [strvlen $shstrtab] (write-elf-alignment)])
-          (define (shstrtab-padded [buffer-alloc shstrtab-padded-len temp-buf cleanup])
+          (let (shstrtab-padded-len [pad-size [strvlen $shstrtab] (write-elf-alignment)])
+          (let (shstrtab-padded [buffer-alloc shstrtab-padded-len temp-buf cleanup]) (do
           [memcpy shstrtab-padded $shstrtab [strvlen $shstrtab]]
       
-          (define (shstrtab-shdr [buffer-alloc (elf64-shdr) temp-buf cleanup])
+          (let (shstrtab-shdr [buffer-alloc (elf64-shdr) temp-buf cleanup]) (do
           (setf sh-name shstrtab-shdr #1)
           (setf sh-type shstrtab-shdr (sht-strtab))
           (setf sh-flags shstrtab-shdr #0)
@@ -452,7 +451,7 @@
           (setf sh-entsize shstrtab-shdr #0)
           [mem-write $bin pos shstrtab-shdr (elf64-shdr)]
       
-          (define (text-shdr [buffer-alloc (elf64-shdr) temp-buf cleanup])
+          (let (text-shdr [buffer-alloc (elf64-shdr) temp-buf cleanup]) (do
           (setf sh-name text-shdr [+ (@ sh-name shstrtab-shdr) [+ [strlen(" .shstrtab)] #1]])
           (setf sh-type text-shdr (sht-progbits))
           (setf sh-flags text-shdr [lor (shf-alloc) (shf-execinstr)])
@@ -465,7 +464,7 @@
           (setf sh-entsize text-shdr #0)
           [mem-write $bin pos text-shdr (elf64-shdr)]
       
-          (define (strtab-shdr [buffer-alloc (elf64-shdr) temp-buf cleanup])
+          (let (strtab-shdr [buffer-alloc (elf64-shdr) temp-buf cleanup]) (do
           (setf sh-name strtab-shdr [+ (@ sh-name text-shdr) [+ [strlen(" .text)] #1]])
           (setf sh-type strtab-shdr (sht-strtab))
           (setf sh-flags strtab-shdr #0)
@@ -478,7 +477,7 @@
           (setf sh-entsize strtab-shdr #0)
           [mem-write $bin pos strtab-shdr (elf64-shdr)]
       
-          (define (symtab-shdr [buffer-alloc (elf64-shdr) temp-buf cleanup])
+          (let (symtab-shdr [buffer-alloc (elf64-shdr) temp-buf cleanup]) (do
           (setf sh-name symtab-shdr [+ (@ sh-name strtab-shdr) [+ [strlen(" .strtab)] #1]])
           (setf sh-type symtab-shdr (sht-symtab))
           (setf sh-flags symtab-shdr #0)
@@ -491,7 +490,7 @@
           (setf sh-entsize symtab-shdr (elf64-sym))
           [mem-write $bin pos symtab-shdr (elf64-shdr)]
       
-          (define (bss-shdr [buffer-alloc (elf64-shdr) temp-buf cleanup])
+          (let (bss-shdr [buffer-alloc (elf64-shdr) temp-buf cleanup]) (do
           (setf sh-name bss-shdr [+ (@ sh-name symtab-shdr) [+ [strlen(" .symtab)] #1]])
           (setf sh-type bss-shdr (sht-nobits))
           (setf sh-flags bss-shdr [lor (shf-write) (shf-alloc)])
@@ -504,7 +503,7 @@
           (setf sh-entsize bss-shdr #0)
           [mem-write $bin pos bss-shdr (elf64-shdr)]
       
-          (define (rela-shdr [buffer-alloc (elf64-shdr) temp-buf cleanup])
+          (let (rela-shdr [buffer-alloc (elf64-shdr) temp-buf cleanup]) (do
           (setf sh-name rela-shdr [+ (@ sh-name bss-shdr) [+ [strlen(" .bss)] #1]])
           (setf sh-type rela-shdr (sht-rela))
           (setf sh-flags rela-shdr #0)
@@ -521,13 +520,13 @@
           [mem-write $bin pos text max-text-sec-len]
           [mem-write $bin pos strtab strtab-padded-len]
           [mem-write $bin pos syms [* sym-count (elf64-sym)]]
-          [mem-write $bin pos relas [- $rela-ptr relas]]))))))))))))))))))))))
+          [mem-write $bin pos relas [- $rela-ptr relas]])))))))))))))))))))))))))))))))))))))))))
           
         (storage _ no-error))
         
       (cleanup err (let (_ [destroy-buffer temp-buf return-cont]) err))
       
-      (return-cont err (if [= (@0 err) no-error] (begin) {handler err})))))
+      (return-cont err (if [= (@0 err) no-error] (undefined) {handler err})))))
 
 (;; Converts the offsets of the static bindings associated with L2 source code
   that has now been loaded into addresses. asms is a list of assembly expressions
@@ -536,15 +535,15 @@
 
 (constrain binding-offsets-to-addresses (\(r) (`(function ((list expr) (list bndg-aug) obj) ())r)))
 
-(function binding-offsets-to-addresses (asms bindings obj) (begin
+(function binding-offsets-to-addresses (asms bindings obj) (do
   (foreach (sym bindings)
     (if (and [= (@ bndg-storage sym) (absolute-storage)] [= (@ bndg-state sym) (defined-state)])
       (setf bndg-offset sym [+ (@ bndg-offset sym) [segment obj (" .bss)]])
-      (begin)))
+      (undefined)))
   
   (foreach (l asms)
     (if [= (@ expr-code l) (label)]
       (let (sym (@ expr-binding-aug[@car(@ expr-arguments l)]))
         (setf bndg-offset sym [+ (@ bndg-offset sym) [segment obj (" .text)]]))
-      (begin)))))
+      (undefined)))))
 
