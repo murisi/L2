@@ -88,7 +88,7 @@
 
 (constrain syscall (\(r) (with-vars (a b c d e f g) (`(function (syscall-num ,a ,b ,c ,d ,e ,f) ,g)r)r)))
 
-(function exit (code) [syscall (sys-exit) code (begin) (begin) (begin) (begin) (begin)])
+(function exit (code) [syscall (sys-exit) code (undefined) (undefined) (undefined) (undefined) (undefined)])
 
 (constrain strlen (\(r) (with-vars (a) (`(function (string) ,a)r)r)))
 
@@ -106,7 +106,7 @@
 
 (constrain null-strrchr (\(r) (` string r)))
 
-(storage null-strrchr (begin))
+(storage null-strrchr (undefined))
 
 (constrain strrchr (\(r) (with-vars (a) (`(function (string ,a) string)r)r)))
 
@@ -137,7 +137,7 @@
     [setb dest [getb src]]
     (if [getb dest]
       {do-cpy [+ dest #1] [+ src #1]}
-      (begin)))))
+      (undefined)))))
 
 (function memcpy (dest src n)
   (loop do-cpy (dest dest) (src src) (n n)
@@ -145,7 +145,7 @@
       (begin
         [setb dest [getb src]]
         {do-cpy [+ dest #1] [+ src #1] [- n #1]})
-      (begin))))
+      (undefined))))
 
 (function memset (s c n)
   (loop do-set (s s) (n n)
@@ -153,7 +153,7 @@
       (begin
         [setb s c]
         {do-set [+ s #1] [- n #1]})
-      (begin))))
+      (undefined))))
 
 (function isspace (c) (switch = c
   ((space) (true))
@@ -169,12 +169,12 @@
   modify the supplied error buffer and follow the error continuation instead
   of returning.)
 
-(storage file-access-error (begin))
+(storage file-access-error (undefined))
 
 (constrain open (\(r) (with-vars (b) (`(function (string ,b) fd)r)r)))
 
 (function open (path handler)
-  (let (ret [syscall (sys-open) path (o-rdonly) (begin) (begin) (begin) (begin)])
+  (let (ret [syscall (sys-open) path (o-rdonly) (undefined) (undefined) (undefined) (undefined)])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
       {handler (storage _ file-access-error path)}
       ret)))
@@ -182,19 +182,19 @@
 (constrain create (\(r) (with-vars (b) (`(function (string ,b) fd)r)r)))
 
 (function create (path handler)
-  (let (ret [syscall (sys-open) path [lor (o-wronly) (o-creat)] [lor (s-irwxu) [lor (s-irwxg) (s-irwxo)]]  (begin) (begin) (begin)])
+  (let (ret [syscall (sys-open) path [lor (o-wronly) (o-creat)] [lor (s-irwxu) [lor (s-irwxg) (s-irwxo)]]  (undefined) (undefined) (undefined)])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
       {handler (storage _ file-access-error path)}
       ret)))
 
 (constrain null-string (\(r) (` string r)))
 
-(storage null-string (begin))
+(storage null-string (undefined))
 
 (constrain print (\(r) (with-vars (a b c e) (`(function (fd ,a ,b ,c) ,e)r)r)))
 
 (function print (fd d len handler)
-  (let (ret [syscall (sys-write) fd d len (begin) (begin) (begin)])
+  (let (ret [syscall (sys-write) fd d len (undefined) (undefined) (undefined)])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
       {handler (storage _ file-access-error null-string)}
       ret)))
@@ -211,7 +211,7 @@
 
 (function print-uint (fd i handler) (begin
   (storage j #19)
-  (storage str (begin) (begin) (begin))
+  (storage str (undefined) (undefined) (undefined))
   (until (i i) [= i #0] [/ i #10] (begin
     [setb [+ str $j] (switch = [rem i #10]
       (#9 (char 9))
@@ -230,7 +230,7 @@
 (constrain read (\(r) (with-vars (a b c e) (`(function (fd ,a ,b ,c) ,e)r)r)))
 
 (function read (fd buf cnt handler)
-  (let (ret [syscall (sys-read) fd buf cnt (begin) (begin) (begin)])
+  (let (ret [syscall (sys-read) fd buf cnt (undefined) (undefined) (undefined)])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
       {handler (storage _ file-access-error null-string)}
       ret)))
@@ -238,7 +238,7 @@
 (constrain close (\(r) (with-vars (a c) (`(function (fd ,a) ,c)r)r)))
 
 (function close (fd handler)
-  (let (ret [syscall (sys-close) fd (begin) (begin) (begin) (begin) (begin)])
+  (let (ret [syscall (sys-close) fd (undefined) (undefined) (undefined) (undefined) (undefined)])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
       {handler (storage _ file-access-error null-string)}
       ret)))
@@ -246,14 +246,14 @@
 (constrain size (\(r) (with-vars (a c) (`(function (fd ,a) ,c)r)r)))
 
 (function size (fd handler) (with return (begin
-  (storage statbuf (begin)(begin)(begin)(begin)(begin)(begin)(begin)(begin)(begin)
-    (begin)(begin)(begin)(begin)(begin)(begin)(begin)(begin)(begin))
-  (let (ret [syscall (sys-fstat) fd statbuf (begin) (begin) (begin) (begin)])
+  (storage statbuf (undefined)(undefined)(undefined)(undefined)(undefined)(undefined)(undefined)(undefined)(undefined)
+    (undefined)(undefined)(undefined)(undefined)(undefined)(undefined)(undefined)(undefined)(undefined))
+  (let (ret [syscall (sys-fstat) fd statbuf (undefined) (undefined) (undefined) (undefined)])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
       {handler (storage _ file-access-error null-string)}
       {return [get [+ statbuf #48]]})))))
 
-(storage memory-access-error (begin))
+(storage memory-access-error (undefined))
 
 (;; Creates a new virtual address mapping of the size in bytes given at len.)
 
@@ -267,7 +267,7 @@
   value at ptr and having an extent of the value given at len.)
 
 (function munmap (ptr len handler)
-  (let (ret [syscall (sys-munmap) ptr len (begin) (begin) (begin) (begin)])
+  (let (ret [syscall (sys-munmap) ptr len (undefined) (undefined) (undefined) (undefined)])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
       {handler (storage _ memory-access-error)}
       ret)))
@@ -276,7 +276,7 @@
 
 (constrain null-element (\(r) (` buffer r)))
 
-(storage null-element (begin))
+(storage null-element (undefined))
 
 (;; Creates a new buffer with a minimum capacity in bytes given by the value at
   min-capacity.)
@@ -308,7 +308,7 @@
         (setf buf-next-elt $last-elt-ref [create-buffer [+ len [* #2[-(@ buf-end-pos $last-elt-ref) $last-elt-ref]]] handler])
         (setf buf-last-elt reg (@ buf-next-elt $last-elt-ref))
         [set last-elt-ref (@ buf-next-elt $last-elt-ref)])
-      (begin))
+      (undefined))
     
     (setf buf-curr-pos $last-elt-ref [+(@ buf-curr-pos $last-elt-ref)len])
     {return [-(@ buf-curr-pos $last-elt-ref)len]}))))
@@ -324,7 +324,7 @@
     (let (next-reg (@ buf-next-elt reg)) (begin
       [munmap reg [- (@ buf-end-pos reg) reg] handler]
       (if [= next-reg null-element]
-        (begin)
+        (undefined)
         {do-destroy next-reg})))))
 
 (;; Returns a C-string that is a copy of the one at src. The returned string and
