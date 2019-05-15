@@ -195,7 +195,7 @@
 (function replace-expression (l r)
   (`(let (replace-expression:orig (,[@fst l]))
     (let (replace-expression:parent (@ expr-parent $replace-expression:orig))
-      (let (replace-expression:repl (,[@frst l])) (begin
+      (let (replace-expression:repl (,[@frst l])) (do
         (setf expr-parent replace-expression:repl replace-expression:parent)
         [set replace-expression:orig replace-expression:repl]))))r))
 
@@ -203,9 +203,9 @@
   except that it also sets the parent of expr2 to be expr1.)
 
 (function put (l r)
-  (`(let (put:parent (,[@frst l])) (put:repl (,[@frrst l])) (begin
-    (setf (,[@fst l]) put:parent put:repl)
-    (setf expr-parent put:repl put:parent)))r))
+  (`(let (put:parent (,[@frst l])) (put:repl (,[@frrst l])) (do
+      (setf (,[@fst l]) put:parent put:repl)
+      (setf expr-parent put:repl put:parent)))r))
 
 (;; Constant against which the length of a literal expression is checked.)
 
@@ -213,32 +213,32 @@
 
 (constrain null-expr (\(r) (` expr r)))
 
-(storage null-expr (begin))
+(storage null-expr (undefined))
 
-(storage null-binding (begin))
+(storage null-binding (undefined))
 
 (constrain make-binding-aug (\(r) (with-vars (a) (`(function (bndg-storage bndg-scope bndg-state string expr buffer ,a) bndg-aug)r)r)))
 
-(function make-binding-aug (type scope state name definition r handler) (with return
-  (let (bndg [buffer-alloc (binding-aug) r handler]) (begin
+(function make-binding-aug (type scope state name definition r handler)
+  (let (bndg [buffer-alloc (binding-aug) r handler]) (do
     (setf bndg-storage bndg type)
     (setf bndg-scope bndg scope)
     (setf bndg-state bndg state)
     (setf bndg-name bndg name)
     (setf bndg-definition bndg definition)
-    {return bndg}))))
+    bndg)))
 
 (constrain make-literal (\(r) (with-vars (a b) (`(function (,a buffer ,b) expr)r)r)))
 
-(function make-literal (value reg handler) (with return
-  (let (t [buffer-alloc (expression) reg handler]) (begin
+(function make-literal (value reg handler)
+  (let (t [buffer-alloc (expression) reg handler]) (do
     (setf expr-type t (-literal-))
     (setf expr-parent t null-expr)
     (setf expr-signature t [vbl->frag [vbl reg handler]])
     (setf expr-lowlink t #0)
     (setf expr-dependencies t nil)
     (setf expr-value t value)
-    {return t}))))
+    t)))
 
 (constrain make-symbol (\(r) (with-vars (b) (`(function (string buffer ,b) expr)r)r)))
 
@@ -458,7 +458,7 @@
     (foreach (expr exprs)
       (if (or [= (@ expr-type expr) (-function-)] [= (@ expr-type expr) (-storage-)])
         (setf bndg-scope (@ expr-binding-aug(@ expr-reference expr)) (global-scope))
-        (begin)))
+        (undefined)))
     {return program})))))
 
 (;; Prints the given expression as it would be written in an L2 source file.
@@ -549,9 +549,9 @@
       [print-fragment [list->frag (@ expr-argument s)] ..]
       [print-str (stdout) (" (rparen)) ..]))
       
-    (begin))))
+    (undefined))))
 
-(storage special-form-error (begin))
+(storage special-form-error (undefined))
 
 (;; Builds an expression from a given program fragment. d is the program fragment.
   reg is the buffer into which the built expressions will be put. The return value

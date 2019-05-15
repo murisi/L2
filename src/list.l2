@@ -23,7 +23,7 @@
             [lst (` let r) [meta:reverse [lst body [meta:map2 [meta:zip [meta:map bindings @fst r] labels r]
                 r (function make-binding (a r) (`((,[@fst a]) [@car (,[@frst a])])r))r]r]r]r]
             [llst (` jump r) (` foreach:loop r) [meta:map2 labels r (function make-update (a r) (`[@cdr ,a]r))r] r] emt r])
-          {foreach:return (begin)})r) emt r] [meta:map bindings @frst r]r]))r))))
+          {foreach:return (undefined)})r) emt r] [meta:map bindings @frst r]r]))r))))
 
 (;; Like a C-array initializer, but for lists. Does the following transformation:
   (list (expr1 expr2 ... exprN) r handler)
@@ -169,15 +169,15 @@
 
 (constrain append (\(r) (with-vars (et b) (`(function (,et (ref (list ,et)) buffer ,b) (ref ,et))r)r)))
 
-(function append (data l r handler) (with return
-  {(continuation loop (l)
+(function append (data l r handler)
+  (loop next (l l)
     (if (not [nil? $l])
-      {loop (& cdr $l)}
-      (begin
+      {next (& cdr $l)}
+      (do
         [set l [buffer-alloc (list-struct) r handler]]
         (setf car $l data)
         (setf cdr $l nil)
-        {return (& car $l)}))) l}))
+        (& car $l)))))
 
 (;; Makes a new list with the given head and tail. data is what is going to be
   put at the head. rest is the list that will be the tail of the new list. r
@@ -186,29 +186,29 @@
 
 (constrain cons (\(r) (with-vars (et a) (`(function (,et (list ,et) buffer ,a) (list ,et))r)r)))
 
-(function cons (data rest r handler) (with return
-  (let (l [buffer-alloc (list-struct) r handler]) (begin
+(function cons (data rest r handler)
+  (let (l [buffer-alloc (list-struct) r handler]) (do
     (setf car l data)
     (setf cdr l rest)
-    {return l}))))
+    l)))
 
 (;; Appends the second list onto the first list. fst-ref is a reference to the
   list that will be appended to. snd is the list that will be appended.)
 
 (constrain append-list (\(r) (with-vars (et) (`(function ((ref (list ,et)) (list ,et)) ())r)r)))
 
-(function append-list (fst-ref snd) (with return
-  {(continuation loop (fst-ref)
+(function append-list (fst-ref snd)
+  (loop next (fst-ref fst-ref)
     (if [nil? $fst-ref]
-      {return [set fst-ref snd]}
-      {loop (& cdr $fst-ref)})) fst-ref}))
+      [set fst-ref snd]
+      {next (& cdr $fst-ref)})))
 
 (;; Analogous to append above.)
 
 (constrain prepend (\(r) (with-vars (et a) (`(function (,et (ref (list ,et)) buffer ,a) ())r)r)))
 
 (function prepend (data l-ref r handler)
-  (let (ret [buffer-alloc (list-struct) r handler]) (begin
+  (let (ret [buffer-alloc (list-struct) r handler]) (do
     (setf car ret data)
     (setf cdr ret $l-ref)
     [set l-ref ret])))
@@ -218,11 +218,11 @@
 
 (constrain length (\(r) (with-vars (et nt) (`(function ((list ,et)) ,nt)r)r)))
 
-(function length (l) (with return
-  {(continuation loop (l size)
+(function length (l)
+  (loop next (l l) (size #0)
     (if [nil? l]
-      {return size}
-      {loop [@cdr l] [+ #1 size]})) l #0}))
+      size
+      {next [@cdr l] [+ #1 size]})))
 
 (;; Constructs a reverse of the given list. l is the list that is to be reversed.
   r is the buffer into which the reversed list should be placed. Return value

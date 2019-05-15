@@ -24,11 +24,11 @@
 
 (constrain vbl (\(r) (with-vars (a) (`(function (buffer ,a) vbl)r)r)))
 
-(function vbl (r handler) (with return
-  (let (l [buffer-alloc (list-struct) r handler]) (begin
+(function vbl (r handler)
+  (let (l [buffer-alloc (list-struct) r handler]) (do
     (setf car l [cast l])
     (setf cdr l l)
-    {return [frag->vbl [list->fragment l]]}))))
+    [frag->vbl [list->fragment l]])))
 
 (constrain vbl? (\(r) (with-vars (a) (`(function (frag) ,a)r)r)))
 
@@ -92,7 +92,7 @@
 
 (function tkn-char (s r) (`(constrain ($(loc (unit) (,[@fst s]) characters)) (\(r) (` tchar r)))r))
 
-(storage null-fragment (begin))
+(storage null-fragment (undefined))
 
 (;; Checks if two fragment characters are equal. a is a fragment character. b
   is a fragment character. Return value is (true) if they are equal and (false)
@@ -136,7 +136,7 @@
 (function after-leading-space (l2src l2src-sz pos)
   (loop find-space
     (if (and [< $pos l2src-sz] [isspace [getb[+ l2src $pos]]])
-      (begin [set+ pos #1] {find-space})
+      (do [set+ pos #1] {find-space})
       [- l2src-sz $pos])))
 
 (;; If there is a space at the current position in the buffer, then build a token
@@ -149,13 +149,14 @@
 
 (constrain build-sigilled-token (\(r) (with-vars (a b c d e f) (`(function (,a ,b ,c ,d ,e ,f) frag)r)r)))
 
-(function build-sigilled-token (sigil l2src l2src-sz pos r handler) (with return
-  (substitute (.. r handler) (begin
-    (if [= l2src-sz $pos] {return [token->fragment [build-token sigil ..]]} (begin))
-    (let (d [getb [+ l2src $pos]])
-      {return (if (or [isspace d] [= d (rparen)] [= d (rbrace)] [= d (rbracket)] [= d (lparen)] [= d (lbrace)] [= d (lbracket)])
-        [token->fragment [build-token sigil ..]]
-        [list->fragment (list ([token->fragment [build-token sigil ..]] [build-fragment l2src l2src-sz pos ..]) ..)])})))))
+(function build-sigilled-token (sigil l2src l2src-sz pos r handler)
+  (substitute (.. r handler)
+    (if [= l2src-sz $pos]
+      [token->fragment [build-token sigil ..]]
+      (let (d [getb [+ l2src $pos]])
+        (if (or [isspace d] [= d (rparen)] [= d (rbrace)] [= d (rbracket)] [= d (lparen)] [= d (lbrace)] [= d (lbracket)])
+          [token->fragment [build-token sigil ..]]
+          [list->fragment (list ([token->fragment [build-token sigil ..]] [build-fragment l2src l2src-sz pos ..]) ..)])))))
 
 (;; Builds a fragment list starting at the current position in the buffer and ending
   at the specified delimiter and then prefixes it with the given primitive.
@@ -164,30 +165,30 @@
 
 (constrain build-fragment-list (\(r) (with-vars (a b c d e) (`(function (string ,a ,b ,c ,d buffer ,e) (list frag))r)r)))
 
-(function build-fragment-list (primitive delimeter l2src l2src-sz pos r handler) (with return
+(function build-fragment-list (primitive delimeter l2src l2src-sz pos r handler)
   (substitute (.. r handler)
     (loop cons-frag (sexprs (list ([token->fragment [build-token primitive ..]]) ..))
       (let (rem [after-leading-space l2src l2src-sz pos])
         (if (and rem [= [getb [+ l2src $pos]] delimeter])
-          (begin [set+ pos #1] {return [reverse sexprs ..]})
-          {cons-frag [cons [build-fragment l2src l2src-sz pos ..] sexprs ..]}))))))
+          (do [set+ pos #1] [reverse sexprs ..])
+          {cons-frag [cons [build-fragment l2src l2src-sz pos ..] sexprs ..]})))))
 
-(storage unexpected-char-error (begin))
+(storage unexpected-char-error (undefined))
 
 (;; Builds a fragment starting at the current position in the buffer. For parameters,
   see above.)
 
 (constrain build-fragment (\(r) (with-vars (a b c d e) (`(function (,a ,b ,c ,d ,e) frag)r)r)))
 
-(function build-fragment (l2src l2src-sz pos r handler) (with return
+(function build-fragment (l2src l2src-sz pos r handler)
   (substitute (.. r handler) (if [= l2src-sz $pos]
     {handler (storage _ unexpected-char-error #0 $pos)}
     (let (c [getb [+ l2src $pos]])
       (if (or [isspace c] [= c (rparen)] [= c (rbrace)] [= c (rbracket)])
         {handler (storage _ unexpected-char-error c $pos)}
-        (begin
+        (do
           [set+ pos #1]
-          {return (switch = c
+          (switch = c
             ((lparen) [list->fragment [@cdr [build-fragment-list (" expression) (rparen) l2src l2src-sz pos ..]]])
             ((lbrace) [list->fragment [build-fragment-list (" jump) (rbrace) l2src l2src-sz pos ..]])
             ((lbracket) [list->fragment [build-fragment-list (" invoke) (rbracket) l2src l2src-sz pos ..]])
@@ -201,9 +202,9 @@
                 (if [= $pos l2src-sz] l
                   (let (c [getb [+ l2src $pos]])
                     (if (or [isspace c] [= c (lparen)] [= c (rparen)] [= c (lbrace)] [= c (rbrace)] [= c (lbracket)] [= c (rbracket)]) l
-                      (begin [set+ pos #1] {cons-char l c})))))) ..]])})))))))
+                      (do [set+ pos #1] {cons-char l c})))))) ..]])))))))
 
-(storage character-flag (begin))
+(storage character-flag (undefined))
 
 (;; Checks if the fragment d is a token. A token is a non-empty list of characters.)
 
@@ -231,16 +232,16 @@
 
 (constrain to-string (\(r) (with-vars (a) (`(function ((list tchar) buffer ,a) string)r)r)))
 
-(function to-string (d r handler) (with return
+(function to-string (d r handler)
   (let (str [buffer-alloc [+ [length d] #1] r handler])
     (loop put-char (d d) (i #0)
       (if [nil? d]
-        (begin
+        (do
           [setb [+ str i] (nul)]
-          {return str})
-        (begin
+          str)
+        (do
           [setb [+ str i] (@ cs-character [@car d])]
-          {put-char [@cdr d] [+ i #1]}))))))
+          {put-char [@cdr d] [+ i #1]})))))
 
 (;; Copies the given fragment into the given buffer. l is the fragment that is to
   be copied. r is the buffer into which the fragment should be copied. The return
@@ -270,14 +271,14 @@
 
 (function print-fragment (d hdl)
   (if [vbl? d]
-    (begin
+    (do
       [print-char (stdout) (char !) hdl]
       [print-uint (stdout) [rem d 8192] hdl])
   (if [i/f:token? d]
     (foreach (t [fragment->token d]) [print-char (stdout) (@ cs-character t) hdl])
-    (begin
+    (do
       [print-char (stdout) (lparen) hdl]
-      (foreach (fl [frag->list d]) (begin
+      (foreach (fl [frag->list d]) (do
         [print-fragment fl hdl]
         [print-str (stdout) ("(space)) hdl]))
       [print-char (stdout) (rparen) hdl]))))
