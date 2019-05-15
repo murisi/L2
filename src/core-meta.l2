@@ -239,26 +239,16 @@
               (`(function (,obj-sig ,prop-sig) ,a)s)))s)))
       (,[@frrrrrrst l]) (,[@frrrrrrrst l])]r))
 
-(function 1b (f r) [f (`(#1 get1b set1b)r)])
-
-(function 2b (f r) [f (`(#2 get2b set2b)r)])
-
-(function 4b (f r) [f (`(#4 get4b set4b)r)])
-
-(function 8b (f r) [f (`(#8 get8b set8b)r)])
-
-(function 16b (f r) [f (`(#16 (undefined) (undefined))r)])
-
 (;; The following function is a helper function for generating the fields of
   structs. All that it does is create a macro invocation on the first token
   in the fragment l supplying to it the offset, size, getter, and setter of
   the field in addition to the rest of the fragment l.)
 
 (function property (offset size obj-sig prop-sig l r)
-  [lllllllst [@fst l] [value->literal offset r] [size @fst r]
-    [size @frst r]
-    [size @frrst r] [value->literal obj-sig r] [value->literal prop-sig r]
-    [@rst l] r])
+  [lllllllst [@fst l] [value->literal offset r] [value->literal size r]
+    (switch = size (#1 (` get1b r)) (#2 (` get2b r)) (#4 (` get4b r)) (#8 (` get8b r)) (`(undefined)r))
+    (switch = size (#1 (` set1b r)) (#2 (` set2b r)) (#4 (` set4b r)) (#8 (` set8b r)) (`(undefined)r))
+    [value->literal obj-sig r] [value->literal prop-sig r] [@rst l] r])
 
 (;; The following function provides a method for commenting L2 code. It
   implements the transformation (;; expr1 ...) -> (undefined). It is being used
