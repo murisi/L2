@@ -12,7 +12,7 @@
     [link-symbols (@ expr-expression program) (true) undefined-bindings nil nil ..]
     [append-list (& expr-binding-augs program) $undefined-bindings]
     [infer-types program ..]
-    [visit-expressions vescape-analysis (storage _ program) (begin)]
+    [visit-expressions vescape-analysis (storage _ program) (undefined)]
     [classify-program-bindings (@ expr-expression program)]
     [visit-expressions vlayout-frames (& expr-expression program) (values ..)]
     {return [generate-program program bindings ..]}))))
@@ -24,10 +24,10 @@
 (constrain load-program (\(r) (with-vars (a) (`(function (expr buffer ,a) obj)r)r)))
 
 (function load-program (program buf handler) (with return (begin
-  (storage bindings (begin))
+  (storage bindings (undefined))
   (define (asms [compile-program program bindings buf handler])
-  (storage objdest (begin))
-  (storage objdest-sz (begin))
+  (storage objdest (undefined))
+  (storage objdest-sz (undefined))
   [write-elf asms $bindings objdest objdest-sz buf handler]
   (define (obj [load $objdest $objdest-sz buf handler])
   [binding-offsets-to-addresses asms $bindings obj]
@@ -53,7 +53,7 @@
         (define (missing-bndg-name (@ bndg-name d))
         [destroy-buffer temp-reg handler]
         {handler (storage _ undefined-symbol-error missing-bndg-name)}))
-      (begin)))
+      (undefined)))
   
   [destroy-buffer temp-reg handler]
   [mutate-bindings obj bndgs]
@@ -80,7 +80,7 @@
 (constrain read-expressions (\(r) (with-vars (a) (`(function (string buffer ,a) (list expr))r)r)))
 
 (function read-expressions (fn buf handler) (with return (substitute (.. buf handler) (begin
-  (storage src-sz (begin))
+  (storage src-sz (undefined))
   (define (src-buf [read-to-buffer fn src-sz ..])
   (storage pos #0)
   
@@ -89,7 +89,7 @@
       {cons-expr [cons [build-expression [build-fragment src-buf $src-sz pos ..] ..] expressions ..]}
       {return [reverse expressions ..]})))))))
 
-(storage unsupported-ext-error (begin))
+(storage unsupported-ext-error (undefined))
 
 (;; Takes a list of L2 and object files and evaluates them in order. srcv is a list of
   strings containing paths to L2 and object files. bindings is reference to a list of
@@ -106,7 +106,7 @@
   (storage objects nil)
   
   (foreach (src srcv) (begin
-    (storage obj (begin))
+    (storage obj (undefined))
     (define (dot [strrchr src (char .)])
 
     (if (and [not= dot null-strrchr] [str= dot (" .l2)])
@@ -114,7 +114,7 @@
         buf handler] bindings buf handler] buf handler]]
   
     (if (and [not= dot null-strrchr] [str= dot (" .o)]) (begin
-      (storage obj-sz (begin))
+      (storage obj-sz (undefined))
       (storage obj-buf [read-to-buffer src obj-sz buf handler])
       [set obj [load $obj-buf $obj-sz buf handler]])
   
@@ -140,10 +140,10 @@
       (begin
         (storage program [make-program [read-expressions infn buf handler] buf handler])
         [pre-visit-expressions vgenerate-metas program (storage _ bndgs buf handler)]
-        (storage bindings (begin))
+        (storage bindings (undefined))
         (define (asms [compile-program $program bindings buf handler])
-        (storage objdest (begin))
-        (storage objdest-sz (begin))
+        (storage objdest (undefined))
+        (storage objdest-sz (undefined))
         [write-elf asms $bindings objdest objdest-sz buf handler]
         (define (outfn [buffer-alloc [+ [strlen infn] #1] buf handler])
         [strcpy outfn infn]
@@ -151,11 +151,11 @@
         (define (fd [create outfn handler])
         [print fd $objdest $objdest-sz handler]
         [close fd handler]))))
-      (begin)))))
+      (undefined)))))
 
-(storage arguments-error (begin))
+(storage arguments-error (undefined))
 
-(storage no-error (begin))
+(storage no-error (undefined))
 
 (;; This is where program execution starts. The following code essentially loads up and
   executes the code specified in the command line arguments and then compiles the
@@ -339,7 +339,7 @@
               [print-expression (@3 err) ..]
               [print-str (stdout) (" (lf)) ..]))
               
-            (begin))))
+            (undefined))))
           (storage _ no-error)))
   
         (cleanup err (let (_ [destroy-buffer buf exit-cont]) err))))
