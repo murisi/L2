@@ -23,16 +23,14 @@
   the same as the C literal "Hello world." except that it is allocated on the
   stack.)
 
-(function " (l r) (with return
-  {(continuation add-word (str index instrs)
+(function " (l r)
+  (loop add-word (str l) (index #0) (instrs emt)
     (if [emt? str]
-      {return (`(with dquote:return
-        (,[llst (` begin r) [llst (` storage r) (` dquote:str r)
-            (with return {(continuation _ (phs num)
-              (if num
-                {_ [lst (` #0 r) phs r] [- num #1]}
-                {return phs})) emt [+[/ index (unit)]#1]}) r]
-          [meta:reverse [lst (`{dquote:return (constrain dquote:str (\(k) (` string k)))}r) instrs r]r]r]))r)}
+      (`(let (dquote:str (,[llst (` storage r) (` dquote:tmp r)
+          (loop make-space (phs emt) (num [+[/ index (unit)]#1])
+            (if num {make-space [lst (`(undefined)r) phs r] [- num #1]} phs)) r]))
+        (,[lst (` do r)
+          [meta:reverse [lst (`(constrain dquote:str (\(k) (` string k)))r) instrs r]r]r]))r)
     
     (if (and [emt? [@fst str]] [emt? [@rst str]])
       {add-word [@rst str] [+ index #1]
@@ -50,7 +48,7 @@
           (,[char [lst [lst [@ffst str] emt r] emt r]r])]r) instrs r]}
       
       {add-word [@rst str] [+ index #1]
-        [lst (`[setb [+ dquote:str (,[value->literal index r])] (,[@fst str])]r) instrs r]})))))) l #0 emt}))
+        [lst (`[setb [+ dquote:str (,[value->literal index r])] (,[@fst str])]r) instrs r]})))))))
 
 (;; The following functions implement ASCII control characters. These can be
   embedded into uses of the quote function above. So for example, the L2
