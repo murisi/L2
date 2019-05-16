@@ -208,10 +208,15 @@ void assemble(list generated_expressions, unsigned char *bin, int *pos, Elf64_Sy
   }
 }
 
-int measure_strtab(list generated_expressions, list bindings) {
+int measure_strtab(list generated_expressions, list undefined_bindings, list static_bindings) {
   struct binding_aug *bndg;
   int strtab_len = 1;
-  {foreach(bndg, bindings) {
+  {foreach(bndg, undefined_bindings) {
+    if(bndg->name) {
+      strtab_len += strlen(bndg->name) + 1;
+    }
+  }}
+  {foreach(bndg, static_bindings) {
     if(bndg->name) {
       strtab_len += strlen(bndg->name) + 1;
     }
@@ -228,12 +233,9 @@ int measure_strtab(list generated_expressions, list bindings) {
   return strtab_len;
 }
 
-int measure_symtab(list generated_expressions, list bindings) {
+int measure_symtab(list generated_expressions, list undefined_bindings, list static_bindings) {
   int sym_count = 1;
-  struct binding_aug *bndg;
-  {foreach(bndg, bindings) {
-    sym_count++;
-  }}
+  sym_count += length(undefined_bindings) + length(static_bindings);
   union expression *e;
   {foreach(e, generated_expressions) {
     if(e->assembly.opcode == LABEL) {
@@ -247,17 +249,17 @@ int measure_symtab(list generated_expressions, list bindings) {
 
 #define SH_COUNT 7
 
-int max_elf_size(list generated_expressions, list bindings) {
+int max_elf_size(list generated_expressions, list undefined_bindings, list static_bindings) {
   return sizeof(Elf64_Ehdr) + (sizeof(Elf64_Shdr) * SH_COUNT) + pad_size(strvlen(SHSTRTAB), ALIGNMENT) +
     pad_size(MAX_INSTR_LEN * length(generated_expressions), ALIGNMENT) +
-    pad_size(measure_strtab(generated_expressions, bindings), ALIGNMENT) +
-    (sizeof(Elf64_Sym) * measure_symtab(generated_expressions, bindings)) +
+    pad_size(measure_strtab(generated_expressions, undefined_bindings, static_bindings), ALIGNMENT) +
+    (sizeof(Elf64_Sym) * measure_symtab(generated_expressions, undefined_bindings, static_bindings)) +
     (sizeof(Elf64_Rela) * MAX_INSTR_FIELDS * length(generated_expressions));
 }
 
-void write_elf(list generated_expressions, list bindings, unsigned char **bin, int *pos, buffer elfreg) {
+void write_elf(list generated_expressions, list undefined_bindings, list static_bindings, unsigned char **bin, int *pos, buffer elfreg) {
   *pos = 0;
-  *bin = buffer_alloc(elfreg, max_elf_size(generated_expressions, bindings));
+  *bin = buffer_alloc(elfreg, max_elf_size(generated_expressions, undefined_bindings, static_bindings));
   
   Elf64_Ehdr ehdr;
   ehdr.e_ident[EI_MAG0] = ELFMAG0;
@@ -288,8 +290,8 @@ void write_elf(list generated_expressions, list bindings, unsigned char **bin, i
   ehdr.e_shstrndx = 1;
   mem_write(*bin, pos, &ehdr, sizeof(Elf64_Ehdr));
   
-  int strtab_len = measure_strtab(generated_expressions, bindings),
-    sym_count = measure_symtab(generated_expressions, bindings);
+  int strtab_len = measure_strtab(generated_expressions, undefined_bindings, static_bindings),
+    sym_count = measure_symtab(generated_expressions, undefined_bindings, static_bindings);
   
   Elf64_Sym syms[sym_count];
   Elf64_Sym *sym_ptr = syms;
@@ -309,7 +311,7 @@ void write_elf(list generated_expressions, list bindings, unsigned char **bin, i
   unsigned long bss_ptr = 0;
   
   struct binding_aug *bndg;
-  {foreach(bndg, bindings) {
+  {foreach(bndg, static_bindings) {
     if(bndg->scope == local_scope) {
       if(bndg->name) {
         strcpy(strtabptr, bndg->name);
@@ -350,7 +352,7 @@ void write_elf(list generated_expressions, list bindings, unsigned char **bin, i
     }
   }}
   int local_symbol_count = sym_ptr - syms;
-  {foreach(bndg, bindings) {
+  {foreach(bndg, static_bindings) {
     if(bndg->scope == global_scope && bndg->state == defined_state) {
       if(bndg->name) {
         strcpy(strtabptr, bndg->name);
@@ -370,7 +372,7 @@ void write_elf(list generated_expressions, list bindings, unsigned char **bin, i
       bss_ptr += pad_size(bndg->size, WORD_SIZE);
     }
   }}
-  {foreach(bndg, bindings) {
+  {foreach(bndg, undefined_bindings) {
     if(bndg->scope == global_scope && bndg->state == undefined_state) {
       if(bndg->name) {
         strcpy(strtabptr, bndg->name);
@@ -520,9 +522,9 @@ void write_elf(list generated_expressions, list bindings, unsigned char **bin, i
   destroy_buffer(temp_reg);
 }
 
-void binding_aug_offsets_to_addresses(list asms, list bindings, Object *obj) {
+void binding_aug_offsets_to_addresses(list asms, list static_bindings, Object *obj) {
   struct binding_aug *bndg;
-  {foreach(bndg, bindings) {
+  {foreach(bndg, static_bindings) {
     if(bndg->type == absolute_storage && bndg->state == defined_state) {
       bndg->offset += (unsigned long) segment(obj, ".bss");
     }

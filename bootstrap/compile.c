@@ -15,26 +15,30 @@ typedef unsigned long int bool;
 #include "x86_64_generator.c"
 #include "x86_64_assembler.c"
 
-list compile_program(union expression *program, list *bindings, buffer expr_buf, jumpbuf *handler) {
-  visit_expressions(vfind_multiple_definitions, &program, handler);
-  containment_analysis(program);
-  classify_program_binding_augs(program->function.expression);
-  list undefined_bindings = nil;
-  link_symbols(program->function.expression, true, &undefined_bindings, nil, nil, expr_buf);
-  append_list(&program->function.binding_augs, undefined_bindings);
-  visit_expressions(vescape_analysis, &program, NULL);
-  classify_program_binding_augs(program->function.expression);
-  visit_expressions(vlayout_frames, &program->function.expression, expr_buf);
-  return generate_program(program, bindings, expr_buf);
+list compile_program(list exprs, list *undefined_bindings, list *static_bindings, buffer expr_buf, jumpbuf *handler) {
+  *static_bindings = nil;
+  *undefined_bindings = nil;
+  list global_bindings = global_binding_augs_of(exprs, expr_buf);
+  
+  union expression *expr;
+  {foreach(expr, exprs) {
+    visit_expressions(vfind_multiple_definitions, &expr, handler);
+    containment_analysis(expr);
+    classify_program_binding_augs(expr);
+    link_symbols(expr, true, undefined_bindings, global_bindings, nil, expr_buf);
+    visit_expressions(vescape_analysis, &expr, NULL);
+    layout_frames(expr, static_bindings, expr_buf);
+  }}
+  return generate_program(exprs, expr_buf);
 }
 
-Object *load_program(union expression *program, buffer expr_buf, buffer obj_buf, jumpbuf *handler) {
-  list bindings;
-  list asms = compile_program(program, &bindings, expr_buf, handler);
+Object *load_program(list exprs, buffer expr_buf, buffer obj_buf, jumpbuf *handler) {
+  list static_bindings, undefined_bindings;
+  list asms = compile_program(exprs, &undefined_bindings, &static_bindings, expr_buf, handler);
   unsigned char *objdest; int objdest_sz;
-  write_elf(asms, bindings, &objdest, &objdest_sz, obj_buf);
+  write_elf(asms, undefined_bindings, static_bindings, &objdest, &objdest_sz, obj_buf);
   Object *obj = load(objdest, objdest_sz, obj_buf, handler);
-  binding_aug_offsets_to_addresses(asms, bindings, obj);
+  binding_aug_offsets_to_addresses(asms, static_bindings, obj);
   return obj;
 }
 
@@ -42,8 +46,8 @@ bool binding_equals(struct binding *bndg1, struct binding *bndg2) {
   return !strcmp(bndg1->name, bndg2->name);
 }
 
-Object *load_program_and_mutate(union expression *program, list bindings, buffer expr_buf, buffer obj_buf, jumpbuf *handler) {
-  Object *obj = load_program(program, expr_buf, obj_buf, handler);
+Object *load_program_and_mutate(list exprs, list bindings, buffer expr_buf, buffer obj_buf, jumpbuf *handler) {
+  Object *obj = load_program(exprs, expr_buf, obj_buf, handler);
   buffer temp_reg = create_buffer(0);
   list ms = mutable_bindings(obj, temp_reg);
   struct binding_aug *missing_bndg = not_subset((bool (*)(void *, void *)) binding_equals, ms, bindings);
@@ -82,7 +86,7 @@ void evaluate_files(list metaprograms, list *bindings, buffer expr_buf, buffer o
     char *dot = strrchr(fn, '.');
     
     if(dot && !strcmp(dot, ".l2")) {
-      obj = load_program(generate_metaprogram(make_program(read_expressions(fn, expr_buf, handler), expr_buf),
+      obj = load_program(generate_metaprogram(read_expressions(fn, expr_buf, handler),
         bindings, expr_buf, obj_buf, handler), expr_buf, obj_buf, handler);
     } else if(dot && !strcmp(dot, ".o")) {
       int obj_fd = open(fn, handler);
@@ -109,33 +113,34 @@ void compile_files(list programs, list bndgs, buffer expr_buf, buffer obj_buf, j
   foreach(infn, programs) {
     char *dot = strrchr(infn, '.');
     if(dot && !strcmp(dot, ".l2")) {
-      prepend(infn, &file_names, expr_buf);
-      union expression *program = make_program(read_expressions(infn, expr_buf, handler), expr_buf);
-      pre_visit_expressions(vgenerate_metas, &program, (void * []) {bndgs, expr_buf, handler});
-      list exprs = program->function.expression->begin.expressions;
-      prepend(exprs, &progs_exprs, expr_buf);
+      list exprs = nil;
       union expression *e;
-      foreach(e, exprs) {
+      foreach(e, read_expressions(infn, expr_buf, handler)) {
+        pre_visit_expressions(vgenerate_metas, &e, (void * []) {bndgs, expr_buf, handler});
         prepend(e, &all_exprs, expr_buf);
+        append(e, &exprs, expr_buf);
       }
+      prepend(infn, &file_names, expr_buf);
+      prepend(exprs, &progs_exprs, expr_buf);
     }
   }
-  union expression *entire_program = make_program(all_exprs, expr_buf);
-  visit_expressions(vfind_multiple_definitions, &entire_program, handler);
+  
   list undefined_bindings = nil;
-  link_symbols(entire_program->function.expression, true, &undefined_bindings, nil, nil, expr_buf);
-  infer_types(entire_program, expr_buf, handler);
-  list global_bindings = global_binding_augs_of(entire_program, expr_buf);
-  pre_visit_expressions(vunlink_symbols, &entire_program, global_bindings);
-  pre_visit_expressions(vunlink_symbols, &entire_program, undefined_bindings);
+  list global_bindings = global_binding_augs_of(all_exprs, expr_buf);
+  union expression *expr;
+  {foreach(expr, all_exprs) { link_symbols(expr, true, &undefined_bindings, global_bindings, nil, expr_buf); }}
+  infer_types(all_exprs, expr_buf, handler);
+  {foreach(expr, all_exprs) {
+    pre_visit_expressions(vunlink_symbols, &expr, global_bindings);
+    pre_visit_expressions(vunlink_symbols, &expr, undefined_bindings);
+  }}
   
   list exprs;
   foreachzipped(infn, exprs, file_names, progs_exprs) {
-    union expression *program = make_program(exprs, expr_buf);
-    list bindings;
-    list asms = compile_program(program, &bindings, expr_buf, handler);
+    list undefined_bindings, static_bindings;
+    list asms = compile_program(exprs, &undefined_bindings, &static_bindings, expr_buf, handler);
     unsigned char *objdest; int objdest_sz;
-    write_elf(asms, bindings, &objdest, &objdest_sz, obj_buf);
+    write_elf(asms, undefined_bindings, static_bindings, &objdest, &objdest_sz, obj_buf);
     char *outfn = buffer_alloc(obj_buf, strlen(infn) + 1);
     strcpy(outfn, infn);
     char *dot = strrchr(outfn, '.');

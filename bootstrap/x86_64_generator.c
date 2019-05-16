@@ -45,9 +45,10 @@
 #define CONT_CIR (1*WORD_SIZE)
 #define CONT_RBP (0*WORD_SIZE)
 
-union expression *vlayout_frames(union expression *n, buffer r) {
+void layout_frames(union expression *n, list *binding_augs, buffer r) {
   switch(n->base.type) {
     case function: {
+      layout_frames(n->function.expression, &n->function.binding_augs, r);
       //Offset of parameters relative to frame pointer is 1 callee saves + return address 
       int parameter_offset = 2*WORD_SIZE;
       union expression *t;
@@ -63,28 +64,36 @@ union expression *vlayout_frames(union expression *n, buffer r) {
       }
       break;
     } case continuation: case with: {
-      union expression *parent_function = get_parent_function(n);
+      layout_frames(n->continuation.expression, binding_augs, r);
+      
       if(n->continuation.escapes) {
         n->continuation.reference->symbol.binding_aug->size = CONT_SIZE;
-        append(n->continuation.reference->symbol.binding_aug, &parent_function->function.binding_augs, r);
+        append(n->continuation.reference->symbol.binding_aug, binding_augs, r);
       }
       union expression *t;
       foreach(t, n->continuation.parameters) {
         t->symbol.binding_aug->size = WORD_SIZE;
-        append(t->symbol.binding_aug, &parent_function->function.binding_augs, r);
+        append(t->symbol.binding_aug, binding_augs, r);
       }
       break;
     } case storage: {
+      union expression *u;
+      {foreach(u, n->storage.arguments) {
+        layout_frames(u, binding_augs, r);
+      }}
       n->storage.reference->symbol.binding_aug->size = length(n->storage.arguments) * WORD_SIZE;
-      union expression *parent_function = get_parent_function(n);
-      append(n->storage.reference->symbol.binding_aug, &parent_function->function.binding_augs, r);
+      append(n->storage.reference->symbol.binding_aug, binding_augs, r);
       break;
     } case jump: case invoke: {
+      layout_frames(n->storage.reference, binding_augs, r);
+      union expression *u;
+      {foreach(u, n->storage.arguments) {
+        layout_frames(u, binding_augs, r);
+      }}
       n->invoke.temp_storage_bndg->size = WORD_SIZE * length(n->invoke.arguments);
       switch(n->invoke.contains_flag) {
         case CONTAINS_WITH: {
-          union expression *parent_function = get_parent_function(n);
-          append(n->invoke.temp_storage_bndg, &parent_function->function.binding_augs, r);
+          append(n->invoke.temp_storage_bndg, binding_augs, r);
           break;
         } case CONTAINS_JUMP: {
           n->invoke.temp_storage_bndg->type = nil_storage;
@@ -96,9 +105,16 @@ union expression *vlayout_frames(union expression *n, buffer r) {
         }
       }
       break;
+    } case _if: {
+      layout_frames(n->_if.condition, binding_augs, r);
+      layout_frames(n->_if.consequent, binding_augs, r);
+      layout_frames(n->_if.alternate, binding_augs, r);
+      break;
+    } case constrain: {
+      layout_frames(n->constrain.expression, binding_augs, r);
+      break;
     }
   }
-  return n;
 }
 
 void make_load(struct binding_aug *bndg, unsigned long offset, union expression *dest_reg, union expression *scratch_reg, list *c, buffer r) {
@@ -385,23 +401,13 @@ void sgenerate_invokes(union expression *n, list *c, buffer r) {
   }
 }
 
-void sgenerate_begins(union expression *n, list *c, buffer r) {
-  union expression *t;
-  foreach(t, n->begin.expressions) {
-    generate_expressions(t, c, r);
-  }
-}
-
 void sgenerate_constrains(union expression *n, list *c, buffer r) {
   generate_expressions(n->constrain.expression, c, r);
 }
 
 void generate_expressions(union expression *n, list *c, buffer r) {
   switch(n->base.type) {
-    case begin: {
-      sgenerate_begins(n, c, r);
-      break;
-    } case continuation: {
+    case continuation: {
       sgenerate_continuations(n, c, r);
       break;
     } case with: {
@@ -435,12 +441,15 @@ void generate_expressions(union expression *n, list *c, buffer r) {
   }
 }
 
-list generate_program(union expression *n, list *binding_augs, buffer r) {
-  *binding_augs = n->function.binding_augs;
+list generate_program(list exprs, buffer r) {
   list c = nil;
   prepend(make_asm1(PUSHQ_REG, make_asm0(RBP, r), r), &c, r);
   prepend(make_asm2(MOVQ_REG_TO_REG, make_asm0(RSP, r), make_asm0(RBP, r), r), &c, r);
-  generate_expressions(n->function.expression, &c, r);
+  
+  union expression *expr;
+  foreach(expr, exprs) {
+    generate_expressions(expr, &c, r);
+  }
   prepend(make_asm0(LEAVE, r), &c, r);
   prepend(make_asm0(RET, r), &c, r);
   return reverse(c, r);

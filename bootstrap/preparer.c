@@ -1,12 +1,6 @@
 void visit_expressions(union expression *(*visitor)(union expression *, void *), union expression **s, void *ctx) {
   switch((*s)->base.type) {
-    case begin: {
-      union expression **t;
-      foreachaddress(t, (*s)->begin.expressions) {
-        visit_expressions(visitor, t, ctx);
-      }
-      break;
-    } case _if: {
+    case _if: {
       visit_expressions(visitor, &(*s)->_if.condition, ctx);
       visit_expressions(visitor, &(*s)->_if.consequent, ctx);
       visit_expressions(visitor, &(*s)->_if.alternate, ctx);
@@ -36,13 +30,7 @@ void pre_visit_expressions(union expression *(*visitor)(union expression *, void
   (*s)->base.parent = parent;
   
   switch((*s)->base.type) {
-    case begin: {
-      union expression **t;
-      foreachaddress(t, (*s)->begin.expressions) {
-        pre_visit_expressions(visitor, t, ctx);
-      }
-      break;
-    } case _if: {
+    case _if: {
       pre_visit_expressions(visitor, &(*s)->_if.condition, ctx);
       pre_visit_expressions(visitor, &(*s)->_if.consequent, ctx);
       pre_visit_expressions(visitor, &(*s)->_if.alternate, ctx);
@@ -77,21 +65,7 @@ union expression *vfind_multiple_definitions(union expression *e, void *ctx) {
   list *partial;
   buffer tempreg = create_buffer(0);
   switch(e->base.type) {
-    case begin: {
-      list definitions = nil;
-      foreach(t, e->begin.expressions) {
-        if(t->base.type == storage || t->base.type == function) {
-          prepend(t->storage.reference->symbol.name, &definitions, tempreg);
-        }
-      }
-      char *n;
-      foreachlist(partial, n, &definitions) {
-        if(exists((bool (*)(void *, void *)) defined_string_equals, &(*partial)->rst, n)) {
-          throw_multiple_definition(n, handler);
-        }
-      }
-      break;
-    } case continuation: case function: {
+    case continuation: case function: {
       list ref_with_params = lst(e->continuation.reference, e->continuation.parameters, tempreg);
       foreachlist(partial, t, &ref_with_params) {
         if(exists((bool (*)(void *, void *)) reference_named, &(*partial)->rst, t->symbol.name)) {
@@ -116,11 +90,12 @@ bool reference_equals(union expression *a, union expression *b) {
   return a == b || (a->symbol.name && b->symbol.name && !strcmp(a->symbol.name, b->symbol.name));
 }
 
-list global_binding_augs_of(union expression *prog, buffer r) {
+list global_binding_augs_of(list exprs, buffer r) {
   list binding_augs = nil;
   union expression *t;
-  foreach(t, prog->function.expression->begin.expressions) {
+  foreach(t, exprs) {
     if(t->base.type == function || t->base.type == storage) {
+      t->function.reference->symbol.binding_aug->scope = global_scope;
       prepend(t->function.reference->symbol.binding_aug, &binding_augs, r);
     }
   }
@@ -151,20 +126,7 @@ bool assign_binding(union expression *s, list bindings) {
 void link_symbols(union expression *s, bool static_storage, list *undefined_bindings, list static_bindings, list dynamic_bindings, buffer r) {
   list *bindings = static_storage ? &static_bindings : &dynamic_bindings;
   switch(s->base.type) {
-    case begin: {
-      union expression *t;
-      {foreach(t, s->begin.expressions) {
-        if(t->base.type == storage) {
-          prepend(t->storage.reference->symbol.binding_aug, bindings, r);
-        } else if(t->base.type == function) {
-          prepend(t->storage.reference->symbol.binding_aug, &static_bindings, r);
-        }
-      }}
-      foreach(t, s->begin.expressions) {
-        link_symbols(t, static_storage, undefined_bindings, static_bindings, dynamic_bindings, r);
-      }
-      break;
-    } case function: {
+    case function: {
       prepend(s->function.reference->symbol.binding_aug, &static_bindings, r);
       dynamic_bindings = nil;
       union expression *u;
@@ -251,13 +213,7 @@ union expression *vescape_analysis(union expression *s, void *ctx) {
 
 union expression *vfind_dependencies(union expression *s, buffer r) {
   switch(s->base.type) {
-    case begin: {
-      union expression *t;
-      foreach(t, s->begin.expressions) {
-        prepend(t, &s->begin.dependencies, r);
-      }
-      break;
-    } case _if: {
+    case _if: {
       prepend(s->_if.condition, &s->_if.dependencies, r);
       prepend(s->_if.consequent, &s->_if.dependencies, r);
       prepend(s->_if.alternate, &s->_if.dependencies, r);
@@ -376,15 +332,16 @@ list scoped_signature(union expression *e, list scc, buffer reg) {
   }
 }
 
-void infer_types(union expression *program, buffer expr_buf, jumpbuf *handler) {
+void infer_types(list exprs, buffer expr_buf, jumpbuf *handler) {
   // These (parameterized) types are the only ones built into L2
   list function_token = build_token("function", expr_buf);
   list continuation_token = build_token("continuation", expr_buf);
   
   // Type inferencing is done on strongly connected components
   list stack = nil, sccs = nil, scc;
-  visit_expressions(vfind_dependencies, &program, expr_buf);
-  construct_sccs(program, 1, &stack, &sccs, expr_buf);
+  union expression *expr;
+  {foreach(expr, exprs) { visit_expressions(vfind_dependencies, &expr, expr_buf); }}
+  {foreach(expr, exprs) { construct_sccs(expr, 1, &stack, &sccs, expr_buf); }}
   
   foreach(scc, reverse(sccs, expr_buf)) {
     union expression *e;
@@ -477,13 +434,7 @@ void infer_types(union expression *program, buffer expr_buf, jumpbuf *handler) {
 unsigned long containment_analysis(union expression *s) {
   unsigned long contains_flag = CONTAINS_NONE;
   switch(s->base.type) {
-    case begin: {
-      union expression *t;
-      foreach(t, s->begin.expressions) {
-        contains_flag |= containment_analysis(t);
-      }
-      break;
-    } case constrain: {
+    case constrain: {
       contains_flag |= containment_analysis(s->constrain.expression);
       break;
     } case _if: {
@@ -527,13 +478,7 @@ unsigned long containment_analysis(union expression *s) {
 
 void classify_program_binding_augs(union expression *expr) {
   switch(expr->base.type) {
-    case begin: {
-      union expression *t;
-      foreach(t, expr->begin.expressions) {
-        classify_program_binding_augs(t);
-      }
-      break;
-    } case constrain: {
+    case constrain: {
       classify_program_binding_augs(expr->constrain.expression);
       break;
     } case storage: case jump: case invoke: {
@@ -571,9 +516,9 @@ void _set_(unsigned long *ref, unsigned long val) {
   *ref = val;
 }
 
-Object *load_program_and_mutate(union expression *program, list bindings, buffer expr_buf, buffer obj_buf, jumpbuf *handler);
+Object *load_program_and_mutate(list exprs, list bindings, buffer expr_buf, buffer obj_buf, jumpbuf *handler);
 
-union expression *generate_metaprogram(union expression *program, list *bindings, buffer expr_buf, buffer obj_buf, jumpbuf *handler);
+list generate_metaprogram(list exprs, list *bindings, buffer expr_buf, buffer obj_buf, jumpbuf *handler);
 
 void *preprocessed_expression_address(union expression *s, list bindings, buffer expr_buf, buffer obj_buf, jumpbuf *handler) {
   if(s->base.type == symbol) {
@@ -583,13 +528,13 @@ void *preprocessed_expression_address(union expression *s, list bindings, buffer
         return bndg->address;
       }
     }
-    throw_undefined_symbol(s->meta.reference->symbol.name, handler);
+    throw_undefined_symbol(s->symbol.name, handler);
   } else {
     union expression *expr_container = make_function(make_symbol(NULL, expr_buf), nil, s, expr_buf);
-    union expression *expr_container_program = make_program(lst(expr_container, nil, expr_buf), expr_buf);
-    union expression *program_preprocessed = generate_metaprogram(expr_container_program, &bindings, expr_buf, obj_buf, handler);
-    load_program_and_mutate(program_preprocessed, bindings, expr_buf, obj_buf, handler);
-    union expression *expr_container_preprocessed = program_preprocessed->function.expression->begin.expressions->fst;
+    list exprs_preprocessed = generate_metaprogram(lst(expr_container, nil, expr_buf),
+      &bindings, expr_buf, obj_buf, handler);
+    load_program_and_mutate(exprs_preprocessed, bindings, expr_buf, obj_buf, handler);
+    union expression *expr_container_preprocessed = exprs_preprocessed->fst;
     void* (*container_addr)() = (void *) expr_container_preprocessed->function.reference->symbol.binding_aug->offset;
     return container_addr();
   }
@@ -623,7 +568,7 @@ void *init_storage(unsigned long *data, union expression *storage_expr, list *bi
       append(make_invoke2(make_literal((unsigned long) _set_, expr_buf),
         make_literal((unsigned long) data++, expr_buf), arg, expr_buf), &sets, expr_buf);
     }
-    *cache = segment(load_program_and_mutate(make_program(sets, expr_buf), *bindings, expr_buf, obj_buf, handler), ".text");
+    *cache = segment(load_program_and_mutate(sets, *bindings, expr_buf, obj_buf, handler), ".text");
     return *cache;
   }
 }
@@ -633,7 +578,7 @@ void *init_function(union expression *function_expr, list *bindings, buffer expr
     return *cache;
   } else {
     pre_visit_expressions(vgenerate_metas, &function_expr, (void *[]) {*bindings, expr_buf, handler});
-    load_program_and_mutate(make_program(lst(function_expr, nil, expr_buf), expr_buf), *bindings, expr_buf, obj_buf, handler);
+    load_program_and_mutate(lst(function_expr, nil, expr_buf), *bindings, expr_buf, obj_buf, handler);
     *cache = (void *) function_expr->function.reference->symbol.binding_aug->offset;
     return *cache;
   }
@@ -644,23 +589,22 @@ void *init_expression(union expression *expr, list *bindings, buffer expr_buf, b
     return *cache;
   } else {
     pre_visit_expressions(vgenerate_metas, &expr, (void *[]) {*bindings, expr_buf, handler});
-    *cache = segment(load_program_and_mutate(make_program(lst(expr, nil, expr_buf), expr_buf),
-      *bindings, expr_buf, obj_buf, handler), ".text");
+    *cache = segment(load_program_and_mutate(lst(expr, nil, expr_buf), *bindings, expr_buf, obj_buf, handler), ".text");
     return *cache;
   }
 }
 
-union expression *generate_metaprogram(union expression *program, list *bindings, buffer expr_buf, buffer obj_buf, jumpbuf *handler) {
+list generate_metaprogram(list exprs, list *bindings, buffer expr_buf, buffer obj_buf, jumpbuf *handler) {
   union expression *s;
   list c = nil;
-  foreach(s, program->function.expression->begin.expressions) {
+  foreach(s, exprs) {
     void **cache = buffer_alloc(obj_buf, sizeof(void *));
     *cache = NULL;
     if(s->base.type == storage) {
       list args = nil;
       int i;
       for(i = 0; i < length(s->storage.arguments); i++) {
-        prepend(make_begin(nil, expr_buf), &args, expr_buf);
+        prepend(make_literal(0, expr_buf), &args, expr_buf);
       }
       union expression *storage_ref = make_symbol(s->storage.reference->symbol.name, expr_buf);
       append(make_storage(storage_ref, args, expr_buf), &c, expr_buf);
@@ -696,6 +640,6 @@ union expression *generate_metaprogram(union expression *program, list *bindings
         &c, expr_buf);
     }
   }
-  return make_program(c, expr_buf);
+  return c;
 }
 

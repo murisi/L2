@@ -4,7 +4,6 @@ enum expression_type {
   with,
   invoke,
   _if,
-  begin,
   literal,
   symbol,
   jump,
@@ -47,16 +46,6 @@ struct base_expression {
   list signature;
   unsigned int lowlink;
   list dependencies;
-};
-
-struct begin_expression {
-  enum expression_type type;
-  union expression *parent;
-  list signature;
-  unsigned int lowlink;
-  list dependencies;
-  
-  list expressions; // void * = struct expression *
 };
 
 struct assembly_expression {
@@ -216,7 +205,6 @@ struct constrain_expression {
 
 union expression {
   struct base_expression base;
-  struct begin_expression begin;
   struct storage_expression storage;
   struct function_expression function;
   struct continuation_expression continuation;
@@ -264,33 +252,6 @@ union expression *use_binding(struct binding_aug *bndg, buffer reg) {
   sym->symbol.name = bndg->name;
   sym->symbol.binding_aug = bndg;
   return sym;
-}
-
-union expression *make_begin(list expressions, buffer reg) {
-  union expression *beg = buffer_alloc(reg, sizeof(union expression));
-  beg->begin.type = begin;
-  beg->begin.signature = var(reg);
-  beg->begin.lowlink = 0;
-  beg->begin.dependencies = nil;
-  beg->begin.parent = NULL;
-  beg->begin.expressions = expressions;
-  union expression *expr;
-  foreach(expr, expressions) {
-    expr->base.parent = beg;
-  }
-  return beg;
-}
-
-union expression *make_begin0(buffer reg) {
-  return make_begin(nil, reg);
-}
-
-union expression *make_begin1(union expression *expr1, buffer reg) {
-  return make_begin(lst(expr1, nil, reg), reg);
-}
-
-union expression *make_begin2(union expression *expr1, union expression *expr2, buffer reg) {
-  return make_begin(lst(expr1, lst(expr2, nil, reg), reg), reg);
 }
 
 #define put(expr, part, val) { \
@@ -562,30 +523,9 @@ union expression *make_invoke9(union expression *ref, union expression *arg1, un
   return u;
 }
 
-union expression *make_program(list exprs, buffer r) {
-  union expression *program = make_function(make_symbol(NULL, r), nil, make_begin(exprs, r), r);
-  program->function.parent = NULL;
-  union expression *expr;
-  foreach(expr, exprs) {
-    if(expr->base.type == function || expr->base.type == storage) {
-      expr->function.reference->symbol.binding_aug->scope = global_scope;
-    }
-  }
-  return program;
-}
-
 void print_expression(union expression *s) {
   switch(s->base.type) {
-    case begin: {
-      write_str(STDOUT, "(begin ");
-      union expression *t;
-      foreach(t, s->begin.expressions) {
-        print_expression(t);
-        write_str(STDOUT, " ");
-      }
-      write_str(STDOUT, "\b)");
-      break;
-    } case with: {
+    case with: {
       write_str(STDOUT, "(with ");
       print_expression(s->with.reference);
       write_str(STDOUT, " ");
@@ -686,13 +626,6 @@ union expression *build_expression(list d, buffer reg, jumpbuf *handler) {
       throw_special_form(d, d->frst, handler);
     }
     return make_with(build_expression(d->frst, reg, handler), build_expression(d->frrst, reg, handler), reg);
-  } else if(!strcmp(to_string(d->fst, reg), "begin")) {
-    list v;
-    list exprs = nil;
-    {foreach(v, d->rst) {
-      append(build_expression(v, reg, handler), &exprs, reg);
-    }}
-    return make_begin(exprs, reg);
   } else if(!strcmp(to_string(d->fst, reg), "if")) {
     if(length(d) != 4) {
       throw_special_form(d, NULL, handler);
