@@ -141,31 +141,31 @@
 (constrain vfind-dependencies (\(r) (with-vars (a) (`(function (expr (values buffer ,a)) expr)r)r)))
 
 (function vfind-dependencies (s ctx)
-  (bind ctx (r handler) (substitute (.. r handler)
-    (let (_ (switch = (@ expr-type s)
-        ((-if-) (do
-          [prepend (@ expr-condition s) (& expr-dependencies s) ..]
-          [prepend (@ expr-consequent s) (& expr-dependencies s) ..]
-          [prepend (@ expr-alternate s) (& expr-dependencies s) ..]))
-        
-        ((-function-) (-continuation-) (-with-)
-          [prepend (@ expr-expression s) (& expr-dependencies s) ..])
-        
-        ((-storage-) (-jump-) (-invoke-) (do
-          [prepend (@ expr-reference s) (& expr-dependencies s) ..]
-          (foreach (t (@ expr-arguments s)) [prepend t (& expr-dependencies s) ..])))
-        
-        ((-symbol-)
-          (let (definition (@ bndg-definition (@ expr-binding-aug s))) (do
-          [prepend (@ expr-parent definition) (& expr-dependencies s) ..]
-          [prepend s (& expr-dependencies (@ expr-parent definition)) ..])))
-        
-        ((-constrain-) (do
-          [prepend (@ expr-expression s) (& expr-dependencies s) ..]
-          [prepend s (& expr-dependencies (@ expr-expression s)) ..]))
-        
-        (undefined)))
-      s))))
+  (bind ctx (r handler) (substitute (.. r handler) (do
+    (switch = (@ expr-type s)
+      ((-if-) (do
+        [prepend (@ expr-condition s) (& expr-dependencies s) ..]
+        [prepend (@ expr-consequent s) (& expr-dependencies s) ..]
+        [prepend (@ expr-alternate s) (& expr-dependencies s) ..]))
+      
+      ((-function-) (-continuation-) (-with-)
+        [prepend (@ expr-expression s) (& expr-dependencies s) ..])
+      
+      ((-storage-) (-jump-) (-invoke-) (do
+        [prepend (@ expr-reference s) (& expr-dependencies s) ..]
+        (foreach (t (@ expr-arguments s)) [prepend t (& expr-dependencies s) ..])))
+      
+      ((-symbol-)
+        (let (definition (@ bndg-definition (@ expr-binding-aug s))) (do
+        [prepend (@ expr-parent definition) (& expr-dependencies s) ..]
+        [prepend s (& expr-dependencies (@ expr-parent definition)) ..])))
+      
+      ((-constrain-) (do
+        [prepend (@ expr-expression s) (& expr-dependencies s) ..]
+        [prepend s (& expr-dependencies (@ expr-expression s)) ..]))
+      
+      (undefined))
+    s))))
 
 (constrain construct-sccs (\(r) (with-vars (a b) (`(function (expr ,a (ref (list expr)) (ref (list (list expr))) buffer ,b) ())r)r)))
 
@@ -205,7 +205,7 @@
 
 (function unify-var (var val)
   (if (not [occurs-in? var val])
-    (let (_ [set-val var val]) (true))
+    (do [set-val var val] (true))
     (false)))
 
 (constrain unify (\(r) (with-vars (a) (`(function (frag frag) ,a)r)r)))
