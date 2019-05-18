@@ -9,17 +9,6 @@
 (function vfind-multiple-definitions (e ctx)
   (bind ctx (handler) (do
     (switch = (@ expr-type e)
-      ((-begin-)
-        (let (temp-reg [create-buffer #0 handler])
-        (let (definitions (reverse-filter (f (@ expr-expressions e))
-            (or [= (@ expr-type f) (-storage-)] [= (@ expr-type f) (-function-)]) temp-reg handler)) (do
-        (until (partial definitions) [nil? partial] [@cdr partial]
-          (if [nil? (find (f (@ cdr partial)) [named-sym= (@ expr-reference f) (@ expr-reference [@car partial])])] (undefined)
-            (let (dup-ref-name (@ expr-name(@ expr-reference[@car partial]))) (do
-            [destroy-buffer temp-reg handler]
-            {handler (storage _ multiple-definition-error dup-ref-name)}))))
-        [destroy-buffer temp-reg handler]))))
-      
       ((-continuation-) (-function-)
         (let (temp-reg [create-buffer #0 handler])
         (let (ref-with-params [cons (@ expr-reference e) (@ expr-parameters e) temp-reg handler]) (do
@@ -84,16 +73,6 @@
     (let (bindings-ref (if static-storage statics-ref dynamics-ref))
     
     (switch = (@ expr-type s)
-      ((-begin-) (do
-        (foreach (t (@ expr-expressions s))
-          (if [= (@ expr-type t) (-storage-)]
-            [prepend (@ expr-binding-aug (@ expr-reference t)) bindings-ref ..]
-          (if [= (@ expr-type t) (-function-)]
-            [prepend (@ expr-binding-aug (@ expr-reference t)) statics-ref ..]
-            (undefined))))
-        (foreach (t (@ expr-expressions s))
-          [link-symbols t static-storage undefined-bindings $statics-ref $dynamics-ref ..])))
-      
       ((-function-) (do
         [prepend (@ expr-binding-aug (@ expr-reference s)) statics-ref ..]
         [set dynamics-ref nil]
@@ -164,9 +143,6 @@
 (function vfind-dependencies (s ctx)
   (bind ctx (r handler) (substitute (.. r handler)
     (let (_ (switch = (@ expr-type s)
-        ((-begin-)
-          (foreach (t (@ expr-expressions s)) [prepend t (& expr-dependencies s) ..]))
-        
         ((-if-) (do
           [prepend (@ expr-condition s) (& expr-dependencies s) ..]
           [prepend (@ expr-consequent s) (& expr-dependencies s) ..]
@@ -335,10 +311,6 @@
 
 (function visit-expressions (visitor s ctx) (do
   (switch = (@ expr-type $s)
-    ((-begin-)
-      (until (partial (@ expr-expressions $s)) [nil? partial] [@cdr partial]
-        [visit-expressions visitor (& car partial) ctx]))
-    
     ((-if-) (do
       [visit-expressions visitor (& expr-condition $s) ctx]
       [visit-expressions visitor (& expr-consequent $s) ctx]
@@ -361,10 +333,6 @@
   (replace-expression s [visitor $s ctx])
   
   (switch = (@ expr-type $s)
-    ((-begin-)
-      (until (partial (@ expr-expressions $s)) [nil? partial] [@cdr partial]
-        [pre-visit-expressions visitor (& car partial) ctx]))
-    
     ((-if-) (do
       [pre-visit-expressions visitor (& expr-condition $s) ctx]
       [pre-visit-expressions visitor (& expr-consequent $s) ctx]
@@ -384,8 +352,6 @@
 
 (function classify-program-bindings (expr)
   (switch = (@ expr-type expr)
-    ((-begin-) (foreach (t (@ expr-expressions expr)) [classify-program-bindings t]))
-    
     ((-constrain-) [classify-program-bindings (@ expr-expression expr)])
     
     ((-storage-) (-jump-) (-invoke-) (do
@@ -412,8 +378,6 @@
 
 (function containment-analysis (s)
   (switch = (@ expr-type s)
-    ((-begin-) (fold (acc (contains-none)) (x (@ expr-expressions s)) [lor acc [containment-analysis x]]))
-    
     ((-constrain-) [containment-analysis (@ expr-expression s)])
     
     ((-if-)

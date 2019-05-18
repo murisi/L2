@@ -54,10 +54,6 @@
 
 (function expr-dependencies (l r) [property #32 #8 (\(r) (` expr r)) (\(s r) (` (list expr) r)) l r])
 
-(;; Only for type(s) (-begin-))
-
-(function expr-expressions (l r) [property #40 #8 (\(r) (` expr r)) (\(s r) (` (list expr) r)) l r])
-
 (;; Only for type(s) (-assembly-))
 
 (function expr-code (l r) [property #40 #8 (\(r) (` expr r)) (\(s r) (` expr-code r)) l r])
@@ -131,8 +127,6 @@
 (function -invoke- (l r) [mk## #3 (\(r) (` expr-type r)) r])
 
 (function -if- (l r) [mk## #4 (\(r) (` expr-type r)) r])
-
-(function -begin- (l r) [mk## #5 (\(r) (` expr-type r)) r])
 
 (function -literal- (l r) [mk## #6 (\(r) (` expr-type r)) r])
 
@@ -275,19 +269,6 @@
     (setf expr-name sym (@ bndg-name bndg))
     (setf expr-binding-aug sym bndg)
     sym)))
-
-(constrain make-begin (\(r) (with-vars (b) (`(function ((list expr) buffer ,b) expr)r)r)))
-
-(function make-begin (expressions reg handler)
-  (substitute (.. reg handler) (let (beg [buffer-alloc (expression) ..]) (do
-    (setf expr-type beg (-begin-))
-    (setf expr-parent beg null-expr)
-    (setf expr-signature beg [vbl->frag [vbl ..]])
-    (setf expr-lowlink beg #0)
-    (setf expr-dependencies beg nil)
-    (setf expr-expressions beg expressions)
-    (foreach (expr expressions) (setf expr-parent expr beg))
-    beg))))
 
 (constrain make-function (\(r) (with-vars (b) (`(function (expr (list expr) expr buffer ,b) expr)r)r)))
 
@@ -453,13 +434,6 @@
 
 (function print-expression (s hdl) (substitute (.. hdl)
   (switch = (@ expr-type s)
-    ((-begin-) (do
-      [print-str (stdout) (" (lparen)begin(space)) ..]
-      (foreach (t (@ expr-expressions s)) (do
-        [print-expression t ..]
-        [print-str (stdout) (" (space)) ..]))
-      [print-str (stdout) (" (bs)(rparen)) ..]))
-    
     ((-with-) (do
       [print-str (stdout) (" (lparen)with(space)) ..]
       [print-expression (@ expr-reference s) ..]
@@ -557,8 +531,6 @@
         (if (not [i/f:token? [@cadr d]])
           {handler (storage _ special-form-error d [@cadr d])}
           [make-with [build-expression [@cadr d] ..] [build-expression [@caddr d] ..] ..])))
-      
-      ((" begin) [make-begin [reverse (reverse-map (v [@cdr d]) [build-expression v ..] ..) ..] ..])
       
       ((" if)
         (if (not [= [length d] #4])
