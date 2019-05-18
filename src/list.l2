@@ -121,6 +121,26 @@
           {find:return find:l}
           {find:loop [@cdr find:l]}))) (,[@frfst l])})r))
 
+(;; A macro to do a locate. Does the following transformation:
+  (locate (x l-ref) expr)
+  ->
+  (with locate:return
+    {(continuation locate:loop (locate:l-ref)
+      (if [nil? $locate:l-ref]
+        {locate:return locate:l-ref}
+        (if (let (x [@car $locate:l-ref]) expr)
+          {locate:return locate:l-ref}
+          {locate:loop (& cdr $locate:l-ref)}))) l-ref}))
+
+(function locate (l r)
+  (`(with locate:return
+    {(continuation locate:loop (locate:l-ref)
+      (if [nil? $locate:l-ref]
+        {locate:return locate:l-ref}
+        (if (let ((,[@ffst l]) [@car $locate:l-ref]) (,[@frst l]))
+          {locate:return locate:l-ref}
+          {locate:loop (& cdr $locate:l-ref)}))) (,[@frfst l])})r))
+
 (function list-struct (l r) [mk# r #16])
 
 (function car (l r) [property #0 #8 (\(r) (with-vars (a) (`(list ,a)r)r)) (\(s r) [@frst s]) l r])
@@ -223,6 +243,15 @@
     (if [nil? l]
       size
       {next [@cdr l] [+ #1 size]})))
+
+(;; Flattens the given list of lists and reverses them.)
+
+(constrain reverse-flatten (\(r) (with-vars (a b) (`(function ((list (list ,a)) buffer ,b) (list ,a))r)r)))
+
+(function reverse-flatten (l r handler)
+  (substitute (.. r handler)
+    (fold (all nil) (s l)
+      (fold (t all) (u s) [cons u t ..] ..) ..)))
 
 (;; Constructs a reverse of the given list. l is the list that is to be reversed.
   r is the buffer into which the reversed list should be placed. Return value

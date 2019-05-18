@@ -92,12 +92,13 @@
 
 (function cont-rbp (l r) [mk# r [* #0 (word-size)]])
 
-(constrain vlayout-frames (\(r) (with-vars (a) (`(function (expr (values buffer ,a)) expr)r)r)))
+(constrain layout-frames (\(r) (with-vars (a b) (`(function (expr (ref (list bndg-aug)) buffer ,a) ,b)r)r)))
 
-(function vlayout-frames (n ctx)
-  (bind ctx (r handler) (substitute (.. r handler) (do
+(function layout-frames (n binding-augs r handler)
+  (substitute (.. r handler)
     (switch = (@ expr-type n)
-      ((-function-)
+      ((-function-) (do
+        [layout-frames (@ expr-expression n) (& expr-binding-augs n) ..]
         (let (parameter-offset-ref (storage _ [* #2 (word-size)])) (do
         (foreach (t (@ expr-parameters n)) (do
           (setf bndg-offset (@ expr-binding-aug t) $parameter-offset-ref)
@@ -106,26 +107,30 @@
         (let (binding-offset-ref (storage _ #0)) (do
         (foreach (u [reverse (@ expr-binding-augs n) ..]) (do
           [set- binding-offset-ref [pad-size (@ bndg-size u) (word-size)]]
-          (setf bndg-offset u $binding-offset-ref))))))))
+          (setf bndg-offset u $binding-offset-ref)))))))))
       
       ((-continuation-) (-with-) (do
+        [layout-frames (@ expr-expression n) binding-augs ..]
         (if (@ expr-escapes n) (do
           (setf bndg-size (@ expr-binding-aug(@ expr-reference n)) (cont-size))
-          [append (@ expr-binding-aug(@ expr-reference n)) (& expr-binding-augs[get-parent-function n]) ..])
+          [append (@ expr-binding-aug(@ expr-reference n)) binding-augs ..])
           (undefined))
         (foreach (t (@ expr-parameters n)) (do
           (setf bndg-size (@ expr-binding-aug t) (word-size))
-          [append (@ expr-binding-aug t) (& expr-binding-augs[get-parent-function n]) ..]))))
+          [append (@ expr-binding-aug t) binding-augs ..]))))
       
       ((-storage-) (do
+        (foreach (u (@ expr-arguments n)) [layout-frames u binding-augs ..])
         (setf bndg-size (@ expr-binding-aug(@ expr-reference n)) [* [length (@ expr-arguments n)] (word-size)])
-        [append (@ expr-binding-aug(@ expr-reference n)) (& expr-binding-augs[get-parent-function n]) ..]))
+        [append (@ expr-binding-aug(@ expr-reference n)) binding-augs ..]))
       
       ((-jump-) (-invoke-) (do
+        [layout-frames (@ expr-reference n) binding-augs ..]
+        (foreach (u (@ expr-arguments n)) [layout-frames u binding-augs ..])
         (setf bndg-size (@ expr-temp-storage-bndg n) [* (word-size) [length (@ expr-arguments n)]])
         (switch = (@ expr-contains-flag n)
           ((contains-with)
-            [append (@ expr-temp-storage-bndg n) (& expr-binding-augs[get-parent-function n]) ..])
+            [append (@ expr-temp-storage-bndg n) binding-augs ..])
           ((contains-jump)
             (setf bndg-storage (@ expr-temp-storage-bndg n) (nil-storage)))
           ((contains-none) (do
@@ -133,9 +138,14 @@
             (setf bndg-offset (@ expr-temp-storage-bndg n) #0)))
           (undefined))))
       
-      (undefined))
-    
-    n))))
+      ((-if-) (do
+        [layout-frames (@ expr-condition n) binding-augs ..]
+        [layout-frames (@ expr-consequent n) binding-augs ..]
+        [layout-frames (@ expr-alternate n) binding-augs ..]))
+      
+      ((-constrain-) [layout-frames (@ expr-expression n) binding-augs ..])
+      
+      (undefined))))
 
 (function generate-load (bndg offset dest-reg scratch-reg c r handler)
   (substitute (.. r handler)
@@ -443,16 +453,15 @@
     ((-constrain-) generate-constrain)
     (undefined)) n c ..]))
 
-(constrain generate-program (\(r) (with-vars (a) (`(function (expr (ref (list bndg-aug)) buffer ,a) (list expr))r)r)))
+(constrain generate-program (\(r) (with-vars (a) (`(function ((list expr) buffer ,a) (list expr))r)r)))
 
-(function generate-program (n bindings r handler)
-  (substitute (.. r handler) (do
-    [set bindings (@ expr-binding-augs n)]
+(function generate-program (exprs r handler)
+  (substitute (.. r handler)
     (let (c (storage _ nil)) (do
     [prepend (make-asmN(pushq-reg)((make-asmN(rbp)()..))..) c ..]
     [prepend (make-asmN(movq-reg-to-reg)((make-asmN(rsp)()..) (make-asmN(rbp)()..))..) c ..]
-    [generate-expression (@ expr-expression n) c ..]
+    (foreach (expr exprs) [generate-expression expr c ..])
     [prepend (make-asmN(leave)()..) c ..]
     [prepend (make-asmN(ret)()..) c ..]
-    [reverse $c ..])))))
+    [reverse $c ..]))))
 

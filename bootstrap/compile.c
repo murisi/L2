@@ -74,29 +74,31 @@ list read_expressions(unsigned char *src, buffer expr_buf, jumpbuf *handler) {
   return expressions;
 }
 
-void evaluate_files(list metaprograms, list *bindings, buffer expr_buf, buffer obj_buf, jumpbuf *handler) {
+void evaluate_files(list source_fns, list object_fns, list *bindings, buffer expr_buf, buffer obj_buf, jumpbuf *handler) {
   list objects = nil;
   char *fn;
-  foreach(fn, metaprograms) {
+  {foreach(fn, source_fns) {
     write_str(STDOUT, "Loading ");
     write_str(STDOUT, fn);
     write_str(STDOUT, "...\n");
     
-    Object *obj;
-    char *dot = strrchr(fn, '.');
+    Object *obj = load_program(generate_metaprogram(read_expressions(fn, expr_buf, handler),
+      bindings, expr_buf, obj_buf, handler), expr_buf, obj_buf, handler);
+    append(obj, &objects, obj_buf);
+    append_list(bindings, immutable_bindings(obj, obj_buf));
+  }}
+  foreach(fn, object_fns) {
+    write_str(STDOUT, "Loading ");
+    write_str(STDOUT, fn);
+    write_str(STDOUT, "...\n");
     
-    if(dot && !strcmp(dot, ".l2")) {
-      obj = load_program(generate_metaprogram(read_expressions(fn, expr_buf, handler),
-        bindings, expr_buf, obj_buf, handler), expr_buf, obj_buf, handler);
-    } else if(dot && !strcmp(dot, ".o")) {
-      int obj_fd = open(fn, handler);
-      long int obj_sz = size(obj_fd);
-      unsigned char *buf = buffer_alloc(obj_buf, obj_sz);
-      read(obj_fd, buf, obj_sz);
-      close(obj_fd);
-      
-      obj = load(buf, obj_sz, obj_buf, handler);
-    }
+    int obj_fd = open(fn, handler);
+    long int obj_sz = size(obj_fd);
+    unsigned char *buf = buffer_alloc(obj_buf, obj_sz);
+    read(obj_fd, buf, obj_sz);
+    close(obj_fd);
+    
+    Object *obj = load(buf, obj_sz, obj_buf, handler);
     append(obj, &objects, obj_buf);
     append_list(bindings, immutable_bindings(obj, obj_buf));
   }
@@ -107,22 +109,18 @@ void evaluate_files(list metaprograms, list *bindings, buffer expr_buf, buffer o
   }}
 }
 
-void compile_files(list programs, list bndgs, buffer expr_buf, buffer obj_buf, jumpbuf *handler) {
+void compile_files(list file_names, list bndgs, buffer expr_buf, buffer obj_buf, jumpbuf *handler) {
   char *infn;
-  list file_names = nil, progs_exprs = nil, all_exprs = nil;
-  foreach(infn, programs) {
-    char *dot = strrchr(infn, '.');
-    if(dot && !strcmp(dot, ".l2")) {
-      list exprs = nil;
-      union expression *e;
-      foreach(e, read_expressions(infn, expr_buf, handler)) {
-        pre_visit_expressions(vgenerate_metas, &e, (void * []) {bndgs, expr_buf, handler});
-        prepend(e, &all_exprs, expr_buf);
-        append(e, &exprs, expr_buf);
-      }
-      prepend(infn, &file_names, expr_buf);
-      prepend(exprs, &progs_exprs, expr_buf);
+  list file_exprss = nil, all_exprs = nil;
+  foreach(infn, file_names) {
+    list exprs = nil;
+    union expression *e;
+    foreach(e, read_expressions(infn, expr_buf, handler)) {
+      pre_visit_expressions(vgenerate_metas, &e, (void * []) {bndgs, expr_buf, handler});
+      prepend(e, &all_exprs, expr_buf);
+      append(e, &exprs, expr_buf);
     }
+    append(exprs, &file_exprss, expr_buf);
   }
   
   list undefined_bindings = nil;
@@ -136,7 +134,7 @@ void compile_files(list programs, list bndgs, buffer expr_buf, buffer obj_buf, j
   }}
   
   list exprs;
-  foreachzipped(infn, exprs, file_names, progs_exprs) {
+  foreachzipped(infn, exprs, file_names, file_exprss) {
     list undefined_bindings, static_bindings;
     list asms = compile_program(exprs, &undefined_bindings, &static_bindings, expr_buf, handler);
     unsigned char *objdest; int objdest_sz;
@@ -339,14 +337,20 @@ int main(int argc, char *argv[]) {
   for(i = 0; i < sizeof(static_bindings_arr) / sizeof(struct binding); i++) {
     prepend(&static_bindings_arr[i], &bndgs, obj_buf);
   }
-  
-  list programs = nil;
-  for(i = 1; i < argc; i++) {
-    append(argv[i], &programs, evaluate_buffer);
+  for(i = 1; i < argc && strcmp(argv[i], "-"); i++);
+  if(i == argc) {
+    throw_arguments(&evaluate_handler);
   }
-  
-  evaluate_files(programs, &bndgs, expr_buf, obj_buf, &evaluate_handler);
-  compile_files(programs, bndgs, expr_buf, obj_buf, &evaluate_handler);
+  list source_fns = nil, object_fns = nil;
+  int j;
+  for(j = 1; j < i; j++) {
+    append(argv[j], &source_fns, evaluate_buffer);
+  }
+  for(j = i + 1; j < argc; j++) {
+    append(argv[j], &object_fns, evaluate_buffer);
+  }
+  evaluate_files(source_fns, object_fns, &bndgs, expr_buf, obj_buf, &evaluate_handler);
+  compile_files(source_fns, bndgs, expr_buf, obj_buf, &evaluate_handler);
   
   destroy_buffer(expr_buf);
   destroy_buffer(obj_buf);

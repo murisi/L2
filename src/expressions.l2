@@ -231,27 +231,27 @@
 (constrain make-literal (\(r) (with-vars (a b) (`(function (,a buffer ,b) expr)r)r)))
 
 (function make-literal (value reg handler)
-  (let (t [buffer-alloc (expression) reg handler]) (do
+  (substitute (.. reg handler) (let (t [buffer-alloc (expression) ..]) (do
     (setf expr-type t (-literal-))
     (setf expr-parent t null-expr)
-    (setf expr-signature t [vbl->frag [vbl reg handler]])
+    (setf expr-signature t [vbl->frag [vbl ..]])
     (setf expr-lowlink t #0)
     (setf expr-dependencies t nil)
     (setf expr-value t value)
-    t)))
+    t))))
 
 (constrain make-symbol (\(r) (with-vars (b) (`(function (string buffer ,b) expr)r)r)))
 
 (function make-symbol (name reg handler)
-  (let (sym [buffer-alloc (expression) reg handler]) (do
+  (substitute (.. reg handler) (let (sym [buffer-alloc (expression) ..]) (do
     (setf expr-type sym (-symbol-))
     (setf expr-parent sym null-expr)
-    (setf expr-signature sym [vbl->frag [vbl reg handler]])
+    (setf expr-signature sym [vbl->frag [vbl ..]])
     (setf expr-lowlink sym #0)
     (setf expr-dependencies sym nil)
     (setf expr-name sym name)
     (setf expr-binding-aug sym null-binding)
-    sym)))
+    sym))))
 
 (;; Binds a symbol expression to another symbol expression. symbol
   is the expression being bound. target is the symbol expression
@@ -279,15 +279,15 @@
 (constrain make-begin (\(r) (with-vars (b) (`(function ((list expr) buffer ,b) expr)r)r)))
 
 (function make-begin (expressions reg handler)
-  (let (beg [buffer-alloc (expression) reg handler]) (do
+  (substitute (.. reg handler) (let (beg [buffer-alloc (expression) ..]) (do
     (setf expr-type beg (-begin-))
     (setf expr-parent beg null-expr)
-    (setf expr-signature beg [vbl->frag [vbl reg handler]])
+    (setf expr-signature beg [vbl->frag [vbl ..]])
     (setf expr-lowlink beg #0)
     (setf expr-dependencies beg nil)
     (setf expr-expressions beg expressions)
     (foreach (expr expressions) (setf expr-parent expr beg))
-    beg)))
+    beg))))
 
 (constrain make-function (\(r) (with-vars (b) (`(function (expr (list expr) expr buffer ,b) expr)r)r)))
 
@@ -295,7 +295,7 @@
   (substitute (.. reg handler) (let (func [buffer-alloc (expression) ..]) (do
     (setf expr-type func (-function-))
     (setf expr-parent func null-expr)
-    (setf expr-signature func [vbl->frag [vbl reg handler]])
+    (setf expr-signature func [vbl->frag [vbl ..]])
     (setf expr-lowlink func #0)
     (setf expr-dependencies func nil)
     (put expr-reference func ref)
@@ -314,7 +314,7 @@
   (substitute (.. reg handler) (let (cont [buffer-alloc (expression) ..]) (do
     (setf expr-type cont (-continuation-))
     (setf expr-parent cont null-expr)
-    (setf expr-signature cont [vbl->frag [vbl reg handler]])
+    (setf expr-signature cont [vbl->frag [vbl ..]])
     (setf expr-lowlink cont #0)
     (setf expr-dependencies cont nil)
     (setf expr-cont-instr-bndg cont [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr ..])
@@ -334,7 +334,7 @@
   (substitute (.. reg handler) (let (wth [buffer-alloc (expression) ..]) (do
     (setf expr-type wth (-with-))
     (setf expr-parent wth null-expr)
-    (setf expr-signature wth [vbl->frag [vbl reg handler]])
+    (setf expr-signature wth [vbl->frag [vbl ..]])
     (setf expr-lowlink wth #0)
     (setf expr-dependencies wth nil)
     (setf expr-cont-instr-bndg wth [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr ..])
@@ -364,7 +364,7 @@
   (substitute (.. reg handler) (let (u [buffer-alloc (expression) ..]) (do
     (setf expr-type u (-jump-))
     (setf expr-parent u null-expr)
-    (setf expr-signature u [vbl->frag [vbl reg handler]])
+    (setf expr-signature u [vbl->frag [vbl ..]])
     (setf expr-lowlink u #0)
     (setf expr-dependencies u nil)
     (setf expr-short-circuit u null-expr)
@@ -381,7 +381,7 @@
   (substitute (.. reg handler) (let (u [buffer-alloc (expression) ..]) (do
     (setf expr-type u (-storage-))
     (setf expr-parent u null-expr)
-    (setf expr-signature u [vbl->frag [vbl reg handler]])
+    (setf expr-signature u [vbl->frag [vbl ..]])
     (setf expr-lowlink u #0)
     (setf expr-dependencies u nil)
     (put expr-reference u ref)
@@ -393,42 +393,42 @@
 (constrain make-meta (\(r) (with-vars (a b) (`(function (expr ,a buffer ,b) expr)r)r)))
 
 (function make-meta (ref arg reg handler)
-  (let (u [buffer-alloc (expression) reg handler]) (do
+  (substitute (.. reg handler) (let (u [buffer-alloc (expression) ..]) (do
     (setf expr-type u (-meta-))
     (setf expr-parent u null-expr)
-    (setf expr-signature u [vbl->frag [vbl reg handler]])
+    (setf expr-signature u [vbl->frag [vbl ..]])
     (setf expr-lowlink u #0)
     (setf expr-dependencies u nil)
     (put expr-reference u ref)
     (setf expr-argument u arg)
-    u)))
+    u))))
 
 (constrain make-constrain (\(r) (with-vars (b) (`(function (expr expr buffer ,b) expr)r)r)))
 
 (function make-constrain (expr ref reg handler)
-  (let (u [buffer-alloc (expression) reg handler]) (do
+  (substitute (.. reg handler) (let (u [buffer-alloc (expression) ..]) (do
     (setf expr-type u (-constrain-))
     (setf expr-parent u null-expr)
-    (setf expr-signature u [vbl->frag [vbl reg handler]])
+    (setf expr-signature u [vbl->frag [vbl ..]])
     (setf expr-lowlink u #0)
     (setf expr-dependencies u nil)
     (put expr-reference u ref)
     (put expr-expression u expr)
-    u)))
+    u))))
 
 (constrain make-if (\(r) (with-vars (b) (`(function (expr expr expr buffer ,b) expr)r)r)))
 
 (function make-if (condition consequent alternate reg handler)
-  (let (u [buffer-alloc (expression) reg handler]) (do
+  (substitute (.. reg handler) (let (u [buffer-alloc (expression) ..]) (do
     (setf expr-type u (-if-))
     (setf expr-parent u null-expr)
-    (setf expr-signature u [vbl->frag [vbl reg handler]])
+    (setf expr-signature u [vbl->frag [vbl ..]])
     (setf expr-lowlink u #0)
     (setf expr-dependencies u nil)
     (put expr-condition u condition)
     (put expr-consequent u consequent)
     (put expr-alternate u alternate)
-    u)))
+    u))))
 
 (constrain make-invoke (\(r) (with-vars (b) (`(function (expr (list expr) buffer ,b) expr)r)r)))
 
@@ -436,7 +436,7 @@
   (substitute (.. reg handler) (let (u [buffer-alloc (expression) ..]) (do
     (setf expr-type u (-invoke-))
     (setf expr-parent u null-expr)
-    (setf expr-signature u [vbl->frag [vbl reg handler]])
+    (setf expr-signature u [vbl->frag [vbl ..]])
     (setf expr-lowlink u #0)
     (setf expr-dependencies u nil)
     (put expr-reference u ref)
@@ -445,22 +445,6 @@
     (setf expr-arguments u args)
     (foreach (arg args) (setf expr-parent arg u))
     u))))
-
-(;; Builds a program from a list of expressions. exprs is the list of expressions
-  from which the program will be built. A program is a function with no parent that
-  has as its expression a begin expression.)
-
-(constrain make-program (\(r) (with-vars (b) (`(function ((list expr) buffer ,b) expr)r)r)))
-
-(function make-program (exprs r handler)
-  (substitute (.. r handler)
-    (let (program [make-function [make-symbol null-string ..] nil [make-begin exprs ..] ..]) (do
-      (setf expr-parent program null-expr)
-      (foreach (expr exprs)
-        (if (or [= (@ expr-type expr) (-function-)] [= (@ expr-type expr) (-storage-)])
-          (setf bndg-scope (@ expr-binding-aug(@ expr-reference expr)) (global-scope))
-          (undefined)))
-      program))))
 
 (;; Prints the given expression as it would be written in an L2 source file.
   s is an expression.)

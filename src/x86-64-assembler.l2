@@ -192,7 +192,7 @@
       ((movq-imm-to-reg)
         (let (opcode (hex B8))
         (let (imm-expr [@car (@ expr-arguments n)])
-        (let (reg (@ expr-code [@cadr (@ expr-arguments n)])) (;; Dest)
+        (let (reg (@ expr-code [@cadr (@ expr-arguments n)]))
         (let (rd [land (hex 7) reg])
         (let (opcoderd [+ opcode rd])
         (let (rex [<< #4 #4])
@@ -214,34 +214,38 @@
 
 (storage shstrtab ("(nul).shstrtab(nul).text(nul).strtab(nul).symtab(nul).bss(nul).rela.text(nul)))
 
-(constrain measure-strtab (\(r) (with-vars (a) (`(function ((list expr) (list bndg-aug)) ,a)r)r)))
+(constrain measure-strtab (\(r) (with-vars (a) (`(function ((list expr) (list bndg-aug) (list bndg-aug)) ,a)r)r)))
 
-(function measure-strtab (generated-expressions symbols)
-  (let (strtab-len (fold (acc #1) (sym symbols)
-      [+ acc (if [not= (@ bndg-name sym) null-string]
-        [+ [strlen(@ bndg-name sym)] #1]
-        #0)]))
-        
-    (fold (acc strtab-len) (e generated-expressions)
-      [+ acc (if [= (@ expr-code e) (label)]
-        (let (label-str (@ expr-name [@car (@ expr-arguments e)]))
-          (if [not= label-str null-string] [+ [strlen label-str] #1] #0))
-        #0)])))
+(function measure-strtab (generated-expressions undefined-bindings static-bindings)
+  (let (undefined-bindings-len (fold (acc #0) (sym undefined-bindings)
+        [+ acc (if [not= (@ bndg-name sym) null-string]
+          [+ [strlen(@ bndg-name sym)] #1]
+          #0)]))
+      (static-bindings-len (fold (acc #0) (sym static-bindings)
+        [+ acc (if [not= (@ bndg-name sym) null-string]
+          [+ [strlen(@ bndg-name sym)] #1]
+          #0)]))
+      (generated-expressions-len (fold (acc #0) (e generated-expressions)
+        [+ acc (if [= (@ expr-code e) (label)]
+          (let (label-str (@ expr-name [@car (@ expr-arguments e)]))
+            (if [not= label-str null-string] [+ [strlen label-str] #1] #0))
+          #0)]))
+    [+ #1 [+ undefined-bindings-len [+ static-bindings-len generated-expressions-len]]]))
 
-(constrain measure-symtab (\(r) (with-vars (a) (`(function ((list expr) (list bndg-aug)) ,a)r)r)))
+(constrain measure-symtab (\(r) (with-vars (a) (`(function ((list expr) (list bndg-aug) (list bndg-aug)) ,a)r)r)))
 
-(function measure-symtab (generated-expressions symbols)
-  (let (sym-count (fold (acc #1) (sym symbols) [+ acc #1]))
-    (fold (acc sym-count) (e generated-expressions)
-      [+ acc (if [= (@ expr-code e) (label)] #1 #0)])))
+(function measure-symtab (generated-expressions undefined-bindings static-bindings)
+  (let (generated-expressions-len
+        (fold (acc #0) (e generated-expressions) [+ acc (if [= (@ expr-code e) (label)] #1 #0)]))
+    [+ #1 [+ generated-expressions-len [+ [length undefined-bindings] [length static-bindings]]]]))
 
-(constrain max-elf-size (\(r) (with-vars (a) (`(function ((list expr) (list bndg-aug)) ,a)r)r)))
+(constrain max-elf-size (\(r) (with-vars (a) (`(function ((list expr) (list bndg-aug) (list bndg-aug)) ,a)r)r)))
 
-(function max-elf-size (generated-expressions symbols)
+(function max-elf-size (generated-expressions undefined-bindings static-bindings)
   [+ (elf64-ehdr) [+ [* (elf64-shdr) (write-elf-sh-count)] [+ [pad-size [strvlen $shstrtab] (write-elf-alignment)]
     [+ [pad-size [* (write-elf-max-instr-len) [length generated-expressions]] (write-elf-alignment)]
-    [+ [pad-size [measure-strtab generated-expressions symbols] (write-elf-alignment)]
-    [+ [* (elf64-sym) [measure-symtab generated-expressions symbols]]
+    [+ [pad-size [measure-strtab generated-expressions undefined-bindings static-bindings] (write-elf-alignment)]
+    [+ [* (elf64-sym) [measure-symtab generated-expressions undefined-bindings static-bindings]]
     [* (elf64-rela) [* (write-elf-max-instr-fields) [length generated-expressions]]]]]]]]])
 
 (;; Takes assembly code and a list of symbols as constructs an object file.
@@ -251,14 +255,14 @@
   reference to where the size of the generated object code should be put. reg
   is the buffer into which the generated object code should be put.)
 
-(constrain write-elf (\(r) (with-vars (a b c) (`(function ((list expr) (list bndg-aug) ,a (ref ,b) buffer ,c) ())r)r)))
+(constrain write-elf (\(r) (with-vars (a b c) (`(function ((list expr) (list bndg-aug) (list bndg-aug) ,a (ref ,b) buffer ,c) ())r)r)))
 
-(function write-elf (generated-expressions symbols bin pos reg handler)
+(function write-elf (generated-expressions undefined-bindings static-bindings bin pos reg handler)
   (let (temp-buf [create-buffer #0 handler])
     (fallthrough
       (let (_ (do
           [set pos #0]
-          [set bin [buffer-alloc [max-elf-size generated-expressions symbols] reg cleanup]]
+          [set bin [buffer-alloc [max-elf-size generated-expressions undefined-bindings static-bindings] reg cleanup]]
           
           (let (ehdr [buffer-alloc (elf64-ehdr) temp-buf cleanup]) (do
           (setf ei-mag0 (& e-ident ehdr) (elfmag0))
@@ -288,8 +292,8 @@
           (setf e-shstrndx ehdr #1)
           [mem-write $bin pos ehdr (elf64-ehdr)]
           
-          (let (strtab-len [measure-strtab generated-expressions symbols])
-          (let (sym-count [measure-symtab generated-expressions symbols])
+          (let (strtab-len [measure-strtab generated-expressions undefined-bindings static-bindings])
+          (let (sym-count [measure-symtab generated-expressions undefined-bindings static-bindings])
       
           (let (syms [buffer-alloc [* sym-count (elf64-sym)] temp-buf cleanup])
           (let (sym-ptr (storage _ syms)) (do
@@ -310,7 +314,7 @@
       
           (let (bss-ptr (storage _ #0)) (do
       
-          (foreach (sym symbols)
+          (foreach (sym static-bindings)
             (if [= (@ bndg-scope sym) (local-scope)] (do
               (if [not= (@ bndg-name sym) null-string]
                 (do
@@ -352,7 +356,7 @@
       
           (let (local-symbol-count [/[- $sym-ptr syms](elf64-sym)]) (do
       
-          (foreach (sym symbols)
+          (foreach (sym static-bindings)
             (if (and [= (@ bndg-scope sym) (global-scope)] [= (@ bndg-state sym) (defined-state)]) (do
               (if [not= (@ bndg-name sym) null-string]
                 (do
@@ -372,7 +376,7 @@
               [set+ bss-ptr [pad-size (@ bndg-size sym) (word-size)]])
               (undefined)))
       
-          (foreach (sym symbols)
+          (foreach (sym undefined-bindings)
             (if (and [= (@ bndg-scope sym) (global-scope)] [= (@ bndg-state sym) (undefined-state)]) (do
               (if [not= (@ bndg-name sym) null-string]
                 (do
@@ -535,8 +539,8 @@
 
 (constrain binding-offsets-to-addresses (\(r) (`(function ((list expr) (list bndg-aug) obj) ())r)))
 
-(function binding-offsets-to-addresses (asms bindings obj) (do
-  (foreach (sym bindings)
+(function binding-offsets-to-addresses (asms static-bindings obj) (do
+  (foreach (sym static-bindings)
     (if (and [= (@ bndg-storage sym) (absolute-storage)] [= (@ bndg-state sym) (defined-state)])
       (setf bndg-offset sym [+ (@ bndg-offset sym) [segment obj (" .bss)]])
       (undefined)))

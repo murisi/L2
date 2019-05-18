@@ -1,37 +1,40 @@
 (;; Compiles a program into a list of assembly expressions. bindings is a reference to a
   list into which the augmented bindings of the generated code will be put.)
 
-(constrain compile-program (\(r) (with-vars (a) (`(function (expr (ref (list bndg-aug)) buffer ,a) (list expr))r)r)))
+(constrain compile-program
+  (\(r) (with-vars (a) (`(function ((list expr) (ref (list bndg-aug)) (ref (list bndg-aug)) buffer ,a) (list expr))r)r)))
 
-(function compile-program (program bindings buf handler)
+(function compile-program (exprs undefined-bindings static-bindings buf handler)
   (substitute (.. buf handler) (do
-    [visit-expressions vfind-multiple-definitions (storage _ program) (storage _ handler)]
-    [containment-analysis program]
-    [classify-program-bindings (@ expr-expression program)]
-    (let (undefined-bindings (storage _ nil)) (do
-    [link-symbols (@ expr-expression program) (true) undefined-bindings nil nil ..]
-    [append-list (& expr-binding-augs program) $undefined-bindings]
-    [infer-types program ..]
-    [visit-expressions vescape-analysis (storage _ program) (undefined)]
-    [classify-program-bindings (@ expr-expression program)]
-    [visit-expressions vlayout-frames (& expr-expression program) (values ..)]
-    [generate-program program bindings ..])))))
+    [set static-bindings nil]
+    [set undefined-bindings nil]
+    (let (global-bindings [global-binding-augs-of exprs ..]) (do
+      (foreach (expr exprs) (do
+        [visit-expressions vfind-multiple-definitions (storage _ expr) (values handler)]
+        [containment-analysis expr]
+        [classify-program-bindings expr]
+        [link-symbols expr (true) undefined-bindings global-bindings nil ..]
+        (;;[infer-types expr ..])
+        [visit-expressions vescape-analysis (storage _ expr) (undefined)]
+        [layout-frames expr static-bindings ..]))))
+    [generate-program exprs ..])))
 
 (;; Loads a program into memory and returns a handle to it. program is a program expression.
   expr-buf is the buffer into which the results of compilation will be put. obj-buf is the
   buffer into which the object code will be put. Return value is an object.)
 
-(constrain load-program (\(r) (with-vars (a) (`(function (expr buffer ,a) obj)r)r)))
+(constrain load-program (\(r) (with-vars (a) (`(function ((list expr) buffer ,a) obj)r)r)))
 
-(function load-program (program buf handler)
-  (let (bindings (storage _ (undefined)))
-  (let (asms [compile-program program bindings buf handler])
+(function load-program (exprs buf handler)
+  (let (static-bindings (storage _ (undefined)))
+  (let (undefined-bindings (storage _ (undefined)))
+  (let (asms [compile-program exprs undefined-bindings static-bindings buf handler])
   (let (objdest (storage _ (undefined)))
   (let (objdest-sz (storage _ (undefined))) (do
-  [write-elf asms $bindings objdest objdest-sz buf handler]
+  [write-elf asms $undefined-bindings $static-bindings objdest objdest-sz buf handler]
   (let (obj [load $objdest $objdest-sz buf handler]) (do
-  [binding-offsets-to-addresses asms $bindings obj]
-  obj))))))))
+  [binding-offsets-to-addresses asms $static-bindings obj]
+  obj)))))))))
 
 (;; Behavior is the same as load-program, but with the following addition: bndgs is a list
   of object bindings, and after the loading is done, the undefined bindings of the loaded
@@ -40,10 +43,10 @@
   <missing binding name>) if there is an undefined binding in the program that is not defined
   in bndgs.)
 
-(constrain load-program-and-mutate (\(r) (with-vars (a) (`(function (expr (list bndg-aug) buffer ,a) obj)r)r)))
+(constrain load-program-and-mutate (\(r) (with-vars (a) (`(function ((list expr) (list bndg-aug) buffer ,a) obj)r)r)))
 
-(function load-program-and-mutate (program bndgs buf handler)
-  (let (obj [load-program program buf handler])
+(function load-program-and-mutate (exprs bndgs buf handler)
+  (let (obj [load-program exprs buf handler])
   (let (temp-reg [create-buffer #0 handler])
   (let (ms [mutable-bindings obj temp-reg handler]) (do
     (foreach (d ms)
@@ -100,30 +103,21 @@
   (unsupported-ext-error, <file path string>) if an extension other than .o or .l2 is
   encountered.)
 
-(constrain evaluate-files (\(r) (with-vars (a) (`(function ((list string) (ref (list bndg-aug)) buffer ,a) ())r)r)))
+(constrain evaluate-files (\(r) (with-vars (a) (`(function ((list string) (list string) (ref (list bndg-aug)) buffer ,a) ())r)r)))
 
-(function evaluate-files (srcv bindings buf handler)
-  (let (objects (storage _ nil)) (do
-  
-  (foreach (src srcv)
-    (let (obj (storage _ (undefined)))
-    (let (dot [strrchr src (char .)]) (do
-
-    (if (and [not= dot null-strrchr] [str= dot (" .l2)])
-      [set obj [load-program [generate-metaprogram [make-program [read-expressions src buf handler]
-        buf handler] bindings buf handler] buf handler]]
-  
-    (if (and [not= dot null-strrchr] [str= dot (" .o)])
+(function evaluate-files (source-fns object-fns bindings buf handler)
+  (substitute (.. buf handler)
+    (let (objects1 (fold (objects nil) (src source-fns)
+      (let (obj [load-program [generate-metaprogram [read-expressions src ..] bindings ..] ..])
+        (do [append-list bindings [immutable-bindings obj ..]] [cons obj objects ..]))))
+    
+    (let (objects2 (fold (objects objects1) (src object-fns)
       (let (obj-sz (storage _ (undefined)))
-      (let (obj-buf (storage _ [read-to-buffer src obj-sz buf handler]))
-      [set obj [load $obj-buf $obj-sz buf handler]]))
-  
-      {handler (storage _ unsupported-ext-error src)}))
-
-    [append $obj objects buf handler]
-    [append-list bindings [immutable-bindings $obj buf handler]]))))
-
-  (foreach (obj $objects) [mutate-bindings obj $bindings]))))
+      (let (obj-buf (storage _ [read-to-buffer src obj-sz ..]))
+      (let (obj [load $obj-buf $obj-sz ..])
+        (do [append-list bindings [immutable-bindings obj ..]] [cons obj objects ..]))))))
+      
+    (foreach (obj objects2) [mutate-bindings obj $bindings])))))
 
 (;; Takes a list of L2 source files and compiles them into object files. programs is a
   list of strings containing paths to L2 source files. bndgs is a list of bindings
@@ -133,25 +127,34 @@
 
 (constrain compile-files (\(r) (with-vars (a) (`(function ((list string) (list bndg-aug) buffer ,a) ())r)r)))
 
-(function compile-files (programs bndgs buf handler)
-  (foreach (infn programs)
-    (let (dot (storage _ [strrchr infn (char .)]))
-      (if (and [not= $dot null-strrchr] [str= $dot (" .l2)])
-        (do
-          (let (program (storage _ [make-program [read-expressions infn buf handler] buf handler])) (do
-          [pre-visit-expressions vgenerate-metas program (storage _ bndgs buf handler)]
-          (let (bindings (storage _ (undefined)))
-          (let (asms [compile-program $program bindings buf handler])
+(function compile-files (file-names bndgs buf handler)
+  (substitute (.. buf handler)
+    (let (file-exprss [reverse (reverse-map (infn file-names)
+        [reverse (reverse-map (e [read-expressions infn ..])
+          (let (f (storage _ e))
+            (do [pre-visit-expressions vgenerate-metas f (values bndgs ..)] $f)) ..) ..] ..) ..])
+      (do
+        (let (all-exprs [reverse-flatten file-exprss ..])
+        (let (undefined-bindings (storage _ nil))
+        (let (global-bindings [global-binding-augs-of all-exprs ..]) (do
+          (foreach (expr all-exprs) [link-symbols expr (true) undefined-bindings global-bindings nil ..])
+          [infer-types all-exprs ..]
+          (foreach (expr all-exprs) [pre-visit-expressions vunlink-symbols (storage _ expr) (values global-bindings)])
+          (foreach (expr all-exprs) [pre-visit-expressions vunlink-symbols (storage _ expr) (values $undefined-bindings)])))))
+        
+        (foreach (infn file-names) (exprs file-exprss)
+          (let (undefined-bindings (storage _ (undefined)))
+          (let (static-bindings (storage _ (undefined)))
+          (let (asms [compile-program exprs undefined-bindings static-bindings buf handler])
           (let (objdest (storage _ (undefined)))
           (let (objdest-sz (storage _ (undefined))) (do
-          [write-elf asms $bindings objdest objdest-sz buf handler]
+          [write-elf asms $undefined-bindings $static-bindings objdest objdest-sz buf handler]
           (let (outfn [buffer-alloc [+ [strlen infn] #1] buf handler]) (do
           [strcpy outfn infn]
           [strcpy [strrchr outfn (char .)] (" .o)]
           (let (fd [create outfn handler]) (do
           [print fd $objdest $objdest-sz handler]
-          [close fd handler]))))))))))))
-        (undefined)))))
+          [close fd handler])))))))))))))))
 
 (storage arguments-error (undefined))
 
@@ -166,7 +169,12 @@
     (let (buf [create-buffer #0 exit-cont])
     (fallthrough
         (do
-          (let (args [@cdr[argv buf handler]]) (do
+          (let (source-fns [@cdr[argv buf handler]])
+          (let (dash-list-ref (locate (arg (storage _ source-fns)) [str= arg (" -)]))
+          (if [nil? $dash-list-ref] {handler (storage _ arguments-error)}
+          (let (object-fns [@cdr $dash-list-ref]) (do
+          (;; Cut the source filenames list short.)
+          [set dash-list-ref nil]
           (;; These are all the bindings necessary for metaprogramming. Their
             definitions can be found in list.l2 and lexer.l2.)
           (let (bndgs (storage _ (substitute (.. buf handler) (list
@@ -271,10 +279,10 @@
             [make-binding (" var) vbl ..])..)))) (do
           
           (;; Evaluate the metaprogram)
-          [evaluate-files args bndgs buf handler]
+          [evaluate-files source-fns object-fns bndgs buf handler]
           (;; Compile the program in the metaprogram's environment)
-          [compile-files args $bndgs buf handler]
-          (storage _ no-error))))))
+          [compile-files source-fns $bndgs buf handler]
+          (storage _ no-error)))))))))
         
         (handler err (substitute (.. cleanup) (do
           (switch = (@0 err)
