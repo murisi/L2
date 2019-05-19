@@ -388,17 +388,17 @@
           (contains-with)
           [lor condition-flag [lor consequent-flag alternate-flag]])))
     
-    ((-function-) (-continuation-) (-with-)
-      (let (_ [containment-analysis (@ expr-expression s)])
-        (if [= (@ expr-type s) (-with-)] (contains-with) (contains-none))))
+    ((-function-) (-continuation-) (-with-) (do
+      [containment-analysis (@ expr-expression s)]
+      (if [= (@ expr-type s) (-with-)] (contains-with) (contains-none))))
     
     ((-storage-) (fold (acc (contains-none)) (x (@ expr-arguments s)) [lor acc [containment-analysis x]]))
     
     ((-jump-) (-invoke-)
       (let (contains-flag (fold (acc [containment-analysis (@ expr-reference s)]) (x (@ expr-arguments s))
-          [lor acc [containment-analysis x]]))
-        (let (_ (setf expr-contains-flag s contains-flag))
-          (if [= (@ expr-type s) (-jump-)] (contains-jump) contains-flag))))
+          [lor acc [containment-analysis x]])) (do
+        (setf expr-contains-flag s contains-flag)
+        (if [= (@ expr-type s) (-jump-)] (contains-jump) contains-flag))))
     
     (contains-none)))
 
