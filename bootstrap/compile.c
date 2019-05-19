@@ -203,11 +203,10 @@ int main(int argc, char *argv[]) {
         write_str(STDOUT, ".\n");
         break;
       } case arguments: {
-        write_str(STDOUT, "Bad command line arguments.\nUsage: l2evaluate (src1.l2 | obj1.o) ... - src1.l2 ...\n"
-          "Outcome: Compiles each L2 file before the dash into an object file, then links all the object files\n"
-          "before the dash together, and then executes each object file before the dash in the order they were\n"
-          "specified. L2 files after the dash are then compiled using the global functions defined before the\n"
-          "dash as macros.\n");
+        write_str(STDOUT, "Bad command line arguments.\nUsage: l2evaluate src1.l2 ... - obj1.o ...\n"
+          "Outcome: Loads the functions in the source and object files into memory, then preprocesses "
+          "the source files using the functions in memory, and then compiles the source files into "
+          "object files.\n");
         break;
       } case undefined_symbol: {
         write_str(STDOUT, "Undefined symbol: ");

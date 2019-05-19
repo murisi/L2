@@ -512,10 +512,6 @@ void classify_program_binding_augs(union expression *expr) {
   }
 }
 
-void _set_(unsigned long *ref, unsigned long val) {
-  *ref = val;
-}
-
 Object *load_program_and_mutate(list exprs, list bindings, buffer expr_buf, buffer obj_buf, jumpbuf *handler);
 
 list generate_metaprogram(list exprs, list *bindings, buffer expr_buf, buffer obj_buf, jumpbuf *handler);
@@ -557,22 +553,6 @@ union expression *vgenerate_metas(union expression *s, void *ctx) {
   }
 }
 
-void *init_storage(unsigned long *data, union expression *storage_expr, list *bindings, buffer expr_buf, buffer obj_buf, jumpbuf *handler, void **cache) {
-  if(*cache) {
-    return *cache;
-  } else {
-    list sets = nil;
-    union expression *arg;
-    foreach(arg, storage_expr->storage.arguments) {
-      pre_visit_expressions(vgenerate_metas, &arg, (void *[]) {*bindings, expr_buf, handler});
-      append(make_invoke2(make_literal((unsigned long) _set_, expr_buf),
-        make_literal((unsigned long) data++, expr_buf), arg, expr_buf), &sets, expr_buf);
-    }
-    *cache = segment(load_program_and_mutate(sets, *bindings, expr_buf, obj_buf, handler), ".text");
-    return *cache;
-  }
-}
-
 void *init_function(union expression *function_expr, list *bindings, buffer expr_buf, buffer obj_buf, jumpbuf *handler, void **cache) {
   if(*cache) {
     return *cache;
@@ -584,38 +564,13 @@ void *init_function(union expression *function_expr, list *bindings, buffer expr
   }
 }
 
-void *init_expression(union expression *expr, list *bindings, buffer expr_buf, buffer obj_buf, jumpbuf *handler, void **cache) {
-  if(*cache) {
-    return *cache;
-  } else {
-    pre_visit_expressions(vgenerate_metas, &expr, (void *[]) {*bindings, expr_buf, handler});
-    *cache = segment(load_program_and_mutate(lst(expr, nil, expr_buf), *bindings, expr_buf, obj_buf, handler), ".text");
-    return *cache;
-  }
-}
-
 list generate_metaprogram(list exprs, list *bindings, buffer expr_buf, buffer obj_buf, jumpbuf *handler) {
   union expression *s;
   list c = nil;
   foreach(s, exprs) {
     void **cache = buffer_alloc(obj_buf, sizeof(void *));
     *cache = NULL;
-    if(s->base.type == storage) {
-      list args = nil;
-      int i;
-      for(i = 0; i < length(s->storage.arguments); i++) {
-        prepend(make_literal(0, expr_buf), &args, expr_buf);
-      }
-      union expression *storage_ref = make_symbol(s->storage.reference->symbol.name, expr_buf);
-      append(make_storage(storage_ref, args, expr_buf), &c, expr_buf);
-      union expression *storage_ref_arg = make_symbol(NULL, expr_buf);
-      bind_symbol(storage_ref_arg, storage_ref);
-      append(make_invoke0(make_invoke7(make_literal((unsigned long) init_storage, expr_buf), storage_ref_arg,
-        make_literal((unsigned long) s, expr_buf), make_literal((unsigned long) bindings, expr_buf),
-        make_literal((unsigned long) expr_buf, expr_buf), make_literal((unsigned long) obj_buf, expr_buf),
-        make_literal((unsigned long) handler, expr_buf), make_literal((unsigned long) cache, expr_buf), expr_buf), expr_buf),
-        &c, expr_buf);
-    } else if(s->base.type == function) {
+    if(s->base.type == function) {
       list params = nil, args = nil;
       int i;
       for(i = 0; i < length(s->function.parameters); i++) {
@@ -632,12 +587,6 @@ list generate_metaprogram(list exprs, list *bindings, buffer expr_buf, buffer ob
       foreachzipped(a, t, params, args) {
         bind_symbol(t, a);
       }
-    } else {
-      append(make_invoke0(make_invoke6(make_literal((unsigned long) init_expression, expr_buf),
-        make_literal((unsigned long) s, expr_buf), make_literal((unsigned long) bindings, expr_buf),
-        make_literal((unsigned long) expr_buf, expr_buf), make_literal((unsigned long) obj_buf, expr_buf),
-        make_literal((unsigned long) handler, expr_buf), make_literal((unsigned long) cache, expr_buf), expr_buf), expr_buf),
-        &c, expr_buf);
     }
   }
   return c;
