@@ -266,40 +266,44 @@
         [@rst list]}
       {return [meta:reverse labels r]})) emt seed list}))
 
-(;; Puts the expressions starting from the second argument onwards into memory
-  starting at the address given by the first argument.)
+(;; Does the transformation (values arg1 arg2 ...) -> (storage values:stor arg1 arg2 ...).
+  (values arg1 arg2 ...) has the type (values sig1 sig2 ...) where sigj is the signature
+  of argj.)
 
 (function values (args r)
   (let (params [meta:label args (` values:param r) r])
         (vars [meta:label args (` values:var r) r])
   (let (unquoted-vars [meta:map2 vars r (\(l r) [llst [lst -,- emt r] l emt r]) r])
     (`(with values:return
-        (,[lllst (` invoke r) (`(constrain
-            (function values:func (,[lst (` values:cont r) params r])
+        (,[lllst (` jump r) (`(constrain
+            (continuation values:func (,[lst (` values:cont r) params r])
               {values:cont (,[llst (` storage r) (` values:stor r) params r])})
-          (\(values:r) (with-vars (,[lst (` values:return-sig r) vars r])
+          (\(values:r) (with-vars ,vars
             ((,[lst -`- emt r])
-              (function (,[lst [llst (` continuation r) [lst [lst (` values r) unquoted-vars r] emt r] emt r] unquoted-vars r])
-                ((,[lst -,- emt r]) values:return-sig)) values:r) values:r)))r) (` values:return r) args r]))r))))
+              (continuation (,[lst [llst (` continuation r) [lst [lst (` values r) unquoted-vars r] emt r] emt r] unquoted-vars r]))
+                values:r) values:r)))r) (` values:return r) args r]))r))))
+
+(;; Binds values bound by values. I.e. evaluating (bind x (param1 param2 ...) expr) where
+  x is (values arg1 arg2 ...) is the same as evaluating expr in an environment where
+  paramj is argj for each j.)
 
 (function bind (l r)
   (let (identifiers [@frst l]) (param [@fst l]) (body [@frrst l])
   (let (vars [meta:label identifiers (` values:var r) r])
   (let (unquoted-vars [meta:map2 vars r (\(l r) [llst [lst -,- emt r] l emt r]) r])
     (`(with bind:return
-        [(constrain (function bind:func (bind:cont bind:param)
+        {(constrain (continuation bind:func (bind:cont bind:param)
               (,[llst (` jump r) (` bind:cont r)
                 (loop make-set (identifiers identifiers) (offset #0) (params emt)
                   (if [emt? identifiers]
                     [meta:reverse params r]
                     {make-set [@rst identifiers] [+ offset (unit)]
                       [lst (`[get [+ bind:param (,[value->literal offset r])]]r) params r]})) r]))
-            (\(bind:r) (with-vars (,[lst (` bind:return-sig r) vars r])
+            (\(bind:r) (with-vars ,vars
               ((,[lst -`- emt r])
-                (function (,[llst [llst (` continuation r) unquoted-vars emt r]
-                    [lst (` values r) unquoted-vars r] emt r])
-                  ((,[lst -,- emt r]) bind:return-sig)) bind:r) bind:r)))
-          (continuation bind:cont ,identifiers {bind:return ,body}) ,param])r)))))
+                (continuation (,[llst [llst (` continuation r) unquoted-vars emt r]
+                    [lst (` values r) unquoted-vars r] emt r])) bind:r) bind:r)))
+          (continuation bind:cont ,identifiers {bind:return ,body}) ,param})r)))))
 
 (;; Implements the transformations (@n expr) -> ($[+ expr [* #n(unit)]]).
   Designed to evaluate to the nth argument of a storage expression.)
