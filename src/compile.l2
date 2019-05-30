@@ -92,16 +92,9 @@
           {cons-expr [cons [build-expression [build-fragment src-buf $src-sz pos ..] ..] expressions ..]}
           [reverse expressions ..])))))))
 
-(storage unsupported-ext-error (undefined))
-
-(;; Takes a list of L2 and object files and evaluates them in order. srcv is a list of
-  strings containing paths to L2 and object files. bindings is reference to a list of
-  bindings and to it will be added the global variables of the loaded object files and
-  from it the execution environment of the same will be created. buf is the buffer into
-  which expressions read from L2 source files and compiled and read object code is put.
-  The handler continuation is followed with the pair
-  (unsupported-ext-error, <file path string>) if an extension other than .o or .l2 is
-  encountered.)
+(;; Takes a list of L2 and object file names, loads their contents into memory, and links
+  them together. The global symbols of the object code are then added to the list of
+  bindings.)
 
 (constrain evaluate-files (\(r) (with-vars (a) (`(function ((list string) (list string) (ref (list bndg-aug)) buffer ,a) ())r)r)))
 
@@ -321,11 +314,6 @@
                 [print-str (stdout) (@1 err) ..]
                 [print-str (stdout) (" .(lf)) ..])
               [print-str (stdout) (" Inaccessable file.) ..]))
-            
-            (unsupported-ext-error (do
-              [print-str (stdout) (" File has unsupported extension:(space)) ..]
-              [print-str (stdout) (@1 err) ..]
-              [print-str (stdout) (" .(lf)) ..]))
             
             (arguments-error [print-str (stdout)
               (" Bad command line arguments.(lf)
