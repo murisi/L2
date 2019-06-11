@@ -120,15 +120,15 @@ void layout_frames(union expression *n, list *binding_augs, buffer r) {
 void make_load(struct binding_aug *bndg, unsigned long offset, union expression *dest_reg, union expression *scratch_reg, list *c, buffer r) {
   switch(bndg->type) {
     case frame_relative_storage: {
-      prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(bndg->offset + offset, r), make_asm0(RBP, r), dest_reg, r), c, r);
+      prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(bndg->offset + offset, NULL, r), make_asm0(RBP, r), dest_reg, r), c, r);
       break;
     } case absolute_storage: {
-      prepend(make_asm2(MOVQ_IMM_TO_REG, make_asm2(LNKR_ADD_OFF_TO_REF, use_binding(bndg, r), make_literal(offset, r), r), scratch_reg,
-        r), c, r);
-      prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(0, r), scratch_reg, dest_reg, r), c, r);
+      prepend(make_asm2(MOVQ_IMM_TO_REG, make_asm2(LNKR_ADD_OFF_TO_REF, use_binding(bndg, r), make_literal(offset, NULL, r), r),
+        scratch_reg, r), c, r);
+      prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(0, NULL, r), scratch_reg, dest_reg, r), c, r);
       break;
     } case top_relative_storage: {
-      prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(bndg->offset + offset, r), make_asm0(RSP, r), dest_reg, r), c, r);
+      prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(bndg->offset + offset, NULL, r), make_asm0(RSP, r), dest_reg, r), c, r);
       break;
     }
   }
@@ -137,15 +137,15 @@ void make_load(struct binding_aug *bndg, unsigned long offset, union expression 
 void make_store(union expression *src_reg, struct binding_aug *bndg, unsigned long offset, union expression *scratch_reg, list *c, buffer r) {
   switch(bndg->type) {
     case frame_relative_storage: {
-      prepend(make_asm3(MOVQ_REG_TO_MDB, src_reg, make_literal(bndg->offset + offset, r), make_asm0(RBP, r), r), c, r);
+      prepend(make_asm3(MOVQ_REG_TO_MDB, src_reg, make_literal(bndg->offset + offset, NULL, r), make_asm0(RBP, r), r), c, r);
       break;
     } case absolute_storage: {
-      prepend(make_asm2(MOVQ_IMM_TO_REG, make_asm2(LNKR_ADD_OFF_TO_REF, use_binding(bndg, r), make_literal(offset, r), r), scratch_reg,
-        r), c, r);
-      prepend(make_asm3(MOVQ_REG_TO_MDB, src_reg, make_literal(0, r), scratch_reg, r), c, r);
+      prepend(make_asm2(MOVQ_IMM_TO_REG, make_asm2(LNKR_ADD_OFF_TO_REF, use_binding(bndg, r), make_literal(offset, NULL, r), r),
+        scratch_reg, r), c, r);
+      prepend(make_asm3(MOVQ_REG_TO_MDB, src_reg, make_literal(0, NULL, r), scratch_reg, r), c, r);
       break;
     } case top_relative_storage: {
-      prepend(make_asm3(MOVQ_REG_TO_MDB, src_reg, make_literal(bndg->offset + offset, r), make_asm0(RSP, r), r), c, r);
+      prepend(make_asm3(MOVQ_REG_TO_MDB, src_reg, make_literal(bndg->offset + offset, NULL, r), make_asm0(RSP, r), r), c, r);
       break;
     }
   }
@@ -170,13 +170,13 @@ void sgenerate_ifs(union expression *n, list *c, buffer r) {
 void make_load_address(struct binding_aug *bndg, union expression *dest_reg, list *c, buffer r) {
   switch(bndg->type) {
     case frame_relative_storage: {
-      prepend(make_asm3(LEAQ_MDB_TO_REG, make_literal(bndg->offset, r), make_asm0(RBP, r), dest_reg, r), c, r);
+      prepend(make_asm3(LEAQ_MDB_TO_REG, make_literal(bndg->offset, NULL, r), make_asm0(RBP, r), dest_reg, r), c, r);
       break;
     } case absolute_storage: {
       prepend(make_asm2(MOVQ_IMM_TO_REG, use_binding(bndg, r), dest_reg, r), c, r);
       break;
     } case top_relative_storage: {
-      prepend(make_asm3(LEAQ_MDB_TO_REG, make_literal(bndg->offset, r), make_asm0(RSP, r), dest_reg, r), c, r);
+      prepend(make_asm3(LEAQ_MDB_TO_REG, make_literal(bndg->offset, NULL, r), make_asm0(RSP, r), dest_reg, r), c, r);
       break;
     }
   }
@@ -216,13 +216,13 @@ void make_store_continuation(union expression *n, list *c, buffer r) {
 
 void cond_push_relative_storage(union expression *n, list *c, buffer r) {
   if(n->jump.temp_storage_bndg->type == top_relative_storage) {
-    prepend(make_asm2(SUBQ_IMM_TO_REG, make_literal(length(n->jump.arguments) * WORD_SIZE, r), make_asm0(RSP, r), r), c, r);
+    prepend(make_asm2(SUBQ_IMM_TO_REG, make_literal(length(n->jump.arguments) * WORD_SIZE, NULL, r), make_asm0(RSP, r), r), c, r);
   }
 }
 
 void cond_pop_relative_storage(union expression *n, list *c, buffer r) {
   if(n->jump.temp_storage_bndg->type == top_relative_storage) {
-    prepend(make_asm2(ADDQ_IMM_TO_REG, make_literal(length(n->jump.arguments) * WORD_SIZE, r), make_asm0(RSP, r), r), c, r);
+    prepend(make_asm2(ADDQ_IMM_TO_REG, make_literal(length(n->jump.arguments) * WORD_SIZE, NULL, r), make_asm0(RSP, r), r), c, r);
   }
 }
 
@@ -241,7 +241,7 @@ void generate_buffer_to_dest(union expression *n, union expression *dest_reg, in
   union expression *t;
   foreach(t, n->jump.arguments) {
     make_load(n->jump.temp_storage_bndg, tmp_offset, make_asm0(RAX, r), make_asm0(R10, r), c, r);
-    prepend(make_asm3(MOVQ_REG_TO_MDB, make_asm0(RAX, r), make_literal(offset, r), dest_reg, r), c, r);
+    prepend(make_asm3(MOVQ_REG_TO_MDB, make_asm0(RAX, r), make_literal(offset, NULL, r), dest_reg, r), c, r);
     offset += WORD_SIZE;
     tmp_offset += WORD_SIZE;
   }
@@ -296,19 +296,19 @@ void sgenerate_jumps(union expression *n, list *c, buffer r) {
     generate_buffer_to_dest(n, make_asm0(R11, r), CONT_SIZE, c, r);
     cond_pop_relative_storage(n, c, r);
     
-    prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(CONT_RBX, r), make_asm0(R11, r), make_asm0(RBX, r), r), c, r);
-    prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(CONT_R12, r), make_asm0(R11, r), make_asm0(R12, r), r), c, r);
-    prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(CONT_R13, r), make_asm0(R11, r), make_asm0(R13, r), r), c, r);
-    prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(CONT_R14, r), make_asm0(R11, r), make_asm0(R14, r), r), c, r);
-    prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(CONT_R15, r), make_asm0(R11, r), make_asm0(R15, r), r), c, r);
-    prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(CONT_CIR, r), make_asm0(R11, r), make_asm0(R10, r), r), c, r);
-    prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(CONT_RBP, r), make_asm0(R11, r), make_asm0(RBP, r), r), c, r);
+    prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(CONT_RBX, NULL, r), make_asm0(R11, r), make_asm0(RBX, r), r), c, r);
+    prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(CONT_R12, NULL, r), make_asm0(R11, r), make_asm0(R12, r), r), c, r);
+    prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(CONT_R13, NULL, r), make_asm0(R11, r), make_asm0(R13, r), r), c, r);
+    prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(CONT_R14, NULL, r), make_asm0(R11, r), make_asm0(R14, r), r), c, r);
+    prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(CONT_R15, NULL, r), make_asm0(R11, r), make_asm0(R15, r), r), c, r);
+    prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(CONT_CIR, NULL, r), make_asm0(R11, r), make_asm0(R10, r), r), c, r);
+    prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(CONT_RBP, NULL, r), make_asm0(R11, r), make_asm0(RBP, r), r), c, r);
     prepend(make_asm1(JMP_TO_REG, make_asm0(R10, r), r), c, r);
   }
 }
 
 void sgenerate_literals(union expression *n, list *c, buffer r) {
-  prepend(make_asm2(MOVQ_IMM_TO_REG, make_literal(n->literal.value, r), make_asm0(RAX, r), r), c, r);
+  prepend(make_asm2(MOVQ_IMM_TO_REG, make_literal(n->literal.value, NULL, r), make_asm0(RAX, r), r), c, r);
 }
 
 int get_current_offset(union expression *function) {
@@ -341,7 +341,7 @@ void sgenerate_functions(union expression *n, list *c, buffer r) {
   
   prepend(make_asm1(PUSHQ_REG, make_asm0(RBP, r), r), c, r);
   prepend(make_asm2(MOVQ_REG_TO_REG, make_asm0(RSP, r), make_asm0(RBP, r), r), c, r);
-  prepend(make_asm2(SUBQ_IMM_TO_REG, make_literal(-get_current_offset(n), r), make_asm0(RSP, r), r), c, r);
+  prepend(make_asm2(SUBQ_IMM_TO_REG, make_literal(-get_current_offset(n), NULL, r), make_asm0(RSP, r), r), c, r);
   
   //Execute the function body
   generate_expressions(n->function.expression, c, r);
@@ -349,7 +349,7 @@ void sgenerate_functions(union expression *n, list *c, buffer r) {
   prepend(make_asm0(LEAVE, r), c, r);
   
   prepend(make_asm1(POPQ_REG, make_asm0(R11, r), r), c, r);
-  prepend(make_asm2(ADDQ_IMM_TO_REG, make_literal(6*WORD_SIZE, r), make_asm0(RSP, r), r), c, r);
+  prepend(make_asm2(ADDQ_IMM_TO_REG, make_literal(6*WORD_SIZE, NULL, r), make_asm0(RSP, r), r), c, r);
   prepend(make_asm1(PUSHQ_REG, make_asm0(R11, r), r), c, r);
   prepend(make_asm0(RET, r), c, r);
   prepend(make_asm1(LABEL, use_binding(after_binding, r), r), c, r);
@@ -392,12 +392,12 @@ void sgenerate_invokes(union expression *n, list *c, buffer r) {
     prepend(make_asm1(POPQ_REG, make_asm0(R9, r), r), c, r);
   }
   
-  prepend(make_asm2(MOVQ_IMM_TO_REG, make_literal(0, r), make_asm0(RAX, r), r), c, r);
+  prepend(make_asm2(MOVQ_IMM_TO_REG, make_literal(0, NULL, r), make_asm0(RAX, r), r), c, r);
   
   prepend(make_asm1(CALL_REG, make_asm0(R11, r), r), c, r);
   
   if(length(n->invoke.arguments) > 6) {
-    prepend(make_asm2(ADDQ_IMM_TO_REG, make_literal(WORD_SIZE * (length(n->invoke.arguments) - 6), r), make_asm0(RSP, r), r), c, r);
+    prepend(make_asm2(ADDQ_IMM_TO_REG, make_literal(WORD_SIZE * (length(n->invoke.arguments) - 6), NULL, r), make_asm0(RSP, r), r), c, r);
   }
 }
 

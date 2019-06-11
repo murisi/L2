@@ -142,7 +142,7 @@ void link_symbols(union expression *s, bool static_storage, list *undefined_bind
     } case symbol: {
       if(!s->symbol.binding_aug && !assign_binding(s, dynamic_bindings)&&
         !assign_binding(s, static_bindings) && !assign_binding(s, *undefined_bindings)) {
-          union expression *stg = make_storage(make_symbol(s->symbol.name, r), nil, r);
+          union expression *stg = make_storage(make_symbol(s->symbol.name, NULL, r), nil, NULL, r);
           struct binding_aug *bndg = stg->storage.reference->symbol.binding_aug;
           bndg->type = absolute_storage;
           bndg->scope = global_scope;
@@ -532,7 +532,7 @@ void *preprocessed_expression_address(union expression *s, list bindings, buffer
     }
     throw_undefined_symbol(s->symbol.name, handler);
   } else {
-    union expression *expr_container = make_function(make_symbol(NULL, expr_buf), nil, s, expr_buf);
+    union expression *expr_container = make_function(make_symbol(NULL, NULL, expr_buf), nil, s, NULL, expr_buf);
     list exprs_preprocessed = generate_metaprogram(lst(expr_container, nil, expr_buf),
       &bindings, expr_buf, obj_buf, handler);
     load_program_and_mutate(exprs_preprocessed, bindings, expr_buf, obj_buf, handler);
@@ -549,7 +549,7 @@ union expression *vgenerate_metas(union expression *s, void *ctx) {
   
   if(s->base.type == meta) {
     list (*macro)(list, buffer) = preprocessed_expression_address(s->meta.reference, bindings, expr_buf, expr_buf, handler);
-    return vgenerate_metas(build_expression(macro(s->meta.argument, expr_buf), expr_buf, handler), ctx);
+    return vgenerate_metas(build_expression(macro(s->meta.argument, expr_buf), s, expr_buf, handler), ctx);
   } else if(s->base.type == constrain) {
     list (*macro)(buffer) = preprocessed_expression_address(s->constrain.reference, bindings, expr_buf, expr_buf, handler);
     s->constrain.signature = macro(expr_buf);
@@ -580,15 +580,15 @@ list generate_metaprogram(list exprs, list *bindings, buffer expr_buf, buffer ob
       list params = nil, args = nil;
       int i;
       for(i = 0; i < length(s->function.parameters); i++) {
-        prepend(make_symbol(NULL, expr_buf), &params, expr_buf);
-        prepend(make_symbol(NULL, expr_buf), &args, expr_buf);
+        prepend(make_symbol(NULL, NULL, expr_buf), &params, expr_buf);
+        prepend(make_symbol(NULL, NULL, expr_buf), &args, expr_buf);
       }
-      append(make_function(make_symbol(s->function.reference->symbol.name, expr_buf), params,
-        make_invoke(make_invoke6(make_literal((unsigned long) init_function, expr_buf),
-          make_literal((unsigned long) s, expr_buf), make_literal((unsigned long) bindings, expr_buf),
-          make_literal((unsigned long) expr_buf, expr_buf), make_literal((unsigned long) obj_buf, expr_buf),
-          make_literal((unsigned long) handler, expr_buf), make_literal((unsigned long) cache, expr_buf), expr_buf),
-          args, expr_buf), expr_buf), &c, expr_buf);
+      append(make_function(make_symbol(s->function.reference->symbol.name, NULL, expr_buf), params,
+        make_invoke(make_invoke6(make_literal((unsigned long) init_function, NULL, expr_buf),
+          make_literal((unsigned long) s, NULL, expr_buf), make_literal((unsigned long) bindings, NULL, expr_buf),
+          make_literal((unsigned long) expr_buf, NULL, expr_buf), make_literal((unsigned long) obj_buf, NULL, expr_buf),
+          make_literal((unsigned long) handler, NULL, expr_buf), make_literal((unsigned long) cache, NULL, expr_buf), NULL, expr_buf),
+          args, NULL, expr_buf), NULL, expr_buf), &c, expr_buf);
       union expression *a, *t;
       foreachzipped(a, t, params, args) {
         bind_symbol(t, a);

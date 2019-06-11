@@ -69,7 +69,7 @@ list read_expressions(unsigned char *src, buffer expr_buf, jumpbuf *handler) {
   list expressions = nil;
   int pos = 0;
   while(after_leading_space(src_buf, src_sz, &pos)) {
-    append(build_expression(build_fragment(src_buf, src_sz, &pos, expr_buf, handler), expr_buf, handler), &expressions, expr_buf);
+    append(build_expression(build_fragment(src_buf, src_sz, &pos, expr_buf, handler), NULL, expr_buf, handler), &expressions, expr_buf);
   }
   return expressions;
 }
@@ -220,6 +220,11 @@ int main(int argc, char *argv[]) {
         print_fragment(err->unification.rhs);
         write_str(STDOUT, "\nThe above equation was generated from the following expression:\n");
         print_expression(err->unification.expr);
+        union expression *t = err->unification.expr;
+        while(t = t->base.meta) {
+          write_str(STDOUT, "\nWhich was generated from the following expression:\n");
+          print_expression(t);
+        }
         write_str(STDOUT, "\n");
         break;
       }
