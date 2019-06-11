@@ -19,15 +19,11 @@ void visit_expressions(union expression *(*visitor)(union expression *, void *),
       break;
     }
   }
-  union expression *parent = (*s)->base.parent;
   *s = (*visitor)(*s, ctx);
-  (*s)->base.parent = parent;
 }
 
 void pre_visit_expressions(union expression *(*visitor)(union expression *, void *), union expression **s, void *ctx) {
-  union expression *parent = (*s)->base.parent;
   *s = (*visitor)(*s, ctx);
-  (*s)->base.parent = parent;
   
   switch((*s)->base.type) {
     case _if: {
@@ -77,13 +73,6 @@ union expression *vfind_multiple_definitions(union expression *e, void *ctx) {
   }
   destroy_buffer(tempreg);
   return e;
-}
-
-union expression *get_parent_function(union expression *n) {
-  do {
-    n = n->base.parent;
-  } while(n->base.type != function);
-  return n;
 }
 
 bool reference_equals(union expression *a, union expression *b) {
@@ -181,34 +170,51 @@ void link_symbols(union expression *s, bool static_storage, list *undefined_bind
   }
 }
 
-bool is_jump_reference(union expression *s) {
-  return s->base.parent->base.type == jump && s->base.parent->jump.reference == s;
-}
-
-bool is_c_reference(union expression *s) {
-  return (s->base.parent->base.type == continuation || s->base.parent->base.type == with) && s->base.parent->continuation.reference == s;
-}
-
-union expression *target_expression(union expression *s) {
-  return s->symbol.binding_aug->definition->symbol.parent;
-}
-
-void vescape_analysis_aux(union expression *ref, union expression *target) {
-  if(is_jump_reference(ref)) {
-    ref->symbol.parent->jump.short_circuit = target;
-  } else {
-    target->continuation.escapes = true;
+void escape_analysis(union expression *s, bool escaping) {
+  switch(s->base.type) {
+    case symbol: {
+      union expression *target_expr = s->symbol.binding_aug->expression;
+      if(escaping && (target_expr->base.type == continuation || target_expr->base.type == with) &&
+          target_expr->continuation.reference == s->symbol.binding_aug->symbol) {
+        target_expr->continuation.escapes = escaping;
+      }
+      break;
+    } case _if: {
+      escape_analysis(s->_if.condition, true);
+      escape_analysis(s->_if.consequent, true);
+      escape_analysis(s->_if.alternate, true);
+      break;
+    } case function: case continuation: case with: {
+      if(escaping && s->base.type == continuation) {
+        s->continuation.escapes = escaping;
+      }
+      escape_analysis(s->function.expression, true);
+      break;
+    } case storage: case jump: case invoke: {
+      if(s->base.type == jump) {
+        if(s->jump.reference->base.type == symbol) {
+          union expression *target_expr = s->jump.reference->symbol.binding_aug->expression;
+          if((target_expr->base.type == continuation || target_expr->base.type == with) &&
+              target_expr->continuation.reference == s->jump.reference->symbol.binding_aug->symbol) {
+            s->jump.short_circuit = target_expr;
+          }
+        } else if(s->jump.reference->base.type == continuation) {
+          s->jump.short_circuit = s->jump.reference;
+        }
+        escape_analysis(s->jump.reference, false);
+      } else if(s->base.type == invoke) {
+        escape_analysis(s->jump.reference, true);
+      }
+      union expression *t;
+      foreach(t, s->storage.arguments) {
+        escape_analysis(t, true);
+      }
+      break;
+    } case constrain: {
+      escape_analysis(s->constrain.expression, true);
+      break;
+    }
   }
-}
-
-union expression *vescape_analysis(union expression *s, void *ctx) {
-  if(s->base.type == symbol && s->symbol.binding_aug->definition != s && is_c_reference(s->symbol.binding_aug->definition)) {
-    vescape_analysis_aux(s, target_expression(s));
-  } else if(s->base.type == continuation) {
-    vescape_analysis_aux(s, s);
-
-  }
-  return s;
 }
 
 union expression *vfind_dependencies(union expression *s, buffer r) {
@@ -229,9 +235,9 @@ union expression *vfind_dependencies(union expression *s, buffer r) {
       }
       break;
     } case symbol: {
-      union expression *definition = s->symbol.binding_aug->definition;
-      prepend(definition->symbol.parent, &s->symbol.dependencies, r);
-      prepend(s, &definition->symbol.parent->base.dependencies, r);
+      union expression *target_expr = s->symbol.binding_aug->expression;
+      prepend(target_expr, &s->symbol.dependencies, r);
+      prepend(s, &target_expr->base.dependencies, r);
       break;
     } case constrain: {
       prepend(s->constrain.expression, &s->constrain.dependencies, r);
@@ -414,7 +420,7 @@ void infer_types(list exprs, buffer expr_buf, jumpbuf *handler) {
           break;
         } case symbol: {
           prepend(e->symbol.signature, &lhss, expr_buf);
-          prepend(e->symbol.binding_aug->definition->symbol.signature, &rhss, expr_buf);
+          prepend(e->symbol.binding_aug->symbol->symbol.signature, &rhss, expr_buf);
           break;
         }
       }

@@ -26,7 +26,7 @@ list compile_program(list exprs, list *undefined_bindings, list *static_bindings
     containment_analysis(expr);
     classify_program_binding_augs(expr);
     link_symbols(expr, true, undefined_bindings, global_bindings, nil, expr_buf);
-    visit_expressions(vescape_analysis, &expr, NULL);
+    escape_analysis(expr, true);
     layout_frames(expr, static_bindings, expr_buf);
   }}
   return generate_program(exprs, expr_buf);

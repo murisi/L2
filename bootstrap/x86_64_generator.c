@@ -157,10 +157,10 @@ void sgenerate_ifs(union expression *n, list *c, buffer r) {
   generate_expressions(n->_if.condition, c, r);
   prepend(make_asm2(ORQ_REG_TO_REG, make_asm0(RAX, r), make_asm0(RAX, r), r), c, r);
   
-  struct binding_aug *alternate_binding = make_binding_aug(absolute_storage, local_scope, defined_state, NULL, NULL, r);
+  struct binding_aug *alternate_binding = make_binding_aug(absolute_storage, local_scope, defined_state, NULL, NULL, NULL, r);
   prepend(make_asm1(JE_REL, make_asm1(LNKR_SUB_RIP_TO_REF, use_binding(alternate_binding, r), r), r), c, r);
   generate_expressions(n->_if.consequent, c, r);
-  struct binding_aug *end_binding = make_binding_aug(absolute_storage, local_scope, defined_state, NULL, NULL, r);
+  struct binding_aug *end_binding = make_binding_aug(absolute_storage, local_scope, defined_state, NULL, NULL, NULL, r);
   prepend(make_asm1(JMP_REL, make_asm1(LNKR_SUB_RIP_TO_REF, use_binding(end_binding, r), r), r), c, r);
   prepend(make_asm1(LABEL, use_binding(alternate_binding, r), r), c, r);
   generate_expressions(n->_if.alternate, c, r);
@@ -194,9 +194,9 @@ void sgenerate_storage_expressions(union expression *n, list *c, buffer r) {
 }
 
 void sgenerate_symbols(union expression *n, list *c, buffer r) {
-  union expression *def = n->symbol.binding_aug->definition;
-  if((def->symbol.parent->base.type == function || def->symbol.parent->base.type == continuation) &&
-    exists(equals, &def->symbol.parent->function.parameters, def)) {
+  union expression *target_expr = n->symbol.binding_aug->expression;
+  if((target_expr->base.type == function || target_expr->base.type == continuation) &&
+    exists(equals, &target_expr->function.parameters, n->symbol.binding_aug->symbol)) {
       make_load(n->symbol.binding_aug, 0, make_asm0(RAX, r), make_asm0(R11, r), c, r);
   } else {
     make_load_address(n->symbol.binding_aug, make_asm0(RAX, r), c, r);
@@ -254,7 +254,7 @@ void sgenerate_continuations(union expression *n, list *c, buffer r) {
   }
   
   //Skip the actual instructions of the continuation
-  struct binding_aug *after_binding = make_binding_aug(absolute_storage, local_scope, defined_state, NULL, NULL, r);
+  struct binding_aug *after_binding = make_binding_aug(absolute_storage, local_scope, defined_state, NULL, NULL, NULL, r);
   prepend(make_asm1(JMP_REL, make_asm1(LNKR_SUB_RIP_TO_REF, use_binding(after_binding, r), r), r), c, r);
   prepend(make_asm1(LABEL, use_binding(n->continuation.cont_instr_bndg, r), r), c, r);
   generate_expressions(n->continuation.expression, c, r);
@@ -266,7 +266,7 @@ void sgenerate_withs(union expression *n, list *c, buffer r) {
     make_store_continuation(n, c, r);
   }
   generate_expressions(n->with.expression, c, r);
-  struct binding_aug *end_binding = make_binding_aug(absolute_storage, local_scope, defined_state, NULL, NULL, r);
+  struct binding_aug *end_binding = make_binding_aug(absolute_storage, local_scope, defined_state, NULL, NULL, NULL, r);
   prepend(make_asm1(JMP_REL, make_asm1(LNKR_SUB_RIP_TO_REF, use_binding(end_binding, r), r), r), c, r);
   prepend(make_asm1(LABEL, use_binding(n->continuation.cont_instr_bndg, r), r), c, r);
   make_load(((union expression *) n->with.parameter->fst)->symbol.binding_aug, 0, make_asm0(RAX, r), make_asm0(R10, r), c, r);
@@ -322,7 +322,7 @@ int get_current_offset(union expression *function) {
 void sgenerate_functions(union expression *n, list *c, buffer r) {
   make_load_address(n->function.reference->symbol.binding_aug, make_asm0(RAX, r), c, r);
   
-  struct binding_aug *after_binding = make_binding_aug(absolute_storage, local_scope, defined_state, NULL, NULL, r);
+  struct binding_aug *after_binding = make_binding_aug(absolute_storage, local_scope, defined_state, NULL, NULL, NULL, r);
   
   prepend(make_asm1(JMP_REL, make_asm1(LNKR_SUB_RIP_TO_REF, use_binding(after_binding, r), r), r), c, r);
   prepend(make_asm1(LABEL, n->function.reference, r), c, r);
