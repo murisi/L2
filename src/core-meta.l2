@@ -56,9 +56,9 @@
     [lllst -g- -e- -t- emt r]
     var r])
 
-(constrain get (\(r) (with-vars (a) (`(function ((ref ,a)) ,a)r)r)))
+(constrain get (\ r (with-vars (a) (`(function ((ref ,a)) ,a)r)r)))
 
-(constrain set (\(r) (with-vars (a) (`(function ((ref ,a) ,a) ())r)r)))
+(constrain set (\ r (with-vars (a) (`(function ((ref ,a) ,a) ())r)r)))
 
 (;; The following function generates the L2 code to generate a fragment
   corresponding to the supplied fragment. Known as backquote in other
@@ -91,7 +91,7 @@
     (let (var0 [var buffer]) ... (varN [var buffer]) expr))
 
 (function with-vars (l r)
-  (let (bindings [meta:map3 [@fst l] [@frrst l] r (\(e s r) (`(,e [var ,s])r)) r])
+  (let (bindings [meta:map3 [@fst l] [@frrst l] r (\ e s r (`(,e [var ,s])r)) r])
     [lst (` let r) [meta:reverse [lst [@frst l] [meta:reverse bindings r] r] r] r]))
 
 (;; The following function checks if the tokens a and b are equal.)
@@ -183,7 +183,7 @@
   (the fifth item in the fragment l).)
   
 (function &-aux (l r)
-  (`[(constrain (\(k) [+ k (,[@fst l])]) (\(s)
+  (`[(constrain (\ k [+ k (,[@fst l])]) (\ s
         (let (obj-sig [(,[@frrrrst l]) s])
           (let (prop-sig [(,[@frrrrrst l]) obj-sig s])
             (`(function (,obj-sig) (ref ,prop-sig))s)))))
@@ -204,7 +204,7 @@
   (the fifth item in the fragment l).)
 
 (function @-aux (l r)
-  (`[(constrain (\(k) [(,[@frrst l]) [+ k (,[@fst l])]]) (\(s)
+  (`[(constrain (\ k [(,[@frrst l]) [+ k (,[@fst l])]]) (\ s
         (let (obj-sig [(,[@frrrrst l]) s])
           (let (prop-sig [(,[@frrrrrst l]) obj-sig s])
             (`(function (,obj-sig) ,prop-sig)s)))))
@@ -227,7 +227,7 @@
   fragment l).)
 
 (function setf-aux (l r)
-  (`[(constrain (\(k q) [(,[@frrrst l]) [+ k (,[@fst l])] q]) (\(s)
+  (`[(constrain (\ k q [(,[@frrrst l]) [+ k (,[@fst l])] q]) (\ s
         (with-vars (a)
           (let (obj-sig [(,[@frrrrst l]) s])
             (let (prop-sig [(,[@frrrrrst l]) obj-sig s])
@@ -268,12 +268,12 @@
 (function values (args r)
   (let (params [meta:label args (` values:param r) r])
         (vars [meta:label args (` values:var r) r])
-  (let (unquoted-vars [meta:map2 vars r (\(l r) [llst [lst -,- emt r] l emt r]) r])
+  (let (unquoted-vars [meta:map2 vars r (\ l r [llst [lst -,- emt r] l emt r]) r])
     (`(with values:return
         (,[lllst (` jump r) (`(constrain
             (continuation values:func (,[lst (` values:cont r) params r])
               {values:cont (,[llst (` storage r) (` values:stor r) params r])})
-          (\(values:r) (with-vars ,vars
+          (\ values:r (with-vars ,vars
             ((,[lst -`- emt r])
               (continuation (,[lst [llst (` continuation r) [lst [lst (` values r) unquoted-vars r] emt r] emt r] unquoted-vars r]))
                 values:r) values:r)))r) (` values:return r) args r]))r))))
@@ -285,7 +285,7 @@
 (function bind (l r)
   (let (identifiers [@frst l]) (param [@fst l]) (body [@frrst l])
   (let (vars [meta:label identifiers (` values:var r) r])
-  (let (unquoted-vars [meta:map2 vars r (\(l r) [llst [lst -,- emt r] l emt r]) r])
+  (let (unquoted-vars [meta:map2 vars r (\ l r [llst [lst -,- emt r] l emt r]) r])
     (`(with bind:return
         {(constrain (continuation bind:func (bind:cont bind:param)
               (,[llst (` jump r) (` bind:cont r)
@@ -294,7 +294,7 @@
                     [meta:reverse params r]
                     {make-set [@rst identifiers] [+ offset (unit)]
                       [lst (`[get [+ bind:param (,[value->literal offset r])]]r) params r]})) r]))
-            (\(bind:r) (with-vars ,vars
+            (\ bind:r (with-vars ,vars
               ((,[lst -`- emt r])
                 (continuation (,[llst [llst (` continuation r) unquoted-vars emt r]
                     [lst (` values r) unquoted-vars r] emt r])) bind:r) bind:r)))

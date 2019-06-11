@@ -28,7 +28,7 @@
 
 (function write-elf-max-instr-fields (l r) [mk# r #2])
 
-(constrain mem-write (\(r) (with-vars (a b c d) (`(function (,a (ref ,b) ,c ,d) ())r)r)))
+(constrain mem-write (\ r (with-vars (a b c d) (`(function (,a (ref ,b) ,c ,d) ())r)r)))
 
 (function mem-write (mem idx bytes cnt)
   (let (end [+ $idx cnt])
@@ -38,7 +38,7 @@
       [set+ idx #1]
       {write-bytes [+ bytes #1]})))))
 
-(constrain write-mr-instr (\(r) (with-vars (a b c d e f g) (`(function (,a (ref ,b) ,c ,d ,e ,f ,g) ())r)r)))
+(constrain write-mr-instr (\ r (with-vars (a b c d e f g) (`(function (,a (ref ,b) ,c ,d ,e ,f ,g) ())r)r)))
 
 (function write-mr-instr (bin pos opcode reg rm m rexw)
   (let (mod (if m #2 #3))
@@ -55,7 +55,7 @@
   [mem-write bin pos (storage _ modrm) #1]
   (if has-sib [mem-write bin pos (storage _ sib) #1] (undefined)))))))))))))
 
-(constrain write-static-value (\(r) (with-vars (a b c d e f) (`(function (,a (ref ,b) ,c ,d ,e ,f) ())r)r)))
+(constrain write-static-value (\ r (with-vars (a b c d e f) (`(function (,a (ref ,b) ,c ,d ,e ,f) ())r)r)))
 
 (function write-static-value (bin pos expr bytes symtab relas)
   (if [= (@ expr-type expr) (-literal-)]
@@ -87,7 +87,7 @@
     
     (undefined))))))
 
-(constrain write-o-instr (\(r) (with-vars (a b c d) (`(function (,a (ref ,b) ,c ,d) ())r)r)))
+(constrain write-o-instr (\ r (with-vars (a b c d) (`(function (,a (ref ,b) ,c ,d) ())r)r)))
 
 (function write-o-instr (bin pos opcode reg)
   (let (rd [land (hex 7) reg])
@@ -101,7 +101,7 @@
     (undefined))
   [mem-write bin pos (storage _ opcoderd) #1]))))))))
 
-(constrain assemble (\(r) (with-vars (a b c d) (`(function ((list expr) ,a (ref ,b) ,c ,d) ())r)r)))
+(constrain assemble (\ r (with-vars (a b c d) (`(function ((list expr) ,a (ref ,b) ,c ,d) ())r)r)))
 
 (function assemble (generated-expressions bin pos symtab relas) (do
   [set pos #0]
@@ -214,7 +214,7 @@
 
 (storage shstrtab ("(nul).shstrtab(nul).text(nul).strtab(nul).symtab(nul).bss(nul).rela.text(nul)))
 
-(constrain measure-strtab (\(r) (with-vars (a) (`(function ((list expr) (list bndg-aug) (list bndg-aug)) ,a)r)r)))
+(constrain measure-strtab (\ r (with-vars (a) (`(function ((list expr) (list bndg-aug) (list bndg-aug)) ,a)r)r)))
 
 (function measure-strtab (generated-expressions undefined-bindings static-bindings)
   (let (undefined-bindings-len (fold (acc #0) (sym undefined-bindings)
@@ -232,14 +232,14 @@
           #0)]))
     [+ #1 [+ undefined-bindings-len [+ static-bindings-len generated-expressions-len]]]))
 
-(constrain measure-symtab (\(r) (with-vars (a) (`(function ((list expr) (list bndg-aug) (list bndg-aug)) ,a)r)r)))
+(constrain measure-symtab (\ r (with-vars (a) (`(function ((list expr) (list bndg-aug) (list bndg-aug)) ,a)r)r)))
 
 (function measure-symtab (generated-expressions undefined-bindings static-bindings)
   (let (generated-expressions-len
         (fold (acc #0) (e generated-expressions) [+ acc (if [= (@ expr-code e) (label)] #1 #0)]))
     [+ #1 [+ generated-expressions-len [+ [length undefined-bindings] [length static-bindings]]]]))
 
-(constrain max-elf-size (\(r) (with-vars (a) (`(function ((list expr) (list bndg-aug) (list bndg-aug)) ,a)r)r)))
+(constrain max-elf-size (\ r (with-vars (a) (`(function ((list expr) (list bndg-aug) (list bndg-aug)) ,a)r)r)))
 
 (function max-elf-size (generated-expressions undefined-bindings static-bindings)
   [+ (elf64-ehdr) [+ [* (elf64-shdr) (write-elf-sh-count)] [+ [pad-size [strvlen $shstrtab] (write-elf-alignment)]
@@ -255,7 +255,7 @@
   reference to where the size of the generated object code should be put. reg
   is the buffer into which the generated object code should be put.)
 
-(constrain write-elf (\(r) (with-vars (a b c) (`(function ((list expr) (list bndg-aug) (list bndg-aug) ,a (ref ,b) buffer ,c) ())r)r)))
+(constrain write-elf (\ r (with-vars (a b c) (`(function ((list expr) (list bndg-aug) (list bndg-aug) ,a (ref ,b) buffer ,c) ())r)r)))
 
 (function write-elf (generated-expressions undefined-bindings static-bindings bin pos reg handler)
   (let (temp-buf [create-buffer #0 handler])
@@ -537,7 +537,7 @@
   containing bindings that need to be converted. bindings is a list of augmented
   bindings corresponding to the assembly expressions that also need to be converted.)
 
-(constrain binding-offsets-to-addresses (\(r) (`(function ((list expr) (list bndg-aug) obj) ())r)))
+(constrain binding-offsets-to-addresses (\ r (`(function ((list expr) (list bndg-aug) obj) ())r)))
 
 (function binding-offsets-to-addresses (asms static-bindings obj) (do
   (foreach (sym static-bindings)

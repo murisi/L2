@@ -1,28 +1,28 @@
-(constrain frag->list (\(r) (`(function (frag) (list frag))r)))
+(constrain frag->list (\ r (`(function (frag) (list frag))r)))
 
 (function frag->list (x) [cast x])
 
-(constrain list->fragment (\(r) (`(function ((list frag)) frag)r)))
+(constrain list->fragment (\ r (`(function ((list frag)) frag)r)))
 
 (function list->fragment (x) [cast x])
 
-(constrain token->fragment (\(r) (`(function ((list tchar)) frag)r)))
+(constrain token->fragment (\ r (`(function ((list tchar)) frag)r)))
 
 (function token->fragment (x) [cast x])
 
-(constrain fragment->token (\(r) (`(function (frag) (list tchar))r)))
+(constrain fragment->token (\ r (`(function (frag) (list tchar))r)))
 
 (function fragment->token (x) [cast x])
 
-(constrain frag->vbl (\(r) (`(function (frag) vbl)r)))
+(constrain frag->vbl (\ r (`(function (frag) vbl)r)))
 
 (function frag->vbl (x) [cast x])
 
-(constrain vbl->frag (\(r) (`(function (vbl) frag)r)))
+(constrain vbl->frag (\ r (`(function (vbl) frag)r)))
 
 (function vbl->frag (x) [cast x])
 
-(constrain vbl (\(r) (with-vars (a) (`(function (buffer ,a) vbl)r)r)))
+(constrain vbl (\ r (with-vars (a) (`(function (buffer ,a) vbl)r)r)))
 
 (function vbl (r handler)
   (let (l [buffer-alloc (list-struct) r handler]) (do
@@ -30,23 +30,23 @@
     (setf cdr l l)
     [frag->vbl [list->fragment l]])))
 
-(constrain vbl? (\(r) (with-vars (a) (`(function (frag) ,a)r)r)))
+(constrain vbl? (\ r (with-vars (a) (`(function (frag) ,a)r)r)))
 
 (function vbl? (s) (let (t [frag->list s]) (and (not [= t nil]) [= (@ cdr t) t])))
 
-(constrain vbl= (\(r) (with-vars (a) (`(function (vbl vbl) ,a)r)r)))
+(constrain vbl= (\ r (with-vars (a) (`(function (vbl vbl) ,a)r)r)))
 
 (function vbl= (a b) [= a b])
 
-(constrain set-val (\(r) (`(function (vbl frag) ())r)))
+(constrain set-val (\ r (`(function (vbl frag) ())r)))
 
 (function set-val (vbl val) (let (t [frag->list [vbl->frag vbl]]) (setf car t val)))
 
-(constrain get-val (\(r) (`(function (vbl) frag)r)))
+(constrain get-val (\ r (`(function (vbl) frag)r)))
 
 (function get-val (vbl) (let (t [frag->list [vbl->frag vbl]]) (@ car t)))
 
-(constrain evaluate (\(r) (`(function (frag) frag)r)))
+(constrain evaluate (\ r (`(function (frag) frag)r)))
 
 (function evaluate (val)
   (loop next (val val)
@@ -57,7 +57,7 @@
           {next next-val}))
       val)))
 
-(constrain recursive-evaluate (\(r) (with-vars (a) (`(function (frag buffer ,a) frag)r)r)))
+(constrain recursive-evaluate (\ r (with-vars (a) (`(function (frag buffer ,a) frag)r)r)))
 
 (function recursive-evaluate (frag r handler)
   (substitute (.. r handler)
@@ -75,12 +75,12 @@
 (;; This field should be set to character-flag to indicate that a given reference
   is a character rather than a list.)
   
-(function cs-flag (l r) [property #8 #8 (\(r) [var r]) (\(s r) [var r]) l r])
+(function cs-flag (l r) [property #8 #8 (\ r [var r]) (\ s r [var r]) l r])
 
 (;; This field contains the ASCII character represented by the this fragment
   character.)
   
-(function cs-character (l r) [property #0 #8 (\(r) [var r]) (\(s r) [var r]) l r])
+(function cs-character (l r) [property #0 #8 (\ r [var r]) (\ s r [var r]) l r])
 
 (;; Returns a reference to a fragment character representing the supplied
   ASCII character.)
@@ -90,7 +90,7 @@
 (;; Returns the fragment character representing the supplied ASCII
   character.)
 
-(function tkn-char (s r) (`(constrain ($(loc (unit) (,[@fst s]) characters)) (\(r) (` tchar r)))r))
+(function tkn-char (s r) (`(constrain ($(loc (unit) (,[@fst s]) characters)) (\ r (` tchar r)))r))
 
 (storage null-fragment (undefined))
 
@@ -119,7 +119,7 @@
   token will be based on. r is the buffer in which the token will be constructed.
   Return value is the constructed token.)
 
-(constrain build-token (\(r) (with-vars (c) (`(function (string buffer ,c) (list tchar))r)r)))
+(constrain build-token (\ r (with-vars (c) (`(function (string buffer ,c) (list tchar))r)r)))
 
 (function build-token (str r handler)
   (loop cons-char (sexprs nil) (strptr str)
@@ -147,7 +147,7 @@
   to the current index in the buffer. r is the buffer into which the token
   should be put. Return value is the constructed token.)
 
-(constrain build-sigilled-token (\(r) (with-vars (a b c d e f) (`(function (,a ,b ,c ,d ,e ,f) frag)r)r)))
+(constrain build-sigilled-token (\ r (with-vars (a b c d e f) (`(function (,a ,b ,c ,d ,e ,f) frag)r)r)))
 
 (function build-sigilled-token (sigil l2src l2src-sz pos r handler)
   (substitute (.. r handler)
@@ -163,7 +163,7 @@
   primitive is a string. delimiter is an ascii character. For rest of parameters,
   see above.)
 
-(constrain build-fragment-list (\(r) (with-vars (a b c d e) (`(function (string ,a ,b ,c ,d buffer ,e) (list frag))r)r)))
+(constrain build-fragment-list (\ r (with-vars (a b c d e) (`(function (string ,a ,b ,c ,d buffer ,e) (list frag))r)r)))
 
 (function build-fragment-list (primitive delimeter l2src l2src-sz pos r handler)
   (substitute (.. r handler)
@@ -178,7 +178,7 @@
 (;; Builds a fragment starting at the current position in the buffer. For parameters,
   see above.)
 
-(constrain build-fragment (\(r) (with-vars (a b c d e) (`(function (,a ,b ,c ,d ,e) frag)r)r)))
+(constrain build-fragment (\ r (with-vars (a b c d e) (`(function (,a ,b ,c ,d ,e) frag)r)r)))
 
 (function build-fragment (l2src l2src-sz pos r handler)
   (substitute (.. r handler) (if [= l2src-sz $pos]
@@ -208,13 +208,13 @@
 
 (;; Checks if the fragment d is a token. A token is a non-empty list of characters.)
 
-(constrain i/f:token? (\(r) (with-vars (a) (`(function (frag) ,a)r)r)))
+(constrain i/f:token? (\ r (with-vars (a) (`(function (frag) ,a)r)r)))
 
 (function i/f:token? (e)
   (let (d [fragment->token e])
     (and (not [vbl? e]) [length d] [= (@ cs-flag[@car d]) character-flag])))
 
-(constrain i/f:token= (\(r) (with-vars (a) (`(function ((list tchar) (list tchar)) ,a)r)r)))
+(constrain i/f:token= (\ r (with-vars (a) (`(function ((list tchar) (list tchar)) ,a)r)r)))
 
 (function i/f:token= (a b)
   (if (not [= [length a] [length b]])
@@ -230,7 +230,7 @@
   converted. r is the buffer into which the string should be put. The return value
   is the constructed string.)
 
-(constrain to-string (\(r) (with-vars (a) (`(function ((list tchar) buffer ,a) string)r)r)))
+(constrain to-string (\ r (with-vars (a) (`(function ((list tchar) buffer ,a) string)r)r)))
 
 (function to-string (d r handler)
   (let (str [buffer-alloc [+ [length d] #1] r handler])
@@ -247,7 +247,7 @@
   be copied. r is the buffer into which the fragment should be copied. The return
   value is the copied fragment.)
 
-(constrain copy-fragment (\(r) (with-vars (b) (`(function (frag (ref (list vbl)) (ref (list vbl)) buffer ,b) frag)r)r)))
+(constrain copy-fragment (\ r (with-vars (b) (`(function (frag (ref (list vbl)) (ref (list vbl)) buffer ,b) frag)r)r)))
 
 (function copy-fragment (l old-vars new-vars r handler)
   (substitute (.. r handler)
@@ -266,7 +266,7 @@
 (;; Prints the given fragment out to standard output. d is the fragment that is
   to be printed.)
 
-(constrain print-fragment (\(r) (with-vars (b) (`(function (frag ,b) ())r)r)))
+(constrain print-fragment (\ r (with-vars (b) (`(function (frag ,b) ())r)r)))
 
 (function print-fragment (d hdl)
   (if [vbl? d]

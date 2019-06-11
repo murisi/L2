@@ -1,22 +1,22 @@
 (;; x86-64 Linux specific constants.)
 
-(function sys-read (l r) [mk## #0 (\(r) (` syscall-num r)) r])
+(function sys-read (l r) [mk## #0 (\ r (` syscall-num r)) r])
 
-(function sys-write (l r) [mk## #1 (\(r) (` syscall-num r)) r])
+(function sys-write (l r) [mk## #1 (\ r (` syscall-num r)) r])
 
-(function sys-open (l r) [mk## #2 (\(r) (` syscall-num r)) r])
+(function sys-open (l r) [mk## #2 (\ r (` syscall-num r)) r])
 
-(function sys-close (l r) [mk## #3 (\(r) (` syscall-num r)) r])
+(function sys-close (l r) [mk## #3 (\ r (` syscall-num r)) r])
 
-(function sys-fstat (l r) [mk## #5 (\(r) (` syscall-num r)) r])
+(function sys-fstat (l r) [mk## #5 (\ r (` syscall-num r)) r])
 
-(function sys-mmap (l r) [mk## #9 (\(r) (` syscall-num r)) r])
+(function sys-mmap (l r) [mk## #9 (\ r (` syscall-num r)) r])
 
-(function sys-munmap (l r) [mk## #11 (\(r) (` syscall-num r)) r])
+(function sys-munmap (l r) [mk## #11 (\ r (` syscall-num r)) r])
 
-(function sys-exit (l r) [mk## #60 (\(r) (` syscall-num r)) r])
+(function sys-exit (l r) [mk## #60 (\ r (` syscall-num r)) r])
 
-(function sys-clock-gettime (l r) [mk## #228 (\(r) (` syscall-num r)) r])
+(function sys-clock-gettime (l r) [mk## #228 (\ r (` syscall-num r)) r])
 
 (function o-rdonly (l r) [mk# r #0])
 
@@ -50,9 +50,9 @@
 
 (function clock-process-cputime-id (l r) [mk# r #2])
 
-(function stdin (l r) [mk## #0 (\(r) (` fd r)) r])
+(function stdin (l r) [mk## #0 (\ r (` fd r)) r])
 
-(function stdout (l r) [mk## #1 (\(r) (` fd r)) r])
+(function stdout (l r) [mk## #1 (\ r (` fd r)) r])
 
 (function byte (l r) [mk# r #1])
 
@@ -66,37 +66,37 @@
 
 (;; Contains reference to next mmaped region. Is null-element otherwise.)
 
-(function buf-next-elt (l r) [property #0 #8 (\(r) (` buffer r)) (\(s r) (` buffer r)) l r])
+(function buf-next-elt (l r) [property #0 #8 (\ r (` buffer r)) (\ s r (` buffer r)) l r])
 
 (;; Contains reference to last mmaped region in buffer. Field required to reduce allocation time.)
 
-(function buf-last-elt (l r) [property #8 #8 (\(r) (` buffer r)) (\(s r) (` buffer r)) l r])
+(function buf-last-elt (l r) [property #8 #8 (\ r (` buffer r)) (\ s r (` buffer r)) l r])
 
 (;; Contains reference to next aligned free memory in buffer element.)
 
-(function buf-curr-pos (l r) [property #16 #8 (\(r) (` buffer r)) (\(s r) [var r]) l r])
+(function buf-curr-pos (l r) [property #16 #8 (\ r (` buffer r)) (\ s r [var r]) l r])
 
 (;; Contains reference to the end of the buffer element.)
 
-(function buf-end-pos (l r) [property #24 #8 (\(r) (` buffer r)) (\(s r) [var r]) l r])
+(function buf-end-pos (l r) [property #24 #8 (\ r (` buffer r)) (\ s r [var r]) l r])
 
 (;; Contains magic debug value.)
 
-(function buf-magic-dbg (l r) [property #32 #8 (\(r) (` buffer r)) (\(s r) [var r]) l r])
+(function buf-magic-dbg (l r) [property #32 #8 (\ r (` buffer r)) (\ s r [var r]) l r])
 
 (;; --------------------------------------------------------------------------)
 
-(constrain syscall (\(r) (with-vars (a b c d e f g) (`(function (syscall-num ,a ,b ,c ,d ,e ,f) ,g)r)r)))
+(constrain syscall (\ r (with-vars (a b c d e f g) (`(function (syscall-num ,a ,b ,c ,d ,e ,f) ,g)r)r)))
 
 (function exit (code) [syscall (sys-exit) code (undefined) (undefined) (undefined) (undefined) (undefined)])
 
-(constrain strlen (\(r) (with-vars (a) (`(function (string) ,a)r)r)))
+(constrain strlen (\ r (with-vars (a) (`(function (string) ,a)r)r)))
 
 (function strlen (str)
   (loop do-count (i #0)
     (if [getb [+ str i]] {do-count [+ i #1]} i)))
 
-(constrain strvlen (\(r) (with-vars (a) (`(function (string) ,a)r)r)))
+(constrain strvlen (\ r (with-vars (a) (`(function (string) ,a)r)r)))
 
 (function strvlen (str)
   (loop do-count (i #1)
@@ -104,11 +104,11 @@
       {do-count [+ i #1]}
       i)))
 
-(constrain null-strrchr (\(r) (` string r)))
+(constrain null-strrchr (\ r (` string r)))
 
 (storage null-strrchr (undefined))
 
-(constrain strrchr (\(r) (with-vars (a) (`(function (string ,a) string)r)r)))
+(constrain strrchr (\ r (with-vars (a) (`(function (string ,a) string)r)r)))
 
 (function strrchr (s c)
   (loop do-search (t [+ s [strlen s]])
@@ -118,7 +118,7 @@
       null-strrchr
       {do-search [- t #1]}))))
 
-(constrain strcmp (\(r) (with-vars (a) (`(function (string string) ,a)r)r)))
+(constrain strcmp (\ r (with-vars (a) (`(function (string string) ,a)r)r)))
 
 (function strcmp (s1 s2)
   (loop do-cmp (s1 s1) (s2 s2)
@@ -126,11 +126,11 @@
       {do-cmp [+ s1 #1] [+ s2 #1]}
       [- [getb s1] [getb s2]])))
 
-(constrain str= (\(r) (with-vars (a) (`(function (string string) ,a)r)r)))
+(constrain str= (\ r (with-vars (a) (`(function (string string) ,a)r)r)))
 
 (function str= (s1 s2) (not [strcmp s1 s2]))
 
-(constrain strcpy (\(r) (with-vars (a) (`(function (string string) ,a)r)r)))
+(constrain strcpy (\ r (with-vars (a) (`(function (string string) ,a)r)r)))
 
 (function strcpy (dest src)
   (loop do-cpy (dest dest) (src src) (do
@@ -171,7 +171,7 @@
 
 (storage file-access-error (undefined))
 
-(constrain open (\(r) (with-vars (b) (`(function (string ,b) fd)r)r)))
+(constrain open (\ r (with-vars (b) (`(function (string ,b) fd)r)r)))
 
 (function open (path handler)
   (let (ret [syscall (sys-open) path (o-rdonly) (undefined) (undefined) (undefined) (undefined)])
@@ -179,7 +179,7 @@
       {handler (storage _ file-access-error path)}
       ret)))
 
-(constrain create (\(r) (with-vars (b) (`(function (string ,b) fd)r)r)))
+(constrain create (\ r (with-vars (b) (`(function (string ,b) fd)r)r)))
 
 (function create (path handler)
   (let (ret [syscall (sys-open) path [lor (o-wronly) (o-creat)] [lor (s-irwxu) [lor (s-irwxg) (s-irwxo)]]  (undefined) (undefined) (undefined)])
@@ -187,11 +187,11 @@
       {handler (storage _ file-access-error path)}
       ret)))
 
-(constrain null-string (\(r) (` string r)))
+(constrain null-string (\ r (` string r)))
 
 (storage null-string (undefined))
 
-(constrain print (\(r) (with-vars (a b c e) (`(function (fd ,a ,b ,c) ,e)r)r)))
+(constrain print (\ r (with-vars (a b c e) (`(function (fd ,a ,b ,c) ,e)r)r)))
 
 (function print (fd d len handler)
   (let (ret [syscall (sys-write) fd d len (undefined) (undefined) (undefined)])
@@ -199,15 +199,15 @@
       {handler (storage _ file-access-error null-string)}
       ret)))
 
-(constrain print-str (\(r) (with-vars (b e) (`(function (fd string ,b) ,e)r)r)))
+(constrain print-str (\ r (with-vars (b e) (`(function (fd string ,b) ,e)r)r)))
 
 (function print-str (fd str handler) [print fd str [strlen str] handler])
 
-(constrain print-str (\(r) (with-vars (a b e) (`(function (fd ,a ,b) ,e)r)r)))
+(constrain print-str (\ r (with-vars (a b e) (`(function (fd ,a ,b) ,e)r)r)))
 
 (function print-char (fd ch handler) [print fd (storage _ ch) #1 handler])
 
-(constrain print-uint (\(r) (with-vars (a b e) (`(function (fd ,a ,b) ,e)r)r)))
+(constrain print-uint (\ r (with-vars (a b e) (`(function (fd ,a ,b) ,e)r)r)))
 
 (function print-uint (fd i handler)
   (let (j (storage _ #19))
@@ -227,7 +227,7 @@
     [set j [- $j #1]]))
   [print fd [+ str [+ $j #1]] [- #19 $j] handler]))))
 
-(constrain read (\(r) (with-vars (a b c e) (`(function (fd ,a ,b ,c) ,e)r)r)))
+(constrain read (\ r (with-vars (a b c e) (`(function (fd ,a ,b ,c) ,e)r)r)))
 
 (function read (fd buf cnt handler)
   (let (ret [syscall (sys-read) fd buf cnt (undefined) (undefined) (undefined)])
@@ -235,7 +235,7 @@
       {handler (storage _ file-access-error null-string)}
       ret)))
 
-(constrain close (\(r) (with-vars (a c) (`(function (fd ,a) ,c)r)r)))
+(constrain close (\ r (with-vars (a c) (`(function (fd ,a) ,c)r)r)))
 
 (function close (fd handler)
   (let (ret [syscall (sys-close) fd (undefined) (undefined) (undefined) (undefined) (undefined)])
@@ -243,7 +243,7 @@
       {handler (storage _ file-access-error null-string)}
       ret)))
 
-(constrain size (\(r) (with-vars (a c) (`(function (fd ,a) ,c)r)r)))
+(constrain size (\ r (with-vars (a c) (`(function (fd ,a) ,c)r)r)))
 
 (function size (fd handler)
   (let (statbuf (storage _ (undefined)(undefined)(undefined)(undefined)(undefined)(undefined)(undefined)(undefined)(undefined)
@@ -274,14 +274,14 @@
 
 (function pad-size (x nearest) (let (r [rem x nearest]) [+ x (if r [- nearest r] #0)]))
 
-(constrain null-element (\(r) (` buffer r)))
+(constrain null-element (\ r (` buffer r)))
 
 (storage null-element (undefined))
 
 (;; Creates a new buffer with a minimum capacity in bytes given by the value at
   min-capacity.)
 
-(constrain create-buffer (\(r) (with-vars (a b) (`(function (,a ,b) buffer)r)r)))
+(constrain create-buffer (\ r (with-vars (a b) (`(function (,a ,b) buffer)r)r)))
 
 (function create-buffer (min-capacity handler)
   (let (len [pad-size [+ min-capacity (buffer-element)] (page-size)])
@@ -297,7 +297,7 @@
   integer at len. The only way to deallocate this memory is destroy the entire
   buffer at reg.)
 
-(constrain buffer-alloc (\(r) (with-vars (a b d) (`(function (,a buffer ,b) ,d)r)r)))
+(constrain buffer-alloc (\ r (with-vars (a b d) (`(function (,a buffer ,b) ,d)r)r)))
 
 (function buffer-alloc (len reg handler)
   (let (len [pad-size len (alloc-alignment)])
@@ -316,7 +316,7 @@
   function, it is invalid to read or write data to the memory allocated on
   this region.)
 
-(constrain destroy-buffer (\(r) (with-vars (b) (`(function (buffer ,b) ())r)r)))
+(constrain destroy-buffer (\ r (with-vars (b) (`(function (buffer ,b) ())r)r)))
 
 (function destroy-buffer (reg handler)
   (loop do-destroy (reg reg)
@@ -329,7 +329,7 @@
 (;; Returns a C-string that is a copy of the one at src. The returned string and
   its dependencies will all reside in the region reg.)
 
-(constrain rstrcpy (\(r) (with-vars (a) (`(function (string buffer ,a) string)r)r)))
+(constrain rstrcpy (\ r (with-vars (a) (`(function (string buffer ,a) string)r)r)))
 
 (function rstrcpy (src reg handler)
   (let (dest [buffer-alloc [+[strlen src]#1] reg handler]) (do
@@ -339,7 +339,7 @@
 (;; Returns a list containing the the command line arguments. The returned list
   and its dependencies will all reside in the region reg.)
 
-(constrain argv (\(r) (with-vars (a) (`(function (buffer ,a) (list string))r)r)))
+(constrain argv (\ r (with-vars (a) (`(function (buffer ,a) (list string))r)r)))
 
 (function argv (reg handler)
   (let (f [open (" /proc/self/cmdline) handler])

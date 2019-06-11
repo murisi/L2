@@ -4,7 +4,7 @@
 
 (storage multiple-definition-error (undefined))
 
-(constrain vfind-multiple-definitions (\(r) (with-vars (a) (`(function (expr (values ,a)) expr)r)r)))
+(constrain vfind-multiple-definitions (\ r (with-vars (a) (`(function (expr (values ,a)) expr)r)r)))
 
 (function vfind-multiple-definitions (e ctx)
   (bind ctx (handler) (do
@@ -22,7 +22,7 @@
       (undefined))
     e)))
 
-(constrain get-parent-function (\(r) (`(function (expr) expr)r)))
+(constrain get-parent-function (\ r (`(function (expr) expr)r)))
 
 (function get-parent-function (n)
   (loop move-up (n (@ expr-parent n))
@@ -30,7 +30,7 @@
       n
       {move-up (@ expr-parent n)})))
 
-(constrain global-binding-augs-of (\(r) (with-vars (a) (`(function ((list expr) buffer ,a) (list bndg-aug))r)r)))
+(constrain global-binding-augs-of (\ r (with-vars (a) (`(function ((list expr) buffer ,a) (list bndg-aug))r)r)))
 
 (function global-binding-augs-of (exprs r handler)
   (loop add-binding (binding-augs nil) (exprs exprs)
@@ -43,7 +43,7 @@
             {add-binding [cons (@ expr-binding-aug (@ expr-reference t)) binding-augs r handler] [@cdr exprs]})
           {add-binding binding-augs [@cdr exprs]})))))
 
-(constrain vunlink-symbols (\(r) (`(function (expr (values (list bndg-aug))) expr)r)))
+(constrain vunlink-symbols (\ r (`(function (expr (values (list bndg-aug))) expr)r)))
 
 (function vunlink-symbols (s ctx)
   (bind ctx (blacklist)
@@ -51,7 +51,7 @@
       (do (setf expr-binding-aug s null-binding) s)
       s)))
 
-(constrain assign-binding (\(r) (with-vars (a) (`(function (expr (list bndg-aug)) ,a)r)r)))
+(constrain assign-binding (\ r (with-vars (a) (`(function (expr (list bndg-aug)) ,a)r)r)))
 
 (function assign-binding (s bindings)
   (loop find (bindings bindings)
@@ -64,7 +64,7 @@
           {find [@cdr bindings]})))))
 
 (constrain link-symbols
-  (\(r) (with-vars (a b) (`(function (expr ,a (ref (list bndg-aug)) (list bndg-aug) (list bndg-aug) buffer ,b) ())r)r)))
+  (\ r (with-vars (a b) (`(function (expr ,a (ref (list bndg-aug)) (list bndg-aug) (list bndg-aug) buffer ,b) ())r)r)))
 
 (function link-symbols (s static-storage undefined-bindings static-bindings dynamic-bindings r handler)
   (substitute (.. r handler)
@@ -138,7 +138,7 @@
     (undefined)))
   s))
 
-(constrain vfind-dependencies (\(r) (with-vars (a) (`(function (expr (values buffer ,a)) expr)r)r)))
+(constrain vfind-dependencies (\ r (with-vars (a) (`(function (expr (values buffer ,a)) expr)r)r)))
 
 (function vfind-dependencies (s ctx)
   (bind ctx (r handler) (substitute (.. r handler) (do
@@ -167,7 +167,7 @@
       (undefined))
     s))))
 
-(constrain construct-sccs (\(r) (with-vars (a b) (`(function (expr ,a (ref (list expr)) (ref (list (list expr))) buffer ,b) ())r)r)))
+(constrain construct-sccs (\ r (with-vars (a b) (`(function (expr ,a (ref (list expr)) (ref (list (list expr))) buffer ,b) ())r)r)))
 
 (function construct-sccs (s preorder stack sccs r handler)
   (substitute (.. r handler)
@@ -191,7 +191,7 @@
         (undefined))))
       (undefined))))
 
-(constrain occurs-in? (\(r) (with-vars (a) (`(function (vbl frag) ,a)r)r)))
+(constrain occurs-in? (\ r (with-vars (a) (`(function (vbl frag) ,a)r)r)))
 
 (function occurs-in? (var val)
   (let (eval [evaluate val])
@@ -201,14 +201,14 @@
       (false)
       (not [nil? (find (a [frag->list eval]) [occurs-in? var a])])))))
 
-(constrain unify-var (\(r) (with-vars (a) (`(function (vbl frag) ,a)r)r)))
+(constrain unify-var (\ r (with-vars (a) (`(function (vbl frag) ,a)r)r)))
 
 (function unify-var (var val)
   (if (not [occurs-in? var val])
     (do [set-val var val] (true))
     (false)))
 
-(constrain unify (\(r) (with-vars (a) (`(function (frag frag) ,a)r)r)))
+(constrain unify (\ r (with-vars (a) (`(function (frag frag) ,a)r)r)))
 
 (function unify (x y)
   (let (xl [evaluate x]) (yl [evaluate y])
@@ -227,7 +227,7 @@
             {do-unify [@cdr xl] [@cdr yl]})))
         (false))))))))))
 
-(constrain scoped-signature (\(r) (with-vars (a) (`(function (expr (list expr) buffer ,a) frag)r)r)))
+(constrain scoped-signature (\ r (with-vars (a) (`(function (expr (list expr) buffer ,a) frag)r)r)))
 
 (function scoped-signature (e scc r handler)
   (if (not [nil? (find (x scc) [= x e])])
@@ -236,7 +236,7 @@
 
 (storage unification-error (undefined))
 
-(constrain infer-types (\(r) (with-vars (a) (`(function ((list expr) buffer ,a) ())r)r)))
+(constrain infer-types (\ r (with-vars (a) (`(function ((list expr) buffer ,a) ())r)r)))
 
 (function infer-types (exprs buf handler)
   (substitute (.. buf handler) (do
@@ -307,7 +307,7 @@
       
       (foreach (e scc) (setf expr-signature e [recursive-evaluate (@ expr-signature e) ..]))))))))))
 
-(constrain visit-expressions (\(r) (with-vars (a) (`(function ((function (expr ,a) expr) (ref expr) ,a) ())r)r)))
+(constrain visit-expressions (\ r (with-vars (a) (`(function ((function (expr ,a) expr) (ref expr) ,a) ())r)r)))
 
 (function visit-expressions (visitor s ctx) (do
   (switch = (@ expr-type $s)
@@ -327,7 +327,7 @@
     (undefined))
   (replace-expression s [visitor $s ctx])))
 
-(constrain pre-visit-expressions (\(r) (with-vars (a) (`(function ((function (expr ,a) expr) (ref expr) ,a) ())r)r)))
+(constrain pre-visit-expressions (\ r (with-vars (a) (`(function ((function (expr ,a) expr) (ref expr) ,a) ())r)r)))
 
 (function pre-visit-expressions (visitor s ctx) (do
   (replace-expression s [visitor $s ctx])
@@ -348,7 +348,7 @@
     
     (undefined))))
 
-(constrain classify-program-bindings (\(r) (`(function (expr) ())r)))
+(constrain classify-program-bindings (\ r (`(function (expr) ())r)))
 
 (function classify-program-bindings (expr)
   (switch = (@ expr-type expr)
@@ -374,7 +374,7 @@
     
     (undefined)))
 
-(constrain containment-analysis (\(r) (`(function (expr) expr-contains-flag)r)))
+(constrain containment-analysis (\ r (`(function (expr) expr-contains-flag)r)))
 
 (function containment-analysis (s)
   (switch = (@ expr-type s)
@@ -405,7 +405,7 @@
 (storage undefined-symbol-error (undefined))
 
 (function preprocessed-expression-address (l r)
-  (`(\(s bindings buf handler)
+  (`(\ s bindings buf handler
     (substitute (.. buf handler)
       (if [= (@ expr-type s) (-symbol-)]
         (do
@@ -430,7 +430,7 @@
   the corresponding expression builder. It also sets the signatures of
   constrain-expressions to the result of evaluating a signature builder.)
 
-(constrain vgenerate-metas (\(r) (with-vars (a) (`(function (expr (values (list bndg-aug) buffer ,a)) expr)r)r)))
+(constrain vgenerate-metas (\ r (with-vars (a) (`(function (expr (values (list bndg-aug) buffer ,a)) expr)r)r)))
 
 (function vgenerate-metas (s ctx)
   (bind ctx (bindings buf handler)
@@ -445,7 +445,7 @@
       
       s)))
 
-(constrain init-function (\(r) (with-vars (a b) (`(function (expr (ref (list bndg-aug)) buffer ,a (ref ,b)) ,b)r)r)))
+(constrain init-function (\ r (with-vars (a b) (`(function (expr (ref (list bndg-aug)) buffer ,a (ref ,b)) ,b)r)r)))
 
 (function init-function (function-expr bindings buf handler cache)
   (substitute (.. buf handler)
@@ -463,7 +463,7 @@
   contained functions. That is, the meta-expressions within the functions are
   expanded only when they are first called.)
 
-(constrain generate-metaprogram (\(r) (with-vars (a) (`(function ((list expr) (ref (list bndg-aug)) buffer ,a) (list expr))r)r)))
+(constrain generate-metaprogram (\ r (with-vars (a) (`(function ((list expr) (ref (list bndg-aug)) buffer ,a) (list expr))r)r)))
 
 (function generate-metaprogram (exprs bindings buf handler)
   (substitute (.. buf handler)
