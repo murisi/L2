@@ -189,11 +189,11 @@
   (substitute (.. r handler) (do
     [generate-expression (@ expr-condition n) c ..]
     [prepend (make-asmN (orq-reg-to-reg) ((make-asmN(rax)()..) (make-asmN(rax)()..)) ..) c ..]
-    (let (alternate-binding [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr ..]) (do
+    (let (alternate-binding [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr null-expr ..]) (do
     (let (op1 (make-asmN (lnkr-sub-rip-to-ref) ([use-binding-aug alternate-binding ..]) ..))
       [prepend (make-asmN (je-rel) (op1) ..) c ..])
     [generate-expression (@ expr-consequent n) c ..]
-    (let (end-binding [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr ..]) (do
+    (let (end-binding [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr null-expr ..]) (do
     (let (op1 (make-asmN (lnkr-sub-rip-to-ref) ([use-binding-aug end-binding ..]) ..))
       [prepend (make-asmN (jmp-rel) (op1) ..) c ..])
     [prepend (make-asmN (label) ([use-binding-aug alternate-binding ..]) ..) c ..]
@@ -231,9 +231,9 @@
 
 (function generate-symbol (n c r handler)
   (substitute (.. r handler)
-    (let (def (@ bndg-definition(@ expr-binding-aug n)))
-      (if (and (or [= (@ expr-type(@ expr-parent def)) (-function-)] [= (@ expr-type(@ expr-parent def)) (-continuation-)])
-          (not [nil? (find (x (@ expr-parameters(@ expr-parent def))) [= x def])]))
+    (let (target-expr (@ bndg-expression(@ expr-binding-aug n)))
+      (if (and (or [= (@ expr-type target-expr) (-function-)] [= (@ expr-type target-expr) (-continuation-)])
+          (not [nil? (find (x (@ expr-parameters target-expr)) [= x (@ bndg-symbol (@ expr-binding-aug n))])]))
         [generate-load (@ expr-binding-aug n) #0 (make-asmN(rax)()..) (make-asmN(r11)()..) c ..]
         [generate-load-address (@ expr-binding-aug n) (make-asmN(rax)()..) c ..]))))
 
@@ -283,7 +283,7 @@
       [generate-store-continuation n c ..])
       (undefined))
     
-    (let (after-binding [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr ..]) (do
+    (let (after-binding [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr null-expr ..]) (do
     [prepend (make-asmN (jmp-rel) ((make-asmN (lnkr-sub-rip-to-ref) ([use-binding-aug after-binding ..]) ..)) ..) c ..]
     [prepend (make-asmN (label) ([use-binding-aug (@ expr-cont-instr-bndg n) ..]) ..) c ..]
     [generate-expression (@ expr-expression n) c ..]
@@ -295,7 +295,7 @@
   (substitute (.. r handler) (do
     (if (@ expr-escapes n) [generate-store-continuation n c ..] (undefined))
     [generate-expression (@ expr-expression n) c ..]
-    (let (end-binding [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr ..]) (do
+    (let (end-binding [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr null-expr ..]) (do
     (let (op1 (make-asmN (lnkr-sub-rip-to-ref) ([use-binding-aug end-binding ..]) ..))
       [prepend (make-asmN (jmp-rel) (op1) ..) c ..])
     [prepend (make-asmN (label) ([use-binding-aug (@ expr-cont-instr-bndg n) ..]) ..) c ..]
@@ -353,7 +353,7 @@
   (substitute (.. r handler) (do
     [generate-load-address (@ expr-binding-aug(@ expr-reference n)) (make-asmN(rax)()..) c ..]
     
-    (let (after-binding [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr ..]) (do
+    (let (after-binding [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr null-expr ..]) (do
     [prepend (make-asmN(jmp-rel)((make-asmN(lnkr-sub-rip-to-ref)([use-binding-aug after-binding ..])..))..) c ..]
     [prepend (make-asmN(label)((@ expr-reference n))..) c ..]
     

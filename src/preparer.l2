@@ -22,14 +22,6 @@
       (undefined))
     e)))
 
-(constrain get-parent-function (\ r (`(function (expr) expr)r)))
-
-(function get-parent-function (n)
-  (loop move-up (n (@ expr-parent n))
-    (if [= (@ expr-type n) (-function-)]
-      n
-      {move-up (@ expr-parent n)})))
-
 (constrain global-binding-augs-of (\ r (with-vars (a) (`(function ((list expr) buffer ,a) (list bndg-aug))r)r)))
 
 (function global-binding-augs-of (exprs r handler)
@@ -116,27 +108,48 @@
       
       (undefined)))))))
 
-(function jump-reference? (s) (and [= (@ expr-type(@ expr-parent s)) (-jump-)] [= (@ expr-reference(@ expr-parent s)) s]))
+(constrain escape-analysis (\ r (with-vars (a) (`(function (expr ,a) ())r)r)))
 
-(function c-reference? (s)
-  (and (or [= (@ expr-type(@ expr-parent s)) (-continuation-)] [= (@ expr-type(@ expr-parent s)) (-with-)])
-    [= (@ expr-reference(@ expr-parent s)) s]))
-
-(function get-target-expression (s) (@ expr-parent(@ bndg-definition(@ expr-binding-aug s))))
-
-(function vescape-analysis-aux (ref target)
-  (if [jump-reference? ref]
-    (setf expr-short-circuit (@ expr-parent ref) target)
-    (setf expr-escapes target (true))))
-
-(function vescape-analysis (s ctx) (do
-  (if (and [= (@ expr-type s) (-symbol-)] (not [= (@ bndg-definition(@ expr-binding-aug s)) s])
-      [c-reference? (@ bndg-definition(@ expr-binding-aug s))])
-    [vescape-analysis-aux s [get-target-expression s]]
-  (if [= (@ expr-type s) (-continuation-)]
-    [vescape-analysis-aux s s]
+(function escape-analysis (s escaping)
+  (switch = (@ expr-type s)
+    ((-symbol-)
+      (let (target-expr (@ bndg-expression (@ expr-binding-aug s)))
+        (if (and escaping (or [= (@ expr-type target-expr) (-continuation-)] [= (@ expr-type target-expr) (-with-)])
+            [= (@ expr-reference target-expr) (@ bndg-symbol (@ expr-binding-aug s))])
+          (setf expr-escapes target-expr escaping)
+          (undefined))))
+    
+    ((-if-) (do
+      [escape-analysis (@ expr-condition s) (true)]
+      [escape-analysis (@ expr-consequent s) (true)]
+      [escape-analysis (@ expr-alternate s) (true)]))
+    
+    ((-function-) (-continuation-) (-with-) (do
+      (if (and escaping [= (@ expr-type s) (-continuation-)])
+        (setf expr-escapes s escaping)
+        (undefined))
+      [escape-analysis (@ expr-expression s) (true)]))
+    
+    ((-storage-) (-jump-) (-invoke-) (do
+      (if [= (@ expr-type s) (-jump-)] (do
+        (if [= (@ expr-type (@ expr-reference s)) (-symbol-)]
+          (let (target-expr (@ bndg-expression (@ expr-binding-aug (@ expr-reference s))))
+          (if (and (or [= (@ expr-type target-expr) (-continuation-)] [= (@ expr-type target-expr) (-with-)])
+              [= (@ expr-reference target-expr) (@ bndg-symbol (@ expr-binding-aug (@ expr-reference s)))])
+            (setf expr-short-circuit s target-expr)
+            (undefined)))
+        (if [= (@ expr-type (@ expr-reference s)) (-continuation-)]
+          (setf expr-short-circuit s (@ expr-reference s))
+          (undefined)))
+        [escape-analysis (@ expr-reference s) (false)])
+      (if [= (@ expr-type s) (-invoke-)]
+        [escape-analysis (@ expr-reference s) (true)]
+        (undefined)))
+      (foreach (t (@ expr-arguments s)) [escape-analysis t (true)])))
+    
+    ((-constrain-) [escape-analysis (@ expr-expression s) (true)])
+    
     (undefined)))
-  s))
 
 (constrain vfind-dependencies (\ r (with-vars (a) (`(function (expr (values buffer ,a)) expr)r)r)))
 
@@ -156,9 +169,9 @@
         (foreach (t (@ expr-arguments s)) [prepend t (& expr-dependencies s) ..])))
       
       ((-symbol-)
-        (let (definition (@ bndg-definition (@ expr-binding-aug s))) (do
-        [prepend (@ expr-parent definition) (& expr-dependencies s) ..]
-        [prepend s (& expr-dependencies (@ expr-parent definition)) ..])))
+        (let (target-expr (@ bndg-expression (@ expr-binding-aug s))) (do
+        [prepend target-expr (& expr-dependencies s) ..]
+        [prepend s (& expr-dependencies target-expr) ..])))
       
       ((-constrain-) (do
         [prepend (@ expr-expression s) (& expr-dependencies s) ..]
@@ -296,7 +309,7 @@
               (list ((values consequent-sig alternate-sig) (values (@ expr-signature e) consequent-sig)) ..))))
             
             ((-symbol-)
-              (list ((values (@ expr-signature e) (@ expr-signature (@ bndg-definition (@ expr-binding-aug e))))) ..))
+              (list ((values (@ expr-signature e) (@ expr-signature (@ bndg-symbol (@ expr-binding-aug e))))) ..))
             
             nil))))
         
@@ -325,12 +338,12 @@
         [visit-expressions visitor (& car partial) ctx])))
     
     (undefined))
-  (replace-expression s [visitor $s ctx])))
+  [set s [visitor $s ctx]]))
 
 (constrain pre-visit-expressions (\ r (with-vars (a) (`(function ((function (expr ,a) expr) (ref expr) ,a) ())r)r)))
 
 (function pre-visit-expressions (visitor s ctx) (do
-  (replace-expression s [visitor $s ctx])
+  [set s [visitor $s ctx]]
   
   (switch = (@ expr-type $s)
     ((-if-) (do

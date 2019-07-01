@@ -1,6 +1,6 @@
 (;; A complete description for bindings that will be put into generated object files.)
 
-(function binding-aug (l r) [mk# r #48])
+(function binding-aug (l r) [mk# r #56])
 
 (function bndg-name (l r) [property #0 #8 (\ r (` bndg-aug r)) (\ s r (` string r)) l r])
 
@@ -8,15 +8,17 @@
 
 (function bndg-size (l r) [property #16 #8 (\ r (` bndg-aug r)) (\ s r [var r]) l r])
 
-(function bndg-definition (l r) [property #24 #8 (\ r (` bndg-aug r)) (\ s r (` expr r)) l r])
+(function bndg-symbol (l r) [property #24 #8 (\ r (` bndg-aug r)) (\ s r (` expr r)) l r])
 
-(function bndg-context (l r) [property #32 #8 (\ r (` bndg-aug r)) (\ s r [var r]) l r])
+(function bndg-expression (l r) [property #32 #8 (\ r (` bndg-aug r)) (\ s r (` expr r)) l r])
 
-(function bndg-storage (l r) [property #40 #1 (\ r (` bndg-aug r)) (\ s r (` bndg-storage r)) l r])
+(function bndg-context (l r) [property #40 #8 (\ r (` bndg-aug r)) (\ s r [var r]) l r])
 
-(function bndg-scope (l r) [property #41 #1 (\ r (` bndg-aug r)) (\ s r (` bndg-scope r)) l r])
+(function bndg-storage (l r) [property #48 #1 (\ r (` bndg-aug r)) (\ s r (` bndg-storage r)) l r])
 
-(function bndg-state (l r) [property #42 #1 (\ r (` bndg-aug r)) (\ s r (` bndg-state r)) l r])
+(function bndg-scope (l r) [property #49 #1 (\ r (` bndg-aug r)) (\ s r (` bndg-scope r)) l r])
+
+(function bndg-state (l r) [property #50 #1 (\ r (` bndg-aug r)) (\ s r (` bndg-state r)) l r])
 
 (;; Valid values for bndg-storage --------------------------------------------)
 
@@ -181,26 +183,6 @@
 (function make-invokeN (l r)
   [llllst (` invoke r) (` make-invoke r) [@fst l] [list [lst [@frst l] [@rrst l] r] r] [@rrst l] r])
 
-(;; Macro takes a reference to an expression as its first argument and an
-  expression as its second argument. Produces code to obtain parent of expression
-  referenced by first argument, set that to be the parent of the second expression,
-  and put the second expression at the address referenced by the first argument.)
-
-(function replace-expression (l r)
-  (`(let (replace-expression:orig (,[@fst l]))
-    (let (replace-expression:parent (@ expr-parent $replace-expression:orig))
-      (let (replace-expression:repl (,[@frst l])) (do
-        (setf expr-parent replace-expression:repl replace-expression:parent)
-        [set replace-expression:orig replace-expression:repl]))))r))
-
-(;; The meta-expression (put field expr1 expr2) is the same as (setf field expr1 expr2)
-  except that it also sets the parent of expr2 to be expr1.)
-
-(function put (l r)
-  (`(let (put:parent (,[@frst l])) (put:repl (,[@frrst l])) (do
-      (setf (,[@fst l]) put:parent put:repl)
-      (setf expr-parent put:repl put:parent)))r))
-
 (;; Constant against which the length of a literal expression is checked.)
 
 (function build-expression-literal-len (l r) [mk# r #64])
@@ -211,15 +193,17 @@
 
 (storage null-binding (undefined))
 
-(constrain make-binding-aug (\ r (with-vars (a) (`(function (bndg-storage bndg-scope bndg-state string expr buffer ,a) bndg-aug)r)r)))
+(constrain make-binding-aug
+  (\ r (with-vars (a) (`(function (bndg-storage bndg-scope bndg-state string expr expr buffer ,a) bndg-aug)r)r)))
 
-(function make-binding-aug (type scope state name definition r handler)
+(function make-binding-aug (type scope state name symbol expression r handler)
   (let (bndg [buffer-alloc (binding-aug) r handler]) (do
     (setf bndg-storage bndg type)
     (setf bndg-scope bndg scope)
     (setf bndg-state bndg state)
     (setf bndg-name bndg name)
-    (setf bndg-definition bndg definition)
+    (setf bndg-symbol bndg symbol)
+    (setf bndg-expression bndg expression)
     bndg)))
 
 (constrain make-literal (\ r (with-vars (a b) (`(function (,a buffer ,b) expr)r)r)))
@@ -279,14 +263,14 @@
     (setf expr-signature func [vbl->frag [vbl ..]])
     (setf expr-lowlink func #0)
     (setf expr-dependencies func nil)
-    (put expr-reference func ref)
-    (setf expr-binding-aug ref [make-binding-aug (absolute-storage) (local-scope) (defined-state) (@ expr-name ref) ref ..])
+    (setf expr-reference func ref)
+    (setf expr-binding-aug ref [make-binding-aug (absolute-storage) (local-scope) (defined-state) (@ expr-name ref) ref func ..])
     (setf expr-parameters func params)
     (foreach (param params) (do
       (setf expr-parent param func)
-      (setf expr-binding-aug param [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) (@ expr-name param) param ..])))
+      (setf expr-binding-aug param [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) (@ expr-name param) param func ..])))
     (setf expr-binding-augs func nil)
-    (put expr-expression func expr)
+    (setf expr-expression func expr)
     func))))
 
 (constrain make-continuation (\ r (with-vars (b) (`(function (expr (list expr) expr buffer ,b) expr)r)r)))
@@ -298,15 +282,15 @@
     (setf expr-signature cont [vbl->frag [vbl ..]])
     (setf expr-lowlink cont #0)
     (setf expr-dependencies cont nil)
-    (setf expr-cont-instr-bndg cont [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr ..])
-    (put expr-reference cont ref)
-    (setf expr-binding-aug ref [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) (@ expr-name ref) ref ..])
+    (setf expr-cont-instr-bndg cont [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr null-expr ..])
+    (setf expr-reference cont ref)
+    (setf expr-binding-aug ref [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) (@ expr-name ref) ref cont ..])
     (setf expr-parameters cont params)
     (foreach (param params) (do
       (setf expr-parent param cont)
-      (setf expr-binding-aug param [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) (@ expr-name param) param ..])))
+      (setf expr-binding-aug param [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) (@ expr-name param) param cont ..])))
     (setf expr-escapes cont (false))
-    (put expr-expression cont expr)
+    (setf expr-expression cont expr)
     cont))))
 
 (constrain make-with (\ r (with-vars (b) (`(function (expr expr buffer ,b) expr)r)r)))
@@ -318,15 +302,15 @@
     (setf expr-signature wth [vbl->frag [vbl ..]])
     (setf expr-lowlink wth #0)
     (setf expr-dependencies wth nil)
-    (setf expr-cont-instr-bndg wth [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr ..])
-    (put expr-reference wth ref)
-    (setf expr-binding-aug ref [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) (@ expr-name ref) ref ..])
+    (setf expr-cont-instr-bndg wth [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr null-expr ..])
+    (setf expr-reference wth ref)
+    (setf expr-binding-aug ref [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) (@ expr-name ref) ref wth ..])
     (let (param [make-symbol null-string ..]) (do
       (setf expr-parent param wth)
-      (setf expr-binding-aug param [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) (@ expr-name param) param ..])
+      (setf expr-binding-aug param [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) (@ expr-name param) param wth ..])
       (setf expr-parameters wth [cons param nil ..])))
     (setf expr-escapes wth (false))
-    (put expr-expression wth expr)
+    (setf expr-expression wth expr)
     wth))))
 
 (constrain make-asm (\ r (with-vars (b) (`(function (expr-code (list expr) buffer ,b) expr)r)r)))
@@ -349,9 +333,9 @@
     (setf expr-lowlink u #0)
     (setf expr-dependencies u nil)
     (setf expr-short-circuit u null-expr)
-    (put expr-reference u ref)
+    (setf expr-reference u ref)
     (setf expr-contains-flag u (contains-with))
-    (setf expr-temp-storage-bndg u [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) null-string u ..])
+    (setf expr-temp-storage-bndg u [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) null-string null-expr u ..])
     (setf expr-arguments u args)
     (foreach (arg args) (setf expr-parent arg u))
     u))))
@@ -365,8 +349,8 @@
     (setf expr-signature u [vbl->frag [vbl ..]])
     (setf expr-lowlink u #0)
     (setf expr-dependencies u nil)
-    (put expr-reference u ref)
-    (setf expr-binding-aug ref [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) (@ expr-name ref) ref ..])
+    (setf expr-reference u ref)
+    (setf expr-binding-aug ref [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) (@ expr-name ref) ref u ..])
     (setf expr-arguments u args)
     (foreach (arg args) (setf expr-parent arg u))
     u))))
@@ -380,7 +364,7 @@
     (setf expr-signature u [vbl->frag [vbl ..]])
     (setf expr-lowlink u #0)
     (setf expr-dependencies u nil)
-    (put expr-reference u ref)
+    (setf expr-reference u ref)
     (setf expr-argument u arg)
     u))))
 
@@ -393,8 +377,8 @@
     (setf expr-signature u [vbl->frag [vbl ..]])
     (setf expr-lowlink u #0)
     (setf expr-dependencies u nil)
-    (put expr-reference u ref)
-    (put expr-expression u expr)
+    (setf expr-reference u ref)
+    (setf expr-expression u expr)
     u))))
 
 (constrain make-if (\ r (with-vars (b) (`(function (expr expr expr buffer ,b) expr)r)r)))
@@ -406,9 +390,9 @@
     (setf expr-signature u [vbl->frag [vbl ..]])
     (setf expr-lowlink u #0)
     (setf expr-dependencies u nil)
-    (put expr-condition u condition)
-    (put expr-consequent u consequent)
-    (put expr-alternate u alternate)
+    (setf expr-condition u condition)
+    (setf expr-consequent u consequent)
+    (setf expr-alternate u alternate)
     u))))
 
 (constrain make-invoke (\ r (with-vars (b) (`(function (expr (list expr) buffer ,b) expr)r)r)))
@@ -420,9 +404,9 @@
     (setf expr-signature u [vbl->frag [vbl ..]])
     (setf expr-lowlink u #0)
     (setf expr-dependencies u nil)
-    (put expr-reference u ref)
+    (setf expr-reference u ref)
     (setf expr-contains-flag u (contains-with))
-    (setf expr-temp-storage-bndg u [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) null-string u ..])
+    (setf expr-temp-storage-bndg u [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) null-string null-expr u ..])
     (setf expr-arguments u args)
     (foreach (arg args) (setf expr-parent arg u))
     u))))
