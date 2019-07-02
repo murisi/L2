@@ -84,7 +84,7 @@
       ((-symbol-)
         (if (and [= (@ expr-binding-aug s) null-binding] (not [assign-binding s $dynamics-ref])
             (not [assign-binding s $statics-ref]) (not [assign-binding s $undefined-bindings]))
-          (let (stg [make-storage [make-symbol (@ expr-name s) ..] nil ..])
+          (let (stg [make-storage [make-symbol (@ expr-name s) null-expr ..] nil null-expr ..])
           (let (bndg (@ expr-binding-aug (@ expr-reference stg))) (do
           (setf bndg-storage bndg (absolute-storage))
           (setf bndg-scope bndg (global-scope))
@@ -433,7 +433,7 @@
                   (@ bndg-offset bndg)
                   {find-binding [@cdr bindings]})))))
         (do
-          (let (expr-container [make-function [make-symbol null-string ..] nil s ..])
+          (let (expr-container [make-function [make-symbol null-string null-expr ..] nil s null-expr ..])
           (let (exprs-preprocessed [generate-metaprogram [cons expr-container nil ..] (storage _ bindings) buf handler]) (do
           [load-program-and-mutate exprs-preprocessed bindings buf handler]
           (let (expr-container-preprocessed [@car exprs-preprocessed])
@@ -450,7 +450,7 @@
     (switch = (@ expr-type s)
       ((-meta-)
         (let (macro [(preprocessed-expression-address) (@ expr-reference s) bindings buf handler])
-          [vgenerate-metas [build-expression [macro (@ expr-argument s) buf] buf handler] ctx]))
+          [vgenerate-metas [build-expression [macro (@ expr-argument s) buf] s buf handler] ctx]))
       
       ((-constrain-)
         (let (macro [(preprocessed-expression-address) (@ expr-reference s) bindings buf handler])
@@ -485,11 +485,12 @@
         [set cache null-cache]
         
         (if [= (@ expr-type s) (-function-)]
-          (let (params (reverse-map (_ (@ expr-parameters s)) [make-symbol null-string ..] ..))
-          (let (args (reverse-map (_ (@ expr-parameters s)) [make-symbol null-string ..] ..))
-          (let (thunk [make-function [make-symbol (@ expr-name (@ expr-reference s)) ..] params
-            [make-invoke (make-invokeN [make-literal init-function ..] ([make-literal s ..] [make-literal bindings ..]
-            [make-literal buf ..] [make-literal handler ..] [make-literal cache ..]) ..) args ..] ..]) (do
+          (let (params (reverse-map (_ (@ expr-parameters s)) [make-symbol null-string null-expr ..] ..))
+          (let (args (reverse-map (_ (@ expr-parameters s)) [make-symbol null-string null-expr ..] ..))
+          (let (thunk [make-function [make-symbol (@ expr-name (@ expr-reference s)) null-expr ..] params
+            [make-invoke (make-invokeN [make-literal init-function null-expr ..] ([make-literal s null-expr ..]
+            [make-literal bindings null-expr ..] [make-literal buf null-expr ..] [make-literal handler null-expr ..]
+            [make-literal cache null-expr ..]) null-expr ..) args null-expr ..] null-expr ..]) (do
           (foreach (a params) (t args) [bind-symbol t a])
           [cons thunk c ..]))))
         
