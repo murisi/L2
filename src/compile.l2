@@ -1,4 +1,5 @@
-(;; Compiles a program into a list of assembly expressions. bindings is a reference to a
+(ignore
+  Compiles a program into a list of assembly expressions. bindings is a reference to a
   list into which the augmented bindings of the generated code will be put.)
 
 (constrain compile-program
@@ -14,29 +15,31 @@
         [containment-analysis expr]
         [classify-program-bindings expr]
         [link-symbols expr (true) undefined-bindings global-bindings nil ..]
-        (;;[infer-types expr ..])
+        (ignore[infer-types expr ..])
         [escape-analysis expr (true)]
         [layout-frames expr static-bindings ..]))))
     [generate-program exprs ..])))
 
-(;; Loads a program into memory and returns a handle to it. program is a program expression.
+(ignore
+  Loads a program into memory and returns a handle to it. program is a program expression.
   expr-buf is the buffer into which the results of compilation will be put. obj-buf is the
   buffer into which the object code will be put. Return value is an object.)
 
 (constrain load-program (\ r (with-vars (a) (`(function ((list expr) buffer ,a) obj)r)r)))
 
 (function load-program (exprs buf handler)
-  (let (static-bindings (storage _ (undefined)))
-  (let (undefined-bindings (storage _ (undefined)))
+  (let (static-bindings (storage _ (ignore)))
+  (let (undefined-bindings (storage _ (ignore)))
   (let (asms [compile-program exprs undefined-bindings static-bindings buf handler])
-  (let (objdest (storage _ (undefined)))
-  (let (objdest-sz (storage _ (undefined))) (do
+  (let (objdest (storage _ (ignore)))
+  (let (objdest-sz (storage _ (ignore))) (do
   [write-elf asms $undefined-bindings $static-bindings objdest objdest-sz buf handler]
   (let (obj [load $objdest $objdest-sz buf handler]) (do
   [binding-offsets-to-addresses asms $static-bindings obj]
   obj)))))))))
 
-(;; Behavior is the same as load-program, but with the following addition: bndgs is a list
+(ignore
+  Behavior is the same as load-program, but with the following addition: bndgs is a list
   of object bindings, and after the loading is done, the undefined bindings of the loaded
   program will take on the addresses supplied in the list. The handler continuation is
   followed, and the error buffer referenced by err set to the pair (undefined-symbol-error,
@@ -55,7 +58,7 @@
           (let (missing-bndg-name (@ bndg-name d)) (do
           [destroy-buffer temp-reg handler]
           {handler (storage _ undefined-symbol-error missing-bndg-name)})))
-        (undefined)))
+        (ignore)))
     
     [destroy-buffer temp-reg handler]
     [mutate-bindings obj bndgs]
@@ -76,7 +79,8 @@
         [close fd handler]
         (if [= (@0 err) no-error] (@1 err) {handler err}))))))
 
-(;; Reads a list of expressions from a given file. fn is a string containing the filename.
+(ignore
+  Reads a list of expressions from a given file. fn is a string containing the filename.
   buf is the buffer into which the constructed expressions will be put. Return value is a
   list of expressions.)
 
@@ -84,7 +88,7 @@
 
 (function read-expressions (fn buf handler)
   (substitute (.. buf handler)
-    (let (src-sz (storage _ (undefined)))
+    (let (src-sz (storage _ (ignore)))
     (let (src-buf [read-to-buffer fn src-sz ..])
     (let (pos (storage _ #0))
       (loop cons-expr (expressions nil)
@@ -92,7 +96,8 @@
           {cons-expr [cons [build-expression [build-fragment src-buf $src-sz pos ..] null-expr ..] expressions ..]}
           [reverse expressions ..])))))))
 
-(;; Takes a list of L2 and object file names, loads their contents into memory, and links
+(ignore
+  Takes a list of L2 and object file names, loads their contents into memory, and links
   them together. The global symbols of the object code are then added to the list of
   bindings.)
 
@@ -105,14 +110,15 @@
         (do [append-list bindings [immutable-bindings obj ..]] [cons obj objects ..]))))
     
     (let (objects2 (fold (objects objects1) (src object-fns)
-      (let (obj-sz (storage _ (undefined)))
+      (let (obj-sz (storage _ (ignore)))
       (let (obj-buf (storage _ [read-to-buffer src obj-sz ..]))
       (let (obj [load $obj-buf $obj-sz ..])
         (do [append-list bindings [immutable-bindings obj ..]] [cons obj objects ..]))))))
       
     (foreach (obj objects2) [mutate-bindings obj $bindings])))))
 
-(;; Takes a list of L2 source files and compiles them into object files. programs is a
+(ignore
+  Takes a list of L2 source files and compiles them into object files. programs is a
   list of strings containing paths to L2 source files. bndgs is a list of bindings
   pointing to the macros to be used during the meta-expression expansions. expr-buf
   is the buffer into which constructed expressions will be put. obj-buf is the buffer
@@ -136,11 +142,11 @@
           (foreach (expr all-exprs) [pre-visit-expressions vunlink-symbols (storage _ expr) (values $undefined-bindings)])))))
         
         (foreach (infn file-names) (exprs file-exprss)
-          (let (undefined-bindings (storage _ (undefined)))
-          (let (static-bindings (storage _ (undefined)))
+          (let (undefined-bindings (storage _ (ignore)))
+          (let (static-bindings (storage _ (ignore)))
           (let (asms [compile-program exprs undefined-bindings static-bindings buf handler])
-          (let (objdest (storage _ (undefined)))
-          (let (objdest-sz (storage _ (undefined))) (do
+          (let (objdest (storage _ (ignore)))
+          (let (objdest-sz (storage _ (ignore))) (do
           [write-elf asms $undefined-bindings $static-bindings objdest objdest-sz buf handler]
           (let (outfn [buffer-alloc [+ [strlen infn] #1] buf handler]) (do
           [strcpy outfn infn]
@@ -149,11 +155,12 @@
           [print fd $objdest $objdest-sz handler]
           [close fd handler])))))))))))))))
 
-(storage arguments-error (undefined))
+(storage arguments-error (ignore))
 
-(storage no-error (undefined))
+(storage no-error (ignore))
 
-(;; This is where program execution starts. The following code essentially loads up and
+(ignore
+  This is where program execution starts. The following code essentially loads up and
   executes the code specified in the command line arguments and then compiles the
   separately specified code using the already loaded up functions as macros. It also
   prints out the error messages if there are any.)
@@ -166,9 +173,9 @@
           (let (dash-list-ref (locate (arg (storage _ source-fns)) [str= arg (" -)]))
           (if [nil? $dash-list-ref] {handler (storage _ arguments-error)}
           (let (object-fns [@cdr $dash-list-ref]) (do
-          (;; Cut the source filenames list short.)
+          (ignore Cut the source filenames list short.)
           [set dash-list-ref nil]
-          (;; These are all the bindings necessary for metaprogramming. Their
+          (ignore These are all the bindings necessary for metaprogramming. Their
             definitions can be found in list.l2 and lexer.l2.)
           (let (bndgs (storage _ (substitute (.. buf handler) (list
             ([make-binding (" -!-)(tkn-char(char !))..]
@@ -271,9 +278,9 @@
             [make-binding (" var?) vbl? ..]
             [make-binding (" var) vbl ..])..)))) (do
           
-          (;; Evaluate the metaprogram)
+          (ignore Evaluate the metaprogram)
           [evaluate-files source-fns object-fns bndgs buf handler]
-          (;; Compile the program in the metaprogram's environment)
+          (ignore Compile the program in the metaprogram's environment)
           [compile-files source-fns $bndgs buf handler]
           (storage _ no-error)))))))))
         
@@ -335,7 +342,7 @@
               [print-expression (@3 err) ..]
               [print-str (stdout) (" (lf)) ..]))
               
-            (undefined))
+            (ignore))
             
           err)))
   

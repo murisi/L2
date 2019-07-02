@@ -1,5 +1,6 @@
-(;; The following functions are abbreviations of sequences of list operations
-  that are frequently useful when working with s-expressions.)
+(ignore
+  The following functions are abbreviations of sequences of list operations that are
+  frequently useful when working with s-expressions.)
 
 (function @frst (l) [@fst [@rst l]])
 
@@ -51,8 +52,9 @@
 
 (function lllllllllst (a b c d e f g h i j r) [lst a [llllllllst b c d e f g h i j r] r])
 
-(;; The following function provides an abbreviation for getting a value from a
-  memory address. It implements the transformation $a -> [get a].)
+(ignore
+  The following function provides an abbreviation for getting a value from a memory
+  address. It implements the transformation $a -> [get a].)
 
 (function $ (var r)
   [llst
@@ -64,9 +66,9 @@
 
 (constrain set (\ r (with-vars (a) (`(function ((ref ,a) ,a) ())r)r)))
 
-(;; The following function generates the L2 code to generate a fragment
-  corresponding to the supplied fragment. Known as backquote in other
-  languages.)
+(ignore
+  The following function generates the L2 code to generate a fragment corresponding to the
+  supplied fragment. Known as backquote in other languages.)
 
 (function ` (l r)
   [(function aux (s t r)
@@ -87,18 +89,19 @@
             [aux [@fst s] t r])
           [aux [@rst s] t r] t emt r])))) [@fst l] [@frst l] r])
 
-(;; The following function generates code to create variables and bind them.
-    It does the following transformation:
-    
-    (with-vars (vars ...) expr buffer)
-    ->
-    (let (var0 [var buffer]) ... (varN [var buffer]) expr))
+(ignore
+  The following function generates code to create variables and bind them. It does the
+  following transformation:
+  
+  (with-vars (vars ...) expr buffer)
+  ->
+  (let (var0 [var buffer]) ... (varN [var buffer]) expr))
 
 (function with-vars (l r)
   (let (bindings [meta:map3 [@fst l] [@frrst l] r (\ e s r (`(,e [var ,s])r)) r])
     [lst (` let r) [meta:reverse [lst [@frst l] [meta:reverse bindings r] r] r] r]))
 
-(;; The following function checks if the tokens a and b are equal.)
+(ignore The following function checks if the tokens a and b are equal.)
 
 (function token= (a b)
   (if (and [emt? a] [emt? b])
@@ -107,8 +110,9 @@
       (false)
       (and [char= [@fst a] [@fst b]] [token= [@rst a] [@rst b]]))))
 
-(;; The following function concatenates lists a and b. A part of the constructed
-  list will lie in the buffer r.)
+(ignore
+  The following function concatenates lists a and b. A part of the constructed list will
+  lie in the buffer r.)
 
 (function meta:concat (a b r)
   (loop do-prepend (rem-list [meta:reverse a r]) (constr b)
@@ -116,11 +120,13 @@
       constr
       {do-prepend [@rst rem-list] [lst [@fst rem-list] constr r]})))
 
-(;; The following macro does the following transformation:
+(ignore
+  The following macro does the following transformation:
   (substitute (tkn repls ...) frag)
   ->
-  frag but with the fragments repls inserted in order at all the places that the token tkn occurred.
-  An example usage is when the arguments a group of functions are called with have a common sublist.)
+  frag but with the fragments repls inserted in order at all the places that the token tkn
+  occurred. An example usage is when the arguments a group of functions are called with
+  have a common sublist.)
 
 (function substitute (l r)
   [(function aux (frag fnd repl r)
@@ -131,14 +137,16 @@
           [lst [aux [@fst frag] fnd repl r] [aux [@rst frag] fnd repl r] r])))
     [@frst l] [@ffst l] [@rfst l] r])
 
-(;; The following function is a helper function for macros defining constants.
-  It produces a literal from the binary value given at value.)
+(ignore
+  The following function is a helper function for macros defining constants. It produces a
+  literal from the binary value given at value.)
 
 (function mk# (r value) [value->literal value r])
 
 (function mk## (value sig r) (`(constrain (,[value->literal value r]) (,[value->literal sig r]))r))
 
-(;; A set of macros to provide struct functionality in L2. The most naive way
+(ignore
+  A set of macros to provide struct functionality in L2. The most naive way
   to do structs in L2 would be to create a getter function, setter function,
   and offset calculation function for every field where these functions
   simply access the desired memory locations. However this solution is
@@ -149,14 +157,16 @@
   getter, setter, address-of, offset-of, and sizeof functions can be defined
   once and used on any field.)
 
-(;; The following function is a macro for getting the offset of a field of a struct.
+(ignore
+  The following function is a macro for getting the offset of a field of a struct.
   The macro expands into a macro invocation of the supplied field (the second
   item in the fragment l), passing into it offset-aux (the macro that actually
   produces the offset of the field).)
 
 (function offset-of (l r) (`((,[@fst l]) offset-of-aux)r))
 
-(;; This function is not to be called directly. It returns a fragment representing
+(ignore
+  This function is not to be called directly. It returns a fragment representing
   the offset of the field. That is, it returns the first item in the fragment l.)
   
 (function offset-of-aux (l r) [@fst l])
@@ -173,7 +183,8 @@
 
 (function setter-of-aux (l r) [@frrrst l])
 
-(;; The following function is a macro for getting the address of a field of a struct.
+(ignore
+  The following function is a macro for getting the address of a field of a struct.
   The macro expands into a macro invocation of the supplied field (the second
   item in the fragment l), passing into it &-aux (the macro that will generate
   the actual invocation that calculates the address of the field) and the address of
@@ -181,7 +192,8 @@
 
 (function & (l r) (`((,[@fst l]) &-aux (,[@frst l]))r))
 
-(;; This function is not to be called directly. It generates the actual
+(ignore
+  This function is not to be called directly. It generates the actual
   invocation to calculate the address of the field. When macro-called, it
   adds the offset (the first item in the fragment l) to the base
   (the fifth item in the fragment l).)
@@ -193,7 +205,8 @@
             (`(function (,obj-sig) (ref ,prop-sig))s)))))
       (,[@frrrrrrst l])]r))
 
-(;; The following function is a macro for getting the field of a struct. The
+(ignore
+  The following function is a macro for getting the field of a struct. The
   macro expands into a macro invocation of the supplied field (the second
   item in the fragment l), passing into it @-aux (the macro that will generate
   the actual invocation that gets the field) and the address of the struct (the
@@ -201,7 +214,8 @@
   
 (function @ (l r) (`((,[@fst l]) @-aux (,[@frst l]))r))
 
-(;; This function is not to be called directly. It generates the actual
+(ignore
+  This function is not to be called directly. It generates the actual
   invocation to get the field. When macro-called, it invokes the getter
   function (the fourth item in the fragment l) with an address formed by
   adding the offset (the first item in the fragment l) to the base
@@ -214,7 +228,8 @@
             (`(function (,obj-sig) ,prop-sig)s)))))
       (,[@frrrrrrst l])]r))
 
-(;; The following function is a macro for setting the field of a struct. The
+(ignore
+  The following function is a macro for setting the field of a struct. The
   macro expands into a macro invocation of the supplied field (the second
   item in the fragment l), passing into it setf-aux (the macro that will generate
   the actual invocation that sets the field), the address of the struct (the
@@ -223,7 +238,8 @@
 
 (function setf (l r) (`((,[@fst l]) setf-aux (,[@frst l]) (,[@frrst l]))r))
 
-(;; This function is not to be called directly. It generates the actual
+(ignore
+  This function is not to be called directly. It generates the actual
   invocation to set the field. When macro-called, it invokes the setter
   function (the fourth item in the fragment l) with an address formed by
   adding the offset (the first item in the fragment l) to the base
@@ -238,24 +254,25 @@
               (`(function (,obj-sig ,prop-sig) ,a)s)))s)))
       (,[@frrrrrrst l]) (,[@frrrrrrrst l])]r))
 
-(;; The following function is a helper function for generating the fields of
+(ignore
+  The following function is a helper function for generating the fields of
   structs. All that it does is create a macro invocation on the first token
   in the fragment l supplying to it the offset, size, getter, and setter of
   the field in addition to the rest of the fragment l.)
 
 (function property (offset size obj-sig prop-sig l r)
   [lllllllst [@fst l] [value->literal offset r] [value->literal size r]
-    (switch = size (#1 (` get1b r)) (#2 (` get2b r)) (#4 (` get4b r)) (#8 (` get8b r)) (`(undefined)r))
-    (switch = size (#1 (` set1b r)) (#2 (` set2b r)) (#4 (` set4b r)) (#8 (` set8b r)) (`(undefined)r))
+    (switch = size (#1 (` get1b r)) (#2 (` get2b r)) (#4 (` get4b r)) (#8 (` get8b r)) (`(ignore)r))
+    (switch = size (#1 (` set1b r)) (#2 (` set2b r)) (#4 (` set4b r)) (#8 (` set8b r)) (`(ignore)r))
     [value->literal obj-sig r] [value->literal prop-sig r] [@rst l] r])
 
-(;; The following function provides a method for commenting L2 code. It
-  implements the transformation (;; expr1 ...) -> (undefined). It is being used
-  for this comment to work.)
+(ignore
+  The following function provides a method for ignoring L2 code. It is being used for this
+  comment to work.)
 
-(function ;; (l r) [lst [lllllllllst -u- -n- -d- -e- -f- -i- -n- -e- -d- emt r] emt r])
+(function ignore (l r) [mk# r (hex DEADBEEF)])
 
-(;; Takes a list and produces a list of unique tokens that are prefixed by the given seed.)
+(ignore Takes a list and produces a list of unique tokens that are prefixed by the given seed.)
 
 (function meta:label (list seed r) (with return
   {(continuation aux (labels state list)
@@ -265,7 +282,8 @@
         [@rst list]}
       {return [meta:reverse labels r]})) emt seed list}))
 
-(;; Does the transformation (values arg1 arg2 ...) -> (storage values:stor arg1 arg2 ...).
+(ignore
+  Does the transformation (values arg1 arg2 ...) -> (storage values:stor arg1 arg2 ...).
   (values arg1 arg2 ...) has the type (values sig1 sig2 ...) where sigj is the signature
   of argj.)
 
@@ -282,7 +300,8 @@
               (continuation (,[lst [llst (` continuation r) [lst [lst (` values r) unquoted-vars r] emt r] emt r] unquoted-vars r]))
                 values:r) values:r)))r) (` values:return r) args r]))r))))
 
-(;; Binds values bound by values. I.e. evaluating (bind x (param1 param2 ...) expr) where
+(ignore
+  Binds values bound by values. I.e. evaluating (bind x (param1 param2 ...) expr) where
   x is (values arg1 arg2 ...) is the same as evaluating expr in an environment where
   paramj is argj for each j.)
 
@@ -304,8 +323,9 @@
                     [lst (` values r) unquoted-vars r] emt r])) bind:r) bind:r)))
           (continuation bind:cont ,identifiers {bind:return ,body}) ,param})r)))))
 
-(;; Implements the transformations (@n expr) -> ($[+ expr [* #n(unit)]]).
-  Designed to evaluate to the nth argument of a storage expression.)
+(ignore
+  Implements the transformations (@n expr) -> ($[+ expr [* #n(unit)]]). Designed to
+  evaluate to the nth argument of a storage expression.)
 
 (function @0 (l r) (`($[+ (,[@fst l]) [* #0(unit)]])r))
 
@@ -317,7 +337,8 @@
 
 (function @4 (l r) (`($[+ (,[@fst l]) [* #4(unit)]])r))
 
-(;; A macro to produce the address of an element of a multi-dimensional array.
+(ignore
+  A macro to produce the address of an element of a multi-dimensional array.
   For example, (loc(unit) #4 $arr) gets the address corresponding to unit 4
   from $arr.)
 

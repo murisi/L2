@@ -1,8 +1,8 @@
-(;; Takes two lists of the same length and produces a list of pairs of which the
-  first element comes from the first list and the second element comes from the
-  second list. a is the list from which the first elements of the zip will
-  come from. b is the list from which the second elements of the zip will come
-  from.)
+(ignore
+  Takes two lists of the same length and produces a list of pairs of which the first
+  element comes from the first list and the second element comes from the second list. a
+  is the list from which the first elements of the zip will come from. b is the list from
+  which the second elements of the zip will come from.)
 
 (function meta:zip (a b r) (with return
   {(continuation aux (output a b)
@@ -10,7 +10,8 @@
       {aux [lst [llst [@fst a] [@fst b] emt r] output r] [@rst a] [@rst b]}
       {return [meta:reverse output r]})) emt a b}))
 
-(;; A zipped foreach macro. The syntax is as follows:
+(ignore
+  A zipped foreach macro. The syntax is as follows:
   (foreach (v1 l1) (v2 l2) ... (vN lN) expr) where l1, l2, ..., lN must have the same size.)
 
 (function foreach (s r)
@@ -23,9 +24,10 @@
             [lst (` let r) [meta:reverse [lst body [meta:map2 [meta:zip [meta:map bindings @fst r] labels r]
                 r (function make-binding (a r) (`((,[@fst a]) [@car (,[@frst a])])r))r]r]r]r]
             [llst (` jump r) (` foreach:loop r) [meta:map2 labels r (function make-update (a r) (`[@cdr ,a]r))r] r] emt r])
-          {foreach:return (undefined)})r) emt r] [meta:map bindings @frst r]r]))r))))
+          {foreach:return (ignore)})r) emt r] [meta:map bindings @frst r]r]))r))))
 
-(;; Like a C-array initializer, but for lists. Does the following transformation:
+(ignore
+  Like a C-array initializer, but for lists. Does the following transformation:
   (list (expr1 expr2 ... exprN) r handler)
   ->
   [cons expr1 [cons expr2 [... [cons exprN nil r handler] ...] r handler] r handler])
@@ -36,7 +38,8 @@
       out
       {add-item [llllst (` invoke r) (` cons r) [@fst in] out [@rst l] r] [@rst in]})))
 
-(;; A macro to do a reverse map. Does the following transformation:
+(ignore
+  A macro to do a reverse map. Does the following transformation:
   (reverse-map (x l) expr ctx ...)
   ->
   (with reverse-map:return
@@ -57,7 +60,8 @@
           (,[llllst (` invoke r) (` cons r) (`(let ((,[@ffst l]) [@car reverse-map:l]) (,[@frst l]))r) (` reverse-map:acc r)
             [@rrst l] r])})) (,[@frfst l]) nil})r))
 
-(;; A macro to do a reverse filter. Does the following transformation:
+(ignore
+  A macro to do a reverse filter. Does the following transformation:
   (reverse-filter (x l) expr ctx ...)
   ->
   (with reverse-filter:return
@@ -81,7 +85,8 @@
             (,[llllst (` invoke r) (` cons r) (`[@car reverse-filter:l]r) (` reverse-filter:acc r) [@rrst l] r])
             reverse-filter:acc)})) (,[@frfst l]) nil})r))
 
-(;; A macro to do a reverse map. Does the following transformation:
+(ignore
+  A macro to do a reverse map. Does the following transformation:
   (fold (y acc) (x l) expr)
   ->
   (with fold:return
@@ -101,7 +106,8 @@
           (let ((,[@ffst l]) fold:acc) ((,[@ffrst l]) [@car fold:l]) (,[@frrst l]))
           [@cdr fold:l]})) (,[@frfst l]) (,[@frfrst l])})r))
 
-(;; A macro to do a find. Does the following transformation:
+(ignore
+  A macro to do a find. Does the following transformation:
   (find (x l) expr)
   ->
   (with find:return
@@ -121,7 +127,8 @@
           {find:return find:l}
           {find:loop [@cdr find:l]}))) (,[@frfst l])})r))
 
-(;; A macro to do a locate. Does the following transformation:
+(ignore
+  A macro to do a locate. Does the following transformation:
   (locate (x l-ref) expr)
   ->
   (with locate:return
@@ -147,9 +154,10 @@
 
 (function cdr (l r) [property #8 #8 (\ r (with-vars (a) (`(list ,a)r)r)) (\ s r s) l r])
 
-(;; Convenience functions for accessing elements of program internal lists.
-  Note that the @fst and @rst functions are list accessor functions only for
-  the fragments supplied to macros.)
+(ignore
+  Convenience functions for accessing elements of program internal lists. Note that the
+  @fst and @rst functions are list accessor functions only for the fragments supplied to
+  macros.)
 
 (function @car (l) (@ car l))
 
@@ -183,9 +191,10 @@
 
 (function nil? (l) [= l nil])
 
-(;; Appends an item to the given list. data is the data that is to be appended.
-  l is a reference to the list that is to be appended to. r is the buffer into
-  which the extension is being placed.)
+(ignore
+  Appends an item to the given list. data is the data that is to be appended. l is a
+  reference to the list that is to be appended to. r is the buffer into which the extension
+  is being placed.)
 
 (constrain append (\ r (with-vars (et b) (`(function (,et (ref (list ,et)) buffer ,b) (ref ,et))r)r)))
 
@@ -199,10 +208,10 @@
         (setf cdr $l nil)
         (& car $l)))))
 
-(;; Makes a new list with the given head and tail. data is what is going to be
-  put at the head. rest is the list that will be the tail of the new list. r
-  is the buffer into which the extension is being placed. Return value is the
-  new list.)
+(ignore
+  Makes a new list with the given head and tail. data is what is going to be put at the
+  head. rest is the list that will be the tail of the new list. r is the buffer into which
+  the extension is being placed. Return value is the new list.)
 
 (constrain cons (\ r (with-vars (et a) (`(function (,et (list ,et) buffer ,a) (list ,et))r)r)))
 
@@ -212,8 +221,9 @@
     (setf cdr l rest)
     l)))
 
-(;; Appends the second list onto the first list. fst-ref is a reference to the
-  list that will be appended to. snd is the list that will be appended.)
+(ignore
+  Appends the second list onto the first list. fst-ref is a reference to the list that
+  will be appended to. snd is the list that will be appended.)
 
 (constrain append-list (\ r (with-vars (et) (`(function ((ref (list ,et)) (list ,et)) ())r)r)))
 
@@ -223,7 +233,7 @@
       [set fst-ref snd]
       {next (& cdr $fst-ref)})))
 
-(;; Analogous to append above.)
+(ignore Analogous to append above.)
 
 (constrain prepend (\ r (with-vars (et a) (`(function (,et (ref (list ,et)) buffer ,a) ())r)r)))
 
@@ -233,8 +243,7 @@
     (setf cdr ret $l-ref)
     [set l-ref ret])))
 
-(;; Computes the length of the given list. l is the list whose length will be
-  computed.)
+(ignore Computes the length of the given list. l is the list whose length will be computed.)
 
 (constrain length (\ r (with-vars (et nt) (`(function ((list ,et)) ,nt)r)r)))
 
@@ -244,7 +253,7 @@
       size
       {next [@cdr l] [+ #1 size]})))
 
-(;; Flattens the given list of lists and reverses them.)
+(ignore Flattens the given list of lists and reverses them.)
 
 (constrain reverse-flatten (\ r (with-vars (a b) (`(function ((list (list ,a)) buffer ,b) (list ,a))r)r)))
 
@@ -253,9 +262,9 @@
     (fold (all nil) (s l)
       (fold (t all) (u s) [cons u t ..] ..) ..)))
 
-(;; Constructs a reverse of the given list. l is the list that is to be reversed.
-  r is the buffer into which the reversed list should be placed. Return value
-  is the reversed list.)
+(ignore
+  Constructs a reverse of the given list. l is the list that is to be reversed. r is the
+  buffer into which the reversed list should be placed. Return value is the reversed list.)
 
 (constrain reverse (\ r (with-vars (et a) (`(function ((list ,et) buffer ,a) (list ,et))r)r)))
 

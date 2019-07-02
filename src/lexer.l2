@@ -67,40 +67,39 @@
         [list->fragment [reverse
           (reverse-map (x [frag->list d]) [recursive-evaluate x ..] ..) ..]]))))
 
-(;; What follows is a struct for representing fragment characters. It is
-  conceptually in union with the list-struct.)
+(ignore
+  What follows is a struct for representing fragment characters. It is conceptually in
+  union with the list-struct.)
 
 (function character-struct (l r) [mk# r #16])
 
-(;; This field should be set to character-flag to indicate that a given reference
-  is a character rather than a list.)
+(ignore
+  This field should be set to character-flag to indicate that a given reference is a
+  character rather than a list.)
   
 (function cs-flag (l r) [property #8 #8 (\ r [var r]) (\ s r [var r]) l r])
 
-(;; This field contains the ASCII character represented by the this fragment
-  character.)
+(ignore This field contains the ASCII character represented by the this fragment character.)
   
 (function cs-character (l r) [property #0 #8 (\ r [var r]) (\ s r [var r]) l r])
 
-(;; Returns a reference to a fragment character representing the supplied
-  ASCII character.)
+(ignore Returns a reference to a fragment character representing the supplied ASCII character.)
 
 (function char-init (s r) (`(storage _ (char (,[@fst s])) character-flag)r))
 
-(;; Returns the fragment character representing the supplied ASCII
-  character.)
+(ignore Returns the fragment character representing the supplied ASCII character.)
 
 (function tkn-char (s r) (`(constrain ($(loc (unit) (,[@fst s]) characters)) (\ r (` tchar r)))r))
 
-(storage null-fragment (undefined))
+(storage null-fragment (ignore))
 
-(;; Checks if two fragment characters are equal. a is a fragment character. b
-  is a fragment character. Return value is (true) if they are equal and (false)
-  otherwise.)
+(ignore
+  Checks if two fragment characters are equal. a is a fragment character. b is a fragment
+  character. Return value is (true) if they are equal and (false) otherwise.)
 
 (function i/f:char= (a b) [= (@ cs-character a) (@ cs-character b)])
 
-(;; Following array is used to lookup fragment character corresponding to ASCII character.)
+(ignore Following array is used to lookup fragment character corresponding to ASCII character.)
 
 (storage characters
   #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 (char-init !) (char-init ")
@@ -115,9 +114,10 @@
   (char-init m) (char-init n) (char-init o) (char-init p) (char-init q) (char-init r) (char-init s) (char-init t) (char-init u)
   (char-init v) (char-init w) (char-init x) (char-init y) (char-init z) #0 (char-init |) #0 (char-init ~) #0)
 
-(;; Builds a token from a given C-string. str is the C-string that the constructed
-  token will be based on. r is the buffer in which the token will be constructed.
-  Return value is the constructed token.)
+(ignore
+  Builds a token from a given C-string. str is the C-string that the constructed token
+  will be based on. r is the buffer in which the token will be constructed. Return value
+  is the constructed token.)
 
 (constrain build-token (\ r (with-vars (c) (`(function (string buffer ,c) (list tchar))r)r)))
 
@@ -127,7 +127,8 @@
       {cons-char [cons (tkn-char [getb strptr]) sexprs r handler] [+ strptr #1]}
       [reverse sexprs r handler])))
 
-(;; Moves the supplied index forward to the first non-space character. l2src is a
+(ignore
+  Moves the supplied index forward to the first non-space character. l2src is a
   reference to the beginning of a buffer containing characters. l2src-sz contains
   the size in bytes of the buffer. pos is the reference to an index integer that
   will be increased. Return value is the number of remaining characters in the
@@ -139,7 +140,8 @@
       (do [set+ pos #1] {find-space})
       [- l2src-sz $pos])))
 
-(;; If there is a space at the current position in the buffer, then build a token
+(ignore
+  If there is a space at the current position in the buffer, then build a token
   containing solely the sigil. Otherwise build a token of the form (<sigil>
   <token>) where token is the token starting at the current position in the
   buffer. sigil is a string. l2src is a reference to the start of a buffer
@@ -158,7 +160,8 @@
           [token->fragment [build-token sigil ..]]
           [list->fragment (list ([token->fragment [build-token sigil ..]] [build-fragment l2src l2src-sz pos ..]) ..)])))))
 
-(;; Builds a fragment list starting at the current position in the buffer and ending
+(ignore
+  Builds a fragment list starting at the current position in the buffer and ending
   at the specified delimiter and then prefixes it with the given primitive.
   primitive is a string. delimiter is an ascii character. For rest of parameters,
   see above.)
@@ -173,10 +176,9 @@
           (do [set+ pos #1] [reverse sexprs ..])
           {cons-frag [cons [build-fragment l2src l2src-sz pos ..] sexprs ..]})))))
 
-(storage unexpected-char-error (undefined))
+(storage unexpected-char-error (ignore))
 
-(;; Builds a fragment starting at the current position in the buffer. For parameters,
-  see above.)
+(ignore Builds a fragment starting at the current position in the buffer. For parameters, see above.)
 
 (constrain build-fragment (\ r (with-vars (a b c d e) (`(function (,a ,b ,c ,d ,e) frag)r)r)))
 
@@ -204,9 +206,9 @@
                     (if (or [isspace c] [= c (lparen)] [= c (rparen)] [= c (lbrace)] [= c (rbrace)] [= c (lbracket)] [= c (rbracket)]) l
                       (do [set+ pos #1] {cons-char l c})))))) ..]])))))))
 
-(storage character-flag (undefined))
+(storage character-flag (ignore))
 
-(;; Checks if the fragment d is a token. A token is a non-empty list of characters.)
+(ignore Checks if the fragment d is a token. A token is a non-empty list of characters.)
 
 (constrain i/f:token? (\ r (with-vars (a) (`(function (frag) ,a)r)r)))
 
@@ -226,9 +228,10 @@
         (false)
         {check-car [@cdr a] [@cdr b]})))))
 
-(;; Converts the given token into an ASCII string. d is the token that is to be
-  converted. r is the buffer into which the string should be put. The return value
-  is the constructed string.)
+(ignore
+  Converts the given token into an ASCII string. d is the token that is to be converted.
+  r is the buffer into which the string should be put. The return value is the constructed
+  string.)
 
 (constrain to-string (\ r (with-vars (a) (`(function ((list tchar) buffer ,a) string)r)r)))
 
@@ -243,7 +246,8 @@
           [setb [+ str i] (@ cs-character [@car d])]
           {put-char [@cdr d] [+ i #1]})))))
 
-(;; Copies the given fragment into the given buffer. l is the fragment that is to
+(ignore
+  Copies the given fragment into the given buffer. l is the fragment that is to
   be copied. r is the buffer into which the fragment should be copied. The return
   value is the copied fragment.)
 
@@ -263,8 +267,7 @@
       [list->fragment
         [reverse (reverse-map (s [frag->list l]) [copy-fragment s old-vars new-vars ..] ..) ..]]))))
 
-(;; Prints the given fragment out to standard output. d is the fragment that is
-  to be printed.)
+(ignore Prints the given fragment out to standard output. d is the fragment that is to be printed.)
 
 (constrain print-fragment (\ r (with-vars (b) (`(function (frag ,b) ())r)r)))
 

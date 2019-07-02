@@ -1,4 +1,4 @@
-(;; The constants to be used in x86-64-assembler.l2)
+(ignore The constants to be used in x86-64-assembler.l2)
 
 (function instr-mod (l r) [mk# r #6])
 
@@ -33,7 +33,7 @@
 (function mem-write (mem idx bytes cnt)
   (let (end [+ $idx cnt])
   (loop write-bytes (bytes bytes)
-    (if [= $idx end] (undefined) (do
+    (if [= $idx end] (ignore) (do
       [setb [+ mem $idx] [getb bytes]]
       [set+ idx #1]
       {write-bytes [+ bytes #1]})))))
@@ -44,7 +44,7 @@
   (let (mod (if m #2 #3))
   (let (modrm [lor [<< mod (instr-mod)] [lor [<< [land reg (hex 7)] (instr-reg)] [<< [land rm (hex 7)] (instr-rm)]]])
   (let (has-sib (and m (or [= rm (rsp)] [= rm (r12)])))
-  (let (sib (if has-sib [lor [<< #4 (instr-index)] [lor [<< [land rm (hex 7)] (instr-base)] [<< #0 (instr-ss)]]] (undefined)))
+  (let (sib (if has-sib [lor [<< #4 (instr-index)] [lor [<< [land rm (hex 7)] (instr-base)] [<< #0 (instr-ss)]]] (ignore)))
   (let (rex [<< #4 #4])
   (let (rex (if rexw [lor rex [<< #1 (rex-w)]] rex))
   (let (rex (if [land reg (hex 8)] [lor rex [<< #1 (rex-r)]] rex))
@@ -53,7 +53,7 @@
   [mem-write bin pos (storage _ rex) #1]
   [mem-write bin pos (storage _ opcode) #1]
   [mem-write bin pos (storage _ modrm) #1]
-  (if has-sib [mem-write bin pos (storage _ sib) #1] (undefined)))))))))))))
+  (if has-sib [mem-write bin pos (storage _ sib) #1] (ignore)))))))))))))
 
 (constrain write-static-value (\ r (with-vars (a b c d e f) (`(function (,a (ref ,b) ,c ,d ,e ,f) ())r)r)))
 
@@ -85,7 +85,7 @@
     [set+ relas (elf64-rela)]
     [mem-write bin pos (storage _ #0) bytes]))
     
-    (undefined))))))
+    (ignore))))))
 
 (constrain write-o-instr (\ r (with-vars (a b c d) (`(function (,a (ref ,b) ,c ,d) ())r)r)))
 
@@ -98,7 +98,7 @@
   (let (rex [lor rex [<< #0 (rex-x)]]) (do
   (if [land reg (hex 8)]
     (let (rex [lor rex [<< #1 (rex-b)]]) [mem-write bin pos (storage _ rex) #1])
-    (undefined))
+    (ignore))
   [mem-write bin pos (storage _ opcoderd) #1]))))))))
 
 (constrain assemble (\ r (with-vars (a b c d) (`(function ((list expr) ,a (ref ,b) ,c ,d) ())r)r)))
@@ -210,7 +210,7 @@
         (let (rm (@ expr-code [@car (@ expr-arguments n)]))
         [write-mr-instr bin pos opcode reg rm (false) (false)]))))
       
-      (undefined)))))
+      (ignore)))))
 
 (storage shstrtab ("(nul).shstrtab(nul).text(nul).strtab(nul).symtab(nul).bss(nul).rela.text(nul)))
 
@@ -248,12 +248,13 @@
     [+ [* (elf64-sym) [measure-symtab generated-expressions undefined-bindings static-bindings]]
     [* (elf64-rela) [* (write-elf-max-instr-fields) [length generated-expressions]]]]]]]]])
 
-(;; Takes assembly code and a list of symbols as constructs an object file.
-  generated-expressions is a list of assembly expressions. symbols is a list
-  of the static symbols used in the assembly expressions. bin is a reference
-  to where a reference to the generated object code should be put. pos is a
-  reference to where the size of the generated object code should be put. reg
-  is the buffer into which the generated object code should be put.)
+(ignore
+  Takes assembly code and a list of symbols as constructs an object file.
+  generated-expressions is a list of assembly expressions. symbols is a list of the static
+  symbols used in the assembly expressions. bin is a reference to where a reference to the
+  generated object code should be put. pos is a reference to where the size of the
+  generated object code should be put. reg is the buffer into which the generated object
+  code should be put.)
 
 (constrain write-elf (\ r (with-vars (a b c) (`(function ((list expr) (list bndg-aug) (list bndg-aug) ,a (ref ,b) buffer ,c) ())r)r)))
 
@@ -297,7 +298,7 @@
     
         (let (syms [buffer-alloc [* sym-count (elf64-sym)] temp-buf cleanup])
         (let (sym-ptr (storage _ syms)) (do
-        (;; Mandatory undefined symbol)
+        (ignore Mandatory undefined symbol)
         (setf st-name $sym-ptr #0)
         (setf st-value $sym-ptr #0)
         (setf st-size $sym-ptr #0)
@@ -332,7 +333,7 @@
             (setf bndg-context sym $sym-ptr)
             [set+ sym-ptr (elf64-sym)]
             [set+ bss-ptr [pad-size (@ bndg-size sym) (word-size)]])
-            (undefined)))
+            (ignore)))
     
         (foreach (e generated-expressions)
           (if (and [= (@ expr-code e) (label)]
@@ -352,7 +353,7 @@
             (setf st-shndx $sym-ptr #2)
             (setf bndg-context (@ expr-binding-aug $ref) $sym-ptr)
             [set+ sym-ptr (elf64-sym)]))
-            (undefined)))
+            (ignore)))
     
         (let (local-symbol-count [/[- $sym-ptr syms](elf64-sym)]) (do
     
@@ -374,7 +375,7 @@
             (setf bndg-context sym $sym-ptr)
             [set+ sym-ptr (elf64-sym)]
             [set+ bss-ptr [pad-size (@ bndg-size sym) (word-size)]])
-            (undefined)))
+            (ignore)))
     
         (foreach (sym undefined-bindings)
           (if (and [= (@ bndg-scope sym) (global-scope)] [= (@ bndg-state sym) (undefined-state)]) (do
@@ -392,7 +393,7 @@
             (setf st-shndx $sym-ptr (shn-undef))
             (setf bndg-context sym $sym-ptr)
             [set+ sym-ptr (elf64-sym)])
-            (undefined)))
+            (ignore)))
     
         (foreach (e generated-expressions)
           (if (and [= (@ expr-code e) (label)]
@@ -412,9 +413,9 @@
             (setf st-shndx $sym-ptr #2)
             (setf bndg-context (@ expr-binding-aug $ref) $sym-ptr)
             [set+ sym-ptr (elf64-sym)]))
-            (undefined)))
+            (ignore)))
     
-        (let (text-len (storage _ (undefined)))
+        (let (text-len (storage _ (ignore)))
         (let (max-text-sec-len [pad-size [* (write-elf-max-instr-len) [length generated-expressions]] (write-elf-alignment)])
         (let (max-rela-sec-len [* (write-elf-max-instr-fields) [* [length generated-expressions] (elf64-rela)]])
         
@@ -424,7 +425,7 @@
         
         [assemble generated-expressions text text-len syms rela-ptr]
         
-        (;; Mandatory undefined section)
+        (ignore Mandatory undefined section)
         (let (undef-shdr [buffer-alloc (elf64-shdr) temp-buf cleanup]) (do
         (setf sh-name undef-shdr #0)
         (setf sh-type undef-shdr (sht-null))
@@ -530,12 +531,13 @@
         
       (cleanup err (do [destroy-buffer temp-buf return-cont] err))
       
-      (return-cont err (if [= (@0 err) no-error] (undefined) {handler err})))))
+      (return-cont err (if [= (@0 err) no-error] (ignore) {handler err})))))
 
-(;; Converts the offsets of the static bindings associated with L2 source code
-  that has now been loaded into addresses. asms is a list of assembly expressions
-  containing bindings that need to be converted. bindings is a list of augmented
-  bindings corresponding to the assembly expressions that also need to be converted.)
+(ignore
+  Converts the offsets of the static bindings associated with L2 source code that has now
+  been loaded into addresses. asms is a list of assembly expressions containing bindings
+  that need to be converted. bindings is a list of augmented bindings corresponding to the
+  assembly expressions that also need to be converted.)
 
 (constrain binding-offsets-to-addresses (\ r (`(function ((list expr) (list bndg-aug) obj) ())r)))
 
@@ -543,11 +545,11 @@
   (foreach (sym static-bindings)
     (if (and [= (@ bndg-storage sym) (absolute-storage)] [= (@ bndg-state sym) (defined-state)])
       (setf bndg-offset sym [+ (@ bndg-offset sym) [segment obj (" .bss)]])
-      (undefined)))
+      (ignore)))
   
   (foreach (l asms)
     (if [= (@ expr-code l) (label)]
       (let (sym (@ expr-binding-aug[@car(@ expr-arguments l)]))
         (setf bndg-offset sym [+ (@ bndg-offset sym) [segment obj (" .text)]]))
-      (undefined)))))
+      (ignore)))))
 

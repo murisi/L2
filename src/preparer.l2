@@ -2,7 +2,7 @@
 
 (function named-sym= (a b) [defined-str= (@ expr-name a) (@ expr-name b)])
 
-(storage multiple-definition-error (undefined))
+(storage multiple-definition-error (ignore))
 
 (constrain vfind-multiple-definitions (\ r (with-vars (a) (`(function (expr (values ,a)) expr)r)r)))
 
@@ -13,13 +13,13 @@
         (let (temp-reg [create-buffer #0 handler])
         (let (ref-with-params [cons (@ expr-reference e) (@ expr-parameters e) temp-reg handler]) (do
         (until (partial ref-with-params) [nil? partial] [@cdr partial]
-          (if [nil? (find (f (@ cdr partial)) [named-sym= f [@car partial]])] (undefined)
+          (if [nil? (find (f (@ cdr partial)) [named-sym= f [@car partial]])] (ignore)
             (let (dup-ref-name (@ expr-name[@car partial])) (do
             [destroy-buffer temp-reg handler]
             {handler (storage _ multiple-definition-error dup-ref-name)}))))
         [destroy-buffer temp-reg handler]))))
       
-      (undefined))
+      (ignore))
     e)))
 
 (constrain global-binding-augs-of (\ r (with-vars (a) (`(function ((list expr) buffer ,a) (list bndg-aug))r)r)))
@@ -91,7 +91,7 @@
           (setf bndg-state bndg (undefined-state))
           (setf expr-binding-aug s bndg)
           [prepend (@ expr-binding-aug s) undefined-bindings ..])))
-          (undefined)))
+          (ignore)))
       
       ((-if-) (do
         [link-symbols (@ expr-condition s) static-storage undefined-bindings $statics-ref $dynamics-ref ..]
@@ -106,7 +106,7 @@
       ((-constrain-)
         [link-symbols (@ expr-expression s) static-storage undefined-bindings $statics-ref $dynamics-ref ..])
       
-      (undefined)))))))
+      (ignore)))))))
 
 (constrain escape-analysis (\ r (with-vars (a) (`(function (expr ,a) ())r)r)))
 
@@ -117,7 +117,7 @@
         (if (and escaping (or [= (@ expr-type target-expr) (-continuation-)] [= (@ expr-type target-expr) (-with-)])
             [= (@ expr-reference target-expr) (@ bndg-symbol (@ expr-binding-aug s))])
           (setf expr-escapes target-expr escaping)
-          (undefined))))
+          (ignore))))
     
     ((-if-) (do
       [escape-analysis (@ expr-condition s) (true)]
@@ -127,7 +127,7 @@
     ((-function-) (-continuation-) (-with-) (do
       (if (and escaping [= (@ expr-type s) (-continuation-)])
         (setf expr-escapes s escaping)
-        (undefined))
+        (ignore))
       [escape-analysis (@ expr-expression s) (true)]))
     
     ((-storage-) (-jump-) (-invoke-) (do
@@ -137,19 +137,19 @@
           (if (and (or [= (@ expr-type target-expr) (-continuation-)] [= (@ expr-type target-expr) (-with-)])
               [= (@ expr-reference target-expr) (@ bndg-symbol (@ expr-binding-aug (@ expr-reference s)))])
             (setf expr-short-circuit s target-expr)
-            (undefined)))
+            (ignore)))
         (if [= (@ expr-type (@ expr-reference s)) (-continuation-)]
           (setf expr-short-circuit s (@ expr-reference s))
-          (undefined)))
+          (ignore)))
         [escape-analysis (@ expr-reference s) (false)])
       (if [= (@ expr-type s) (-invoke-)]
         [escape-analysis (@ expr-reference s) (true)]
-        (undefined)))
+        (ignore)))
       (foreach (t (@ expr-arguments s)) [escape-analysis t (true)])))
     
     ((-constrain-) [escape-analysis (@ expr-expression s) (true)])
     
-    (undefined)))
+    (ignore)))
 
 (constrain vfind-dependencies (\ r (with-vars (a) (`(function (expr (values buffer ,a)) expr)r)r)))
 
@@ -177,7 +177,7 @@
         [prepend (@ expr-expression s) (& expr-dependencies s) ..]
         [prepend s (& expr-dependencies (@ expr-expression s)) ..]))
       
-      (undefined))
+      (ignore))
     s))))
 
 (constrain construct-sccs (\ r (with-vars (a b) (`(function (expr ,a (ref (list expr)) (ref (list (list expr))) buffer ,b) ())r)r)))
@@ -191,7 +191,7 @@
         [construct-sccs t [+ preorder #1] stack sccs ..]
         (if [< (@ expr-lowlink t) (@ expr-lowlink s)]
           (setf expr-lowlink s (@ expr-lowlink t))
-          (undefined))))
+          (ignore))))
       [prepend s stack ..]
       
       (if [= (@ expr-lowlink s) preorder] (do
@@ -201,8 +201,8 @@
             (setf expr-lowlink u [- #0 #1])
             {add [@cdr t] [cons u scc ..]})))) sccs ..]
         [set stack marker])
-        (undefined))))
-      (undefined))))
+        (ignore))))
+      (ignore))))
 
 (constrain occurs-in? (\ r (with-vars (a) (`(function (vbl frag) ,a)r)r)))
 
@@ -247,13 +247,13 @@
     (@ expr-signature e)
     [copy-fragment (@ expr-signature e) (storage _ nil) (storage _ nil) r handler]))
 
-(storage unification-error (undefined))
+(storage unification-error (ignore))
 
 (constrain infer-types (\ r (with-vars (a) (`(function ((list expr) buffer ,a) ())r)r)))
 
 (function infer-types (exprs buf handler)
   (substitute (.. buf handler) (do
-    (;; Type inferencing is done on strongly connected components)
+    (ignore Type inferencing is done on strongly connected components)
     (let (stack (storage _ nil))
     (let (sccs (storage _ nil)) (do
     (foreach (expr exprs) [visit-expressions vfind-dependencies (storage _ expr) (values ..)])
@@ -315,7 +315,7 @@
         
         (foreach (equ equations)
           (bind equ (lhs rhs)
-            (if [unify lhs rhs] (undefined)
+            (if [unify lhs rhs] (ignore)
               {handler (storage _ unification-error [recursive-evaluate lhs ..] [recursive-evaluate rhs ..] e)})))))
       
       (foreach (e scc) (setf expr-signature e [recursive-evaluate (@ expr-signature e) ..]))))))))))
@@ -333,11 +333,11 @@
       [visit-expressions visitor (& expr-expression $s) ctx])
     
     ((-jump-) (-invoke-) (-storage-) (do
-      (if [= (@ expr-type $s) (-storage-)] (undefined) [visit-expressions visitor (& expr-reference $s) ctx])
+      (if [= (@ expr-type $s) (-storage-)] (ignore) [visit-expressions visitor (& expr-reference $s) ctx])
       (until (partial (@ expr-arguments $s)) [nil? partial] [@cdr partial]
         [visit-expressions visitor (& car partial) ctx])))
     
-    (undefined))
+    (ignore))
   [set s [visitor $s ctx]]))
 
 (constrain pre-visit-expressions (\ r (with-vars (a) (`(function ((function (expr ,a) expr) (ref expr) ,a) ())r)r)))
@@ -355,11 +355,11 @@
       [pre-visit-expressions visitor (& expr-expression $s) ctx])
     
     ((-jump-) (-invoke-) (-storage-) (do
-      (if [= (@ expr-type $s) (-storage-)] (undefined) [pre-visit-expressions visitor (& expr-reference $s) ctx])
+      (if [= (@ expr-type $s) (-storage-)] (ignore) [pre-visit-expressions visitor (& expr-reference $s) ctx])
       (until (partial (@ expr-arguments $s)) [nil? partial] [@cdr partial]
         [pre-visit-expressions visitor (& car partial) ctx])))
     
-    (undefined))))
+    (ignore))))
 
 (constrain classify-program-bindings (\ r (`(function (expr) ())r)))
 
@@ -385,7 +385,7 @@
       [classify-program-bindings (@ expr-consequent expr)]
       [classify-program-bindings (@ expr-alternate expr)]))
     
-    (undefined)))
+    (ignore)))
 
 (constrain containment-analysis (\ r (`(function (expr) expr-contains-flag)r)))
 
@@ -415,16 +415,17 @@
     
     (contains-none)))
 
-(storage undefined-symbol-error (undefined))
+(storage undefined-symbol-error (ignore))
 
 (function preprocessed-expression-address (l r)
   (`(\ s bindings buf handler
     (substitute (.. buf handler)
       (if [= (@ expr-type s) (-symbol-)]
         (do
-          (;; If the expression, s, is a mere symbol, then we can just lookup its value in
-              the bindings list instead of preprocessing, compiling, and then evaluating
-              the expression.)
+          (ignore
+            If the expression, s, is a mere symbol, then we can just lookup its value in
+            the bindings list instead of preprocessing, compiling, and then evaluating
+            the expression.)
           (loop find-binding (bindings bindings)
             (if [nil? bindings]
               {handler (storage _ undefined-symbol-error (@ expr-name s))}
@@ -439,9 +440,10 @@
           (let (expr-container-preprocessed [@car exprs-preprocessed])
           [(@ bndg-offset (@ expr-binding-aug (@ expr-reference expr-container-preprocessed)))]))))))))r))
 
-(;; This function replaces meta-expressions with the code generated by calling
-  the corresponding expression builder. It also sets the signatures of
-  constrain-expressions to the result of evaluating a signature builder.)
+(ignore
+  This function replaces meta-expressions with the code generated by calling the
+  corresponding expression builder. It also sets the signatures of constrain-expressions
+  to the result of evaluating a signature builder.)
 
 (constrain vgenerate-metas (\ r (with-vars (a) (`(function (expr (values (list bndg-aug) buffer ,a)) expr)r)r)))
 
@@ -470,9 +472,10 @@
         [set cache (@ bndg-offset (@ expr-binding-aug (@ expr-reference $function-expr-ref)))]
         $cache)))))
 
-(storage null-cache (undefined))
+(storage null-cache (ignore))
 
-(;; From the supplied list of expressions, returns lazy versions of the
+(ignore
+  From the supplied list of expressions, returns lazy versions of the
   contained functions. That is, the meta-expressions within the functions are
   expanded only when they are first called.)
 

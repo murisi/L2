@@ -1,4 +1,4 @@
-(;; The constants to be used in x86-64-generator.l2)
+(ignore The constants to be used in x86-64-generator.l2)
 
 (function rax (l r) [mk## #0 (\ r (` expr-code r)) r])
 
@@ -72,7 +72,7 @@
 
 (function lnkr-sub-rip-to-ref (l r) [mk## #35 (\ r (` expr-code r)) r])
 
-(;; Offsets for the register contents in the continuation buffer. ------------)
+(ignore Offsets for the register contents in the continuation buffer. ------------)
 
 (function word-size (l r) [mk# r #8])
 
@@ -114,7 +114,7 @@
         (if (@ expr-escapes n) (do
           (setf bndg-size (@ expr-binding-aug(@ expr-reference n)) (cont-size))
           [append (@ expr-binding-aug(@ expr-reference n)) binding-augs ..])
-          (undefined))
+          (ignore))
         (foreach (t (@ expr-parameters n)) (do
           (setf bndg-size (@ expr-binding-aug t) (word-size))
           [append (@ expr-binding-aug t) binding-augs ..]))))
@@ -136,7 +136,7 @@
           ((contains-none) (do
             (setf bndg-storage (@ expr-temp-storage-bndg n) (top-relative-storage))
             (setf bndg-offset (@ expr-temp-storage-bndg n) #0)))
-          (undefined))))
+          (ignore))))
       
       ((-if-) (do
         [layout-frames (@ expr-condition n) binding-augs ..]
@@ -145,7 +145,7 @@
       
       ((-constrain-) [layout-frames (@ expr-expression n) binding-augs ..])
       
-      (undefined))))
+      (ignore))))
 
 (function generate-load (bndg offset dest-reg scratch-reg c r handler)
   (substitute (.. r handler)
@@ -163,7 +163,7 @@
         (let (op1 [make-literal [+ (@ bndg-offset bndg) offset] null-fragment null-expr ..])
           [prepend (make-asmN (movq-mdb-to-reg) (op1 (make-asmN(rsp)()..) dest-reg) ..) c ..]))
           
-      (undefined))))
+      (ignore))))
 
 (function generate-store (src-reg bndg offset scratch-reg c r handler)
   (substitute (.. r handler)
@@ -181,7 +181,7 @@
         (let (op2 [make-literal [+ (@ bndg-offset bndg) offset] null-fragment null-expr ..])
           [prepend (make-asmN (movq-reg-to-mdb) (src-reg op2 (make-asmN(rsp)()..)) ..) c ..]))
           
-      (undefined))))
+      (ignore))))
 
 (constrain generate-if (\ r (with-vars (a) (`(function (expr (ref (list expr)) buffer ,a) ())r)r)))
 
@@ -214,7 +214,7 @@
         (let (op1 [make-literal (@ bndg-offset bndg) null-fragment null-expr ..])
           [prepend (make-asmN (leaq-mdb-to-reg) (op1 (make-asmN(rsp)()..) dest-reg) ..) c ..]))
           
-      (undefined))))
+      (ignore))))
 
 (constrain generate-storage (\ r (with-vars (a) (`(function (expr (ref (list expr)) buffer ,a) ())r)r)))
 
@@ -252,13 +252,13 @@
   (if [= (@ bndg-storage (@ expr-temp-storage-bndg n)) (top-relative-storage)]
     [prepend (make-asmN(subq-imm-to-reg)
       ([make-literal [* [length (@ expr-arguments n)] (word-size)] null-fragment null-expr ..] (make-asmN(rsp)()..)) ..) c ..]
-    (undefined))))
+    (ignore))))
 
 (function cond-pop-relative-storage (n c r handler) (substitute (.. r handler)
   (if [= (@ bndg-storage (@ expr-temp-storage-bndg n)) (top-relative-storage)]
     [prepend (make-asmN(addq-imm-to-reg)
       ([make-literal [* [length (@ expr-arguments n)] (word-size)] null-fragment null-expr ..] (make-asmN(rsp)()..)) ..) c ..]
-    (undefined))))
+    (ignore))))
 
 (function generate-args-to-buffer (n c r handler) (substitute (.. r handler)
   (let (offset (storage _ #0))
@@ -283,7 +283,7 @@
     (if (@ expr-escapes n) (do
       [generate-load-address (@ expr-binding-aug (@ expr-reference n)) (make-asmN(rax)()..) c ..]
       [generate-store-continuation n c ..])
-      (undefined))
+      (ignore))
     
     (let (after-binding [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr null-expr ..]) (do
     [prepend (make-asmN (jmp-rel) ((make-asmN (lnkr-sub-rip-to-ref) ([use-binding-aug after-binding ..]) ..)) ..) c ..]
@@ -295,7 +295,7 @@
 
 (function generate-with (n c r handler)
   (substitute (.. r handler) (do
-    (if (@ expr-escapes n) [generate-store-continuation n c ..] (undefined))
+    (if (@ expr-escapes n) [generate-store-continuation n c ..] (ignore))
     [generate-expression (@ expr-expression n) c ..]
     (let (end-binding [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr null-expr ..]) (do
     (let (op1 (make-asmN (lnkr-sub-rip-to-ref) ([use-binding-aug end-binding ..]) ..))
@@ -312,14 +312,14 @@
       (do
         (if [= (@ expr-type(@ expr-reference n)) (-continuation-)]
           [generate-expression (@ expr-reference n) c ..]
-          (undefined))
+          (ignore))
         (if [length (@ expr-parameters(@ expr-short-circuit n))] (do
           [cond-push-relative-storage n c ..]
           [generate-args-to-buffer n c ..]
           [generate-load-address (@ expr-binding-aug[@car (@ expr-parameters(@ expr-short-circuit n))]) (make-asmN(r11)()..) c ..]
           [generate-buffer-to-dest n (make-asmN(r11)()..) #0 c ..]
           [cond-pop-relative-storage n c ..])
-          (undefined))
+          (ignore))
         [prepend (make-asmN (jmp-rel) ((make-asmN (lnkr-sub-rip-to-ref)
           ([use-binding-aug (@ expr-cont-instr-bndg(@ expr-short-circuit n)) ..]) ..)) ..) c ..])
       (do
@@ -368,7 +368,7 @@
     
     [prepend (make-asmN(popq-reg)((make-asmN(r11)()..))..) c ..]
     
-    (;; Insert first 6 parameters onto stack)
+    (ignore Insert first 6 parameters onto stack)
     [prepend (make-asmN(pushq-reg)((make-asmN(r9)()..))..) c ..]
     [prepend (make-asmN(pushq-reg)((make-asmN(r8)()..))..) c ..]
     [prepend (make-asmN(pushq-reg)((make-asmN(rcx)()..))..) c ..]
@@ -382,7 +382,7 @@
     [prepend (make-asmN(movq-reg-to-reg)((make-asmN(rsp)()..) (make-asmN(rbp)()..))..) c ..]
     [prepend (make-asmN(subq-imm-to-reg)([make-literal [- #0 [get-current-offset n]] null-fragment null-expr ..] (make-asmN(rsp)()..))..) c ..]
     
-    (;; Execute the function body)
+    (ignore Execute the function body)
     [generate-expression (@ expr-expression n) c ..]
     
     [prepend (make-asmN(leave)()..) c ..]
@@ -406,24 +406,24 @@
           [generate-load (@ expr-temp-storage-bndg n) offset (make-asmN(r11)()..) (make-asmN(r10)()..) c ..]
           [prepend (make-asmN(pushq-reg) ((make-asmN(r11)()..)) ..) c ..]
           {move-args offset}))
-          (undefined)))
-      (undefined))
+          (ignore)))
+      (ignore))
     
     [generate-expression (@ expr-reference n) c ..]
     [prepend (make-asmN(movq-reg-to-reg)((make-asmN(rax)()..) (make-asmN(r11)()..))..) c ..]
     
     (if [> [length (@ expr-arguments n)] #0]
-      [prepend (make-asmN(popq-reg)((make-asmN(rdi)()..))..) c ..] (undefined))
+      [prepend (make-asmN(popq-reg)((make-asmN(rdi)()..))..) c ..] (ignore))
     (if [> [length (@ expr-arguments n)] #1]
-      [prepend (make-asmN(popq-reg)((make-asmN(rsi)()..))..) c ..] (undefined))
+      [prepend (make-asmN(popq-reg)((make-asmN(rsi)()..))..) c ..] (ignore))
     (if [> [length (@ expr-arguments n)] #2]
-      [prepend (make-asmN(popq-reg)((make-asmN(rdx)()..))..) c ..] (undefined))
+      [prepend (make-asmN(popq-reg)((make-asmN(rdx)()..))..) c ..] (ignore))
     (if [> [length (@ expr-arguments n)] #3]
-      [prepend (make-asmN(popq-reg)((make-asmN(rcx)()..))..) c ..] (undefined))
+      [prepend (make-asmN(popq-reg)((make-asmN(rcx)()..))..) c ..] (ignore))
     (if [> [length (@ expr-arguments n)] #4]
-      [prepend (make-asmN(popq-reg)((make-asmN(r8)()..))..) c ..] (undefined))
+      [prepend (make-asmN(popq-reg)((make-asmN(r8)()..))..) c ..] (ignore))
     (if [> [length (@ expr-arguments n)] #5]
-      [prepend (make-asmN(popq-reg)((make-asmN(r9)()..))..) c ..] (undefined))
+      [prepend (make-asmN(popq-reg)((make-asmN(r9)()..))..) c ..] (ignore))
     
     [prepend (make-asmN(movq-imm-to-reg)([make-literal #0 null-fragment null-expr ..] (make-asmN(rax)()..))..) c ..]
     [prepend (make-asmN(call-reg)((make-asmN(r11)()..))..) c ..]
@@ -431,7 +431,7 @@
     (if [> [length (@ expr-arguments n)] #6]
       (let (drop [*(word-size)[-[length(@ expr-arguments n)]#6]])
         [prepend (make-asmN(addq-imm-to-reg)([make-literal drop null-fragment null-expr ..] (make-asmN(rsp)()..))..) c ..])
-      (undefined)))))
+      (ignore)))))
 
 (constrain generate-constrain (\ r (with-vars (a) (`(function (expr (ref (list expr)) buffer ,a) ())r)r)))
 
@@ -453,7 +453,7 @@
     ((-function-) generate-function)
     ((-invoke-) generate-invoke)
     ((-constrain-) generate-constrain)
-    (undefined)) n c ..]))
+    (ignore)) n c ..]))
 
 (constrain generate-program (\ r (with-vars (a) (`(function ((list expr) buffer ,a) (list expr))r)r)))
 

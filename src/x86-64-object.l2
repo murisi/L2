@@ -1,4 +1,4 @@
-(;; The constants and fields to be used in x86-64-object.l2)
+(ignore The constants and fields to be used in x86-64-object.l2)
 
 (function object (l r) (`[* #6(unit)]r))
 
@@ -16,11 +16,12 @@
 
 (function binding (l r) (`[* #2(unit)]r))
 
-(;; Does the relocations specified in the object file in light of the current
-  binding addresses. The continuation handler is followed and the error buffer
-  referenced by err set to the singleton (object-error) if relocation type
-  is unrecognized. Note: Implementation is hacky since it does not perform
-  checks to confirm that the performed relocations are correct.)
+(ignore
+  Does the relocations specified in the object file in light of the current binding
+  addresses. The continuation handler is followed and the error buffer referenced by err
+  set to the singleton (object-error) if relocation type is unrecognized. Note:
+  Implementation is hacky since it does not performchecks to confirm that the performed
+  relocations are correct.)
 
 (constrain do-relocations (\ r (with-vars (a) (`(function (obj ,a) ())r)r)))
 
@@ -37,7 +38,7 @@
         (let (addend ($(loc (elf64-sxword) rela-idx addends-buf)))
         (let (sym (loc (elf64-sym) (elf64-r-sym (@ r-info rela)) syms-buf))
         (switch = (elf64-r-type (@ r-info rela))
-          ((r-x86-64-none) (undefined))
+          ((r-x86-64-none) (ignore))
           ((r-x86-64-64) [memcpy (@ r-offset rela) (storage _[+(@ st-value sym)addend]) #8])
           ((r-x86-64-pc32) [memcpy (@ r-offset rela) (storage _[-[+(@ st-value sym)addend](@ r-offset rela)]) #4])
           ((r-x86-64-glob-dat) [memcpy (@ r-offset rela) (storage _(@ st-value sym)) #8])
@@ -51,12 +52,12 @@
           ((r-x86-64-size32) [memcpy (@ r-offset rela) (storage _[+(@ st-size sym)addend]) #4])
           ((r-x86-64-size64) [memcpy (@ r-offset rela) (storage _[+(@ st-size sym)addend]) #8])
           {handler (storage _ object-error)})))))))))
-      (undefined)))))
+      (ignore)))))
 
-(;; Stores the relocation addends somewhere out of the way because it may be the
-  case that that the contents of the addend field may be overwritten by a
-  relocation, which is a problem because the future relocations may depend on
-  the value of the addend.)
+(ignore
+  Stores the relocation addends somewhere out of the way because it may be the case that
+  the contents of the addend field may be overwritten by a relocation, which is a problem
+  because the future relocations may depend on the value of the addend.)
 
 (constrain store-addends (\ r (with-vars (a) (`(function (obj buffer ,a) ())r)r)))
 
@@ -86,10 +87,11 @@
               ((r-x86-64-jump-slot) set8b) {handler (storage _ object-error)})
             (loc (elf64-sxword) rela-idx $addends-buf) (@ r-offset rela)]))))))
             
-    (undefined))))))
+    (ignore))))))
 
-(;; The offsets specified in the object file need to be turned into addresses for
-  the code to execute correctly.)
+(ignore
+  The offsets specified in the object file need to be turned into addresses for the code
+  to execute correctly.)
 
 (constrain offsets-to-addresses (\ r (`(function (obj) ())r)))
 
@@ -116,17 +118,18 @@
           (let (base-seg-addr ($(loc (unit) (@ st-shndx sym) (@ obj-segs obj))))
             [+ base-seg-addr (@ st-value sym)])))))))
             
-    (undefined))))))
+    (ignore))))))
 
-(;; Reformats the raw object code into a format more amenable for extraction of
-  information and updating. Constructs an object containing everything of interest
-  in the object code in the buffer reg and returns it.)
+(ignore
+  Reformats the raw object code into a format more amenable for extraction of information
+  and updating. Constructs an object containing everything of interest in the object code
+  in the buffer reg and returns it.)
 
 (constrain read-object (\ r (with-vars (c d e) (`(function (,c ,d buffer ,e) obj)r)r)))
 
 (function read-object (objsrc objsrc-sz reg handler)
   (let (obj [buffer-alloc (object) reg handler]) (do
-  (if [< objsrc-sz (elf64-ehdr)] {handler (storage _ object-error)} (undefined))
+  (if [< objsrc-sz (elf64-ehdr)] {handler (storage _ object-error)} (ignore))
   (setf obj-ehdr obj [buffer-alloc (elf64-ehdr) reg handler])
   [memcpy (@ obj-ehdr obj) objsrc (elf64-ehdr)]
   (setf obj-shdrs obj [buffer-alloc [* (@ e-shnum(@ obj-ehdr obj)) (elf64-shdr)] reg handler])
@@ -141,13 +144,13 @@
     [memcpy shdr-buf [+ objsrc (loc (@ e-shentsize(@ obj-ehdr obj)) sec-idx (@ e-shoff(@ obj-ehdr obj)))] (elf64-shdr)]
     [set seg-buf [buffer-alloc (@ sh-size shdr-buf) reg handler]]
     
-    (if [= (@ sh-type shdr-buf) (sht-nobits)] (undefined)
+    (if [= (@ sh-type shdr-buf) (sht-nobits)] (ignore)
       [memcpy $seg-buf [+ objsrc (@ sh-offset shdr-buf)] (@ sh-size shdr-buf)])
       
     (if [= (@ sh-type shdr-buf) (sht-symtab)]
       (let (symnum [/ (@ sh-size shdr-buf) (@ sh-entsize shdr-buf)])
       (let (syms-buf (loc (unit) sec-idx (@ obj-syms obj))) (do
-      (;; Following code copies recognized information from the symbol table into (@ obj-syms obj))
+      (ignore Following code copies recognized information from the symbol table into (@ obj-syms obj))
       [set syms-buf [buffer-alloc [* symnum (elf64-sym)] reg handler]]
       (until (sym-idx #0) [= sym-idx symnum] [+ sym-idx #1]
         [memcpy (loc (elf64-sym) sym-idx $syms-buf) (loc (@ sh-entsize shdr-buf) sym-idx $seg-buf)
@@ -156,22 +159,22 @@
     (if (or [= (@ sh-type shdr-buf) (sht-rela)] [= (@ sh-type shdr-buf) (sht-rel)])
       (let (relanum [/ (@ sh-size shdr-buf) (@ sh-entsize shdr-buf)])
       (let (relas-buf (loc (unit) sec-idx (@ obj-relas obj))) (do
-      (;; Following code copies recognized information from the relocations into (@ obj-relas obj))
+      (ignore Following code copies recognized information from the relocations into (@ obj-relas obj))
       [set relas-buf [buffer-alloc [* relanum (elf64-rela)] reg handler]]
       (until (rela-idx #0) [= rela-idx relanum] [+ rela-idx #1]
         [memcpy (loc (elf64-rela) rela-idx $relas-buf) (loc (@ sh-entsize shdr-buf) rela-idx $seg-buf)
           (if [= (@ sh-type shdr-buf) (sht-rela)] (elf64-rela) (elf64-rel))]))))
           
-    (undefined)))))))
+    (ignore)))))))
   
   obj)))
 
-(storage object-error (undefined))
+(storage object-error (ignore))
 
-(;; Constructs a handle to the specified object code. objsrc is a reference to
-  the buffer containing the object code. objsrc-sz is the size of the buffer.
-  reg is the buffer in which our handle will be constructed. Return value is
-  a handle to the object.)
+(ignore
+  Constructs a handle to the specified object code. objsrc is a reference to the buffer
+  containing the object code. objsrc-sz is the size of the buffer. reg is the buffer in
+  which our handle will be constructed. Return value is a handle to the object.)
 
 (constrain load (\ r (with-vars (c d e) (`(function (,c ,d buffer ,e) obj)r)r)))
 
@@ -188,10 +191,10 @@
   (let (seg-buf ($(loc (unit) (@ sh-link shdr) (@ obj-segs obj))))
     [+ seg-buf (@ st-name sym)]))
 
-(;; Makes a binding with the given name and address. name is a string containg
-  the name of the binding. address is the address of the binding. reg is the
-  buffer in which the binding should be constructed. Return value is the
-  constructed binding.)
+(ignore
+  Makes a binding with the given name and address. name is a string containg the name of
+  the binding. address is the address of the binding. reg is the buffer in which the
+  binding should be constructed. Return value is the constructed binding.)
 
 (constrain make-binding (\ r (with-vars (a b) (`(function (string ,a buffer ,b) bndg-aug)r)r)))
 
@@ -201,9 +204,10 @@
     (setf bndg-offset sym address)
     sym)))
 
-(;; Updates the bindings in the given object. obj is the object whose bindings
-  need updating. updates is a list of bindings representing the updates that
-  need to be applied to obj.)
+(ignore
+  Updates the bindings in the given object. obj is the object whose bindings need
+  updating. updates is a list of bindings representing the updates that need to be applied
+  to obj.)
 
 (constrain mutate-bindings (\ r (`(function (obj (list bndg-aug)) ())r)))
 
@@ -221,12 +225,12 @@
               (or [= (elf64-st-bind (@ st-info sym)) (stb-global)]
                 [= (elf64-st-bind (@ st-info sym)) (stb-weak)]))
             (setf st-value sym (@ bndg-offset update))
-            (undefined))))))
-        (undefined)))))
-  (;; If obj was created using load, the following invocation cannot produce an error; hence the unspecified handler arguments.)
-  [do-relocations obj (undefined)]))
+            (ignore))))))
+        (ignore)))))
+  (ignore If obj was created using load, the following invocation cannot produce an error; hence the unspecified handler arguments.)
+  [do-relocations obj (ignore)]))
 
-(;; Returns the bindings in the given object.)
+(ignore Returns the bindings in the given object.)
 
 (constrain bindings (\ r (with-vars (a b) (`(function (,a obj buffer ,b) (list bndg-aug))r)r)))
 
@@ -244,36 +248,37 @@
               [= (elf64-st-bind (@ st-info sym)) (stb-weak)]))
           [prepend [make-binding [name-of obj shdr-buf sym] (@ st-value sym) reg handler] syms
             reg handler]
-          (undefined))))))
-    (undefined))))
+          (ignore))))))
+    (ignore))))
   $syms)))
 
-(;; Returns a list of the mutable bindings in the given object. obj is the object
-  whose mutable bindings are being queried. reg is the buffer in which the list
-  of mutable bindings will be constructed. Return value is the list of mutable
-  bindings.)
+(ignore
+  Returns a list of the mutable bindings in the given object. obj is the object whose
+  mutable bindings are being queried. reg is the buffer in which the list of mutable
+  bindings will be constructed. Return value is the list of mutable bindings.)
 
 (constrain mutable-bindings (\ r (with-vars (b) (`(function (obj buffer ,b) (list bndg-aug))r)r)))
 
 (function mutable-bindings (obj reg handler) [bindings #1 obj reg handler])
 
-(;; Analogous to above.)
+(ignore Analogous to above.)
 
 (constrain immutable-bindings (\ r (with-vars (b) (`(function (obj buffer ,b) (list bndg-aug))r)r)))
 
 (function immutable-bindings (obj reg handler) [bindings #0 obj reg handler])
 
-(;; Returns the address of the segment of the given object that has a particular
-  name. obj is the object whose segment addresses is being queried. name is
-  the name of the segment that is to be found.)
+(ignore
+  Returns the address of the segment of the given object that has a particular name. obj
+  is the object whose segment addresses is being queried. name is the name of the segment
+  that is to be found.)
 
 (constrain segment (\ r (with-vars (a) (`(function (obj string) ,a)r)r)))
 
 (function segment (obj name) (with return
-  (if [= (@ e-shstrndx(@ obj-ehdr obj)) (shn-undef)] (undefined)
+  (if [= (@ e-shstrndx(@ obj-ehdr obj)) (shn-undef)] (ignore)
     (let (shstrseg-buf ($(loc (unit) (@ e-shstrndx(@ obj-ehdr obj)) (@ obj-segs obj))))
     (until (sec-idx #0) [= sec-idx (@ e-shnum(@ obj-ehdr obj))] [+ sec-idx #1]
       (let (shdr-buf (loc (elf64-shdr) sec-idx (@ obj-shdrs obj)))
-      (if [strcmp (loc #1 (@ sh-name shdr-buf) shstrseg-buf) name] (undefined)
+      (if [strcmp (loc #1 (@ sh-name shdr-buf) shstrseg-buf) name] (ignore)
         {return ($(loc (unit) sec-idx (@ obj-segs obj)))})))))))
 

@@ -1,17 +1,14 @@
-(;; Most macros that are about modifying control flow and their helper
-  functions are here.)
+(ignore Most macros that are about modifying control flow and their helper functions are here.)
 
-(;; This is false.)
+(ignore This is false.)
 
 (function false (l r) [mk# r #0])
 
 (function true (l r) [mk# r #1])
 
-(function undefined (l r) [mk# r (hex DEADBEEF)])
-
-(;; The following macro returns the first non-zero argument supplied to
-  it leaving the rest unevaluated. If all the arguments are zero, then
-  it returns (false).)
+(ignore
+  The following macro returns the first non-zero argument supplied to it leaving the rest
+  unevaluated. If all the arguments are zero, then it returns (false).)
 
 (function or (l r)
   (loop prepend-or (l [meta:reverse l r]) (sexpr (`(false)r))
@@ -19,9 +16,9 @@
       sexpr
       {prepend-or [@rst l] (`(let (or:temp (,[@fst l])) (if or:temp or:temp (, sexpr r)))r)})))
 
-(;; The following macro returns the first zero argument supplied to it
-  leaving the rest unevaluated. If all the arguments are non-zero, then
-  it returns (true).)
+(ignore
+  The following macro returns the first zero argument supplied to it leaving the rest
+  unevaluated. If all the arguments are non-zero, then it returns (true).)
 
 (function and (l r)
   (loop prepend-and (l [meta:reverse l r]) (sexpr (`(true)r))
@@ -29,13 +26,15 @@
       sexpr
       {prepend-and [@rst l] (`(let (and:temp (,[@fst l])) (if and:temp (, sexpr r) and:temp))r)})))
 
-(;; The following macro returns (false) if the single argument supplied to it
-  is non-zero. Otherwise it returns (true).)
+(ignore
+  The following macro returns (false) if the single argument supplied to it is non-zero.
+  Otherwise it returns (true).)
 
 (function not (l r) (`(if (,[@fst l]) (false) (true))r))
 
-(;; Reverses the given list. l is the list to be reversed. r is the buffer into
-  which the reversed list will be put. Return value is the reversed list.)
+(ignore
+  Reverses the given list. l is the list to be reversed. r is the buffer into which the
+  reversed list will be put. Return value is the reversed list.)
 
 (function meta:reverse (l r)
   (with return
@@ -44,7 +43,8 @@
         {return reversed}
         {_ [@rst l] [lst [@fst l] reversed r]})) l emt}))
 
-(;; Maps the given list using the given function. l is the list to be mapped. ctx
+(ignore
+  Maps the given list using the given function. l is the list to be mapped. ctx
   is always passed as a second argument to the mapper. mapper is the two argument
   function that will be supplied a list item as its first argument and ctx as its
   second argument and will return an argument that will be put into the corresponding
@@ -72,9 +72,8 @@
         {return [meta:reverse out r]}
         {aux [@rst in] [lst [mapper [@fst in] ctx1 ctx2] out r]})) l emt}))
 
-(;; The following function implements variable binding by do the following
-  transformation:
-  
+(ignore
+  The following function implements variable binding by do the following transformation:
   (let (params args) ... expr0)
   ->
   (with let:return
@@ -86,9 +85,8 @@
     (,[llst (` jump r) (`(continuation let:aux (,[meta:map [@rst [meta:reverse l r]] @fst r])
       {let:return (,[@fst [meta:reverse l r]])}) r) [meta:map [@rst [meta:reverse l r]] @frst r] r])) r))
 
-(;; The following function implements the switch expression by doing the
-  following transformation:
-  
+(ignore
+  The following function implements the switch expression by doing the following transformation:
   (switch eq0 val0 (vals exprs) ... expr0)
   ->
   (let (tempeq0 eq0) (tempval0 val0)
@@ -113,7 +111,8 @@
               (,[@fst [meta:reverse [@fst remaining] r]]) ,else-clause) r)}))
         [@rst [meta:reverse [@rrst l] r]] [@fst [meta:reverse l r]]})))r))
 
-(;; The following macro is roughly analogous to C's for-loop. The difference is
+(ignore
+  The following macro is roughly analogous to C's for-loop. The difference is
   that until loops until the condition is true rather than while it is true. The
   other difference is that this construct updates the loop control varable itself
   using the update expression - this is different from C where the update part
@@ -122,11 +121,11 @@
 (function until (l r)
   (`(with until:return {(continuation until:aux ((,[@ffst l]))
     (if (,[@frst l])
-      {until:return (undefined)}
+      {until:return (ignore)}
       (do (,[@frrrst l]) {until:aux (,[@frrst l])}))) (,[@frfst l])})r))
 
-(;; The following function implements the following transformation:
-  
+(ignore
+  The following function implements the following transformation:
   (fallthrough expr (labels args exprs) ...)
   ->
   (let (argN (with labelN
@@ -147,9 +146,8 @@
         acc
         {do-layer (`(let ((,[@frfst exprs]) (with (,[@ffst exprs]) ,acc)) (,[@frrfst exprs]))r) [@rst exprs]})))
 
-(;; The following function implements variable binding by do the following
-  transformation:
-  
+(ignore
+  The following function implements variable binding by do the following transformation:
   (loop cont (params args) ... expr0)
   ->
   (with loop:return
@@ -162,24 +160,23 @@
       (,[llst (` jump r) (`(continuation (,[@fst l]) (,[meta:map bindings @fst r])
         {loop:return (,[@fst [meta:reverse l r]])}) r) [meta:map bindings @frst r] r])) r)))
 
-(;; The following function implements an anonymous function using the following
-    transformation:
-    
-    (\ params ... body)
-    ->
-    (function \:self (params ...) body))
+(ignore
+  The following function implements an anonymous function using the following transformation:
+  (\ params ... body)
+  ->
+  (function \:self (params ...) body))
 
 (function \ (l r) (`(function \:self (,[meta:reverse [@rst [meta:reverse l r]]r]) (,[@fst [meta:reverse l r]]))r))
 
-(;; The following function implements sequencing by doing the following transformation:
-    
-    (do expr1 expr2 ... exprN)
-    ->
-    (with do:return
+(ignore
+  The following function implements sequencing by doing the following transformation:
+  (do expr1 expr2 ... exprN)
+  ->
+  (with do:return
+    {(continuation do:cont (do:arg)
       {(continuation do:cont (do:arg)
-        {(continuation do:cont (do:arg)
-          {...
-            {(continuation do:cont (do:arg) {do:return do:arg}) exprN}...}) expr2}) expr1}))
+        {...
+          {(continuation do:cont (do:arg) {do:return do:arg}) exprN}...}) expr2}) expr1}))
 
 (function do (l r)
   (`(with do:return
