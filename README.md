@@ -10,8 +10,8 @@ There are [9 language primitives](#expressions) and for each one of them I descr
 ### Contents
 | **[Getting Started](#getting-started)** | [Expressions](#expressions) | [Examples/Reductions](#examplesreductions) |
 |:--- |:--- |:--- |
-| [Building L2](#building-l2) | [Literal](#literal) | [Commenting](#commenting) |
-| [The Compiler](#the-compiler) | [Storage](#storage) | [Numbers](#numbers) |
+| [Building L2](#building-l2) | [Literal](#literal) | [Numbers](#numbers) |
+| [The Compiler](#the-compiler) | [Storage](#storage) | [Commenting](#commenting) |
 | **[Syntactic Sugar](#syntactic-sugar)** | [If](#if) | [Backquoting](#backquoting) |
 | **[Internal Representation](#internal-representation)** | [Function](#function) | [Variable Binding](#variable-binding) |
 | | [Invoke](#invoke) | [Boolean Expressions](#boolean-expressions) |
@@ -251,31 +251,12 @@ In the extensive list processing that follows in this section, the following fun
 (function lllllllst (a b c d e f g h r) [lst a [llllllst b c d e f g h r] r])
 ```
 
-### Commenting
-L2 has no built-in mechanism for commenting code written in it. The following comment function takes a list of fragments as its argument and returns an empty begin expression effectively causing its arguments to be ignored. Its implementation and use follows:
-
-#### comments.l2
-```racket
-(function ;; (l r) [lst [lllllst -b- -e- -g- -i- -n- emt r] emt r])
-```
-
-#### test1.l2
-```racket
-(;; This is a comment, take no notice.)
-```
-#### shell
-```shell
-./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 - test1.l2
-```
-
 ### Numbers
 Integer literals prove to be quite tedious in L2 as can be seen from some of the examples in the expressions section. The following function, `#`, implements decimal arithmetic for x86-64 by reading in a token in base 10 and writing out the equivalent fragment in base 2:
 
 #### numbers64.l2
 ```racket
-(;; Turns an 8-byte value into a literal-expression representation of it.)
-
-(function value->literal (binary r)
+(function =# (binary r)
   [lst [lllllllst -l- -i- -t- -e- -r- -a- -l- emt r]
     [lst (with return {(continuation write (count in out)
         (if count
@@ -287,9 +268,7 @@ Integer literals prove to be quite tedious in L2 as can be seen from some of the
         (literal 0...01000000) binary emt})
       emt r]r])
 
-(;; Turns the base-10 fragment input into a literal expression.)
-
-(function # (l r) [value->literal
+(function # (l r) [=#
   (with return {(continuation read (in out)
     (if [emt? in]
       {return out}
@@ -317,6 +296,23 @@ Integer literals prove to be quite tedious in L2 as can be seen from some of the
 #### shell
 ```shell
 ./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 numbers64.l2 - test3.l2
+```
+
+### Commenting
+L2 has no built-in mechanism for commenting code written in it. The following comment function takes a list of fragments as its argument and returns an empty begin expression effectively causing its arguments to be ignored. Its implementation and use follows:
+
+#### comments.l2
+```racket
+(function ignore (l r) [=# #123456789 r])
+```
+
+#### test1.l2
+```racket
+(ignore This is a comment, take no notice.)
+```
+#### shell
+```shell
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 - test1.l2
 ```
 
 ### Backquoting
@@ -370,7 +366,8 @@ Variable binding is enabled by the `continuation` expression. `continuation` is 
 It is implemented and used as follows:
 #### let.l2
 ```racket
-(;; Reverses the given list. l is the list to be reversed. r is the buffer into
+(ignore
+  Reverses the given list. l is the list to be reversed. r is the buffer into
   which the reversed list will be put. Return value is the reversed list.)
 
 (function meta:reverse (l r)
@@ -380,7 +377,8 @@ It is implemented and used as follows:
         {return reversed}
         {_ [@rst l] [lst [@fst l] reversed r]})) l emt}))
 
-(;; Maps the given list using the given function. l is the list to be mapped. ctx
+(ignore
+  Maps the given list using the given function. l is the list to be mapped. ctx
   is always passed as a second argument to the mapper. mapper is the two argument
   function that will be supplied a list item as its first argument and ctx as its
   second argument and will return an argument that will be put into the corresponding
@@ -450,11 +448,9 @@ The Boolean literals true and false are achieved using macros that return the sa
 These transformations are implemented and used as follows:
 #### boolean.l2
 ```racket
-(function mk# (r value) [value->literal value r])
+(function false (l r) [=# r #0])
 
-(function false (l r) [mk# r #0])
-
-(function true (l r) [mk# r #1])
+(function true (l r) [=# r #1])
 
 (function or (l r) (with return
   {(continuation loop (l sexpr)
@@ -571,21 +567,21 @@ The above exposition has purposefully avoided making strings because it is tedio
     
     (if (and [emt? [@fst str]] [emt? [@rst str]])
       {add-word [@rst str] [+ index #1]
-        [lst (`[setb [+ dquote:str (,[value->literal index r])] #0]r) instrs r]}
+        [lst (`[setb [+ dquote:str (,[=# index r])] #0]r) instrs r]}
         
     (if (and [emt? [@fst str]] [token? [@frst str]])
       {add-word [@rst str] [+ index #1]
-        [lst (`[setb [+ dquote:str (,[value->literal index r])] #32]r) instrs r]}
+        [lst (`[setb [+ dquote:str (,[=# index r])] #32]r) instrs r]}
     
     (if [emt? [@fst str]] {add-word [@rst str] index instrs}
         
     (if [token? [@fst str]]
       {add-word [lst [@rfst str] [@rst str] r] [+ index #1]
-        [lst (`[setb [+ dquote:str (,[value->literal index r])]
+        [lst (`[setb [+ dquote:str (,[=# index r])]
           (,[char [lst [lst [@ffst str] emt r] emt r]r emt])]r) instrs r]}
       
       {add-word [@rst str] [+ index #1]
-        [lst (`[setb [+ dquote:str (,[value->literal index r])] (,[@fst str])]r) instrs r]})))))) l #0 emt}))
+        [lst (`[setb [+ dquote:str (,[=# index r])] (,[@fst str])]r) instrs r]})))))) l #0 emt}))
 ```
 #### test9.l2
 ```
@@ -786,14 +782,14 @@ To recapitulate, we localized and separated out the definition of a field from t
 (function setf-aux (l r) (`[(,[@frrrst l]) [+ (,[@frrrrst l]) (,[@fst l])] (,[@frrrrrst l])]r))
 
 (function mk-field (l r offset size)
-  [lllllst [@fst l] [value->literal offset r] [value->literal size r]
+  [lllllst [@fst l] [=# offset r] [=# size r]
     (switch = size (#1 (` get1b r)) (#2 (` get2b r)) (#4 (` get4b r)) (#8 (` get8b r)) (`(begin)r))
     (switch = size (#1 (` set1b r)) (#2 (` set2b r)) (#4 (` set4b r)) (#8 (` set8b r)) (`(begin)r))
     [@rst l] r])
 ```
 #### somefields.l2
 ```racket
-(function cons-cell (l r) [mk# r #16])
+(function cons-cell (l r) [=# r #16])
 
 (function car (l r) [mk-field l r #0 #8])
 
