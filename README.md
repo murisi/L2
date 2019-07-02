@@ -10,16 +10,16 @@ There are [9 language primitives](#expressions) and for each one of them I descr
 ### Contents
 | **[Getting Started](#getting-started)** | [Expressions](#expressions) | [Examples/Reductions](#examplesreductions) |
 |:--- |:--- |:--- |
-| [Building L2](#building-l2) | [Begin](#begin) | [Commenting](#commenting) |
-| [The Compiler](#the-compiler) | [Literal](#literal) | [Numbers](#numbers) |
-| **[Syntactic Sugar](#syntactic-sugar)** | [Storage](#storage) | [Backquoting](#backquoting) |
-| **[Internal Representation](#internal-representation)** | [If](#if) | [Variable Binding](#variable-binding) |
-| | [Function](#function) | [Boolean Expressions](#boolean-expressions) |
-| | [Invoke](#invoke) | [Switch Expression](#switch-expression) |
-| | [With](#with) | [Characters](#characters) |
-| | [Continuation](#continuation) | [Strings](#strings) |
-| | [Jump](#jump) | [Closures](#closures) |
-| | [Meta](#meta) | [Assume](#assume) |
+| [Building L2](#building-l2) | [Literal](#literal) | [Commenting](#commenting) |
+| [The Compiler](#the-compiler) | [Storage](#storage) | [Numbers](#numbers) |
+| **[Syntactic Sugar](#syntactic-sugar)** | [If](#if) | [Backquoting](#backquoting) |
+| **[Internal Representation](#internal-representation)** | [Function](#function) | [Variable Binding](#variable-binding) |
+| | [Invoke](#invoke) | [Boolean Expressions](#boolean-expressions) |
+| | [With](#with) | [Switch Expression](#switch-expression) |
+| | [Continuation](#continuation) | [Characters](#characters) |
+| | [Jump](#jump) | [Strings](#strings) |
+| | [Meta](#meta) | [Closures](#closures) |
+| | [Constrain](#constrain) | [Assume](#assume) |
 | | | [Fields](#fields) |
 
 ## Getting Started
@@ -52,15 +52,6 @@ L2 projects are composed of two parts: the program and the metaprogram. The prog
 Running `./bin/l2compile "./bin/x86_64.o" file1.l2 - file2.l2` should produce an object file file2.o. file2.o when called should invoke the function `putchar` with the ASCII character 'f' and then it should invoke the function `putchar` with the ASCII character 'd'. And if its function `bar` should be called, then it will call the function `putchar` with 'c'. Why is it that the first invocations happen? Because object code resulting from L2 sources are executed from top to bottom when they are called and because the expression `(foo [putchar (literal 0...01100110)])` turned into `[putchar (literal 0...01100110)]`. Why is it that the aforementioned transformation happened? Because `(foo [putchar (literal 0...01100110)])` is a meta-expression and by the definition of the language causes the function `foo` in the metaprogram to be called with the fragment `([putchar (literal 0...01100110)])` as an argument and the thing which `foo` then did was to return the first element of this fragment, `[putchar (literal 0...01100110)]`, which then replaced the original `(foo [putchar (literal 0...01100110)])`.
 
 ## Expressions
-### Begin
-```racket
-(begin expression1 expression2 ... expressionN)
-```
-Evaluates its subexpressions sequentially from left to right. That is, it evaluates `expression1`, then `expression2`, and so on, ending with the execution of `expressionN`. Specifying zero subexpressions is valid. The return value is unspecified.
-
-This expression is implemented by emitting the instructions for `expression1`, then emitting the instructions for `expression2` immediately afterwords and so on, ending with the emission of `expressionN`.
-
-Say the expression `[foo]` prints the text "foo" to standard output and the expression `[bar]` prints the text "bar" to standard output. Then `(begin [foo] [bar] [foo] [foo] [foo])` prints the text "foobarfoofoofoo" to standard output.
 
 ### Literal
 ```racket
@@ -124,9 +115,9 @@ The following invocation of it, `(invoke putchar (invoke - (literal 0...01100011
 ```racket
 (with continuation0 expression0)
 ```
-Makes a continuation to the containing expression that is to be `jump`ed to with exactly one argument. Then `expression0` is evaluated in an environment where `continuation0` is a reference to the aforementioned continuation. The resulting value of this expression is unspecified if the evaluation of `expression0` completes. If the continuation `continuation0` is `jump`ed to, then this `with` expression evaluates to the resulting value of the single argument within the responsible `jump` expression.
+Makes a continuation to the containing expression that is to be `jump`ed to with exactly one argument. Then `expression0` is evaluated in an environment where `continuation0` is a reference to the aforementioned continuation. The resulting value of this expression is that of `expression0` if its evaluation completes. If the continuation `continuation0` is `jump`ed to, then this `with` expression evaluates to the resulting value of the single argument within the responsible `jump` expression.
 
-5+1 words must be reserved in the current function's stack-frame plan. Call the reference to the first word of the reservation `continuation0`. This expression is implemented by first emitting instructions to store the program's state at `continuation0`, that is, instructions are emitted to `mov` `ebp`, the address of the instruction that should be executed after continuing (a label to be emitted later), `edi`, `esi`, and `ebx`, in that order, to the first 5 words at `continuation0`. After this, the instructions for `expression0` are emitted. Then the label for the first instruction of the continuation is emitted. And finally, an instruction is emitted to `mov` the resulting value of the continuation, the 6th word at `continuation0`, into the memory location designated by the surrounding expression.
+5+1 words must be reserved in the current function's stack-frame plan. Call the reference to the first word of the reservation `continuation0`. This expression is implemented by first emitting instructions to store the program's state at `continuation0`, that is, instructions are emitted to `mov` `ebp`, the address of the instruction that should be executed after continuing (a label to be emitted later), `edi`, `esi`, and `ebx`, in that order, to the first 5 words at `continuation0`. After this, the instructions for `expression0` are emitted. Then an instruction to `jmp` to the end of the entire `with` expression is emitted in order to handle the case where `expression0`'s evaluation completes. Then the label for the first instruction of the continuation is emitted. And finally, an instruction is emitted to `mov` the resulting value of the continuation, the 6th word at `continuation0`, into the memory location designated by the surrounding expression.
 
 #### Examples
 Note that the expression `{continuation0 expression0}` `jump`s to the continuation reference given by `continuation0` with resulting value of evaluating `expression0` as its argument. With the note in mind, the expression `(begin [putchar (with ignore (begin {ignore (literal 0...01001110)} [foo] [foo] [foo]))] [bar])` prints the text "nbar" to standard output.
