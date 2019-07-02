@@ -18,8 +18,8 @@ There are [9 language primitives](#expressions) and for each one of them I descr
 | | [With](#with) | [Switch Expression](#switch-expression) |
 | | [Continuation](#continuation) | [Characters](#characters) |
 | | [Jump](#jump) | [Strings](#strings) |
-| | [Meta](#meta) | [Sequencing](#sequencing) |
-| | [Constrain](#constrain) | [Assume](#assume) |
+| | [Constrain](#constrain) | [Sequencing](#sequencing) |
+| | [Meta](#meta) | [Assume](#assume) |
 | | | [Fields](#fields) |
 
 ## Getting Started
@@ -218,11 +218,17 @@ Evaluates to one if `x` is the same character as `y`, otherwise it evaluates to 
 Say that `x` and `y` are the character `d`. Then `[char= x y]` evaluates to `(literal 0...01)`.
 
 ## Expressions Continued
+### Constrain
+```racket
+(constrain expression0 sigfunction0)
+```
+Evaluates `expression0`. The resulting value of this expression then becomes that of `expression0`.
+
 ### Meta
 ```racket
 (function0 expression1 ... expressionN)
 ```
-If the above expression is not listed above, then `function0` from the metaprogram is invoked with the (unevaluated) list of [fragments](#internal-representation) `(expression1 expression2 ... expressionN)` as its first argument and a buffer in which the replacement is to be constructed as its second argument. The fragment returned by this function then replaces the entire fragment `(function0 expression1 ... expressionN)`. If the result of this replacement contains a meta-expression, then the above process is repeated. When this process terminates, the appropriate assembly code for the resulting expression is emitted.
+If the above expression is not listed above, then the function `function0` is invoked with the (unevaluated) list of [fragments](#internal-representation) `(expression1 expression2 ... expressionN)` as its first argument and a buffer in which the replacement is to be constructed as its second argument. The fragment returned by this function then replaces the entire fragment `(function0 expression1 ... expressionN)`. If the result of this replacement contains a meta-expression, then the above process is repeated. When this process terminates, the appropriate assembly code for the resulting expression is emitted.
 
 Meta-expressions were already demonstrated in the [compiler section](#the-compiler).
 
