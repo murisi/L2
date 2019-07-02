@@ -18,7 +18,7 @@ There are [9 language primitives](#expressions) and for each one of them I descr
 | | [With](#with) | [Switch Expression](#switch-expression) |
 | | [Continuation](#continuation) | [Characters](#characters) |
 | | [Jump](#jump) | [Strings](#strings) |
-| | [Meta](#meta) | [Closures](#closures) |
+| | [Meta](#meta) | [Sequencing](#sequencing) |
 | | [Constrain](#constrain) | [Assume](#assume) |
 | | | [Fields](#fields) |
 
@@ -592,49 +592,37 @@ The above exposition has purposefully avoided making strings because it is tedio
 ./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 numbers64.l2 backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 - test9.l2
 ```
 
-### Closures
-A restricted form of closures can be implemented in L2. The key to their implementation is to `jump` out of the function that is supposed to provide the lexical environment. By doing this instead of merely returning from the environment function, the stack-pointer and thus the stack-frame of the environment are preserved. The following example implements a function that receives a single argument and "returns" (more accurately: jumps out) a continuation that adds this value to its own argument. But first, the following transformations are needed:
+### Sequencing
+It is often desirable to sequence the execution of expressions. More specifically, we want a macro that executes its expressions in order and then evaluates to the result of evaluating its last expression. The following macro, `do`, implements the following transformation:
 ```racket
-(lambda (args ...) expr0)
+(do expr1 expr2 ... exprN)
 ->
-(continuation lambda0 (cont0 args ...)
-  {cont0 expr0})
-
-(; func0 args ...)
-->
-(with return [func0 return args ...])
-
-(: cont0 args ...)
-->
-(with return {cont0 return args ...})
+(with do:return
+  {(continuation do:cont (do:arg)
+    {(continuation do:cont (do:arg)
+      {...
+        {(continuation do:cont (do:arg) {do:return do:arg}) exprN}...}) expr2}) expr1}))
 ```
-These are implemented and used as follows:
-#### closures.l2
+It is implemented and used as follows:
+#### do.l2
 ```racket
-(function lambda (l r)
-  (`(continuation lambda0 (,[lst (` cont0 r) [@fst l] r])
-    {cont0 (,[@frst l])})r))
-
-(function ; (l r)
-  (`(with semicolon:return (,[lllst (` invoke r) [@fst l] (` semicolon:return r) [@rst l] r]))r))
-
-(function : (l r)
-  (`(with colon:return (,[lllst (` jump r) [@fst l] (` colon:return r) [@rst l] r]))r))
+(function do (l r)
+  (`(with do:return
+    (,(loop make-do (acc (`{do:return do:arg}r)) (exprs [meta:reverse l r])
+        (if [emt? exprs]
+          acc
+          {make-do (`{(continuation do:cont (do:arg) ,acc) (,[@fst exprs])}r) [@rst exprs]}))))r))
 ```
 #### test10.l2
-```
-(function adder (cont x)
-  {cont (lambda (y) [+ x y])})
-
-(let (add5 (; adder #5)) (add7 (; adder #7))
-  (begin
-    [printf (" %i,) (: add5 #2)]
-    [printf (" %i,) (: add7 #3)]
-    [printf (" %i,) (: add5 #1)]))
+```racket
+(do
+  [putchar (char A)]
+  [putchar (char B)]
+  [putchar (char C)])
 ```
 #### shell
 ```shell
-./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 numbers64.l2 backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 closures.l2 - test10.l2
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 numbers64.l2 backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 do.l2 - test10.l2
 ```
 
 ### Assume
