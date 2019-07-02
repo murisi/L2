@@ -217,12 +217,6 @@ Say that `b` is a buffer. Then the expression `[lst -f- [lst -o- [lst -o- emt b]
 Evaluates to one if `x` is the same character as `y`, otherwise it evaluates to zero.
 
 Say that `x` and `y` are the character `d`. Then `[char= x y]` evaluates to `(literal 0...01)`.
-### `[begin x b]`
-`x` must be a list of fragments and `b` a buffer.
-
-Evaluates to an fragment formed by prepending the token `begin` to `x`. The `begin` function could have the following definition: `(function begin (frags b) [lst [lst -b- [lst -e- [lst -g- [lst -i- [lst -n- emt b] b] b] b] b] frags b])`.
-### `[literal x b]`, `[storage x b]`, `[if x b]`, `[function x b]`, `[invoke x b]`, `[with x b]`, `[continuation x b]`, `[jump x b]`
-These functions are analogous to `begin`.
 
 ## Expressions Continued
 ### Meta
