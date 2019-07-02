@@ -394,8 +394,8 @@ It is implemented and used as follows:
 
 (function let (l r)
   (`(with let:return
-    (,[llst (` jump r) (`(continuation let:aux (,[meta:map [@rst [meta:reverse l r]] (begin) @fst r])
-      {let:return (,[@fst [meta:reverse l r]])}) r) [meta:map [@rst [meta:reverse l r]] (begin) @frst r] r])) r))
+    (,[llst (` jump r) (`(continuation let:aux (,[meta:map [@rst [meta:reverse l r]] (ignore) @fst r])
+      {let:return (,[@fst [meta:reverse l r]])}) r) [meta:map [@rst [meta:reverse l r]] (ignore) @frst r] r])) r))
 ```
 #### test5.l2
 ```
@@ -644,7 +644,7 @@ There are far fewer subtle ways to trigger undefined behaviors in L2 than in oth
 ->
 (with return
   {(continuation tempas0 ()
-    (if x {return y} (begin)))})
+    (if x {return y} (ignore)))})
 ```
 This is implemented as follows:
 #### assume.l2
@@ -652,7 +652,7 @@ This is implemented as follows:
 (function assume (l r)
   (`(with assume:return
     {(continuation assume:tempas0 ()
-      (if (,[@fst l]) {assume:return (,[@frst l])} (begin)))})r))
+      (if (,[@fst l]) {assume:return (,[@frst l])} (ignore)))})r))
 ```
 #### test11.l2
 ```
@@ -783,8 +783,8 @@ To recapitulate, we localized and separated out the definition of a field from t
 
 (function mk-field (l r offset size)
   [lllllst [@fst l] [=# offset r] [=# size r]
-    (switch = size (#1 (` get1b r)) (#2 (` get2b r)) (#4 (` get4b r)) (#8 (` get8b r)) (`(begin)r))
-    (switch = size (#1 (` set1b r)) (#2 (` set2b r)) (#4 (` set4b r)) (#8 (` set8b r)) (`(begin)r))
+    (switch = size (#1 (` get1b r)) (#2 (` get2b r)) (#4 (` get4b r)) (#8 (` get8b r)) (`(ignore)r))
+    (switch = size (#1 (` set1b r)) (#2 (` set2b r)) (#4 (` set4b r)) (#8 (` set8b r)) (`(ignore)r))
     [@rst l] r])
 ```
 #### somefields.l2
@@ -797,7 +797,7 @@ To recapitulate, we localized and separated out the definition of a field from t
 ```
 #### test12.l2
 ```racket
-(storage mycons (begin) (begin))
+(storage mycons (ignore) (ignore))
 (setf car mycons (char A))
 (setf cdr mycons (char a))
 [putchar (@ car mycons)]
