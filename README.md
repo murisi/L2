@@ -399,11 +399,9 @@ It is implemented and used as follows:
 ```
 #### test5.l2
 ```
-(let (x #12) (begin
-  (function what? () [printf (" x is %i) x])
-  [what?]
-  [what?]
-  [what?]))
+(let (x #12)
+  (let (what? (function _ () [printf (" x is %i) x]))
+    [what?]))
 ```
 Note in the above code that `what?` is only able to access `x` because `x` is defined outside of all functions and hence is statically allocated. Also note that L2 permits identifier shadowing, so `let` expressions can be nested without worrying, for instance, about the impact of an inner `templet0` on an outer one.
 
