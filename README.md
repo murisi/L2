@@ -40,12 +40,11 @@ L2 projects are composed of two parts: the program and the metaprogram. The prog
 ##### file1.l2
 ```racket
 (function foo (frag buf) [@fst frag])
-
 ```
 ##### file2.l2
 ```racket
 (function bar ()
-	[putchar (literal 0...01100011)])
+  [putchar (literal 0...01100011)])
 (foo [putchar (literal 0...01100110)])
 [putchar (literal 0...01100100)]
 ```
@@ -277,35 +276,35 @@ Integer literals prove to be quite tedious in L2 as can be seen from some of the
 (;; Turns an 8-byte value into a literal-expression representation of it.)
 
 (function value->literal (binary r)
-	[lst [lllllllst -l- -i- -t- -e- -r- -a- -l- emt r]
-		[lst (with return {(continuation write (count in out)
-				(if count
-					{write [- count (literal 0...01)]
-						[>> in (literal 0...01)]
-						[lst (if [land in (literal 0...01)]
-							-1- -0-) out r]}
-					{return out}))
-				(literal 0...01000000) binary emt})
-			emt r]r])
+  [lst [lllllllst -l- -i- -t- -e- -r- -a- -l- emt r]
+    [lst (with return {(continuation write (count in out)
+        (if count
+          {write [- count (literal 0...01)]
+            [>> in (literal 0...01)]
+            [lst (if [land in (literal 0...01)]
+              -1- -0-) out r]}
+          {return out}))
+        (literal 0...01000000) binary emt})
+      emt r]r])
 
 (;; Turns the base-10 fragment input into a literal expression.)
 
 (function # (l r) [value->literal
-	(with return {(continuation read (in out)
-		(if [emt? in]
-			{return out}
-			{read [@rst in] [+ [* out (literal 0...01010)]
-				(if [char= [@fst in] -9-] (literal 0...01001)
-				(if [char= [@fst in] -8-] (literal 0...01000)
-				(if [char= [@fst in] -7-] (literal 0...0111)
-				(if [char= [@fst in] -6-] (literal 0...0110)
-				(if [char= [@fst in] -5-] (literal 0...0101)
-				(if [char= [@fst in] -4-] (literal 0...0100)
-				(if [char= [@fst in] -3-] (literal 0...011)
-				(if [char= [@fst in] -2-] (literal 0...010)
-				(if [char= [@fst in] -1-] (literal 0...01)
-					(literal 0...0))))))))))]}))
-		[@fst l] (literal 0...0)}) r])
+  (with return {(continuation read (in out)
+    (if [emt? in]
+      {return out}
+      {read [@rst in] [+ [* out (literal 0...01010)]
+        (if [char= [@fst in] -9-] (literal 0...01001)
+        (if [char= [@fst in] -8-] (literal 0...01000)
+        (if [char= [@fst in] -7-] (literal 0...0111)
+        (if [char= [@fst in] -6-] (literal 0...0110)
+        (if [char= [@fst in] -5-] (literal 0...0101)
+        (if [char= [@fst in] -4-] (literal 0...0100)
+        (if [char= [@fst in] -3-] (literal 0...011)
+        (if [char= [@fst in] -2-] (literal 0...010)
+        (if [char= [@fst in] -1-] (literal 0...01)
+          (literal 0...0))))))))))]}))
+    [@fst l] (literal 0...0)}) r])
 ```
 #### test3.l2
 ```racket
@@ -326,29 +325,29 @@ The `foo` example in the internal representation section shows how tedious writi
 #### backquote.l2
 ```racket
 (function ` (l r)
-	[(function aux (s t r)
-		(if [emt? s] [lllst -e- -m- -t- emt r]
+  [(function aux (s t r)
+    (if [emt? s] [lllst -e- -m- -t- emt r]
 
-		(if (if [emt? s] #0 (if [token? s] #0 (if [emt? [@fst s]]
-			#0 (if [char= [@ffst s] -,-] [emt? [@rfst s]] #0))))
-					[@frst s]
+    (if (if [emt? s] #0 (if [token? s] #0 (if [emt? [@fst s]]
+      #0 (if [char= [@ffst s] -,-] [emt? [@rfst s]] #0))))
+          [@frst s]
 
-		[lllllst [llllllst -i- -n- -v- -o- -k- -e- emt r]
-			[lllst -l- -s- -t- emt r]
-				(if [token? s]
-						[lllst --- [@fst s] --- emt r]
-						[aux [@fst s] t r])
-					[aux [@rst s] t r] t emt r]))) [@fst l] [@frst l] r])
+    [lllllst [llllllst -i- -n- -v- -o- -k- -e- emt r]
+      [lllst -l- -s- -t- emt r]
+        (if [token? s]
+            [lllst --- [@fst s] --- emt r]
+            [aux [@fst s] t r])
+          [aux [@rst s] t r] t emt r]))) [@fst l] [@frst l] r])
 ```
 #### anotherfunction.l2:
 ```racket
 (function make-A-function (l r)
-	(` (function A (,emt) [putchar #65]) r))
+  (` (function A (,emt) [putchar #65]) r))
 ```
 ##### or equivalently
 ```racket
 (function make-A-function (l)
-	(`(function A () [putchar #65])r))
+  (`(function A () [putchar #65])r))
 ```
 #### test4.l2
 ```racket
@@ -365,48 +364,48 @@ Variable binding is enabled by the `continuation` expression. `continuation` is 
 (let (params args) ... expr0)
 ->
 (with let:return
-	{(continuation let:aux (params ...)
-		{let:return expr0}) vals ...})
+  {(continuation let:aux (params ...)
+    {let:return expr0}) vals ...})
 ```
 It is implemented and used as follows:
 #### let.l2
 ```racket
 (;; Reverses the given list. l is the list to be reversed. r is the buffer into
-	which the reversed list will be put. Return value is the reversed list.)
+  which the reversed list will be put. Return value is the reversed list.)
 
 (function meta:reverse (l r)
-	(with return
-		{(continuation _ (l reversed)
-			(if [emt? l]
-				{return reversed}
-				{_ [@rst l] [lst [@fst l] reversed r]})) l emt}))
+  (with return
+    {(continuation _ (l reversed)
+      (if [emt? l]
+        {return reversed}
+        {_ [@rst l] [lst [@fst l] reversed r]})) l emt}))
 
 (;; Maps the given list using the given function. l is the list to be mapped. ctx
-	is always passed as a second argument to the mapper. mapper is the two argument
-	function that will be supplied a list item as its first argument and ctx as its
-	second argument and will return an argument that will be put into the corresponding
-	position of another list. r is the buffer into which the list being constructed
-	will be put. Return value is the mapped list.)
+  is always passed as a second argument to the mapper. mapper is the two argument
+  function that will be supplied a list item as its first argument and ctx as its
+  second argument and will return an argument that will be put into the corresponding
+  position of another list. r is the buffer into which the list being constructed
+  will be put. Return value is the mapped list.)
 
 (function meta:map (l ctx mapper r)
-	(with return
-		{(continuation aux (in out)
-			(if [emt? in]
-				{return [meta:reverse out r]}
-				{aux [@rst in] [lst [mapper [@fst in] ctx] out r]})) l emt}))
+  (with return
+    {(continuation aux (in out)
+      (if [emt? in]
+        {return [meta:reverse out r]}
+        {aux [@rst in] [lst [mapper [@fst in] ctx] out r]})) l emt}))
 
 (function let (l r)
-	(`(with let:return
-		(,[llst (` jump r) (`(continuation let:aux (,[meta:map [@rst [meta:reverse l r]] (begin) @fst r])
-			{let:return (,[@fst [meta:reverse l r]])}) r) [meta:map [@rst [meta:reverse l r]] (begin) @frst r] r])) r))
+  (`(with let:return
+    (,[llst (` jump r) (`(continuation let:aux (,[meta:map [@rst [meta:reverse l r]] (begin) @fst r])
+      {let:return (,[@fst [meta:reverse l r]])}) r) [meta:map [@rst [meta:reverse l r]] (begin) @frst r] r])) r))
 ```
 #### test5.l2
 ```
 (let (x #12) (begin
-	(function what? () [printf (" x is %i) x])
-	[what?]
-	[what?]
-	[what?]))
+  (function what? () [printf (" x is %i) x])
+  [what?]
+  [what?]
+  [what?]))
 ```
 Note in the above code that `what?` is only able to access `x` because `x` is defined outside of all functions and hence is statically allocated. Also note that L2 permits identifier shadowing, so `let` expressions can be nested without worrying, for instance, about the impact of an inner `templet0` on an outer one.
 
@@ -425,24 +424,24 @@ The Boolean literals true and false are achieved using macros that return the sa
 (or expr1 expr2 ... exprN)
 ->
 (let (or:temp expr1) (if or:temp
-	or:temp
-	(let (or:temp expr2) (if or:temp
-		or:temp
-		...
-			(let (or:temp exprN) (if or:temp
-				or:temp
-				(false)))))))
+  or:temp
+  (let (or:temp expr2) (if or:temp
+    or:temp
+    ...
+      (let (or:temp exprN) (if or:temp
+        or:temp
+        (false)))))))
 
 (and expr1 expr2 ... exprN)
 ->
 (let (and:temp expr1) (if and:temp
-	(let (and:temp expr2) (if and:temp
-		...
-			(let (and:temp exprN) (if and:temp
-				(true)
-				and:temp))
-		and:temp))
-	and:temp))
+  (let (and:temp expr2) (if and:temp
+    ...
+      (let (and:temp exprN) (if and:temp
+        (true)
+        and:temp))
+    and:temp))
+  and:temp))
 
 (not expr1)
 ->
@@ -458,18 +457,18 @@ These transformations are implemented and used as follows:
 (function true (l r) [mk# r #1])
 
 (function or (l r) (with return
-	{(continuation loop (l sexpr)
-			(if [emt? l]
-				{return sexpr}
-				{loop [@rst l] (`(let (or:temp (,[@fst l])) (if or:temp or:temp (, sexpr r)))r)}))
-		[meta:reverse l r] (`(false)r)}))
+  {(continuation loop (l sexpr)
+      (if [emt? l]
+        {return sexpr}
+        {loop [@rst l] (`(let (or:temp (,[@fst l])) (if or:temp or:temp (, sexpr r)))r)}))
+    [meta:reverse l r] (`(false)r)}))
 
 (function and (l r) (with return
-	{(continuation loop (l sexpr)
-			(if [emt? l]
-				{return sexpr}
-				{loop [@rst l] (`(let (and:temp (,[@fst l])) (if and:temp (, sexpr r) and:temp))r)}))
-		[meta:reverse l r] (`(true)r)}))
+  {(continuation loop (l sexpr)
+      (if [emt? l]
+        {return sexpr}
+        {loop [@rst l] (`(let (and:temp (,[@fst l])) (if and:temp (, sexpr r) and:temp))r)}))
+    [meta:reverse l r] (`(true)r)}))
 
 (function not (l r) (`(if (,[@fst l]) (false) (true))r))
 ```
@@ -488,37 +487,37 @@ Now we will implement a variant of the switch statement that is parameterized by
 (switch eq0 val0 (vals exprs) ... expr0)
 ->
 (let (tempeq0 eq0) (tempval0 val0)
-	(if [tempeq0 tempval0 vals1]
-		exprs1
-		(if [tempeq0 tempval0 vals2]
-			exprs2
-			...
-				(if [tempeq0 tempval0 valsN]
-					exprsN
-					expr0))))
+  (if [tempeq0 tempval0 vals1]
+    exprs1
+    (if [tempeq0 tempval0 vals2]
+      exprs2
+      ...
+        (if [tempeq0 tempval0 valsN]
+          exprsN
+          expr0))))
 ```
 It is implemented and used as follows:
 #### switch.l2
 ```racket
 (function switch (l r)
-	(`(let (switch:= (,[@fst l])) (switch:val (,[@frst l]))
-		(,(with return
-			{(continuation aux (remaining else-clause)
-				(if [emt? remaining]
-					{return else-clause}
-					{aux [@rst remaining]
-						(`(if (,[lst (` or r) [meta:map [@rst [meta:reverse [@fst remaining] r]] r
-								(function _ (e r) [llllst (` invoke r) (` switch:= r) (` switch:val r) e emt r]) r] r])
-							(,[@fst [meta:reverse [@fst remaining] r]]) ,else-clause) r)}))
-				[@rst [meta:reverse [@rrst l] r]] [@fst [meta:reverse l r]]})))r))
+  (`(let (switch:= (,[@fst l])) (switch:val (,[@frst l]))
+    (,(with return
+      {(continuation aux (remaining else-clause)
+        (if [emt? remaining]
+          {return else-clause}
+          {aux [@rst remaining]
+            (`(if (,[lst (` or r) [meta:map [@rst [meta:reverse [@fst remaining] r]] r
+                (function _ (e r) [llllst (` invoke r) (` switch:= r) (` switch:val r) e emt r]) r] r])
+              (,[@fst [meta:reverse [@fst remaining] r]]) ,else-clause) r)}))
+        [@rst [meta:reverse [@rrst l] r]] [@fst [meta:reverse l r]]})))r))
 ```
 #### test7.l2
 ```
 (switch = #10
-	(#20 [printf (" d is 20!)])
-	(#10 [printf (" d is 10!)])
-	(#30 [printf (" d is 30!)])
-	[printf (" s is something else.)])
+  (#20 [printf (" d is 20!)])
+  (#10 [printf (" d is 10!)])
+  (#30 [printf (" d is 30!)])
+  [printf (" s is something else.)])
 ```
 #### shell
 ```shell
@@ -531,19 +530,19 @@ With `#` implemented, a somewhat more readable implementation of characters is p
 #### characters.l2
 ```
 (function char (l r) (switch char= [@ffst l]
-	(-!- (` #33 r)) (-"- (` #34 r)) (-#- (` #35 r)) (-$- (` #36 r)) (-%- (` #37 r)) (-&- (` #38 r)) (-'- (` #39 r))
-	(-*- (` #42 r)) (-+- (` #43 r)) (-,- (` #44 r)) (--- (` #45 r)) (-.- (` #46 r)) (-/- (` #47 r)) (-0- (` #48 r))
-	(-1- (` #49 r)) (-2- (` #50 r)) (-3- (` #51 r)) (-4- (` #52 r)) (-5- (` #53 r)) (-6- (` #54 r)) (-7- (` #55 r))
-	(-8- (` #56 r)) (-9- (` #57 r)) (-:- (` #58 r)) (-;- (` #59 r)) (-<- (` #60 r)) (-=- (` #61 r)) (->- (` #62 r))
-	(-?- (` #63 r)) (-@- (` #64 r)) (-A- (` #65 r)) (-B- (` #66 r)) (-C- (` #67 r)) (-D- (` #68 r)) (-E- (` #69 r))
-	(-F- (` #70 r)) (-G- (` #71 r)) (-H- (` #72 r)) (-I- (` #73 r)) (-J- (` #74 r)) (-K- (` #75 r)) (-L- (` #76 r))
-	(-M- (` #77 r)) (-N- (` #78 r)) (-O- (` #79 r)) (-P- (` #80 r)) (-Q- (` #81 r)) (-R- (` #82 r)) (-S- (` #83 r))
-	(-T- (` #84 r)) (-U- (` #85 r)) (-V- (` #86 r)) (-W- (` #87 r)) (-X- (` #88 r)) (-Y- (` #89 r)) (-Z- (` #90 r))
-	(-\- (` #92 r)) (-^- (` #94 r)) (-_- (` #95 r)) (-`- (` #96 r)) (-a- (` #97 r)) (-b- (` #98 r)) (-c- (` #99 r))
-	(-d- (` #100 r)) (-e- (` #101 r)) (-f- (` #102 r)) (-g- (` #103 r)) (-h- (` #104 r)) (-i- (` #105 r)) (-j- (` #106 r))
-	(-k- (` #107 r)) (-l- (` #108 r)) (-m- (` #109 r)) (-n- (` #110 r)) (-o- (` #111 r)) (-p- (` #112 r)) (-q- (` #113 r))
-	(-r- (` #114 r)) (-s- (` #115 r)) (-t- (` #116 r)) (-u- (` #117 r)) (-v- (` #118 r)) (-w- (` #119 r)) (-x- (` #120 r))
-	(-y- (` #121 r)) (-z- (` #122 r)) (-|- (` #124 r)) (-~- (` #126 r)) (` #0 r)))
+  (-!- (` #33 r)) (-"- (` #34 r)) (-#- (` #35 r)) (-$- (` #36 r)) (-%- (` #37 r)) (-&- (` #38 r)) (-'- (` #39 r))
+  (-*- (` #42 r)) (-+- (` #43 r)) (-,- (` #44 r)) (--- (` #45 r)) (-.- (` #46 r)) (-/- (` #47 r)) (-0- (` #48 r))
+  (-1- (` #49 r)) (-2- (` #50 r)) (-3- (` #51 r)) (-4- (` #52 r)) (-5- (` #53 r)) (-6- (` #54 r)) (-7- (` #55 r))
+  (-8- (` #56 r)) (-9- (` #57 r)) (-:- (` #58 r)) (-;- (` #59 r)) (-<- (` #60 r)) (-=- (` #61 r)) (->- (` #62 r))
+  (-?- (` #63 r)) (-@- (` #64 r)) (-A- (` #65 r)) (-B- (` #66 r)) (-C- (` #67 r)) (-D- (` #68 r)) (-E- (` #69 r))
+  (-F- (` #70 r)) (-G- (` #71 r)) (-H- (` #72 r)) (-I- (` #73 r)) (-J- (` #74 r)) (-K- (` #75 r)) (-L- (` #76 r))
+  (-M- (` #77 r)) (-N- (` #78 r)) (-O- (` #79 r)) (-P- (` #80 r)) (-Q- (` #81 r)) (-R- (` #82 r)) (-S- (` #83 r))
+  (-T- (` #84 r)) (-U- (` #85 r)) (-V- (` #86 r)) (-W- (` #87 r)) (-X- (` #88 r)) (-Y- (` #89 r)) (-Z- (` #90 r))
+  (-\- (` #92 r)) (-^- (` #94 r)) (-_- (` #95 r)) (-`- (` #96 r)) (-a- (` #97 r)) (-b- (` #98 r)) (-c- (` #99 r))
+  (-d- (` #100 r)) (-e- (` #101 r)) (-f- (` #102 r)) (-g- (` #103 r)) (-h- (` #104 r)) (-i- (` #105 r)) (-j- (` #106 r))
+  (-k- (` #107 r)) (-l- (` #108 r)) (-m- (` #109 r)) (-n- (` #110 r)) (-o- (` #111 r)) (-p- (` #112 r)) (-q- (` #113 r))
+  (-r- (` #114 r)) (-s- (` #115 r)) (-t- (` #116 r)) (-u- (` #117 r)) (-v- (` #118 r)) (-w- (` #119 r)) (-x- (` #120 r))
+  (-y- (` #121 r)) (-z- (` #122 r)) (-|- (` #124 r)) (-~- (` #126 r)) (` #0 r)))
 ```
 #### test8.l2
 ```racket
@@ -560,33 +559,33 @@ The above exposition has purposefully avoided making strings because it is tedio
 #### strings.l2
 ```
 (function " (l r) (with return
-	{(continuation add-word (str index instrs)
-		(if [emt? str]
-			{return (`(with dquote:return
-				(,[llst (` begin r) [llst (` storage r) (` dquote:str r)
-						(with return {(continuation _ (phs num)
-							(if num
-								{_ [lst (` #0 r) phs r] [- num #1]}
-								{return phs})) emt [+[/ index (unit)]#1]}) r]
-					[meta:reverse [lst (`{dquote:return dquote:str}r) instrs r]r]r]))r)}
-		
-		(if (and [emt? [@fst str]] [emt? [@rst str]])
-			{add-word [@rst str] [+ index #1]
-				[lst (`[setb [+ dquote:str (,[value->literal index r])] #0]r) instrs r]}
-				
-		(if (and [emt? [@fst str]] [token? [@frst str]])
-			{add-word [@rst str] [+ index #1]
-				[lst (`[setb [+ dquote:str (,[value->literal index r])] #32]r) instrs r]}
-		
-		(if [emt? [@fst str]] {add-word [@rst str] index instrs}
-				
-		(if [token? [@fst str]]
-			{add-word [lst [@rfst str] [@rst str] r] [+ index #1]
-				[lst (`[setb [+ dquote:str (,[value->literal index r])]
-					(,[char [lst [lst [@ffst str] emt r] emt r]r emt])]r) instrs r]}
-			
-			{add-word [@rst str] [+ index #1]
-				[lst (`[setb [+ dquote:str (,[value->literal index r])] (,[@fst str])]r) instrs r]})))))) l #0 emt}))
+  {(continuation add-word (str index instrs)
+    (if [emt? str]
+      {return (`(with dquote:return
+        (,[llst (` begin r) [llst (` storage r) (` dquote:str r)
+            (with return {(continuation _ (phs num)
+              (if num
+                {_ [lst (` #0 r) phs r] [- num #1]}
+                {return phs})) emt [+[/ index (unit)]#1]}) r]
+          [meta:reverse [lst (`{dquote:return dquote:str}r) instrs r]r]r]))r)}
+    
+    (if (and [emt? [@fst str]] [emt? [@rst str]])
+      {add-word [@rst str] [+ index #1]
+        [lst (`[setb [+ dquote:str (,[value->literal index r])] #0]r) instrs r]}
+        
+    (if (and [emt? [@fst str]] [token? [@frst str]])
+      {add-word [@rst str] [+ index #1]
+        [lst (`[setb [+ dquote:str (,[value->literal index r])] #32]r) instrs r]}
+    
+    (if [emt? [@fst str]] {add-word [@rst str] index instrs}
+        
+    (if [token? [@fst str]]
+      {add-word [lst [@rfst str] [@rst str] r] [+ index #1]
+        [lst (`[setb [+ dquote:str (,[value->literal index r])]
+          (,[char [lst [lst [@ffst str] emt r] emt r]r emt])]r) instrs r]}
+      
+      {add-word [@rst str] [+ index #1]
+        [lst (`[setb [+ dquote:str (,[value->literal index r])] (,[@fst str])]r) instrs r]})))))) l #0 emt}))
 ```
 #### test9.l2
 ```
@@ -603,7 +602,7 @@ A restricted form of closures can be implemented in L2. The key to their impleme
 (lambda (args ...) expr0)
 ->
 (continuation lambda0 (cont0 args ...)
-	{cont0 expr0})
+  {cont0 expr0})
 
 (; func0 args ...)
 ->
@@ -617,25 +616,25 @@ These are implemented and used as follows:
 #### closures.l2
 ```racket
 (function lambda (l r)
-	(`(continuation lambda0 (,[lst (` cont0 r) [@fst l] r])
-		{cont0 (,[@frst l])})r))
+  (`(continuation lambda0 (,[lst (` cont0 r) [@fst l] r])
+    {cont0 (,[@frst l])})r))
 
 (function ; (l r)
-	(`(with semicolon:return (,[lllst (` invoke r) [@fst l] (` semicolon:return r) [@rst l] r]))r))
+  (`(with semicolon:return (,[lllst (` invoke r) [@fst l] (` semicolon:return r) [@rst l] r]))r))
 
 (function : (l r)
-	(`(with colon:return (,[lllst (` jump r) [@fst l] (` colon:return r) [@rst l] r]))r))
+  (`(with colon:return (,[lllst (` jump r) [@fst l] (` colon:return r) [@rst l] r]))r))
 ```
 #### test10.l2
 ```
 (function adder (cont x)
-	{cont (lambda (y) [+ x y])})
+  {cont (lambda (y) [+ x y])})
 
 (let (add5 (; adder #5)) (add7 (; adder #7))
-	(begin
-		[printf (" %i,) (: add5 #2)]
-		[printf (" %i,) (: add7 #3)]
-		[printf (" %i,) (: add5 #1)]))
+  (begin
+    [printf (" %i,) (: add5 #2)]
+    [printf (" %i,) (: add7 #3)]
+    [printf (" %i,) (: add5 #1)]))
 ```
 #### shell
 ```shell
@@ -648,24 +647,24 @@ There are far fewer subtle ways to trigger undefined behaviors in L2 than in oth
 (assume x y)
 ->
 (with return
-	{(continuation tempas0 ()
-		(if x {return y} (begin)))})
+  {(continuation tempas0 ()
+    (if x {return y} (begin)))})
 ```
 This is implemented as follows:
 #### assume.l2
 ```racket
 (function assume (l r)
-	(`(with assume:return
-		{(continuation assume:tempas0 ()
-			(if (,[@fst l]) {assume:return (,[@frst l])} (begin)))})r))
+  (`(with assume:return
+    {(continuation assume:tempas0 ()
+      (if (,[@fst l]) {assume:return (,[@frst l])} (begin)))})r))
 ```
 #### test11.l2
 ```
 (function foo (x y)
-	(assume [not [= x y]] (begin
-		[setb x (char A)]
-		[setb y (char B)]
-		[printf (" %c) [getb x]])))
+  (assume [not [= x y]] (begin
+    [setb x (char A)]
+    [setb y (char B)]
+    [printf (" %c) [getb x]])))
 
 [foo (" C) (" D)]
 ```
@@ -787,10 +786,10 @@ To recapitulate, we localized and separated out the definition of a field from t
 (function setf-aux (l r) (`[(,[@frrrst l]) [+ (,[@frrrrst l]) (,[@fst l])] (,[@frrrrrst l])]r))
 
 (function mk-field (l r offset size)
-	[lllllst [@fst l] [value->literal offset r] [value->literal size r]
-		(switch = size (#1 (` get1b r)) (#2 (` get2b r)) (#4 (` get4b r)) (#8 (` get8b r)) (`(begin)r))
-		(switch = size (#1 (` set1b r)) (#2 (` set2b r)) (#4 (` set4b r)) (#8 (` set8b r)) (`(begin)r))
-		[@rst l] r])
+  [lllllst [@fst l] [value->literal offset r] [value->literal size r]
+    (switch = size (#1 (` get1b r)) (#2 (` get2b r)) (#4 (` get4b r)) (#8 (` get8b r)) (`(begin)r))
+    (switch = size (#1 (` set1b r)) (#2 (` set2b r)) (#4 (` set4b r)) (#8 (` set8b r)) (`(begin)r))
+    [@rst l] r])
 ```
 #### somefields.l2
 ```racket
