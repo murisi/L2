@@ -14,7 +14,7 @@ There are [9 language primitives](#expressions) and for each one of them I descr
 | [The Compiler](#the-compiler) | [Storage](#storage) | [Commenting](#commenting) |
 | **[Syntactic Sugar](#syntactic-sugar)** | [If](#if) | [Backquoting](#backquoting) |
 | **[Internal Representation](#internal-representation)** | [Function](#function) | [Variable Binding](#variable-binding) |
-| | [Invoke](#invoke) | [Boolean Expressions](#boolean-expressions) |
+| **[Constraint System](#constraint-system)** | [Invoke](#invoke) | [Boolean Expressions](#boolean-expressions) |
 | | [With](#with) | [Switch Expression](#switch-expression) |
 | | [Continuation](#continuation) | [Characters](#characters) |
 | | [Jump](#jump) | [Strings](#strings) |
@@ -231,6 +231,63 @@ Evaluates `expression0`. The resulting value of this expression then becomes tha
 If the above expression is not listed above, then the function `function0` is invoked with the (unevaluated) list of [fragments](#internal-representation) `(expression1 expression2 ... expressionN)` as its first argument and a buffer in which the replacement is to be constructed as its second argument. The fragment returned by this function then replaces the entire fragment `(function0 expression1 ... expressionN)`. If the result of this replacement contains a meta-expression, then the above process is repeated. When this process terminates, the appropriate assembly code for the resulting expression is emitted.
 
 Meta-expressions were already demonstrated in the [compiler section](#the-compiler).
+
+## Constraint System
+In L2, every expression is associated with exactly one fragment. This fragment is called the expression's signature. For a program to compile, it must pass the constraint check. The constraint check is done as follows:
+1. Partition all of the expressions of the program into strongly connected components, where dependency is determined as follows:
+   * An expression is dependent upon its children
+   * A symbol is mutually dependent with the expression that defines it
+   * A `constrain` expression is depended upon by its child
+2. Now iterate through the strongly connected components in topological order and for each component, do the following:
+   1. Generate the constraint equations corresponding to each expression in the manner prescribed below
+   2. Attempt to find the most general unifier of constrain equations that has just been generated
+   3. If the system of constraint equations can be solved, then substitute in the solutions for the variable fragments corresponding to expressions within this component
+   4. If the system of constraint equations cannot be solved, then the program fails the constraint check
+### Function
+For a function expression `(function f (p1 p2 ... pN) b)`:
+* Let g be the expression's signature.
+* Let h1, h2, ..., hN be the signatures corresponding to p1, p2, ..., pN.
+* Let i be b's signature.
+* Then g = (function (h1 h2 ... hN) i).
+### Continuation
+For a continuation expression `(continuation f (p1 p2 ... pN) b)`:
+* Let g be the expression's signature.
+* Let h1, h2, ..., hN be the signatures corresponding to p1, p2, ..., pN.
+* Then g = (continuation (h1 h2 ... hN)).
+### Constrain
+For a constrain expression `(constrain f b)`:
+* Let g be the expression's signature.
+* Let i be the signature obtained from evaluating f.
+* Let h be b's signature.
+* Then g = i = h.
+### Invoke
+For an invoke expression `(invoke f a1 a2 ... aN)`:
+* Let e be the expression's signature.
+* Let g be f's signature.
+* Let h1, h2, ..., hN be the signatures corresponding to a1, a2, ..., aN.
+* Then g = (function (h1 h2 ... hN) e).
+### Jump
+For an jump expression `(jump f a1 a2 ... aN)`:
+* Let g be f's signature.
+* Let h1, h2, ..., hN be the signatures corresponding to a1, a2, ..., aN.
+* Then g = (continuation (h1 h2 ... hN)).
+### With
+For a with expression `(with f b)`:
+* Let e be the expression's signature.
+* Let g be f's signature.
+* Let h be b's signature.
+* Then g = (continuation (e)) and e = h.
+### If
+For an if expression `(if f p b)`:
+* Let e be the expression's signature.
+* Let g be p's signature.
+* Let i be b's signature.
+* Then e = g and g = i.
+### Symbol
+For a symbol `f`:
+* Let e be the expression's signature.
+* Let g be f's definition.
+* Then e = g.
 
 ## Examples/Reductions
 In the extensive list processing that follows in this section, the following functions prove to be convenient abbreviations:
