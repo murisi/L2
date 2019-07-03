@@ -287,6 +287,11 @@ A constrain expression is provided to enable the programmer to directly constrai
 * Let `i` be the signature obtained from evaluating `f`.
 * Let `h` be `b`'s signature.
 * Then `g = i = h`.
+### Meta
+For a meta expression, we want to capture the intuition that the meta-expression is indistinguishable from its expansion, and therefore that their signatures are the same. Hence for a meta expression `(f0 f1 f2 ... fN)`, the following constraints are generated:
+* Let `g` be the expression's signature.
+* Let `h` be the signature of the meta expression's expansion.
+* Then `g = h`.
 ### Symbol
 For a symbol, we just want to capture the inuition that its signature must be the same at all sites. Hence for a symbol `f`, we generate the following constraint:
 * Let `e` be the expression's signature.
