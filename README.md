@@ -21,6 +21,7 @@ There are [9 language primitives](#expressions) and for each one of them I descr
 | | [Constrain](#constrain) | [Sequencing](#sequencing) |
 | | [Meta](#meta) | [Assume](#assume) |
 | | | [Fields](#fields) |
+| | | [With Variables](#with-variables) |
 
 ## Getting Started
 ### Building L2
@@ -51,6 +52,14 @@ L2 projects are composed of two parts: the program and the metaprogram. The prog
 Running `./bin/l2compile "./bin/x86_64.o" file1.l2 - file2.l2` should produce an object file file2.o. file2.o when called should invoke the function `putchar` with the ASCII character 'f' and then it should invoke the function `putchar` with the ASCII character 'd'. And if its function `bar` should be called, then it will call the function `putchar` with 'c'. Why is it that the first invocations happen? Because object code resulting from L2 sources are executed from top to bottom when they are called and because the expression `(foo [putchar (literal 0...01100110)])` turned into `[putchar (literal 0...01100110)]`. Why is it that the aforementioned transformation happened? Because `(foo [putchar (literal 0...01100110)])` is a meta-expression and by the definition of the language causes the function `foo` in the metaprogram to be called with the fragment `([putchar (literal 0...01100110)])` as an argument and the thing which `foo` then did was to return the first element of this fragment, `[putchar (literal 0...01100110)]`, which then replaced the original `(foo [putchar (literal 0...01100110)])`.
 
 ## Expressions
+
+### Constrain
+```racket
+(constrain expression0 sigfunction0)
+```
+Evaluates `expression0`. The resulting value of this expression then becomes that of `expression0`.
+
+The `constrain` expression will be further explained in the [constraint system](#constraint-system) section.
 
 ### Literal
 ```racket
@@ -240,17 +249,11 @@ Evaluates to one if `x` is the same character as `y`, otherwise it evaluates to 
 Say `b` is a buffer. Then `[var= [var b] [var b]]` evaluates to `(literal 0...00)`.
 
 ## Expressions Continued
-### Constrain
-```racket
-(constrain expression0 sigfunction0)
-```
-Evaluates `expression0`. The resulting value of this expression then becomes that of `expression0`.
-
 ### Meta
 ```racket
 (function0 expression1 ... expressionN)
 ```
-If the above expression is not listed above, then the function `function0` is invoked with the (unevaluated) list of [fragments](#internal-representation) `(expression1 expression2 ... expressionN)` as its first argument and a buffer in which the replacement is to be constructed as its second argument. The fragment returned by this function then replaces the entire fragment `(function0 expression1 ... expressionN)`. If the result of this replacement contains a meta-expression, then the above process is repeated. When this process terminates, the appropriate assembly code for the resulting expression is emitted.
+If the above expression is not listed above, then the function `function0` is invoked with the (unevaluated) list of [fragments](#internal-representation) `(expression1 expression2 ... expressionN)` as its first argument and a buffer in which the replacement is to be constructed as its second argument. The fragment returned by this function then replaces the entire fragment `(function0 expression1 ... expressionN)`. The returned fragment must not contain any variable fragments. If the result of this replacement contains a meta-expression, then the above process is repeated. When this process terminates, the appropriate assembly code for the resulting expression is emitted.
 
 Meta-expressions were already demonstrated in the [compiler section](#the-compiler).
 
@@ -822,6 +825,26 @@ To recapitulate, we localized and separated out the definition of a field from t
 ./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 numbers64.l2 backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 assume.l2 fields.l2 somefields.l2 - test12.l2
 ```
 Note that there is no struct definition in the code, there are only definitions of the fields we need to work with. The negative consequence of this is that we lose C's type safety and portability. The positive consequences are that we gain control over the struct packing, we are now able to use the same field definitions across several conceptually different structs, and that we can overlap our fields in completely arbitrary ways.
+
+### With Variables
+Due to its use of Hindley-Milner type inference, L2 supports parametric polymorphism. However, specifying type signatures unaided by macros turns out to be tedious because the desired type variables must be manually created in the supplied buffer, and then bound to a symbol. The macro `with-vars` reduces this tedium by implementing the following transformation:
+```racket
+(with-vars (vars ...) expr buffer)
+->
+(let (var0 [var buffer]) ... (varN [var buffer]) expr))
+```
+This is implemented and used as follows:
+#### with-vars.l2
+```racket
+(function with-vars (l r)
+  (let (bindings [meta:map3 [@fst l] [@frrst l] r (function _(e s r) (`(,e [var ,s])r)) r])
+    [lst (` let r) [meta:reverse [lst [@frst l] [meta:reverse bindings r] r] r] r]))
+```
+#### test13.l2
+```racket
+(constrain nil (function _(r) (with-vars (a) (`(list ,a)r)r)))
+```
+Note that the above code simply constrains the signature of the symbol `nil` to be of the form `(list !2342)`, where `!2342` is a representation of the (type) variable. Also note that the signature is contained within a function, this is because the compiler needs a way to supply a buffer to the fragment manipulation functions.
 
 ## Constraint System
 L2 has a static constraint system based on Hindley-Milner type inference. Every expression is associated with exactly one fragment. This fragment is called the expression's signature. For a program to compile, its expressions when taken as a whole must pass the constraint check. The constraint check is specified below:
