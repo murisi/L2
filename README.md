@@ -282,7 +282,7 @@ For a jump expression, we want to capture the intuition that the signatures of t
 * Let `h1, h2, ..., hN` be the signatures corresponding to `a1, a2, ..., aN`.
 * Then g = `(continuation (h1 h2 ... hN))`.
 ### Constrain
-A constrain expression is provided to enable the programmer to directly constrain the signature of the contained expression. This is why the following constraints are generated for a constrain expression `(constrain b f)`:
+A constrain expression is provided to enable the programmer to directly constrain the signature of the contained expression. (Naturally, if the specified signature contains no variable fragments, then you are essentially fixing an expression's signature.) This is why the following constraints are generated for a constrain expression `(constrain b f)`:
 * Let `g` be the expression's signature.
 * Let `i` be the signature obtained from evaluating `f`.
 * Let `h` be `b`'s signature.
