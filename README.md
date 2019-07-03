@@ -10,15 +10,15 @@ There are [9 language primitives](#expressions) and for each one of them I descr
 ### Contents
 | **[Getting Started](#getting-started)** | [Expressions](#expressions) | [Examples](#examples) |
 |:--- |:--- |:--- |
-| [Building L2](#building-l2) | [Literal](#literal) | [Numbers](#numbers) |
-| [The Compiler](#the-compiler) | [Storage](#storage) | [Commenting](#commenting) |
-| **[Syntactic Sugar](#syntactic-sugar)** | [If](#if) | [Backquoting](#backquoting) |
-| **[Internal Representation](#internal-representation)** | [Function](#function) | [Variable Binding](#variable-binding) |
-| **[Constraint System](#constraint-system)** | [Invoke](#invoke) | [Boolean Expressions](#boolean-expressions) |
-| | [With](#with) | [Switch Expression](#switch-expression) |
-| | [Continuation](#continuation) | [Characters](#characters) |
-| | [Jump](#jump) | [Strings](#strings) |
-| | [Constrain](#constrain) | [Sequencing](#sequencing) |
+| [Building L2](#building-l2) | [Constrain](#constrain) | [Numbers](#numbers) |
+| [The Compiler](#the-compiler) | [Literal](#literal) | [Commenting](#commenting) |
+| **[Syntactic Sugar](#syntactic-sugar)** | [Storage](#storage) | [Backquoting](#backquoting) |
+| **[Internal Representation](#internal-representation)** | [If](#if) | [Variable Binding](#variable-binding) |
+| **[Constraint System](#constraint-system)** | [Function](#function) | [Boolean Expressions](#boolean-expressions) |
+| | [Invoke](#invoke) | [Switch Expression](#switch-expression) |
+| | [With](#with) | [Characters](#characters) |
+| | [Continuation](#continuation) | [Strings](#strings) |
+| | [Jump](#jump) | [Sequencing](#sequencing) |
 | | [Meta](#meta) | [Assume](#assume) |
 | | | [Fields](#fields) |
 | | | [With Variables](#with-variables) |
@@ -857,6 +857,12 @@ L2 has a static constraint system based on Hindley-Milner type inference. Every 
    2. Execute a unification algorithm on the constrain equations that has just been generated
    3. If the algorithm yields a most general unifier, then substitute in the solutions for the variable fragments corresponding to expressions within this component
    4. **If the algorithm does not yield a most general unifier, then the program fails the constraint check**
+### Constrain
+A constrain expression is provided to enable the programmer to directly constrain the signature of the contained expression. (Naturally, if the specified signature contains no variable fragments, then you are essentially fixing an expression's signature.) This is why the following constraints are generated for a constrain expression `(constrain b f)`:
+* Let `g` be the expression's signature.
+* Let `i` be the signature obtained from evaluating `f`.
+* Let `h` be `b`'s signature.
+* Then `g = i = h`.
 ### Literal
 No constraints are generated for a literal expression. The intuition behind this decision is that it is often desirable to reinterpret literals. For example, if the literal is the address of a function, it may be desirable to treat it like a function that can be invoked.
 ### Storage
@@ -895,12 +901,6 @@ For a jump expression, we want to capture the intuition that the signatures of t
 * Let `g` be `f`'s signature.
 * Let `h1, h2, ..., hN` be the signatures corresponding to `a1, a2, ..., aN`.
 * Then g = `(continuation (h1 h2 ... hN))`.
-### Constrain
-A constrain expression is provided to enable the programmer to directly constrain the signature of the contained expression. (Naturally, if the specified signature contains no variable fragments, then you are essentially fixing an expression's signature.) This is why the following constraints are generated for a constrain expression `(constrain b f)`:
-* Let `g` be the expression's signature.
-* Let `i` be the signature obtained from evaluating `f`.
-* Let `h` be `b`'s signature.
-* Then `g = i = h`.
 ### Meta
 For a meta expression, we want to capture the intuition that the meta-expression is indistinguishable from its expansion, and therefore that their signatures are the same. Hence for a meta expression `(f0 f1 f2 ... fN)`, the following constraints are generated:
 * Let `g` be the expression's signature.
