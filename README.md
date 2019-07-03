@@ -240,9 +240,9 @@ In L2, every expression is associated with exactly one fragment. This fragment i
    * A `constrain` expression is depended upon by its child
 2. Now iterate through the strongly connected components in topological order and for each component, do the following:
    1. Generate the constraint equations corresponding to each expression in the manner prescribed below
-   2. Attempt to find the most general unifier of constrain equations that has just been generated
-   3. If the system of constraint equations can be solved, then substitute in the solutions for the variable fragments corresponding to expressions within this component
-   4. If the system of constraint equations cannot be solved, then the program fails the constraint check
+   2. Execute a unification algorithm on the constrain equations that has just been generated
+   3. If the algorithm yields a most general unifier, then substitute in the solutions for the variable fragments corresponding to expressions within this component
+   4. **If the algorithm does not yield a most general unifier, then the program fails the constraint check**
 ### Function
 For a function expression `(function f (p1 p2 ... pN) b)`:
 * Let `g` be the expression's signature.
