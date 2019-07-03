@@ -245,27 +245,27 @@ In L2, every expression is associated with exactly one fragment. This fragment i
    4. If the system of constraint equations cannot be solved, then the program fails the constraint check
 ### Function
 For a function expression `(function f (p1 p2 ... pN) b)`:
-* Let g be the expression's signature.
-* Let h1, h2, ..., hN be the signatures corresponding to p1, p2, ..., pN.
-* Let i be b's signature.
-* Then g = (function (h1 h2 ... hN) i).
+* Let `g` be the expression's signature.
+* Let `h1, h2, ..., hN` be the signatures corresponding to `p1, p2, ..., pN`.
+* Let `i` be `b`'s signature.
+* Then `g = (function (h1 h2 ... hN) i)`.
 ### Continuation
 For a continuation expression `(continuation f (p1 p2 ... pN) b)`:
-* Let g be the expression's signature.
-* Let h1, h2, ..., hN be the signatures corresponding to p1, p2, ..., pN.
-* Then g = (continuation (h1 h2 ... hN)).
+* Let `g` be the expression's signature.
+* Let `h1, h2, ..., hN` be the signatures corresponding to `p1, p2, ..., pN`.
+* Then `g = (continuation (h1 h2 ... hN))`.
 ### Constrain
 For a constrain expression `(constrain f b)`:
-* Let g be the expression's signature.
-* Let i be the signature obtained from evaluating f.
-* Let h be b's signature.
-* Then g = i = h.
+* Let `g` be the expression's signature.
+* Let `i` be the signature obtained from evaluating `f`.
+* Let `h` be `b`'s signature.
+* Then `g = i = h`.
 ### Invoke
 For an invoke expression `(invoke f a1 a2 ... aN)`:
-* Let e be the expression's signature.
-* Let g be f's signature.
-* Let h1, h2, ..., hN be the signatures corresponding to a1, a2, ..., aN.
-* Then g = (function (h1 h2 ... hN) e).
+* Let `e` be the expression's signature.
+* Let `g` be `f`'s signature.
+* Let `h1, h2, ..., hN` be the signatures corresponding to `a1, a2, ..., aN`.
+* Then `g = (function (h1 h2 ... hN) e)`.
 ### Jump
 For an jump expression `(jump f a1 a2 ... aN)`:
 * Let g be f's signature.
@@ -273,21 +273,21 @@ For an jump expression `(jump f a1 a2 ... aN)`:
 * Then g = (continuation (h1 h2 ... hN)).
 ### With
 For a with expression `(with f b)`:
-* Let e be the expression's signature.
-* Let g be f's signature.
-* Let h be b's signature.
-* Then g = (continuation (e)) and e = h.
+* Let `e` be the expression's signature.
+* Let `g` be `f`'s signature.
+* Let `h` be `b`'s signature.
+* Then `g = (continuation (e))` and `e = h`.
 ### If
 For an if expression `(if f p b)`:
-* Let e be the expression's signature.
-* Let g be p's signature.
-* Let i be b's signature.
-* Then e = g and g = i.
+* Let `e` be the expression's signature.
+* Let `g` be `p`'s signature.
+* Let `i` be `b`'s signature.
+* Then `e = g` and `g = i`.
 ### Symbol
 For a symbol `f`:
-* Let e be the expression's signature.
-* Let g be f's definition.
-* Then e = g.
+* Let `e` be the expression's signature.
+* Let `g` be `f`'s definition.
+* Then `e = g`.
 
 ## Examples/Reductions
 In the extensive list processing that follows in this section, the following functions prove to be convenient abbreviations:
