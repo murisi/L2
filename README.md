@@ -947,6 +947,11 @@ For a jump expression, we want to capture the intuition that the signatures of t
 * Let `g` be `f`'s signature.
 * Let `h1, h2, ..., hN` be the signatures corresponding to `a1, a2, ..., aN`.
 * Then g = `(continuation (h1 h2 ... hN))`.
+
+For example, the following program will not pass the constraint check because the `jump` has an incorrect parameter number:
+```racket
+(with cont {cont a b})
+```
 ### Meta
 For a meta expression, we want to capture the intuition that the meta-expression is indistinguishable from its expansion, and therefore that their signatures are the same. Hence for a meta expression `(f0 f1 f2 ... fN)`, the following constraints are generated:
 * Let `g` be the expression's signature.
