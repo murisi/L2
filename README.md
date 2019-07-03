@@ -8,7 +8,7 @@ The approach taken to achieve this has been to make C's features more composable
 There are [9 language primitives](#expressions) and for each one of them I describe their syntax, what exactly they do in English, the i386 assembly they translate into, and an example usage of them. Following this comes a listing of L2's syntactic sugar. Then comes a brief description of [L2's internal representation and the 6 functions that manipulate it](#internal-representation). After that comes a description of how [a meta-expression](#meta) is compiled. The above descriptions take about 8 pages and are essentially a complete description of L2. Then at the end there is a [list of reductions](#examplesreductions) that shows how some of C's constructs can be defined in terms of L2. Here, I have also demonstrated [closures](#closures) to hint at how more exotic things like coroutines and generators are possible using L2's [continuations](#jump).
 
 ### Contents
-| **[Getting Started](#getting-started)** | [Expressions](#expressions) | [Examples/Reductions](#examplesreductions) |
+| **[Getting Started](#getting-started)** | [Expressions](#expressions) | [Examples](#examples) |
 |:--- |:--- |:--- |
 | [Building L2](#building-l2) | [Literal](#literal) | [Numbers](#numbers) |
 | [The Compiler](#the-compiler) | [Storage](#storage) | [Commenting](#commenting) |
@@ -177,7 +177,7 @@ After substituting out the syntactic sugar defined in the [invoke](#invoke), [ju
 
 Makes a list where `x` is first and `y` is the rest in the buffer `b`.
 
-Say that `a` is the fragment `foo` and `b` is the list `(bar)`. Then `[lst a b]` is the fragment `(foo bar)`.
+Say that `a` is the fragment `foo` and `c` is the list `(bar)`. Then `[lst a c b]` is the fragment `(foo bar)`.
 ### `[token? x]`
 `x` must be a fragment.
 
@@ -217,6 +217,28 @@ Evaluates to one if `x` is the same character as `y`, otherwise it evaluates to 
 
 Say that `x` and `y` are the character `d`. Then `[char= x y]` evaluates to `(literal 0...01)`.
 
+### `[var b]`
+`b` must be a buffer.
+
+Makes a new variable in the buffer `b`.
+
+Say `a` is the list `(bar)`. Then `[lst [var b] a b]` is the fragment `(!1231 bar)`, where `!1231` is a representation of the variable.
+
+### `[var? a]`
+`a` must be a fragment.
+
+Evaluates to one if `a` is also a variable. Otherwise evaluates to zero.
+
+Say that `a` is the fragment `foo`. Then `[var? a]` evaluates to `(literal 0...00)`.
+
+### `[var= x y]`
+
+`x` and `y` must be variables.
+
+Evaluates to one if `x` is the same character as `y`, otherwise it evaluates to zero.
+
+Say `b` is a buffer. Then `[var= [var b] [var b]]` evaluates to `(literal 0...00)`.
+
 ## Expressions Continued
 ### Constrain
 ```racket
@@ -232,73 +254,7 @@ If the above expression is not listed above, then the function `function0` is in
 
 Meta-expressions were already demonstrated in the [compiler section](#the-compiler).
 
-## Constraint System
-L2 has a static constraint system based on Hindley-Milner type inference. Every expression is associated with exactly one fragment. This fragment is called the expression's signature. For a program to compile, its expressions when taken as a whole must pass the constraint check. The constraint check is specified below:
-1. Partition all of the expressions of the program into strongly connected components, where dependency is determined as follows:
-   * An expression is dependent upon its children
-   * A symbol is mutually dependent with the expression that defines it
-   * A `constrain` expression is depended upon by its child
-2. Now iterate through the strongly connected components in topological order and for each component, do the following:
-   1. Generate the constraint equations corresponding to each expression in the manner prescribed below
-   2. Execute a unification algorithm on the constrain equations that has just been generated
-   3. If the algorithm yields a most general unifier, then substitute in the solutions for the variable fragments corresponding to expressions within this component
-   4. **If the algorithm does not yield a most general unifier, then the program fails the constraint check**
-### Literal
-No constraints are generated for a literal expression. The intuition behind this decision is that it is often desirable to reinterpret literals. For example, if the literal is the address of a function, it may be desirable to treat it like a function that can be invoked.
-### Storage
-No constraints are generated for a storage expression. The intuition behind this decision is that it is often desirable to reinterpret a sequence of bytes. For example, if the storage expression contains executable code, it may sometimes be desirable to treat it like a function that can be invoked. 
-### If
-For an if expression, we want to capture the intuition that the resulting value of the entire expression can either be that of its consequent or that of its alternate, hence all their signatures must match up. Hence for an if expression `(if f p b)`, the following constraints are generated:
-* Let `e` be the expression's signature.
-* Let `g` be `p`'s signature.
-* Let `i` be `b`'s signature.
-* Then `e = g` and `g = i`.
-### Function
-For a function expression, we want to capture the intuition that its signature is dependent on that of its parameters and body. Hence for a function expression `(function f (p1 p2 ... pN) b)`, the following constraint is generated:
-* Let `g` be the expression's signature.
-* Let `h1, h2, ..., hN` be the signatures corresponding to `p1, p2, ..., pN`.
-* Let `i` be `b`'s signature.
-* Then `g = (function (h1 h2 ... hN) i)`.
-### Invoke
-For an invoke expression, we want to capture the intuition that the signatures of the function's parameters must match those of the arguments, and that signature of the function's body must match the signature of the entire invoke expression. Hence for an invoke expression `(invoke f a1 a2 ... aN)`, the following constraint is generated:
-* Let `e` be the expression's signature.
-* Let `g` be `f`'s signature.
-* Let `h1, h2, ..., hN` be the signatures corresponding to `a1, a2, ..., aN`.
-* Then `g = (function (h1 h2 ... hN) e)`.
-### With
-For a with expression, we want to capture the intuition that the with expression's resulting value can be that of its body, hence the with expression's signature must match that of its body, or it can be that of the value its continuation is called with, hence the expression's signature must match that of its continuation parameter. Hence for a with expression `(with f b)`, the following constraints are generated:
-* Let `e` be the expression's signature.
-* Let `g` be `f`'s signature.
-* Let `h` be `b`'s signature.
-* Then `g = (continuation (e))` and `e = h`.
-### Continuation
-For a continuation expression, we want to capture the inution that its signature is dependent only on its parameters (since a continuation's body can never fully evaluate). Hence for a continuation expression `(continuation f (p1 p2 ... pN) b)`, the following constraint is generated:
-* Let `g` be the expression's signature.
-* Let `h1, h2, ..., hN` be the signatures corresponding to `p1, p2, ..., pN`.
-* Then `g = (continuation (h1 h2 ... hN))`.
-### Jump
-For a jump expression, we want to capture the intuition that the signatures of the continuation's parameters must match those of the jump expression's arguments (since a jump expression can never fully evaluate). Hence for an jump expression `(jump f a1 a2 ... aN)`, the following constraints are generated:
-* Let `g` be `f`'s signature.
-* Let `h1, h2, ..., hN` be the signatures corresponding to `a1, a2, ..., aN`.
-* Then g = `(continuation (h1 h2 ... hN))`.
-### Constrain
-A constrain expression is provided to enable the programmer to directly constrain the signature of the contained expression. (Naturally, if the specified signature contains no variable fragments, then you are essentially fixing an expression's signature.) This is why the following constraints are generated for a constrain expression `(constrain b f)`:
-* Let `g` be the expression's signature.
-* Let `i` be the signature obtained from evaluating `f`.
-* Let `h` be `b`'s signature.
-* Then `g = i = h`.
-### Meta
-For a meta expression, we want to capture the intuition that the meta-expression is indistinguishable from its expansion, and therefore that their signatures are the same. Hence for a meta expression `(f0 f1 f2 ... fN)`, the following constraints are generated:
-* Let `g` be the expression's signature.
-* Let `h` be the signature of the meta expression's expansion.
-* Then `g = h`.
-### Symbol
-For a symbol, we just want to capture the inuition that its signature must be the same at all sites. Hence for a symbol `f`, we generate the following constraint:
-* Let `e` be the expression's signature.
-* Let `g` be `f`'s definition.
-* Then `e = g`.
-
-## Examples/Reductions
+## Examples
 In the extensive list processing that follows in this section, the following functions prove to be convenient abbreviations:
 #### abbreviations.l2
 ```racket
@@ -866,3 +822,69 @@ To recapitulate, we localized and separated out the definition of a field from t
 ./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 numbers64.l2 backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 assume.l2 fields.l2 somefields.l2 - test12.l2
 ```
 Note that there is no struct definition in the code, there are only definitions of the fields we need to work with. The negative consequence of this is that we lose C's type safety and portability. The positive consequences are that we gain control over the struct packing, we are now able to use the same field definitions across several conceptually different structs, and that we can overlap our fields in completely arbitrary ways.
+
+## Constraint System
+L2 has a static constraint system based on Hindley-Milner type inference. Every expression is associated with exactly one fragment. This fragment is called the expression's signature. For a program to compile, its expressions when taken as a whole must pass the constraint check. The constraint check is specified below:
+1. Partition all of the expressions of the program into strongly connected components, where dependency is determined as follows:
+   * An expression is dependent upon its children
+   * A symbol is mutually dependent with the expression that defines it
+   * A `constrain` expression is depended upon by its child
+2. Now iterate through the strongly connected components in topological order and for each component, do the following:
+   1. Generate the constraint equations corresponding to each expression in the manner prescribed below
+   2. Execute a unification algorithm on the constrain equations that has just been generated
+   3. If the algorithm yields a most general unifier, then substitute in the solutions for the variable fragments corresponding to expressions within this component
+   4. **If the algorithm does not yield a most general unifier, then the program fails the constraint check**
+### Literal
+No constraints are generated for a literal expression. The intuition behind this decision is that it is often desirable to reinterpret literals. For example, if the literal is the address of a function, it may be desirable to treat it like a function that can be invoked.
+### Storage
+No constraints are generated for a storage expression. The intuition behind this decision is that it is often desirable to reinterpret a sequence of bytes. For example, if the storage expression contains executable code, it may sometimes be desirable to treat it like a function that can be invoked. 
+### If
+For an if expression, we want to capture the intuition that the resulting value of the entire expression can either be that of its consequent or that of its alternate, hence all their signatures must match up. Hence for an if expression `(if f p b)`, the following constraints are generated:
+* Let `e` be the expression's signature.
+* Let `g` be `p`'s signature.
+* Let `i` be `b`'s signature.
+* Then `e = g` and `g = i`.
+### Function
+For a function expression, we want to capture the intuition that its signature is dependent on that of its parameters and body. Hence for a function expression `(function f (p1 p2 ... pN) b)`, the following constraint is generated:
+* Let `g` be the expression's signature.
+* Let `h1, h2, ..., hN` be the signatures corresponding to `p1, p2, ..., pN`.
+* Let `i` be `b`'s signature.
+* Then `g = (function (h1 h2 ... hN) i)`.
+### Invoke
+For an invoke expression, we want to capture the intuition that the signatures of the function's parameters must match those of the arguments, and that signature of the function's body must match the signature of the entire invoke expression. Hence for an invoke expression `(invoke f a1 a2 ... aN)`, the following constraint is generated:
+* Let `e` be the expression's signature.
+* Let `g` be `f`'s signature.
+* Let `h1, h2, ..., hN` be the signatures corresponding to `a1, a2, ..., aN`.
+* Then `g = (function (h1 h2 ... hN) e)`.
+### With
+For a with expression, we want to capture the intuition that the with expression's resulting value can be that of its body, hence the with expression's signature must match that of its body, or it can be that of the value its continuation is called with, hence the expression's signature must match that of its continuation parameter. Hence for a with expression `(with f b)`, the following constraints are generated:
+* Let `e` be the expression's signature.
+* Let `g` be `f`'s signature.
+* Let `h` be `b`'s signature.
+* Then `g = (continuation (e))` and `e = h`.
+### Continuation
+For a continuation expression, we want to capture the inution that its signature is dependent only on its parameters (since a continuation's body can never fully evaluate). Hence for a continuation expression `(continuation f (p1 p2 ... pN) b)`, the following constraint is generated:
+* Let `g` be the expression's signature.
+* Let `h1, h2, ..., hN` be the signatures corresponding to `p1, p2, ..., pN`.
+* Then `g = (continuation (h1 h2 ... hN))`.
+### Jump
+For a jump expression, we want to capture the intuition that the signatures of the continuation's parameters must match those of the jump expression's arguments (since a jump expression can never fully evaluate). Hence for an jump expression `(jump f a1 a2 ... aN)`, the following constraints are generated:
+* Let `g` be `f`'s signature.
+* Let `h1, h2, ..., hN` be the signatures corresponding to `a1, a2, ..., aN`.
+* Then g = `(continuation (h1 h2 ... hN))`.
+### Constrain
+A constrain expression is provided to enable the programmer to directly constrain the signature of the contained expression. (Naturally, if the specified signature contains no variable fragments, then you are essentially fixing an expression's signature.) This is why the following constraints are generated for a constrain expression `(constrain b f)`:
+* Let `g` be the expression's signature.
+* Let `i` be the signature obtained from evaluating `f`.
+* Let `h` be `b`'s signature.
+* Then `g = i = h`.
+### Meta
+For a meta expression, we want to capture the intuition that the meta-expression is indistinguishable from its expansion, and therefore that their signatures are the same. Hence for a meta expression `(f0 f1 f2 ... fN)`, the following constraints are generated:
+* Let `g` be the expression's signature.
+* Let `h` be the signature of the meta expression's expansion.
+* Then `g = h`.
+### Symbol
+For a symbol, we just want to capture the inuition that its signature must be the same at all sites. Hence for a symbol `f`, we generate the following constraint:
+* Let `e` be the expression's signature.
+* Let `g` be `f`'s definition.
+* Then `e = g`.
