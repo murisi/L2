@@ -233,7 +233,7 @@ If the above expression is not listed above, then the function `function0` is in
 Meta-expressions were already demonstrated in the [compiler section](#the-compiler).
 
 ## Constraint System
-In L2, every expression is associated with exactly one fragment. This fragment is called the expression's signature. For a program to compile, it must pass the constraint check. The constraint check is done as follows:
+L2 has a static constraint system based on Hindley-Milner type inference. Every expression is associated with exactly one fragment. This fragment is called the expression's signature. For a program to compile, its expressions when taken as a whole must pass the constraint check. The constraint check is specified below:
 1. Partition all of the expressions of the program into strongly connected components, where dependency is determined as follows:
    * An expression is dependent upon its children
    * A symbol is mutually dependent with the expression that defines it
