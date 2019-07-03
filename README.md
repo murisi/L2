@@ -844,6 +844,10 @@ This is implemented and used as follows:
 ```racket
 (constrain nil (function _(r) (with-vars (a) (`(list ,a)r)r)))
 ```
+#### shell
+```shell
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 numbers64.l2 backquote.l2 let.l2 with-vars.l2 - test13.l2
+```
 Note that the above code simply constrains the signature of the symbol `nil` to be of the form `(list !2342)`, where `!2342` is a representation of the (type) variable. Also note that the signature is contained within a function, this is because the compiler needs a way to supply a buffer to the fragment manipulation functions.
 
 ## Constraint System
@@ -863,28 +867,65 @@ A constrain expression is provided to enable the programmer to directly constrai
 * Let `i` be the signature obtained from evaluating `f`.
 * Let `h` be `b`'s signature.
 * Then `g = i = h`.
+
+For example, the following program will not pass the constraint check because `hello` does not unify with `world`:
+```racket
+(constrain someid (function _(r) (` hello r)))
+(constrain someid (function _(r) (` world r)))
+```
 ### Literal
 No constraints are generated for a literal expression. The intuition behind this decision is that it is often desirable to reinterpret literals. For example, if the literal is the address of a function, it may be desirable to treat it like a function that can be invoked.
+
+For example, the following program will pass the constraint check:
+```racket
+(constrain (literal 0...01) (function _(r) (` hello r)))
+```
 ### Storage
-No constraints are generated for a storage expression. The intuition behind this decision is that it is often desirable to reinterpret a sequence of bytes. For example, if the storage expression contains executable code, it may sometimes be desirable to treat it like a function that can be invoked. 
+No constraints are generated for a storage expression. The intuition behind this decision is that it is often desirable to reinterpret a sequence of bytes. For example, if the storage expression contains executable code, it may sometimes be desirable to treat it like a function that can be invoked.
+
+For example, the following program will pass the constraint check:
+```racket
+(constrain (storage somestorage (literal 0...01)) (function _(r) (` hello r)))
+```
 ### If
 For an if expression, we want to capture the intuition that the resulting value of the entire expression can either be that of its consequent or that of its alternate, hence all their signatures must match up. Hence for an if expression `(if f p b)`, the following constraints are generated:
 * Let `e` be the expression's signature.
 * Let `g` be `p`'s signature.
 * Let `i` be `b`'s signature.
 * Then `e = g` and `g = i`.
+
+For example, the following program will not pass the constraint check because the signatures of the branches of the `if` expression cannot be unified:
+```racket
+(if (literal 0...01)
+  (constrain consequent (function _(r) (` hello r)))
+  (constrain alternate (function _(r) (` world r))))
+```
 ### Function
 For a function expression, we want to capture the intuition that its signature is dependent on that of its parameters and body. Hence for a function expression `(function f (p1 p2 ... pN) b)`, the following constraint is generated:
 * Let `g` be the expression's signature.
 * Let `h1, h2, ..., hN` be the signatures corresponding to `p1, p2, ..., pN`.
 * Let `i` be `b`'s signature.
 * Then `g = (function (h1 h2 ... hN) i)`.
+
+For example, the following program will not pass the constraint check because the supplied function signature has an incorrect parameter number:
+```racket
+(constrain (function (a) a) (function _(r) (`(function (sig sig) sig)r)))
+```
 ### Invoke
 For an invoke expression, we want to capture the intuition that the signatures of the function's parameters must match those of the arguments, and that signature of the function's body must match the signature of the entire invoke expression. Hence for an invoke expression `(invoke f a1 a2 ... aN)`, the following constraint is generated:
 * Let `e` be the expression's signature.
 * Let `g` be `f`'s signature.
 * Let `h1, h2, ..., hN` be the signatures corresponding to `a1, a2, ..., aN`.
 * Then `g = (function (h1 h2 ... hN) e)`.
+
+For example, the following program will pass the constraint check because `id` is polymorphic:
+```racket
+(constrain id (function _(r) (with-vars (a) (`(function (,a) ,a)r)r)))
+(function id (x) x)
+
+[id (constrain (literal 0...01) (function _(r) (` hello r)))]
+[id (constrain (literal 0...01) (function _(r) (` world r)))]
+```
 ### With
 For a with expression, we want to capture the intuition that the with expression's resulting value can be that of its body, hence the with expression's signature must match that of its body, or it can be that of the value its continuation is called with, hence the expression's signature must match that of its continuation parameter. Hence for a with expression `(with f b)`, the following constraints are generated:
 * Let `e` be the expression's signature.
@@ -896,6 +937,11 @@ For a continuation expression, we want to capture the inution that its signature
 * Let `g` be the expression's signature.
 * Let `h1, h2, ..., hN` be the signatures corresponding to `p1, p2, ..., pN`.
 * Then `g = (continuation (h1 h2 ... hN))`.
+
+For example, the following program will not pass the constraint check because the supplied continuation signature has an incorrect parameter number:
+```racket
+(constrain (continuation (a) a) (function _(r) (`(continuation (sig sig) sig)r)))
+```
 ### Jump
 For a jump expression, we want to capture the intuition that the signatures of the continuation's parameters must match those of the jump expression's arguments (since a jump expression can never fully evaluate). Hence for an jump expression `(jump f a1 a2 ... aN)`, the following constraints are generated:
 * Let `g` be `f`'s signature.
@@ -906,8 +952,3 @@ For a meta expression, we want to capture the intuition that the meta-expression
 * Let `g` be the expression's signature.
 * Let `h` be the signature of the meta expression's expansion.
 * Then `g = h`.
-### Symbol
-For a symbol, we just want to capture the inuition that its signature must be the same at all sites. Hence for a symbol `f`, we generate the following constraint:
-* Let `e` be the expression's signature.
-* Let `g` be `f`'s definition.
-* Then `e = g`.
