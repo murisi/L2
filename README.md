@@ -268,9 +268,9 @@ For an invoke expression `(invoke f a1 a2 ... aN)`:
 * Then `g = (function (h1 h2 ... hN) e)`.
 ### Jump
 For an jump expression `(jump f a1 a2 ... aN)`:
-* Let g be f's signature.
-* Let h1, h2, ..., hN be the signatures corresponding to a1, a2, ..., aN.
-* Then g = (continuation (h1 h2 ... hN)).
+* Let `g` be `f`'s signature.
+* Let `h1, h2, ..., hN` be the signatures corresponding to `a1, a2, ..., aN`.
+* Then g = `(continuation (h1 h2 ... hN))`.
 ### With
 For a with expression `(with f b)`:
 * Let `e` be the expression's signature.
