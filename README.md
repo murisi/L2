@@ -244,30 +244,30 @@ In L2, every expression is associated with exactly one fragment. This fragment i
    3. If the algorithm yields a most general unifier, then substitute in the solutions for the variable fragments corresponding to expressions within this component
    4. **If the algorithm does not yield a most general unifier, then the program fails the constraint check**
 ### Function
-For a function expression `(function f (p1 p2 ... pN) b)`:
+For a function expression, we want to capture the intuition that its signature is dependent on that of its parameters and body. Hence for a function expression `(function f (p1 p2 ... pN) b)`, the following constraint is generated:
 * Let `g` be the expression's signature.
 * Let `h1, h2, ..., hN` be the signatures corresponding to `p1, p2, ..., pN`.
 * Let `i` be `b`'s signature.
 * Then `g = (function (h1 h2 ... hN) i)`.
 ### Continuation
-For a continuation expression `(continuation f (p1 p2 ... pN) b)`:
+For a continuation expression, we want to capture the inution that its signature is dependent only on its parameters (since a continuation's body can never fully evaluate). Hence for a continuation expression `(continuation f (p1 p2 ... pN) b)`, the following constraint is generated:
 * Let `g` be the expression's signature.
 * Let `h1, h2, ..., hN` be the signatures corresponding to `p1, p2, ..., pN`.
 * Then `g = (continuation (h1 h2 ... hN))`.
 ### Constrain
-For a constrain expression `(constrain f b)`:
+A constrain expression is provided to enable the programmer to directly constrain the signature of the contained expression. This is why the following constraints are generated for a constrain expression `(constrain b f)`:
 * Let `g` be the expression's signature.
 * Let `i` be the signature obtained from evaluating `f`.
 * Let `h` be `b`'s signature.
 * Then `g = i = h`.
 ### Invoke
-For an invoke expression `(invoke f a1 a2 ... aN)`:
+For an invoke expression, we want to capture the intuition that the signatures of the function's parameters must match those of the arguments, and that signature of the function's body must match the signature of the entire invoke expression. Hence for an invoke expression `(invoke f a1 a2 ... aN)`, the following constraint is generated:
 * Let `e` be the expression's signature.
 * Let `g` be `f`'s signature.
 * Let `h1, h2, ..., hN` be the signatures corresponding to `a1, a2, ..., aN`.
 * Then `g = (function (h1 h2 ... hN) e)`.
 ### Jump
-For an jump expression `(jump f a1 a2 ... aN)`:
+For a jump expression, we want to capture the intuition that the signatures of the continuation's parameters must match those of the jump expression's arguments (since a jump expression can never fully evaluate). Hence for an jump expression `(jump f a1 a2 ... aN)`, the following constraints are generated:
 * Let `g` be `f`'s signature.
 * Let `h1, h2, ..., hN` be the signatures corresponding to `a1, a2, ..., aN`.
 * Then g = `(continuation (h1 h2 ... hN))`.
