@@ -272,19 +272,19 @@ For a jump expression, we want to capture the intuition that the signatures of t
 * Let `h1, h2, ..., hN` be the signatures corresponding to `a1, a2, ..., aN`.
 * Then g = `(continuation (h1 h2 ... hN))`.
 ### With
-For a with expression `(with f b)`:
+For a with expression, we want to capture the intuition that the with expression's resulting value can be that of its body, hence the with expression's signature must match that of its body, or it can be that of the value its continuation is called with, hence the expression's signature must match that of its continuation parameter. Hence for a with expression `(with f b)`, the following constraints are generated:
 * Let `e` be the expression's signature.
 * Let `g` be `f`'s signature.
 * Let `h` be `b`'s signature.
 * Then `g = (continuation (e))` and `e = h`.
 ### If
-For an if expression `(if f p b)`:
+For an if expression, we want to capture the intuition that the resulting value of the entire expression can either be that of its consequent or that of its alternate, hence all their signatures must match up. Hence for an if expression `(if f p b)`, the following constraints are generated:
 * Let `e` be the expression's signature.
 * Let `g` be `p`'s signature.
 * Let `i` be `b`'s signature.
 * Then `e = g` and `g = i`.
 ### Symbol
-For a symbol `f`:
+For a symbol, we just want to capture the inuition that its signature must be the same at all sites. Hence for a symbol `f`, we generate the following constraint:
 * Let `e` be the expression's signature.
 * Let `g` be `f`'s definition.
 * Then `e = g`.
