@@ -1,5 +1,5 @@
 # L2
-L2 is a small statically typed programming language with the following characteristics:
+L2 is a small statically typed programming language. Roughly speaking it looks like Scheme, it behaves like C, and it type-checks like ML. More precisely, L2 has the following characteristics:
  * S-expression syntax
  * Types are first-class s-expressions
  * Hindley-Milner type inference
