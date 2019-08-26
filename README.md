@@ -1,7 +1,8 @@
 # L2
 L2 is a small statically typed programming language. Roughly speaking it looks like Scheme, it behaves like C, and it type-checks like ML. More precisely, L2 has the following characteristics:
  * S-expression syntax
- * Types are first-class s-expressions
+ * Types are S-expressions
+ * [First-class types](#constrain) (at compile-time)
  * [Hindley-Milner type inference](#constraint-system)
  * Neither algebraic nor primitive data types are provided
  * Manual memory management
