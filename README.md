@@ -2,13 +2,13 @@
 L2 is a small statically typed programming language. Roughly speaking it looks like Scheme, it behaves like C, and it type-checks like ML. More precisely, L2 has the following characteristics:
  * S-expression syntax
  * Types are first-class s-expressions
- * Hindley-Milner type inference
+ * [Hindley-Milner type inference](#constraint-system)
  * Neither algebraic nor primitive data types are provided
  * Manual memory management
- * Procedural unhygienic macros
- * Very general control flow: `break`=`return`=`longjmp`
- * Exactly 10 language constructs
- * Exactly 11 builtin functions (all of which are for S-expression manipulation.)
+ * [Procedural unhygienic macros](#meta)
+ * [Very general control flow](#jump): `break`=`return`=`longjmp`
+ * [Exactly 10 language constructs](#expressions)
+ * [Exactly 11 builtin functions](#internal-representation) (all of which are for S-expression manipulation.)
 
 I recommend that you take a look at [the implementation of a self-hosting compiler for L2 that accompanies this project](src/compile.l2) and compare it to [the compiler for bootstrapping it written in C](bootstrap/compile.c) to get a feeling for what L2 is like.
 
