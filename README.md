@@ -8,11 +8,11 @@ L2 is a small statically typed programming language. Roughly speaking it looks l
  * [Procedural unhygienic macros](#meta)
  * [Very general control flow](#jump): `break`=`return`=`longjmp`
  * [Exactly 10 language constructs](#expressions)
- * [Exactly 11 builtin functions](#internal-representation) (all of which are for S-expression manipulation.)
+ * [Exactly 9 builtin functions](#internal-representation) (all of which are for S-expression manipulation.)
 
 I recommend that you take a look at [the implementation of a self-hosting compiler for L2 that accompanies this project](src/compile.l2) and compare it to [the compiler for bootstrapping it written in C](bootstrap/compile.c) to get a feeling for what L2 is like.
 
-There are [9 language primitives](#expressions) and for each one of them I describe their syntax, what exactly they do in English, the i386 assembly they translate into, and an example usage of them. Following this comes a listing of L2's syntactic sugar. Then comes a brief description of [L2's internal representation and the 6 functions that manipulate it](#internal-representation). After that comes a description of how [a meta-expression](#meta) is compiled. The above descriptions take about 8 pages and are essentially a complete description of L2. Then at the end there is a [list of reductions](#examplesreductions) that shows how some of C's constructs can be defined in terms of L2. Here, I have also demonstrated [closures](#closures) to hint at how more exotic things like coroutines and generators are possible using L2's [continuations](#jump).
+There are [9 language primitives](#expressions) and for each one of them I describe their syntax, what exactly they do in English, the i386 assembly they translate into, and an example usage of them. Following this comes a listing of L2's syntactic sugar. Then comes a brief description of [L2's internal representation and the 9 functions that manipulate it](#internal-representation). After that comes a description of how [a meta-expression](#meta) is compiled. The above descriptions take about 8 pages and are essentially a complete description of L2. Then at the end there is a [list of reductions](#examplesreductions) that shows how some of C's constructs can be defined in terms of L2. Here, I have also demonstrated [closures](#closures) to hint at how more exotic things like coroutines and generators are possible using L2's [continuations](#jump).
 
 ### Contents
 | **[Getting Started](#getting-started)** | [Expressions](#expressions) | [Examples](#examples) |
