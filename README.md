@@ -310,7 +310,7 @@ Integer literals prove to be quite tedious in L2 as can be seen from some of the
           (literal 0...0))))))))))]}))
     [@fst l] (literal 0...0)}) r])
 ```
-#### test3.l2
+#### test2.l2
 ```racket
 [putchar (# 65)]
 ```
@@ -320,7 +320,7 @@ Integer literals prove to be quite tedious in L2 as can be seen from some of the
 ```
 #### shell
 ```shell
-./bin/l2compile abbreviations.l2 comments.l2 numbers64.l2 test3.l2 - "bin/x86_64.o"
+./bin/l2compile abbreviations.l2 comments.l2 numbers64.l2 test2.l2 - "bin/x86_64.o"
 ```
 
 ### Commenting
@@ -331,13 +331,13 @@ L2 has no built-in mechanism for commenting code written in it. The following co
 (function ignore (l r) [=# #123456789 r])
 ```
 
-#### test1.l2
+#### test3.l2
 ```racket
 (ignore This is a comment, take no notice.)
 ```
 #### shell
 ```shell
-./bin/l2compile abbreviations.l2 comments.l2 test1.l2 - "bin/x86_64.o"
+./bin/l2compile abbreviations.l2 comments.l2 test3.l2 - "bin/x86_64.o"
 ```
 
 ### Backquoting
@@ -676,7 +676,7 @@ This is implemented as follows:
     {(continuation assume:tempas0 ()
       (if (,[@fst l]) {assume:return (,[@frst l])} (ignore)))})r))
 ```
-#### test11.l2
+#### test12.l2
 ```
 (function foo (x y)
   (assume [not [= x y]] (begin
@@ -690,7 +690,7 @@ In the function `foo`, if `x` were equal to `y`, then the else branch of the `as
 
 #### shell
 ```shell
-./bin/l2compile abbreviations.l2 comments.l2 numbers64.l2 backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 assume.l2 test11.l2 - "bin/x86_64.o"
+./bin/l2compile abbreviations.l2 comments.l2 numbers64.l2 backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 assume.l2 test12.l2 - "bin/x86_64.o"
 ```
 Note that the `assume` expression can also be used to achieve C's `restrict` keyword simply by making its condition the conjunction of inequalities on the memory locations of the extremeties of the "arrays" in question.
 
@@ -817,7 +817,7 @@ To recapitulate, we localized and separated out the definition of a field from t
 
 (function cdr (l r) [mk-field l r #8 #8])
 ```
-#### test12.l2
+#### test13.l2
 ```racket
 (storage mycons (ignore) (ignore))
 (setf car mycons (char A))
@@ -827,7 +827,7 @@ To recapitulate, we localized and separated out the definition of a field from t
 ```
 #### shell
 ```shell
-./bin/l2compile abbreviations.l2 comments.l2 numbers64.l2 backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 assume.l2 fields.l2 somefields.l2 test12.l2 - "bin/x86_64.o"
+./bin/l2compile abbreviations.l2 comments.l2 numbers64.l2 backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 assume.l2 fields.l2 somefields.l2 test13.l2 - "bin/x86_64.o"
 ```
 Note that there is no struct definition in the code, there are only definitions of the fields we need to work with. The negative consequence of this is that we lose C's type safety and portability. The positive consequences are that we gain control over the struct packing, we are now able to use the same field definitions across several conceptually different structs, and that we can overlap our fields in completely arbitrary ways.
 
@@ -845,13 +845,13 @@ This is implemented and used as follows:
   (let (bindings [meta:map3 [@fst l] [@frrst l] r (function _(e s r) (`(,e [var ,s])r)) r])
     [lst (` let r) [meta:reverse [lst [@frst l] [meta:reverse bindings r] r] r] r]))
 ```
-#### test13.l2
+#### test14.l2
 ```racket
 (constrain nil (function _(r) (with-vars (a) (`(list ,a)r)r)))
 ```
 #### shell
 ```shell
-./bin/l2compile abbreviations.l2 comments.l2 numbers64.l2 backquote.l2 let.l2 with-vars.l2 test13.l2 - "bin/x86_64.o"
+./bin/l2compile abbreviations.l2 comments.l2 numbers64.l2 backquote.l2 let.l2 with-vars.l2 test14.l2 - "bin/x86_64.o"
 ```
 Note that the above code simply constrains the signature of the symbol `nil` to be of the form `(list !2342)`, where `!2342` is a representation of the (type) variable. Also note that the signature is contained within a function, this is because the compiler needs a way to supply a buffer to the fragment manipulation functions.
 
