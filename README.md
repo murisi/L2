@@ -26,7 +26,8 @@ There are [9 language primitives](#expressions) and for each one of them I descr
 | | [With](#with) | [Characters](#characters) |
 | | [Continuation](#continuation) | [Strings](#strings) |
 | | [Jump](#jump) | [Sequencing](#sequencing) |
-| | [Meta](#meta) | [Assume](#assume) |
+| | [Meta](#meta) | [Conditional Compilation](#conditional-compilation) |
+| | | [Assume](#assume) |
 | | | [Fields](#fields) |
 | | | [With Variables](#with-variables) |
 
@@ -646,7 +647,18 @@ It is implemented and used as follows:
 ```shell
 ./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 numbers64.l2 backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 do.l2 - test10.l2
 ```
-
+### Conditional Compilation
+Up till now, references to functions defined elsewhere have been the only things used as the first subexpression of an expression. Sometimes, however, the clarity of the whole expression can be improved by inlining the function. The following code proves this in the context of conditional compilation.
+#### test11.l2
+```
+((if [> #10 #20] @fst @frst)
+  [printf (" I am not compiled!)]
+  [printf (" I am the one compiled!)])
+```
+#### shell
+```shell
+./bin/l2compile "bin/x86_64.o" abbreviations.l2 comments.l2 numbers64.l2 backquote.l2 let.l2 boolean.l2 switch.l2 characters.l2 strings.l2 - test11.l2
+```
 ### Assume
 There are far fewer subtle ways to trigger undefined behaviors in L2 than in other unsafe languages because L2 does not have dereferencing, arithmetic operators, types, or other such functionality built in; the programmer has to implement this functionality themselves in [assembly routines callable from L2](assets/x86_64.s). This shift in responsibility means that any L2 compiler is freed up to treat invocations of undefined behaviors in L2 code as intentional. The following usage of undefined behavior within the function `assume` is inspired by [Regehr](https://blog.regehr.org/archives/1096). The function `assume`, which compiles `y` assuming that the condition `x` holds, implements the following transformation.
 ```racket
