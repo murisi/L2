@@ -275,23 +275,24 @@
       {return [meta:reverse labels r]})) emt seed list}))
 
 (ignore
-  Does the transformation (values arg1 arg2 ...) -> (storage values:stor arg1 arg2 ...).
-  (values arg1 arg2 ...) has the type (values sig1 sig2 ...) where sigj is the signature
+  Does the transformation (values storer arg1 arg2 ...) -> (storer values:stor arg1 arg2 ...).
+  (values storer arg1 arg2 ...) has the type (values sig1 sig2 ...) where sigj is the signature
   of argj.)
 
-(function values (args r)
+(function values (l r)
+  (let (storer [@fst l]) (args [@rst l])
   (let (params [meta:label args (` values:param r) r])
         (vars [meta:label args (` values:var r) r])
   (let (unquoted-vars [meta:map2 vars r (\ l r [llst [lst -,- emt r] l emt r]) r])
     (`(with values:return
         (,[lllst (` jump r) (`(constrain
             (continuation values:func (,[lst (` values:cont r) params r])
-              {values:cont (,[llst (` storage r) (` values:stor r) params r])})
+              {values:cont (,[llst storer (` values:stor r) params r])})
           (\ values:r (with-vars ,vars
             (`(continuation (,[lst
                 (`(continuation
                     ((,[lst (` values values:r) (,[`[llst unquoted-vars (` values:r r) emt r]r]) values:r])))values:r)
-                (,[`[llst unquoted-vars (` values:r r) emt r]r]) values:r])) values:r) values:r)))r) (` values:return r) args r]))r))))
+                (,[`[llst unquoted-vars (` values:r r) emt r]r]) values:r])) values:r) values:r)))r) (` values:return r) args r]))r)))))
 
 (ignore
   Binds values bound by values. I.e. evaluating (bind x (param1 param2 ...) expr) where

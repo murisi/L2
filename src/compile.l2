@@ -11,7 +11,7 @@
     [set undefined-bindings nil]
     (let (global-bindings [global-binding-augs-of exprs ..]) (do
       (foreach (expr exprs) (do
-        [visit-expressions vfind-multiple-definitions (storage _ expr) (values handler)]
+        [visit-expressions vfind-multiple-definitions (storage _ expr) (values storage handler)]
         [containment-analysis expr]
         [classify-program-bindings expr]
         [link-symbols expr (true) undefined-bindings global-bindings nil ..]
@@ -131,15 +131,15 @@
     (let (file-exprss [reverse (reverse-map (infn file-names)
         [reverse (reverse-map (e [read-expressions infn ..])
           (let (f (storage _ e))
-            (do [pre-visit-expressions vgenerate-metas f (values bndgs ..)] $f)) ..) ..] ..) ..])
+            (do [pre-visit-expressions vgenerate-metas f (values storage bndgs ..)] $f)) ..) ..] ..) ..])
       (do
         (let (all-exprs [reverse-flatten file-exprss ..])
         (let (undefined-bindings (storage _ nil))
         (let (global-bindings [global-binding-augs-of all-exprs ..]) (do
           (foreach (expr all-exprs) [link-symbols expr (true) undefined-bindings global-bindings nil ..])
           [infer-types all-exprs ..]
-          (foreach (expr all-exprs) [pre-visit-expressions vunlink-symbols (storage _ expr) (values global-bindings)])
-          (foreach (expr all-exprs) [pre-visit-expressions vunlink-symbols (storage _ expr) (values $undefined-bindings)])))))
+          (foreach (expr all-exprs) [pre-visit-expressions vunlink-symbols (storage _ expr) (values storage global-bindings)])
+          (foreach (expr all-exprs) [pre-visit-expressions vunlink-symbols (storage _ expr) (values storage $undefined-bindings)])))))
         
         (foreach (infn file-names) (exprs file-exprss)
           (let (undefined-bindings (storage _ (ignore)))
@@ -169,7 +169,6 @@
     (let (buf [create-buffer #0 exit-cont])
     (fallthrough
         (do
-          (ignore(bind ((buffer-storage buf handler) mytest (" hello)) (mystr) [print-str (stdout) mystr handler]))
           (let (source-fns [@cdr[argv buf handler]])
           (let (dash-list-ref (locate (arg (storage _ source-fns)) [str= arg (" -)]))
           (if [nil? $dash-list-ref] {handler (storage _ arguments-error)}
