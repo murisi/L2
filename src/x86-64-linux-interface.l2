@@ -324,6 +324,29 @@
   [-(@ buf-curr-pos $last-elt-ref)len]))))
 
 (ignore
+  The following macro implements the following transformation:
+  ((buffer-storage buf hdl) buf-storage arg1 arg2 ... argN)
+  ->
+  (let (buf-storage [buffer-alloc [* N(unit)] buf hdl]) (do
+    [set [+ buf-storage [* #0(unit)]] arg1]
+    [set [+ buf-storage [* #1(unit)]] arg2]
+    ...
+    [set [+ buf-storage [* #(N-1)(unit)]] argN]
+    buf-storage)))
+
+(function buffer-storage (buffer-storage:l buffer-storage:r)
+  (`(function buffer-storage:temp (l r)
+      (`(let ((,[@fst l]) [buffer-alloc [* (,[=# [- [meta:length l] #1] r]) (unit)]
+            (,(,[`[llst [@fst buffer-storage:l] (` r buffer-storage:r) emt buffer-storage:r] buffer-storage:r]))
+            (,(,[`[llst [@frst buffer-storage:l] (` r buffer-storage:r) emt buffer-storage:r] buffer-storage:r]))])
+          (,[lst (` do r) [meta:reverse [lst [@fst l]
+            (loop make-set (identifiers [@rst l]) (idx #0) (sets emt)
+              (if [emt? identifiers]
+                sets
+                {make-set [@rst identifiers] [+ idx #1]
+                  [lst (`[set [+ (,[@fst l]) [* (,[=# idx r]) (unit)]] (,[@fst identifiers])]r) sets r]})) r] r] r]))r))buffer-storage:r))
+
+(ignore
   Releases the memory associated with the buffer reg. After a call to this function, it is
   invalid to read or write data to the memory allocated on this region.)
 
