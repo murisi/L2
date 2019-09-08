@@ -288,9 +288,10 @@
             (continuation values:func (,[lst (` values:cont r) params r])
               {values:cont (,[llst (` storage r) (` values:stor r) params r])})
           (\ values:r (with-vars ,vars
-            ((,[lst -`- emt r])
-              (continuation (,[lst [llst (` continuation r) [lst [lst (` values r) unquoted-vars r] emt r] emt r] unquoted-vars r]))
-                values:r) values:r)))r) (` values:return r) args r]))r))))
+            (`(continuation (,[lst
+                (`(continuation
+                    ((,[lst (` values values:r) (,[`[llst unquoted-vars (` values:r r) emt r]r]) values:r])))values:r)
+                (,[`[llst unquoted-vars (` values:r r) emt r]r]) values:r])) values:r) values:r)))r) (` values:return r) args r]))r))))
 
 (ignore
   Binds values bound by values. I.e. evaluating (bind x (param1 param2 ...) expr) where
@@ -310,9 +311,8 @@
                     {make-set [@rst identifiers] [+ offset (unit)]
                       [lst (`[get [+ bind:param (,[=# offset r])]]r) params r]})) r]))
             (\ bind:r (with-vars ,vars
-              ((,[lst -`- emt r])
-                (continuation (,[llst [llst (` continuation r) unquoted-vars emt r]
-                    [lst (` values r) unquoted-vars r] emt r])) bind:r) bind:r)))
+              (`(continuation ((continuation (,(,[`[llst unquoted-vars (` bind:r r) emt r]r])))
+                  (,[lst (` values bind:r) (,[`[llst unquoted-vars (` bind:r r) emt r]r]) bind:r]))) bind:r) bind:r)))
           (continuation bind:cont ,identifiers {bind:return ,body}) ,param})r)))))
 
 (ignore
