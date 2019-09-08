@@ -247,6 +247,64 @@
     (@ expr-signature e)
     [copy-fragment (@ expr-signature e) (storage _ nil) (storage _ nil) r handler]))
 
+(constrain generate-equations (\ r (with-vars (a) (`(function (expr (list expr) buffer ,a) (list (values frag frag)))r)r)))
+
+(function generate-equations (e scc buf handler)
+  (substitute (.. buf handler)
+    (let (function-token [token->fragment [build-token [rstrcpy (" function) ..] ..]])
+    (let (continuation-token [token->fragment [build-token [rstrcpy (" continuation) ..] ..]])
+    (switch = (@ expr-type e)
+      ((-function-)
+        (let (params-signature [list->fragment [reverse
+          (reverse-map (x (@ expr-parameters e)) (@ expr-signature x) ..) ..]])
+        (list
+          ((values (buffer-storage ..) (@ expr-signature e) [list->fragment [cons function-token [cons params-signature
+            [cons (@ expr-signature (@ expr-expression e)) nil ..] ..] ..]])
+          (values (buffer-storage ..) (@ expr-signature e) (@ expr-signature (@ expr-reference e)))) ..)))
+      
+      ((-continuation-)
+        (let (params-signature [list->fragment [reverse
+          (reverse-map (x (@ expr-parameters e)) (@ expr-signature x) ..) ..]])
+        (list
+          ((values (buffer-storage ..) (@ expr-signature e) [list->fragment [cons continuation-token
+            [cons params-signature nil ..] ..]])
+          (values (buffer-storage ..) (@ expr-signature e) (@ expr-signature (@ expr-reference e)))) ..)))
+      
+      ((-constrain-)
+        (list ((values (buffer-storage ..) (@ expr-signature e) (@ expr-signature (@ expr-expression e)))) ..))
+      
+      ((-invoke-)
+        (let (params-signature [list->fragment [reverse
+          (reverse-map (arg (@ expr-arguments e)) [scoped-signature arg scc ..] ..) ..]])
+        (list
+          ((values (buffer-storage ..) [scoped-signature (@ expr-reference e) scc ..]
+            [list->fragment [cons function-token [cons params-signature [cons (@ expr-signature e) nil ..] ..] ..]])) ..)))
+      
+      ((-jump-)
+        (let (params-signature [list->fragment [reverse
+          (reverse-map (arg (@ expr-arguments e)) [scoped-signature arg scc ..] ..) ..]])
+        (list
+          ((values (buffer-storage ..) [scoped-signature (@ expr-reference e) scc ..]
+            [list->fragment [cons continuation-token [cons params-signature nil ..] ..]])) ..)))
+      
+      ((-with-)
+        (let (params-signature [list->fragment [cons (@ expr-signature e) nil ..]])
+        (list
+          ((values (buffer-storage ..) (@ expr-signature (@ expr-reference e))
+            [list->fragment [cons continuation-token [cons params-signature nil ..] ..]])
+          (values (buffer-storage ..) (@ expr-signature e) (@ expr-signature (@ expr-expression e)))) ..)))
+      
+      ((-if-)
+        (let (consequent-sig [scoped-signature (@ expr-consequent e) scc ..])
+        (let (alternate-sig [scoped-signature (@ expr-alternate e) scc ..])
+        (list ((values (buffer-storage ..) consequent-sig alternate-sig)
+          (values (buffer-storage ..) (@ expr-signature e) consequent-sig)) ..))))
+      
+      ((-symbol-)
+        (list ((values (buffer-storage ..) (@ expr-signature e) (@ expr-signature (@ bndg-symbol (@ expr-binding-aug e))))) ..))
+      
+      nil)))))
+
 (storage unification-error (ignore))
 
 (constrain infer-types (\ r (with-vars (a) (`(function ((list expr) buffer ,a) ())r)r)))
@@ -260,63 +318,11 @@
     (foreach (expr exprs) [construct-sccs expr #1 stack sccs ..])
     
     (foreach (scc [reverse $sccs ..]) (do
-      (foreach (e scc) (let (equations
-          (let (function-token [token->fragment [build-token (" function) ..]])
-          (let (continuation-token [token->fragment [build-token (" continuation) ..]])
-          (switch = (@ expr-type e)
-            ((-function-)
-              (let (params-signature [list->fragment [reverse
-                (reverse-map (x (@ expr-parameters e)) (@ expr-signature x) ..) ..]])
-              (list
-                ((values storage (@ expr-signature e) [list->fragment [cons function-token [cons params-signature
-                  [cons (@ expr-signature (@ expr-expression e)) nil ..] ..] ..]])
-                (values storage (@ expr-signature e) (@ expr-signature (@ expr-reference e)))) ..)))
-            
-            ((-continuation-)
-              (let (params-signature [list->fragment [reverse
-                (reverse-map (x (@ expr-parameters e)) (@ expr-signature x) ..) ..]])
-              (list
-                ((values storage (@ expr-signature e) [list->fragment [cons continuation-token [cons params-signature nil ..] ..]])
-                (values storage (@ expr-signature e) (@ expr-signature (@ expr-reference e)))) ..)))
-            
-            ((-constrain-)
-              (list ((values storage (@ expr-signature e) (@ expr-signature (@ expr-expression e)))) ..))
-            
-            ((-invoke-)
-              (let (params-signature [list->fragment [reverse
-                (reverse-map (arg (@ expr-arguments e)) [scoped-signature arg scc ..] ..) ..]])
-              (list
-                ((values storage [scoped-signature (@ expr-reference e) scc ..]
-                  [list->fragment [cons function-token [cons params-signature [cons (@ expr-signature e) nil ..] ..] ..]])) ..)))
-            
-            ((-jump-)
-              (let (params-signature [list->fragment [reverse
-                (reverse-map (arg (@ expr-arguments e)) [scoped-signature arg scc ..] ..) ..]])
-              (list
-                ((values storage [scoped-signature (@ expr-reference e) scc ..]
-                  [list->fragment [cons continuation-token [cons params-signature nil ..] ..]])) ..)))
-            
-            ((-with-)
-              (let (params-signature [list->fragment [cons (@ expr-signature e) nil ..]])
-              (list
-                ((values storage (@ expr-signature (@ expr-reference e))
-                  [list->fragment [cons continuation-token [cons params-signature nil ..] ..]])
-                (values storage (@ expr-signature e) (@ expr-signature (@ expr-expression e)))) ..)))
-            
-            ((-if-)
-              (let (consequent-sig [scoped-signature (@ expr-consequent e) scc ..])
-              (let (alternate-sig [scoped-signature (@ expr-alternate e) scc ..])
-              (list ((values storage consequent-sig alternate-sig) (values storage (@ expr-signature e) consequent-sig)) ..))))
-            
-            ((-symbol-)
-              (list ((values storage (@ expr-signature e) (@ expr-signature (@ bndg-symbol (@ expr-binding-aug e))))) ..))
-            
-            nil))))
-        
-        (foreach (equ equations)
+      (foreach (e scc)
+        (foreach (equ [generate-equations e scc ..])
           (bind equ (lhs rhs)
             (if [unify lhs rhs] (ignore)
-              {handler (storage _ unification-error [recursive-evaluate lhs ..] [recursive-evaluate rhs ..] e)})))))
+              {handler (storage _ unification-error [recursive-evaluate lhs ..] [recursive-evaluate rhs ..] e)}))))
       
       (foreach (e scc) (setf expr-signature e [recursive-evaluate (@ expr-signature e) ..]))))))))))
 
