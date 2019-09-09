@@ -296,11 +296,12 @@
 
 (ignore
   Binds values bound by values. I.e. evaluating (bind x (param1 param2 ...) expr) where
-  x is (values arg1 arg2 ...) is the same as evaluating expr in an environment where
+  x is (values storer arg1 arg2 ...) is the same as evaluating expr in an environment where
   paramj is argj for each j.)
 
 (function bind (l r)
   (let (identifiers [@frst l]) (param [@fst l]) (body [@frrst l])
+  (let (bind-storage [llst (` storage r) (` bind r) [meta:map2 identifiers r (\ l r (`(ignore)r)) r] r])
   (let (vars [meta:label identifiers (` values:var r) r])
   (let (unquoted-vars [meta:map2 vars r (\ l r [llst [lst -,- emt r] l emt r]) r])
     (`(with bind:return
@@ -314,7 +315,28 @@
             (\ bind:r (with-vars ,vars
               (`(continuation ((continuation (,(,[`[llst unquoted-vars (` bind:r r) emt r]r])))
                   (,[lst (` values bind:r) (,[`[llst unquoted-vars (` bind:r r) emt r]r]) bind:r]))) bind:r) bind:r)))
-          (continuation bind:cont ,identifiers {bind:return ,body}) ,param})r)))))
+          (continuation bind:cont ,identifiers {bind:return (let (bind ,bind-storage) ,body)}) ,param})r))))))
+
+(ignore
+  The following macro implements the following transformation:
+  ((use-storage stor) use-stor arg1 arg2 ... argN)
+  ->
+  (let (use-stor stor) (do
+    [set [+ use-stor [* #0(unit)]] arg1]
+    [set [+ use-stor [* #1(unit)]] arg2]
+    ...
+    [set [+ use-stor [* #(N-1)(unit)]] argN]
+    use-stor)))
+
+(function use-storage (use-storage:l use-storage:r)
+  (`(function use-storage:temp (l r)
+      (`(let ((,[@fst l]) (,(,[`[llst [@fst use-storage:l] (` r use-storage:r) emt use-storage:r] use-storage:r])))
+          (,[lst (` do r) [meta:reverse [lst [@fst l]
+            (loop make-set (identifiers [@rst l]) (idx #0) (sets emt)
+              (if [emt? identifiers]
+                sets
+                {make-set [@rst identifiers] [+ idx #1]
+                  [lst (`[set [+ (,[@fst l]) [* (,[=# idx r]) (unit)]] (,[@fst identifiers])]r) sets r]})) r] r] r]))r))use-storage:r))
 
 (ignore
   Implements the transformations (@n expr) -> ($[+ expr [* #n(unit)]]). Designed to
