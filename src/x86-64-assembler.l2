@@ -251,19 +251,19 @@
 (ignore
   Takes assembly code and a list of symbols as constructs an object file.
   generated-expressions is a list of assembly expressions. symbols is a list of the static
-  symbols used in the assembly expressions. bin is a reference to where a reference to the
-  generated object code should be put. pos is a reference to where the size of the
-  generated object code should be put. reg is the buffer into which the generated object
-  code should be put.)
+  symbols used in the assembly expressions. reg is the buffer into which the generated
+  object code should be put. Returns a pair containing a reference to the generated object
+  code and the size of the generated object code.)
 
-(constrain write-elf (\ r (with-vars (a b c) (`(function ((list expr) (list bndg-aug) (list bndg-aug) ,a (ref ,b) buffer ,c) ())r)r)))
+(constrain write-elf (\ r (with-vars (a b c d) (`(function ((list expr) (list bndg-aug) (list bndg-aug) ,a buffer ,c)
+  (values ,b ,d))r)r)))
 
-(function write-elf (generated-expressions undefined-bindings static-bindings bin pos reg handler)
+(function write-elf (generated-expressions undefined-bindings static-bindings outs reg handler)
   (let (temp-buf [create-buffer #0 handler])
     (fallthrough
       (do
-        [set pos #0]
-        [set bin [buffer-alloc [max-elf-size generated-expressions undefined-bindings static-bindings] reg cleanup]]
+        (let (pos (storage _ #0))
+        (let (bin [buffer-alloc [max-elf-size generated-expressions undefined-bindings static-bindings] reg cleanup])
         
         (let (ehdr [buffer-alloc (elf64-ehdr) temp-buf cleanup]) (do
         (setf ei-mag0 (& e-ident ehdr) (elfmag0))
@@ -291,7 +291,7 @@
         (setf e-shentsize ehdr (elf64-shdr))
         (setf e-shnum ehdr (write-elf-sh-count))
         (setf e-shstrndx ehdr #1)
-        [mem-write $bin pos ehdr (elf64-ehdr)]
+        [mem-write bin pos ehdr (elf64-ehdr)]
         
         (let (strtab-len [measure-strtab generated-expressions undefined-bindings static-bindings])
         (let (sym-count [measure-symtab generated-expressions undefined-bindings static-bindings])
@@ -437,7 +437,7 @@
         (setf sh-info undef-shdr #0)
         (setf sh-addralign undef-shdr #0)
         (setf sh-entsize undef-shdr #0)
-        [mem-write $bin pos undef-shdr (elf64-shdr)]
+        [mem-write bin pos undef-shdr (elf64-shdr)]
     
         (let (shstrtab-padded-len [pad-size [strvlen $shstrtab] (write-elf-alignment)])
         (let (shstrtab-padded [buffer-alloc shstrtab-padded-len temp-buf cleanup]) (do
@@ -454,7 +454,7 @@
         (setf sh-info shstrtab-shdr #0)
         (setf sh-addralign shstrtab-shdr #0)
         (setf sh-entsize shstrtab-shdr #0)
-        [mem-write $bin pos shstrtab-shdr (elf64-shdr)]
+        [mem-write bin pos shstrtab-shdr (elf64-shdr)]
     
         (let (text-shdr [buffer-alloc (elf64-shdr) temp-buf cleanup]) (do
         (setf sh-name text-shdr [+ (@ sh-name shstrtab-shdr) [+ [strlen(" .shstrtab)] #1]])
@@ -467,7 +467,7 @@
         (setf sh-info text-shdr #0)
         (setf sh-addralign text-shdr #1)
         (setf sh-entsize text-shdr #0)
-        [mem-write $bin pos text-shdr (elf64-shdr)]
+        [mem-write bin pos text-shdr (elf64-shdr)]
     
         (let (strtab-shdr [buffer-alloc (elf64-shdr) temp-buf cleanup]) (do
         (setf sh-name strtab-shdr [+ (@ sh-name text-shdr) [+ [strlen(" .text)] #1]])
@@ -480,7 +480,7 @@
         (setf sh-info strtab-shdr #0)
         (setf sh-addralign strtab-shdr #0)
         (setf sh-entsize strtab-shdr #0)
-        [mem-write $bin pos strtab-shdr (elf64-shdr)]
+        [mem-write bin pos strtab-shdr (elf64-shdr)]
     
         (let (symtab-shdr [buffer-alloc (elf64-shdr) temp-buf cleanup]) (do
         (setf sh-name symtab-shdr [+ (@ sh-name strtab-shdr) [+ [strlen(" .strtab)] #1]])
@@ -493,7 +493,7 @@
         (setf sh-info symtab-shdr local-symbol-count)
         (setf sh-addralign symtab-shdr #0)
         (setf sh-entsize symtab-shdr (elf64-sym))
-        [mem-write $bin pos symtab-shdr (elf64-shdr)]
+        [mem-write bin pos symtab-shdr (elf64-shdr)]
     
         (let (bss-shdr [buffer-alloc (elf64-shdr) temp-buf cleanup]) (do
         (setf sh-name bss-shdr [+ (@ sh-name symtab-shdr) [+ [strlen(" .symtab)] #1]])
@@ -506,7 +506,7 @@
         (setf sh-info bss-shdr #0)
         (setf sh-addralign bss-shdr (word-size))
         (setf sh-entsize bss-shdr #0)
-        [mem-write $bin pos bss-shdr (elf64-shdr)]
+        [mem-write bin pos bss-shdr (elf64-shdr)]
     
         (let (rela-shdr [buffer-alloc (elf64-shdr) temp-buf cleanup]) (do
         (setf sh-name rela-shdr [+ (@ sh-name bss-shdr) [+ [strlen(" .bss)] #1]])
@@ -519,19 +519,19 @@
         (setf sh-info rela-shdr #2)
         (setf sh-addralign rela-shdr #0)
         (setf sh-entsize rela-shdr (elf64-rela))
-        [mem-write $bin pos rela-shdr (elf64-shdr)]
+        [mem-write bin pos rela-shdr (elf64-shdr)]
     
-        [mem-write $bin pos shstrtab-padded shstrtab-padded-len]
-        [mem-write $bin pos text max-text-sec-len]
-        [mem-write $bin pos strtab strtab-padded-len]
-        [mem-write $bin pos syms [* sym-count (elf64-sym)]]
-        [mem-write $bin pos relas [- $rela-ptr relas]]
+        [mem-write bin pos shstrtab-padded shstrtab-padded-len]
+        [mem-write bin pos text max-text-sec-len]
+        [mem-write bin pos strtab strtab-padded-len]
+        [mem-write bin pos syms [* sym-count (elf64-sym)]]
+        [mem-write bin pos relas [- $rela-ptr relas]]
         
-        (storage _ no-error)))))))))))))))))))))))))))))))))))))))))
+        (storage _ no-error bin $pos)))))))))))))))))))))))))))))))))))))))))))
         
       (cleanup err (do [destroy-buffer temp-buf return-cont] err))
       
-      (return-cont err (if [= (@0 err) no-error] (ignore) {handler err})))))
+      (return-cont err (if [= (@0 err) no-error] (values (use-storage outs) (@1 err) (@2 err)) {handler err})))))
 
 (ignore
   Converts the offsets of the static bindings associated with L2 source code that has now

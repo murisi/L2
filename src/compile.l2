@@ -28,12 +28,10 @@
 
 (function load-program (exprs buf handler)
   (bind (asms undefined-bindings static-bindings) [compile-program exprs bind buf handler]
-  (let (objdest (storage _ (ignore)))
-  (let (objdest-sz (storage _ (ignore))) (do
-  [write-elf asms undefined-bindings static-bindings objdest objdest-sz buf handler]
-  (let (obj [load $objdest $objdest-sz buf handler]) (do
+  (bind (objdest objdest-sz) [write-elf asms undefined-bindings static-bindings bind buf handler]
+  (let (obj [load objdest objdest-sz buf handler]) (do
   [binding-offsets-to-addresses asms static-bindings obj]
-  obj)))))))
+  obj)))))
 
 (ignore
   Behavior is the same as load-program, but with the following addition: bndgs is a list
@@ -137,15 +135,13 @@
         
         (foreach (infn file-names) (exprs file-exprss)
           (bind (asms undefined-bindings static-bindings) [compile-program exprs bind buf handler]
-          (let (objdest (storage _ (ignore)))
-          (let (objdest-sz (storage _ (ignore))) (do
-          [write-elf asms undefined-bindings static-bindings objdest objdest-sz buf handler]
+          (bind (objdest objdest-sz) [write-elf asms undefined-bindings static-bindings bind buf handler]
           (let (outfn [buffer-alloc [+ [strlen infn] #1] buf handler]) (do
           [strcpy outfn infn]
           [strcpy [strrchr outfn (char .)] (" .o)]
           (let (fd [create outfn handler]) (do
-          [print fd $objdest $objdest-sz handler]
-          [close fd handler])))))))))))))
+          [print fd objdest objdest-sz handler]
+          [close fd handler])))))))))))
 
 (storage arguments-error (ignore))
 
