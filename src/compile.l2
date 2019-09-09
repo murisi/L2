@@ -64,20 +64,20 @@
     [mutate-bindings obj bndgs]
     obj)))))
 
-(constrain read-to-buffer (\ r (with-vars (a b d) (`(function (string ,a buffer ,b) ,d)r)r)))
+(constrain read-to-buffer (\ r (with-vars (a b c d) (`(function (string ,a buffer ,b) (values ,c ,d))r)r)))
 
-(function read-to-buffer (fn size-out buf handler)
+(function read-to-buffer (fn outs buf handler)
   (let (fd [open fn handler])
     (fallthrough
       (do
-        [set size-out [size fd close-file]]
-        (let (src-buf [buffer-alloc $size-out buf close-file]) (do
-        [read fd src-buf $size-out close-file]
-        (storage _ no-error src-buf))))
+        (let (size-out [size fd close-file])
+        (let (src-buf [buffer-alloc size-out buf close-file]) (do
+        [read fd src-buf size-out close-file]
+        (storage _ no-error src-buf size-out)))))
         
       (close-file err (do
         [close fd handler]
-        (if [= (@0 err) no-error] (@1 err) {handler err}))))))
+        (if [= (@0 err) no-error] (values (use-storage outs) (@1 err) (@2 err)) {handler err}))))))
 
 (ignore
   Reads a list of expressions from a given file. fn is a string containing the filename.
@@ -88,13 +88,12 @@
 
 (function read-expressions (fn buf handler)
   (substitute (.. buf handler)
-    (let (src-sz (storage _ (ignore)))
-    (let (src-buf [read-to-buffer fn src-sz ..])
+    (bind (src-buf src-sz) [read-to-buffer fn bind ..]
     (let (pos (storage _ #0))
       (loop cons-expr (expressions nil)
-        (if [after-leading-space src-buf $src-sz pos]
-          {cons-expr [cons [build-expression [build-fragment src-buf $src-sz pos ..] null-expr ..] expressions ..]}
-          [reverse expressions ..])))))))
+        (if [after-leading-space src-buf src-sz pos]
+          {cons-expr [cons [build-expression [build-fragment src-buf src-sz pos ..] null-expr ..] expressions ..]}
+          [reverse expressions ..]))))))
 
 (ignore
   Takes a list of L2 and object file names, loads their contents into memory, and links
@@ -110,10 +109,9 @@
         (do [append-list bindings [immutable-bindings obj ..]] [cons obj objects ..]))))
     
     (let (objects2 (fold (objects objects1) (src object-fns)
-      (let (obj-sz (storage _ (ignore)))
-      (let (obj-buf [read-to-buffer src obj-sz ..])
-      (let (obj [load obj-buf $obj-sz ..])
-        (do [append-list bindings [immutable-bindings obj ..]] [cons obj objects ..]))))))
+      (bind (obj-buf obj-sz) [read-to-buffer src bind ..]
+      (let (obj [load obj-buf obj-sz ..])
+        (do [append-list bindings [immutable-bindings obj ..]] [cons obj objects ..])))))
       
     (foreach (obj objects2) [mutate-bindings obj $bindings])))))
 

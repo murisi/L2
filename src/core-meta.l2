@@ -295,12 +295,12 @@
                 (,[`[llst unquoted-vars (` values:r r) emt r]r]) values:r])) values:r) values:r)))r) (` values:return r) args r]))r)))))
 
 (ignore
-  Binds values bound by values. I.e. evaluating (bind x (param1 param2 ...) expr) where
+  Binds values bound by values. I.e. evaluating (bind (param1 param2 ...) x expr) where
   x is (values storer arg1 arg2 ...) is the same as evaluating expr in an environment where
   paramj is argj for each j.)
 
 (function bind (l r)
-  (let (identifiers [@frst l]) (param [@fst l]) (body [@frrst l])
+  (let (identifiers [@fst l]) (param [@frst l]) (body [@frrst l])
   (let (bind-storage [llst (` storage r) (` bind r) [meta:map2 identifiers r (\ l r (`(ignore)r)) r] r])
   (let (vars [meta:label identifiers (` values:var r) r])
   (let (unquoted-vars [meta:map2 vars r (\ l r [llst [lst -,- emt r] l emt r]) r])
@@ -315,7 +315,7 @@
             (\ bind:r (with-vars ,vars
               (`(continuation ((continuation (,(,[`[llst unquoted-vars (` bind:r r) emt r]r])))
                   (,[lst (` values bind:r) (,[`[llst unquoted-vars (` bind:r r) emt r]r]) bind:r]))) bind:r) bind:r)))
-          (continuation bind:cont ,identifiers {bind:return (let (bind ,bind-storage) ,body)}) ,param})r))))))
+          (continuation bind:cont ,identifiers {bind:return ,body}) (let (bind ,bind-storage) ,param)})r))))))
 
 (ignore
   The following macro implements the following transformation:
