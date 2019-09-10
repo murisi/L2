@@ -1,0 +1,44 @@
+(constrain arithmetic-intrinsics (\ r (with-vars (a) (`(function (buffer ,a) (list expr))r)r)))
+
+(function arithmetic-intrinsics (buf handler)
+  (substitute (.. buf handler) (list
+    ((let (func-symbol [make-symbol [rstrcpy (" +a) ..] null-fragment null-expr ..])
+          (callee-symbol [make-symbol null-string null-fragment null-expr ..])
+          (param-a [make-symbol null-string null-fragment null-expr ..])
+          (param-b [make-symbol null-string null-fragment null-expr ..])
+          (arg-a [make-symbol null-string null-fragment null-expr ..])
+          (arg-b [make-symbol null-string null-fragment null-expr ..])
+        (let (func (make-functionN func-symbol (param-a param-b)
+            (make-invokeN callee-symbol (arg-a arg-b) null-fragment null-expr ..) null-fragment null-expr ..)) (do
+          [bind-symbol callee-symbol func-symbol]
+          [bind-symbol arg-a param-a]
+          [bind-symbol arg-b param-b]
+          func)))) ..)))
+
+(constrain generate-arithmetic-intrinsics
+  (\ r (with-vars (a) (`(function (expr (list generator) (ref (list expr)) (continuation (())) buffer ,a) ())r)r)))
+
+(function generate-arithmetic-intrinsics (n gens c success r handler)
+  (substitute (.. r handler)
+    (if (and [= (@ expr-type n) (-invoke-)] [= (@ expr-type (@ expr-reference n)) (-symbol-)]
+        [= (@ bndg-state (@ expr-binding-aug (@ expr-reference n))) (undefined-state)])
+      (switch str= (@ expr-name (@ expr-reference n))
+        ((" +) {success (do
+          [cond-push-relative-storage n c ..]
+          [generate-expression [@car (@ expr-arguments n)] gens c ..]
+          [generate-store (make-asmN(rax)()..) (@ expr-temp-storage-bndg n) #0 (make-asmN(r10)()..) c ..]
+          [generate-expression [@cadr (@ expr-arguments n)] gens c ..]
+          [generate-load (@ expr-temp-storage-bndg n) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c ..]
+          [prepend (make-asmN (addq-reg-to-reg) ((make-asmN(r11)()..) (make-asmN(rax)()..)) ..) c ..]
+          [cond-pop-relative-storage n c ..])})
+        ((" -) {success (do
+          [cond-push-relative-storage n c ..]
+          [generate-expression [@cadr (@ expr-arguments n)] gens c ..]
+          [generate-store (make-asmN(rax)()..) (@ expr-temp-storage-bndg n) #0 (make-asmN(r10)()..) c ..]
+          [generate-expression [@car (@ expr-arguments n)] gens c ..]
+          [generate-load (@ expr-temp-storage-bndg n) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c ..]
+          [prepend (make-asmN (addq-reg-to-reg) ((make-asmN(r11)()..) (make-asmN(rax)()..)) ..) c ..]
+          [cond-pop-relative-storage n c ..])})
+        (ignore))
+      (ignore))))
+
