@@ -23,6 +23,16 @@
     (if (and [= (@ expr-type n) (-invoke-)] [= (@ expr-type (@ expr-reference n)) (-symbol-)]
         [= (@ bndg-state (@ expr-binding-aug (@ expr-reference n))) (undefined-state)])
       (switch str= (@ expr-name (@ expr-reference n))
+        ((" get8b) {success (do
+          [generate-expression [@car (@ expr-arguments n)] gens c ..]
+          [prepend (make-asmN(movq-mdb-to-reg)
+            ([make-literal #0 null-fragment null-expr ..] (make-asmN(rax)()..) (make-asmN(rax)()..))..) c ..])})
+        
+        ((" get) {success (do
+          [generate-expression [@car (@ expr-arguments n)] gens c ..]
+          [prepend (make-asmN(movq-mdb-to-reg)
+            ([make-literal #0 null-fragment null-expr ..] (make-asmN(rax)()..) (make-asmN(rax)()..))..) c ..])})
+        
         ((" +) {success (do
           [cond-push-relative-storage n c ..]
           [generate-expression [@car (@ expr-arguments n)] gens c ..]
@@ -31,6 +41,7 @@
           [generate-load (@ expr-temp-storage-bndg n) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c ..]
           [prepend (make-asmN (addq-reg-to-reg) ((make-asmN(r11)()..) (make-asmN(rax)()..)) ..) c ..]
           [cond-pop-relative-storage n c ..])})
+          
         ((" -) {success (do
           [cond-push-relative-storage n c ..]
           [generate-expression [@cadr (@ expr-arguments n)] gens c ..]
@@ -39,6 +50,7 @@
           [generate-load (@ expr-temp-storage-bndg n) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c ..]
           [prepend (make-asmN (subq-reg-to-reg) ((make-asmN(r11)()..) (make-asmN(rax)()..)) ..) c ..]
           [cond-pop-relative-storage n c ..])})
+          
         ((" *) {success (do
           [cond-push-relative-storage n c ..]
           [generate-expression [@cadr (@ expr-arguments n)] gens c ..]
@@ -47,6 +59,25 @@
           [generate-load (@ expr-temp-storage-bndg n) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c ..]
           [prepend (make-asmN (mulq-reg) ((make-asmN(r11)()..)) ..) c ..]
           [cond-pop-relative-storage n c ..])})
+        
+        ((" <<) {success (do
+          [cond-push-relative-storage n c ..]
+          [generate-expression [@cadr (@ expr-arguments n)] gens c ..]
+          [generate-store (make-asmN(rax)()..) (@ expr-temp-storage-bndg n) #0 (make-asmN(r10)()..) c ..]
+          [generate-expression [@car (@ expr-arguments n)] gens c ..]
+          [generate-load (@ expr-temp-storage-bndg n) #0 (make-asmN(rcx)()..) (make-asmN(r10)()..) c ..]
+          [prepend (make-asmN (shlq-cl-to-reg) ((make-asmN(rax)()..)) ..) c ..]
+          [cond-pop-relative-storage n c ..])})
+        
+        ((" >>) {success (do
+          [cond-push-relative-storage n c ..]
+          [generate-expression [@cadr (@ expr-arguments n)] gens c ..]
+          [generate-store (make-asmN(rax)()..) (@ expr-temp-storage-bndg n) #0 (make-asmN(r10)()..) c ..]
+          [generate-expression [@car (@ expr-arguments n)] gens c ..]
+          [generate-load (@ expr-temp-storage-bndg n) #0 (make-asmN(rcx)()..) (make-asmN(r10)()..) c ..]
+          [prepend (make-asmN (shrq-cl-to-reg) ((make-asmN(rax)()..)) ..) c ..]
+          [cond-pop-relative-storage n c ..])})
+        
         (ignore))
       (ignore))))
 
