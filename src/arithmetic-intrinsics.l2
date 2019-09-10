@@ -23,12 +23,28 @@
     (if (and [= (@ expr-type n) (-invoke-)] [= (@ expr-type (@ expr-reference n)) (-symbol-)]
         [= (@ bndg-state (@ expr-binding-aug (@ expr-reference n))) (undefined-state)])
       (switch str= (@ expr-name (@ expr-reference n))
-        ((" get8b) {success (do
+        ((" getb) (" get1b) {success (do
           [generate-expression [@car (@ expr-arguments n)] gens c ..]
-          [prepend (make-asmN(movq-mdb-to-reg)
-            ([make-literal #0 null-fragment null-expr ..] (make-asmN(rax)()..) (make-asmN(rax)()..))..) c ..])})
+          [prepend (make-asmN (movq-reg-to-reg) ((make-asmN(rax)()..) (make-asmN(r10)()..)) ..) c ..]
+          [prepend (make-asmN (xorq-reg-to-reg) ((make-asmN(rax)()..) (make-asmN(rax)()..)) ..) c ..]
+          [prepend (make-asmN(movb-mdb-to-reg)
+            ([make-literal #0 null-fragment null-expr ..] (make-asmN(r10)()..) (make-asmN(al)()..))..) c ..])})
         
-        ((" get) {success (do
+        ((" get2b) {success (do
+          [generate-expression [@car (@ expr-arguments n)] gens c ..]
+          [prepend (make-asmN (movq-reg-to-reg) ((make-asmN(rax)()..) (make-asmN(r10)()..)) ..) c ..]
+          [prepend (make-asmN (xorq-reg-to-reg) ((make-asmN(rax)()..) (make-asmN(rax)()..)) ..) c ..]
+          [prepend (make-asmN(movw-mdb-to-reg)
+            ([make-literal #0 null-fragment null-expr ..] (make-asmN(r10)()..) (make-asmN(ax)()..))..) c ..])})
+        
+        ((" get4b) {success (do
+          [generate-expression [@car (@ expr-arguments n)] gens c ..]
+          [prepend (make-asmN (movq-reg-to-reg) ((make-asmN(rax)()..) (make-asmN(r10)()..)) ..) c ..]
+          [prepend (make-asmN (xorq-reg-to-reg) ((make-asmN(rax)()..) (make-asmN(rax)()..)) ..) c ..]
+          [prepend (make-asmN(movl-mdb-to-reg)
+            ([make-literal #0 null-fragment null-expr ..] (make-asmN(r10)()..) (make-asmN(eax)()..))..) c ..])})
+        
+        ((" get8b) (" get) {success (do
           [generate-expression [@car (@ expr-arguments n)] gens c ..]
           [prepend (make-asmN(movq-mdb-to-reg)
             ([make-literal #0 null-fragment null-expr ..] (make-asmN(rax)()..) (make-asmN(rax)()..))..) c ..])})

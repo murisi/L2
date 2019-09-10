@@ -38,9 +38,9 @@
       [set+ idx #1]
       {write-bytes [+ bytes #1]})))))
 
-(constrain write-mr-instr (\ r (with-vars (a b c d e f g) (`(function (,a (ref ,b) ,c ,d ,e ,f ,g) ())r)r)))
+(constrain write-mr-instr (\ r (with-vars (a b c d e f g h) (`(function (,a (ref ,b) ,c ,d ,e ,f ,g ,h) ())r)r)))
 
-(function write-mr-instr (bin pos opcode reg rm m rexw)
+(function write-mr-instr (bin pos opcode reg rm m rexw oso)
   (let (mod (if m #2 #3))
   (let (modrm [lor [<< mod (instr-mod)] [lor [<< [land reg (hex 7)] (instr-reg)] [<< [land rm (hex 7)] (instr-rm)]]])
   (let (has-sib (and m (or [= rm (rsp)] [= rm (r12)])))
@@ -50,6 +50,7 @@
   (let (rex (if [land reg (hex 8)] [lor rex [<< #1 (rex-r)]] rex))
   (let (rex [lor rex [<< #0 (rex-x)]])
   (let (rex (if [land rm (hex 8)] [lor rex [<< #1 (rex-b)]] rex)) (do
+  (if oso [mem-write bin pos (storage _ (hex 66)) #1] (ignore))
   [mem-write bin pos (storage _ rex) #1]
   [mem-write bin pos (storage _ opcode) #1]
   [mem-write bin pos (storage _ modrm) #1]
@@ -116,14 +117,14 @@
         (let (opcode (hex 8D))
         (let (reg (@ expr-code [@caddr (@ expr-arguments n)]))
         (let (rm (@ expr-code [@cadr (@ expr-arguments n)])) (do
-        [write-mr-instr bin pos opcode reg rm (true) (true)]
+        [write-mr-instr bin pos opcode reg rm (true) (true) (false)]
         [write-static-value bin pos [@car (@ expr-arguments n)] #4 symtab relas])))))
         
       ((movq-reg-to-mdb)
         (let (opcode (hex 89))
         (let (reg (@ expr-code [@car (@ expr-arguments n)]))
         (let (rm (@ expr-code [@caddr (@ expr-arguments n)])) (do
-        [write-mr-instr bin pos opcode reg rm (true) (true)]
+        [write-mr-instr bin pos opcode reg rm (true) (true) (false)]
         [write-static-value bin pos [@cadr (@ expr-arguments n)] #4 symtab relas])))))
         
       ((jmp-rel)
@@ -135,9 +136,30 @@
         (let (opcode (hex 8B))
         (let (reg (@ expr-code [@caddr (@ expr-arguments n)]))
         (let (rm (@ expr-code [@cadr (@ expr-arguments n)])) (do
-        [write-mr-instr bin pos opcode reg rm (true) (true)]
+        [write-mr-instr bin pos opcode reg rm (true) (true) (false)]
         [write-static-value bin pos [@car (@ expr-arguments n)] #4 symtab relas])))))
-        
+      
+      ((movb-mdb-to-reg)
+        (let (opcode (hex 8A))
+        (let (reg (@ expr-code [@caddr (@ expr-arguments n)]))
+        (let (rm (@ expr-code [@cadr (@ expr-arguments n)])) (do
+        [write-mr-instr bin pos opcode reg rm (true) (false) (false)]
+        [write-static-value bin pos [@car (@ expr-arguments n)] #4 symtab relas])))))
+      
+      ((movw-mdb-to-reg)
+        (let (opcode (hex 8B))
+        (let (reg (@ expr-code [@caddr (@ expr-arguments n)]))
+        (let (rm (@ expr-code [@cadr (@ expr-arguments n)])) (do
+        [write-mr-instr bin pos opcode reg rm (true) (false) (true)]
+        [write-static-value bin pos [@car (@ expr-arguments n)] #4 symtab relas])))))
+      
+      ((movl-mdb-to-reg)
+        (let (opcode (hex 8B))
+        (let (reg (@ expr-code [@caddr (@ expr-arguments n)]))
+        (let (rm (@ expr-code [@cadr (@ expr-arguments n)])) (do
+        [write-mr-instr bin pos opcode reg rm (true) (false) (false)]
+        [write-static-value bin pos [@car (@ expr-arguments n)] #4 symtab relas])))))
+      
       ((pushq-reg)
         (let (opcode (hex 50))
         (let (reg (@ expr-code [@car (@ expr-arguments n)]))
@@ -147,20 +169,20 @@
         (let (opcode (hex 8B))
         (let (reg (@ expr-code [@cadr (@ expr-arguments n)]))
         (let (rm (@ expr-code [@car (@ expr-arguments n)]))
-        [write-mr-instr bin pos opcode reg rm (false) (true)]))))
+        [write-mr-instr bin pos opcode reg rm (false) (true) (false)]))))
         
       ((subq-imm-to-reg)
         (let (opcode (hex 81))
         (let (reg #5)
         (let (rm (@ expr-code [@cadr (@ expr-arguments n)])) (do
-        [write-mr-instr bin pos opcode reg rm (false) (true)]
+        [write-mr-instr bin pos opcode reg rm (false) (true) (false)]
         [mem-write bin pos (& expr-value [@car (@ expr-arguments n)]) #4])))))
         
       ((addq-imm-to-reg)
         (let (opcode (hex 81))
         (let (reg #0)
         (let (rm (@ expr-code [@cadr (@ expr-arguments n)])) (do
-        [write-mr-instr bin pos opcode reg rm (false) (true)]
+        [write-mr-instr bin pos opcode reg rm (false) (true) (false)]
         [mem-write bin pos (& expr-value [@car (@ expr-arguments n)]) #4])))))
         
       ((popq-reg)
@@ -176,7 +198,7 @@
         (let (opcode (hex FF))
         (let (reg #4)
         (let (rm (@ expr-code [@car (@ expr-arguments n)]))
-        [write-mr-instr bin pos opcode reg rm (false) (false)]))))
+        [write-mr-instr bin pos opcode reg rm (false) (false) (false)]))))
         
       ((je-rel) (do
         [mem-write bin pos (storage opcode1 (hex 0F)) #1]
@@ -187,49 +209,55 @@
         (let (opcode (hex 0B))
         (let (reg (@ expr-code [@cadr (@ expr-arguments n)]))
         (let (rm (@ expr-code [@car (@ expr-arguments n)]))
-        [write-mr-instr bin pos opcode reg rm (false) (true)]))))
+        [write-mr-instr bin pos opcode reg rm (false) (true) (false)]))))
+      
+      ((xorq-reg-to-reg)
+        (let (opcode (hex 33))
+        (let (reg (@ expr-code [@cadr (@ expr-arguments n)]))
+        (let (rm (@ expr-code [@car (@ expr-arguments n)]))
+        [write-mr-instr bin pos opcode reg rm (false) (true) (false)]))))
       
       ((andq-reg-to-reg)
         (let (opcode (hex 23))
         (let (reg (@ expr-code [@cadr (@ expr-arguments n)]))
         (let (rm (@ expr-code [@car (@ expr-arguments n)]))
-        [write-mr-instr bin pos opcode reg rm (false) (true)]))))
+        [write-mr-instr bin pos opcode reg rm (false) (true) (false)]))))
       
       ((addq-reg-to-reg)
         (let (opcode (hex 03))
         (let (reg (@ expr-code [@cadr (@ expr-arguments n)]))
         (let (rm (@ expr-code [@car (@ expr-arguments n)]))
-        [write-mr-instr bin pos opcode reg rm (false) (true)]))))
+        [write-mr-instr bin pos opcode reg rm (false) (true) (false)]))))
       
       ((subq-reg-to-reg)
         (let (opcode (hex 2B))
         (let (reg (@ expr-code [@cadr (@ expr-arguments n)]))
         (let (rm (@ expr-code [@car (@ expr-arguments n)]))
-        [write-mr-instr bin pos opcode reg rm (false) (true)]))))
+        [write-mr-instr bin pos opcode reg rm (false) (true) (false)]))))
       
       ((mulq-reg)
         (let (opcode (hex F7))
         (let (reg (hex 04))
         (let (rm (@ expr-code [@car (@ expr-arguments n)]))
-        [write-mr-instr bin pos opcode reg rm (false) (true)]))))
+        [write-mr-instr bin pos opcode reg rm (false) (true) (false)]))))
       
       ((notq-reg)
         (let (opcode (hex F7))
         (let (reg (hex 02))
         (let (rm (@ expr-code [@car (@ expr-arguments n)]))
-        [write-mr-instr bin pos opcode reg rm (false) (true)]))))
+        [write-mr-instr bin pos opcode reg rm (false) (true) (false)]))))
       
       ((shlq-cl-to-reg)
         (let (opcode (hex D3))
         (let (reg (hex 04))
         (let (rm (@ expr-code [@car (@ expr-arguments n)]))
-        [write-mr-instr bin pos opcode reg rm (false) (true)]))))
+        [write-mr-instr bin pos opcode reg rm (false) (true) (false)]))))
       
       ((shrq-cl-to-reg)
         (let (opcode (hex D3))
         (let (reg (hex 05))
         (let (rm (@ expr-code [@car (@ expr-arguments n)]))
-        [write-mr-instr bin pos opcode reg rm (false) (true)]))))
+        [write-mr-instr bin pos opcode reg rm (false) (true) (false)]))))
       
       ((movq-imm-to-reg)
         (let (opcode (hex B8))
@@ -250,7 +278,7 @@
         (let (opcode (hex FF))
         (let (reg #2)
         (let (rm (@ expr-code [@car (@ expr-arguments n)]))
-        [write-mr-instr bin pos opcode reg rm (false) (false)]))))
+        [write-mr-instr bin pos opcode reg rm (false) (false) (false)]))))
       
       (ignore)))))
 
