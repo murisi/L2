@@ -3,10 +3,11 @@
   list into which the augmented bindings of the generated code will be put.)
 
 (constrain compile-program
-  (\ r (with-vars (a b) (`(function ((list expr) ,b buffer ,a) (values (list expr) (list bndg-aug) (list bndg-aug)))r)r)))
+  (\ r (with-vars (a b) (`(function ((list expr) (list generator) ,b buffer ,a)
+    (values (list expr) (list bndg-aug) (list bndg-aug)))r)r)))
 
-(function compile-program (exprs outs buf handler)
-  (substitute (.. buf handler) (do
+(function compile-program (exprs gens outs buf handler)
+  (substitute (.. buf handler)
     (let (static-bindings (storage _ nil)) (undefined-bindings (storage _ nil))
         (global-bindings [global-binding-augs-of exprs ..]) (do
       (foreach (expr exprs) (do
@@ -17,21 +18,22 @@
         (ignore[infer-types expr ..])
         [escape-analysis expr (true)]
         [layout-frames expr static-bindings ..]))
-      (values (use-storage outs) [generate-program exprs ..] $undefined-bindings $static-bindings))))))
+      (values (use-storage outs) [generate-program exprs gens ..] $undefined-bindings $static-bindings)))))
 
 (ignore
   Loads a program into memory and returns a handle to it. program is a program expression.
   expr-buf is the buffer into which the results of compilation will be put. obj-buf is the
   buffer into which the object code will be put. Return value is an object.)
 
-(constrain load-program (\ r (with-vars (a) (`(function ((list expr) buffer ,a) obj)r)r)))
+(constrain load-program (\ r (with-vars (a) (`(function ((list expr) (list generator) buffer ,a) obj)r)r)))
 
-(function load-program (exprs buf handler)
-  (bind (asms undefined-bindings static-bindings) [compile-program exprs bind buf handler]
-  (bind (objdest objdest-sz) [write-elf asms undefined-bindings static-bindings bind buf handler]
-  (let (obj [load objdest objdest-sz buf handler]) (do
-  [binding-offsets-to-addresses asms static-bindings obj]
-  obj)))))
+(function load-program (exprs gens buf handler)
+  (substitute (.. buf handler)
+    (bind (asms undefined-bindings static-bindings) [compile-program exprs gens bind buf handler]
+    (bind (objdest objdest-sz) [write-elf asms undefined-bindings static-bindings bind buf handler]
+    (let (obj [load objdest objdest-sz buf handler]) (do
+    [binding-offsets-to-addresses asms static-bindings obj]
+    obj))))))
 
 (ignore
   Behavior is the same as load-program, but with the following addition: bndgs is a list
@@ -41,10 +43,10 @@
   <missing binding name>) if there is an undefined binding in the program that is not defined
   in bndgs.)
 
-(constrain load-program-and-mutate (\ r (with-vars (a) (`(function ((list expr) (list bndg-aug) buffer ,a) obj)r)r)))
+(constrain load-program-and-mutate (\ r (with-vars (a) (`(function ((list expr) (list generator) (list bndg-aug) buffer ,a) obj)r)r)))
 
-(function load-program-and-mutate (exprs bndgs buf handler)
-  (let (obj [load-program exprs buf handler])
+(function load-program-and-mutate (exprs gens bndgs buf handler)
+  (let (obj [load-program exprs gens buf handler])
   (let (temp-reg [create-buffer #0 handler])
   (let (ms [mutable-bindings obj temp-reg handler]) (do
     (foreach (d ms)
@@ -90,25 +92,40 @@
           {cons-expr [cons [build-expression [build-fragment src-buf src-sz pos ..] null-expr ..] expressions ..]}
           [reverse expressions ..]))))))
 
+(storage undefined-intrinsics-error (ignore))
+
 (ignore
   Takes a list of L2 and object file names, loads their contents into memory, and links
   them together. The global symbols of the object code are then added to the list of
   bindings.)
 
-(constrain evaluate-files (\ r (with-vars (a) (`(function ((list string) (list string) (ref (list bndg-aug)) buffer ,a) ())r)r)))
+(constrain evaluate-files
+  (\ r (with-vars (a) (`(function ((list string) (list string) (list string) (ref (list bndg-aug)) buffer ,a) ())r)r)))
 
-(function evaluate-files (source-fns object-fns bindings buf handler)
+(function evaluate-files (source-fns object-fns intrinsic-fns bindings buf handler)
   (substitute (.. buf handler)
+    (let (gens (reverse-map (intrinsic-fn intrinsic-fns)
+      (switch str= intrinsic-fn
+        ((" arithmetic.o) [function->generator generate-arithmetic-intrinsics])
+        {handler (storage undefined-intrinsics-error intrinsic-fn)}) ..))
+    
     (let (objects1 (fold (objects nil) (src source-fns)
-      (let (obj [load-program [generate-metaprogram [read-expressions src ..] bindings ..] ..])
+      (let (obj [load-program [generate-metaprogram [read-expressions src ..] gens bindings ..] gens ..])
         (do [append-list bindings [immutable-bindings obj ..]] [cons obj objects ..]))))
     
     (let (objects2 (fold (objects objects1) (src object-fns)
       (bind (obj-buf obj-sz) [read-to-buffer src bind ..]
       (let (obj [load obj-buf obj-sz ..])
         (do [append-list bindings [immutable-bindings obj ..]] [cons obj objects ..])))))
-      
-    (foreach (obj objects2) [mutate-bindings obj $bindings])))))
+    
+    (let (objects3 (fold (objects objects2) (intrinsic-fn intrinsic-fns)
+      (switch str= intrinsic-fn
+        ((" arithmetic.o)
+          (let (obj [load-program [arithmetic-intrinsics ..] gens ..])
+            (do [append-list bindings [immutable-bindings obj ..]] [cons obj objects ..])))
+        {handler (storage undefined-intrinsics-error intrinsic-fn)})))
+    
+    (foreach (obj objects3) [mutate-bindings obj $bindings])))))))
 
 (ignore
   Takes a list of L2 source files and compiles them into object files. programs is a
@@ -116,14 +133,18 @@
   pointing to the macros to be used during the meta-expression expansions. buf is the
   buffer into which constructed expressions and object code will be put.)
 
-(constrain compile-files (\ r (with-vars (a) (`(function ((list string) (list bndg-aug) buffer ,a) ())r)r)))
+(constrain compile-files (\ r (with-vars (a) (`(function ((list string) (list string) (list bndg-aug) buffer ,a) ())r)r)))
 
-(function compile-files (file-names bndgs buf handler)
+(function compile-files (file-names intrinsic-fns bndgs buf handler)
   (substitute (.. buf handler)
+    (let (gens (reverse-map (intrinsic-fn intrinsic-fns)
+      (switch str= intrinsic-fn
+        ((" arithmetic.o) [function->generator generate-arithmetic-intrinsics])
+        {handler (storage undefined-intrinsics-error intrinsic-fn)}) ..))
     (let (file-exprss [reverse (reverse-map (infn file-names)
         [reverse (reverse-map (e [read-expressions infn ..])
           (let (f (storage _ e))
-            (do [pre-visit-expressions vgenerate-metas f (values storage bndgs ..)] $f)) ..) ..] ..) ..])
+            (do [pre-visit-expressions vgenerate-metas f (values storage gens bndgs ..)] $f)) ..) ..] ..) ..])
       (do
         (let (all-exprs [reverse-flatten file-exprss ..])
         (let (undefined-bindings (storage _ nil))
@@ -134,14 +155,14 @@
           (foreach (expr all-exprs) [pre-visit-expressions vunlink-symbols (storage _ expr) (values storage $undefined-bindings)])))))
         
         (foreach (infn file-names) (exprs file-exprss)
-          (bind (asms undefined-bindings static-bindings) [compile-program exprs bind buf handler]
+          (bind (asms undefined-bindings static-bindings) [compile-program exprs gens bind buf handler]
           (bind (objdest objdest-sz) [write-elf asms undefined-bindings static-bindings bind buf handler]
           (let (outfn [buffer-alloc [+ [strlen infn] #1] buf handler]) (do
           [strcpy outfn infn]
           [strcpy [strrchr outfn (char .)] (" .o)]
           (let (fd [create outfn handler]) (do
           [print fd objdest objdest-sz handler]
-          [close fd handler])))))))))))
+          [close fd handler]))))))))))))
 
 (storage arguments-error (ignore))
 
@@ -157,12 +178,16 @@
     (let (buf [create-buffer #0 exit-cont])
     (fallthrough
         (do
-          (let (source-fns [@cdr[argv buf handler]])
-          (let (dash-list-ref (locate (arg (storage _ source-fns)) [str= arg (" -)]))
-          (if [nil? $dash-list-ref] {handler (storage _ arguments-error)}
-          (let (object-fns [@cdr $dash-list-ref]) (do
-          (ignore Cut the source filenames list short.)
-          [set dash-list-ref nil]
+          (let (source-fns (storage _ [@cdr[argv buf handler]]))
+          (let (first-dash-ref (locate (arg source-fns) [str= arg (" -)]))
+          (if [nil? $first-dash-ref] {handler (storage _ arguments-error)}
+          (let (object-fns (storage _ [@cdr $first-dash-ref]))
+          (let (second-dash-ref (locate (arg object-fns) [str= arg (" -)]))
+          (if [nil? $second-dash-ref] {handler (storage _ arguments-error)}
+          (let (intrinsic-fns (storage _ [@cdr $second-dash-ref])) (do
+          (ignore Cut the source filenames and object filenames list short.)
+          [set first-dash-ref nil]
+          [set second-dash-ref nil]
           (ignore These are all the bindings necessary for metaprogramming. Their
             definitions can be found in list.l2 and lexer.l2.)
           (let (bndgs (storage _ (substitute (.. buf handler) (list
@@ -265,12 +290,11 @@
             [make-binding (" var=) vbl= ..]
             [make-binding (" var?) vbl? ..]
             [make-binding (" var) vbl ..])..)))) (do
-          
           (ignore Evaluate the metaprogram)
-          [evaluate-files source-fns object-fns bndgs buf handler]
+          [evaluate-files $source-fns $object-fns $intrinsic-fns bndgs buf handler]
           (ignore Compile the program in the metaprogram's environment)
-          [compile-files source-fns $bndgs buf handler]
-          (storage _ no-error)))))))))
+          [compile-files $source-fns $intrinsic-fns $bndgs buf handler]
+          (storage _ no-error))))))))))))
         
         (handler err (substitute (.. cleanup) (do
           (switch = (@0 err)
