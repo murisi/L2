@@ -168,7 +168,12 @@
       (let (outfn [buffer-alloc [+ [strlen infn] #1] ..]) (do
       [strcpy outfn infn]
       [strcpy [strrchr outfn (char .)] (" .o)]
-      [compile-program-to-elf exprs gens outfn ..]))))))))
+      [compile-program-to-elf exprs gens outfn ..])))
+    
+    (foreach (intrinsic-fn intrinsic-fns)
+      (switch str= intrinsic-fn
+        ((" arithmetic.o) [compile-program-to-elf [wrap-arithmetic-intrinsics ..] gens intrinsic-fn ..])
+        {handler (storage undefined-intrinsics-error intrinsic-fn)})))))))
 
 (storage arguments-error (ignore))
 
