@@ -92,7 +92,7 @@
           {cons-expr [cons [build-expression [build-fragment src-buf src-sz pos ..] null-expr ..] expressions ..]}
           [reverse expressions ..]))))))
 
-(storage undefined-intrinsics-error (ignore))
+(storage unsupported-intrinsics-error (ignore))
 
 (ignore
   Takes a list of L2 and object file names, loads their contents into memory, and links
@@ -107,7 +107,7 @@
     (let (gens (reverse-map (intrinsic-fn intrinsic-fns)
       (switch str= intrinsic-fn
         ((" arithmetic.o) [function->generator generate-arithmetic-intrinsics])
-        {handler (storage undefined-intrinsics-error intrinsic-fn)}) ..))
+        {handler (storage _ unsupported-intrinsics-error intrinsic-fn)}) ..))
     
     (let (objects1 (fold (objects nil) (src source-fns)
       (let (obj [load-program [generate-metaprogram [read-expressions src ..] gens bindings ..] gens ..])
@@ -123,7 +123,7 @@
         ((" arithmetic.o)
           (let (obj [load-program [wrap-arithmetic-intrinsics ..] gens ..])
             (do [append-list bindings [immutable-bindings obj ..]] [cons obj objects ..])))
-        {handler (storage undefined-intrinsics-error intrinsic-fn)})))
+        {handler (storage _ unsupported-intrinsics-error intrinsic-fn)})))
     
     (foreach (obj objects3) [mutate-bindings obj $bindings])))))))
 
@@ -150,7 +150,7 @@
     (let (gens (reverse-map (intrinsic-fn intrinsic-fns)
       (switch str= intrinsic-fn
         ((" arithmetic.o) [function->generator generate-arithmetic-intrinsics])
-        {handler (storage undefined-intrinsics-error intrinsic-fn)}) ..))
+        {handler (storage _ unsupported-intrinsics-error intrinsic-fn)}) ..))
         
     (let (file-exprss [reverse (reverse-map (infn file-names)
       [reverse (reverse-map (e [read-expressions infn ..])
@@ -165,15 +165,15 @@
         (foreach (expr all-exprs) [pre-visit-expressions vunlink-symbols (storage _ expr) (values storage $undefined-bindings)]))))
       
     (foreach (infn file-names) (exprs file-exprss)
-      (let (outfn [buffer-alloc [+ [strlen infn] #1] ..]) (do
+      (let (outfn [buffer-alloc [+ [strlen infn] #3] ..]) (do
       [strcpy outfn infn]
-      [strcpy [strrchr outfn (char .)] (" .o)]
+      [strcpy [strrchr outfn (nul)] (" .o)]
       [compile-program-to-elf exprs gens outfn ..])))
     
     (foreach (intrinsic-fn intrinsic-fns)
       (switch str= intrinsic-fn
         ((" arithmetic.o) [compile-program-to-elf [wrap-arithmetic-intrinsics ..] gens intrinsic-fn ..])
-        {handler (storage undefined-intrinsics-error intrinsic-fn)})))))))
+        {handler (storage _ unsupported-intrinsics-error intrinsic-fn)})))))))
 
 (storage arguments-error (ignore))
 
@@ -347,10 +347,10 @@
             
             (arguments-error [print-str (stdout)
               (" Bad command line arguments.(lf)
-                 Usage: l2evaluate src1.l2 ... - obj1.o ...(lf)
-                 Outcome: Loads the functions in the source and object files into memory, then preprocesses(lf)
-                 the source files using the functions in memory, and then compiles the source files into object(lf)
-                 files.(lf)) ..])
+                 Usage: l2evaluate src1.l2 ... - intr1.o ... - obj1.o ...(lf)
+                 Outcome: Loads the functions in the source files, intrinsic objects, and object files into memory,(lf)
+                 then preprocesses the source files using the functions in memory, then compiles the source files(lf)
+                 into object files, and then writes out the intrinsic object files.(lf)) ..])
             
             (memory-access-error [print-str (stdout) (" Memory access error.(lf)) ..])
             
@@ -364,6 +364,11 @@
               [print-str (stdout) (" (lf)The above equation was generated from the following expression:(lf)) ..]
               [print-expression (@3 err) ..]
               [print-str (stdout) (" (lf)) ..]))
+            
+            (unsupported-intrinsics-error (do
+              [print-str (stdout) (" Compiler does not support the intrinsics library:(space)) ..]
+              [print-str (stdout) (@1 err) ..]
+              [print-str (stdout) (" .(lf)) ..]))
               
             (ignore))
             
