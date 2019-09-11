@@ -127,6 +127,16 @@
     
     (foreach (obj objects3) [mutate-bindings obj $bindings])))))))
 
+(constrain compile-program-to-elf (\ r (with-vars (a) (`(function ((list expr) (list generator) string buffer ,a) ())r)r)))
+
+(function compile-program-to-elf (exprs gens outfn buf handler)
+  (substitute (.. buf handler)
+    (bind (asms undefined-bindings static-bindings) [compile-program exprs gens bind ..]
+    (bind (objdest objdest-sz) [write-elf asms undefined-bindings static-bindings bind ..]
+    (let (fd [create outfn handler]) (do
+    [print fd objdest objdest-sz handler]
+    [close fd handler]))))))
+
 (ignore
   Takes a list of L2 source files and compiles them into object files. programs is a
   list of strings containing paths to L2 source files. bndgs is a list of bindings
@@ -155,14 +165,10 @@
         (foreach (expr all-exprs) [pre-visit-expressions vunlink-symbols (storage _ expr) (values storage $undefined-bindings)]))))
       
     (foreach (infn file-names) (exprs file-exprss)
-      (bind (asms undefined-bindings static-bindings) [compile-program exprs gens bind buf handler]
-      (bind (objdest objdest-sz) [write-elf asms undefined-bindings static-bindings bind buf handler]
-      (let (outfn [buffer-alloc [+ [strlen infn] #1] buf handler]) (do
+      (let (outfn [buffer-alloc [+ [strlen infn] #1] ..]) (do
       [strcpy outfn infn]
       [strcpy [strrchr outfn (char .)] (" .o)]
-      (let (fd [create outfn handler]) (do
-      [print fd objdest objdest-sz handler]
-      [close fd handler]))))))))))))
+      [compile-program-to-elf exprs gens outfn ..]))))))))
 
 (storage arguments-error (ignore))
 
