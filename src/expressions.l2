@@ -590,3 +590,41 @@
       
       [make-meta [build-expression [@car d] meta ..] frag meta ..]))))))
 
+(ignore
+  Make a unary function with the given name that calls an undefined function of the same
+  name with the same arguments that it received. The idea is that the intrinsic generators
+  will replace the function call with inline assembly.)
+
+(constrain make-unary-intrinsic (\ r (with-vars (a) (`(function (string buffer ,a) expr)r)r)))
+
+(function make-unary-intrinsic (name buf handler)
+  (substitute (.. buf handler)
+    (let (func-symbol [make-symbol name null-fragment null-expr ..])
+        (callee-symbol [make-symbol null-string null-fragment null-expr ..])
+        (param-a [make-symbol null-string null-fragment null-expr ..])
+        (arg-a [make-symbol null-string null-fragment null-expr ..])
+      (let (func (make-functionN func-symbol (param-a)
+          (make-invokeN callee-symbol (arg-a) null-fragment null-expr ..) null-fragment null-expr ..)) (do
+        (setf expr-binding-aug callee-symbol [make-undefined-binding (@ expr-name func-symbol) ..])
+        [bind-symbol arg-a param-a]
+        func)))))
+
+(ignore Performs actions analogous to make-unary-intrinsic, but for binary functions.)
+
+(constrain make-binary-intrinsic (\ r (with-vars (a) (`(function (string buffer ,a) expr)r)r)))
+
+(function make-binary-intrinsic (name buf handler)
+  (substitute (.. buf handler)
+    (let (func-symbol [make-symbol name null-fragment null-expr ..])
+        (callee-symbol [make-symbol null-string null-fragment null-expr ..])
+        (param-a [make-symbol null-string null-fragment null-expr ..])
+        (param-b [make-symbol null-string null-fragment null-expr ..])
+        (arg-a [make-symbol null-string null-fragment null-expr ..])
+        (arg-b [make-symbol null-string null-fragment null-expr ..])
+      (let (func (make-functionN func-symbol (param-a param-b)
+          (make-invokeN callee-symbol (arg-a arg-b) null-fragment null-expr ..) null-fragment null-expr ..)) (do
+        (setf expr-binding-aug callee-symbol [make-undefined-binding (@ expr-name func-symbol) ..])
+        [bind-symbol arg-a param-a]
+        [bind-symbol arg-b param-b]
+        func)))))
+
