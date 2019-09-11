@@ -1,14 +1,14 @@
 (ignore
   The following function wraps the arithmetic intrinsics so that the addresses of
   functions like + and - can be taken like non-intrinsic functions. Though the wrappers
-  appear to be recursive, they are not because the capturable property is used to prevent
-  the identifiers of the invocations from being captured by the enclosing functions.)
+  appear to be recursive, they are not because the function symbol is hard-set to be in
+  an undefined state.)
 
 (constrain wrap-arithmetic-intrinsics (\ r (with-vars (a) (`(function (buffer ,a) (list expr))r)r)))
 
 (function wrap-arithmetic-intrinsics (buf handler)
   (substitute (.. buf handler) (list
-    ((let (func-symbol [make-symbol [rstrcpy (" +a) ..] null-fragment null-expr ..])
+    ((let (func-symbol [make-symbol [rstrcpy (" +) ..] null-fragment null-expr ..])
           (callee-symbol [make-symbol null-string null-fragment null-expr ..])
           (param-a [make-symbol null-string null-fragment null-expr ..])
           (param-b [make-symbol null-string null-fragment null-expr ..])
@@ -16,7 +16,12 @@
           (arg-b [make-symbol null-string null-fragment null-expr ..])
         (let (func (make-functionN func-symbol (param-a param-b)
             (make-invokeN callee-symbol (arg-a arg-b) null-fragment null-expr ..) null-fragment null-expr ..)) (do
-          [bind-symbol callee-symbol func-symbol]
+          (let (stg [make-storage [make-symbol (@ expr-name func-symbol) null-frag null-expr ..] nil null-frag null-expr ..])
+          (let (bndg (@ expr-binding-aug (@ expr-reference stg))) (do
+          (setf bndg-storage bndg (absolute-storage))
+          (setf bndg-scope bndg (global-scope))
+          (setf bndg-state bndg (undefined-state))
+          (setf expr-binding-aug callee-symbol bndg))))
           [bind-symbol arg-a param-a]
           [bind-symbol arg-b param-b]
           func)))) ..)))
@@ -35,7 +40,7 @@
   (substitute (.. r handler)
     (if (and [= (@ expr-type n) (-invoke-)] [= (@ expr-type (@ expr-reference n)) (-symbol-)]
         [= (@ bndg-state (@ expr-binding-aug (@ expr-reference n))) (undefined-state)])
-      (switch str= (@ expr-name (@ expr-reference n))
+      (switch str= (@ bndg-name (@ expr-binding-aug (@ expr-reference n)))
         ((" getb) (" get1b) {success (do
           [generate-expression [@car (@ expr-arguments n)] gens c ..]
           [prepend (make-asmN (movq-reg-to-reg) ((make-asmN(rax)()..) (make-asmN(r10)()..)) ..) c ..]
