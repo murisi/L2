@@ -1,6 +1,12 @@
-(constrain arithmetic-intrinsics (\ r (with-vars (a) (`(function (buffer ,a) (list expr))r)r)))
+(ignore
+  The following function wraps the arithmetic intrinsics so that the addresses of
+  functions like + and - can be taken like non-intrinsic functions. Though the wrappers
+  appear to be recursive, they are not because the capturable property is used to prevent
+  the identifiers of the invocations from being captured by the enclosing functions.)
 
-(function arithmetic-intrinsics (buf handler)
+(constrain wrap-arithmetic-intrinsics (\ r (with-vars (a) (`(function (buffer ,a) (list expr))r)r)))
+
+(function wrap-arithmetic-intrinsics (buf handler)
   (substitute (.. buf handler) (list
     ((let (func-symbol [make-symbol [rstrcpy (" +a) ..] null-fragment null-expr ..])
           (callee-symbol [make-symbol null-string null-fragment null-expr ..])
@@ -14,6 +20,13 @@
           [bind-symbol arg-a param-a]
           [bind-symbol arg-b param-b]
           func)))) ..)))
+
+(ignore
+  The following function generates inline assembly for the following functions: getb,
+  get1b, get2b, get4b, get8b, get, setb, set1b, set2b, set4b, set8b, set, +, -, *, /, rem,
+  =, <, >, <<, >>, lor, land, lnot. This function only applies to invocations of functions
+  with the aforementioned names that are undefined in the invocation's lexical
+  environment.)
 
 (constrain generate-arithmetic-intrinsics
   (\ r (with-vars (a) (`(function (expr (list generator) (ref (list expr)) (continuation (())) buffer ,a) ())r)r)))
