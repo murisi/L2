@@ -1,5 +1,6 @@
 enum error_type { unification, arguments, param_count_mismatch, special_form,
-  unexpected_character, multiple_definition, object, missing_file, undefined_symbol };
+  unexpected_character, multiple_definition, object, missing_file, undefined_symbol,
+  unsupported_intrinsics };
 
 struct special_form_error {
   int type;
@@ -43,6 +44,11 @@ struct unification_error {
   union expression *expr;
 };
 
+struct unsupported_intrinsics_error {
+  int type;
+  char *name;
+};
+
 union evaluate_error {
   struct arguments_error arguments;
   struct special_form_error special_form;
@@ -52,6 +58,7 @@ union evaluate_error {
   struct missing_file_error missing_file;
   struct undefined_symbol_error undefined_symbol;
   struct unification_error unification;
+  struct unsupported_intrinsics_error unsupported_intrinsics;
 };
 
 void throw_arguments(jumpbuf *jb) {
@@ -115,6 +122,14 @@ void throw_unification(list lhs, list rhs, union expression *expr, jumpbuf *jb) 
   err->lhs = lhs;
   err->rhs = rhs;
   err->expr = expr;
+  jb->ctx = err;
+  longjump(jb);
+}
+
+void throw_unsupported_intrinsics(char *name, jumpbuf *jb) {
+  struct unsupported_intrinsics_error *err = buffer_alloc(jb->ctx, sizeof(struct unsupported_intrinsics_error));
+  err->type = unsupported_intrinsics;
+  err->name = name;
   jb->ctx = err;
   longjump(jb);
 }

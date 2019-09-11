@@ -203,10 +203,10 @@ int main(int argc, char *argv[]) {
         write_str(STDOUT, ".\n");
         break;
       } case arguments: {
-        write_str(STDOUT, "Bad command line arguments.\nUsage: l2evaluate src1.l2 ... - obj1.o ...\n"
-          "Outcome: Loads the functions in the source and object files into memory, then preprocesses "
-          "the source files using the functions in memory, and then compiles the source files into "
-          "object files.\n");
+        write_str(STDOUT, "Bad command line arguments.\nUsage: l2evaluate src1.l2 ... - intr1.o ... - obj1.o ...\n"
+          "Outcome: Loads the functions in the source files, intrinsic objects, and object files into memory, "
+          "then preprocesses the source files using the functions in memory, then compiles the source files "
+          "into object files, and then writes out the intrinsic object files.\n");
         break;
       } case undefined_symbol: {
         write_str(STDOUT, "Undefined symbol: ");
@@ -226,6 +226,11 @@ int main(int argc, char *argv[]) {
           print_expression(t);
         }
         write_str(STDOUT, "\n");
+        break;
+      } case unsupported_intrinsics: {
+        write_str(STDOUT, "Compiler does not support the intrinsics library: ");
+        write_str(STDOUT, err->unsupported_intrinsics.name);
+        write_str(STDOUT, ".\n");
         break;
       }
     }
@@ -337,7 +342,7 @@ int main(int argc, char *argv[]) {
   buffer expr_buf = create_buffer(0);
   list bndgs = nil;
   
-  int i;
+  int i, j;
   for(i = 0; i < sizeof(static_bindings_arr) / sizeof(struct binding); i++) {
     prepend(&static_bindings_arr[i], &bndgs, obj_buf);
   }
@@ -345,14 +350,26 @@ int main(int argc, char *argv[]) {
   if(i == argc) {
     throw_arguments(&evaluate_handler);
   }
-  list source_fns = nil, object_fns = nil;
-  int j;
-  for(j = 1; j < i; j++) {
-    append(argv[j], &source_fns, evaluate_buffer);
+  for(j = i+1; j < argc && strcmp(argv[j], "-"); j++);
+  if(j == argc) {
+    throw_arguments(&evaluate_handler);
   }
-  for(j = i + 1; j < argc; j++) {
-    append(argv[j], &object_fns, evaluate_buffer);
+  list source_fns = nil, intrinsic_fns = nil, object_fns = nil;
+  int k;
+  for(k = 1; k < i; k++) {
+    append(argv[k], &source_fns, evaluate_buffer);
   }
+  for(k = i+1; k < j; k++) {
+    append(argv[k], &intrinsic_fns, evaluate_buffer);
+  }
+  for(k = j+1; k < argc; k++) {
+    append(argv[k], &object_fns, evaluate_buffer);
+  }
+  
+  char *intrinsic_fn;
+  {foreach(intrinsic_fn, intrinsic_fns) {
+    throw_unsupported_intrinsics(intrinsic_fn, &evaluate_handler);
+  }}
   evaluate_files(source_fns, object_fns, &bndgs, expr_buf, obj_buf, &evaluate_handler);
   compile_files(source_fns, bndgs, expr_buf, obj_buf, &evaluate_handler);
   
