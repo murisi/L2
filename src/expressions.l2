@@ -241,6 +241,22 @@
 (function bind-symbol (symbol target) (setf expr-binding-aug symbol (@ expr-binding-aug target)))
 
 (ignore
+  Makes an undefined binding with the given name. Internally, a storage expression is made
+  to be the target of the symbol so as to enable type inferencing on symbols using this
+  binding.)
+
+(constrain make-undefined-binding (\ r (with-vars (b) (`(function (string buffer ,b) bndg-aug)r)r)))
+
+(function make-undefined-binding (name r handler)
+  (substitute (.. r handler)
+    (let (stg [make-storage [make-symbol name null-frag null-expr ..] nil null-frag null-expr ..])
+    (let (bndg (@ expr-binding-aug (@ expr-reference stg))) (do
+    (setf bndg-storage bndg (absolute-storage))
+    (setf bndg-scope bndg (global-scope))
+    (setf bndg-state bndg (undefined-state))
+    bndg)))))
+
+(ignore
   Makes a symbol expression attached to the given augmented binding. bndg is the augmented
   binding to which the symbol will be attached. reg is the buffer into which the the
   symbol expression will be put. Return value is the symbol expression.)
