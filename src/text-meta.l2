@@ -45,31 +45,29 @@
   except that it is allocated on the stack.)
 
 (function " (l r)
-  (let (buf (with cont [allocate [+[meta:dquote-length l r](unit)] cont]))
-    (loop add-word (str l) (index #0) (instrs emt)
-      (if [emt? str]
-        (`(let (dquote:str (,[llst (` storage r) (` dquote:tmp r)
-            (loop make-space (phs emt) (num [+[/ index (unit)]#1])
-              (if num {make-space [lst [=# [get [+ buf [* [- num #1] (unit)]]] r] phs r] [- num #1]} phs)) r]))
-          (,[lst (` do r)
-            [meta:reverse [lst (`(constrain dquote:str (\ k (` string k)))r) instrs r]r]r]))r)
-      
-      (if (and [emt? [@fst str]] [emt? [@rst str]]) (do
-        [setb [+ buf index] (nul)]
-        {add-word [@rst str] [+ index #1] instrs})
-          
-      (if (and [emt? [@fst str]] [token? [@frst str]]) (do
-        [setb [+ buf index] (space)]
-        {add-word [@rst str] [+ index #1] instrs})
-      
-      (if [emt? [@fst str]] {add-word [@rst str] index instrs}
-          
-      (if [token? [@fst str]] (do
-        [setb [+ buf index] [meta:char-aux [@ffst str]]]
-        {add-word [lst [@rfst str] [@rst str] r] [+ index #1] instrs})
+  (let (buf (storage _ (ignore)))
+    (loop add-word (str l) (index #0) (exprs emt) (instrs emt)
+      (let (sub-index [rem index (unit)])
+        (if [emt? str]
+          (`(let (dquote:str (,[llst (` storage r) (` dquote:tmp r) [meta:reverse exprs r] r]))
+              (,[lst (` do r) [meta:reverse [lst (`(constrain dquote:str (\ k (` string k)))r) instrs r]r]r]))r)
         
-        {add-word [@rst str] [+ index #1]
-          [lst (`[setb [+ dquote:str (,[=# index r])] (,[@fst str])]r) instrs r]}))))))))
+        (if (and [emt? [@fst str]] [emt? [@rst str]]) (do
+          [setb [+ buf sub-index] (nul)]
+          {add-word [@rst str] [+ index #1] [lst [=# $buf r] exprs r] instrs})
+            
+        (if (and [emt? [@fst str]] [token? [@frst str]]) (do
+          [setb [+ buf sub-index] (space)]
+          {add-word [@rst str] [+ index #1] (if [= sub-index #7] [lst [=# $buf r] exprs r] exprs) instrs})
+        
+        (if [emt? [@fst str]] {add-word [@rst str] index exprs instrs}
+        
+        (if [token? [@fst str]] (do
+          [setb [+ buf sub-index] [meta:char-aux [@ffst str]]]
+          {add-word [lst [@rfst str] [@rst str] r] [+ index #1] (if [= sub-index #7] [lst [=# $buf r] exprs r] exprs) instrs})
+          
+          {add-word [@rst str] [+ index #1] (if [= sub-index #7] [lst [=# $buf r] exprs r] exprs)
+            [lst (`[setb [+ dquote:str (,[=# index r])] (,[@fst str])]r) instrs r]})))))))))
 
 (ignore
   The following functions implement ASCII control characters. These can be embedded into
