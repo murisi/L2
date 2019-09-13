@@ -23,7 +23,6 @@
 .global land
 .global lor
 .global lnot
-.global allocate
 .global syscall
 .global cast
 
@@ -148,19 +147,6 @@ ret
 cast:
 movq %rdi, %rax
 ret
-
-allocate:
-/* All sanctioned by L2 ABI: */
-movq 48(%rsi), %r15
-movq 40(%rsi), %r12
-movq 32(%rsi), %rbx
-movq 24(%rsi), %r13
-movq 16(%rsi), %r14
-movq 0(%rsi), %rbp
-subq %rdi, %rsp
-andq $0xFFFFFFFFFFFFFFF8, %rsp
-movq %rsp, 56(%rsi)
-jmp *8(%rsi)
 
 /*
  * Do syscall with the syscall number being provided by the first argument to
