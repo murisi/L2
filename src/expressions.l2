@@ -547,10 +547,10 @@
           {handler (storage _ special-form-error d [@cadr d])}
         (if [i/f:token? [@caddr d]]
           {handler (storage _ special-form-error d [@caddr d])}
-          (let (parameters [reverse (reverse-map (v [frag->list [@caddr d]])
+          (let (parameters (map (v [frag->list [@caddr d]])
               (if [i/f:token? v]
                 [build-expression v meta ..]
-                {handler (storage _ special-form-error d v)}) ..) ..])
+                {handler (storage _ special-form-error d v)}) ..))
                 
             [(switch str= [to-string [fragment->token [@car d]] ..]
                 ((" function) make-function)
@@ -566,7 +566,7 @@
               ((" invoke) make-invoke)
               ((" jump) make-jump)
               make-storage)
-            [build-expression [@cadr d] meta ..] [reverse (reverse-map (v [@cddr d]) [build-expression v meta ..] ..) ..] frag meta ..])))
+            [build-expression [@cadr d] meta ..] (map (v [@cddr d]) [build-expression v meta ..] ..) frag meta ..])))
       
       ((" literal)
         (if (not [= [length d] #2])
