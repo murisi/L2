@@ -42,111 +42,123 @@
   A macro to do a reverse map. Does the following transformation:
   (reverse-map (x l) expr ctx ...)
   ->
-  (with reverse-map:return
-    {(continuation reverse-map:loop (reverse-map:l reverse-map:acc)
-      (if [nil? reverse-map:l]
-        {reverse-map:return reverse-map:acc}
-        {reverse-map:loop
-          [@cdr reverse-map:l]
-          [cons (let (x [@car reverse-map:l]) expr) reverse-map:acc ctx ...]})) l nil}))
+  (loop reverse-map:loop (reverse-map:l l) (reverse-map:acc nil)
+    (if [nil? reverse-map:l]
+      reverse-map:acc
+      {reverse-map:loop
+        [@cdr reverse-map:l]
+        [cons (let (x [@car reverse-map:l]) expr) reverse-map:acc ctx ...]})))
 
 (function reverse-map (l r)
-  (`(with reverse-map:return
-    {(continuation reverse-map:loop (reverse-map:l reverse-map:acc)
+  (`(loop reverse-map:loop (reverse-map:l (,[@frfst l])) (reverse-map:acc nil)
       (if [nil? reverse-map:l]
-        {reverse-map:return reverse-map:acc}
+        reverse-map:acc
         {reverse-map:loop
           [@cdr reverse-map:l]
           (,[llllst (` invoke r) (` cons r) (`(let ((,[@ffst l]) [@car reverse-map:l]) (,[@frst l]))r) (` reverse-map:acc r)
-            [@rrst l] r])})) (,[@frfst l]) nil})r))
+            [@rrst l] r])}))r))
+
+(ignore
+  A macro to do a map. Works by keeping pointer to the end of the list during
+  construction. Does the following transformation:
+  (map (x l) expr ctx ...)
+  ->
+  (let (map:start (storage _ nil))
+    (loop map:loop (map:l l) (map:end map:start)
+      (if [nil? map:l]
+        $map:start
+        (do
+          [set map:end [cons (let (x [@car map:l]) expr) nil ctx ...]]
+          {map:loop [@cdr map:l] (& cdr $map:end)})))))
+
+(function map (l r)
+  (`(let (map:start (storage _ nil))
+      (loop map:loop (map:l (,[@frfst l])) (map:end map:start)
+        (if [nil? map:l]
+          $map:start
+          (do
+            [set map:end (,[llllst (` invoke r) (` cons r) (`(let ((,[@ffst l]) [@car map:l]) (,[@frst l]))r) (` nil r) [@rrst l] r])]
+            {map:loop [@cdr map:l] (& cdr $map:end)}))))r))
 
 (ignore
   A macro to do a reverse filter. Does the following transformation:
   (reverse-filter (x l) expr ctx ...)
   ->
-  (with reverse-filter:return
-    {(continuation reverse-filter:loop (reverse-filter:l reverse-filter:acc)
-      (if [nil? reverse-filter:l]
-        {reverse-filter:return reverse-filter:acc}
-        {reverse-filter:loop
-          [@cdr reverse-filter:l]
-          (if (let (x [@car reverse-filter:l]) expr)
-            [cons [@car reverse-filter:l] reverse-filter:acc ctx ...]
-            reverse-filter:acc)})) l nil}))
+  (loop reverse-filter:loop (reverse-filter:l l) (reverse-filter:acc nil)
+    (if [nil? reverse-filter:l]
+      reverse-filter:acc
+      {reverse-filter:loop
+        [@cdr reverse-filter:l]
+        (if (let (x [@car reverse-filter:l]) expr)
+          [cons [@car reverse-filter:l] reverse-filter:acc ctx ...]
+          reverse-filter:acc)})))
 
 (function reverse-filter (l r)
-  (`(with reverse-filter:return
-    {(continuation reverse-filter:loop (reverse-filter:l reverse-filter:acc)
+  (`(loop reverse-filter:loop (reverse-filter:l (,[@frfst l])) (reverse-filter:acc nil)
       (if [nil? reverse-filter:l]
-        {reverse-filter:return reverse-filter:acc}
+        reverse-filter:acc
         {reverse-filter:loop
           [@cdr reverse-filter:l]
           (if (let ((,[@ffst l]) [@car reverse-filter:l]) (,[@frst l]))
             (,[llllst (` invoke r) (` cons r) (`[@car reverse-filter:l]r) (` reverse-filter:acc r) [@rrst l] r])
-            reverse-filter:acc)})) (,[@frfst l]) nil})r))
+            reverse-filter:acc)}))r))
 
 (ignore
   A macro to do a reverse map. Does the following transformation:
   (fold (y acc) (x l) expr)
   ->
-  (with fold:return
-    {(continuation fold:loop (fold:acc fold:l)
-      (if [nil? fold:l]
-        {fold:return fold:acc}
-        {fold:loop
-          (let (y fold:acc) (x [@car fold:l]) expr)
-          [@cdr fold:l]})) acc l}))
+  (loop fold:loop (fold:acc acc) (fold:l l)
+    (if [nil? fold:l]
+      fold:acc
+      {fold:loop
+        (let (y fold:acc) (x [@car fold:l]) expr)
+        [@cdr fold:l]})))
 
 (function fold (l r)
-  (`(with fold:return
-    {(continuation fold:loop (fold:acc fold:l)
+  (`(loop fold:loop (fold:acc (,[@frfst l])) (fold:l (,[@frfrst l]))
       (if [nil? fold:l]
-        {fold:return fold:acc}
+        fold:acc
         {fold:loop
           (let ((,[@ffst l]) fold:acc) ((,[@ffrst l]) [@car fold:l]) (,[@frrst l]))
-          [@cdr fold:l]})) (,[@frfst l]) (,[@frfrst l])})r))
+          [@cdr fold:l]}))r))
 
 (ignore
   A macro to do a find. Does the following transformation:
   (find (x l) expr)
   ->
-  (with find:return
-    {(continuation find:loop (find:l)
-      (if [nil? find:l]
-        {find:return nil}
-        (if (let (x [@car find:l]) expr)
-          {find:return find:l}
-          {find:loop [@cdr find:l]}))) l}))
+  (loop find:loop (find:l l)
+    (if [nil? find:l]
+      nil
+      (if (let (x [@car find:l]) expr)
+        find:l
+        {find:loop [@cdr find:l]}))))
 
 (function find (l r)
-  (`(with find:return
-    {(continuation find:loop (find:l)
+  (`(loop find:loop (find:l (,[@frfst l]))
       (if [nil? find:l]
-        {find:return nil}
+        nil
         (if (let ((,[@ffst l]) [@car find:l]) (,[@frst l]))
-          {find:return find:l}
-          {find:loop [@cdr find:l]}))) (,[@frfst l])})r))
+          find:l
+          {find:loop [@cdr find:l]})))r))
 
 (ignore
   A macro to do a locate. Does the following transformation:
   (locate (x l-ref) expr)
   ->
-  (with locate:return
-    {(continuation locate:loop (locate:l-ref)
-      (if [nil? $locate:l-ref]
-        {locate:return locate:l-ref}
-        (if (let (x [@car $locate:l-ref]) expr)
-          {locate:return locate:l-ref}
-          {locate:loop (& cdr $locate:l-ref)}))) l-ref}))
+  (loop locate:loop (locate:l-ref l-ref)
+    (if [nil? $locate:l-ref]
+      locate:l-ref
+      (if (let (x [@car $locate:l-ref]) expr)
+        locate:l-ref
+        {locate:loop (& cdr $locate:l-ref)}))))
 
 (function locate (l r)
-  (`(with locate:return
-    {(continuation locate:loop (locate:l-ref)
+  (`(loop locate:loop (locate:l-ref (,[@frfst l]))
       (if [nil? $locate:l-ref]
-        {locate:return locate:l-ref}
+        locate:l-ref
         (if (let ((,[@ffst l]) [@car $locate:l-ref]) (,[@frst l]))
-          {locate:return locate:l-ref}
-          {locate:loop (& cdr $locate:l-ref)}))) (,[@frfst l])})r))
+          locate:l-ref
+          {locate:loop (& cdr $locate:l-ref)})))r))
 
 (function list-struct (l r) [=# #16 r])
 
