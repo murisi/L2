@@ -31,16 +31,16 @@
       (let (t [@car exprs])
         (if (or [= (@ expr-type t) (-function-)] [= (@ expr-type t) (-storage-)])
           (do
-            (setf bndg-scope (@ expr-binding-aug (@ expr-reference t)) (global-scope))
-            {add-binding [cons (@ expr-binding-aug (@ expr-reference t)) binding-augs r handler] [@cdr exprs]})
+            (setf bndg-scope (@ expr-symbol-binding-aug (@ expr-reference t)) (global-scope))
+            {add-binding [cons (@ expr-symbol-binding-aug (@ expr-reference t)) binding-augs r handler] [@cdr exprs]})
           {add-binding binding-augs [@cdr exprs]})))))
 
 (constrain vunlink-symbols (\ r (`(function (expr (values (list bndg-aug))) expr)r)))
 
 (function vunlink-symbols (s ctx)
   (bind (blacklist) ctx
-    (if (and [= (@ expr-type s) (-symbol-)] (not [nil? (find (x blacklist) [= x (@ expr-binding-aug s)])]))
-      (do (setf expr-binding-aug s null-binding) s)
+    (if (and [= (@ expr-type s) (-symbol-)] (not [nil? (find (x blacklist) [= x (@ expr-symbol-binding-aug s)])]))
+      (do (setf expr-symbol-binding-aug s null-binding) s)
       s)))
 
 (constrain assign-binding (\ r (with-vars (a) (`(function (expr (list bndg-aug)) ,a)r)r)))
@@ -52,7 +52,7 @@
       (let (ba [@car bindings])
         (if (and [not= (@ bndg-name ba) null-string] [not= (@ expr-name s) null-string]
             [str= (@ bndg-name ba) (@ expr-name s)])
-          (do (setf expr-binding-aug s ba) (true))
+          (do (setf expr-symbol-binding-aug s ba) (true))
           {find [@cdr bindings]})))))
 
 (constrain link-symbols
@@ -66,27 +66,27 @@
     
     (switch = (@ expr-type s)
       ((-function-) (do
-        [prepend (@ expr-binding-aug (@ expr-reference s)) statics-ref ..]
+        [prepend (@ expr-symbol-binding-aug (@ expr-reference s)) statics-ref ..]
         [set dynamics-ref nil]
-        (foreach (u (@ expr-parameters s)) [prepend (@ expr-binding-aug u) dynamics-ref ..])
+        (foreach (u (@ expr-parameters s)) [prepend (@ expr-symbol-binding-aug u) dynamics-ref ..])
         [link-symbols (@ expr-expression s) (false) undefined-bindings $statics-ref $dynamics-ref ..]))
       
       ((-with-) (-continuation-) (do
-        [prepend (@ expr-binding-aug (@ expr-reference s)) bindings-ref ..]
-        (foreach (u (@ expr-parameters s)) [prepend (@ expr-binding-aug u) bindings-ref ..])
+        [prepend (@ expr-symbol-binding-aug (@ expr-reference s)) bindings-ref ..]
+        (foreach (u (@ expr-parameters s)) [prepend (@ expr-symbol-binding-aug u) bindings-ref ..])
         [link-symbols (@ expr-expression s) static-storage undefined-bindings $statics-ref $dynamics-ref ..]))
       
       ((-storage-) (do
-        [prepend (@ expr-binding-aug (@ expr-reference s)) bindings-ref ..]
+        [prepend (@ expr-symbol-binding-aug (@ expr-reference s)) bindings-ref ..]
         (foreach (u (@ expr-arguments s))
           [link-symbols u static-storage undefined-bindings $statics-ref $dynamics-ref ..])))
       
       ((-symbol-)
-        (if (and [= (@ expr-binding-aug s) null-binding] (not [assign-binding s $dynamics-ref])
+        (if (and [= (@ expr-symbol-binding-aug s) null-binding] (not [assign-binding s $dynamics-ref])
             (not [assign-binding s $statics-ref]) (not [assign-binding s $undefined-bindings]))
           (let (bndg [make-undefined-binding (@ expr-name s) ..]) (do
-            (setf expr-binding-aug s bndg)
-            [prepend (@ expr-binding-aug s) undefined-bindings ..]))
+            (setf expr-symbol-binding-aug s bndg)
+            [prepend (@ expr-symbol-binding-aug s) undefined-bindings ..]))
           (ignore)))
       
       ((-if-) (do
@@ -109,9 +109,9 @@
 (function escape-analysis (s escaping)
   (switch = (@ expr-type s)
     ((-symbol-)
-      (let (target-expr (@ bndg-expression (@ expr-binding-aug s)))
+      (let (target-expr (@ bndg-expression (@ expr-symbol-binding-aug s)))
         (if (and escaping (or [= (@ expr-type target-expr) (-continuation-)] [= (@ expr-type target-expr) (-with-)])
-            [= (@ expr-reference target-expr) (@ bndg-symbol (@ expr-binding-aug s))])
+            [= (@ expr-reference target-expr) (@ bndg-symbol (@ expr-symbol-binding-aug s))])
           (setf expr-escapes target-expr escaping)
           (ignore))))
     
@@ -129,9 +129,9 @@
     ((-storage-) (-jump-) (-invoke-) (do
       (if [= (@ expr-type s) (-jump-)] (do
         (if [= (@ expr-type (@ expr-reference s)) (-symbol-)]
-          (let (target-expr (@ bndg-expression (@ expr-binding-aug (@ expr-reference s))))
+          (let (target-expr (@ bndg-expression (@ expr-symbol-binding-aug (@ expr-reference s))))
           (if (and (or [= (@ expr-type target-expr) (-continuation-)] [= (@ expr-type target-expr) (-with-)])
-              [= (@ expr-reference target-expr) (@ bndg-symbol (@ expr-binding-aug (@ expr-reference s)))])
+              [= (@ expr-reference target-expr) (@ bndg-symbol (@ expr-symbol-binding-aug (@ expr-reference s)))])
             (setf expr-short-circuit s target-expr)
             (ignore)))
         (if [= (@ expr-type (@ expr-reference s)) (-continuation-)]
@@ -165,7 +165,7 @@
         (foreach (t (@ expr-arguments s)) [prepend t (& expr-dependencies s) ..])))
       
       ((-symbol-)
-        (let (target-expr (@ bndg-expression (@ expr-binding-aug s))) (do
+        (let (target-expr (@ bndg-expression (@ expr-symbol-binding-aug s))) (do
         [prepend target-expr (& expr-dependencies s) ..]
         [prepend s (& expr-dependencies target-expr) ..])))
       
@@ -297,7 +297,7 @@
           (values (buffer-storage ..) (@ expr-signature e) consequent-sig)) ..))))
       
       ((-symbol-)
-        (list ((values (buffer-storage ..) (@ expr-signature e) (@ expr-signature (@ bndg-symbol (@ expr-binding-aug e))))) ..))
+        (list ((values (buffer-storage ..) (@ expr-signature e) (@ expr-signature (@ bndg-symbol (@ expr-symbol-binding-aug e))))) ..))
       
       nil)))))
 
@@ -371,15 +371,15 @@
     
     ((-storage-) (-jump-) (-invoke-) (do
       (if [= (@ expr-type expr) (-storage-)]
-        (setf bndg-storage (@ expr-binding-aug(@ expr-reference expr)) (absolute-storage))
+        (setf bndg-storage (@ expr-symbol-binding-aug(@ expr-reference expr)) (absolute-storage))
         (do
           (setf bndg-storage (@ expr-temp-storage-bndg expr) (absolute-storage))
           [classify-program-bindings (@ expr-reference expr)]))
       (foreach (t (@ expr-arguments expr)) [classify-program-bindings t])))
     
     ((-continuation-) (-with-) (do
-      (setf bndg-storage (@ expr-binding-aug(@ expr-reference expr)) (absolute-storage))
-      (foreach (t (@ expr-parameters expr)) (setf bndg-storage (@ expr-binding-aug t) (absolute-storage)))
+      (setf bndg-storage (@ expr-symbol-binding-aug(@ expr-reference expr)) (absolute-storage))
+      (foreach (t (@ expr-parameters expr)) (setf bndg-storage (@ expr-symbol-binding-aug t) (absolute-storage)))
       [classify-program-bindings (@ expr-expression expr)]))
     
     ((-if-) (do
@@ -440,7 +440,7 @@
           (let (exprs-preprocessed [generate-metaprogram [cons expr-container nil ..] gens (storage _ bindings) buf handler]) (do
           [load-program-and-mutate exprs-preprocessed gens bindings buf handler]
           (let (expr-container-preprocessed [@car exprs-preprocessed])
-          [(@ bndg-offset (@ expr-binding-aug (@ expr-reference expr-container-preprocessed)))]))))))))r))
+          [(@ bndg-offset (@ expr-symbol-binding-aug (@ expr-reference expr-container-preprocessed)))]))))))))r))
 
 (ignore
   This function replaces meta-expressions with the code generated by calling the
@@ -471,7 +471,7 @@
       (let (function-expr-ref (storage _ function-expr)) (do
         [pre-visit-expressions vgenerate-metas function-expr-ref (values storage gens $bindings ..)]
         [load-program-and-mutate [cons $function-expr-ref nil ..] gens $bindings buf handler]
-        [set cache (@ bndg-offset (@ expr-binding-aug (@ expr-reference $function-expr-ref)))]
+        [set cache (@ bndg-offset (@ expr-symbol-binding-aug (@ expr-reference $function-expr-ref)))]
         $cache)))))
 
 (storage null-cache (ignore))

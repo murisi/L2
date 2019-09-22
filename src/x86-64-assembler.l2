@@ -64,7 +64,7 @@
     
   (if (and [= (@ expr-type expr) (-symbol-)] [= bytes #8]) (do
     (setf r-offset $relas $pos)
-    (setf r-info $relas (elf64-r-info [/[- (@ bndg-context(@ expr-binding-aug expr)) symtab](elf64-sym)] (r-x86-64-64)))
+    (setf r-info $relas (elf64-r-info [/[- (@ bndg-context(@ expr-symbol-binding-aug expr)) symtab](elf64-sym)] (r-x86-64-64)))
     (setf r-addend $relas #0)
     [set+ relas (elf64-rela)]
     [mem-write bin pos (storage _ #0) bytes])
@@ -73,7 +73,7 @@
     (let (ref [@car(@ expr-arguments expr)])
     (let (offset [@cadr(@ expr-arguments expr)]) (do
     (setf r-offset $relas $pos)
-    (setf r-info $relas (elf64-r-info [/[- (@ bndg-context(@ expr-binding-aug ref)) symtab](elf64-sym)] (r-x86-64-64)))
+    (setf r-info $relas (elf64-r-info [/[- (@ bndg-context(@ expr-symbol-binding-aug ref)) symtab](elf64-sym)] (r-x86-64-64)))
     (setf r-addend $relas (@ expr-value offset))
     [set+ relas (elf64-rela)]
     [mem-write bin pos (storage _ #0) bytes])))
@@ -81,7 +81,7 @@
   (if (and [= (@ expr-type expr) (-assembly-)] [= (@ expr-code expr) (lnkr-sub-rip-to-ref)] [= bytes #4])
     (let (ref [@car(@ expr-arguments expr)]) (do
     (setf r-offset $relas $pos)
-    (setf r-info $relas (elf64-r-info [/[- (@ bndg-context(@ expr-binding-aug ref)) symtab](elf64-sym)] (r-x86-64-pc32)))
+    (setf r-info $relas (elf64-r-info [/[- (@ bndg-context(@ expr-symbol-binding-aug ref)) symtab](elf64-sym)] (r-x86-64-pc32)))
     (setf r-addend $relas [- #0 bytes])
     [set+ relas (elf64-rela)]
     [mem-write bin pos (storage _ #0) bytes]))
@@ -110,8 +110,8 @@
     (switch = (@ expr-code n)
       ((label)
         (let (label-ref [@car(@ expr-arguments n)]) (do
-        (setf bndg-offset (@ expr-binding-aug label-ref) $pos)
-        (setf st-value (@ bndg-context(@ expr-binding-aug label-ref)) $pos))))
+        (setf bndg-offset (@ expr-symbol-binding-aug label-ref) $pos)
+        (setf st-value (@ bndg-context(@ expr-symbol-binding-aug label-ref)) $pos))))
         
       ((leaq-mdb-to-reg)
         (let (opcode (hex 8D))
@@ -446,7 +446,7 @@
     
         (foreach (e generated-expressions)
           (if (and [= (@ expr-code e) (label)]
-              [= (@ bndg-scope(@ expr-binding-aug[@car(@ expr-arguments e)])) (local-scope)])
+              [= (@ bndg-scope(@ expr-symbol-binding-aug[@car(@ expr-arguments e)])) (local-scope)])
             (let (ref (storage _ [@car(@ expr-arguments e)])) (do
             (if [not= (@ expr-name $ref) null-string]
               (do
@@ -460,7 +460,7 @@
             (setf st-info $sym-ptr (elf64-st-info (stb-local) (stt-notype)))
             (setf st-other $sym-ptr #0)
             (setf st-shndx $sym-ptr #2)
-            (setf bndg-context (@ expr-binding-aug $ref) $sym-ptr)
+            (setf bndg-context (@ expr-symbol-binding-aug $ref) $sym-ptr)
             [set+ sym-ptr (elf64-sym)]))
             (ignore)))
     
@@ -506,7 +506,7 @@
     
         (foreach (e generated-expressions)
           (if (and [= (@ expr-code e) (label)]
-              [= (@ bndg-scope(@ expr-binding-aug[@car(@ expr-arguments e)])) (global-scope)])
+              [= (@ bndg-scope(@ expr-symbol-binding-aug[@car(@ expr-arguments e)])) (global-scope)])
             (let (ref (storage _ [@car(@ expr-arguments e)])) (do
             (if [not= (@ expr-name $ref) null-string]
               (do
@@ -520,7 +520,7 @@
             (setf st-info $sym-ptr (elf64-st-info (stb-global) (stt-notype)))
             (setf st-other $sym-ptr #0)
             (setf st-shndx $sym-ptr #2)
-            (setf bndg-context (@ expr-binding-aug $ref) $sym-ptr)
+            (setf bndg-context (@ expr-symbol-binding-aug $ref) $sym-ptr)
             [set+ sym-ptr (elf64-sym)]))
             (ignore)))
     
@@ -658,7 +658,7 @@
   
   (foreach (l asms)
     (if [= (@ expr-code l) (label)]
-      (let (sym (@ expr-binding-aug[@car(@ expr-arguments l)]))
+      (let (sym (@ expr-symbol-binding-aug[@car(@ expr-arguments l)]))
         (setf bndg-offset sym [+ (@ bndg-offset sym) [segment obj (" .text)]]))
       (ignore)))))
 

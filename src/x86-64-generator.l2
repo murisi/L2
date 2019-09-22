@@ -187,7 +187,7 @@
         [layout-frames (@ expr-expression n) (& expr-binding-augs n) ..]
         (let (parameter-offset-ref (storage _ [* #2 (word-size)])) (do
         (foreach (t (@ expr-parameters n)) (do
-          (setf bndg-offset (@ expr-binding-aug t) $parameter-offset-ref)
+          (setf bndg-offset (@ expr-symbol-binding-aug t) $parameter-offset-ref)
           [set+ parameter-offset-ref (word-size)]))
           
         (let (binding-offset-ref (storage _ #0)) (do
@@ -198,17 +198,17 @@
       ((-continuation-) (-with-) (do
         [layout-frames (@ expr-expression n) binding-augs ..]
         (if (@ expr-escapes n) (do
-          (setf bndg-size (@ expr-binding-aug(@ expr-reference n)) (cont-size))
-          [append (@ expr-binding-aug(@ expr-reference n)) binding-augs ..])
+          (setf bndg-size (@ expr-symbol-binding-aug(@ expr-reference n)) (cont-size))
+          [append (@ expr-symbol-binding-aug(@ expr-reference n)) binding-augs ..])
           (ignore))
         (foreach (t (@ expr-parameters n)) (do
-          (setf bndg-size (@ expr-binding-aug t) (word-size))
-          [append (@ expr-binding-aug t) binding-augs ..]))))
+          (setf bndg-size (@ expr-symbol-binding-aug t) (word-size))
+          [append (@ expr-symbol-binding-aug t) binding-augs ..]))))
       
       ((-storage-) (do
         (foreach (u (@ expr-arguments n)) [layout-frames u binding-augs ..])
-        (setf bndg-size (@ expr-binding-aug(@ expr-reference n)) [* [length (@ expr-arguments n)] (word-size)])
-        [append (@ expr-binding-aug(@ expr-reference n)) binding-augs ..]))
+        (setf bndg-size (@ expr-symbol-binding-aug(@ expr-reference n)) [* [length (@ expr-arguments n)] (word-size)])
+        [append (@ expr-symbol-binding-aug(@ expr-reference n)) binding-augs ..]))
       
       ((-jump-) (-invoke-) (do
         [layout-frames (@ expr-reference n) binding-augs ..]
@@ -328,9 +328,9 @@
       {success (let (offset-ref (storage _ #0)) (do
         (foreach (t (@ expr-arguments n)) (do
           [generate-expression t gens c ..]
-          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug(@ expr-reference n)) $offset-ref (make-asmN(r11)()..) c ..]
+          [generate-store (make-asmN(rax)()..) (@ expr-symbol-binding-aug(@ expr-reference n)) $offset-ref (make-asmN(r11)()..) c ..]
           [set+ offset-ref (word-size)]))
-        [generate-load-address (@ expr-binding-aug(@ expr-reference n)) (make-asmN(rax)()..) c ..]))}
+        [generate-load-address (@ expr-symbol-binding-aug(@ expr-reference n)) (make-asmN(rax)()..) c ..]))}
       (ignore))))
 
 (constrain generate-symbol
@@ -339,23 +339,23 @@
 (function generate-symbol (n gens c success r handler)
   (substitute (.. r handler)
     (if [= (@ expr-type n) (-symbol-)]
-      {success (let (target-expr (@ bndg-expression(@ expr-binding-aug n)))
+      {success (let (target-expr (@ bndg-expression(@ expr-symbol-binding-aug n)))
         (if (and (or [= (@ expr-type target-expr) (-function-)] [= (@ expr-type target-expr) (-continuation-)])
-            (not [nil? (find (x (@ expr-parameters target-expr)) [= x (@ bndg-symbol (@ expr-binding-aug n))])]))
-          [generate-load (@ expr-binding-aug n) #0 (make-asmN(rax)()..) (make-asmN(r11)()..) c ..]
-          [generate-load-address (@ expr-binding-aug n) (make-asmN(rax)()..) c ..]))}
+            (not [nil? (find (x (@ expr-parameters target-expr)) [= x (@ bndg-symbol (@ expr-symbol-binding-aug n))])]))
+          [generate-load (@ expr-symbol-binding-aug n) #0 (make-asmN(rax)()..) (make-asmN(r11)()..) c ..]
+          [generate-load-address (@ expr-symbol-binding-aug n) (make-asmN(rax)()..) c ..]))}
       (ignore))))
 
 (function generate-store-continuation (n c r handler)
   (substitute (.. r handler) (do
-    [generate-store (make-asmN(rbx)()..) (@ expr-binding-aug(@ expr-reference n)) (cont-rbx) (make-asmN(r11)()..) c ..]
-    [generate-store (make-asmN(r12)()..) (@ expr-binding-aug(@ expr-reference n)) (cont-r12) (make-asmN(r11)()..) c ..]
-    [generate-store (make-asmN(r13)()..) (@ expr-binding-aug(@ expr-reference n)) (cont-r13) (make-asmN(r11)()..) c ..]
-    [generate-store (make-asmN(r14)()..) (@ expr-binding-aug(@ expr-reference n)) (cont-r14) (make-asmN(r11)()..) c ..]
-    [generate-store (make-asmN(r15)()..) (@ expr-binding-aug(@ expr-reference n)) (cont-r15) (make-asmN(r11)()..) c ..]
+    [generate-store (make-asmN(rbx)()..) (@ expr-symbol-binding-aug(@ expr-reference n)) (cont-rbx) (make-asmN(r11)()..) c ..]
+    [generate-store (make-asmN(r12)()..) (@ expr-symbol-binding-aug(@ expr-reference n)) (cont-r12) (make-asmN(r11)()..) c ..]
+    [generate-store (make-asmN(r13)()..) (@ expr-symbol-binding-aug(@ expr-reference n)) (cont-r13) (make-asmN(r11)()..) c ..]
+    [generate-store (make-asmN(r14)()..) (@ expr-symbol-binding-aug(@ expr-reference n)) (cont-r14) (make-asmN(r11)()..) c ..]
+    [generate-store (make-asmN(r15)()..) (@ expr-symbol-binding-aug(@ expr-reference n)) (cont-r15) (make-asmN(r11)()..) c ..]
     [generate-load-address (@ expr-cont-instr-bndg n) (make-asmN(r10)()..) c ..]
-    [generate-store (make-asmN(r10)()..) (@ expr-binding-aug(@ expr-reference n)) (cont-cir) (make-asmN(r11)()..) c ..]
-    [generate-store (make-asmN(rbp)()..) (@ expr-binding-aug(@ expr-reference n)) (cont-rbp) (make-asmN(r11)()..) c ..])))
+    [generate-store (make-asmN(r10)()..) (@ expr-symbol-binding-aug(@ expr-reference n)) (cont-cir) (make-asmN(r11)()..) c ..]
+    [generate-store (make-asmN(rbp)()..) (@ expr-symbol-binding-aug(@ expr-reference n)) (cont-rbp) (make-asmN(r11)()..) c ..])))
 
 (function cond-push-relative-storage (n c r handler) (substitute (.. r handler)
   (if [= (@ bndg-storage (@ expr-temp-storage-bndg n)) (top-relative-storage)]
@@ -392,7 +392,7 @@
   (substitute (.. r handler)
     (if [= (@ expr-type n) (-continuation-)] {success (do
       (if (@ expr-escapes n) (do
-        [generate-load-address (@ expr-binding-aug (@ expr-reference n)) (make-asmN(rax)()..) c ..]
+        [generate-load-address (@ expr-symbol-binding-aug (@ expr-reference n)) (make-asmN(rax)()..) c ..]
         [generate-store-continuation n c ..])
         (ignore))
       
@@ -416,7 +416,7 @@
         (let (op1 (make-asmN (lnkr-sub-rip-to-ref) ([use-binding-aug end-binding ..]) ..))
           [prepend (make-asmN (jmp-rel) (op1) ..) c ..])
         [prepend (make-asmN (label) ([use-binding-aug (@ expr-cont-instr-bndg n) ..]) ..) c ..]
-        [generate-load (@ expr-binding-aug[@car(@ expr-parameters n)]) #0 (make-asmN(rax)()..) (make-asmN(r10)()..) c ..]
+        [generate-load (@ expr-symbol-binding-aug[@car(@ expr-parameters n)]) #0 (make-asmN(rax)()..) (make-asmN(r10)()..) c ..]
         [prepend (make-asmN (label) ([use-binding-aug end-binding ..]) ..) c ..])))}
       (ignore))))
 
@@ -434,7 +434,7 @@
           (if [length (@ expr-parameters(@ expr-short-circuit n))] (do
             [cond-push-relative-storage n c ..]
             [generate-args-to-buffer n gens c ..]
-            [generate-load-address (@ expr-binding-aug[@car (@ expr-parameters(@ expr-short-circuit n))]) (make-asmN(r11)()..) c ..]
+            [generate-load-address (@ expr-symbol-binding-aug[@car (@ expr-parameters(@ expr-short-circuit n))]) (make-asmN(r11)()..) c ..]
             [generate-buffer-to-dest n (make-asmN(r11)()..) #0 c ..]
             [cond-pop-relative-storage n c ..])
             (ignore))
@@ -485,7 +485,7 @@
 (function generate-function (n gens c success r handler)
   (substitute (.. r handler)
     (if [= (@ expr-type n) (-function-)] {success (do
-      [generate-load-address (@ expr-binding-aug(@ expr-reference n)) (make-asmN(rax)()..) c ..]
+      [generate-load-address (@ expr-symbol-binding-aug(@ expr-reference n)) (make-asmN(rax)()..) c ..]
       
       (let (after-binding [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr null-expr ..]) (do
       [prepend (make-asmN(jmp-rel)((make-asmN(lnkr-sub-rip-to-ref)([use-binding-aug after-binding ..])..))..) c ..]
