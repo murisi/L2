@@ -550,20 +550,21 @@ With `#` implemented, a somewhat more readable implementation of characters is p
 
 #### characters.l2
 ```
-(function char (l r) (switch char= [@ffst l]
-  (-!- (` #33 r)) (-"- (` #34 r)) (-#- (` #35 r)) (-$- (` #36 r)) (-%- (` #37 r)) (-&- (` #38 r)) (-'- (` #39 r))
-  (-*- (` #42 r)) (-+- (` #43 r)) (-,- (` #44 r)) (--- (` #45 r)) (-.- (` #46 r)) (-/- (` #47 r)) (-0- (` #48 r))
-  (-1- (` #49 r)) (-2- (` #50 r)) (-3- (` #51 r)) (-4- (` #52 r)) (-5- (` #53 r)) (-6- (` #54 r)) (-7- (` #55 r))
-  (-8- (` #56 r)) (-9- (` #57 r)) (-:- (` #58 r)) (-;- (` #59 r)) (-<- (` #60 r)) (-=- (` #61 r)) (->- (` #62 r))
-  (-?- (` #63 r)) (-@- (` #64 r)) (-A- (` #65 r)) (-B- (` #66 r)) (-C- (` #67 r)) (-D- (` #68 r)) (-E- (` #69 r))
-  (-F- (` #70 r)) (-G- (` #71 r)) (-H- (` #72 r)) (-I- (` #73 r)) (-J- (` #74 r)) (-K- (` #75 r)) (-L- (` #76 r))
-  (-M- (` #77 r)) (-N- (` #78 r)) (-O- (` #79 r)) (-P- (` #80 r)) (-Q- (` #81 r)) (-R- (` #82 r)) (-S- (` #83 r))
-  (-T- (` #84 r)) (-U- (` #85 r)) (-V- (` #86 r)) (-W- (` #87 r)) (-X- (` #88 r)) (-Y- (` #89 r)) (-Z- (` #90 r))
-  (-\- (` #92 r)) (-^- (` #94 r)) (-_- (` #95 r)) (-`- (` #96 r)) (-a- (` #97 r)) (-b- (` #98 r)) (-c- (` #99 r))
-  (-d- (` #100 r)) (-e- (` #101 r)) (-f- (` #102 r)) (-g- (` #103 r)) (-h- (` #104 r)) (-i- (` #105 r)) (-j- (` #106 r))
-  (-k- (` #107 r)) (-l- (` #108 r)) (-m- (` #109 r)) (-n- (` #110 r)) (-o- (` #111 r)) (-p- (` #112 r)) (-q- (` #113 r))
-  (-r- (` #114 r)) (-s- (` #115 r)) (-t- (` #116 r)) (-u- (` #117 r)) (-v- (` #118 r)) (-w- (` #119 r)) (-x- (` #120 r))
-  (-y- (` #121 r)) (-z- (` #122 r)) (-|- (` #124 r)) (-~- (` #126 r)) (` #0 r)))
+(function meta:char-aux (l) (switch char= l
+  (-!- #33) (-"- #34) (-#- #35) (-$- #36) (-%- #37) (-&- #38) (-'- #39) (-*- #42)
+  (-+- #43) (-,- #44) (--- #45) (-.- #46) (-/- #47) (-0- #48) (-1- #49) (-2- #50)
+  (-3- #51) (-4- #52) (-5- #53) (-6- #54) (-7- #55) (-8- #56) (-9- #57) (-:- #58)
+  (-;- #59) (-<- #60) (-=- #61) (->- #62) (-?- #63) (-@- #64) (-A- #65) (-B- #66)
+  (-C- #67) (-D- #68) (-E- #69) (-F- #70) (-G- #71) (-H- #72) (-I- #73) (-J- #74)
+  (-K- #75) (-L- #76) (-M- #77) (-N- #78) (-O- #79) (-P- #80) (-Q- #81) (-R- #82)
+  (-S- #83) (-T- #84) (-U- #85) (-V- #86) (-W- #87) (-X- #88) (-Y- #89) (-Z- #90)
+  (-\- #92) (-^- #94) (-_- #95) (-`- #96) (-a- #97) (-b- #98) (-c- #99) (-d- #100)
+  (-e- #101) (-f- #102) (-g- #103) (-h- #104) (-i- #105) (-j- #106) (-k- #107) (-l- #108)
+  (-m- #109) (-n- #110) (-o- #111) (-p- #112) (-q- #113) (-r- #114) (-s- #115) (-t- #116)
+  (-u- #117) (-v- #118) (-w- #119) (-x- #120) (-y- #121) (-z- #122) (-|- #124) (-~- #126)
+  #0))
+
+(function char (l r) [=# [meta:char-aux [@ffst l]] r])
 ```
 #### test8.l2
 ```racket
@@ -579,34 +580,30 @@ The above exposition has purposefully avoided making strings because it is tedio
 
 #### strings.l2
 ```
-(function " (l r) (with return
-  {(continuation add-word (str index instrs)
-    (if [emt? str]
-      {return (`(with dquote:return
-        (,[llst (` begin r) [llst (` storage r) (` dquote:str r)
-            (with return {(continuation _ (phs num)
-              (if num
-                {_ [lst (` #0 r) phs r] [- num #1]}
-                {return phs})) emt [+[/ index (unit)]#1]}) r]
-          [meta:reverse [lst (`{dquote:return dquote:str}r) instrs r]r]r]))r)}
-    
-    (if (and [emt? [@fst str]] [emt? [@rst str]])
-      {add-word [@rst str] [+ index #1]
-        [lst (`[setb [+ dquote:str (,[=# index r])] #0]r) instrs r]}
+(function " (l r)
+  (let (buf (storage _ (ignore)))
+    (loop add-word (str l) (index #0) (exprs emt) (instrs emt)
+      (let (sub-index [rem index (unit)])
+        (if [emt? str]
+          (`(let (dquote:str (,[llst (` storage r) (` dquote:tmp r) [meta:reverse exprs r] r]))
+              (,[lst (` do r) [meta:reverse [lst (`(constrain dquote:str (\ k (` string k)))r) instrs r]r]r]))r)
         
-    (if (and [emt? [@fst str]] [token? [@frst str]])
-      {add-word [@rst str] [+ index #1]
-        [lst (`[setb [+ dquote:str (,[=# index r])] #32]r) instrs r]}
-    
-    (if [emt? [@fst str]] {add-word [@rst str] index instrs}
+        (if (and [emt? [@fst str]] [emt? [@rst str]]) (do
+          [setb [+ buf sub-index] (nul)]
+          {add-word [@rst str] [+ index #1] [lst [=# $buf r] exprs r] instrs})
+            
+        (if (and [emt? [@fst str]] [token? [@frst str]]) (do
+          [setb [+ buf sub-index] (space)]
+          {add-word [@rst str] [+ index #1] (if [= sub-index #7] [lst [=# $buf r] exprs r] exprs) instrs})
         
-    (if [token? [@fst str]]
-      {add-word [lst [@rfst str] [@rst str] r] [+ index #1]
-        [lst (`[setb [+ dquote:str (,[=# index r])]
-          (,[char [lst [lst [@ffst str] emt r] emt r]r emt])]r) instrs r]}
-      
-      {add-word [@rst str] [+ index #1]
-        [lst (`[setb [+ dquote:str (,[=# index r])] (,[@fst str])]r) instrs r]})))))) l #0 emt}))
+        (if [emt? [@fst str]] {add-word [@rst str] index exprs instrs}
+        
+        (if [token? [@fst str]] (do
+          [setb [+ buf sub-index] [meta:char-aux [@ffst str]]]
+          {add-word [lst [@rfst str] [@rst str] r] [+ index #1] (if [= sub-index #7] [lst [=# $buf r] exprs r] exprs) instrs})
+          
+          {add-word [@rst str] [+ index #1] (if [= sub-index #7] [lst [=# $buf r] exprs r] exprs)
+            [lst (`[setb [+ dquote:str (,[=# index r])] (,[@fst str])]r) instrs r]})))))))))
 ```
 #### test9.l2
 ```
