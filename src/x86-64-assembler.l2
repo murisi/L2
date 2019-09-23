@@ -424,7 +424,7 @@
     
         (let (bss-ptr (storage _ #0)) (do
     
-        (foreach (sym static-bindings)
+        (foreach (sym static-bindings) (do
           (if [= (@ bndg-scope sym) (local-scope)] (do
             (if [not= (@ bndg-name sym) null-string]
               (do
@@ -440,9 +440,9 @@
             (setf st-other $sym-ptr #0)
             (setf st-shndx $sym-ptr #5)
             (setf bndg-context sym $sym-ptr)
-            [set+ sym-ptr (elf64-sym)]
-            [set+ bss-ptr [pad-size (@ bndg-size sym) (word-size)]])
-            (ignore)))
+            [set+ sym-ptr (elf64-sym)])
+            (ignore))
+          [set+ bss-ptr [pad-size (@ bndg-size sym) (word-size)]]))
     
         (foreach (e generated-expressions)
           (if (and [= (@ expr-code e) (label)]
@@ -465,8 +465,11 @@
             (ignore)))
     
         (let (local-symbol-count [/[- $sym-ptr syms](elf64-sym)]) (do
-    
-        (foreach (sym static-bindings)
+        
+        (ignore Reset bss-ptr to #0 and fill in the gaps between the local symbols.)
+        [set bss-ptr #0]
+        
+        (foreach (sym static-bindings) (do
           (if (and [= (@ bndg-scope sym) (global-scope)] [= (@ bndg-state sym) (defined-state)]) (do
             (if [not= (@ bndg-name sym) null-string]
               (do
@@ -482,9 +485,9 @@
             (setf st-other $sym-ptr #0)
             (setf st-shndx $sym-ptr #5)
             (setf bndg-context sym $sym-ptr)
-            [set+ sym-ptr (elf64-sym)]
-            [set+ bss-ptr [pad-size (@ bndg-size sym) (word-size)]])
-            (ignore)))
+            [set+ sym-ptr (elf64-sym)])
+            (ignore))
+          [set+ bss-ptr [pad-size (@ bndg-size sym) (word-size)]]))
     
         (foreach (sym undefined-bindings)
           (if (and [= (@ bndg-scope sym) (global-scope)] [= (@ bndg-state sym) (undefined-state)]) (do
