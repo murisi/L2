@@ -365,16 +365,15 @@
 
 (constrain classify-program-bindings (\ r (`(function (expr) ())r)))
 
-(function classify-program-bindings (expr)
+(function classify-program-bindings (expr) (do
+  (setf bndg-storage (@ expr-binding-aug expr) (absolute-storage))
   (switch = (@ expr-type expr)
     ((-constrain-) [classify-program-bindings (@ expr-expression expr)])
     
     ((-storage-) (-jump-) (-invoke-) (do
       (if [= (@ expr-type expr) (-storage-)]
         (setf bndg-storage (@ expr-symbol-binding-aug(@ expr-reference expr)) (absolute-storage))
-        (do
-          (setf bndg-storage (@ expr-temp-storage-bndg expr) (absolute-storage))
-          [classify-program-bindings (@ expr-reference expr)]))
+        [classify-program-bindings (@ expr-reference expr)])
       (foreach (t (@ expr-arguments expr)) [classify-program-bindings t])))
     
     ((-continuation-) (-with-) (do
@@ -387,7 +386,7 @@
       [classify-program-bindings (@ expr-consequent expr)]
       [classify-program-bindings (@ expr-alternate expr)]))
     
-    (ignore)))
+    (ignore))))
 
 (constrain containment-analysis (\ r (`(function (expr) expr-contains-flag)r)))
 

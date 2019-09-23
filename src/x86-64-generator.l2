@@ -212,17 +212,21 @@
       
       ((-jump-) (-invoke-) (do
         [layout-frames (@ expr-reference n) binding-augs ..]
-        (foreach (u (@ expr-arguments n)) [layout-frames u binding-augs ..])
-        (setf bndg-size (@ expr-temp-storage-bndg n) [* (word-size) [length (@ expr-arguments n)]])
-        (switch = (@ expr-contains-flag n)
-          ((contains-with)
-            [append (@ expr-temp-storage-bndg n) binding-augs ..])
-          ((contains-jump)
-            (setf bndg-storage (@ expr-temp-storage-bndg n) (nil-storage)))
-          ((contains-none) (do
-            (setf bndg-storage (@ expr-temp-storage-bndg n) (top-relative-storage))
-            (setf bndg-offset (@ expr-temp-storage-bndg n) #0)))
-          (ignore))))
+        (let (argument-offset-ref (storage _ #0))
+        (foreach (u (@ expr-arguments n)) (do
+          [layout-frames u binding-augs ..]
+          (setf bndg-size (@ expr-binding-aug u) (word-size))
+          (switch = (@ expr-contains-flag n)
+            ((contains-with)
+              [append (@ expr-binding-aug u) binding-augs ..])
+            ((contains-jump)
+              (setf bndg-storage (@ expr-binding-aug u) (nil-storage)))
+            ((contains-none) (do
+              (setf bndg-storage (@ expr-binding-aug u) (top-relative-storage))
+              (setf bndg-offset (@ expr-binding-aug u) $argument-offset-ref)
+              [set+ argument-offset-ref (word-size)]
+              (ignore)))
+            (ignore)))))))
       
       ((-if-) (do
         [layout-frames (@ expr-condition n) binding-augs ..]
@@ -358,13 +362,15 @@
     [generate-store (make-asmN(rbp)()..) (@ expr-symbol-binding-aug(@ expr-reference n)) (cont-rbp) (make-asmN(r11)()..) c ..])))
 
 (function cond-push-relative-storage (n c r handler) (substitute (.. r handler)
-  (if [= (@ bndg-storage (@ expr-temp-storage-bndg n)) (top-relative-storage)]
+  (if (and [> [length (@ expr-arguments n)] #0]
+        [= (@ bndg-storage (@ expr-binding-aug [@car (@ expr-arguments n)])) (top-relative-storage)])
     [prepend (make-asmN(subq-imm-to-reg)
       ([make-literal [* [length (@ expr-arguments n)] (word-size)] null-fragment null-expr ..] (make-asmN(rsp)()..)) ..) c ..]
     (ignore))))
 
 (function cond-pop-relative-storage (n c r handler) (substitute (.. r handler)
-  (if [= (@ bndg-storage (@ expr-temp-storage-bndg n)) (top-relative-storage)]
+  (if (and [> [length (@ expr-arguments n)] #0]
+        [= (@ bndg-storage (@ expr-binding-aug [@car (@ expr-arguments n)])) (top-relative-storage)])
     [prepend (make-asmN(addq-imm-to-reg)
       ([make-literal [* [length (@ expr-arguments n)] (word-size)] null-fragment null-expr ..] (make-asmN(rsp)()..)) ..) c ..]
     (ignore))))
@@ -373,14 +379,14 @@
   (let (offset (storage _ #0))
   (foreach (t (@ expr-arguments n)) (do
     [generate-expression t gens c ..]
-    [generate-store (make-asmN(rax)()..) (@ expr-temp-storage-bndg n) $offset (make-asmN(r10)()..) c ..]
+    [generate-store (make-asmN(rax)()..) (@ expr-binding-aug t) #0 (make-asmN(r10)()..) c ..]
     [set+ offset (word-size)])))))
 
 (function generate-buffer-to-dest (n dest-reg offset c r handler) (substitute (.. r handler)
   (let (src-offset (storage _ #0))
   (let (dest-offset (storage _ offset))
   (foreach (t (@ expr-arguments n)) (do
-    [generate-load (@ expr-temp-storage-bndg n) $src-offset (make-asmN(rax)()..) (make-asmN(r10)()..) c ..]
+    [generate-load (@ expr-binding-aug t) #0 (make-asmN(rax)()..) (make-asmN(r10)()..) c ..]
     [prepend (make-asmN(movq-reg-to-mdb) ((make-asmN(rax)()..) [make-literal $dest-offset null-fragment null-expr ..] dest-reg) ..) c ..]
     [set+ src-offset (word-size)]
     [set+ dest-offset (word-size)]))))))
@@ -528,13 +534,9 @@
       [cond-push-relative-storage n c ..]
       [generate-args-to-buffer n gens c ..]
       (if [= (@ expr-contains-flag n) (contains-with)]
-        (loop move-args (offset [* [length (@ expr-arguments n)] (word-size)])
-          (if offset
-            (let (offset [- offset (word-size)]) (do
-            [generate-load (@ expr-temp-storage-bndg n) offset (make-asmN(r11)()..) (make-asmN(r10)()..) c ..]
-            [prepend (make-asmN(pushq-reg) ((make-asmN(r11)()..)) ..) c ..]
-            {move-args offset}))
-            (ignore)))
+        (foreach (t [reverse (@ expr-arguments n) ..]) (do
+          [generate-load (@ expr-binding-aug t) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c ..]
+          [prepend (make-asmN(pushq-reg) ((make-asmN(r11)()..)) ..) c ..]))
         (ignore))
       
       [generate-expression (@ expr-reference n) gens c ..]
