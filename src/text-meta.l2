@@ -30,13 +30,12 @@
   (let (buf (storage _ (ignore)))
     (loop add-word (str l) (index #0) (exprs emt) (instrs emt)
       (let (sub-index [rem index (unit)])
-        (if [emt? str]
-          (`(let (dquote:str (,[llst (` storage r) (` dquote:tmp r) [meta:reverse exprs r] r]))
-              (,[lst (` do r) [meta:reverse [lst (`(constrain dquote:str (\ k (` string k)))r) instrs r]r]r]))r)
-        
-        (if (and [emt? [@fst str]] [emt? [@rst str]]) (do
+        (if [emt? str] (do
           [setb [+ buf sub-index] (nul)]
-          {add-word [@rst str] [+ index #1] [lst [=# $buf r] exprs r] instrs})
+          (`(let (dquote:str (,[llst (` storage r) (` dquote:tmp r) [meta:reverse [lst [=# $buf r] exprs r] r] r]))
+              (,[lst (` do r) [meta:reverse [lst (`(constrain dquote:str (\ k (` string k)))r) instrs r]r]r]))r))
+        
+        (if (and [emt? [@fst str]] [emt? [@rst str]]) {add-word [@rst str] index exprs instrs}
             
         (if (and [emt? [@fst str]] [token? [@frst str]]) (do
           [setb [+ buf sub-index] (space)]
