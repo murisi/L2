@@ -40,169 +40,169 @@
   environment.)
 
 (constrain generate-arithmetic-intrinsics
-  (\ r (with-vars (a) (`(function (expr (list generator) (ref (list expr)) (continuation (())) buffer ,a) ())r)r)))
+  (\ r (with-vars (a) (`(function (expr (list generator) (ref (list expr)) (ref (list reloc)) (continuation (())) buffer ,a) ())r)r)))
 
-(function generate-arithmetic-intrinsics (n gens c success r handler)
+(function generate-arithmetic-intrinsics (n gens c relocs success r handler)
   (substitute (.. r handler)
     (if (and [= (@ expr-type n) (-invoke-)] [= (@ expr-type (@ expr-reference n)) (-symbol-)]
         [= (@ bndg-state (@ expr-symbol-binding-aug (@ expr-reference n))) (undefined-state)])
       (switch str= (@ bndg-name (@ expr-symbol-binding-aug (@ expr-reference n)))
         ((" getb) (" get1b) {success (do
-          [generate-expression [@car (@ expr-arguments n)] gens c ..]
+          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
           [prepend (make-asmN (movq-reg-to-reg) ((make-asmN(rax)()..) (make-asmN(r10)()..)) ..) c ..]
           [prepend (make-asmN (xorq-reg-to-reg) ((make-asmN(rax)()..) (make-asmN(rax)()..)) ..) c ..]
           [prepend (make-asmN(movb-mdb-to-reg)
             ([make-literal #0 null-fragment null-expr ..] (make-asmN(r10)()..) (make-asmN(al)()..))..) c ..])})
         
         ((" get2b) {success (do
-          [generate-expression [@car (@ expr-arguments n)] gens c ..]
+          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
           [prepend (make-asmN (movq-reg-to-reg) ((make-asmN(rax)()..) (make-asmN(r10)()..)) ..) c ..]
           [prepend (make-asmN (xorq-reg-to-reg) ((make-asmN(rax)()..) (make-asmN(rax)()..)) ..) c ..]
           [prepend (make-asmN(movw-mdb-to-reg)
             ([make-literal #0 null-fragment null-expr ..] (make-asmN(r10)()..) (make-asmN(ax)()..))..) c ..])})
         
         ((" get4b) {success (do
-          [generate-expression [@car (@ expr-arguments n)] gens c ..]
+          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
           [prepend (make-asmN (movq-reg-to-reg) ((make-asmN(rax)()..) (make-asmN(r10)()..)) ..) c ..]
           [prepend (make-asmN (xorq-reg-to-reg) ((make-asmN(rax)()..) (make-asmN(rax)()..)) ..) c ..]
           [prepend (make-asmN(movl-mdb-to-reg)
             ([make-literal #0 null-fragment null-expr ..] (make-asmN(r10)()..) (make-asmN(eax)()..))..) c ..])})
         
         ((" get8b) (" get) {success (do
-          [generate-expression [@car (@ expr-arguments n)] gens c ..]
+          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
           [prepend (make-asmN(movq-mdb-to-reg)
             ([make-literal #0 null-fragment null-expr ..] (make-asmN(rax)()..) (make-asmN(rax)()..))..) c ..])})
         
         ((" setb) (" set1b) {success (do
-          [generate-expression [@car (@ expr-arguments n)] gens c ..]
-          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c ..]
-          [generate-expression [@cadr (@ expr-arguments n)] gens c ..]
-          [generate-load (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c ..]
+          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
+          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c relocs ..]
+          [generate-expression [@cadr (@ expr-arguments n)] gens c relocs ..]
+          [generate-load (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c relocs ..]
           [prepend (make-asmN (movb-reg-to-mdb)
             ((make-asmN(al)()..) [make-literal #0 null-fragment null-expr ..] (make-asmN(r11)()..)) ..) c ..])})
         
         ((" set2b) {success (do
-          [generate-expression [@car (@ expr-arguments n)] gens c ..]
-          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c ..]
-          [generate-expression [@cadr (@ expr-arguments n)] gens c ..]
-          [generate-load (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c ..]
+          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
+          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c relocs ..]
+          [generate-expression [@cadr (@ expr-arguments n)] gens c relocs ..]
+          [generate-load (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c relocs ..]
           [prepend (make-asmN (movw-reg-to-mdb)
             ((make-asmN(ax)()..) [make-literal #0 null-fragment null-expr ..] (make-asmN(r11)()..)) ..) c ..])})
         
         ((" set4b) {success (do
-          [generate-expression [@car (@ expr-arguments n)] gens c ..]
-          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c ..]
-          [generate-expression [@cadr (@ expr-arguments n)] gens c ..]
-          [generate-load (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c ..]
+          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
+          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c relocs ..]
+          [generate-expression [@cadr (@ expr-arguments n)] gens c relocs ..]
+          [generate-load (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c relocs ..]
           [prepend (make-asmN (movl-reg-to-mdb)
             ((make-asmN(eax)()..) [make-literal #0 null-fragment null-expr ..] (make-asmN(r11)()..)) ..) c ..])})
         
         ((" set8b) (" set) {success (do
-          [generate-expression [@car (@ expr-arguments n)] gens c ..]
-          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c ..]
-          [generate-expression [@cadr (@ expr-arguments n)] gens c ..]
-          [generate-load (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c ..]
+          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
+          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c relocs ..]
+          [generate-expression [@cadr (@ expr-arguments n)] gens c relocs ..]
+          [generate-load (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c relocs ..]
           [prepend (make-asmN (movq-reg-to-mdb)
             ((make-asmN(rax)()..) [make-literal #0 null-fragment null-expr ..] (make-asmN(r11)()..)) ..) c ..])})
         
         ((" +) {success (do
-          [generate-expression [@car (@ expr-arguments n)] gens c ..]
-          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c ..]
-          [generate-expression [@cadr (@ expr-arguments n)] gens c ..]
-          [generate-load (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c ..]
+          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
+          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c relocs ..]
+          [generate-expression [@cadr (@ expr-arguments n)] gens c relocs ..]
+          [generate-load (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c relocs ..]
           [prepend (make-asmN (addq-reg-to-reg) ((make-asmN(r11)()..) (make-asmN(rax)()..)) ..) c ..])})
           
         ((" -) {success (do
-          [generate-expression [@cadr (@ expr-arguments n)] gens c ..]
-          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c ..]
-          [generate-expression [@car (@ expr-arguments n)] gens c ..]
-          [generate-load (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c ..]
+          [generate-expression [@cadr (@ expr-arguments n)] gens c relocs ..]
+          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c relocs ..]
+          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
+          [generate-load (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c relocs ..]
           [prepend (make-asmN (subq-reg-to-reg) ((make-asmN(r11)()..) (make-asmN(rax)()..)) ..) c ..])})
           
         ((" *) {success (do
-          [generate-expression [@cadr (@ expr-arguments n)] gens c ..]
-          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c ..]
-          [generate-expression [@car (@ expr-arguments n)] gens c ..]
-          [generate-load (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c ..]
+          [generate-expression [@cadr (@ expr-arguments n)] gens c relocs ..]
+          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c relocs ..]
+          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
+          [generate-load (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c relocs ..]
           [prepend (make-asmN (mulq-reg) ((make-asmN(r11)()..)) ..) c ..])})
         
         ((" /) {success (do
-          [generate-expression [@cadr (@ expr-arguments n)] gens c ..]
-          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c ..]
-          [generate-expression [@car (@ expr-arguments n)] gens c ..]
+          [generate-expression [@cadr (@ expr-arguments n)] gens c relocs ..]
+          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c relocs ..]
+          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
           [prepend (make-asmN (xorq-reg-to-reg) ((make-asmN(rdx)()..) (make-asmN(rdx)()..)) ..) c ..]
-          [generate-load (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c ..]
+          [generate-load (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c relocs ..]
           [prepend (make-asmN (divq-reg) ((make-asmN(r11)()..)) ..) c ..])})
         
         ((" rem) {success (do
-          [generate-expression [@cadr (@ expr-arguments n)] gens c ..]
-          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c ..]
-          [generate-expression [@car (@ expr-arguments n)] gens c ..]
+          [generate-expression [@cadr (@ expr-arguments n)] gens c relocs ..]
+          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c relocs ..]
+          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
           [prepend (make-asmN (xorq-reg-to-reg) ((make-asmN(rdx)()..) (make-asmN(rdx)()..)) ..) c ..]
-          [generate-load (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c ..]
+          [generate-load (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c relocs ..]
           [prepend (make-asmN (divq-reg) ((make-asmN(r11)()..)) ..) c ..]
           [prepend (make-asmN (movq-reg-to-reg) ((make-asmN(rdx)()..) (make-asmN(rax)()..)) ..) c ..])})
         
         ((" =) {success (do
-          [generate-expression [@cadr (@ expr-arguments n)] gens c ..]
-          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c ..]
-          [generate-expression [@car (@ expr-arguments n)] gens c ..]
+          [generate-expression [@cadr (@ expr-arguments n)] gens c relocs ..]
+          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c relocs ..]
+          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
           [prepend (make-asmN (movq-reg-to-reg) ((make-asmN(rax)()..) (make-asmN(rsi)()..)) ..) c ..]
-          [generate-load (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c ..]
+          [generate-load (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c relocs ..]
           [prepend (make-asmN (xorq-reg-to-reg) ((make-asmN(rax)()..) (make-asmN(rax)()..)) ..) c ..]
           [prepend (make-asmN (subq-reg-to-reg) ((make-asmN(r11)()..) (make-asmN(rsi)()..)) ..) c ..]
           [prepend (make-asmN (setz-reg) ((make-asmN(al)()..)) ..) c ..])})
         
         ((" <) {success (do
-          [generate-expression [@cadr (@ expr-arguments n)] gens c ..]
-          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c ..]
-          [generate-expression [@car (@ expr-arguments n)] gens c ..]
+          [generate-expression [@cadr (@ expr-arguments n)] gens c relocs ..]
+          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c relocs ..]
+          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
           [prepend (make-asmN (movq-reg-to-reg) ((make-asmN(rax)()..) (make-asmN(rsi)()..)) ..) c ..]
-          [generate-load (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c ..]
+          [generate-load (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c relocs ..]
           [prepend (make-asmN (xorq-reg-to-reg) ((make-asmN(rax)()..) (make-asmN(rax)()..)) ..) c ..]
           [prepend (make-asmN (subq-reg-to-reg) ((make-asmN(r11)()..) (make-asmN(rsi)()..)) ..) c ..]
           [prepend (make-asmN (setc-reg) ((make-asmN(al)()..)) ..) c ..])})
         
         ((" >) {success (do
-          [generate-expression [@cadr (@ expr-arguments n)] gens c ..]
-          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c ..]
-          [generate-expression [@car (@ expr-arguments n)] gens c ..]
+          [generate-expression [@cadr (@ expr-arguments n)] gens c relocs ..]
+          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c relocs ..]
+          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
           [prepend (make-asmN (movq-reg-to-reg) ((make-asmN(rax)()..) (make-asmN(rsi)()..)) ..) c ..]
-          [generate-load (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c ..]
+          [generate-load (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c relocs ..]
           [prepend (make-asmN (xorq-reg-to-reg) ((make-asmN(rax)()..) (make-asmN(rax)()..)) ..) c ..]
           [prepend (make-asmN (subq-reg-to-reg) ((make-asmN(rsi)()..) (make-asmN(r11)()..)) ..) c ..]
           [prepend (make-asmN (setc-reg) ((make-asmN(al)()..)) ..) c ..])})
         
         ((" <<) {success (do
-          [generate-expression [@cadr (@ expr-arguments n)] gens c ..]
-          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c ..]
-          [generate-expression [@car (@ expr-arguments n)] gens c ..]
-          [generate-load (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(rcx)()..) (make-asmN(r10)()..) c ..]
+          [generate-expression [@cadr (@ expr-arguments n)] gens c relocs ..]
+          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c relocs ..]
+          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
+          [generate-load (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(rcx)()..) (make-asmN(r10)()..) c relocs ..]
           [prepend (make-asmN (shlq-cl-to-reg) ((make-asmN(rax)()..)) ..) c ..])})
         
         ((" >>) {success (do
-          [generate-expression [@cadr (@ expr-arguments n)] gens c ..]
-          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c ..]
-          [generate-expression [@car (@ expr-arguments n)] gens c ..]
-          [generate-load (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(rcx)()..) (make-asmN(r10)()..) c ..]
+          [generate-expression [@cadr (@ expr-arguments n)] gens c relocs ..]
+          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c relocs ..]
+          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
+          [generate-load (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(rcx)()..) (make-asmN(r10)()..) c relocs ..]
           [prepend (make-asmN (shrq-cl-to-reg) ((make-asmN(rax)()..)) ..) c ..])})
         
         ((" lor) {success (do
-          [generate-expression [@car (@ expr-arguments n)] gens c ..]
-          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c ..]
-          [generate-expression [@cadr (@ expr-arguments n)] gens c ..]
-          [generate-load (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c ..]
+          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
+          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c relocs ..]
+          [generate-expression [@cadr (@ expr-arguments n)] gens c relocs ..]
+          [generate-load (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c relocs ..]
           [prepend (make-asmN (orq-reg-to-reg) ((make-asmN(r11)()..) (make-asmN(rax)()..)) ..) c ..])})
         
         ((" land) {success (do
-          [generate-expression [@car (@ expr-arguments n)] gens c ..]
-          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c ..]
-          [generate-expression [@cadr (@ expr-arguments n)] gens c ..]
-          [generate-load (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c ..]
+          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
+          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c relocs ..]
+          [generate-expression [@cadr (@ expr-arguments n)] gens c relocs ..]
+          [generate-load (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c relocs ..]
           [prepend (make-asmN (andq-reg-to-reg) ((make-asmN(r11)()..) (make-asmN(rax)()..)) ..) c ..])})
         
         ((" lnot) {success (do
-          [generate-expression [@car (@ expr-arguments n)] gens c ..]
+          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
           [prepend (make-asmN (notq-reg) ((make-asmN(rax)()..)) ..) c ..])})
         
         (ignore))

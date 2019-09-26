@@ -4,7 +4,7 @@
 
 (constrain compile-program
   (\ r (with-vars (a b) (`(function ((list expr) (list generator) ,b buffer ,a)
-    (values (list expr) (list bndg-aug) (list bndg-aug)))r)r)))
+    (values (list expr) (list reloc) (list bndg-aug) (list bndg-aug)))r)r)))
 
 (function compile-program (exprs gens outs buf handler)
   (substitute (.. buf handler)
@@ -18,7 +18,8 @@
         (ignore[infer-types expr ..])
         [escape-analysis expr (true)]
         [append [layout-frames expr static-bindings ..] static-bindings ..]))
-      (values (use-storage outs) [generate-program exprs gens ..] $undefined-bindings $static-bindings)))))
+      (bind (instrs relocs) [generate-program exprs gens bind ..]
+        (values (use-storage outs) instrs relocs $undefined-bindings $static-bindings))))))
 
 (ignore
   Loads a program into memory and returns a handle to it. program is a program expression.
@@ -29,7 +30,7 @@
 
 (function load-program (exprs gens buf handler)
   (substitute (.. buf handler)
-    (bind (asms undefined-bindings static-bindings) [compile-program exprs gens bind buf handler]
+    (bind (asms relocs undefined-bindings static-bindings) [compile-program exprs gens bind buf handler]
     (bind (objdest objdest-sz) [write-elf asms undefined-bindings static-bindings bind buf handler]
     (let (obj [load objdest objdest-sz buf handler]) (do
     [binding-offsets-to-addresses asms static-bindings obj]
@@ -131,7 +132,7 @@
 
 (function compile-program-to-elf (exprs gens outfn buf handler)
   (substitute (.. buf handler)
-    (bind (asms undefined-bindings static-bindings) [compile-program exprs gens bind ..]
+    (bind (asms relocs undefined-bindings static-bindings) [compile-program exprs gens bind ..]
     (bind (objdest objdest-sz) [write-elf asms undefined-bindings static-bindings bind ..]
     (let (fd [create outfn handler]) (do
     [print fd objdest objdest-sz handler]
