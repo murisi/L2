@@ -665,12 +665,12 @@
 (function binding-offsets-to-addresses (asms static-bindings obj) (do
   (foreach (sym static-bindings)
     (if (and [= (@ bndg-storage sym) (absolute-storage)] [= (@ bndg-state sym) (defined-state)])
-      (setf bndg-offset sym [+ (@ bndg-offset sym) [segment obj (" .bss)]])
+      [set+ (& bndg-offset sym) [segment obj (" .bss)]]
       (ignore)))
   
   (foreach (l asms)
-    (if [= (@ expr-code l) (label)]
-      (let (sym (@ expr-symbol-binding-aug[@car(@ expr-arguments l)]))
-        (setf bndg-offset sym [+ (@ bndg-offset sym) [segment obj (" .text)]]))
-      (ignore)))))
+    (let (instr-bndg (@ expr-instruction-binding l))
+      (if [not= instr-bndg null-binding]
+        [set+ (& bndg-offset instr-bndg) [segment obj (" .text)]]
+        (ignore))))))
 
