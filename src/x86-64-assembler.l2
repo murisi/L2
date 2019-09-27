@@ -109,14 +109,12 @@
       (let (instr-bndg (@ expr-instruction-binding n))
         (if [not= instr-bndg null-binding] (do
           (setf bndg-storage instr-bndg (instruction-storage))
-          (setf bndg-offset instr-bndg $pos))
+          (setf bndg-offset instr-bndg $pos)
+          (setf st-value (@ bndg-context instr-bndg) $pos))
           (ignore)))
           
       (switch = (@ expr-code n)
-        ((label)
-          (let (label-ref [@car(@ expr-arguments n)]) (do
-          (setf bndg-offset (@ expr-symbol-binding-aug label-ref) $pos)
-          (setf st-value (@ bndg-context(@ expr-symbol-binding-aug label-ref)) $pos))))
+        ((label) (ignore))
           
         ((leaq-mdb-to-reg)
           (let (opcode (hex 8D))
@@ -450,24 +448,23 @@
           [set+ bss-ptr [pad-size (@ bndg-size sym) (word-size)]]))
     
         (foreach (e generated-expressions)
-          (if (and [= (@ expr-code e) (label)]
-              [= (@ bndg-scope(@ expr-symbol-binding-aug[@car(@ expr-arguments e)])) (local-scope)])
-            (let (ref (storage _ [@car(@ expr-arguments e)])) (do
-            (if [not= (@ expr-name $ref) null-string]
-              (do
-                [strcpy $strtabptr (@ expr-name $ref)]
-                (setf st-name $sym-ptr [- $strtabptr strtab])
-                [set+ strtabptr [+[strlen(@ expr-name $ref)]#1]])
-              (setf st-name $sym-ptr #0))
-        
-            (setf st-value $sym-ptr #0)
-            (setf st-size $sym-ptr #0)
-            (setf st-info $sym-ptr (elf64-st-info (stb-local) (stt-notype)))
-            (setf st-other $sym-ptr #0)
-            (setf st-shndx $sym-ptr #2)
-            (setf bndg-context (@ expr-symbol-binding-aug $ref) $sym-ptr)
-            [set+ sym-ptr (elf64-sym)]))
-            (ignore)))
+          (let (instr-bndg (@ expr-instruction-binding e))
+            (if (and [not= instr-bndg null-binding] [= (@ bndg-scope instr-bndg) (local-scope)]) (do
+              (if [not= (@ bndg-name instr-bndg) null-string]
+                (do
+                  [strcpy $strtabptr (@ bndg-name instr-bndg)]
+                  (setf st-name $sym-ptr [- $strtabptr strtab])
+                  [set+ strtabptr [+[strlen(@ bndg-name instr-bndg)]#1]])
+                (setf st-name $sym-ptr #0))
+          
+              (setf st-value $sym-ptr #0)
+              (setf st-size $sym-ptr #0)
+              (setf st-info $sym-ptr (elf64-st-info (stb-local) (stt-notype)))
+              (setf st-other $sym-ptr #0)
+              (setf st-shndx $sym-ptr #2)
+              (setf bndg-context instr-bndg $sym-ptr)
+              [set+ sym-ptr (elf64-sym)])
+              (ignore))))
     
         (let (local-symbol-count [/[- $sym-ptr syms](elf64-sym)]) (do
         
@@ -513,24 +510,23 @@
             (ignore)))
     
         (foreach (e generated-expressions)
-          (if (and [= (@ expr-code e) (label)]
-              [= (@ bndg-scope(@ expr-symbol-binding-aug[@car(@ expr-arguments e)])) (global-scope)])
-            (let (ref (storage _ [@car(@ expr-arguments e)])) (do
-            (if [not= (@ expr-name $ref) null-string]
-              (do
-                [strcpy $strtabptr (@ expr-name $ref)]
-                (setf st-name $sym-ptr [- $strtabptr strtab])
-                [set+ strtabptr [+[strlen(@ expr-name $ref)]#1]])
-              (setf st-name $sym-ptr #0))
-        
-            (setf st-value $sym-ptr #0)
-            (setf st-size $sym-ptr #0)
-            (setf st-info $sym-ptr (elf64-st-info (stb-global) (stt-notype)))
-            (setf st-other $sym-ptr #0)
-            (setf st-shndx $sym-ptr #2)
-            (setf bndg-context (@ expr-symbol-binding-aug $ref) $sym-ptr)
-            [set+ sym-ptr (elf64-sym)]))
-            (ignore)))
+          (let (instr-bndg (@ expr-instruction-binding e))
+            (if (and [not= instr-bndg null-binding] [= (@ bndg-scope instr-bndg) (global-scope)]) (do
+              (if [not= (@ bndg-name instr-bndg) null-string]
+                (do
+                  [strcpy $strtabptr (@ bndg-name instr-bndg)]
+                  (setf st-name $sym-ptr [- $strtabptr strtab])
+                  [set+ strtabptr [+[strlen(@ bndg-name instr-bndg)]#1]])
+                (setf st-name $sym-ptr #0))
+          
+              (setf st-value $sym-ptr #0)
+              (setf st-size $sym-ptr #0)
+              (setf st-info $sym-ptr (elf64-st-info (stb-global) (stt-notype)))
+              (setf st-other $sym-ptr #0)
+              (setf st-shndx $sym-ptr #2)
+              (setf bndg-context instr-bndg $sym-ptr)
+              [set+ sym-ptr (elf64-sym)])
+              (ignore))))
     
         (let (text-len (storage _ (ignore)))
         (let (max-text-sec-len [pad-size [* (write-elf-max-instr-len) [length generated-expressions]] (write-elf-alignment)])
