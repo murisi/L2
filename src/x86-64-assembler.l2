@@ -338,17 +338,17 @@
           [+ [strlen(@ bndg-name sym)] #1]
           #0)]))
       (generated-expressions-len (fold (acc #0) (e generated-expressions)
-        [+ acc (if [= (@ expr-code e) (label)]
-          (let (label-str (@ expr-name [@car (@ expr-arguments e)]))
+        [+ acc (let (instr-bndg (@ expr-instruction-binding e)) (if [not= instr-bndg null-binding]
+          (let (label-str (@ bndg-name instr-bndg))
             (if [not= label-str null-string] [+ [strlen label-str] #1] #0))
-          #0)]))
+          #0))]))
     [+ #1 [+ undefined-bindings-len [+ static-bindings-len generated-expressions-len]]]))
 
 (constrain measure-symtab (\ r (with-vars (a) (`(function ((list expr) (list bndg-aug) (list bndg-aug)) ,a)r)r)))
 
 (function measure-symtab (generated-expressions undefined-bindings static-bindings)
   (let (generated-expressions-len
-        (fold (acc #0) (e generated-expressions) [+ acc (if [= (@ expr-code e) (label)] #1 #0)]))
+        (fold (acc #0) (e generated-expressions) [+ acc (if [not= (@ expr-instruction-binding e) null-binding] #1 #0)]))
     [+ #1 [+ generated-expressions-len [+ [length undefined-bindings] [length static-bindings]]]]))
 
 (constrain max-elf-size (\ r (with-vars (a) (`(function ((list expr) (list bndg-aug) (list bndg-aug)) ,a)r)r)))
