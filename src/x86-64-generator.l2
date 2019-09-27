@@ -440,8 +440,8 @@
             [generate-load-address (@ expr-symbol-binding-aug[@car (@ expr-parameters(@ expr-short-circuit n))]) (make-asmN(r11)()..) c relocs ..]
             [generate-buffer-to-dest n (make-asmN(r11)()..) #0 c relocs ..])
             (ignore))
-          [prepend (make-asmN (jmp-rel) ((make-asmN (lnkr-sub-rip-to-ref)
-            ([use-binding-aug (@ expr-cont-instr-bndg(@ expr-short-circuit n)) ..]) ..)) ..) c ..])
+          [prepend (make-asmN (jmp-rel)
+            ([make-relative-relocation-immediate #4 (@ expr-cont-instr-bndg(@ expr-short-circuit n)) relocs ..]) ..) c ..])
         (do
           [generate-args-to-buffer n gens c relocs ..]
           [generate-expression (@ expr-reference n) gens c relocs ..]
@@ -490,8 +490,8 @@
           (make-asmN(r11)()..) c relocs ..]
       
       (let (after-binding [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr null-expr ..]) (do
-      [prepend (make-asmN(jmp-rel)((make-asmN(lnkr-sub-rip-to-ref)([use-binding-aug after-binding ..])..))..) c ..]
-      [prepend (make-asmN(label)((@ expr-reference n))..) c ..]
+      [prepend (make-asmN(jmp-rel)([make-relative-relocation-immediate #4 after-binding relocs ..])..) c ..]
+      [prepend [make-label (@ expr-symbol-binding-aug (@ expr-reference n)) ..] c ..]
       
       [prepend (make-asmN(popq-reg)((make-asmN(r11)()..))..) c ..]
       
@@ -519,7 +519,7 @@
       [prepend (make-asmN(addq-imm-to-reg)([make-literal [* #6(word-size)] null-fragment null-expr ..] (make-asmN(rsp)()..))..) c ..]
       [prepend (make-asmN(pushq-reg)((make-asmN(r11)()..))..) c ..]
       [prepend (make-asmN(ret)()..) c ..]
-      [prepend (make-asmN(label)([use-binding-aug after-binding ..])..) c ..])))}
+      [prepend [make-label after-binding ..] c ..])))}
       (ignore))))
 
 (constrain generate-invoke
