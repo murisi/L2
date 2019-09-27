@@ -79,9 +79,9 @@
   [mem-write bin pos (storage _ modrm) #1]
   (if has-sib [mem-write bin pos (storage _ sib) #1] (ignore)))))))))))))
 
-(constrain write-static-value (\ r (with-vars (a b c d e f g) (`(function (,a (ref ,b) ,c ,d ,e ,f buffer ,g) ())r)r)))
+(constrain write-static-value (\ r (with-vars (a b c d e g) (`(function (,a (ref ,b) ,c ,d ,e buffer ,g) ())r)r)))
 
-(function write-static-value (bin pos expr bytes symtab relas buf handler)
+(function write-static-value (bin pos expr bytes symtab buf handler)
   (substitute (.. buf handler) (do
     [prepend (values (buffer-storage ..) $pos bytes) (& expr-locations expr) ..]
     [mem-write bin pos (storage _(@ expr-value expr)) bytes])))
@@ -100,9 +100,9 @@
     (ignore))
   [mem-write bin pos (storage _ opcoderd) #1]))))))))
 
-(constrain assemble (\ r (with-vars (a b c d e) (`(function ((list expr) ,a (ref ,b) ,c ,d buffer ,e) ())r)r)))
+(constrain assemble (\ r (with-vars (a b c e) (`(function ((list expr) ,a (ref ,b) ,c buffer ,e) ())r)r)))
 
-(function assemble (generated-expressions bin pos symtab relas buf handler)
+(function assemble (generated-expressions bin pos symtab buf handler)
   (substitute (.. buf handler) (do
     [set pos #0]
     (foreach (n generated-expressions) (do
@@ -123,68 +123,68 @@
           (let (reg (@ expr-code [@caddr (@ expr-arguments n)]))
           (let (rm (@ expr-code [@cadr (@ expr-arguments n)])) (do
           [write-mr-instr bin pos opcode #1 reg rm (true) (true) (false)]
-          [write-static-value bin pos [@car (@ expr-arguments n)] #4 symtab relas ..])))))
+          [write-static-value bin pos [@car (@ expr-arguments n)] #4 symtab ..])))))
           
         ((movq-reg-to-mdb)
           (let (opcode (hex 89))
           (let (reg (@ expr-code [@car (@ expr-arguments n)]))
           (let (rm (@ expr-code [@caddr (@ expr-arguments n)])) (do
           [write-mr-instr bin pos opcode #1 reg rm (true) (true) (false)]
-          [write-static-value bin pos [@cadr (@ expr-arguments n)] #4 symtab relas ..])))))
+          [write-static-value bin pos [@cadr (@ expr-arguments n)] #4 symtab ..])))))
         
         ((movb-reg-to-mdb)
           (let (opcode (hex 88))
           (let (reg (@ expr-code [@car (@ expr-arguments n)]))
           (let (rm (@ expr-code [@caddr (@ expr-arguments n)])) (do
           [write-mr-instr bin pos opcode #1 reg rm (true) (false) (false)]
-          [write-static-value bin pos [@cadr (@ expr-arguments n)] #4 symtab relas ..])))))
+          [write-static-value bin pos [@cadr (@ expr-arguments n)] #4 symtab ..])))))
         
         ((movw-reg-to-mdb)
           (let (opcode (hex 89))
           (let (reg (@ expr-code [@car (@ expr-arguments n)]))
           (let (rm (@ expr-code [@caddr (@ expr-arguments n)])) (do
           [write-mr-instr bin pos opcode #1 reg rm (true) (false) (true)]
-          [write-static-value bin pos [@cadr (@ expr-arguments n)] #4 symtab relas ..])))))
+          [write-static-value bin pos [@cadr (@ expr-arguments n)] #4 symtab ..])))))
         
         ((movl-reg-to-mdb)
           (let (opcode (hex 89))
           (let (reg (@ expr-code [@car (@ expr-arguments n)]))
           (let (rm (@ expr-code [@caddr (@ expr-arguments n)])) (do
           [write-mr-instr bin pos opcode #1 reg rm (true) (false) (false)]
-          [write-static-value bin pos [@cadr (@ expr-arguments n)] #4 symtab relas ..])))))
+          [write-static-value bin pos [@cadr (@ expr-arguments n)] #4 symtab ..])))))
         
         ((jmp-rel)
           (let (opcode (hex E9)) (do
           [mem-write bin pos (storage _ opcode) #1]
-          [write-static-value bin pos [@car (@ expr-arguments n)] #4 symtab relas ..])))
+          [write-static-value bin pos [@car (@ expr-arguments n)] #4 symtab ..])))
           
         ((movq-mdb-to-reg)
           (let (opcode (hex 8B))
           (let (reg (@ expr-code [@caddr (@ expr-arguments n)]))
           (let (rm (@ expr-code [@cadr (@ expr-arguments n)])) (do
           [write-mr-instr bin pos opcode #1 reg rm (true) (true) (false)]
-          [write-static-value bin pos [@car (@ expr-arguments n)] #4 symtab relas ..])))))
+          [write-static-value bin pos [@car (@ expr-arguments n)] #4 symtab ..])))))
         
         ((movb-mdb-to-reg)
           (let (opcode (hex 8A))
           (let (reg (@ expr-code [@caddr (@ expr-arguments n)]))
           (let (rm (@ expr-code [@cadr (@ expr-arguments n)])) (do
           [write-mr-instr bin pos opcode #1 reg rm (true) (false) (false)]
-          [write-static-value bin pos [@car (@ expr-arguments n)] #4 symtab relas ..])))))
+          [write-static-value bin pos [@car (@ expr-arguments n)] #4 symtab ..])))))
         
         ((movw-mdb-to-reg)
           (let (opcode (hex 8B))
           (let (reg (@ expr-code [@caddr (@ expr-arguments n)]))
           (let (rm (@ expr-code [@cadr (@ expr-arguments n)])) (do
           [write-mr-instr bin pos opcode #1 reg rm (true) (false) (true)]
-          [write-static-value bin pos [@car (@ expr-arguments n)] #4 symtab relas ..])))))
+          [write-static-value bin pos [@car (@ expr-arguments n)] #4 symtab ..])))))
         
         ((movl-mdb-to-reg)
           (let (opcode (hex 8B))
           (let (reg (@ expr-code [@caddr (@ expr-arguments n)]))
           (let (rm (@ expr-code [@cadr (@ expr-arguments n)])) (do
           [write-mr-instr bin pos opcode #1 reg rm (true) (false) (false)]
-          [write-static-value bin pos [@car (@ expr-arguments n)] #4 symtab relas ..])))))
+          [write-static-value bin pos [@car (@ expr-arguments n)] #4 symtab ..])))))
         
         ((pushq-reg)
           (let (opcode (hex 50))
@@ -229,7 +229,7 @@
         ((je-rel) (do
           [mem-write bin pos (storage opcode1 (hex 0F)) #1]
           [mem-write bin pos (storage opcode2 (hex 84)) #1]
-          [write-static-value bin pos [@car (@ expr-arguments n)] #4 symtab relas ..]))
+          [write-static-value bin pos [@car (@ expr-arguments n)] #4 symtab ..]))
           
         ((orq-reg-to-reg)
           (let (opcode (hex 0B))
@@ -316,7 +316,7 @@
           (let (rex (if [land reg (hex 8)] [lor rex [<< #1 (rex-b)]] rex)) (do
           [mem-write bin pos (storage _ rex) #1]
           [mem-write bin pos (storage _ opcoderd) #1]
-          [write-static-value bin pos imm-expr #8 symtab relas ..]))))))))))))
+          [write-static-value bin pos imm-expr #8 symtab ..]))))))))))))
           
         ((call-reg)
           (let (opcode (hex FF))
@@ -534,14 +534,13 @@
     
         (let (text-len (storage _ (ignore)))
         (let (max-text-sec-len [pad-size [* (write-elf-max-instr-len) [length generated-expressions]] (write-elf-alignment)])
-        (let (max-rela-sec-len [+ [* (write-elf-max-instr-fields) [* [length generated-expressions] (elf64-rela)]]
-           [* [length relocations] (elf64-rela)]])
+        (let (max-rela-sec-len [* [length relocations] (elf64-rela)])
         
         (let (text [buffer-alloc max-text-sec-len temp-buf cleanup])
         (let (relas [buffer-alloc max-rela-sec-len temp-buf cleanup])
         (let (rela-ptr (storage _ relas)) (do
         
-        [assemble generated-expressions text text-len syms rela-ptr reg handler]
+        [assemble generated-expressions text text-len syms reg handler]
         
         (foreach (reloc relocations)
           (foreach (loca (@ expr-locations (@ reloc-operand reloc)))
