@@ -154,10 +154,6 @@
 
 (function label (l r) [=## #33 (\ r (` expr-code r)) r])
 
-(function lnkr-add-off-to-ref (l r) [=## #34 (\ r (` expr-code r)) r])
-
-(function lnkr-sub-rip-to-ref (l r) [=## #35 (\ r (` expr-code r)) r])
-
 (function word-size (l r) [=# #8 r])
 
 (ignore Offsets for the register contents in the continuation buffer.)
@@ -241,6 +237,21 @@
 
 (function function->generator (x) [cast x])
 
+(constrain make-absolute-relocation-immediate
+  (\ r (with-vars (a b c) (`(function (,a ,b bndg-aug (ref (list reloc)) buffer ,c) expr)r)r)))
+
+(function make-absolute-relocation-immediate (size addend bndg relocs r handler)
+  (substitute (.. r handler)
+    (let (op [make-literal #0 null-fragment null-expr ..]) (do
+      [prepend [make-relocation
+        (switch = size
+          (#1 (r-x86-64-8))
+          (#2 (r-x86-64-16))
+          (#4 (r-x86-64-32))
+          (#8 (r-x86-64-64))
+          (ignore)) op bndg addend ..] relocs ..]
+      op))))
+
 (function generate-load (bndg offset dest-reg scratch-reg c relocs r handler)
   (substitute (.. r handler)
     (switch = (@ bndg-storage bndg)
@@ -249,8 +260,7 @@
           [prepend (make-asmN (movq-mdb-to-reg) (op1 (make-asmN(rbp)()..) dest-reg) ..) c ..]))
           
       ((absolute-storage) (do
-        (let (op1 (make-asmN (lnkr-add-off-to-ref) ([use-binding-aug bndg ..] [make-literal offset null-fragment null-expr ..]) ..))
-          [prepend (make-asmN (movq-imm-to-reg) (op1 scratch-reg) ..) c ..])
+        [prepend (make-asmN (movq-imm-to-reg) ([make-absolute-relocation-immediate #8 offset bndg relocs ..] scratch-reg) ..) c ..]
         [prepend (make-asmN (movq-mdb-to-reg) ([make-literal #0 null-fragment null-expr ..] scratch-reg dest-reg) ..) c ..]))
           
       (ignore))))
@@ -263,8 +273,7 @@
           [prepend (make-asmN (movq-reg-to-mdb) (src-reg op2 (make-asmN(rbp)()..)) ..) c ..]))
           
       ((absolute-storage) (do
-        (let (op1 (make-asmN (lnkr-add-off-to-ref) ([use-binding-aug bndg ..] [make-literal offset null-fragment null-expr ..]) ..))
-          [prepend (make-asmN (movq-imm-to-reg) (op1 scratch-reg) ..) c ..])
+        [prepend (make-asmN (movq-imm-to-reg) ([make-absolute-relocation-immediate #8 offset bndg relocs ..] scratch-reg) ..) c ..]
         [prepend (make-asmN (movq-reg-to-mdb) (src-reg [make-literal #0 null-fragment null-expr ..] scratch-reg) ..) c ..]))
           
       (ignore))))
@@ -399,10 +408,10 @@
         (ignore))
       
       (let (after-binding [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr null-expr ..]) (do
-      [prepend (make-asmN (jmp-rel) ((make-asmN (lnkr-sub-rip-to-ref) ([use-binding-aug after-binding ..]) ..)) ..) c ..]
-      [prepend (make-asmN (label) ([use-binding-aug (@ expr-cont-instr-bndg n) ..]) ..) c ..]
+      [prepend (make-asmN (jmp-rel) ([make-relative-relocation-immediate #4 after-binding relocs ..]) ..) c ..]
+      [prepend [make-label (@ expr-cont-instr-bndg n) ..] c ..]
       [generate-expression (@ expr-expression n) gens c relocs ..]
-      [prepend (make-asmN (label) ([use-binding-aug after-binding ..]) ..) c ..])))}
+      [prepend [make-label after-binding ..] c ..])))}
       (ignore))))
 
 (constrain generate-with
