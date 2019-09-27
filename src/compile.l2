@@ -31,7 +31,7 @@
 (function load-program (exprs gens buf handler)
   (substitute (.. buf handler)
     (bind (asms relocs undefined-bindings static-bindings) [compile-program exprs gens bind buf handler]
-    (bind (objdest objdest-sz) [write-elf asms undefined-bindings static-bindings bind buf handler]
+    (bind (objdest objdest-sz) [write-elf asms relocs undefined-bindings static-bindings bind buf handler]
     (let (obj [load objdest objdest-sz buf handler]) (do
     [binding-offsets-to-addresses asms static-bindings obj]
     obj))))))
@@ -133,7 +133,7 @@
 (function compile-program-to-elf (exprs gens outfn buf handler)
   (substitute (.. buf handler)
     (bind (asms relocs undefined-bindings static-bindings) [compile-program exprs gens bind ..]
-    (bind (objdest objdest-sz) [write-elf asms undefined-bindings static-bindings bind ..]
+    (bind (objdest objdest-sz) [write-elf asms relocs undefined-bindings static-bindings bind ..]
     (let (fd [create outfn handler]) (do
     [print fd objdest objdest-sz handler]
     [close fd handler]))))))

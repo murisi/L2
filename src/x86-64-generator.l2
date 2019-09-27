@@ -286,15 +286,18 @@
         [prepend (make-asmN (orq-reg-to-reg) ((make-asmN(rax)()..) (make-asmN(rax)()..)) ..) c ..]
         (let (alternate-binding
           [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr null-expr ..]) (do
-        (let (op1 (make-asmN (lnkr-sub-rip-to-ref) ([use-binding-aug alternate-binding ..]) ..))
-          [prepend (make-asmN (je-rel) (op1) ..) c ..])
+        (let (op1 [make-literal #0 null-fragment null-expr ..]) (do
+          [prepend [make-relocation (r-x86-64-pc32) op1 alternate-binding [- #0 #4] ..] relocs ..]
+          [prepend (make-asmN (je-rel) (op1) ..) c ..]))
         [generate-expression (@ expr-consequent n) gens c relocs ..]
         [generate-move (@ expr-binding-aug (@ expr-consequent n)) #0 (@ expr-binding-aug n) #0 (make-asmN(r10)()..)
           (make-asmN(r11)()..) c relocs ..]
         (let (end-binding [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr null-expr ..]) (do
         (let (op1 (make-asmN (lnkr-sub-rip-to-ref) ([use-binding-aug end-binding ..]) ..))
           [prepend (make-asmN (jmp-rel) (op1) ..) c ..])
-        [prepend (make-asmN (label) ([use-binding-aug alternate-binding ..]) ..) c ..]
+        (let (alternate-label (make-asmN (label) ([use-binding-aug alternate-binding ..]) ..)) (do
+          (setf expr-instruction-binding alternate-label alternate-binding)
+          [prepend alternate-label c ..]))
         [generate-expression (@ expr-alternate n) gens c relocs ..]
         [generate-move (@ expr-binding-aug (@ expr-alternate n)) #0 (@ expr-binding-aug n) #0 (make-asmN(r10)()..)
           (make-asmN(r11)()..) c relocs ..]
