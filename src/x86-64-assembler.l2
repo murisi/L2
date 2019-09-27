@@ -82,19 +82,9 @@
 (constrain write-static-value (\ r (with-vars (a b c d e f g) (`(function (,a (ref ,b) ,c ,d ,e ,f buffer ,g) ())r)r)))
 
 (function write-static-value (bin pos expr bytes symtab relas buf handler)
-  (substitute (.. buf handler)
-    (if [= (@ expr-type expr) (-literal-)] (do
-      [prepend (values (buffer-storage ..) $pos bytes) (& expr-locations expr) ..]
-      [mem-write bin pos (storage _(@ expr-value expr)) bytes])
-      
-    (if (and [= (@ expr-type expr) (-symbol-)] [= bytes #8]) (do
-      (setf r-offset $relas $pos)
-      (setf r-info $relas (elf64-r-info [/[- (@ bndg-context(@ expr-symbol-binding-aug expr)) symtab](elf64-sym)] (r-x86-64-64)))
-      (setf r-addend $relas #0)
-      [set+ relas (elf64-rela)]
-      [mem-write bin pos (storage _ #0) bytes])
-      
-      (ignore)))))
+  (substitute (.. buf handler) (do
+    [prepend (values (buffer-storage ..) $pos bytes) (& expr-locations expr) ..]
+    [mem-write bin pos (storage _(@ expr-value expr)) bytes])))
 
 (constrain write-o-instr (\ r (with-vars (a b c d) (`(function (,a (ref ,b) ,c ,d) ())r)r)))
 
