@@ -60,13 +60,7 @@
   
   (function expr-binding-aug (l r) [property #48 #8 (\ r (` expr r)) (\ s r (` bndg-aug r)) l r])
 
-(ignore Only for type(s) (-assembly-))
-
-  (function expr-code (l r) [property #56 #8 (\ r (` expr r)) (\ s r (` expr-code r)) l r])
-  
-  (function expr-instruction-binding (l r) [property #72 #8 (\ r (` expr r)) (\ s r (` bndg-aug r)) l r])
-
-(ignore Only for type(s) (-assembly-) (-storage-) (-invoke-) (-jump-))
+(ignore Only for type(s) (-storage-) (-invoke-) (-jump-))
 
   (function expr-arguments (l r) [property #64 #8 (\ r (` expr r)) (\ s r (` (list expr) r)) l r])
 
@@ -89,8 +83,6 @@
 (ignore Only for type(s) (-literal-))
 
   (function expr-value (l r) [property #56 #8 (\ r (` expr r)) (\ s r [var r]) l r])
-  
-  (function expr-locations (l r) [property #64 #8 (\ r (` expr r)) (\ s r (with-vars (a b) (`(list (values ,a ,b))r)r)) l r])
 
 (ignore Only for type(s) (-function-) (-continuation-) (-with-) (-constrain-))
 
@@ -140,8 +132,6 @@
 
   (function -continuation- (l r) [=## #9 (\ r (` expr-type r)) r])
 
-  (function -assembly- (l r) [=## #10 (\ r (` expr-type r)) r])
-
   (function -meta- (l r) [=## #11 (\ r (` expr-type r)) r])
 
   (function -constrain- (l r) [=## #12 (\ r (` expr-type r)) r])
@@ -170,11 +160,6 @@
 (function make-continuationN (l r)
   [lllllst (` invoke r) (` make-continuation r) [@fst l] [list [lst [@frst l] [@rrrrrst l] r] r]
     [@frrst l] [@rrrst l] r])
-
-(ignore Usage (make-asmN opcode (arg-exprs ...) buf handler))
-
-(function make-asmN (l r)
-  [llllst (` invoke r) (` make-asm r) [@fst l] [list [lst [@frst l] [@rrst l] r] r] [@rrst l] r])
 
 (ignore Usage (make-jumpN ref-expr (arg-exprs ...) frag meta buf handler))
 
@@ -219,7 +204,6 @@
     (setf expr-signature t [vbl->frag [vbl ..]])
     (setf expr-lowlink t #0)
     (setf expr-dependencies t nil)
-    (setf expr-locations t nil)
     (setf expr-binding-aug t [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) null-string null-expr t ..])
     (setf expr-value t value)
     t))))
@@ -262,23 +246,6 @@
     (setf bndg-scope bndg (global-scope))
     (setf bndg-state bndg (undefined-state))
     bndg)))))
-
-(ignore
-  Makes a symbol expression attached to the given augmented binding. bndg is the augmented
-  binding to which the symbol will be attached. reg is the buffer into which the the
-  symbol expression will be put. Return value is the symbol expression.)
-
-(constrain use-binding-aug (\ r (with-vars (b) (`(function (bndg-aug buffer ,b) expr)r)r)))
-
-(function use-binding-aug (bndg reg handler)
-  (substitute (.. reg handler) (let (sym [buffer-alloc (expression) ..]) (do
-    (setf expr-type sym (-symbol-))
-    (setf expr-fragment sym null-fragment)
-    (setf expr-meta sym null-expr)
-    (setf expr-binding-aug sym [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) null-string null-expr sym ..])
-    (setf expr-name sym (@ bndg-name bndg))
-    (setf expr-symbol-binding-aug sym bndg)
-    sym))))
 
 (constrain make-function (\ r (with-vars (b) (`(function (expr (list expr) expr frag expr buffer ,b) expr)r)r)))
 
@@ -345,16 +312,6 @@
     (setf expr-escapes wth (false))
     (setf expr-expression wth expr)
     wth))))
-
-(constrain make-asm (\ r (with-vars (b) (`(function (expr-code (list expr) buffer ,b) expr)r)r)))
-
-(function make-asm (code arguments reg handler)
-  (let (u [buffer-alloc (expression) reg handler]) (do
-    (setf expr-type u (-assembly-))
-    (setf expr-code u code)
-    (setf expr-arguments u arguments)
-    (setf expr-instruction-binding u null-binding)
-    u)))
 
 (constrain make-jump (\ r (with-vars (b) (`(function (expr (list expr) frag expr buffer ,b) expr)r)r)))
 

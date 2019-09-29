@@ -34,13 +34,273 @@
 
   (function reloc-type (l r) [property #0 #8 (\ r (` reloc r)) (\ s r (` reloc-type r)) l r])
 
-  (function reloc-operand (l r) [property #8 #8 (\ r (` reloc r)) (\ s r (` expr r)) l r])
+  (function reloc-operand (l r) [property #8 #8 (\ r (` reloc r)) (\ s r (` operand r)) l r])
 
   (function reloc-binding (l r) [property #16 #8 (\ r (` reloc r)) (\ s r (` bndg-aug r)) l r])
 
-  (function reloc-addend (l r) [property #24 #8 (\ r (` reloc r)) (\ s r [var r]) l r])
+  (function reloc-addend (l r) [property #24 #8 (\ r (` reloc r)) (\ s r (with-vars (a b c) (`(function (,b ,c instr) ,a)r)r)) l r])
 
-(constrain make-relocation (\ r (with-vars (a b) (`(function (reloc-type expr bndg-aug ,a buffer ,b) reloc)r)r)))
+(ignore A representation of an instruction.)
+
+  (function instruction (l r) [=# #24 r])
+
+  (function instr-code (l r) [property #0 #8 (\ r (` instr r)) (\ s r (` instr-code r)) l r])
+  
+  (function instr-operands (l r) [property #8 #8 (\ r (` instr r)) (\ s r (` (list operand) r)) l r])
+  
+  (function instr-binding (l r) [property #16 #8 (\ r (` instr r)) (\ s r (` bndg-aug r)) l r])
+
+(ignore x86-64 instruction codes.)
+  
+  (function label (l r) [=## #33 (\ r (` instr-code r)) r])
+
+  (function x86-lea (l r) [=## #17 (\ r (` instr-code r)) r])
+
+  (function x86-mov (l r) [=## #18 (\ r (` instr-code r)) r])
+
+  (function x86-jmp (l r) [=## #19 (\ r (` instr-code r)) r])
+  
+  (function x86-movzx (l r) [=## #20 (\ r (` instr-code r)) r])
+
+  (function x86-push (l r) [=## #21 (\ r (` instr-code r)) r])
+
+  (function x86-sub (l r) [=## #23 (\ r (` instr-code r)) r])
+
+  (function x86-add (l r) [=## #24 (\ r (` instr-code r)) r])
+
+  (function x86-pop (l r) [=## #25 (\ r (` instr-code r)) r])
+
+  (function x86-leave (l r) [=## #26 (\ r (` instr-code r)) r])
+
+  (function x86-ret (l r) [=## #27 (\ r (` instr-code r)) r])
+
+  (function x86-je (l r) [=## #29 (\ r (` instr-code r)) r])
+
+  (function x86-or (l r) [=## #30 (\ r (` instr-code r)) r])
+
+  (function x86-call (l r) [=## #32 (\ r (` instr-code r)) r])
+  
+  (function x86-mul (l r) [=## #38 (\ r (` instr-code r)) r])
+  
+  (function x86-shl (l r) [=## #39 (\ r (` instr-code r)) r])
+  
+  (function x86-shr (l r) [=## #40 (\ r (` instr-code r)) r])
+  
+  (function x86-and (l r) [=## #41 (\ r (` instr-code r)) r])
+  
+  (function x86-not (l r) [=## #42 (\ r (` instr-code r)) r])
+  
+  (function x86-xor (l r) [=## #44 (\ r (` instr-code r)) r])
+  
+  (function x86-div (l r) [=## #47 (\ r (` instr-code r)) r])
+  
+  (function x86-setz (l r) [=## #48 (\ r (` instr-code r)) r])
+  
+  (function x86-setc (l r) [=## #49 (\ r (` instr-code r)) r])
+
+(ignore A representation of an operand.)
+  
+  (function operand (l r) [=# #64 r])
+  
+  (function op-type (l r) [property #0 #8 (\ r (` operand r)) (\ s r (` operand-type r)) l r])
+  
+  (function op-size (l r) [property #8 #8 (\ r (` operand r)) (\ s r [var r]) l r])
+  
+  (function op-locations (l r) [property #16 #8 (\ r (` operand r)) (\ s r (with-vars (a b) (`(list (values ,a ,b))r)r)) l r])
+
+(ignore Only for type(s) (register-operand))
+
+  (function op-register (l r) [property #24 #8 (\ r (` operand r)) (\ s r (` register r)) l r])
+
+(ignore Only for type(s) (immediate-operand))
+
+  (function op-immediate (l r) [property #24 #8 (\ r (` operand r)) (\ s r [var r]) l r])
+
+(ignore Only for type(s) (memory-operand))
+
+  (function op-base (l r) [property #24 #8 (\ r (` operand r)) (\ s r (` register r)) l r])
+  
+  (function op-index (l r) [property #32 #8 (\ r (` operand r)) (\ s r (` register r)) l r])
+  
+  (function op-scale (l r) [property #40 #8 (\ r (` operand r)) (\ s r [var r]) l r])
+  
+  (function op-disp (l r) [property #48 #8 (\ r (` operand r)) (\ s r [var r]) l r])
+  
+  (function op-disp-size (l r) [property #56 #8 (\ r (` operand r)) (\ s r [var r]) l r])
+
+(ignore x86-64 operand types.)
+
+  (function register-operand (l r) [=## #0 (\ r (` operand-type r)) r])
+  
+  (function immediate-operand (l r) [=## #1 (\ r (` operand-type r)) r])
+  
+  (function memory-operand (l r) [=## #2 (\ r (` operand-type r)) r])
+
+(ignore x86-64 registers.)
+  
+  (function r/m8 (l r) [=# [<< #1 #5] r])
+  
+  (function r/m16 (l r) [=# [<< #1 #6] r])
+  
+  (function r/m32 (l r) [=# [<< #1 #7] r])
+  
+  (function r/m64 (l r) [=# [<< #1 #8] r])
+
+  (function al (l r) [=## [lor #0(r/m8)] (\ r (` register r)) r])
+
+  (function cl (l r) [=## [lor #1(r/m8)] (\ r (` register r)) r])
+
+  (function dl (l r) [=## [lor #2(r/m8)] (\ r (` register r)) r])
+
+  (function bl (l r) [=## [lor #3(r/m8)] (\ r (` register r)) r])
+
+  (function ah (l r) [=## [lor #4(r/m8)] (\ r (` register r)) r])
+
+  (function ch (l r) [=## [lor #5(r/m8)] (\ r (` register r)) r])
+
+  (function dh (l r) [=## [lor #6(r/m8)] (\ r (` register r)) r])
+
+  (function bh (l r) [=## [lor #7(r/m8)] (\ r (` register r)) r])
+  
+  (function spl (l r) [=## [lor #4(r/m8)] (\ r (` register r)) r])
+
+  (function bpl (l r) [=## [lor #5(r/m8)] (\ r (` register r)) r])
+
+  (function sil (l r) [=## [lor #6(r/m8)] (\ r (` register r)) r])
+
+  (function dil (l r) [=## [lor #7(r/m8)] (\ r (` register r)) r])
+
+  (function r8l (l r) [=## [lor #8(r/m8)] (\ r (` register r)) r])
+
+  (function r9l (l r) [=## [lor #9(r/m8)] (\ r (` register r)) r])
+
+  (function r10l (l r) [=## [lor #10(r/m8)] (\ r (` register r)) r])
+
+  (function r11l (l r) [=## [lor #11(r/m8)] (\ r (` register r)) r])
+
+  (function r12l (l r) [=## [lor #12(r/m8)] (\ r (` register r)) r])
+
+  (function r13l (l r) [=## [lor #13(r/m8)] (\ r (` register r)) r])
+
+  (function r14l (l r) [=## [lor #14(r/m8)] (\ r (` register r)) r])
+
+  (function r15l (l r) [=## [lor #15(r/m8)] (\ r (` register r)) r])
+  
+  (function ax (l r) [=## [lor #0(r/m16)] (\ r (` register r)) r])
+
+  (function cx (l r) [=## [lor #1(r/m16)] (\ r (` register r)) r])
+
+  (function dx (l r) [=## [lor #2(r/m16)] (\ r (` register r)) r])
+
+  (function bx (l r) [=## [lor #3(r/m16)] (\ r (` register r)) r])
+
+  (function sp (l r) [=## [lor #4(r/m16)] (\ r (` register r)) r])
+
+  (function bp (l r) [=## [lor #5(r/m16)] (\ r (` register r)) r])
+
+  (function si (l r) [=## [lor #6(r/m16)] (\ r (` register r)) r])
+
+  (function di (l r) [=## [lor #7(r/m16)] (\ r (` register r)) r])
+  
+  (function r8w (l r) [=## [lor #8(r/m16)] (\ r (` register r)) r])
+
+  (function r9w (l r) [=## [lor #9(r/m16)] (\ r (` register r)) r])
+
+  (function r10w (l r) [=## [lor #10(r/m16)] (\ r (` register r)) r])
+
+  (function r11w (l r) [=## [lor #11(r/m16)] (\ r (` register r)) r])
+
+  (function r12w (l r) [=## [lor #12(r/m16)] (\ r (` register r)) r])
+
+  (function r13w (l r) [=## [lor #13(r/m16)] (\ r (` register r)) r])
+
+  (function r14w (l r) [=## [lor #14(r/m16)] (\ r (` register r)) r])
+
+  (function r15w (l r) [=## [lor #15(r/m16)] (\ r (` register r)) r])
+  
+  (function eax (l r) [=## [lor #0(r/m32)] (\ r (` register r)) r])
+
+  (function ecx (l r) [=## [lor #1(r/m32)] (\ r (` register r)) r])
+
+  (function edx (l r) [=## [lor #2(r/m32)] (\ r (` register r)) r])
+
+  (function ebx (l r) [=## [lor #3(r/m32)] (\ r (` register r)) r])
+
+  (function esp (l r) [=## [lor #4(r/m32)] (\ r (` register r)) r])
+
+  (function ebp (l r) [=## [lor #5(r/m32)] (\ r (` register r)) r])
+
+  (function esi (l r) [=## [lor #6(r/m32)] (\ r (` register r)) r])
+
+  (function edi (l r) [=## [lor #7(r/m32)] (\ r (` register r)) r])
+  
+  (function r8d (l r) [=## [lor #8(r/m32)] (\ r (` register r)) r])
+
+  (function r9d (l r) [=## [lor #9(r/m32)] (\ r (` register r)) r])
+
+  (function r10d (l r) [=## [lor #10(r/m32)] (\ r (` register r)) r])
+
+  (function r11d (l r) [=## [lor #11(r/m32)] (\ r (` register r)) r])
+
+  (function r12d (l r) [=## [lor #12(r/m32)] (\ r (` register r)) r])
+
+  (function r13d (l r) [=## [lor #13(r/m32)] (\ r (` register r)) r])
+
+  (function r14d (l r) [=## [lor #14(r/m32)] (\ r (` register r)) r])
+
+  (function r15d (l r) [=## [lor #15(r/m32)] (\ r (` register r)) r])
+  
+  (function rax (l r) [=## [lor #0(r/m64)] (\ r (` register r)) r])
+
+  (function rcx (l r) [=## [lor #1(r/m64)] (\ r (` register r)) r])
+
+  (function rdx (l r) [=## [lor #2(r/m64)] (\ r (` register r)) r])
+
+  (function rbx (l r) [=## [lor #3(r/m64)] (\ r (` register r)) r])
+
+  (function rsp (l r) [=## [lor #4(r/m64)] (\ r (` register r)) r])
+
+  (function rbp (l r) [=## [lor #5(r/m64)] (\ r (` register r)) r])
+
+  (function rsi (l r) [=## [lor #6(r/m64)] (\ r (` register r)) r])
+
+  (function rdi (l r) [=## [lor #7(r/m64)] (\ r (` register r)) r])
+
+  (function r8 (l r) [=## [lor #8(r/m64)] (\ r (` register r)) r])
+
+  (function r9 (l r) [=## [lor #9(r/m64)] (\ r (` register r)) r])
+
+  (function r10 (l r) [=## [lor #10(r/m64)] (\ r (` register r)) r])
+
+  (function r11 (l r) [=## [lor #11(r/m64)] (\ r (` register r)) r])
+
+  (function r12 (l r) [=## [lor #12(r/m64)] (\ r (` register r)) r])
+
+  (function r13 (l r) [=## [lor #13(r/m64)] (\ r (` register r)) r])
+
+  (function r14 (l r) [=## [lor #14(r/m64)] (\ r (` register r)) r])
+
+  (function r15 (l r) [=## [lor #15(r/m64)] (\ r (` register r)) r])
+  
+  (function rip (l r) [=## #16 (\ r (` register r)) r])
+  
+  (function n/a (l r) [=## #17 (\ r (` register r)) r])
+
+(ignore Usage (make-instrN opcode (ops ...) buf handler))
+
+(function make-instrN (l r)
+  [llllst (` invoke r) (` make-instruction r) [@fst l] [list [lst [@frst l] [@rrst l] r] r] [@rrst l] r])
+
+(constrain make-instruction (\ r (with-vars (b) (`(function (instr-code (list operand) buffer ,b) instr)r)r)))
+
+(function make-instruction (code operands reg handler)
+  (let (u [buffer-alloc (instruction) reg handler]) (do
+    (setf instr-code u code)
+    (setf instr-operands u operands)
+    (setf instr-binding u null-binding)
+    u)))
+
+(constrain make-relocation (\ r (with-vars (a b) (`(function (reloc-type operand bndg-aug ,a buffer ,b) reloc)r)r)))
 
 (function make-relocation (type operand binding addend buf handler)
   (substitute (.. buf handler)
@@ -50,6 +310,136 @@
       (setf reloc-binding r binding)
       (setf reloc-addend r addend)
       r))))
+
+(constrain make-reg-op (\ r (with-vars (a) (`(function (register buffer ,a) operand)r)r)))
+
+(function make-reg-op (reg buf handler)
+  (substitute (.. buf handler)
+    (let (op [buffer-alloc (operand) ..]) (do
+      (setf op-type op (register-operand))
+      (setf op-size op
+        (if [land reg(r/m8)] #1
+        (if [land reg(r/m16)] #2
+        (if [land reg(r/m32)] #4
+        (if [land reg(r/m64)] #8
+          (ignore))))))
+      (setf op-register op reg)
+      (setf op-locations op nil)
+      op))))
+
+(constrain make-imm-op (\ r (with-vars (a b c) (`(function (,b ,c buffer ,a) operand)r)r)))
+
+(function make-imm-op (op-size imm buf handler)
+  (substitute (.. buf handler)
+    (let (op [buffer-alloc (operand) ..]) (do
+      (setf op-type op (immediate-operand))
+      (setf op-size op op-size)
+      (setf op-immediate op imm)
+      (setf op-locations op nil)
+      op))))
+
+(constrain make-mem-op (\ r (with-vars (a b c d e) (`(function (,a register register ,b ,c ,d buffer ,e) operand)r)r)))
+
+(function make-mem-op (op-size base index scale disp disp-size buf handler)
+  (substitute (.. buf handler)
+    (let (op [buffer-alloc (operand) ..]) (do
+      (setf op-type op (memory-operand))
+      (setf op-size op op-size)
+      (setf op-base op base)
+      (setf op-index op index)
+      (setf op-scale op scale)
+      (setf op-disp op disp)
+      (setf op-disp-size op disp-size)
+      (setf op-locations op nil)
+      op))))
+
+(constrain reg-lower-8 (\ r (`(function (register) register)r)))
+
+(function reg-lower-8 (reg) (switch = reg
+  ((ah)(ah)) ((bh)(bh)) ((ch)(ch)) ((dh)(dh)) ((al)(al)) ((bl)(bl)) ((cl)(cl)) ((dl)(dl))
+  ((dil)(dil)) ((sil)(sil)) ((bpl) (bpl)) ((spl)(spl)) ((r8l)(r8l)) ((r9l)(r9l)) ((r10l)(r10l))
+  ((r11l)(r11l)) ((r12l)(r12l)) ((r13l)(r13l)) ((r14l)(r14l)) ((r15l)(r15l)) ((ax)(al))
+  ((bx)(bl)) ((cx)(cl)) ((dx)(dl)) ((di)(dil)) ((si)(sil)) ((bp)(bpl)) ((sp)(spl)) ((r8w)(r8l))
+  ((r9w)(r9l)) ((r10w)(r10l)) ((r11w)(r11l)) ((r12w)(r12l)) ((r13w)(r13l)) ((r14w)(r14l))
+  ((r15w)(r15l)) ((eax)(al)) ((ebx)(bl)) ((ecx)(cl)) ((edx)(dl)) ((edi)(dl)) ((esi)(sil))
+  ((ebp)(bpl)) ((esp)(spl)) ((r8d)(r8l)) ((r9d)(r9l)) ((r10d)(r10l)) ((r11d)(r11l))
+  ((r12d)(r12l)) ((r13d)(r13l)) ((r14d)(r14l)) ((r15d)(r15l)) ((rax)(al)) ((rbx)(bl))
+  ((rcx)(cl)) ((rdx)(dl)) ((rdi)(dil)) ((rsi)(sil)) ((rbp)(bpl)) ((rsp)(spl)) ((r8)(r8l))
+  ((r9)(r9l)) ((r10)(r10l)) ((r11)(r11l)) ((r12)(r12l)) ((r13)(r13l)) ((r14)(r14l))
+  ((r15)(r15l)) (ignore)))
+
+(constrain op-lower-8 (\ r (with-vars (a) (`(function (operand buffer ,a) operand)r)r)))
+
+(function op-lower-8 (op buf handler)
+  (substitute (.. buf handler)
+    (switch = (@ op-type op)
+      ((register-operand) [make-reg-op [reg-lower-8 (@ op-register op)] ..])
+      ((immediate-operand) [make-imm-op #1 (@ op-immediate op) ..])
+      ((memory-operand) [make-mem-op #1 (@ op-base op) (@ op-index op) (@ op-scale op)
+        (@ op-disp op) (@ op-disp-size op) ..])
+      (ignore))))
+
+(constrain reg-lower-16 (\ r (`(function (register) register)r)))
+
+(function reg-lower-16 (reg) (switch = reg
+  ((ax)(ax)) ((bx)(bx)) ((cx)(cx)) ((dx)(dx)) ((di)(di)) ((si)(si)) ((bp)(bp)) ((sp)(sp))
+  ((r8w)(r8w)) ((r9w)(r9w)) ((r10w)(r10w)) ((r11w)(r11w)) ((r12w)(r12w)) ((r13w)(r13w))
+  ((r14w)(r14w)) ((r15w)(r15w)) ((eax)(ax)) ((ebx)(bx)) ((ecx)(cx)) ((edx)(dx)) ((edi)(di))
+  ((esi)(si)) ((ebp)(bp)) ((esp)(sp)) ((r8d)(r8w)) ((r9d)(r9w)) ((r10d)(r10w)) ((r11d)(r11w))
+  ((r12d)(r12w)) ((r13d)(r13w)) ((r14d)(r14w)) ((r15d)(r15w)) ((rax)(ax)) ((rbx)(bx))
+  ((rcx)(cx)) ((rdx)(dx)) ((rdi)(di)) ((rsi)(si)) ((rbp)(bp)) ((rsp)(sp)) ((r8)(r8w))
+  ((r9)(r9w)) ((r10)(r10w)) ((r11)(r11w)) ((r12)(r12w)) ((r13)(r13w)) ((r14)(r14w))
+  ((r15)(r15w)) (ignore)))
+
+(constrain op-lower-16 (\ r (with-vars (a) (`(function (operand buffer ,a) operand)r)r)))
+
+(function op-lower-16 (op buf handler)
+  (substitute (.. buf handler)
+    (switch = (@ op-type op)
+      ((register-operand) [make-reg-op [reg-lower-16 (@ op-register op)] ..])
+      ((immediate-operand) [make-imm-op #2 (@ op-immediate op) ..])
+      ((memory-operand) [make-mem-op #2 (@ op-base op) (@ op-index op) (@ op-scale op)
+        (@ op-disp op) (@ op-disp-size op) ..])
+      (ignore))))
+
+(constrain reg-lower-32 (\ r (`(function (register) register)r)))
+
+(function reg-lower-32 (reg) (switch = reg
+  ((eax)(eax)) ((ebx)(ebx)) ((ecx)(ecx)) ((edx)(edx)) ((edi)(edi)) ((esi)(esi)) ((ebp)(ebp))
+  ((esp)(esp)) ((r8d)(r8d)) ((r9d)(r9d)) ((r10d)(r10d)) ((r11d)(r11d)) ((r12d)(r12d))
+  ((r13d)(r13d)) ((r14d)(r14d)) ((r15d)(r15d)) ((rax)(eax)) ((rbx)(ebx)) ((rcx)(ecx))
+  ((rdx)(edx)) ((rdi)(edi)) ((rsi)(esi)) ((rbp)(ebp)) ((rsp)(esp)) ((r8)(r8d)) ((r9)(r9d))
+  ((r10)(r10d)) ((r11)(r11d)) ((r12)(r12d)) ((r13)(r13d)) ((r14)(r14d)) ((r15)(r15d))
+  (ignore)))
+
+(constrain op-lower-32 (\ r (with-vars (a) (`(function (operand buffer ,a) operand)r)r)))
+
+(function op-lower-32 (op buf handler)
+  (substitute (.. buf handler)
+    (switch = (@ op-type op)
+      ((register-operand) [make-reg-op [reg-lower-32 (@ op-register op)] ..])
+      ((immediate-operand) [make-imm-op #4 (@ op-immediate op) ..])
+      ((memory-operand) [make-mem-op #4 (@ op-base op) (@ op-index op) (@ op-scale op)
+        (@ op-disp op) (@ op-disp-size op) ..])
+      (ignore))))
+
+(constrain reg-lower-64 (\ r (`(function (register) register)r)))
+
+(function reg-lower-64 (reg) (switch = reg
+  ((rax)(rax)) ((rbx)(rbx)) ((rcx)(rcx)) ((rdx)(rdx)) ((rdi)(rdi)) ((rsi)(rsi)) ((rbp)(rbp))
+  ((rsp)(rsp)) ((r8)(r8)) ((r9)(r9)) ((r10)(r10)) ((r11)(r11)) ((r12)(r12)) ((r13)(r13))
+  ((r14)(r14)) ((r15)(r15)) (ignore)))
+
+(constrain op-lower-64 (\ r (with-vars (a) (`(function (operand buffer ,a) operand)r)r)))
+
+(function op-lower-64 (op buf handler)
+  (substitute (.. buf handler)
+    (switch = (@ op-type op)
+      ((register-operand) [make-reg-op [reg-lower-64 (@ op-register op)] ..])
+      ((immediate-operand) [make-imm-op #8 (@ op-immediate op) ..])
+      ((memory-operand) [make-mem-op #8 (@ op-base op) (@ op-index op) (@ op-scale op)
+        (@ op-disp op) (@ op-disp-size op) ..])
+      (ignore))))
 
 (constrain mem-write (\ r (with-vars (a b c d) (`(function (,a (ref ,b) ,c ,d) ())r)r)))
 
@@ -83,7 +473,7 @@
 
 (function write-static-value (bin pos expr bytes symtab buf handler)
   (substitute (.. buf handler) (do
-    [prepend (values (buffer-storage ..) $pos bytes) (& expr-locations expr) ..]
+    [prepend (values (buffer-storage ..) $pos bytes) (& op-locations expr) ..]
     [mem-write bin pos (storage _(@ expr-value expr)) bytes])))
 
 (constrain write-o-instr (\ r (with-vars (a b c d) (`(function (,a (ref ,b) ,c ,d) ())r)r)))
@@ -100,54 +490,54 @@
     (ignore))
   [mem-write bin pos (storage _ opcoderd) #1]))))))))
 
-(constrain assemble (\ r (with-vars (a b c e) (`(function ((list expr) ,a (ref ,b) ,c buffer ,e) ())r)r)))
+(constrain assemble (\ r (with-vars (a b c e) (`(function ((list instr) ,a (ref ,b) ,c buffer ,e) ())r)r)))
 
-(function assemble (generated-expressions bin pos symtab buf handler)
+(ignore(function assemble (generated-expressions bin pos symtab buf handler)
   (substitute (.. buf handler) (do
     [set pos #0]
     (foreach (n generated-expressions) (do
-      (let (instr-bndg (@ expr-instruction-binding n))
+      (let (instr-bndg (@ instr-binding n))
         (if [not= instr-bndg null-binding] (do
           (setf bndg-storage instr-bndg (instruction-storage))
           (setf bndg-offset instr-bndg $pos)
           (setf st-value (@ bndg-context instr-bndg) $pos))
           (ignore)))
           
-      (switch = (@ expr-code n)
+      (switch = (@ instr-code n)
         ((label) (ignore))
           
         ((leaq-mdb-to-reg)
           (let (opcode (hex 8D))
-          (let (reg (@ expr-code [@caddr (@ expr-arguments n)]))
-          (let (rm (@ expr-code [@cadr (@ expr-arguments n)])) (do
+          (let (reg (@ instr-code [@caddr (@ expr-arguments n)]))
+          (let (rm (@ instr-code [@cadr (@ expr-arguments n)])) (do
           [write-mr-instr bin pos opcode #1 reg rm (true) (true) (false)]
           [write-static-value bin pos [@car (@ expr-arguments n)] #4 symtab ..])))))
           
         ((movq-reg-to-mdb)
           (let (opcode (hex 89))
-          (let (reg (@ expr-code [@car (@ expr-arguments n)]))
-          (let (rm (@ expr-code [@caddr (@ expr-arguments n)])) (do
+          (let (reg (@ instr-code [@car (@ expr-arguments n)]))
+          (let (rm (@ instr-code [@caddr (@ expr-arguments n)])) (do
           [write-mr-instr bin pos opcode #1 reg rm (true) (true) (false)]
           [write-static-value bin pos [@cadr (@ expr-arguments n)] #4 symtab ..])))))
         
         ((movb-reg-to-mdb)
           (let (opcode (hex 88))
-          (let (reg (@ expr-code [@car (@ expr-arguments n)]))
-          (let (rm (@ expr-code [@caddr (@ expr-arguments n)])) (do
+          (let (reg (@ instr-code [@car (@ expr-arguments n)]))
+          (let (rm (@ instr-code [@caddr (@ expr-arguments n)])) (do
           [write-mr-instr bin pos opcode #1 reg rm (true) (false) (false)]
           [write-static-value bin pos [@cadr (@ expr-arguments n)] #4 symtab ..])))))
         
         ((movw-reg-to-mdb)
           (let (opcode (hex 89))
-          (let (reg (@ expr-code [@car (@ expr-arguments n)]))
-          (let (rm (@ expr-code [@caddr (@ expr-arguments n)])) (do
+          (let (reg (@ instr-code [@car (@ expr-arguments n)]))
+          (let (rm (@ instr-code [@caddr (@ expr-arguments n)])) (do
           [write-mr-instr bin pos opcode #1 reg rm (true) (false) (true)]
           [write-static-value bin pos [@cadr (@ expr-arguments n)] #4 symtab ..])))))
         
         ((movl-reg-to-mdb)
           (let (opcode (hex 89))
-          (let (reg (@ expr-code [@car (@ expr-arguments n)]))
-          (let (rm (@ expr-code [@caddr (@ expr-arguments n)])) (do
+          (let (reg (@ instr-code [@car (@ expr-arguments n)]))
+          (let (rm (@ instr-code [@caddr (@ expr-arguments n)])) (do
           [write-mr-instr bin pos opcode #1 reg rm (true) (false) (false)]
           [write-static-value bin pos [@cadr (@ expr-arguments n)] #4 symtab ..])))))
         
@@ -158,60 +548,60 @@
           
         ((movq-mdb-to-reg)
           (let (opcode (hex 8B))
-          (let (reg (@ expr-code [@caddr (@ expr-arguments n)]))
-          (let (rm (@ expr-code [@cadr (@ expr-arguments n)])) (do
+          (let (reg (@ instr-code [@caddr (@ expr-arguments n)]))
+          (let (rm (@ instr-code [@cadr (@ expr-arguments n)])) (do
           [write-mr-instr bin pos opcode #1 reg rm (true) (true) (false)]
           [write-static-value bin pos [@car (@ expr-arguments n)] #4 symtab ..])))))
         
         ((movb-mdb-to-reg)
           (let (opcode (hex 8A))
-          (let (reg (@ expr-code [@caddr (@ expr-arguments n)]))
-          (let (rm (@ expr-code [@cadr (@ expr-arguments n)])) (do
+          (let (reg (@ instr-code [@caddr (@ expr-arguments n)]))
+          (let (rm (@ instr-code [@cadr (@ expr-arguments n)])) (do
           [write-mr-instr bin pos opcode #1 reg rm (true) (false) (false)]
           [write-static-value bin pos [@car (@ expr-arguments n)] #4 symtab ..])))))
         
         ((movw-mdb-to-reg)
           (let (opcode (hex 8B))
-          (let (reg (@ expr-code [@caddr (@ expr-arguments n)]))
-          (let (rm (@ expr-code [@cadr (@ expr-arguments n)])) (do
+          (let (reg (@ instr-code [@caddr (@ expr-arguments n)]))
+          (let (rm (@ instr-code [@cadr (@ expr-arguments n)])) (do
           [write-mr-instr bin pos opcode #1 reg rm (true) (false) (true)]
           [write-static-value bin pos [@car (@ expr-arguments n)] #4 symtab ..])))))
         
         ((movl-mdb-to-reg)
           (let (opcode (hex 8B))
-          (let (reg (@ expr-code [@caddr (@ expr-arguments n)]))
-          (let (rm (@ expr-code [@cadr (@ expr-arguments n)])) (do
+          (let (reg (@ instr-code [@caddr (@ expr-arguments n)]))
+          (let (rm (@ instr-code [@cadr (@ expr-arguments n)])) (do
           [write-mr-instr bin pos opcode #1 reg rm (true) (false) (false)]
           [write-static-value bin pos [@car (@ expr-arguments n)] #4 symtab ..])))))
         
         ((pushq-reg)
           (let (opcode (hex 50))
-          (let (reg (@ expr-code [@car (@ expr-arguments n)]))
+          (let (reg (@ instr-code [@car (@ expr-arguments n)]))
           [write-o-instr bin pos opcode reg])))
           
         ((movq-reg-to-reg)
           (let (opcode (hex 8B))
-          (let (reg (@ expr-code [@cadr (@ expr-arguments n)]))
-          (let (rm (@ expr-code [@car (@ expr-arguments n)]))
+          (let (reg (@ instr-code [@cadr (@ expr-arguments n)]))
+          (let (rm (@ instr-code [@car (@ expr-arguments n)]))
           [write-mr-instr bin pos opcode #1 reg rm (false) (true) (false)]))))
           
         ((subq-imm-to-reg)
           (let (opcode (hex 81))
           (let (reg #5)
-          (let (rm (@ expr-code [@cadr (@ expr-arguments n)])) (do
+          (let (rm (@ instr-code [@cadr (@ expr-arguments n)])) (do
           [write-mr-instr bin pos opcode #1 reg rm (false) (true) (false)]
           [mem-write bin pos (& expr-value [@car (@ expr-arguments n)]) #4])))))
           
         ((addq-imm-to-reg)
           (let (opcode (hex 81))
           (let (reg #0)
-          (let (rm (@ expr-code [@cadr (@ expr-arguments n)])) (do
+          (let (rm (@ instr-code [@cadr (@ expr-arguments n)])) (do
           [write-mr-instr bin pos opcode #1 reg rm (false) (true) (false)]
           [mem-write bin pos (& expr-value [@car (@ expr-arguments n)]) #4])))))
           
         ((popq-reg)
           (let (opcode (hex 58))
-          (let (reg (@ expr-code [@car (@ expr-arguments n)]))
+          (let (reg (@ instr-code [@car (@ expr-arguments n)]))
           [write-o-instr bin pos opcode reg])))
           
         ((leave) [mem-write bin pos (storage opcode (hex C9)) #1])
@@ -221,7 +611,7 @@
         ((jmp-to-reg)
           (let (opcode (hex FF))
           (let (reg #4)
-          (let (rm (@ expr-code [@car (@ expr-arguments n)]))
+          (let (rm (@ instr-code [@car (@ expr-arguments n)]))
           [write-mr-instr bin pos opcode #1 reg rm (false) (false) (false)]))))
           
         ((je-rel) (do
@@ -231,80 +621,80 @@
           
         ((orq-reg-to-reg)
           (let (opcode (hex 0B))
-          (let (reg (@ expr-code [@cadr (@ expr-arguments n)]))
-          (let (rm (@ expr-code [@car (@ expr-arguments n)]))
+          (let (reg (@ instr-code [@cadr (@ expr-arguments n)]))
+          (let (rm (@ instr-code [@car (@ expr-arguments n)]))
           [write-mr-instr bin pos opcode #1 reg rm (false) (true) (false)]))))
         
         ((xorq-reg-to-reg)
           (let (opcode (hex 33))
-          (let (reg (@ expr-code [@cadr (@ expr-arguments n)]))
-          (let (rm (@ expr-code [@car (@ expr-arguments n)]))
+          (let (reg (@ instr-code [@cadr (@ expr-arguments n)]))
+          (let (rm (@ instr-code [@car (@ expr-arguments n)]))
           [write-mr-instr bin pos opcode #1 reg rm (false) (true) (false)]))))
         
         ((andq-reg-to-reg)
           (let (opcode (hex 23))
-          (let (reg (@ expr-code [@cadr (@ expr-arguments n)]))
-          (let (rm (@ expr-code [@car (@ expr-arguments n)]))
+          (let (reg (@ instr-code [@cadr (@ expr-arguments n)]))
+          (let (rm (@ instr-code [@car (@ expr-arguments n)]))
           [write-mr-instr bin pos opcode #1 reg rm (false) (true) (false)]))))
         
         ((addq-reg-to-reg)
           (let (opcode (hex 03))
-          (let (reg (@ expr-code [@cadr (@ expr-arguments n)]))
-          (let (rm (@ expr-code [@car (@ expr-arguments n)]))
+          (let (reg (@ instr-code [@cadr (@ expr-arguments n)]))
+          (let (rm (@ instr-code [@car (@ expr-arguments n)]))
           [write-mr-instr bin pos opcode #1 reg rm (false) (true) (false)]))))
         
         ((subq-reg-to-reg)
           (let (opcode (hex 2B))
-          (let (reg (@ expr-code [@cadr (@ expr-arguments n)]))
-          (let (rm (@ expr-code [@car (@ expr-arguments n)]))
+          (let (reg (@ instr-code [@cadr (@ expr-arguments n)]))
+          (let (rm (@ instr-code [@car (@ expr-arguments n)]))
           [write-mr-instr bin pos opcode #1 reg rm (false) (true) (false)]))))
         
         ((mulq-reg)
           (let (opcode (hex F7))
           (let (reg (hex 04))
-          (let (rm (@ expr-code [@car (@ expr-arguments n)]))
+          (let (rm (@ instr-code [@car (@ expr-arguments n)]))
           [write-mr-instr bin pos opcode #1 reg rm (false) (true) (false)]))))
         
         ((setz-reg)
           (let (opcode (hex 940F))
           (let (reg (hex 00))
-          (let (rm (@ expr-code [@car (@ expr-arguments n)]))
+          (let (rm (@ instr-code [@car (@ expr-arguments n)]))
           [write-mr-instr bin pos opcode #2 reg rm (false) (false) (false)]))))
         
         ((setc-reg)
           (let (opcode (hex 920F))
           (let (reg (hex 00))
-          (let (rm (@ expr-code [@car (@ expr-arguments n)]))
+          (let (rm (@ instr-code [@car (@ expr-arguments n)]))
           [write-mr-instr bin pos opcode #2 reg rm (false) (false) (false)]))))
         
         ((divq-reg)
           (let (opcode (hex F7))
           (let (reg (hex 06))
-          (let (rm (@ expr-code [@car (@ expr-arguments n)]))
+          (let (rm (@ instr-code [@car (@ expr-arguments n)]))
           [write-mr-instr bin pos opcode #1 reg rm (false) (true) (false)]))))
         
         ((notq-reg)
           (let (opcode (hex F7))
           (let (reg (hex 02))
-          (let (rm (@ expr-code [@car (@ expr-arguments n)]))
+          (let (rm (@ instr-code [@car (@ expr-arguments n)]))
           [write-mr-instr bin pos opcode #1 reg rm (false) (true) (false)]))))
         
         ((shlq-cl-to-reg)
           (let (opcode (hex D3))
           (let (reg (hex 04))
-          (let (rm (@ expr-code [@car (@ expr-arguments n)]))
+          (let (rm (@ instr-code [@car (@ expr-arguments n)]))
           [write-mr-instr bin pos opcode #1 reg rm (false) (true) (false)]))))
         
         ((shrq-cl-to-reg)
           (let (opcode (hex D3))
           (let (reg (hex 05))
-          (let (rm (@ expr-code [@car (@ expr-arguments n)]))
+          (let (rm (@ instr-code [@car (@ expr-arguments n)]))
           [write-mr-instr bin pos opcode #1 reg rm (false) (true) (false)]))))
         
         ((movq-imm-to-reg)
           (let (opcode (hex B8))
           (let (imm-expr [@car (@ expr-arguments n)])
-          (let (reg (@ expr-code [@cadr (@ expr-arguments n)]))
+          (let (reg (@ instr-code [@cadr (@ expr-arguments n)]))
           (let (rd [land (hex 7) reg])
           (let (opcoderd [+ opcode rd])
           (let (rex [<< #4 #4])
@@ -319,10 +709,10 @@
         ((call-reg)
           (let (opcode (hex FF))
           (let (reg #2)
-          (let (rm (@ expr-code [@car (@ expr-arguments n)]))
+          (let (rm (@ instr-code [@car (@ expr-arguments n)]))
           [write-mr-instr bin pos opcode #1 reg rm (false) (false) (false)]))))
         
-        (ignore)))))))
+        (ignore))))))))
 
 (storage shstrtab ("(nul).shstrtab(nul).text(nul).strtab(nul).symtab(nul).bss(nul).rela.text(nul)))
 
@@ -338,7 +728,7 @@
           [+ [strlen(@ bndg-name sym)] #1]
           #0)]))
       (generated-expressions-len (fold (acc #0) (e generated-expressions)
-        [+ acc (let (instr-bndg (@ expr-instruction-binding e)) (if [not= instr-bndg null-binding]
+        [+ acc (let (instr-bndg (@ instr-binding e)) (if [not= instr-bndg null-binding]
           (let (label-str (@ bndg-name instr-bndg))
             (if [not= label-str null-string] [+ [strlen label-str] #1] #0))
           #0))]))
@@ -348,7 +738,7 @@
 
 (function measure-symtab (generated-expressions undefined-bindings static-bindings)
   (let (generated-expressions-len
-        (fold (acc #0) (e generated-expressions) [+ acc (if [not= (@ expr-instruction-binding e) null-binding] #1 #0)]))
+        (fold (acc #0) (e generated-expressions) [+ acc (if [not= (@ instr-binding e) null-binding] #1 #0)]))
     [+ #1 [+ generated-expressions-len [+ [length undefined-bindings] [length static-bindings]]]]))
 
 (constrain max-elf-size (\ r (with-vars (a) (`(function ((list expr) (list bndg-aug) (list bndg-aug)) ,a)r)r)))
@@ -448,7 +838,7 @@
           [set+ bss-ptr [pad-size (@ bndg-size sym) (word-size)]]))
     
         (foreach (e generated-expressions)
-          (let (instr-bndg (@ expr-instruction-binding e))
+          (let (instr-bndg (@ instr-binding e))
             (if (and [not= instr-bndg null-binding] [= (@ bndg-scope instr-bndg) (local-scope)]) (do
               (if [not= (@ bndg-name instr-bndg) null-string]
                 (do
@@ -510,7 +900,7 @@
             (ignore)))
     
         (foreach (e generated-expressions)
-          (let (instr-bndg (@ expr-instruction-binding e))
+          (let (instr-bndg (@ instr-binding e))
             (if (and [not= instr-bndg null-binding] [= (@ bndg-scope instr-bndg) (global-scope)]) (do
               (if [not= (@ bndg-name instr-bndg) null-string]
                 (do
@@ -539,7 +929,7 @@
         [assemble generated-expressions text text-len syms reg handler]
         
         (foreach (reloc relocations)
-          (foreach (loca (@ expr-locations (@ reloc-operand reloc)))
+          (foreach (loca (@ op-locations (@ reloc-operand reloc)))
             (bind (offset size) loca (do
               (setf r-offset $rela-ptr offset)
               (setf r-info $rela-ptr (elf64-r-info [/[- (@ bndg-context(@ reloc-binding reloc)) syms](elf64-sym)] (@ reloc-type reloc)))
@@ -669,7 +1059,7 @@
       (ignore)))
   
   (foreach (l asms)
-    (let (instr-bndg (@ expr-instruction-binding l))
+    (let (instr-bndg (@ instr-binding l))
       (if [not= instr-bndg null-binding]
         [set+ (& bndg-offset instr-bndg) [segment obj (" .text)]]
         (ignore))))))

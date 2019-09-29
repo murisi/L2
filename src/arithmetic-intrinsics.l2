@@ -40,170 +40,238 @@
   environment.)
 
 (constrain generate-arithmetic-intrinsics
-  (\ r (with-vars (a) (`(function (expr (list generator) (ref (list expr)) (ref (list reloc)) (continuation (())) buffer ,a) ())r)r)))
+  (\ r (with-vars (a) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) (continuation (())) buffer ,a) ())r)r)))
 
 (function generate-arithmetic-intrinsics (n gens c relocs success r handler)
   (substitute (.. r handler)
     (if (and [= (@ expr-type n) (-invoke-)] [= (@ expr-type (@ expr-reference n)) (-symbol-)]
         [= (@ bndg-state (@ expr-symbol-binding-aug (@ expr-reference n))) (undefined-state)])
       (switch str= (@ bndg-name (@ expr-symbol-binding-aug (@ expr-reference n)))
-        ((" getb) (" get1b) {success (do
-          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
-          [prepend (make-asmN (movq-reg-to-reg) ((make-asmN(rax)()..) (make-asmN(r10)()..)) ..) c ..]
-          [prepend (make-asmN (xorq-reg-to-reg) ((make-asmN(rax)()..) (make-asmN(rax)()..)) ..) c ..]
-          [prepend (make-asmN(movb-mdb-to-reg)
-            ([make-literal #0 null-fragment null-expr ..] (make-asmN(r10)()..) (make-asmN(al)()..))..) c ..])})
+        ((" getb) (" get1b) {success (let
+            (arg1 [@car (@ expr-arguments n)])
+            (arg1-val-bndg (@ expr-binding-aug arg1))
+            (expr-val-bndg (@ expr-binding-aug n)) (do
+          [generate-expression arg1 gens c relocs ..]
+          [prepend (make-instrN (x86-mov) ([make-reg-op (r10) ..] [bndg->op arg1-val-bndg relocs ..]) ..) c ..]
+          [prepend (make-instrN (x86-movzx) ([bndg->op expr-val-bndg relocs ..] [make-mem-op #1(r10)(n/a)#0 #0 #4 ..]) ..) c ..]))})
         
-        ((" get2b) {success (do
-          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
-          [prepend (make-asmN (movq-reg-to-reg) ((make-asmN(rax)()..) (make-asmN(r10)()..)) ..) c ..]
-          [prepend (make-asmN (xorq-reg-to-reg) ((make-asmN(rax)()..) (make-asmN(rax)()..)) ..) c ..]
-          [prepend (make-asmN(movw-mdb-to-reg)
-            ([make-literal #0 null-fragment null-expr ..] (make-asmN(r10)()..) (make-asmN(ax)()..))..) c ..])})
+        ((" get2b) {success (let
+            (arg1 [@car (@ expr-arguments n)])
+            (arg1-val-bndg (@ expr-binding-aug arg1))
+            (expr-val-bndg (@ expr-binding-aug n)) (do
+          [generate-expression arg1 gens c relocs ..]
+          [prepend (make-instrN (x86-mov) ([make-reg-op (r10) ..] [bndg->op arg1-val-bndg relocs ..]) ..) c ..]
+          [prepend (make-instrN (x86-movzx) ([bndg->op expr-val-bndg relocs ..] [make-mem-op #2(r10)(n/a)#0 #0 #4 ..]) ..) c ..]))})
         
-        ((" get4b) {success (do
-          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
-          [prepend (make-asmN (movq-reg-to-reg) ((make-asmN(rax)()..) (make-asmN(r10)()..)) ..) c ..]
-          [prepend (make-asmN (xorq-reg-to-reg) ((make-asmN(rax)()..) (make-asmN(rax)()..)) ..) c ..]
-          [prepend (make-asmN(movl-mdb-to-reg)
-            ([make-literal #0 null-fragment null-expr ..] (make-asmN(r10)()..) (make-asmN(eax)()..))..) c ..])})
+        ((" get4b) {success (let
+            (arg1 [@car (@ expr-arguments n)])
+            (arg1-val-bndg (@ expr-binding-aug arg1))
+            (expr-val-bndg (@ expr-binding-aug n)) (do
+          [generate-expression arg1 gens c relocs ..]
+          [prepend (make-instrN (x86-mov) ([make-reg-op (r10) ..] [bndg->op arg1-val-bndg relocs ..]) ..) c ..]
+          [prepend (make-instrN (x86-movzx) ([bndg->op expr-val-bndg relocs ..] [make-mem-op #4(r10)(n/a)#0 #0 #4 ..]) ..) c ..]))})
         
-        ((" get8b) (" get) {success (do
-          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
-          [prepend (make-asmN(movq-mdb-to-reg)
-            ([make-literal #0 null-fragment null-expr ..] (make-asmN(rax)()..) (make-asmN(rax)()..))..) c ..])})
+        ((" get8b) (" get) {success (let
+            (arg1 [@car (@ expr-arguments n)])
+            (arg1-val-bndg (@ expr-binding-aug arg1))
+            (expr-val-bndg (@ expr-binding-aug n)) (do
+          [generate-expression arg1 gens c relocs ..]
+          [prepend (make-instrN (x86-mov) ([make-reg-op (r10) ..] [bndg->op arg1-val-bndg relocs ..]) ..) c ..]
+          [prepend (make-instrN (x86-movzx) ([bndg->op expr-val-bndg relocs ..] [make-mem-op #8(r10)(n/a)#0 #0 #4 ..]) ..) c ..]))})
         
-        ((" setb) (" set1b) {success (do
-          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
-          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c relocs ..]
-          [generate-expression [@cadr (@ expr-arguments n)] gens c relocs ..]
-          [generate-load (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c relocs ..]
-          [prepend (make-asmN (movb-reg-to-mdb)
-            ((make-asmN(al)()..) [make-literal #0 null-fragment null-expr ..] (make-asmN(r11)()..)) ..) c ..])})
+        ((" setb) (" set1b) {success (let
+            (arg1 [@car (@ expr-arguments n)])
+            (arg1-val-bndg (@ expr-binding-aug arg1))
+            (arg2 [@cadr (@ expr-arguments n)])
+            (arg2-val-bndg (@ expr-binding-aug arg2)) (do
+          [generate-expression arg1 gens c relocs ..]
+          [generate-expression arg2 gens c relocs ..]
+          [prepend (make-instrN (x86-mov) ([make-reg-op (r10) ..] [bndg->op arg1-val-bndg relocs ..]) ..) c ..]
+          [prepend (make-instrN (x86-mov)
+            ([make-mem-op #1(r10)(n/a)#0 #0 #4 ..] [op-lower-8 [bndg->op arg2-val-bndg relocs ..] ..]) ..) c ..]))})
         
-        ((" set2b) {success (do
-          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
-          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c relocs ..]
-          [generate-expression [@cadr (@ expr-arguments n)] gens c relocs ..]
-          [generate-load (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c relocs ..]
-          [prepend (make-asmN (movw-reg-to-mdb)
-            ((make-asmN(ax)()..) [make-literal #0 null-fragment null-expr ..] (make-asmN(r11)()..)) ..) c ..])})
+        ((" set2b) {success (let
+            (arg1 [@car (@ expr-arguments n)])
+            (arg1-val-bndg (@ expr-binding-aug arg1))
+            (arg2 [@cadr (@ expr-arguments n)])
+            (arg2-val-bndg (@ expr-binding-aug arg2)) (do
+          [generate-expression arg1 gens c relocs ..]
+          [generate-expression arg2 gens c relocs ..]
+          [prepend (make-instrN (x86-mov) ([make-reg-op (r10) ..] [bndg->op arg1-val-bndg relocs ..]) ..) c ..]
+          [prepend (make-instrN (x86-mov)
+            ([make-mem-op #2(r10)(n/a)#0 #0 #4 ..] [op-lower-16 [bndg->op arg2-val-bndg relocs ..] ..]) ..) c ..]))})
         
-        ((" set4b) {success (do
-          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
-          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c relocs ..]
-          [generate-expression [@cadr (@ expr-arguments n)] gens c relocs ..]
-          [generate-load (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c relocs ..]
-          [prepend (make-asmN (movl-reg-to-mdb)
-            ((make-asmN(eax)()..) [make-literal #0 null-fragment null-expr ..] (make-asmN(r11)()..)) ..) c ..])})
+        ((" set4b) {success (let
+            (arg1 [@car (@ expr-arguments n)])
+            (arg1-val-bndg (@ expr-binding-aug arg1))
+            (arg2 [@cadr (@ expr-arguments n)])
+            (arg2-val-bndg (@ expr-binding-aug arg2)) (do
+          [generate-expression arg1 gens c relocs ..]
+          [generate-expression arg2 gens c relocs ..]
+          [prepend (make-instrN (x86-mov) ([make-reg-op (r10) ..] [bndg->op arg1-val-bndg relocs ..]) ..) c ..]
+          [prepend (make-instrN (x86-mov)
+            ([make-mem-op #4(r10)(n/a)#0 #0 #4 ..] [op-lower-32 [bndg->op arg2-val-bndg relocs ..] ..]) ..) c ..]))})
         
-        ((" set8b) (" set) {success (do
-          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
-          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c relocs ..]
-          [generate-expression [@cadr (@ expr-arguments n)] gens c relocs ..]
-          [generate-load (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c relocs ..]
-          [prepend (make-asmN (movq-reg-to-mdb)
-            ((make-asmN(rax)()..) [make-literal #0 null-fragment null-expr ..] (make-asmN(r11)()..)) ..) c ..])})
+        ((" set8b) (" set) {success (let
+            (arg1 [@car (@ expr-arguments n)])
+            (arg1-val-bndg (@ expr-binding-aug arg1))
+            (arg2 [@cadr (@ expr-arguments n)])
+            (arg2-val-bndg (@ expr-binding-aug arg2)) (do
+          [generate-expression arg1 gens c relocs ..]
+          [generate-expression arg2 gens c relocs ..]
+          [prepend (make-instrN (x86-mov) ([make-reg-op (r10) ..] [bndg->op arg1-val-bndg relocs ..]) ..) c ..]
+          [prepend (make-instrN (x86-mov)
+            ([make-mem-op #8(r10)(n/a)#0 #0 #4 ..] [op-lower-64 [bndg->op arg2-val-bndg relocs ..] ..]) ..) c ..]))})
         
-        ((" +) {success (do
-          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
-          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c relocs ..]
-          [generate-expression [@cadr (@ expr-arguments n)] gens c relocs ..]
-          [generate-load (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c relocs ..]
-          [prepend (make-asmN (addq-reg-to-reg) ((make-asmN(r11)()..) (make-asmN(rax)()..)) ..) c ..])})
+        ((" +) {success (let
+            (arg1 [@car (@ expr-arguments n)])
+            (arg1-val-bndg (@ expr-binding-aug arg1))
+            (arg2 [@cadr (@ expr-arguments n)])
+            (arg2-val-bndg (@ expr-binding-aug arg2))
+            (expr-val-bndg (@ expr-binding-aug n)) (do
+          [generate-expression arg1 gens c relocs ..]
+          [generate-expression arg2 gens c relocs ..]
+          [prepend (make-instrN (x86-mov) ([bndg->op expr-val-bndg relocs ..] [bndg->op arg1-val-bndg relocs ..]) ..) c ..]
+          [prepend (make-instrN (x86-add) ([bndg->op expr-val-bndg relocs ..] [bndg->op arg2-val-bndg relocs ..]) ..) c ..]))})
           
-        ((" -) {success (do
-          [generate-expression [@cadr (@ expr-arguments n)] gens c relocs ..]
-          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c relocs ..]
-          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
-          [generate-load (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c relocs ..]
-          [prepend (make-asmN (subq-reg-to-reg) ((make-asmN(r11)()..) (make-asmN(rax)()..)) ..) c ..])})
-          
-        ((" *) {success (do
-          [generate-expression [@cadr (@ expr-arguments n)] gens c relocs ..]
-          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c relocs ..]
-          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
-          [generate-load (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c relocs ..]
-          [prepend (make-asmN (mulq-reg) ((make-asmN(r11)()..)) ..) c ..])})
+        ((" -) {success (let
+            (arg1 [@car (@ expr-arguments n)])
+            (arg1-val-bndg (@ expr-binding-aug arg1))
+            (arg2 [@cadr (@ expr-arguments n)])
+            (arg2-val-bndg (@ expr-binding-aug arg2))
+            (expr-val-bndg (@ expr-binding-aug n)) (do
+          [generate-expression arg1 gens c relocs ..]
+          [generate-expression arg2 gens c relocs ..]
+          [prepend (make-instrN (x86-mov) ([bndg->op expr-val-bndg relocs ..] [bndg->op arg1-val-bndg relocs ..]) ..) c ..]
+          [prepend (make-instrN (x86-sub) ([bndg->op expr-val-bndg relocs ..] [bndg->op arg2-val-bndg relocs ..]) ..) c ..]))})
         
-        ((" /) {success (do
-          [generate-expression [@cadr (@ expr-arguments n)] gens c relocs ..]
-          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c relocs ..]
-          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
-          [prepend (make-asmN (xorq-reg-to-reg) ((make-asmN(rdx)()..) (make-asmN(rdx)()..)) ..) c ..]
-          [generate-load (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c relocs ..]
-          [prepend (make-asmN (divq-reg) ((make-asmN(r11)()..)) ..) c ..])})
+        ((" *) {success (let
+            (arg1 [@car (@ expr-arguments n)])
+            (arg1-val-bndg (@ expr-binding-aug arg1))
+            (arg2 [@cadr (@ expr-arguments n)])
+            (arg2-val-bndg (@ expr-binding-aug arg2))
+            (expr-val-bndg (@ expr-binding-aug n)) (do
+          [generate-expression arg1 gens c relocs ..]
+          [generate-expression arg2 gens c relocs ..]
+          [prepend (make-instrN (x86-mov) ([make-reg-op (rax) ..] [bndg->op arg1-val-bndg relocs ..]) ..) c ..]
+          [prepend (make-instrN (x86-mul) ([bndg->op arg2-val-bndg relocs ..]) ..) c ..]
+          [prepend (make-instrN (x86-mov) ([bndg->op expr-val-bndg relocs ..] [make-reg-op (rax) ..]) ..) c ..]))})
         
-        ((" rem) {success (do
-          [generate-expression [@cadr (@ expr-arguments n)] gens c relocs ..]
-          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c relocs ..]
-          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
-          [prepend (make-asmN (xorq-reg-to-reg) ((make-asmN(rdx)()..) (make-asmN(rdx)()..)) ..) c ..]
-          [generate-load (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c relocs ..]
-          [prepend (make-asmN (divq-reg) ((make-asmN(r11)()..)) ..) c ..]
-          [prepend (make-asmN (movq-reg-to-reg) ((make-asmN(rdx)()..) (make-asmN(rax)()..)) ..) c ..])})
+        ((" /) {success (let
+            (arg1 [@car (@ expr-arguments n)])
+            (arg1-val-bndg (@ expr-binding-aug arg1))
+            (arg2 [@cadr (@ expr-arguments n)])
+            (arg2-val-bndg (@ expr-binding-aug arg2))
+            (expr-val-bndg (@ expr-binding-aug n)) (do
+          [generate-expression arg1 gens c relocs ..]
+          [generate-expression arg2 gens c relocs ..]
+          [prepend (make-instrN (x86-xor) ([make-reg-op (rdx) ..] [make-reg-op (rdx) ..]) ..) c ..]
+          [prepend (make-instrN (x86-mov) ([make-reg-op (rax) ..] [bndg->op arg1-val-bndg relocs ..]) ..) c ..]
+          [prepend (make-instrN (x86-div) ([bndg->op arg2-val-bndg relocs ..]) ..) c ..]
+          [prepend (make-instrN (x86-mov) ([bndg->op expr-val-bndg relocs ..] [make-reg-op (rax) ..]) ..) c ..]))})
         
-        ((" =) {success (do
-          [generate-expression [@cadr (@ expr-arguments n)] gens c relocs ..]
-          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c relocs ..]
-          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
-          [prepend (make-asmN (movq-reg-to-reg) ((make-asmN(rax)()..) (make-asmN(rsi)()..)) ..) c ..]
-          [generate-load (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c relocs ..]
-          [prepend (make-asmN (xorq-reg-to-reg) ((make-asmN(rax)()..) (make-asmN(rax)()..)) ..) c ..]
-          [prepend (make-asmN (subq-reg-to-reg) ((make-asmN(r11)()..) (make-asmN(rsi)()..)) ..) c ..]
-          [prepend (make-asmN (setz-reg) ((make-asmN(al)()..)) ..) c ..])})
+        ((" rem) {success (let
+            (arg1 [@car (@ expr-arguments n)])
+            (arg1-val-bndg (@ expr-binding-aug arg1))
+            (arg2 [@cadr (@ expr-arguments n)])
+            (arg2-val-bndg (@ expr-binding-aug arg2))
+            (expr-val-bndg (@ expr-binding-aug n)) (do
+          [generate-expression arg1 gens c relocs ..]
+          [generate-expression arg2 gens c relocs ..]
+          [prepend (make-instrN (x86-xor) ([make-reg-op (rdx) ..] [make-reg-op (rdx) ..]) ..) c ..]
+          [prepend (make-instrN (x86-mov) ([make-reg-op (rax) ..] [bndg->op arg1-val-bndg relocs ..]) ..) c ..]
+          [prepend (make-instrN (x86-div) ([bndg->op arg2-val-bndg relocs ..]) ..) c ..]
+          [prepend (make-instrN (x86-mov) ([bndg->op expr-val-bndg relocs ..] [make-reg-op (rdx) ..]) ..) c ..]))})
         
-        ((" <) {success (do
-          [generate-expression [@cadr (@ expr-arguments n)] gens c relocs ..]
-          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c relocs ..]
-          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
-          [prepend (make-asmN (movq-reg-to-reg) ((make-asmN(rax)()..) (make-asmN(rsi)()..)) ..) c ..]
-          [generate-load (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c relocs ..]
-          [prepend (make-asmN (xorq-reg-to-reg) ((make-asmN(rax)()..) (make-asmN(rax)()..)) ..) c ..]
-          [prepend (make-asmN (subq-reg-to-reg) ((make-asmN(r11)()..) (make-asmN(rsi)()..)) ..) c ..]
-          [prepend (make-asmN (setc-reg) ((make-asmN(al)()..)) ..) c ..])})
+        ((" =) {success (let
+            (arg1 [@car (@ expr-arguments n)])
+            (arg1-val-bndg (@ expr-binding-aug arg1))
+            (arg2 [@cadr (@ expr-arguments n)])
+            (arg2-val-bndg (@ expr-binding-aug arg2))
+            (expr-val-bndg (@ expr-binding-aug n)) (do
+          [generate-expression arg1 gens c relocs ..]
+          [generate-expression arg2 gens c relocs ..]
+          [prepend (make-instrN (x86-xor) ([bndg->op expr-val-bndg relocs ..] [bndg->op expr-val-bndg relocs ..]) ..) c ..]
+          [prepend (make-instrN (x86-sub) ([bndg->op arg1-val-bndg relocs ..] [bndg->op arg2-val-bndg relocs ..]) ..) c ..]
+          [prepend (make-instrN (x86-setz) ([op-lower-8 [bndg->op expr-val-bndg relocs ..]]) ..) c ..]))})
         
-        ((" >) {success (do
-          [generate-expression [@cadr (@ expr-arguments n)] gens c relocs ..]
-          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c relocs ..]
-          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
-          [prepend (make-asmN (movq-reg-to-reg) ((make-asmN(rax)()..) (make-asmN(rsi)()..)) ..) c ..]
-          [generate-load (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c relocs ..]
-          [prepend (make-asmN (xorq-reg-to-reg) ((make-asmN(rax)()..) (make-asmN(rax)()..)) ..) c ..]
-          [prepend (make-asmN (subq-reg-to-reg) ((make-asmN(rsi)()..) (make-asmN(r11)()..)) ..) c ..]
-          [prepend (make-asmN (setc-reg) ((make-asmN(al)()..)) ..) c ..])})
+        ((" <) {success (let
+            (arg1 [@car (@ expr-arguments n)])
+            (arg1-val-bndg (@ expr-binding-aug arg1))
+            (arg2 [@cadr (@ expr-arguments n)])
+            (arg2-val-bndg (@ expr-binding-aug arg2))
+            (expr-val-bndg (@ expr-binding-aug n)) (do
+          [generate-expression arg1 gens c relocs ..]
+          [generate-expression arg2 gens c relocs ..]
+          [prepend (make-instrN (x86-xor) ([bndg->op expr-val-bndg relocs ..] [bndg->op expr-val-bndg relocs ..]) ..) c ..]
+          [prepend (make-instrN (x86-sub) ([bndg->op arg1-val-bndg relocs ..] [bndg->op arg2-val-bndg relocs ..]) ..) c ..]
+          [prepend (make-instrN (x86-setc) ([op-lower-8 [bndg->op expr-val-bndg relocs ..]]) ..) c ..]))})
         
-        ((" <<) {success (do
-          [generate-expression [@cadr (@ expr-arguments n)] gens c relocs ..]
-          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c relocs ..]
-          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
-          [generate-load (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(rcx)()..) (make-asmN(r10)()..) c relocs ..]
-          [prepend (make-asmN (shlq-cl-to-reg) ((make-asmN(rax)()..)) ..) c ..])})
+        ((" >) {success (let
+            (arg1 [@car (@ expr-arguments n)])
+            (arg1-val-bndg (@ expr-binding-aug arg1))
+            (arg2 [@cadr (@ expr-arguments n)])
+            (arg2-val-bndg (@ expr-binding-aug arg2))
+            (expr-val-bndg (@ expr-binding-aug n)) (do
+          [generate-expression arg1 gens c relocs ..]
+          [generate-expression arg2 gens c relocs ..]
+          [prepend (make-instrN (x86-xor) ([bndg->op expr-val-bndg relocs ..] [bndg->op expr-val-bndg relocs ..]) ..) c ..]
+          [prepend (make-instrN (x86-sub) ([bndg->op arg2-val-bndg relocs ..] [bndg->op arg1-val-bndg relocs ..]) ..) c ..]
+          [prepend (make-instrN (x86-setc) ([op-lower-8 [bndg->op expr-val-bndg relocs ..]]) ..) c ..]))})
         
-        ((" >>) {success (do
-          [generate-expression [@cadr (@ expr-arguments n)] gens c relocs ..]
-          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c relocs ..]
-          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
-          [generate-load (@ expr-binding-aug [@cadr (@ expr-arguments n)]) #0 (make-asmN(rcx)()..) (make-asmN(r10)()..) c relocs ..]
-          [prepend (make-asmN (shrq-cl-to-reg) ((make-asmN(rax)()..)) ..) c ..])})
+        ((" <<) {success (let
+            (arg1 [@car (@ expr-arguments n)])
+            (arg1-val-bndg (@ expr-binding-aug arg1))
+            (arg2 [@cadr (@ expr-arguments n)])
+            (arg2-val-bndg (@ expr-binding-aug arg2))
+            (expr-val-bndg (@ expr-binding-aug n)) (do
+          [generate-expression arg1 gens c relocs ..]
+          [generate-expression arg2 gens c relocs ..]
+          [prepend (make-instrN (x86-mov) ([make-reg-op (rcx) ..] [bndg->op arg2-val-bndg relocs ..]) ..) c ..]
+          [prepend (make-instrN (x86-mov) ([bndg->op expr-val-bndg relocs ..] [bndg->op arg1-val-bndg relocs ..]) ..) c ..]
+          [prepend (make-instrN (x86-shl) ([bndg->op expr-val-bndg relocs ..] [make-reg-op (cl) ..]) ..) c ..]))})
         
-        ((" lor) {success (do
-          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
-          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c relocs ..]
-          [generate-expression [@cadr (@ expr-arguments n)] gens c relocs ..]
-          [generate-load (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c relocs ..]
-          [prepend (make-asmN (orq-reg-to-reg) ((make-asmN(r11)()..) (make-asmN(rax)()..)) ..) c ..])})
+        ((" >>) {success (let
+            (arg1 [@car (@ expr-arguments n)])
+            (arg1-val-bndg (@ expr-binding-aug arg1))
+            (arg2 [@cadr (@ expr-arguments n)])
+            (arg2-val-bndg (@ expr-binding-aug arg2))
+            (expr-val-bndg (@ expr-binding-aug n)) (do
+          [generate-expression arg1 gens c relocs ..]
+          [generate-expression arg2 gens c relocs ..]
+          [prepend (make-instrN (x86-mov) ([make-reg-op (rcx) ..] [bndg->op arg2-val-bndg relocs ..]) ..) c ..]
+          [prepend (make-instrN (x86-mov) ([bndg->op expr-val-bndg relocs ..] [bndg->op arg1-val-bndg relocs ..]) ..) c ..]
+          [prepend (make-instrN (x86-shr) ([bndg->op expr-val-bndg relocs ..] [make-reg-op (cl) ..]) ..) c ..]))})
         
-        ((" land) {success (do
-          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
-          [generate-store (make-asmN(rax)()..) (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r10)()..) c relocs ..]
-          [generate-expression [@cadr (@ expr-arguments n)] gens c relocs ..]
-          [generate-load (@ expr-binding-aug [@car (@ expr-arguments n)]) #0 (make-asmN(r11)()..) (make-asmN(r10)()..) c relocs ..]
-          [prepend (make-asmN (andq-reg-to-reg) ((make-asmN(r11)()..) (make-asmN(rax)()..)) ..) c ..])})
+        ((" lor) {success (let
+            (arg1 [@car (@ expr-arguments n)])
+            (arg1-val-bndg (@ expr-binding-aug arg1))
+            (arg2 [@cadr (@ expr-arguments n)])
+            (arg2-val-bndg (@ expr-binding-aug arg2))
+            (expr-val-bndg (@ expr-binding-aug n)) (do
+          [generate-expression arg1 gens c relocs ..]
+          [generate-expression arg2 gens c relocs ..]
+          [prepend (make-instrN (x86-mov) ([bndg->op expr-val-bndg relocs ..] [bndg->op arg1-val-bndg relocs ..]) ..) c ..]
+          [prepend (make-instrN (x86-or) ([bndg->op expr-val-bndg relocs ..] [bndg->op arg2-val-bndg relocs ..]) ..) c ..]))})
         
-        ((" lnot) {success (do
-          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
-          [prepend (make-asmN (notq-reg) ((make-asmN(rax)()..)) ..) c ..])})
+        ((" land) {success (let
+            (arg1 [@car (@ expr-arguments n)])
+            (arg1-val-bndg (@ expr-binding-aug arg1))
+            (arg2 [@cadr (@ expr-arguments n)])
+            (arg2-val-bndg (@ expr-binding-aug arg2))
+            (expr-val-bndg (@ expr-binding-aug n)) (do
+          [generate-expression arg1 gens c relocs ..]
+          [generate-expression arg2 gens c relocs ..]
+          [prepend (make-instrN (x86-mov) ([bndg->op expr-val-bndg relocs ..] [bndg->op arg1-val-bndg relocs ..]) ..) c ..]
+          [prepend (make-instrN (x86-and) ([bndg->op expr-val-bndg relocs ..] [bndg->op arg2-val-bndg relocs ..]) ..) c ..]))})
+        
+        ((" lnot) {success (let
+            (arg1 [@car (@ expr-arguments n)])
+            (arg1-val-bndg (@ expr-binding-aug arg1))
+            (expr-val-bndg (@ expr-binding-aug n)) (do
+          [generate-expression arg1 gens c relocs ..]
+          [prepend (make-instrN (x86-mov) ([bndg->op expr-val-bndg relocs ..] [bndg->op arg1-val-bndg relocs ..]) ..) c ..]
+          [prepend (make-instrN (x86-not) ([bndg->op expr-val-bndg relocs ..]) ..) c ..]))})
         
         (ignore))
       (ignore))))
