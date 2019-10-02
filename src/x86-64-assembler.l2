@@ -366,6 +366,7 @@
   (substitute (.. buf handler)
     (let (op [buffer-alloc (operand) ..]) (do
       (setf op-type op (none-operand))
+      (setf op-size op #0)
       op))))
 
 (constrain make-mem-op (\ r (with-vars (a b c d e) (`(function (,a register register ,b ,c ,d buffer ,e) operand)r)r)))
@@ -555,65 +556,71 @@
       [set+ idx #1]
       {write-bytes [+ bytes #1]})))))
 
-(constrain write-instr (\ r (with-vars (a b c d e f) (`(function (,a (ref ,b) ,c ,d operand operand operand buffer ,f) ,e)r)r)))
+(constrain write-instr
+  (\ r (with-vars (a b c d e f) (`(function (,a (ref ,b) ,c ,d operand operand operand operand buffer ,f) ,e)r)r)))
 
-(function write-instr (bin pos opcode opcode-size reg-op rm-op imm-op buf handler)
+(function write-instr (bin pos opcode opcode-size opcode.reg-op modrm.reg-op modrm.rm-op imm-op buf handler)
   (substitute (.. buf handler)
-    (let (rm-op-code [land
-      (if [= (@ op-type rm-op) (register-operand)] (@ op-register rm-op)
-      (if [= (@ op-type rm-op) (memory-operand)] (@ op-base rm-op) (ignore))) #7])
+    (let (modrm.rm-op-code [land
+      (if [= (@ op-type modrm.rm-op) (register-operand)] (@ op-register modrm.rm-op)
+      (if [= (@ op-type modrm.rm-op) (memory-operand)] (@ op-base modrm.rm-op) (ignore))) #7])
     
-    (let (reg-op-code [land (@ op-register reg-op) #7])
+    (let (modrm.reg-op-code [land (@ op-register modrm.reg-op) #7])
     
-    (let (has-modrm? (or [not= reg-op (none-operand)] [not= rm-op (none-operand)]))
+    (let (opcode [+ opcode
+      (if [= (@ op-type opcode.reg-op) (register-operand)] [land (@ op-register opcode.reg-op) #7] #0)])
+    
+    (let (has-modrm? (or [not= (@ op-type modrm.reg-op) (none-operand)] [not= (@ op-type modrm.rm-op) (none-operand)]))
     
     (let (modrm.mod
-      (if [= (@ op-type rm-op) (register-operand)] #3
-      (if (or [= (@ op-disp-size rm-op) #0] [= (@ op-base rm-op) (none)] [= (@ op-base rm-op) (rip)]) #0
-      (if [= (@ op-disp-size rm-op) #1] #1
-      (if [= (@ op-disp-size rm-op) #4] #2 (ignore))))))
+      (if [= (@ op-type modrm.rm-op) (register-operand)] #3
+      (if (or [= (@ op-disp-size modrm.rm-op) #0] [= (@ op-base modrm.rm-op) (none)] [= (@ op-base modrm.rm-op) (rip)]) #0
+      (if [= (@ op-disp-size modrm.rm-op) #1] #1
+      (if [= (@ op-disp-size modrm.rm-op) #4] #2 (ignore))))))
     
-    (let (has-sib? (and [= (@ op-type rm-op) (memory-operand)]
-      (or [not= (@ op-index rm-op) (none)] [= (@ op-base rm-op) (esp)]
-        (and [= (@ op-base rm-op) (ebp)] [= (@ op-disp-size rm-op) #0]))))
+    (let (has-sib? (and [= (@ op-type modrm.rm-op) (memory-operand)]
+      (or [not= (@ op-index modrm.rm-op) (none)] [= (@ op-base modrm.rm-op) (esp)]
+        (and [= (@ op-base modrm.rm-op) (ebp)] [= (@ op-disp-size modrm.rm-op) #0]))))
     
-    (let (modrm.r/m
-      (if [= (@ op-type rm-op) (register-operand)] rm-op-code
+    (let (modrm.rm
+      (if [= (@ op-type modrm.rm-op) (register-operand)] modrm.rm-op-code
       (if has-sib? #4
-      (if [= (@ op-base rm-op) (none)] #5
-      (if [= (@ op-base rm-op) (rip)] #5
-        rm-op-code)))))
+      (if [= (@ op-base modrm.rm-op) (none)] #5
+      (if [= (@ op-base modrm.rm-op) (rip)] #5
+        modrm.rm-op-code)))))
     
-    (let (modrm.reg reg-op-code)
+    (let (modrm.reg modrm.reg-op-code)
             
-    (let (sib.scale (switch = (@ op-scale rm-op) (#1 #0) (#2 #1) (#4 #2) (#8 #3) (ignore)))
+    (let (sib.scale (switch = (@ op-scale modrm.rm-op) (#1 #0) (#2 #1) (#4 #2) (#8 #3) (ignore)))
     
-    (let (sib.index (if [= (@ op-index rm-op) (none)] #4 (@ op-index rm-op)))
+    (let (sib.index (if [= (@ op-index modrm.rm-op) (none)] #4 (@ op-index modrm.rm-op)))
     
-    (let (sib.base (if (or [= (@ op-base rm-op) (none)]) #5 rm-op-code))
+    (let (sib.base (if (or [= (@ op-base modrm.rm-op) (none)]) #5 modrm.rm-op-code))
     
-    (let (has-rex? (or [= [max (@ op-size reg-op) (@ op-size rm-op)] #8]
-      (and [= (@ op-type rm-op) (memory-operand)] (or
-        (and [not= (@ op-base rm-op) (none)] [= [register-size (@ op-base rm-op)] #8])
-        (and [not= (@ op-index rm-op) (none)] [= [register-size (@ op-index rm-op)] #8])
-        [= (@ op-disp-size rm-op) #8]))))
+    (let (has-rex? (or [= [max (@ op-size modrm.reg-op) [max (@ op-size modrm.rm-op) (@ op-size opcode.reg-op)]] #8]
+      (and [= (@ op-type modrm.rm-op) (memory-operand)] (or
+        (and [not= (@ op-base modrm.rm-op) (none)] [= [register-size (@ op-base modrm.rm-op)] #8])
+        (and [not= (@ op-index modrm.rm-op) (none)] [= [register-size (@ op-index modrm.rm-op)] #8])
+        [= (@ op-disp-size modrm.rm-op) #8]))))
     
-    (let (rex.w (or [= (@ op-size reg-op) #8] [= (@ op-size rm-op) #8]))
+    (let (rex.w (or [= (@ op-size modrm.reg-op) #8] [= (@ op-size modrm.rm-op) #8] [= (@ op-size opcode.reg-op) #8]))
     
-    (let (rex.r (if (and [= (@ op-type reg-op) (register-operand)] [land (@ op-register reg-op) #8]) #1 #0))
+    (let (rex.r (if (and [= (@ op-type modrm.reg-op) (register-operand)] [land (@ op-register modrm.reg-op) #8]) #1 #0))
     
-    (let (rex.x (if (and [= (@ op-type rm-op) (memory-operand)] [not= (@ op-index rm-op) (none)]
-      [land (@ op-index rm-op) #8]) #1 #0))
+    (let (rex.x (if (and [= (@ op-type modrm.rm-op) (memory-operand)] [not= (@ op-index modrm.rm-op) (none)]
+      [land (@ op-index modrm.rm-op) #8]) #1 #0))
     
-    (let (rex.b (if (and [= (@ op-type rm-op) (memory-operand)] [not= (@ op-base rm-op) (none)]
-      [land (@ op-base rm-op) #8]) #1 #0))
+    (let (rex.b (if (or (and [= (@ op-type modrm.rm-op) (memory-operand)] [not= (@ op-base modrm.rm-op) (none)]
+      [land (@ op-base modrm.rm-op) #8]) (and [= (@ op-type modrm.rm-op) (register-operand)] [not= (@ op-register modrm.rm-op) (none)]
+      [land (@ op-register modrm.rm-op) #8]) (and [= (@ op-type opcode.reg-op) (register-operand)]
+      [not= (@ op-register opcode.reg-op) (none)] [land (@ op-register opcode.reg-op) #8])) #1 #0))
     
-    (let (has-oso? [= [max (@ op-size reg-op) (@ op-size rm-op)] #2])
+    (let (has-oso? [= [max (@ op-size modrm.reg-op) (@ op-size modrm.rm-op)] #2])
     
     (let (has-aso? (or
-        (and [not= (@ op-base rm-op) (none)] [= [register-size (@ op-base rm-op)] #2])
-        (and [not= (@ op-index rm-op) (none)] [= [register-size (@ op-index rm-op)] #2])
-        [= (@ op-disp-size rm-op) #2]))
+        (and [not= (@ op-base modrm.rm-op) (none)] [= [register-size (@ op-base modrm.rm-op)] #2])
+        (and [not= (@ op-index modrm.rm-op) (none)] [= [register-size (@ op-index modrm.rm-op)] #2])
+        [= (@ op-disp-size modrm.rm-op) #2]))
     
     (let (instr-start-pos $pos) (do
     
@@ -636,7 +643,7 @@
       [mem-write bin pos (storage _
         [lor [<< modrm.mod #6]
         [lor [<< modrm.reg #3]
-        [lor [<< modrm.r/m #0]
+        [lor [<< modrm.rm #0]
           #0]]]) #1]
       
       (if has-sib?
@@ -650,8 +657,8 @@
     
     (let (disp-pos $pos) (do
     
-    (if [= (@ op-type rm-op) (memory-operand)]
-      [mem-write bin pos (storage _ (@ op-disp rm-op)) (@ op-disp-size rm-op)]
+    (if [= (@ op-type modrm.rm-op) (memory-operand)]
+      [mem-write bin pos (storage _ (@ op-disp modrm.rm-op)) (@ op-disp-size modrm.rm-op)]
       (ignore))
     
     (let (imm-pos $pos) (do
@@ -662,13 +669,14 @@
     
     (let (instr-size [- $pos instr-start-pos]) (do
     
-    (if [= (@ op-type rm-op) (memory-operand)]
-      [prepend (values (buffer-storage ..) disp-pos (@ op-disp-size rm-op) instr-start-pos instr-size) (& op-locations rm-op) ..]
+    (if [= (@ op-type modrm.rm-op) (memory-operand)]
+      [prepend (values (buffer-storage ..) disp-pos (@ op-disp-size modrm.rm-op) instr-start-pos instr-size)
+        (& op-locations modrm.rm-op) ..]
       (ignore))
     
     (if [= (@ op-type imm-op) (immediate-operand)]
       [prepend (values (buffer-storage ..) imm-pos (@ op-size imm-op) instr-start-pos instr-size) (& op-locations imm-op) ..]
-      (ignore)))))))))))))))))))))))))))))
+      (ignore))))))))))))))))))))))))))))))
 
 (constrain assemble (\ r (with-vars (a b e) (`(function ((list instr) ,a (ref ,b) buffer ,e) ())r)r)))
 
@@ -692,11 +700,23 @@
         ((x86-push) (let
             (op1 [@car (@ instr-operands n)])
           (if (and [= (@ op-size op1) #2] (or [= (@ op-type op1) (memory-operand)] [= (@ op-type op1) (register-operand)]))
-            [write-instr bin pos (hex FF) #1 [make-reg-op (x86-/6) ..] op1 [make-none-op ..] ..]
+            [write-instr bin pos (hex FF) #1 [make-none-op ..] [make-reg-op (x86-/6) ..] op1 [make-none-op ..] ..]
           (if (and [= (@ op-size op1) #4] (or [= (@ op-type op1) (memory-operand)] [= (@ op-type op1) (register-operand)]))
-            [write-instr bin pos (hex FF) #1 [make-reg-op (x86-/6) ..] op1 [make-none-op ..] ..]
+            [write-instr bin pos (hex FF) #1 [make-none-op ..] [make-reg-op (x86-/6) ..] op1 [make-none-op ..] ..]
           (if (and [= (@ op-size op1) #8] (or [= (@ op-type op1) (memory-operand)] [= (@ op-type op1) (register-operand)]))
-            [write-instr bin pos (hex FF) #1 [make-reg-op (x86-/6) ..] op1 [make-none-op ..] ..]
+            [write-instr bin pos (hex FF) #1 [make-none-op ..] [make-reg-op (x86-/6) ..] op1 [make-none-op ..] ..]
+            (do
+              [print-bytes (stdout) bin $pos handler]
+              [exit #0]))))))
+        
+        ((x86-pop) (let
+            (op1 [@car (@ instr-operands n)])
+          (if (and [= (@ op-size op1) #2] (or [= (@ op-type op1) (memory-operand)] [= (@ op-type op1) (register-operand)]))
+            [write-instr bin pos (hex 8F) #1 [make-none-op ..] [make-reg-op (x86-/0) ..] op1 [make-none-op ..] ..]
+          (if (and [= (@ op-size op1) #4] (or [= (@ op-type op1) (memory-operand)] [= (@ op-type op1) (register-operand)]))
+            [write-instr bin pos (hex 8F) #1 [make-none-op ..] [make-reg-op (x86-/0) ..] op1 [make-none-op ..] ..]
+          (if (and [= (@ op-size op1) #8] (or [= (@ op-type op1) (memory-operand)] [= (@ op-type op1) (register-operand)]))
+            [write-instr bin pos (hex 8F) #1 [make-none-op ..] [make-reg-op (x86-/0) ..] op1 [make-none-op ..] ..]
             (do
               [print-bytes (stdout) bin $pos handler]
               [exit #0]))))))
@@ -706,45 +726,66 @@
             (op2 [@cadr (@ instr-operands n)])
           (if (and [= (@ op-size op1) #1] (or [= (@ op-type op1) (memory-operand)] [= (@ op-type op1) (register-operand)])
               [= (@ op-size op2) #1] [= (@ op-type op2) (register-operand)])
-            [write-instr bin pos (hex 88) #1 op2 op1 [make-none-op ..] ..]
+            [write-instr bin pos (hex 88) #1 [make-none-op ..] op2 op1 [make-none-op ..] ..]
           (if (and [= (@ op-size op1) #2] (or [= (@ op-type op1) (memory-operand)] [= (@ op-type op1) (register-operand)])
               [= (@ op-size op2) #2] [= (@ op-type op2) (register-operand)])
-            [write-instr bin pos (hex 89) #1 op2 op1 [make-none-op ..] ..]
+            [write-instr bin pos (hex 89) #1 [make-none-op ..] op2 op1 [make-none-op ..] ..]
           (if (and [= (@ op-size op1) #4] (or [= (@ op-type op1) (memory-operand)] [= (@ op-type op1) (register-operand)])
               [= (@ op-size op2) #4] [= (@ op-type op2) (register-operand)])
-            [write-instr bin pos (hex 89) #1 op2 op1 [make-none-op ..] ..]
+            [write-instr bin pos (hex 89) #1 [make-none-op ..] op2 op1 [make-none-op ..] ..]
           (if (and [= (@ op-size op1) #8] (or [= (@ op-type op1) (memory-operand)] [= (@ op-type op1) (register-operand)])
               [= (@ op-size op2) #8] [= (@ op-type op2) (register-operand)])
-            [write-instr bin pos (hex 89) #1 op2 op1 [make-none-op ..] ..]
+            [write-instr bin pos (hex 89) #1 [make-none-op ..] op2 op1 [make-none-op ..] ..]
+          (let (op3 [@caddr (@ instr-operands n)])
+          (if (and [= (@ op-size op1) #8] [= (@ op-type op1) (memory-operand)]
+              [= (@ op-size op2) #8] [= (@ op-type op2) (immediate-operand)]) (do
+            [write-instr bin pos (hex B8) #1 op3 [make-none-op ..] [make-none-op ..] op2 ..]
+            [write-instr bin pos (hex 89) #1 [make-none-op ..] op3 op1 [make-none-op ..] ..])
+          (if (and [= (@ op-size op1) #1] [= (@ op-type op1) (memory-operand)]
+              [= (@ op-size op2) #1] [= (@ op-type op2) (memory-operand)]) (do
+            [write-instr bin pos (hex 8A) #1 [make-none-op ..] op3 op2 [make-none-op ..] ..]
+            [write-instr bin pos (hex 88) #1 [make-none-op ..] op3 op1 [make-none-op ..] ..])
+          (if (and [= (@ op-size op1) #2] [= (@ op-type op1) (memory-operand)]
+              [= (@ op-size op2) #2] [= (@ op-type op2) (memory-operand)]) (do
+            [write-instr bin pos (hex 8B) #1 [make-none-op ..] op3 op2 [make-none-op ..] ..]
+            [write-instr bin pos (hex 89) #1 [make-none-op ..] op3 op1 [make-none-op ..] ..])
+          (if (and [= (@ op-size op1) #4] [= (@ op-type op1) (memory-operand)]
+              [= (@ op-size op2) #4] [= (@ op-type op2) (memory-operand)]) (do
+            [write-instr bin pos (hex 8B) #1 [make-none-op ..] op3 op2 [make-none-op ..] ..]
+            [write-instr bin pos (hex 89) #1 [make-none-op ..] op3 op1 [make-none-op ..] ..])
+          (if (and [= (@ op-size op1) #8] [= (@ op-type op1) (memory-operand)]
+              [= (@ op-size op2) #8] [= (@ op-type op2) (memory-operand)]) (do
+            [write-instr bin pos (hex 8B) #1 [make-none-op ..] op3 op2 [make-none-op ..] ..]
+            [write-instr bin pos (hex 89) #1 [make-none-op ..] op3 op1 [make-none-op ..] ..])
             (do
               [print-bytes (stdout) bin $pos handler]
-              [exit #0])))))))
+              [exit #0])))))))))))))
         
         ((x86-lea) (let
             (op1 [@car (@ instr-operands n)])
             (op2 [@cadr (@ instr-operands n)])
           (if (and [= (@ op-size op1) #2] [= (@ op-type op1) (register-operand)]
               [= (@ op-type op2) (memory-operand)])
-            [write-instr bin pos (hex 8D) #1 op1 op2 [make-none-op ..] ..]
+            [write-instr bin pos (hex 8D) #1 [make-none-op ..] op1 op2 [make-none-op ..] ..]
           (if (and [= (@ op-size op1) #4] [= (@ op-type op1) (register-operand)]
               [= (@ op-type op2) (memory-operand)])
-            [write-instr bin pos (hex 8D) #1 op1 op2 [make-none-op ..] ..]
+            [write-instr bin pos (hex 8D) #1 [make-none-op ..] op1 op2 [make-none-op ..] ..]
           (if (and [= (@ op-size op1) #8] [= (@ op-type op1) (register-operand)]
               [= (@ op-type op2) (memory-operand)])
-            [write-instr bin pos (hex 8D) #1 op1 op2 [make-none-op ..] ..]
+            [write-instr bin pos (hex 8D) #1 [make-none-op ..] op1 op2 [make-none-op ..] ..]
           (let (op3 [@caddr (@ instr-operands n)])
           (if (and [= (@ op-size op1) #2] [= (@ op-type op1) (memory-operand)]
               [= (@ op-type op2) (memory-operand)]) (do
-            [write-instr bin pos (hex 8D) #1 op3 op2 [make-none-op ..] ..]
-            [write-instr bin pos (hex 89) #1 op3 op1 [make-none-op ..] ..])
+            [write-instr bin pos (hex 8D) #1 [make-none-op ..] op3 op2 [make-none-op ..] ..]
+            [write-instr bin pos (hex 89) #1 [make-none-op ..] op3 op1 [make-none-op ..] ..])
           (if (and [= (@ op-size op1) #4] [= (@ op-type op1) (memory-operand)]
               [= (@ op-type op2) (memory-operand)]) (do
-            [write-instr bin pos (hex 8D) #1 op3 op2 [make-none-op ..] ..]
-            [write-instr bin pos (hex 89) #1 op3 op1 [make-none-op ..] ..])
+            [write-instr bin pos (hex 8D) #1 [make-none-op ..] op3 op2 [make-none-op ..] ..]
+            [write-instr bin pos (hex 89) #1 [make-none-op ..] op3 op1 [make-none-op ..] ..])
           (if (and [= (@ op-size op1) #8] [= (@ op-type op1) (memory-operand)]
               [= (@ op-type op2) (memory-operand)]) (do
-            [write-instr bin pos (hex 8D) #1 op3 op2 [make-none-op ..] ..]
-            [write-instr bin pos (hex 89) #1 op3 op1 [make-none-op ..] ..])
+            [write-instr bin pos (hex 8D) #1 [make-none-op ..] op3 op2 [make-none-op ..] ..]
+            [write-instr bin pos (hex 89) #1 [make-none-op ..] op3 op1 [make-none-op ..] ..])
             (do
               [print-bytes (stdout) bin $pos handler]
               [exit #0]))))))))))
@@ -752,14 +793,33 @@
         ((x86-jmp) (let
             (op1 [@car (@ instr-operands n)])
           (if (and [= (@ op-size op1) #1] [= (@ op-type op1) (immediate-operand)])
-            [write-instr bin pos (hex EB) #1 [make-none-op ..] [make-none-op ..] op1 ..]
+            [write-instr bin pos (hex EB) #1 [make-none-op ..] [make-none-op ..] [make-none-op ..] op1 ..]
           (if (and [= (@ op-size op1) #2] [= (@ op-type op1) (immediate-operand)])
-            [write-instr bin pos (hex E9) #1 [make-none-op ..] [make-none-op ..] op1 ..]
+            [write-instr bin pos (hex E9) #1 [make-none-op ..] [make-none-op ..] [make-none-op ..] op1 ..]
           (if (and [= (@ op-size op1) #4] [= (@ op-type op1) (immediate-operand)])
-            [write-instr bin pos (hex E9) #1 [make-none-op ..] [make-none-op ..] op1 ..]
+            [write-instr bin pos (hex E9) #1 [make-none-op ..] [make-none-op ..] [make-none-op ..] op1 ..]
             (do
               [print-bytes (stdout) bin $pos handler]
               [exit #0]))))))
+        
+        ((x86-sub) (let
+            (op1 [@car (@ instr-operands n)])
+            (op2 [@cadr (@ instr-operands n)])
+          (if (and [= (@ op-size op1) #1] (or [= (@ op-type op1) (memory-operand)] [= (@ op-type op1) (register-operand)])
+              [= (@ op-size op2) #1] [= (@ op-type op2) (immediate-operand)])
+            [write-instr bin pos (hex 80) #1 [make-none-op ..] [make-reg-op (x86-/5) ..] op1 op2 ..]
+          (if (and [= (@ op-size op1) #2] (or [= (@ op-type op1) (memory-operand)] [= (@ op-type op1) (register-operand)])
+              [= (@ op-size op2) #2] [= (@ op-type op2) (immediate-operand)])
+            [write-instr bin pos (hex 81) #1 [make-none-op ..] [make-reg-op (x86-/5) ..] op1 op2 ..]
+          (if (and [= (@ op-size op1) #4] (or [= (@ op-type op1) (memory-operand)] [= (@ op-type op1) (register-operand)])
+              [= (@ op-size op2) #4] [= (@ op-type op2) (immediate-operand)])
+            [write-instr bin pos (hex 81) #1 [make-none-op ..] [make-reg-op (x86-/5) ..] op1 op2 ..]
+          (if (and [= (@ op-size op1) #8] (or [= (@ op-type op1) (memory-operand)] [= (@ op-type op1) (register-operand)])
+              [= (@ op-size op2) #4] [= (@ op-type op2) (immediate-operand)])
+            [write-instr bin pos (hex 81) #1 [make-none-op ..] [make-reg-op (x86-/5) ..] op1 op2 ..]
+            (do
+              [print-bytes (stdout) bin $pos handler]
+              [exit #0])))))))
         
         (do
           [print-bytes (stdout) bin $pos handler]

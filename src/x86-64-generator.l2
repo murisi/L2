@@ -27,6 +27,7 @@
         [append [layout-frames (@ expr-expression n) (& expr-binding-augs n) ..] (& expr-binding-augs n) ..]
         (let (parameter-offset-ref (storage _ [* #2 (word-size)])) (do
         (foreach (t (@ expr-parameters n)) (do
+          (setf bndg-size (@ expr-symbol-binding-aug t) (word-size))
           (setf bndg-offset (@ expr-symbol-binding-aug t) $parameter-offset-ref)
           [set+ parameter-offset-ref (word-size)]))))
         (let (binding-offset-ref (storage _ #0)) (do
@@ -311,7 +312,7 @@
 (function generate-literal (n gens c relocs success r handler) (substitute (.. r handler)
   (if [= (@ expr-type n) (-literal-)]
     {success (let (expr-val-bndg (@ expr-binding-aug n))
-      [prepend (make-instrN (x86-mov) ([bndg->op expr-val-bndg relocs ..] [make-imm-op #8 (@ expr-value n) ..]) ..) c ..])}
+      [prepend(make-instrN(x86-mov)([bndg->op expr-val-bndg relocs ..][make-imm-op #8 (@ expr-value n)..][make-reg-op (r11)..])..) c ..])}
     (ignore))))
 
 (function get-current-offset (func)
