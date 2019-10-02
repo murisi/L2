@@ -565,6 +565,8 @@
     
     (let (reg-op-code [land (@ op-register reg-op) #7])
     
+    (let (has-modrm? (or [not= reg-op (none-operand)] [not= rm-op (none-operand)]))
+    
     (let (modrm.mod
       (if [= (@ op-type rm-op) (register-operand)] #3
       (if (or [= (@ op-disp-size rm-op) #0] [= (@ op-base rm-op) (none)] [= (@ op-base rm-op) (rip)]) #0
@@ -630,18 +632,21 @@
           
     [mem-write bin pos (storage _ opcode) opcode-size]
     
-    [mem-write bin pos (storage _
-      [lor [<< modrm.mod #6]
-      [lor [<< modrm.reg #3]
-      [lor [<< modrm.r/m #0]
-        #0]]]) #1]
-    
-    (if has-sib?
+    (if has-modrm? (do
       [mem-write bin pos (storage _
-        [lor [<< sib.scale #6]
-        [lor [<< sib.index #3]
-        [lor [<< sib.base #0]
-          #0]]]) #1] (ignore))
+        [lor [<< modrm.mod #6]
+        [lor [<< modrm.reg #3]
+        [lor [<< modrm.r/m #0]
+          #0]]]) #1]
+      
+      (if has-sib?
+        [mem-write bin pos (storage _
+          [lor [<< sib.scale #6]
+          [lor [<< sib.index #3]
+          [lor [<< sib.base #0]
+            #0]]]) #1] (ignore)))
+            
+      (ignore))
     
     (let (disp-pos $pos) (do
     
@@ -663,7 +668,7 @@
     
     (if [= (@ op-type imm-op) (immediate-operand)]
       [prepend (values (buffer-storage ..) imm-pos (@ op-size imm-op) instr-start-pos instr-size) (& op-locations imm-op) ..]
-      (ignore))))))))))))))))))))))))))))
+      (ignore)))))))))))))))))))))))))))))
 
 (constrain assemble (\ r (with-vars (a b e) (`(function ((list instr) ,a (ref ,b) buffer ,e) ())r)r)))
 
@@ -744,231 +749,21 @@
               [print-bytes (stdout) bin $pos handler]
               [exit #0]))))))))))
         
+        ((x86-jmp) (let
+            (op1 [@car (@ instr-operands n)])
+          (if (and [= (@ op-size op1) #1] [= (@ op-type op1) (immediate-operand)])
+            [write-instr bin pos (hex EB) #1 [make-none-op ..] [make-none-op ..] op1 ..]
+          (if (and [= (@ op-size op1) #2] [= (@ op-type op1) (immediate-operand)])
+            [write-instr bin pos (hex E9) #1 [make-none-op ..] [make-none-op ..] op1 ..]
+          (if (and [= (@ op-size op1) #4] [= (@ op-type op1) (immediate-operand)])
+            [write-instr bin pos (hex E9) #1 [make-none-op ..] [make-none-op ..] op1 ..]
+            (do
+              [print-bytes (stdout) bin $pos handler]
+              [exit #0]))))))
+        
         (do
           [print-bytes (stdout) bin $pos handler]
           [exit #0])))))))
-
-(ignore(function assemble (generated-expressions bin pos buf handler)
-  (substitute (.. buf handler) (do
-    [set pos #0]
-    (foreach (n generated-expressions) (do
-      (let (instr-bndg (@ instr-binding n))
-        (if [not= instr-bndg null-binding] (do
-          (setf bndg-storage instr-bndg (instruction-storage))
-          (setf bndg-offset instr-bndg $pos)
-          (setf st-value (@ bndg-context instr-bndg) $pos))
-          (ignore)))
-          
-      (switch = (@ instr-code n)
-        ((label) (ignore))
-          
-        ((leaq-mdb-to-reg)
-          (let (opcode (hex 8D))
-          (let (reg (@ instr-code [@caddr (@ expr-arguments n)]))
-          (let (rm (@ instr-code [@cadr (@ expr-arguments n)])) (do
-          [write-mr-instr bin pos opcode #1 reg rm (true) (true) (false)]
-          [write-static-value bin pos [@car (@ expr-arguments n)] #4 ..])))))
-          
-        ((movq-reg-to-mdb)
-          (let (opcode (hex 89))
-          (let (reg (@ instr-code [@car (@ expr-arguments n)]))
-          (let (rm (@ instr-code [@caddr (@ expr-arguments n)])) (do
-          [write-mr-instr bin pos opcode #1 reg rm (true) (true) (false)]
-          [write-static-value bin pos [@cadr (@ expr-arguments n)] #4 ..])))))
-        
-        ((movb-reg-to-mdb)
-          (let (opcode (hex 88))
-          (let (reg (@ instr-code [@car (@ expr-arguments n)]))
-          (let (rm (@ instr-code [@caddr (@ expr-arguments n)])) (do
-          [write-mr-instr bin pos opcode #1 reg rm (true) (false) (false)]
-          [write-static-value bin pos [@cadr (@ expr-arguments n)] #4 ..])))))
-        
-        ((movw-reg-to-mdb)
-          (let (opcode (hex 89))
-          (let (reg (@ instr-code [@car (@ expr-arguments n)]))
-          (let (rm (@ instr-code [@caddr (@ expr-arguments n)])) (do
-          [write-mr-instr bin pos opcode #1 reg rm (true) (false) (true)]
-          [write-static-value bin pos [@cadr (@ expr-arguments n)] #4 ..])))))
-        
-        ((movl-reg-to-mdb)
-          (let (opcode (hex 89))
-          (let (reg (@ instr-code [@car (@ expr-arguments n)]))
-          (let (rm (@ instr-code [@caddr (@ expr-arguments n)])) (do
-          [write-mr-instr bin pos opcode #1 reg rm (true) (false) (false)]
-          [write-static-value bin pos [@cadr (@ expr-arguments n)] #4 ..])))))
-        
-        ((jmp-rel)
-          (let (opcode (hex E9)) (do
-          [mem-write bin pos (storage _ opcode) #1]
-          [write-static-value bin pos [@car (@ expr-arguments n)] #4 ..])))
-          
-        ((movq-mdb-to-reg)
-          (let (opcode (hex 8B))
-          (let (reg (@ instr-code [@caddr (@ expr-arguments n)]))
-          (let (rm (@ instr-code [@cadr (@ expr-arguments n)])) (do
-          [write-mr-instr bin pos opcode #1 reg rm (true) (true) (false)]
-          [write-static-value bin pos [@car (@ expr-arguments n)] #4 ..])))))
-        
-        ((movb-mdb-to-reg)
-          (let (opcode (hex 8A))
-          (let (reg (@ instr-code [@caddr (@ expr-arguments n)]))
-          (let (rm (@ instr-code [@cadr (@ expr-arguments n)])) (do
-          [write-mr-instr bin pos opcode #1 reg rm (true) (false) (false)]
-          [write-static-value bin pos [@car (@ expr-arguments n)] #4 ..])))))
-        
-        ((movw-mdb-to-reg)
-          (let (opcode (hex 8B))
-          (let (reg (@ instr-code [@caddr (@ expr-arguments n)]))
-          (let (rm (@ instr-code [@cadr (@ expr-arguments n)])) (do
-          [write-mr-instr bin pos opcode #1 reg rm (true) (false) (true)]
-          [write-static-value bin pos [@car (@ expr-arguments n)] #4 ..])))))
-        
-        ((movl-mdb-to-reg)
-          (let (opcode (hex 8B))
-          (let (reg (@ instr-code [@caddr (@ expr-arguments n)]))
-          (let (rm (@ instr-code [@cadr (@ expr-arguments n)])) (do
-          [write-mr-instr bin pos opcode #1 reg rm (true) (false) (false)]
-          [write-static-value bin pos [@car (@ expr-arguments n)] #4 ..])))))
-        
-        ((pushq-reg)
-          (let (opcode (hex 50))
-          (let (reg (@ instr-code [@car (@ expr-arguments n)]))
-          [write-o-instr bin pos opcode reg])))
-          
-        ((movq-reg-to-reg)
-          (let (opcode (hex 8B))
-          (let (reg (@ instr-code [@cadr (@ expr-arguments n)]))
-          (let (rm (@ instr-code [@car (@ expr-arguments n)]))
-          [write-mr-instr bin pos opcode #1 reg rm (false) (true) (false)]))))
-          
-        ((subq-imm-to-reg)
-          (let (opcode (hex 81))
-          (let (reg #5)
-          (let (rm (@ instr-code [@cadr (@ expr-arguments n)])) (do
-          [write-mr-instr bin pos opcode #1 reg rm (false) (true) (false)]
-          [mem-write bin pos (& expr-value [@car (@ expr-arguments n)]) #4])))))
-          
-        ((addq-imm-to-reg)
-          (let (opcode (hex 81))
-          (let (reg #0)
-          (let (rm (@ instr-code [@cadr (@ expr-arguments n)])) (do
-          [write-mr-instr bin pos opcode #1 reg rm (false) (true) (false)]
-          [mem-write bin pos (& expr-value [@car (@ expr-arguments n)]) #4])))))
-          
-        ((popq-reg)
-          (let (opcode (hex 58))
-          (let (reg (@ instr-code [@car (@ expr-arguments n)]))
-          [write-o-instr bin pos opcode reg])))
-          
-        ((leave) [mem-write bin pos (storage opcode (hex C9)) #1])
-          
-        ((ret) [mem-write bin pos (storage opcode (hex C3)) #1])
-          
-        ((jmp-to-reg)
-          (let (opcode (hex FF))
-          (let (reg #4)
-          (let (rm (@ instr-code [@car (@ expr-arguments n)]))
-          [write-mr-instr bin pos opcode #1 reg rm (false) (false) (false)]))))
-          
-        ((je-rel) (do
-          [mem-write bin pos (storage opcode1 (hex 0F)) #1]
-          [mem-write bin pos (storage opcode2 (hex 84)) #1]
-          [write-static-value bin pos [@car (@ expr-arguments n)] #4 ..]))
-          
-        ((orq-reg-to-reg)
-          (let (opcode (hex 0B))
-          (let (reg (@ instr-code [@cadr (@ expr-arguments n)]))
-          (let (rm (@ instr-code [@car (@ expr-arguments n)]))
-          [write-mr-instr bin pos opcode #1 reg rm (false) (true) (false)]))))
-        
-        ((xorq-reg-to-reg)
-          (let (opcode (hex 33))
-          (let (reg (@ instr-code [@cadr (@ expr-arguments n)]))
-          (let (rm (@ instr-code [@car (@ expr-arguments n)]))
-          [write-mr-instr bin pos opcode #1 reg rm (false) (true) (false)]))))
-        
-        ((andq-reg-to-reg)
-          (let (opcode (hex 23))
-          (let (reg (@ instr-code [@cadr (@ expr-arguments n)]))
-          (let (rm (@ instr-code [@car (@ expr-arguments n)]))
-          [write-mr-instr bin pos opcode #1 reg rm (false) (true) (false)]))))
-        
-        ((addq-reg-to-reg)
-          (let (opcode (hex 03))
-          (let (reg (@ instr-code [@cadr (@ expr-arguments n)]))
-          (let (rm (@ instr-code [@car (@ expr-arguments n)]))
-          [write-mr-instr bin pos opcode #1 reg rm (false) (true) (false)]))))
-        
-        ((subq-reg-to-reg)
-          (let (opcode (hex 2B))
-          (let (reg (@ instr-code [@cadr (@ expr-arguments n)]))
-          (let (rm (@ instr-code [@car (@ expr-arguments n)]))
-          [write-mr-instr bin pos opcode #1 reg rm (false) (true) (false)]))))
-        
-        ((mulq-reg)
-          (let (opcode (hex F7))
-          (let (reg (hex 04))
-          (let (rm (@ instr-code [@car (@ expr-arguments n)]))
-          [write-mr-instr bin pos opcode #1 reg rm (false) (true) (false)]))))
-        
-        ((setz-reg)
-          (let (opcode (hex 940F))
-          (let (reg (hex 00))
-          (let (rm (@ instr-code [@car (@ expr-arguments n)]))
-          [write-mr-instr bin pos opcode #2 reg rm (false) (false) (false)]))))
-        
-        ((setc-reg)
-          (let (opcode (hex 920F))
-          (let (reg (hex 00))
-          (let (rm (@ instr-code [@car (@ expr-arguments n)]))
-          [write-mr-instr bin pos opcode #2 reg rm (false) (false) (false)]))))
-        
-        ((divq-reg)
-          (let (opcode (hex F7))
-          (let (reg (hex 06))
-          (let (rm (@ instr-code [@car (@ expr-arguments n)]))
-          [write-mr-instr bin pos opcode #1 reg rm (false) (true) (false)]))))
-        
-        ((notq-reg)
-          (let (opcode (hex F7))
-          (let (reg (hex 02))
-          (let (rm (@ instr-code [@car (@ expr-arguments n)]))
-          [write-mr-instr bin pos opcode #1 reg rm (false) (true) (false)]))))
-        
-        ((shlq-cl-to-reg)
-          (let (opcode (hex D3))
-          (let (reg (hex 04))
-          (let (rm (@ instr-code [@car (@ expr-arguments n)]))
-          [write-mr-instr bin pos opcode #1 reg rm (false) (true) (false)]))))
-        
-        ((shrq-cl-to-reg)
-          (let (opcode (hex D3))
-          (let (reg (hex 05))
-          (let (rm (@ instr-code [@car (@ expr-arguments n)]))
-          [write-mr-instr bin pos opcode #1 reg rm (false) (true) (false)]))))
-        
-        ((movq-imm-to-reg)
-          (let (opcode (hex B8))
-          (let (imm-expr [@car (@ expr-arguments n)])
-          (let (reg (@ instr-code [@cadr (@ expr-arguments n)]))
-          (let (rd [land (hex 7) reg])
-          (let (opcoderd [+ opcode rd])
-          (let (rex [<< #4 #4])
-          (let (rex [lor rex [<< #1 (rex-w)]])
-          (let (rex [lor rex [<< #0 (rex-r)]])
-          (let (rex [lor rex [<< #0 (rex-x)]])
-          (let (rex (if [land reg (hex 8)] [lor rex [<< #1 (rex-b)]] rex)) (do
-          [mem-write bin pos (storage _ rex) #1]
-          [mem-write bin pos (storage _ opcoderd) #1]
-          [write-static-value bin pos imm-expr #8 ..]))))))))))))
-          
-        ((call-reg)
-          (let (opcode (hex FF))
-          (let (reg #2)
-          (let (rm (@ instr-code [@car (@ expr-arguments n)]))
-          [write-mr-instr bin pos opcode #1 reg rm (false) (false) (false)]))))
-        
-        (ignore))))))))
 
 (storage shstrtab ("(nul).shstrtab(nul).text(nul).strtab(nul).symtab(nul).bss(nul).rela.text(nul)))
 
