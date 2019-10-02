@@ -213,7 +213,7 @@
 
 (function print-str (fd str handler) [print fd str [strlen str] handler])
 
-(constrain print-str (\ r (with-vars (a b e) (`(function (fd ,a ,b) ,e)r)r)))
+(constrain print-char (\ r (with-vars (a b e) (`(function (fd ,a ,b) ,e)r)r)))
 
 (function print-char (fd ch handler) [print fd (storage _ ch) #1 handler])
 
@@ -236,6 +236,45 @@
       (char 0))]
     [set j [- $j #1]]))
   [print fd [+ str [+ $j #1]] [- #19 $j] handler]))))
+
+(constrain hex->char (\ r (with-vars (a b) (`(function (,a) ,b)r)r)))
+
+(function hex->char (h)
+  (switch = h
+    ((hex F) (char F))
+    ((hex E) (char E))
+    ((hex D) (char D))
+    ((hex C) (char C))
+    ((hex B) (char B))
+    ((hex A) (char A))
+    ((hex 9) (char 9))
+    ((hex 8) (char 8))
+    ((hex 7) (char 7))
+    ((hex 6) (char 6))
+    ((hex 5) (char 5))
+    ((hex 4) (char 4))
+    ((hex 3) (char 3))
+    ((hex 2) (char 2))
+    ((hex 1) (char 1))
+    (char 0)))
+
+(constrain print-hex (\ r (with-vars (a b e) (`(function (fd ,a ,b) ,e)r)r)))
+
+(function print-hex (fd i handler)
+  (let (j (storage _ #16))
+  (let (str (storage _ (ignore) (ignore))) (do
+  (until (i i) [= i #0] [/ i #16] (do
+    [setb [+ str $j] [hex->char [rem i #16]]]
+    [set j [- $j #1]]))
+  [print fd [+ str [+ $j #1]] [- #16 $j] handler]))))
+
+(constrain print-bytes
+  (\ r (with-vars (a b h i) (`(function (fd ,a ,b ,h) ,i)r)r)))
+
+(function print-bytes (fd bs sz handler)
+  (until (i #0) [= i sz] [+ i #1] (do
+    [print-char fd [hex->char [>> [getb[+ bs i]] #4]] handler]
+    [print-char fd [hex->char [land [getb[+ bs i]] (hex 0F)]] handler])))
 
 (constrain read (\ r (with-vars (a b c e) (`(function (fd ,a ,b ,c) ,e)r)r)))
 

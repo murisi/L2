@@ -93,7 +93,8 @@
           (#2 (r-x86-64-16))
           (#4 (r-x86-64-32))
           (#8 (r-x86-64-64))
-          (ignore)) op bndg addend ..] relocs ..]
+          (ignore)) op bndg addend
+        (function _(ctx ofst size instr-pos instr-size) ctx) ..] relocs ..]
       op))))
 
 (constrain make-relative-relocation-immediate
@@ -108,7 +109,9 @@
           (#2 (r-x86-64-pc16))
           (#4 (r-x86-64-pc32))
           (#8 (r-x86-64-pc64))
-          (ignore)) op bndg [- #0 size] ..] relocs ..]
+          (ignore)) op bndg (ignore)
+        (function _(ctx ofst size instr-pos instr-size)
+          [- ofst [+ instr-pos instr-size]]) ..] relocs ..]
       op))))
 
 (constrain make-label (\ r (with-vars (a) (`(function (bndg-aug buffer ,a) instr)r)r)))
@@ -126,10 +129,9 @@
     (let (op-size (@ bndg-size bndg))
       (if (and [= (@ bndg-storage bndg) (absolute-storage)] [= (@ bndg-storage bndg) (instruction-storage)])
         (let (op [make-mem-op op-size (rip) (none) #0 #0 #4 ..]) (do
-          [prepend [make-relocation (r-x86-64-pc32) op bndg
-            (function _(ofst size instr)
-              (let (ibndg (@ instr-binding instr))
-                [- ofst [+ (@ bndg-offset ibndg) (@ bndg-size ibndg)]])) ..] relocs ..]
+          [prepend [make-relocation (r-x86-64-pc32) op bndg (ignore)
+            (function _(ctx ofst size instr-pos instr-size)
+              [- ofst [+ instr-pos instr-size]]) ..] relocs ..]
           op))
       
       (if (and [= (@ bndg-storage bndg) (absolute-storage)] [= (@ bndg-storage bndg) (instruction-storage)]
@@ -155,15 +157,15 @@
           (alternate-instr-bndg [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr null-expr ..])
           (end-instr-binding [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr null-expr ..]) (do
         [generate-expression (@ expr-condition n) gens c relocs ..]
-        [prepend (make-instrN (x86-or) ([bndg->op condition-bndg relocs ..] [bndg->op condition-bndg relocs ..]) ..) c ..]
-        [prepend (make-instrN (x86-je) ([make-relative-relocation-immediate #4 alternate-binding relocs ..]) ..) c ..]
+        [prepend (make-instrN (x86-or) ([bndg->op condition-val-bndg relocs ..] [bndg->op condition-val-bndg relocs ..]) ..) c ..]
+        [prepend (make-instrN (x86-je) ([make-relative-relocation-immediate #4 alternate-instr-bndg relocs ..]) ..) c ..]
         [generate-expression (@ expr-consequent n) gens c relocs ..]
         [prepend (make-instrN (x86-mov) ([bndg->op expr-val-bndg relocs ..] [bndg->op consequent-val-bndg relocs ..]) ..) c ..]
-        [prepend (make-instrN (x86-jmp) ([make-relative-relocation-immediate #4 end-binding relocs ..]) ..) c ..]
-        [prepend [make-label alternate-binding ..] c ..]
+        [prepend (make-instrN (x86-jmp) ([make-relative-relocation-immediate #4 end-instr-binding relocs ..]) ..) c ..]
+        [prepend [make-label alternate-instr-bndg ..] c ..]
         [generate-expression (@ expr-alternate n) gens c relocs ..]
         [prepend (make-instrN (x86-mov) ([bndg->op expr-val-bndg relocs ..] [bndg->op alternate-val-bndg relocs ..]) ..) c ..]
-        [prepend [make-label end-binding ..] c ..]))}
+        [prepend [make-label end-instr-binding ..] c ..]))}
       (ignore))))
 
 (constrain generate-storage
@@ -253,14 +255,14 @@
           (expr-val-bndg (@ expr-binding-aug n))
           (body-val-bndg (@ expr-binding-aug (@ expr-expression n)))
           (param-val-bndg (@ expr-symbol-binding-aug[@car(@ expr-parameters n)]))
-          (end-binding [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr null-expr ..]) (do
+          (end-instr-binding [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr null-expr ..]) (do
         (if (@ expr-escapes n) [generate-store-continuation n c relocs ..] (ignore))
         [generate-expression (@ expr-expression n) gens c relocs ..]
         [prepend (make-instrN (x86-mov) ([bndg->op expr-val-bndg relocs ..] [bndg->op body-val-bndg relocs ..]) ..) c ..]
-        [prepend (make-instrN (x86-jmp) ([make-relative-relocation-immediate #4 end-binding relocs ..]) ..) c ..]
+        [prepend (make-instrN (x86-jmp) ([make-relative-relocation-immediate #4 end-instr-binding relocs ..]) ..) c ..]
         [prepend [make-label (@ expr-cont-instr-bndg n) ..] c ..]
         [prepend (make-instrN (x86-mov) ([bndg->op expr-val-bndg relocs ..] [bndg->op param-val-bndg relocs ..]) ..) c ..]
-        [prepend [make-label end-binding ..] c ..]))}
+        [prepend [make-label end-instr-binding ..] c ..]))}
       (ignore))))
 
 (constrain generate-load-continuation
