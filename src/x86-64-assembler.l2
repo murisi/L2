@@ -836,6 +836,49 @@
               [print-bytes (stdout) bin $pos handler]
               [exit #0])))))))
         
+        ((x86-add) (let
+            (op1 [@car (@ instr-operands n)])
+            (op2 [@cadr (@ instr-operands n)])
+          (if (and [= (@ op-size op1) #1] (or [= (@ op-type op1) (memory-operand)] [= (@ op-type op1) (register-operand)])
+              [= (@ op-size op2) #1] [= (@ op-type op2) (immediate-operand)])
+            [write-instr bin pos (hex 80) #1 [make-none-op ..] [make-reg-op (x86-/0) ..] op1 op2 ..]
+          (if (and [= (@ op-size op1) #2] (or [= (@ op-type op1) (memory-operand)] [= (@ op-type op1) (register-operand)])
+              [= (@ op-size op2) #2] [= (@ op-type op2) (immediate-operand)])
+            [write-instr bin pos (hex 81) #1 [make-none-op ..] [make-reg-op (x86-/0) ..] op1 op2 ..]
+          (if (and [= (@ op-size op1) #4] (or [= (@ op-type op1) (memory-operand)] [= (@ op-type op1) (register-operand)])
+              [= (@ op-size op2) #4] [= (@ op-type op2) (immediate-operand)])
+            [write-instr bin pos (hex 81) #1 [make-none-op ..] [make-reg-op (x86-/0) ..] op1 op2 ..]
+          (if (and [= (@ op-size op1) #8] (or [= (@ op-type op1) (memory-operand)] [= (@ op-type op1) (register-operand)])
+              [= (@ op-size op2) #4] [= (@ op-type op2) (immediate-operand)])
+            [write-instr bin pos (hex 81) #1 [make-none-op ..] [make-reg-op (x86-/0) ..] op1 op2 ..]
+            (do
+              [print-bytes (stdout) bin $pos handler]
+              [exit #0])))))))
+        
+        ((x86-or) (let
+            (op1 [@car (@ instr-operands n)])
+            (op2 [@cadr (@ instr-operands n)])
+          (let (op3 [@caddr (@ instr-operands n)])
+          (if (and [= (@ op-size op1) #1] [= (@ op-type op1) (memory-operand)]
+              [= (@ op-size op2) #1] [= (@ op-type op2) (memory-operand)]) (do
+            [write-instr bin pos (hex 8A) #1 [make-none-op ..] op3 op2 [make-none-op ..] ..]
+            [write-instr bin pos (hex 08) #1 [make-none-op ..] op3 op1 [make-none-op ..] ..])
+          (if (and [= (@ op-size op1) #2] [= (@ op-type op1) (memory-operand)]
+              [= (@ op-size op2) #2] [= (@ op-type op2) (memory-operand)]) (do
+            [write-instr bin pos (hex 8B) #1 [make-none-op ..] op3 op2 [make-none-op ..] ..]
+            [write-instr bin pos (hex 09) #1 [make-none-op ..] op3 op1 [make-none-op ..] ..])
+          (if (and [= (@ op-size op1) #4] [= (@ op-type op1) (memory-operand)]
+              [= (@ op-size op2) #4] [= (@ op-type op2) (memory-operand)]) (do
+            [write-instr bin pos (hex 8B) #1 [make-none-op ..] op3 op2 [make-none-op ..] ..]
+            [write-instr bin pos (hex 09) #1 [make-none-op ..] op3 op1 [make-none-op ..] ..])
+          (if (and [= (@ op-size op1) #8] [= (@ op-type op1) (memory-operand)]
+              [= (@ op-size op2) #8] [= (@ op-type op2) (memory-operand)]) (do
+            [write-instr bin pos (hex 8B) #1 [make-none-op ..] op3 op2 [make-none-op ..] ..]
+            [write-instr bin pos (hex 09) #1 [make-none-op ..] op3 op1 [make-none-op ..] ..])
+            (do
+              [print-bytes (stdout) bin $pos handler]
+              [exit #0]))))))))
+        
         ((x86-call) (let
             (op1 [@car (@ instr-operands n)])
           (if (and [= (@ op-size op1) #2] (or [= (@ op-type op1) (memory-operand)] [= (@ op-type op1) (register-operand)]))
@@ -847,6 +890,20 @@
             (do
               [print-bytes (stdout) bin $pos handler]
               [exit #0]))))))
+        
+        ((x86-je) (let
+            (op1 [@car (@ instr-operands n)])
+          (if (and [= (@ op-size op1) #4] [= (@ op-type op1) (immediate-operand)])
+            [write-instr bin pos (hex 840F) #2 [make-none-op ..] [make-none-op ..] [make-none-op ..] op1 ..]
+            (do
+              [print-bytes (stdout) bin $pos handler]
+              [exit #0]))))
+        
+        ((x86-leave)
+          [write-instr bin pos (hex C9) #1 [make-none-op ..] [make-none-op ..] [make-none-op ..] [make-none-op ..] ..])
+        
+        ((x86-ret)
+          [write-instr bin pos (hex C3) #1 [make-none-op ..] [make-none-op ..] [make-none-op ..] [make-none-op ..] ..])
         
         (do
           [print-bytes (stdout) bin $pos handler]
