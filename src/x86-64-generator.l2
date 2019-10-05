@@ -128,22 +128,17 @@
 (function bndg->op (bndg relocs buf handler)
   (substitute (.. buf handler)
     (let (op-size (@ bndg-size bndg))
-      (if (and (or [= (@ bndg-storage bndg) (absolute-storage)] [= (@ bndg-storage bndg) (instruction-storage)])
-          [= (@ bndg-state bndg) (undefined-state)])
+      (if (and (or [= (@ bndg-storage bndg) (absolute-storage)] [= (@ bndg-storage bndg) (instruction-storage)]))
         (let (op [make-mem-op op-size (rip) (none) #0 #0 #4 ..]) (do
           [prepend [make-relocation (r-x86-64-pc32) op bndg (ignore)
             (function _(ctx ofst size instr-pos instr-size)
               [- ofst [+ instr-pos instr-size]]) ..] relocs ..]
           op))
-      
-      (if (and (or [= (@ bndg-storage bndg) (absolute-storage)] [= (@ bndg-storage bndg) (instruction-storage)])
-          [= (@ bndg-state bndg) (defined-state)])
-        [make-mem-op op-size (rip) (none) #0 (@ bndg-offset bndg) #4 ..]
           
       (if (and [= (@ bndg-storage bndg) (frame-relative-storage)] [= (@ bndg-state bndg) (defined-state)])
         [make-mem-op op-size (rbp) (none) #0 (@ bndg-offset bndg) #4 ..]
         
-        (ignore)))))))
+        (ignore))))))
 
 (constrain generate-if
   (\ r (with-vars (a) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) (continuation (())) buffer ,a) ())r)r)))
@@ -180,6 +175,7 @@
           (expr-val-bndg (@ expr-binding-aug n))
           (storage-val-bndg (@ expr-symbol-binding-aug(@ expr-reference n))) (do
         (foreach (t (@ expr-arguments n)) [generate-expression t gens c relocs ..])
+        
         [prepend(make-instrN(x86-lea)([bndg->op expr-val-bndg relocs ..][bndg->op storage-val-bndg relocs ..][make-reg-op(r10) ..])..) c ..]))}
       (ignore))))
 
@@ -195,15 +191,15 @@
           (target-expr (@ bndg-expression(@ expr-symbol-binding-aug n)))
         (if (and (or [= (@ expr-type target-expr) (-function-)] [= (@ expr-type target-expr) (-continuation-)])
             (not [nil? (find (x (@ expr-parameters target-expr)) [= x (@ bndg-symbol (@ expr-symbol-binding-aug n))])]))
-          [prepend (make-instrN(x86-mov)([bndg->op expr-val-bndg relocs ..][bndg->op symbol-val-bndg relocs ..][make-reg-op (r10) ..]) ..) c ..]
-          [prepend (make-instrN(x86-lea)([bndg->op expr-val-bndg relocs ..][bndg->op symbol-val-bndg relocs ..][make-reg-op (r10) ..])..) c ..]))}
+          [prepend (make-instrN(x86-mov)([bndg->op expr-val-bndg relocs ..][bndg->op symbol-val-bndg relocs ..][make-reg-op(r10) ..]) ..) c ..]
+          [prepend (make-instrN(x86-lea)([bndg->op expr-val-bndg relocs ..][bndg->op symbol-val-bndg relocs ..][make-reg-op(r10) ..])..) c ..]))}
       (ignore))))
 
 (constrain generate-store-continuation (\ r (with-vars (a) (`(function (expr (ref (list instr)) (ref (list reloc)) buffer ,a) ())r)r)))
 
 (function generate-store-continuation (n c relocs r handler)
   (substitute (.. r handler) (let
-      (cont-val-bndg (@ expr-symbol-binding-aug n))
+      (cont-val-bndg (@ expr-symbol-binding-aug (@ expr-reference n)))
       (cont-instr-bndg (@ expr-cont-instr-bndg n)) (do
     [prepend (make-instrN (x86-lea) ([make-reg-op (r9) ..] [bndg->op cont-val-bndg relocs ..]) ..) c ..]
     [prepend (make-instrN (x86-mov) ([make-mem-op(word-size)(r9)(none)#0(cont-rbx)#4 ..] [make-reg-op (rbx) ..]) ..) c ..]
@@ -211,7 +207,7 @@
     [prepend (make-instrN (x86-mov) ([make-mem-op(word-size)(r9)(none)#0(cont-r13)#4 ..] [make-reg-op (r13) ..]) ..) c ..]
     [prepend (make-instrN (x86-mov) ([make-mem-op(word-size)(r9)(none)#0(cont-r14)#4 ..] [make-reg-op (r14) ..]) ..) c ..]
     [prepend (make-instrN (x86-mov) ([make-mem-op(word-size)(r9)(none)#0(cont-r15)#4 ..] [make-reg-op (r15) ..]) ..) c ..]
-    [prepend (make-instrN (x86-mov) ([make-mem-op(word-size)(r9)(none)#0(cont-cir)#4 ..] [bndg->op cont-instr-bndg relocs ..]) ..) c ..]
+    [prepend (make-instrN (x86-lea) ([make-mem-op(word-size)(r9)(none)#0(cont-cir)#4 ..] [bndg->op cont-instr-bndg relocs ..] [make-reg-op (r10) ..]) ..) c ..]
     [prepend (make-instrN (x86-mov) ([make-mem-op(word-size)(r9)(none)#0(cont-rbp)#4 ..] [make-reg-op (rbp) ..]) ..) c ..]))))
 
 (constrain generate-buffer-to-dest
@@ -330,7 +326,7 @@
         (expr-val-bndg (@ expr-binding-aug n))
         (body-val-bndg (@ expr-binding-aug (@ expr-expression n)))
         (after-binding [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr null-expr ..]) (do
-        
+      
       [prepend(make-instrN(x86-lea)([bndg->op expr-val-bndg relocs ..][bndg->op ref-val-bndg relocs ..][make-reg-op(r10)..])..) c ..]
       [prepend (make-instrN (x86-jmp)([make-relative-relocation-immediate #4 after-binding relocs ..])..) c ..]
       [prepend [make-label ref-val-bndg ..] c ..]

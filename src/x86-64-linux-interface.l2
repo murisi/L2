@@ -53,6 +53,8 @@
   (function map-private (l r) [=# #2 r])
 
   (function map-anonymous (l r) [=# #32 r])
+  
+  (function map-32bit (l r) [=# #64 r])
 
 (function page-size (l r) [=# #4096 r])
 
@@ -307,7 +309,7 @@
 (ignore Creates a new virtual address mapping of the size in bytes given at len.)
 
 (function mmap (len handler)
-  (let (ret [syscall (sys-mmap) #0 len [lor (prot-read) (prot-write)] [lor (map-private) (map-anonymous)] [lnot #0] #0])
+  (let (ret [syscall (sys-mmap) #0 len [lor (prot-read) (prot-write)] [lor (map-private) [lor (map-anonymous) (map-32bit)]] [lnot #0] #0])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
       {handler (storage _ memory-access-error)}
       ret)))
