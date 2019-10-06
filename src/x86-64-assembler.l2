@@ -1,13 +1,5 @@
 (ignore The constants to be used in x86-64-assembler.l2)
 
-(function rex-w (l r) [=# #3 r])
-
-(function rex-r (l r) [=# #2 r])
-
-(function rex-x (l r) [=# #1 r])
-
-(function rex-b (l r) [=# #0 r])
-
 (function write-elf-sh-count (l r) [=# #7 r])
 
 (function write-elf-alignment (l r) [=# #8 r])
@@ -680,6 +672,8 @@
     
     (true)))))))))))))))))))))))))))))
 
+(constrain write-mr-instr (\ r (with-vars (a b c d e f g h i) (`(function (,a ,b ,c ,d ,e instr ,f (ref ,g) buffer ,h) ,i)r)r)))
+
 (function write-mr-instr (mask opcode-8 opcode-16 opcode-32 opcode-64 n bin pos buf handler)
   (substitute (.. buf handler)
     (and [>= [length (@ instr-operands n)] #2] (let
@@ -698,6 +692,8 @@
           [= (@ op-size op2) #8] [= (@ op-type op2) (register-operand)])
         [write-instr bin pos opcode-64 [>> mask #4] [make-none-op ..] op2 op1 [make-none-op ..] ..]
         (false)))))))))
+
+(constrain write-rm-instr (\ r (with-vars (a b c d e f g h i) (`(function (,a ,b ,c ,d ,e instr ,f (ref ,g) buffer ,h) ,i)r)r)))
 
 (function write-rm-instr (mask opcode-8 opcode-16 opcode-32 opcode-64 n bin pos buf handler)
   (substitute (.. buf handler)
@@ -718,6 +714,8 @@
         [write-instr bin pos (hex 8B) [>> mask #4] [make-none-op ..] op1 op2 [make-none-op ..] ..]
         (false)))))))))
 
+(constrain write-mi-instr (\ r (with-vars (a b c d e f g h i) (`(function (,a ,b ,c ,d ,e operand instr ,f (ref ,g) buffer ,h) ,i)r)r)))
+
 (function write-mi-instr (mask opcode-8 opcode-16 opcode-32 opcode-64 opcode.reg-op n bin pos buf handler)
   (substitute (.. buf handler)
     (and [>= [length (@ instr-operands n)] #2] (let
@@ -736,6 +734,8 @@
           [= (@ op-size op2) #4] [= (@ op-type op2) (immediate-operand)])
         [write-instr bin pos (hex 81) [>> mask #4] [make-none-op ..] opcode.reg-op op1 op2 ..]
         (false)))))))))
+
+(constrain write-mm-instr (\ r (with-vars (a b c d e f g h i) (`(function (,a ,b ,c ,d ,e instr ,f (ref ,g) buffer ,h) ,i)r)r)))
 
 (function write-mm-instr (mask opcode-8 opcode-16 opcode-32 opcode-64 n bin pos buf handler)
   (substitute (.. buf handler)
@@ -761,6 +761,8 @@
         [write-instr bin pos opcode-64 [>> mask #4] [make-none-op ..] op3 op1 [make-none-op ..] ..])
         (false)))))))))
 
+(constrain write-m-instr (\ r (with-vars (a b c d e f g h i) (`(function (,a ,b ,c ,d ,e operand instr ,f (ref ,g) buffer ,h) ,i)r)r)))
+
 (function write-m-instr (mask opcode-8 opcode-16 opcode-32 opcode-64 opcode.reg-op n bin pos buf handler)
   (substitute (.. buf handler)
     (and [>= [length (@ instr-operands n)] #1] (let
@@ -774,6 +776,8 @@
       (if (and [land mask #8] [= (@ op-size op1) #8] (or [= (@ op-type op1) (memory-operand)] [= (@ op-type op1) (register-operand)]))
         [write-instr bin pos opcode-64 [>> mask #4] [make-none-op ..] opcode.reg-op op1 [make-none-op ..] ..]
         (false)))))))))
+
+(constrain write-d-instr (\ r (with-vars (a b c d e f g h i) (`(function (,a ,b ,c ,d ,e instr ,f (ref ,g) buffer ,h) ,i)r)r)))
 
 (function write-d-instr (mask opcode-8 opcode-16 opcode-32 opcode-64 n bin pos buf handler)
   (substitute (.. buf handler)
