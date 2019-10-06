@@ -6,20 +6,12 @@
 
 (ignore(function wrap-arithmetic-intrinsics (buf handler)
   (substitute (.. buf handler) (list
-    ([make-unary-intrinsic [rstrcpy (" getb) ..] ..]
-    [make-unary-intrinsic [rstrcpy (" get1b) ..] ..]
-    [make-unary-intrinsic [rstrcpy (" get2b) ..] ..]
-    [make-unary-intrinsic [rstrcpy (" get4b) ..] ..]
-    [make-unary-intrinsic [rstrcpy (" get8b) ..] ..]
-    [make-unary-intrinsic [rstrcpy (" get) ..] ..]
-    [make-binary-intrinsic [rstrcpy (" setb) ..] ..]
+    ([make-binary-intrinsic [rstrcpy (" setb) ..] ..]
     [make-binary-intrinsic [rstrcpy (" set1b) ..] ..]
     [make-binary-intrinsic [rstrcpy (" set2b) ..] ..]
     [make-binary-intrinsic [rstrcpy (" set4b) ..] ..]
     [make-binary-intrinsic [rstrcpy (" set8b) ..] ..]
     [make-binary-intrinsic [rstrcpy (" set) ..] ..]
-    [make-binary-intrinsic [rstrcpy (" +) ..] ..]
-    [make-binary-intrinsic [rstrcpy (" -) ..] ..]
     [make-binary-intrinsic [rstrcpy (" *) ..] ..]
     [make-binary-intrinsic [rstrcpy (" /) ..] ..]
     [make-binary-intrinsic [rstrcpy (" rem) ..] ..]
@@ -33,7 +25,15 @@
     [make-unary-intrinsic [rstrcpy (" lnot) ..] ..]) ..))))
 
 (function wrap-arithmetic-intrinsics (buf handler)
-  (substitute (.. buf handler) (list () ..)))
+  (substitute (.. buf handler) (list
+    ([make-unary-intrinsic [rstrcpy (" getb) ..] ..]
+    [make-unary-intrinsic [rstrcpy (" get1b) ..] ..]
+    [make-unary-intrinsic [rstrcpy (" get2b) ..] ..]
+    [make-unary-intrinsic [rstrcpy (" get4b) ..] ..]
+    [make-unary-intrinsic [rstrcpy (" get8b) ..] ..]
+    [make-unary-intrinsic [rstrcpy (" get) ..] ..]
+    [make-binary-intrinsic [rstrcpy (" +) ..] ..]
+    [make-binary-intrinsic [rstrcpy (" -) ..] ..]) ..)))
 
 (ignore
   The following function generates inline assembly for the following functions: getb,
@@ -51,42 +51,6 @@
       [= (@ expr-type n) (-invoke-)] [= (@ expr-type (@ expr-reference n)) (-symbol-)]
       [= (@ bndg-state (@ expr-symbol-binding-aug (@ expr-reference n))) (undefined-state)]
       (switch str= (@ bndg-name (@ expr-symbol-binding-aug (@ expr-reference n)))
-        ((" getb) (" get1b) (let
-            (arg1 [@car (@ expr-arguments n)]) (let
-            (arg1-val-bndg (@ expr-binding-aug arg1))
-            (expr-val-bndg (@ expr-binding-aug n)) (do
-          [generate-expression arg1 gens c relocs ..]
-          [prepend (make-instrN (x86-mov) ([make-reg-op (r10) ..] [bndg->op arg1-val-bndg relocs ..]) ..) c ..]
-          [prepend (make-instrN (x86-movzx) ([bndg->op expr-val-bndg relocs ..] [make-mem-op #1(r10)(none)#0 #0 #4 ..]) ..) c ..]
-          (true)))))
-        
-        ((" get2b) (let
-            (arg1 [@car (@ expr-arguments n)]) (let
-            (arg1-val-bndg (@ expr-binding-aug arg1))
-            (expr-val-bndg (@ expr-binding-aug n)) (do
-          [generate-expression arg1 gens c relocs ..]
-          [prepend (make-instrN (x86-mov) ([make-reg-op (r10) ..] [bndg->op arg1-val-bndg relocs ..]) ..) c ..]
-          [prepend (make-instrN (x86-movzx) ([bndg->op expr-val-bndg relocs ..] [make-mem-op #2(r10)(none)#0 #0 #4 ..]) ..) c ..]
-          (true)))))
-        
-        ((" get4b) (let
-            (arg1 [@car (@ expr-arguments n)]) (let
-            (arg1-val-bndg (@ expr-binding-aug arg1))
-            (expr-val-bndg (@ expr-binding-aug n)) (do
-          [generate-expression arg1 gens c relocs ..]
-          [prepend (make-instrN (x86-mov) ([make-reg-op (r10) ..] [bndg->op arg1-val-bndg relocs ..]) ..) c ..]
-          [prepend (make-instrN (x86-movzx) ([bndg->op expr-val-bndg relocs ..] [make-mem-op #4(r10)(none)#0 #0 #4 ..]) ..) c ..]
-          (true)))))
-        
-        ((" get8b) (" get) (let
-            (arg1 [@car (@ expr-arguments n)]) (let
-            (arg1-val-bndg (@ expr-binding-aug arg1))
-            (expr-val-bndg (@ expr-binding-aug n)) (do
-          [generate-expression arg1 gens c relocs ..]
-          [prepend (make-instrN (x86-mov) ([make-reg-op (r10) ..] [bndg->op arg1-val-bndg relocs ..]) ..) c ..]
-          [prepend (make-instrN (x86-movzx) ([bndg->op expr-val-bndg relocs ..] [make-mem-op #8(r10)(none)#0 #0 #4 ..]) ..) c ..]
-          (true)))))
-        
         ((" setb) (" set1b) (let
             (arg1 [@car (@ expr-arguments n)])
             (arg2 [@cadr (@ expr-arguments n)]) (let
@@ -133,30 +97,6 @@
           [prepend (make-instrN (x86-mov) ([make-reg-op (r10) ..] [bndg->op arg1-val-bndg relocs ..]) ..) c ..]
           [prepend (make-instrN (x86-mov)
             ([make-mem-op #8(r10)(none)#0 #0 #4 ..] [op-lower-64 [bndg->op arg2-val-bndg relocs ..] ..]) ..) c ..]
-          (true)))))
-        
-        ((" +) (let
-            (arg1 [@car (@ expr-arguments n)])
-            (arg2 [@cadr (@ expr-arguments n)]) (let
-            (arg1-val-bndg (@ expr-binding-aug arg1))
-            (arg2-val-bndg (@ expr-binding-aug arg2))
-            (expr-val-bndg (@ expr-binding-aug n)) (do
-          [generate-expression arg1 gens c relocs ..]
-          [generate-expression arg2 gens c relocs ..]
-          [prepend (make-instrN (x86-mov) ([bndg->op expr-val-bndg relocs ..] [bndg->op arg1-val-bndg relocs ..]) ..) c ..]
-          [prepend (make-instrN (x86-add) ([bndg->op expr-val-bndg relocs ..] [bndg->op arg2-val-bndg relocs ..]) ..) c ..]
-          (true)))))
-          
-        ((" -) (let
-            (arg1 [@car (@ expr-arguments n)])
-            (arg2 [@cadr (@ expr-arguments n)]) (let
-            (arg1-val-bndg (@ expr-binding-aug arg1))
-            (arg2-val-bndg (@ expr-binding-aug arg2))
-            (expr-val-bndg (@ expr-binding-aug n)) (do
-          [generate-expression arg1 gens c relocs ..]
-          [generate-expression arg2 gens c relocs ..]
-          [prepend (make-instrN (x86-mov) ([bndg->op expr-val-bndg relocs ..] [bndg->op arg1-val-bndg relocs ..]) ..) c ..]
-          [prepend (make-instrN (x86-sub) ([bndg->op expr-val-bndg relocs ..] [bndg->op arg2-val-bndg relocs ..]) ..) c ..]
           (true)))))
         
         ((" *) (let
@@ -305,6 +245,73 @@
     (and (and [= (@ expr-type n) (-invoke-)] [= (@ expr-type (@ expr-reference n)) (-symbol-)]
         [= (@ bndg-state (@ expr-symbol-binding-aug (@ expr-reference n))) (undefined-state)])
       (switch str= (@ bndg-name (@ expr-symbol-binding-aug (@ expr-reference n)))
+        ((" getb) (" get1b) (let
+            (arg1 [@car (@ expr-arguments n)]) (let
+            (arg1-val-bndg (@ expr-binding-aug arg1))
+            (expr-val-bndg (@ expr-binding-aug n)) (do
+          [generate-expression arg1 gens c relocs ..]
+          [prepend (make-instrN (x86-mov) ([make-reg-op (r10) ..] [bndg->op arg1-val-bndg relocs ..]) ..) c ..]
+          [prepend (make-instrN(x86-movzx)
+            ([bndg->op expr-val-bndg relocs ..][make-mem-op #1(r10)(none)#0 #0 #4 ..][make-reg-op(r11)..])..) c ..]
+          (true)))))
+        
+        ((" get2b) (let
+            (arg1 [@car (@ expr-arguments n)]) (let
+            (arg1-val-bndg (@ expr-binding-aug arg1))
+            (expr-val-bndg (@ expr-binding-aug n)) (do
+          [generate-expression arg1 gens c relocs ..]
+          [prepend (make-instrN (x86-mov) ([make-reg-op (r10) ..] [bndg->op arg1-val-bndg relocs ..]) ..) c ..]
+          [prepend (make-instrN (x86-movzx)
+            ([bndg->op expr-val-bndg relocs ..][make-mem-op #2(r10)(none)#0 #0 #4 ..][make-reg-op(r11)..])..) c ..]
+          (true)))))
+        
+        ((" get4b) (let
+            (arg1 [@car (@ expr-arguments n)]) (let
+            (arg1-val-bndg (@ expr-binding-aug arg1))
+            (expr-val-bndg (@ expr-binding-aug n)) (do
+          [generate-expression arg1 gens c relocs ..]
+          [prepend (make-instrN (x86-mov) ([make-reg-op (r10) ..] [bndg->op arg1-val-bndg relocs ..]) ..) c ..]
+          [prepend (make-instrN (x86-movzx)
+            ([bndg->op expr-val-bndg relocs ..][make-mem-op #4(r10)(none)#0 #0 #4 ..][make-reg-op(r11)..])..) c ..]
+          (true)))))
+        
+        ((" get8b) (" get) (let
+            (arg1 [@car (@ expr-arguments n)]) (let
+            (arg1-val-bndg (@ expr-binding-aug arg1))
+            (expr-val-bndg (@ expr-binding-aug n)) (do
+          [generate-expression arg1 gens c relocs ..]
+          [prepend (make-instrN (x86-mov) ([make-reg-op (r10) ..] [bndg->op arg1-val-bndg relocs ..]) ..) c ..]
+          [prepend (make-instrN (x86-mov)
+            ([bndg->op expr-val-bndg relocs ..][make-mem-op #8(r10)(none)#0 #0 #4 ..][make-reg-op(r11)..])..) c ..]
+          (true)))))
+          
+        ((" +) (let
+            (arg1 [@car (@ expr-arguments n)])
+            (arg2 [@cadr (@ expr-arguments n)]) (let
+            (arg1-val-bndg (@ expr-binding-aug arg1))
+            (arg2-val-bndg (@ expr-binding-aug arg2))
+            (expr-val-bndg (@ expr-binding-aug n)) (do
+          [generate-expression arg1 gens c relocs ..]
+          [generate-expression arg2 gens c relocs ..]
+          [prepend (make-instrN(x86-mov)
+            ([bndg->op expr-val-bndg relocs ..][bndg->op arg1-val-bndg relocs ..][make-reg-op (r10) ..]) ..) c ..]
+          [prepend (make-instrN (x86-add)
+            ([bndg->op expr-val-bndg relocs ..][bndg->op arg2-val-bndg relocs ..][make-reg-op (r10) ..]) ..) c ..]
+          (true)))))
+        
+        ((" -) (let
+            (arg1 [@car (@ expr-arguments n)])
+            (arg2 [@cadr (@ expr-arguments n)]) (let
+            (arg1-val-bndg (@ expr-binding-aug arg1))
+            (arg2-val-bndg (@ expr-binding-aug arg2))
+            (expr-val-bndg (@ expr-binding-aug n)) (do
+          [generate-expression arg1 gens c relocs ..]
+          [generate-expression arg2 gens c relocs ..]
+          [prepend (make-instrN(x86-mov)
+            ([bndg->op expr-val-bndg relocs ..][bndg->op arg1-val-bndg relocs ..][make-reg-op (r10)..])..) c ..]
+          [prepend (make-instrN (x86-sub)
+            ([bndg->op expr-val-bndg relocs ..][bndg->op arg2-val-bndg relocs ..][make-reg-op (r10)..])..) c ..]
+          (true)))))
           
         (false)))))
 
