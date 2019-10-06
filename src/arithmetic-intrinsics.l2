@@ -4,7 +4,7 @@
 
 (constrain wrap-arithmetic-intrinsics (\ r (with-vars (a) (`(function (buffer ,a) (list expr))r)r)))
 
-(function wrap-arithmetic-intrinsics (buf handler)
+(ignore(function wrap-arithmetic-intrinsics (buf handler)
   (substitute (.. buf handler) (list
     ([make-unary-intrinsic [rstrcpy (" getb) ..] ..]
     [make-unary-intrinsic [rstrcpy (" get1b) ..] ..]
@@ -30,7 +30,10 @@
     [make-binary-intrinsic [rstrcpy (" >>) ..] ..]
     [make-binary-intrinsic [rstrcpy (" lor) ..] ..]
     [make-binary-intrinsic [rstrcpy (" land) ..] ..]
-    [make-unary-intrinsic [rstrcpy (" lnot) ..] ..]) ..)))
+    [make-unary-intrinsic [rstrcpy (" lnot) ..] ..]) ..))))
+
+(function wrap-arithmetic-intrinsics (buf handler)
+  (substitute (.. buf handler) (list () ..)))
 
 (ignore
   The following function generates inline assembly for the following functions: getb,
@@ -40,9 +43,9 @@
   environment.)
 
 (constrain generate-arithmetic-intrinsics
-  (\ r (with-vars (a) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) (continuation (())) buffer ,a) ())r)r)))
+  (\ r (with-vars (a b) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
-(function generate-arithmetic-intrinsics (n gens c relocs success r handler)
+(ignore(function generate-arithmetic-intrinsics (n gens c relocs success r handler)
   (substitute (.. r handler)
     (if (and [= (@ expr-type n) (-invoke-)] [= (@ expr-type (@ expr-reference n)) (-symbol-)]
         [= (@ bndg-state (@ expr-symbol-binding-aug (@ expr-reference n))) (undefined-state)])
@@ -123,7 +126,7 @@
           [prepend (make-instrN (x86-mov)
             ([make-mem-op #8(r10)(none)#0 #0 #4 ..] [op-lower-64 [bndg->op arg2-val-bndg relocs ..] ..]) ..) c ..])))})
         
-        ((" +) {success (let
+        ((" +) (let
             (arg1 [@car (@ expr-arguments n)])
             (arg2 [@cadr (@ expr-arguments n)]) (let
             (arg1-val-bndg (@ expr-binding-aug arg1))
@@ -132,9 +135,10 @@
           [generate-expression arg1 gens c relocs ..]
           [generate-expression arg2 gens c relocs ..]
           [prepend (make-instrN (x86-mov) ([bndg->op expr-val-bndg relocs ..] [bndg->op arg1-val-bndg relocs ..]) ..) c ..]
-          [prepend (make-instrN (x86-add) ([bndg->op expr-val-bndg relocs ..] [bndg->op arg2-val-bndg relocs ..]) ..) c ..])))})
+          [prepend (make-instrN (x86-add) ([bndg->op expr-val-bndg relocs ..] [bndg->op arg2-val-bndg relocs ..]) ..) c ..]
+          (true)))))
           
-        ((" -) {success (let
+        ((" -) (let
             (arg1 [@car (@ expr-arguments n)])
             (arg2 [@cadr (@ expr-arguments n)]) (let
             (arg1-val-bndg (@ expr-binding-aug arg1))
@@ -143,7 +147,8 @@
           [generate-expression arg1 gens c relocs ..]
           [generate-expression arg2 gens c relocs ..]
           [prepend (make-instrN (x86-mov) ([bndg->op expr-val-bndg relocs ..] [bndg->op arg1-val-bndg relocs ..]) ..) c ..]
-          [prepend (make-instrN (x86-sub) ([bndg->op expr-val-bndg relocs ..] [bndg->op arg2-val-bndg relocs ..]) ..) c ..])))})
+          [prepend (make-instrN (x86-sub) ([bndg->op expr-val-bndg relocs ..] [bndg->op arg2-val-bndg relocs ..]) ..) c ..]
+          (true)))))
         
         ((" *) {success (let
             (arg1 [@car (@ expr-arguments n)])
@@ -274,5 +279,13 @@
           [prepend (make-instrN (x86-not) ([bndg->op expr-val-bndg relocs ..]) ..) c ..])))})
         
         (ignore))
-      (ignore))))
+      (ignore)))))
+
+(function generate-arithmetic-intrinsics (n gens c relocs r handler)
+  (substitute (.. r handler)
+    (and (and [= (@ expr-type n) (-invoke-)] [= (@ expr-type (@ expr-reference n)) (-symbol-)]
+        [= (@ bndg-state (@ expr-symbol-binding-aug (@ expr-reference n))) (undefined-state)])
+      (switch str= (@ bndg-name (@ expr-symbol-binding-aug (@ expr-reference n)))
+          
+        (false)))))
 

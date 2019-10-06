@@ -71,14 +71,14 @@
     (@ expr-binding-aug n))))
 
 (constrain generator->function
-  (\ r (with-vars (a) (`(function (generator)
-    (function (expr (list generator) (ref (list instr)) (ref (list reloc)) (continuation (())) buffer ,a) ()))r)r)))
+  (\ r (with-vars (a b) (`(function (generator)
+    (function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b))r)r)))
 
 (function generator->function (x) [cast x])
 
 (constrain function->generator
-  (\ r (with-vars (a) (`(function
-    ((function (expr (list generator) (ref (list instr)) (ref (list reloc)) (continuation (())) buffer ,a) ())) generator)r)r)))
+  (\ r (with-vars (a b) (`(function
+    ((function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)) generator)r)r)))
 
 (function function->generator (x) [cast x])
 
@@ -141,12 +141,12 @@
         (ignore))))))
 
 (constrain generate-if
-  (\ r (with-vars (a) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) (continuation (())) buffer ,a) ())r)r)))
+  (\ r (with-vars (a b) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
-(function generate-if (n gens c relocs success r handler)
+(function generate-if (n gens c relocs r handler)
   (substitute (.. r handler)
-    (if [= (@ expr-type n) (-if-)]
-      {success (let
+    (and [= (@ expr-type n) (-if-)]
+      (let
           (expr-val-bndg (@ expr-binding-aug n))
           (condition-val-bndg (@ expr-binding-aug (@ expr-condition n)))
           (consequent-val-bndg (@ expr-binding-aug (@ expr-consequent n)))
@@ -162,38 +162,41 @@
         [prepend [make-label alternate-instr-bndg ..] c ..]
         [generate-expression (@ expr-alternate n) gens c relocs ..]
         [prepend (make-instrN(x86-mov)([bndg->op expr-val-bndg relocs ..][bndg->op alternate-val-bndg relocs ..][make-reg-op(r10)..])..) c ..]
-        [prepend [make-label end-instr-binding ..] c ..]))}
-      (ignore))))
+        [prepend [make-label end-instr-binding ..] c ..]
+        (true))))))
 
 (constrain generate-storage
-  (\ r (with-vars (a) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) (continuation (())) buffer ,a) ())r)r)))
+  (\ r (with-vars (a b) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
-(function generate-storage (n gens c relocs success r handler)
+(function generate-storage (n gens c relocs r handler)
   (substitute (.. r handler)
-    (if [= (@ expr-type n) (-storage-)]
-      {success (let
+    (and [= (@ expr-type n) (-storage-)]
+      (let
           (expr-val-bndg (@ expr-binding-aug n))
           (storage-val-bndg (@ expr-symbol-binding-aug(@ expr-reference n))) (do
         (foreach (t (@ expr-arguments n)) [generate-expression t gens c relocs ..])
         
-        [prepend(make-instrN(x86-lea)([bndg->op expr-val-bndg relocs ..][bndg->op storage-val-bndg relocs ..][make-reg-op(r10) ..])..) c ..]))}
-      (ignore))))
+        [prepend(make-instrN(x86-lea)
+          ([bndg->op expr-val-bndg relocs ..][bndg->op storage-val-bndg relocs ..][make-reg-op(r10) ..])..) c ..]
+        (true))))))
 
 (constrain generate-symbol
-  (\ r (with-vars (a) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) (continuation (())) buffer ,a) ())r)r)))
+  (\ r (with-vars (a b) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
-(function generate-symbol (n gens c relocs success r handler)
+(function generate-symbol (n gens c relocs r handler)
   (substitute (.. r handler)
-    (if [= (@ expr-type n) (-symbol-)]
-      {success (let
+    (and [= (@ expr-type n) (-symbol-)]
+      (let
           (expr-val-bndg (@ expr-binding-aug n))
           (symbol-val-bndg (@ expr-symbol-binding-aug n))
-          (target-expr (@ bndg-expression(@ expr-symbol-binding-aug n)))
+          (target-expr (@ bndg-expression(@ expr-symbol-binding-aug n))) (do
         (if (and (or [= (@ expr-type target-expr) (-function-)] [= (@ expr-type target-expr) (-continuation-)])
             (not [nil? (find (x (@ expr-parameters target-expr)) [= x (@ bndg-symbol (@ expr-symbol-binding-aug n))])]))
-          [prepend (make-instrN(x86-mov)([bndg->op expr-val-bndg relocs ..][bndg->op symbol-val-bndg relocs ..][make-reg-op(r10) ..]) ..) c ..]
-          [prepend (make-instrN(x86-lea)([bndg->op expr-val-bndg relocs ..][bndg->op symbol-val-bndg relocs ..][make-reg-op(r10) ..])..) c ..]))}
-      (ignore))))
+          [prepend (make-instrN(x86-mov)
+            ([bndg->op expr-val-bndg relocs ..][bndg->op symbol-val-bndg relocs ..][make-reg-op(r10)..]) ..) c ..]
+          [prepend (make-instrN(x86-lea)
+            ([bndg->op expr-val-bndg relocs ..][bndg->op symbol-val-bndg relocs ..][make-reg-op(r10)..])..) c ..])
+        (true))))))
 
 (constrain generate-store-continuation (\ r (with-vars (a) (`(function (expr (ref (list instr)) (ref (list reloc)) buffer ,a) ())r)r)))
 
@@ -223,11 +226,11 @@
         [set+ dest-offset (word-size)]))))))
 
 (constrain generate-continuation
-  (\ r (with-vars (a) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) (continuation (())) buffer ,a) ())r)r)))
+  (\ r (with-vars (a b) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
-(function generate-continuation (n gens c relocs success r handler)
+(function generate-continuation (n gens c relocs r handler)
   (substitute (.. r handler)
-    (if [= (@ expr-type n) (-continuation-)] {success
+    (and [= (@ expr-type n) (-continuation-)]
       (let
           (cont-val-bndg (@ expr-symbol-binding-aug (@ expr-reference n)))
           (expr-val-bndg (@ expr-binding-aug n))
@@ -240,16 +243,16 @@
         [prepend (make-instrN (x86-jmp) ([make-relative-relocation-immediate #4 after-binding relocs ..]) ..) c ..]
         [prepend [make-label (@ expr-cont-instr-bndg n) ..] c ..]
         [generate-expression (@ expr-expression n) gens c relocs ..]
-        [prepend [make-label after-binding ..] c ..]))}
-      (ignore))))
+        [prepend [make-label after-binding ..] c ..]
+        (true))))))
 
 (constrain generate-with
-  (\ r (with-vars (a) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) (continuation (())) buffer ,a) ())r)r)))
+  (\ r (with-vars (a b) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
-(function generate-with (n gens c relocs success r handler)
+(function generate-with (n gens c relocs r handler)
   (substitute (.. r handler)
-    (if [= (@ expr-type n) (-with-)]
-      {success (let
+    (and [= (@ expr-type n) (-with-)]
+      (let
           (expr-val-bndg (@ expr-binding-aug n))
           (body-val-bndg (@ expr-binding-aug (@ expr-expression n)))
           (param-val-bndg (@ expr-symbol-binding-aug[@car(@ expr-parameters n)]))
@@ -260,8 +263,8 @@
         [prepend (make-instrN (x86-jmp) ([make-relative-relocation-immediate #4 end-instr-binding relocs ..]) ..) c ..]
         [prepend [make-label (@ expr-cont-instr-bndg n) ..] c ..]
         [prepend (make-instrN(x86-mov)([bndg->op expr-val-bndg relocs ..][bndg->op param-val-bndg relocs ..][make-reg-op(r10)..])..) c ..]
-        [prepend [make-label end-instr-binding ..] c ..]))}
-      (ignore))))
+        [prepend [make-label end-instr-binding ..] c ..]
+        (true))))))
 
 (constrain generate-load-continuation
   (\ r (with-vars (a) (`(function (register (ref (list instr)) (ref (list reloc)) buffer ,a) ())r)r)))
@@ -278,12 +281,12 @@
     [prepend (make-instrN(x86-jmp)([make-reg-op (r10) ..])..) c ..])))
 
 (constrain generate-jump
-  (\ r (with-vars (a) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) (continuation (())) buffer ,a) ())r)r)))
+  (\ r (with-vars (a b) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
-(function generate-jump (n gens c relocs success r handler)
+(function generate-jump (n gens c relocs r handler)
   (substitute (.. r handler)
-    (if [= (@ expr-type n) (-jump-)] {success
-      (if [not= (@ expr-short-circuit n) null-expr]
+    (and [= (@ expr-type n) (-jump-)]
+      (do (if [not= (@ expr-short-circuit n) null-expr]
         (let (cont-instr-bndg (@ expr-cont-instr-bndg(@ expr-short-circuit n))) (do
           (if [= (@ expr-type(@ expr-reference n)) (-continuation-)]
             [generate-expression (@ expr-reference n) gens c relocs ..]
@@ -299,17 +302,18 @@
           [generate-expression (@ expr-reference n) gens c relocs ..]
           [prepend (make-instrN (x86-mov) ([make-reg-op (r11) ..] [bndg->op ref-val-bndg relocs ..]) ..) c ..]
           [generate-buffer-to-dest n (r11) (cont-size) c relocs ..]
-          [generate-load-continuation (r11) c relocs ..])))}
-      (ignore))))
+          [generate-load-continuation (r11) c relocs ..])))
+          
+        (true)))))
 
 (constrain generate-literal
-  (\ r (with-vars (a) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) (continuation (())) buffer ,a) ())r)r)))
+  (\ r (with-vars (a b) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
-(function generate-literal (n gens c relocs success r handler) (substitute (.. r handler)
-  (if [= (@ expr-type n) (-literal-)]
-    {success (let (expr-val-bndg (@ expr-binding-aug n))
-      [prepend(make-instrN(x86-mov)([bndg->op expr-val-bndg relocs ..][make-imm-op #8 (@ expr-value n)..][make-reg-op (r11)..])..) c ..])}
-    (ignore))))
+(function generate-literal (n gens c relocs r handler) (substitute (.. r handler)
+  (and [= (@ expr-type n) (-literal-)]
+    (let (expr-val-bndg (@ expr-binding-aug n)) (do
+      [prepend(make-instrN(x86-mov)([bndg->op expr-val-bndg relocs ..][make-imm-op #8 (@ expr-value n)..][make-reg-op (r11)..])..) c ..]
+      (true))))))
 
 (function get-current-offset (func)
   (if [> [length (@ expr-binding-augs func)] #0]
@@ -317,11 +321,11 @@
     #0))
 
 (constrain generate-function
-  (\ r (with-vars (a) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) (continuation (())) buffer ,a) ())r)r)))
+  (\ r (with-vars (a b) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
-(function generate-function (n gens c relocs success r handler)
+(function generate-function (n gens c relocs r handler)
   (substitute (.. r handler)
-    (if [= (@ expr-type n) (-function-)] {success (let
+    (and [= (@ expr-type n) (-function-)] (let
         (ref-val-bndg (@ expr-symbol-binding-aug(@ expr-reference n)))
         (expr-val-bndg (@ expr-binding-aug n))
         (body-val-bndg (@ expr-binding-aug (@ expr-expression n)))
@@ -357,15 +361,15 @@
       [prepend (make-instrN(x86-add)([make-reg-op (rsp) ..] [make-imm-op #4 [* #6(word-size)] ..])..) c ..]
       [prepend (make-instrN(x86-push)([make-reg-op (r11) ..])..) c ..]
       [prepend (make-instrN(x86-ret)()..) c ..]
-      [prepend [make-label after-binding ..] c ..]))}
-      (ignore))))
+      [prepend [make-label after-binding ..] c ..]
+      (true))))))
 
 (constrain generate-invoke
-  (\ r (with-vars (a) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) (continuation (())) buffer ,a) ())r)r)))
+  (\ r (with-vars (a b) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
-(function generate-invoke (n gens c relocs success r handler)
+(function generate-invoke (n gens c relocs r handler)
   (substitute (.. r handler)
-    (if [= (@ expr-type n) (-invoke-)] {success (let
+    (and [= (@ expr-type n) (-invoke-)] (let
         (expr-val-bndg (@ expr-binding-aug n))
         (ref-val-bndg (@ expr-binding-aug (@ expr-reference n))) (do
       (foreach (t (@ expr-arguments n)) [generate-expression t gens c relocs ..])
@@ -397,38 +401,38 @@
       (if [> [length (@ expr-arguments n)] #6]
         (let (drop [*(word-size)[-[length(@ expr-arguments n)]#6]])
           [prepend (make-instrN(x86-add)([make-reg-op (rsp) ..] [make-imm-op #4 drop ..])..) c ..])
-        (ignore))))}
-      (ignore))))
+        (ignore))
+      (true))))))
 
 (constrain generate-constrain
-  (\ r (with-vars (a) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) (continuation (())) buffer ,a) ())r)r)))
+  (\ r (with-vars (a b) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
-(function generate-constrain (n gens c relocs success r handler)
+(function generate-constrain (n gens c relocs r handler)
   (substitute (.. r handler)
-    (if [= (@ expr-type n) (-constrain-)]
-      {success (let
+    (and [= (@ expr-type n) (-constrain-)]
+      (let
           (expr-val-bndg (@ expr-binding-aug n))
           (body-val-bndg (@ expr-binding-aug (@ expr-expression n))) (do
         [generate-expression (@ expr-expression n) gens c relocs ..]
-        [prepend (make-instrN(x86-mov)([bndg->op expr-val-bndg relocs ..][bndg->op body-val-bndg relocs ..][make-reg-op(r10)..])..) c ..]))}
-    (ignore))))
+        [prepend (make-instrN(x86-mov)([bndg->op expr-val-bndg relocs ..][bndg->op body-val-bndg relocs ..][make-reg-op(r10)..])..) c ..]
+        (true))))))
 
 (constrain generate-expression
-  (\ r (with-vars (a) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ())r)r)))
+  (\ r (with-vars (a b) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
 (function generate-expression (n gens c relocs r handler)
-  (substitute (.. r handler) (with success (do
-    (foreach (gen gens) [[generator->function gen] n gens c relocs success ..])
-    [generate-continuation n gens c relocs success ..]
-    [generate-with n gens c relocs success ..]
-    [generate-jump n gens c relocs success ..]
-    [generate-symbol n gens c relocs success ..]
-    [generate-storage n gens c relocs success ..]
-    [generate-if n gens c relocs success ..]
-    [generate-literal n gens c relocs success ..]
-    [generate-function n gens c relocs success ..]
-    [generate-invoke n gens c relocs success ..]
-    [generate-constrain n gens c relocs success ..]))))
+  (substitute (.. r handler) (or
+    (fold (found? (false)) (gen gens) (or found? [[generator->function gen] n gens c relocs ..]))
+    [generate-continuation n gens c relocs ..]
+    [generate-with n gens c relocs ..]
+    [generate-jump n gens c relocs ..]
+    [generate-symbol n gens c relocs ..]
+    [generate-storage n gens c relocs ..]
+    [generate-if n gens c relocs ..]
+    [generate-literal n gens c relocs ..]
+    [generate-function n gens c relocs ..]
+    [generate-invoke n gens c relocs ..]
+    [generate-constrain n gens c relocs ..])))
 
 (constrain generate-program
   (\ r (with-vars (a b) (`(function ((list expr) (list generator) ,b buffer ,a) (values (list instr) (list reloc)))r)r)))
