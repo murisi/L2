@@ -194,7 +194,7 @@
 (constrain create (\ r (with-vars (b) (`(function (string ,b) fd)r)r)))
 
 (function create (path handler)
-  (let (ret [syscall (sys-open) path [lor (o-wronly) (o-creat)] [lor (s-irwxu) [lor (s-irwxg) (s-irwxo)]]  (ignore) (ignore) (ignore)])
+  (let (ret [syscall (sys-open) path [bor (o-wronly) (o-creat)] [bor (s-irwxu) [bor (s-irwxg) (s-irwxo)]]  (ignore) (ignore) (ignore)])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
       {handler (storage _ file-access-error path)}
       ret)))
@@ -276,7 +276,7 @@
 (function print-bytes (fd bs sz handler)
   (until (i #0) [= i sz] [+ i #1] (do
     [print-char fd [hex->char [>> [getb[+ bs i]] #4]] handler]
-    [print-char fd [hex->char [land [getb[+ bs i]] (hex 0F)]] handler])))
+    [print-char fd [hex->char [band [getb[+ bs i]] (hex 0F)]] handler])))
 
 (constrain read (\ r (with-vars (a b c e) (`(function (fd ,a ,b ,c) ,e)r)r)))
 
@@ -309,7 +309,7 @@
 (ignore Creates a new virtual address mapping of the size in bytes given at len.)
 
 (function mmap (len handler)
-  (let (ret [syscall (sys-mmap) #0 len [lor (prot-read) (prot-write)] [lor (map-private) [lor (map-anonymous) (map-32bit)]] [lnot #0] #0])
+  (let (ret [syscall (sys-mmap) #0 len [bor (prot-read) (prot-write)] [bor (map-private) [bor (map-anonymous) (map-32bit)]] [bnot #0] #0])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
       {handler (storage _ memory-access-error)}
       ret)))

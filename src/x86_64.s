@@ -20,9 +20,9 @@
 .global lesserthan
 .global leftshift
 .global rightshift
-.global land
-.global lor
-.global lnot
+.global band
+.global bor
+.global bnot
 .global syscall
 .global cast
 
@@ -129,17 +129,17 @@ movq %rsi, %rcx
 shr %cl, %rax
 ret
 
-land:
+band:
 movq %rdi, %rax
 andq %rsi, %rax
 ret
 
-lor:
+bor:
 movq %rdi, %rax
 orq %rsi, %rax
 ret
 
-lnot:
+bnot:
 movq %rdi, %rax
 notq %rax
 ret
