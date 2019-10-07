@@ -123,22 +123,26 @@
       (setf instr-binding lbl bndg)
       lbl))))
 
+(constrain bndg->partial-op (\ r (with-vars (a b) (`(function (,b bndg-aug (ref (list reloc)) buffer ,a) operand)r)r)))
+
+(function bndg->partial-op (op-size bndg relocs buf handler)
+  (substitute (.. buf handler)
+    (if (and (or [= (@ bndg-storage bndg) (absolute-storage)] [= (@ bndg-storage bndg) (instruction-storage)]))
+      (let (op [make-mem-op op-size (rip) (none) #0 #0 #4 ..]) (do
+        [prepend [make-relocation (r-x86-64-pc32) op bndg (ignore)
+          (function _(ctx ofst size instr-pos instr-size)
+            [- ofst [+ instr-pos instr-size]]) ..] relocs ..]
+        op))
+        
+    (if (and [= (@ bndg-storage bndg) (frame-relative-storage)] [= (@ bndg-state bndg) (defined-state)])
+      [make-mem-op op-size (rbp) (none) #0 (@ bndg-offset bndg) #4 ..]
+      
+      (ignore)))))
+
 (constrain bndg->op (\ r (with-vars (a) (`(function (bndg-aug (ref (list reloc)) buffer ,a) operand)r)r)))
 
 (function bndg->op (bndg relocs buf handler)
-  (substitute (.. buf handler)
-    (let (op-size (@ bndg-size bndg))
-      (if (and (or [= (@ bndg-storage bndg) (absolute-storage)] [= (@ bndg-storage bndg) (instruction-storage)]))
-        (let (op [make-mem-op op-size (rip) (none) #0 #0 #4 ..]) (do
-          [prepend [make-relocation (r-x86-64-pc32) op bndg (ignore)
-            (function _(ctx ofst size instr-pos instr-size)
-              [- ofst [+ instr-pos instr-size]]) ..] relocs ..]
-          op))
-          
-      (if (and [= (@ bndg-storage bndg) (frame-relative-storage)] [= (@ bndg-state bndg) (defined-state)])
-        [make-mem-op op-size (rbp) (none) #0 (@ bndg-offset bndg) #4 ..]
-        
-        (ignore))))))
+  [bndg->partial-op (@ bndg-size bndg) bndg relocs buf handler])
 
 (constrain generate-if
   (\ r (with-vars (a b) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
