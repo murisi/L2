@@ -826,7 +826,7 @@
     (foreach (n instrs) (do
       (let (instr-bndg (@ instr-binding n))
         (if [not= instr-bndg null-binding] (do
-          (setf bndg-storage instr-bndg (instruction-storage))
+          (setf bndg-storage instr-bndg (absolute-storage))
           (setf bndg-offset instr-bndg $pos)
           (setf st-value (@ bndg-context instr-bndg) $pos))
           (ignore)))
@@ -1094,10 +1094,12 @@
         (let (strtabptr (storage _ strtab)) (do
         [setb $strtabptr #0]
         [set+ strtabptr #1]
+        
+        (let (bss-extent
+          (fold (bss-extent [- #0 (word-size)]) (bndg static-bindings)
+            [min bss-extent (@ bndg-offset bndg)])) (do
     
-        (let (bss-ptr (storage _ #0)) (do
-    
-        (foreach (sym static-bindings) (do
+        (foreach (sym static-bindings)
           (if [= (@ bndg-scope sym) (local-scope)] (do
             (if [not= (@ bndg-name sym) null-string]
               (do
@@ -1105,17 +1107,16 @@
                 (setf st-name $sym-ptr [- $strtabptr strtab])
                 [set+ strtabptr [+[strlen(@ bndg-name sym)]#1]])
               (setf st-name $sym-ptr #0))
-        
-            (setf st-value $sym-ptr $bss-ptr)
-            (setf bndg-offset sym $bss-ptr)
+            
+            [set- (& bndg-offset sym) bss-extent]
+            (setf st-value $sym-ptr (@ bndg-offset sym))
             (setf st-size $sym-ptr (@ bndg-size sym))
             (setf st-info $sym-ptr (elf64-st-info (stb-local) (stt-notype)))
             (setf st-other $sym-ptr #0)
             (setf st-shndx $sym-ptr #5)
             (setf bndg-context sym $sym-ptr)
             [set+ sym-ptr (elf64-sym)])
-            (ignore))
-          [set+ bss-ptr [pad-size (@ bndg-size sym) (word-size)]]))
+            (ignore)))
     
         (foreach (e generated-expressions)
           (let (instr-bndg (@ instr-binding e))
@@ -1138,10 +1139,7 @@
     
         (let (local-symbol-count [/[- $sym-ptr syms](elf64-sym)]) (do
         
-        (ignore Reset bss-ptr to #0 and fill in the gaps between the local symbols.)
-        [set bss-ptr #0]
-        
-        (foreach (sym static-bindings) (do
+        (foreach (sym static-bindings)
           (if (and [= (@ bndg-scope sym) (global-scope)] [= (@ bndg-state sym) (defined-state)]) (do
             (if [not= (@ bndg-name sym) null-string]
               (do
@@ -1149,17 +1147,16 @@
                 (setf st-name $sym-ptr [- $strtabptr strtab])
                 [set+ strtabptr [+[strlen(@ bndg-name sym)]#1]])
               (setf st-name $sym-ptr #0))
-        
-            (setf st-value $sym-ptr $bss-ptr)
-            (setf bndg-offset sym $bss-ptr)
+            
+            [set- (& bndg-offset sym) bss-extent]
+            (setf st-value $sym-ptr (@ bndg-offset sym))
             (setf st-size $sym-ptr (@ bndg-size sym))
             (setf st-info $sym-ptr (elf64-st-info (stb-global) (stt-notype)))
             (setf st-other $sym-ptr #0)
             (setf st-shndx $sym-ptr #5)
             (setf bndg-context sym $sym-ptr)
             [set+ sym-ptr (elf64-sym)])
-            (ignore))
-          [set+ bss-ptr [pad-size (@ bndg-size sym) (word-size)]]))
+            (ignore)))
     
         (foreach (sym undefined-bindings)
           (if (and [= (@ bndg-scope sym) (global-scope)] [= (@ bndg-state sym) (undefined-state)]) (do
@@ -1293,7 +1290,7 @@
         (setf sh-flags bss-shdr [bor (shf-write) (shf-alloc)])
         (setf sh-addr bss-shdr #0)
         (setf sh-offset bss-shdr [+ (@ sh-offset symtab-shdr) (@ sh-size symtab-shdr)])
-        (setf sh-size bss-shdr $bss-ptr)
+        (setf sh-size bss-shdr bss-extent)
         (setf sh-link bss-shdr (shn-undef))
         (setf sh-info bss-shdr #0)
         (setf sh-addralign bss-shdr (word-size))

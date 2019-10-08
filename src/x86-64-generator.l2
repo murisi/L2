@@ -18,56 +18,129 @@
 
   (function cont-rbp (l r) [=# [* #0 (word-size)] r])
 
-(constrain layout-frames (\ r (with-vars (a) (`(function (expr (ref (list bndg-aug)) buffer ,a) bndg-aug)r)r)))
+(constrain layout-frame-storages (\ r (with-vars (a) (`(function (expr ,a) ,a)r)r)))
 
-(function layout-frames (n binding-augs r handler)
+(function layout-frame-storages (n offset)
+  (switch = (@ expr-type n)
+    ((-function-) (do
+      (setf expr-frame-size n [layout-frame-storages (@ expr-expression n) [- #0 (word-size)]])
+      offset))
+    
+    ((-continuation-) (-with-) (-constrain-)
+      [layout-frame-storages (@ expr-expression n) offset])
+    
+    ((-invoke-) (-jump-)
+      (let (offset [layout-frame-storages (@ expr-reference n) offset])
+      (fold (offset offset) (u (@ expr-arguments n)) [layout-frame-storages u offset])))
+    
+    ((-if-)
+      (let (offset [layout-frame-storages (@ expr-condition n) offset])
+      (let (offset [layout-frame-storages (@ expr-consequent n) offset])
+      (let (offset [layout-frame-storages (@ expr-alternate n) offset])
+        offset))))
+    
+    ((-storage-)
+      (let (storage-size [* [length (@ expr-arguments n)] (word-size)])
+      (let (offset [- offset storage-size]) (do
+      (setf bndg-size (@ expr-symbol-binding-aug(@ expr-reference n)) storage-size)
+      (setf bndg-offset (@ expr-symbol-binding-aug(@ expr-reference n)) offset)
+      (let (offset-ref (storage _ offset))
+      (foreach (u (@ expr-arguments n)) (do
+        (setf bndg-offset (@ expr-binding-aug u) $offset-ref)
+        [set+ offset-ref (word-size)])))
+      (fold (offset offset) (u (@ expr-arguments n)) [layout-frame-storages u offset])))))
+    
+    offset))
+
+(constrain layout-frames (\ r (with-vars (b) (`(function (expr ,b) ,b)r)r)))
+
+(function layout-frames (n offset) (do
+  (setf bndg-size (@ expr-binding-aug n) (word-size))
+  (switch = (@ expr-type n)
+    ((-function-) (do
+      (setf expr-frame-size n [layout-frames (@ expr-expression n) (@ expr-frame-size n)])
+      (let (parameter-offset-ref (storage _ [* #2 (word-size)]))
+      (foreach (t (@ expr-parameters n)) (do
+        (setf bndg-size (@ expr-symbol-binding-aug t) (word-size))
+        (setf bndg-offset (@ expr-symbol-binding-aug t) $parameter-offset-ref)
+        [set+ parameter-offset-ref (word-size)])))))
+    
+    ((-continuation-) (-with-)
+      (let (cont-bndg (@ expr-symbol-binding-aug(@ expr-reference n))) (do
+      (let (offset [- offset [* [length (@ expr-parameters n)] (word-size)]]) (do
+      (let (offset-ref (storage _ offset))
+      (foreach (t (@ expr-parameters n)) (do
+        (setf bndg-offset (@ expr-binding-aug t) $offset-ref)
+        (setf bndg-size (@ expr-symbol-binding-aug t) (word-size))
+        [set+ offset-ref (word-size)])))
+      (let (offset (if (@ expr-escapes n) (do
+        (setf bndg-size cont-bndg (cont-size))
+        (setf bndg-offset cont-bndg [- offset (cont-size)])
+        (@ bndg-offset cont-bndg))
+        offset))
+      (setf bndg-offset (@ expr-binding-aug (@ expr-expression n)) [- offset (word-size)])
+      [layout-frames (@ expr-expression n) [- offset (word-size)]]))))))
+    
+    ((-storage-)
+      (fold (bottom-offset offset) (u (@ expr-arguments n))
+        [min bottom-offset [layout-frames u offset]]))
+    
+    ((-jump-) (-invoke-)
+      (let (offset [- offset (word-size)]) (do
+      (setf bndg-offset (@ expr-binding-aug(@ expr-reference n)) offset)
+      (let (offset-ref (storage _ offset))
+      (foreach (u (@ expr-arguments n)) (do
+        [set- offset-ref (word-size)]
+        (setf bndg-offset (@ expr-binding-aug u) $offset-ref))))
+      (fold (bottom-offset $offset-ref) (u (@ expr-arguments n))
+        [min bottom-offset [layout-frames u $offset-ref]]))))
+    
+    ((-if-)
+      (let (offset [- offset (word-size)]) (do
+      (setf bndg-offset (@ expr-binding-aug (@ expr-condition n)) offset)
+      (setf bndg-offset (@ expr-binding-aug (@ expr-consequent n)) offset)
+      (setf bndg-offset (@ expr-binding-aug (@ expr-alternate n)) offset)
+      [min [layout-frames (@ expr-condition n) offset]
+      [min [layout-frames (@ expr-consequent n) offset]
+        [layout-frames (@ expr-alternate n) offset]]])))
+    
+    ((-constrain-)
+      (let (offset [- offset (word-size)]) (do
+      (setf bndg-offset (@ expr-binding-aug (@ expr-expression n)) offset)
+      [layout-frames (@ expr-expression n) offset])))
+    
+    offset)))
+
+(constrain collect-static-bindings (\ r (with-vars (a) (`(function (expr (ref (list bndg-aug)) buffer ,a) bndg-aug)r)r)))
+
+(function collect-static-bindings (n binding-augs r handler)
   (substitute (.. r handler) (do
     (switch = (@ expr-type n)
-      ((-function-) (do
-        [append [layout-frames (@ expr-expression n) (& expr-binding-augs n) ..] (& expr-binding-augs n) ..]
-        (let (parameter-offset-ref (storage _ [* #2 (word-size)])) (do
-        (foreach (t (@ expr-parameters n)) (do
-          (setf bndg-size (@ expr-symbol-binding-aug t) (word-size))
-          (setf bndg-offset (@ expr-symbol-binding-aug t) $parameter-offset-ref)
-          [set+ parameter-offset-ref (word-size)]))))
-        (let (binding-offset-ref (storage _ #0)) (do
-        (foreach (u [reverse (@ expr-binding-augs n) ..]) (do
-          [set- binding-offset-ref [pad-size (@ bndg-size u) (word-size)]]
-          (setf bndg-offset u $binding-offset-ref)))))))
-      
       ((-continuation-) (-with-) (do
-        [append [layout-frames (@ expr-expression n) binding-augs ..] binding-augs ..]
-        (if (@ expr-escapes n) (do
-          (setf bndg-size (@ expr-symbol-binding-aug(@ expr-reference n)) (cont-size))
-          [append (@ expr-symbol-binding-aug(@ expr-reference n)) binding-augs ..])
-          (ignore))
-        (foreach (t (@ expr-parameters n)) (do
-          (setf bndg-size (@ expr-symbol-binding-aug t) (word-size))
-          [append (@ expr-symbol-binding-aug t) binding-augs ..]))))
+        [append [collect-static-bindings (@ expr-expression n) binding-augs ..] binding-augs ..]
+        (if (@ expr-escapes n)
+          [append (@ expr-symbol-binding-aug(@ expr-reference n)) binding-augs ..] (ignore))
+        (foreach (t (@ expr-parameters n))
+          [append (@ expr-symbol-binding-aug t) binding-augs ..])))
       
       ((-storage-) (do
-        (foreach (u (@ expr-arguments n)) [layout-frames u binding-augs ..])
-        (setf bndg-size (@ expr-symbol-binding-aug(@ expr-reference n)) #0)
         [append (@ expr-symbol-binding-aug(@ expr-reference n)) binding-augs ..]
-        (foreach (u (@ expr-arguments n)) [append (@ expr-binding-aug u) binding-augs ..])))
+        (foreach (u (@ expr-arguments n)) [append [collect-static-bindings u binding-augs ..] binding-augs ..])))
       
       ((-jump-) (-invoke-) (do
-        [append [layout-frames (@ expr-reference n) binding-augs ..] binding-augs ..]
-        (foreach (u (@ expr-arguments n)) [layout-frames u binding-augs ..])
-        [append (@ expr-binding-aug (@ expr-reference n)) binding-augs ..]
-        (foreach (u (@ expr-arguments n)) [append (@ expr-binding-aug u) binding-augs ..])))
+        [append [collect-static-bindings (@ expr-reference n) binding-augs ..] binding-augs ..]
+        (foreach (u (@ expr-arguments n)) [append [collect-static-bindings u binding-augs ..] bindings-augs ..])))
       
       ((-if-) (do
-        [append [layout-frames (@ expr-condition n) binding-augs ..] binding-augs ..]
-        [append [layout-frames (@ expr-consequent n) binding-augs ..] binding-augs ..]
-        [append [layout-frames (@ expr-alternate n) binding-augs ..] binding-augs ..]))
+        [append [collect-static-bindings (@ expr-condition n) binding-augs ..] binding-augs ..]
+        [append [collect-static-bindings (@ expr-consequent n) binding-augs ..] binding-augs ..]
+        [append [collect-static-bindings (@ expr-alternate n) binding-augs ..] binding-augs ..]))
       
       ((-constrain-)
-        [append [layout-frames (@ expr-expression n) binding-augs ..] binding-augs ..])
+        [append [collect-static-bindings (@ expr-expression n) binding-augs ..] binding-augs ..])
       
       (ignore))
       
-    (setf bndg-size (@ expr-binding-aug n) (word-size))
     (@ expr-binding-aug n))))
 
 (constrain generator->function
@@ -127,7 +200,7 @@
 
 (function bndg->partial-op (op-size bndg relocs buf handler)
   (substitute (.. buf handler)
-    (if (and (or [= (@ bndg-storage bndg) (absolute-storage)] [= (@ bndg-storage bndg) (instruction-storage)]))
+    (if [= (@ bndg-storage bndg) (absolute-storage)]
       (let (op [make-mem-op op-size (rip) (none) #0 #0 #4 ..]) (do
         [prepend [make-relocation (r-x86-64-pc32) op bndg (ignore)
           (function _(ctx ofst size instr-pos instr-size)
