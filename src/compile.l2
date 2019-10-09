@@ -10,17 +10,20 @@
   (substitute (.. buf handler)
     (let (static-bindings (storage _ nil)) (undefined-bindings (storage _ nil))
         (global-bindings [global-binding-augs-of exprs ..]) (do
-      (foreach (expr exprs) (do
-        [visit-expressions vfind-multiple-definitions (storage _ expr) (values storage handler)]
-        [containment-analysis expr]
-        [classify-program-bindings expr]
-        [link-symbols expr (true) undefined-bindings global-bindings nil ..]
-        (ignore[infer-types expr ..])
-        [escape-analysis expr (true)]
-        [layout-frames expr [layout-frame-storages expr [- #0 (word-size)]]]
-        (setf bndg-offset (@ expr-binding-aug expr) [- #0 (word-size)])
-        (setf bndg-size (@ expr-binding-aug expr) (word-size))
-        [append [collect-static-bindings expr static-bindings ..] static-bindings ..]))
+      (let (storage-offset
+          (fold (storage-offset [- #0 (word-size)]) (expr exprs) (do
+            [visit-expressions vfind-multiple-definitions (storage _ expr) (values storage handler)]
+            [containment-analysis expr]
+            [classify-program-bindings expr]
+            [link-symbols expr (true) undefined-bindings global-bindings nil ..]
+            (ignore[infer-types expr ..])
+            [escape-analysis expr (true)]
+            [layout-frame-storages expr storage-offset])))
+        (foreach (expr exprs) (do
+          (setf bndg-offset (@ expr-binding-aug expr) [- storage-offset (word-size)])
+          (setf bndg-size (@ expr-binding-aug expr) (word-size))
+          [layout-frames expr [- storage-offset (word-size)]]
+          [append [collect-static-bindings expr static-bindings ..] static-bindings ..])))
       (bind (instrs relocs) [generate-program exprs gens bind ..]
         (values (use-storage outs) instrs relocs $undefined-bindings $static-bindings))))))
 
