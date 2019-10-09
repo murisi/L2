@@ -304,18 +304,19 @@
   (let (bind-storage [llst (` storage r) (` bind r) [meta:map2 identifiers r (\ l r (`(ignore)r)) r] r])
   (let (vars [meta:label identifiers (` values:var r) r])
   (let (unquoted-vars [meta:map2 vars r (\ l r [llst [lst -,- emt r] l emt r]) r])
+  (let (param-parts (loop make-set (identifiers identifiers) (offset #0) (params emt)
+      (if [emt? identifiers]
+        [meta:reverse params r]
+        {make-set [@rst identifiers] [+ offset (unit)]
+          [lst (`[get [+ bind:param (,[=# offset r])]]r) params r]})))
     (`(with bind:return
-        {(constrain (continuation bind:func (bind:cont bind:param)
-              (,[llst (` jump r) (` bind:cont r)
-                (loop make-set (identifiers identifiers) (offset #0) (params emt)
-                  (if [emt? identifiers]
-                    [meta:reverse params r]
-                    {make-set [@rst identifiers] [+ offset (unit)]
-                      [lst (`[get [+ bind:param (,[=# offset r])]]r) params r]})) r]))
-            (\ bind:r (with-vars ,vars
-              (`(continuation ((continuation (,(,[`[llst unquoted-vars (` bind:r r) emt r]r])))
-                  (,[lst (` values bind:r) (,[`[llst unquoted-vars (` bind:r r) emt r]r]) bind:r]))) bind:r) bind:r)))
-          (continuation bind:cont ,identifiers {bind:return ,body}) (let (bind ,bind-storage) ,param)})r))))))
+        (let (bind:param (let (bind ,bind-storage) ,param))
+          (,[lllst (` jump r) (`(constrain (continuation bind:func (,[lst (` bind:param r) identifiers r])
+                {bind:return ,body})
+              (\ bind:r (with-vars ,vars
+                [llst (` continuation bind:r) [lst [lst (` values bind:r) (,[`[llst unquoted-vars (` bind:r r) emt r]r]) bind:r]
+                  (,[`[llst unquoted-vars (` bind:r r) emt r]r]) bind:r] emt bind:r] bind:r)))r)
+            (` bind:param r) param-parts r])))r)))))))
 
 (ignore
   The following macro implements the following transformation:
