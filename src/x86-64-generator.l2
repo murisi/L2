@@ -58,26 +58,29 @@
   (setf bndg-size (@ expr-binding-aug n) (word-size))
   (switch = (@ expr-type n)
     ((-function-) (do
-      (setf expr-frame-size n [layout-frames (@ expr-expression n) (@ expr-frame-size n)])
+      (let (offset [- (@ expr-frame-size n) (word-size)]) (do
+      (setf bndg-offset (@ expr-binding-aug (@ expr-expression n)) offset)
+      (setf expr-frame-size n [layout-frames (@ expr-expression n) offset])
       (let (parameter-offset-ref (storage _ [* #2 (word-size)]))
       (foreach (t (@ expr-parameters n)) (do
         (setf bndg-size (@ expr-symbol-binding-aug t) (word-size))
         (setf bndg-offset (@ expr-symbol-binding-aug t) $parameter-offset-ref)
         [set+ parameter-offset-ref (word-size)])))))
+      offset))
     
     ((-continuation-) (-with-)
-      (let (cont-bndg (@ expr-symbol-binding-aug(@ expr-reference n))) (do
       (let (offset [- offset [* [length (@ expr-parameters n)] (word-size)]]) (do
       (let (offset-ref (storage _ offset))
       (foreach (t (@ expr-parameters n)) (do
-        (setf bndg-offset (@ expr-binding-aug t) $offset-ref)
+        (setf bndg-offset (@ expr-symbol-binding-aug t) $offset-ref)
         (setf bndg-size (@ expr-symbol-binding-aug t) (word-size))
         [set+ offset-ref (word-size)])))
+      (let (cont-bndg (@ expr-symbol-binding-aug(@ expr-reference n)))
       (let (offset (if (@ expr-escapes n) (do
         (setf bndg-size cont-bndg (cont-size))
         (setf bndg-offset cont-bndg [- offset (cont-size)])
         (@ bndg-offset cont-bndg))
-        offset))
+        offset)) (do
       (setf bndg-offset (@ expr-binding-aug (@ expr-expression n)) [- offset (word-size)])
       [layout-frames (@ expr-expression n) [- offset (word-size)]]))))))
     
@@ -88,12 +91,13 @@
     ((-jump-) (-invoke-)
       (let (offset [- offset (word-size)]) (do
       (setf bndg-offset (@ expr-binding-aug(@ expr-reference n)) offset)
-      (let (offset-ref (storage _ offset))
+      (let (offset-ref (storage _ offset)) (do
       (foreach (u (@ expr-arguments n)) (do
         [set- offset-ref (word-size)]
-        (setf bndg-offset (@ expr-binding-aug u) $offset-ref))))
-      (fold (bottom-offset $offset-ref) (u (@ expr-arguments n))
-        [min bottom-offset [layout-frames u $offset-ref]]))))
+        (setf bndg-offset (@ expr-binding-aug u) $offset-ref)))
+      (let (bottom-offset [layout-frames (@ expr-reference n) $offset-ref])
+      (fold (bottom-offset bottom-offset) (u (@ expr-arguments n))
+        [min bottom-offset [layout-frames u $offset-ref]])))))))
     
     ((-if-)
       (let (offset [- offset (word-size)]) (do
@@ -129,7 +133,7 @@
       
       ((-jump-) (-invoke-) (do
         [append [collect-static-bindings (@ expr-reference n) binding-augs ..] binding-augs ..]
-        (foreach (u (@ expr-arguments n)) [append [collect-static-bindings u binding-augs ..] bindings-augs ..])))
+        (foreach (u (@ expr-arguments n)) [append [collect-static-bindings u binding-augs ..] binding-augs ..])))
       
       ((-if-) (do
         [append [collect-static-bindings (@ expr-condition n) binding-augs ..] binding-augs ..]
@@ -392,11 +396,6 @@
       [prepend(make-instrN(x86-mov)([bndg->op expr-val-bndg relocs ..][make-imm-op #8 (@ expr-value n)..][make-reg-op (r11)..])..) c ..]
       (true))))))
 
-(function get-current-offset (func)
-  (if [> [length (@ expr-binding-augs func)] #0]
-    (@ bndg-offset [@car (@ expr-binding-augs func)])
-    #0))
-
 (constrain generate-function
   (\ r (with-vars (a b) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
@@ -426,7 +425,7 @@
       
       [prepend (make-instrN(x86-push)([make-reg-op (rbp) ..])..) c ..]
       [prepend (make-instrN(x86-mov)([make-reg-op (rbp) ..] [make-reg-op (rsp) ..])..) c ..]
-      [prepend (make-instrN(x86-sub)([make-reg-op (rsp) ..] [make-imm-op #4 [- #0 [get-current-offset n]] ..])..) c ..]
+      [prepend (make-instrN(x86-sub)([make-reg-op (rsp) ..] [make-imm-op #4 [- #0 (@ expr-frame-size n)] ..])..) c ..]
       
       (ignore Execute the function body)
       [generate-expression (@ expr-expression n) gens c relocs ..]
