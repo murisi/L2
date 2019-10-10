@@ -76,21 +76,19 @@
       (let (offset [- (@ expr-frame-size n) (word-size)]) (do
       (setf bndg-offset (@ expr-binding-aug (@ expr-expression n)) offset)
       (setf expr-frame-size n [layout-frames (@ expr-expression n) offset])
-      (let (parameter-offset-ref (storage _ [* #2 (word-size)]))
-      (foreach (t (@ expr-parameters n)) (do
+      (fold (parameter-offset [* #2 (word-size)]) (t (@ expr-parameters n)) (do
         (setf bndg-size (@ expr-symbol-binding-aug t) (word-size))
-        (setf bndg-offset (@ expr-symbol-binding-aug t) $parameter-offset-ref)
-        [set+ parameter-offset-ref (word-size)])))))
+        (setf bndg-offset (@ expr-symbol-binding-aug t) parameter-offset)
+        [+ parameter-offset (word-size)]))))
       offset))
     
     ((-continuation-) (-with-)
       (let (offset (if (@ expr-escapes n) offset
           (let (offset [- offset [* [length (@ expr-parameters n)] (word-size)]]) (do
-          (let (offset-ref (storage _ offset))
-          (foreach (t (@ expr-parameters n)) (do
-            (setf bndg-offset (@ expr-symbol-binding-aug t) $offset-ref)
+          (fold (offset offset) (t (@ expr-parameters n)) (do
+            (setf bndg-offset (@ expr-symbol-binding-aug t) offset)
             (setf bndg-size (@ expr-symbol-binding-aug t) (word-size))
-            [set+ offset-ref (word-size)])))
+            [+ offset (word-size)]))
           (let (cont-bndg (@ expr-symbol-binding-aug(@ expr-reference n))) (do
           (setf bndg-size cont-bndg #0)
           (setf bndg-offset cont-bndg offset)
