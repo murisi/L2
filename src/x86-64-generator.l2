@@ -223,11 +223,20 @@
           (function _(ctx ofst size instr-pos instr-size)
             [- ofst [+ instr-pos instr-size]]) ..] relocs ..]
         op))
-        
+    
     (if (and [= (@ bndg-storage bndg) (frame-relative-storage)] [= (@ bndg-state bndg) (defined-state)])
       [make-mem-op op-size (rbp) (none) #0 (@ bndg-offset bndg) #4 ..]
-      
-      (ignore)))))
+    
+    (if [= (@ bndg-storage bndg) (register-storage)]
+      [make-reg-op
+        [(switch = op-size
+          (#1 reg-lower-8)
+          (#2 reg-lower-16)
+          (#4 reg-lower-32)
+          (#8 reg-lower-64)
+          (ignore)) (@ bndg-offset bndg)] ..]
+    
+      (ignore))))))
 
 (constrain bndg->op (\ r (with-vars (a) (`(function (bndg-aug (ref (list reloc)) buffer ,a) operand)r)r)))
 
