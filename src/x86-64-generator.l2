@@ -102,20 +102,21 @@
       (setf bndg-offset bndg free-register)
       (values (use-storage ret-val) offset new-in-use)))))))))
 
-(constrain layout-frames (\ r (with-vars (b) (`(function (expr ,b) ,b)r)r)))
+(constrain layout-frames (\ r (with-vars (a b c) (`(function (expr ,b ,c) (values ,b ,a))r)r)))
 
-(function layout-frames (n offset) (do
+(function layout-frames (n offset ret-val) (do
   (setf bndg-size (@ expr-binding-aug n) (word-size))
   (switch = (@ expr-type n)
     ((-function-) (do
-      (let (offset [- (@ expr-frame-size n) (word-size)]) (do
+      (let (offset [- (@ expr-frame-size n) (word-size)])
+      (bind (frame-size used-registers) [layout-frames (@ expr-expression n) offset bind] (do
       (setf bndg-offset (@ expr-binding-aug (@ expr-expression n)) offset)
-      (setf expr-frame-size n [layout-frames (@ expr-expression n) offset])
+      (setf expr-frame-size n frame-size)
       (fold (parameter-offset [* #2 (word-size)]) (t (@ expr-parameters n)) (do
         (setf bndg-size (@ expr-symbol-binding-aug t) (word-size))
         (setf bndg-offset (@ expr-symbol-binding-aug t) parameter-offset)
-        [+ parameter-offset (word-size)]))))
-      offset))
+        [+ parameter-offset (word-size)])))))
+      (values (use-storage ret-val) offset (hex FFFFFFFFFFFF0000))))
     
     ((-continuation-) (-with-)
       (let (offset (if (@ expr-escapes n) offset
@@ -130,11 +131,13 @@
           offset))))))
         (let (offset [- offset (word-size)]) (do
         (setf bndg-offset (@ expr-binding-aug (@ expr-expression n)) offset)
-        [layout-frames (@ expr-expression n) offset]))))
+        [layout-frames (@ expr-expression n) offset ret-val]))))
     
     ((-storage-)
-      (fold (bottom-offset offset) (u (@ expr-arguments n))
-        [min bottom-offset [layout-frames u offset]]))
+      (fold (memory-state (values (use-storage ret-val) offset (hex FFFFFFFFFFFF0000))) (u (@ expr-arguments n))
+        (bind (bottom-offset in-use) memory-state
+        (bind (bottom-offset' in-use') [layout-frames u offset bind]
+        (values (use-storage ret-val) [min bottom-offset bottom-offset'] [bor in-use in-use'])))))
     
     ((-jump-) (-invoke-)
       (let (offset [- offset (word-size)]) (do
@@ -143,25 +146,30 @@
       (foreach (u (@ expr-arguments n)) (do
         [set- offset-ref (word-size)]
         (setf bndg-offset (@ expr-binding-aug u) $offset-ref)))
-      (let (bottom-offset [layout-frames (@ expr-reference n) $offset-ref])
-      (fold (bottom-offset bottom-offset) (u (@ expr-arguments n))
-        [min bottom-offset [layout-frames u $offset-ref]])))))))
+      (let (memory-state [layout-frames (@ expr-reference n) $offset-ref ret-val])
+      (fold (memory-state memory-state) (u (@ expr-arguments n))
+        (bind (bottom-offset in-use) memory-state
+        (bind (bottom-offset' in-use') [layout-frames u $offset-ref bind]
+        (values (use-storage ret-val) [min bottom-offset bottom-offset'] [bor in-use in-use']))))))))))
     
     ((-if-)
       (let (offset [- offset (word-size)]) (do
       (setf bndg-offset (@ expr-binding-aug (@ expr-condition n)) offset)
       (setf bndg-offset (@ expr-binding-aug (@ expr-consequent n)) offset)
       (setf bndg-offset (@ expr-binding-aug (@ expr-alternate n)) offset)
-      [min [layout-frames (@ expr-condition n) offset]
-      [min [layout-frames (@ expr-consequent n) offset]
-        [layout-frames (@ expr-alternate n) offset]]])))
+      (bind (bottom-offset in-use) [layout-frames (@ expr-condition n) offset bind]
+      (bind (bottom-offset' in-use') [layout-frames (@ expr-consequent n) offset bind]
+      (bind (bottom-offset'' in-use'') [layout-frames (@ expr-alternate n) offset bind]
+      (values (use-storage ret-val)
+        [min bottom-offset [min bottom-offset' bottom-offset'']]
+        [bor in-use [bor in-use' in-use'']])))))))
     
     ((-constrain-)
       (let (offset [- offset (word-size)]) (do
       (setf bndg-offset (@ expr-binding-aug (@ expr-expression n)) offset)
-      [layout-frames (@ expr-expression n) offset])))
+      [layout-frames (@ expr-expression n) offset ret-val])))
     
-    offset)))
+    (values (use-storage ret-val) offset (hex FFFFFFFFFFFF0000)))))
 
 (constrain generator->function
   (\ r (with-vars (a b) (`(function (generator)
