@@ -67,6 +67,41 @@
     
     offset))
 
+(ignore
+  Takes a binding, a register to assign it to, and a bit-vector indicating the registers
+  already in use. Assigns the given binding to the given register if it is not already in
+  use and returns an indication to that effect, otherwise it fails.)
+
+(constrain try-binding-to-register (\ r (with-vars (a b c) (`(function (bndg-aug register ,a ,b) (values ,c ,a))r)r)))
+
+(function try-binding-to-register (bndg reg in-use ret-val)
+  (let (pref-reg-idx [band pref-reg (hex F)])
+  (let (pref-reg-occupied? [band [<< #1 pref-reg-idx] in-use])
+  (if pref-reg-occupied?
+    (values (use-storage ret-val) (false) in-use)
+    (values (use-storage ret-val) (true) [bor [<< #1 pref-reg-idx] in-use])))))
+
+(ignore
+  Takes a binding, the current offset in the stack frame, and a bit-vector indicating the
+  registers that are currently in use. Returns the new stack offset and register usage
+  bit-vector after the given bit-vector is placed.)
+
+(constrain place-binding (\ r (with-vars (a b c) (`(function (bndg-aug ,a ,b ,c) (values ,a ,b))r)r)))
+
+(function binding-to-register/memory (bndg offset in-use ret-val) (do
+  (setf bndg-size bndg (word-size))
+  (if [= in-use (hex FFFFFFFFFFFFFFFF)]
+    (do
+      (setf bndg-offset bndg [- offset (word-size)])
+      (values (use-storage ret-val) [- offset (word-size)] in-use))
+    (do
+      (setf bndg-storage bndg (register-storage))
+      (let (free-register-idx [lb [bnot in-use]])
+      (let (free-register ($(loc (unit) free-register-idx x64-r64s)))
+      (let (new-in-use [bor in-use [<< #1 free-register-idx]]) (do
+      (setf bndg-offset bndg free-register)
+      (values (use-storage ret-val) offset new-in-use)))))))))
+
 (constrain layout-frames (\ r (with-vars (b) (`(function (expr ,b) ,b)r)r)))
 
 (function layout-frames (n offset) (do
@@ -127,38 +162,6 @@
       [layout-frames (@ expr-expression n) offset])))
     
     offset)))
-
-(constrain collect-static-bindings (\ r (with-vars (a) (`(function (expr (ref (list bndg-aug)) buffer ,a) bndg-aug)r)r)))
-
-(function collect-static-bindings (n binding-augs r handler)
-  (substitute (.. r handler) (do
-    (switch = (@ expr-type n)
-      ((-continuation-) (-with-) (do
-        [append [collect-static-bindings (@ expr-expression n) binding-augs ..] binding-augs ..]
-        (if (@ expr-escapes n)
-          [append (@ expr-symbol-binding-aug(@ expr-reference n)) binding-augs ..] (ignore))
-        (foreach (t (@ expr-parameters n))
-          [append (@ expr-symbol-binding-aug t) binding-augs ..])))
-      
-      ((-storage-) (do
-        [append (@ expr-symbol-binding-aug(@ expr-reference n)) binding-augs ..]
-        (foreach (u (@ expr-arguments n)) [append [collect-static-bindings u binding-augs ..] binding-augs ..])))
-      
-      ((-jump-) (-invoke-) (do
-        [append [collect-static-bindings (@ expr-reference n) binding-augs ..] binding-augs ..]
-        (foreach (u (@ expr-arguments n)) [append [collect-static-bindings u binding-augs ..] binding-augs ..])))
-      
-      ((-if-) (do
-        [append [collect-static-bindings (@ expr-condition n) binding-augs ..] binding-augs ..]
-        [append [collect-static-bindings (@ expr-consequent n) binding-augs ..] binding-augs ..]
-        [append [collect-static-bindings (@ expr-alternate n) binding-augs ..] binding-augs ..]))
-      
-      ((-constrain-)
-        [append [collect-static-bindings (@ expr-expression n) binding-augs ..] binding-augs ..])
-      
-      (ignore))
-      
-    (@ expr-binding-aug n))))
 
 (constrain generator->function
   (\ r (with-vars (a b) (`(function (generator)
