@@ -80,6 +80,7 @@
   (if reg-occupied?
     (values (use-storage ret-val) (false) in-use)
     (do
+      (setf bndg-size bndg (word-size))
       (setf bndg-storage bndg (register-storage))
       (setf bndg-offset bndg reg)
       (values (use-storage ret-val) (true) [bor [<< #1 reg-idx] in-use]))))))
@@ -91,19 +92,20 @@
 
 (constrain binding-to-register/memory (\ r (with-vars (a b) (`(function (bndg-aug ,a ,b) ,b)r)r)))
 
-(function binding-to-register/memory (bndg offset in-use) (do
-  (setf bndg-size bndg (word-size))
+(function binding-to-register/memory (bndg offset in-use)
   (if [= in-use (hex FFFFFFFFFFFFFFFF)]
     (do
-      (setf bndg-offset bndg [- offset (word-size)])
+      (setf bndg-size bndg (word-size))
+      (setf bndg-offset bndg offset)
       in-use)
     (do
+      (setf bndg-size bndg (word-size))
       (setf bndg-storage bndg (register-storage))
       (let (free-register-idx [lb [bnot in-use]])
       (let (free-register ($(loc (unit) free-register-idx x64-r64s)))
       (let (new-in-use [bor in-use [<< #1 free-register-idx]]) (do
       (setf bndg-offset bndg free-register)
-      new-in-use))))))))
+      new-in-use)))))))
 
 (constrain layout-frames (\ r (with-vars (a b c) (`(function (expr ,b ,c) (values ,b ,a))r)r)))
 
@@ -119,7 +121,7 @@
         (setf bndg-size (@ expr-symbol-binding-aug t) (word-size))
         (setf bndg-offset (@ expr-symbol-binding-aug t) parameter-offset)
         [+ parameter-offset (word-size)])))))
-      (values (use-storage ret-val) offset (hex FFFFFFFFFFFF0637))))
+      (values (use-storage ret-val) offset (hex FFFFFFFFFFFF0C37))))
     
     ((-continuation-) (-with-)
       (let (offset (if (@ expr-escapes n) offset
@@ -137,7 +139,7 @@
         [layout-frames (@ expr-expression n) offset ret-val]))))
     
     ((-storage-)
-      (fold (memory-state (values (use-storage ret-val) offset (hex FFFFFFFFFFFF0637))) (u (@ expr-arguments n))
+      (fold (memory-state (values (use-storage ret-val) offset (hex FFFFFFFFFFFF0C37))) (u (@ expr-arguments n))
         (bind (bottom-offset in-use) memory-state
         (bind (bottom-offset' in-use') [layout-frames u offset bind]
         (values (use-storage ret-val) [min bottom-offset bottom-offset'] [bor in-use in-use'])))))
@@ -166,7 +168,9 @@
           (bind (bottom-offset in-use) memory-state
           (bind (bottom-offset' in-use') [layout-frames u sub-expr-offset bind]
           (values storage [min bottom-offset bottom-offset'] [bor in-use in-use']))))))
-          
+      
+      (let (in-use [bor in-use (hex FFFFFFFFFFFFFFF8)])
+      
       (let (arg-offset [- offset [* [+[length (@ expr-arguments n)]#1] (word-size)]])
       (let
         (in-use (if [< [length (@ expr-arguments n)] #1] in-use
@@ -196,14 +200,14 @@
       
       (let (in-use
         (let (rem-offset [+ arg-offset [* #6 (word-size)]])
-        (let (rem-args (if [< [length (@ expr-arguments n)] #6] nil [@cddddddr (@ expr-arguments n)]))
+        (let (rem-args (if [>= [length (@ expr-arguments n)] #6] [@cddddddr (@ expr-arguments n)] nil))
         (loop assign-args (offset rem-offset) (in-use in-use) (u rem-args)
           (if [nil? u] in-use
             {assign-args [+ offset (word-size)] [binding-to-register/memory (@ expr-binding-aug [@car u]) offset in-use] [@cdr u]})))))
       
       (let (ref-offset [- offset (word-size)])
       (let (in-use [binding-to-register/memory (@ expr-binding-aug(@ expr-reference n)) ref-offset in-use])
-      (values (use-storage ret-val) bottom-offset in-use))))))))
+      (values (use-storage ret-val) bottom-offset [bor in-use (hex FFFFFFFFFFFF0FC7)])))))))))
     
     ((-if-)
       (let (offset [- offset (word-size)]) (do
@@ -222,7 +226,7 @@
       (setf bndg-offset (@ expr-binding-aug (@ expr-expression n)) offset)
       [layout-frames (@ expr-expression n) offset ret-val])))
     
-    (values (use-storage ret-val) offset (hex FFFFFFFFFFFF0637)))))
+    (values (use-storage ret-val) offset (hex FFFFFFFFFFFF0C37)))))
 
 (constrain generator->function
   (\ r (with-vars (a b) (`(function (generator)
