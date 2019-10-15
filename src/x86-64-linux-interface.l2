@@ -376,8 +376,7 @@
   (let (len [pad-size len (alloc-alignment)])
   (let (new-last-elt
     (let (curr-last-elt (@ buf-last-elt reg))
-    (if (or [= (@ buf-curr-pos curr-last-elt) (@ buf-end-pos curr-last-elt)]
-        [> [+(@ buf-curr-pos curr-last-elt)len] (@ buf-end-pos curr-last-elt)])
+    (if [> [+(@ buf-curr-pos curr-last-elt)len] (@ buf-end-pos curr-last-elt)]
       (let (new-last-elt [create-buffer [+ len [* #2[-(@ buf-end-pos curr-last-elt) curr-last-elt]]] handler]) (do
         (setf buf-next-elt curr-last-elt new-last-elt)
         (setf buf-last-elt reg new-last-elt)
@@ -417,13 +416,31 @@
 
 (function buffer-free (ref reg handler)
   (loop do-free (last-elt (@ buf-last-elt reg))
-    (if (and [<= [+ last-elt (buffer-element)] ref] [< ref (@ buf-end-pos last-elt)])
+    (if (and [<= [+ last-elt (buffer-element)] ref] [<= ref (@ buf-end-pos last-elt)])
       (do
         (setf buf-curr-pos last-elt ref)
         (setf buf-last-elt reg last-elt))
       (let (prev-elt (@ buf-prev-elt last-elt)) (do
         [munmap last-elt [- (@ buf-end-pos last-elt) last-elt] handler]
         {do-free prev-elt})))))
+
+(ignore
+  A macro to ensure that allocated memory is freed. The following macro saves the supplied
+  buffer's current position, evaluates the given expression, and then resets the buffer's
+  position to the saved value. It is implemented by the following transformation:
+  (with-buffer buf expr)
+  ->
+  (let (with-buffer:position [buffer-alloc #0 buf (ignore)])
+    (let (with-buffer:val expr) (do
+      [buffer-free with-buffer:position buf (ignore)]
+      with-buffer:val))))
+
+(function with-buffer (l r)
+  (`(let (with-buffer:buffer (,[@car l]))
+      (let (with-buffer:position [buffer-alloc #0 with-buffer:buffer (ignore)])
+        (let (with-buffer:val (,[@cadr l])) (do
+          [buffer-free with-buffer:position with-buffer:buffer (ignore)]
+          with-buffer:val))))r))
 
 (ignore
   Releases the memory associated with the buffer reg. After a call to this function, it is
