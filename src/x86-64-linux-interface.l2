@@ -74,27 +74,31 @@
 
 (ignore Layout of the header of our endogenous linked list of mmaped regions.)
 
-  (function buffer-element (l r) [=# #40 r])
+  (function buffer-element (l r) [=# #48 r])
+  
+  (ignore Contains reference to previous mmaped region. Is null-element otherwise.)
+  
+  (function buf-prev-elt (l r) [property #0 #8 (\ r (` buffer r)) (\ s r (` buffer r)) l r])
 
   (ignore Contains reference to next mmaped region. Is null-element otherwise.)
 
-  (function buf-next-elt (l r) [property #0 #8 (\ r (` buffer r)) (\ s r (` buffer r)) l r])
+  (function buf-next-elt (l r) [property #8 #8 (\ r (` buffer r)) (\ s r (` buffer r)) l r])
 
   (ignore Contains reference to last mmaped region in buffer. Field required to reduce allocation time.)
 
-  (function buf-last-elt (l r) [property #8 #8 (\ r (` buffer r)) (\ s r (` buffer r)) l r])
+  (function buf-last-elt (l r) [property #16 #8 (\ r (` buffer r)) (\ s r (` buffer r)) l r])
 
   (ignore Contains reference to next aligned free memory in buffer element.)
 
-  (function buf-curr-pos (l r) [property #16 #8 (\ r (` buffer r)) (\ s r [var r]) l r])
+  (function buf-curr-pos (l r) [property #24 #8 (\ r (` buffer r)) (\ s r [var r]) l r])
 
   (ignore Contains reference to the end of the buffer element.)
 
-  (function buf-end-pos (l r) [property #24 #8 (\ r (` buffer r)) (\ s r [var r]) l r])
+  (function buf-end-pos (l r) [property #32 #8 (\ r (` buffer r)) (\ s r [var r]) l r])
 
   (ignore Contains magic debug value.)
 
-  (function buf-magic-dbg (l r) [property #32 #8 (\ r (` buffer r)) (\ s r [var r]) l r])
+  (function buf-magic-dbg (l r) [property #40 #8 (\ r (` buffer r)) (\ s r [var r]) l r])
 
 (ignore Defined in assembly file that will be linked with this file.)
 
@@ -356,6 +360,7 @@
   (let (len [pad-size [+ min-capacity (buffer-element)] (page-size)])
     (let (reg [mmap len handler]) (do
       (setf buf-next-elt reg null-element)
+      (setf buf-prev-elt reg null-element)
       (setf buf-last-elt reg reg)
       (setf buf-curr-pos reg [+ reg (buffer-element)])
       (setf buf-end-pos reg [+ reg len])
@@ -363,8 +368,7 @@
       reg))))
 
 (ignore
-  Allocates memory in the buffer at reg of an amount in bytes equal to the integer at len.
-  The only way to deallocate this memory is destroy the entire buffer at reg.)
+  Allocates memory in the buffer at reg of an amount in bytes equal to the integer at len.)
 
 (constrain buffer-alloc (\ r (with-vars (a b d) (`(function (,a buffer ,b) ,d)r)r)))
 
@@ -372,11 +376,13 @@
   (let (len [pad-size len (alloc-alignment)])
   (let (new-last-elt
     (let (curr-last-elt (@ buf-last-elt reg))
-    (if [> [+(@ buf-curr-pos curr-last-elt)len] (@ buf-end-pos curr-last-elt)]
-      (do
-        (setf buf-next-elt curr-last-elt [create-buffer [+ len [* #2[-(@ buf-end-pos curr-last-elt) curr-last-elt]]] handler])
-        (setf buf-last-elt reg (@ buf-next-elt curr-last-elt))
-        (@ buf-next-elt curr-last-elt))
+    (if (or [= (@ buf-curr-pos curr-last-elt) (@ buf-end-pos curr-last-elt)]
+        [> [+(@ buf-curr-pos curr-last-elt)len] (@ buf-end-pos curr-last-elt)])
+      (let (new-last-elt [create-buffer [+ len [* #2[-(@ buf-end-pos curr-last-elt) curr-last-elt]]] handler]) (do
+        (setf buf-next-elt curr-last-elt new-last-elt)
+        (setf buf-last-elt reg new-last-elt)
+        (setf buf-prev-elt new-last-elt curr-last-elt)
+        new-last-elt))
       curr-last-elt))) (do
   (setf buf-curr-pos new-last-elt [+(@ buf-curr-pos new-last-elt)len])
   [-(@ buf-curr-pos new-last-elt)len]))))
@@ -403,6 +409,21 @@
                 sets
                 {make-set [@rst identifiers] [+ idx #1]
                   [lst (`[set [+ (,[@fst l]) [* (,[=# idx r]) (unit)]] (,[@fst identifiers])]r) sets r]})) r] r] r]))r))buffer-storage:r))
+
+(ignore
+  Frees the given reference and everything allocated afterwards in the given region.)
+
+(constrain buffer-free (\ r (with-vars (a b d) (`(function (,a buffer ,b) ,d)r)r)))
+
+(function buffer-free (ref reg handler)
+  (loop do-free (last-elt (@ buf-last-elt reg))
+    (if (and [<= [+ last-elt (buffer-element)] ref] [< ref (@ buf-end-pos last-elt)])
+      (do
+        (setf buf-curr-pos last-elt ref)
+        (setf buf-last-elt reg last-elt))
+      (let (prev-elt (@ buf-prev-elt last-elt)) (do
+        [munmap last-elt [- (@ buf-end-pos last-elt) last-elt] handler]
+        {do-free prev-elt})))))
 
 (ignore
   Releases the memory associated with the buffer reg. After a call to this function, it is
