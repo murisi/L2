@@ -365,8 +365,8 @@ void infer_types(list exprs, buffer expr_buf, jumpbuf *handler) {
             append(param->symbol.signature, &params_signature, expr_buf);
           }
           prepend(e->function.signature, &lhss, expr_buf);
-          prepend(lst(function_token, lst(params_signature,
-            lst(e->function.expression->base.signature, nil, expr_buf), expr_buf), expr_buf), &rhss, expr_buf);
+          prepend(lst(function_token, lst(e->function.fragment->frrst, lst(params_signature,
+            lst(e->function.expression->base.signature, nil, expr_buf), expr_buf), expr_buf), expr_buf), &rhss, expr_buf);
           
           prepend(e->function.signature, &lhss, expr_buf);
           prepend(e->function.reference->symbol.signature, &rhss, expr_buf);
@@ -394,8 +394,8 @@ void infer_types(list exprs, buffer expr_buf, jumpbuf *handler) {
             append(scoped_signature(arg, scc, expr_buf), &params_signature, expr_buf);
           }
           prepend(scoped_signature(e->invoke.reference, scc, expr_buf), &lhss, expr_buf);
-          prepend(lst(function_token, lst(params_signature,
-            lst(e->invoke.signature, nil, expr_buf), expr_buf), expr_buf), &rhss, expr_buf);
+          prepend(lst(function_token, lst(e->invoke.parameter_names_fragment, lst(params_signature,
+            lst(e->invoke.signature, nil, expr_buf), expr_buf), expr_buf), expr_buf), &rhss, expr_buf);
           break;
         } case jump: {
           list params_signature = nil;

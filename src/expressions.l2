@@ -182,7 +182,7 @@
 (storage null-binding (ignore))
 
 (constrain make-binding-aug
-  (\ r (with-vars (a) (`(function (bndg-storage bndg-scope bndg-state string expr expr buffer ,a) bndg-aug)r)r)))
+  (\ r (with-vars (a b) (`(function ,b (bndg-storage bndg-scope bndg-state string expr expr buffer ,a) bndg-aug)r)r)))
 
 (function make-binding-aug (type scope state name symbol expression r handler)
   (let (bndg [buffer-alloc (binding-aug) r handler]) (do
@@ -194,7 +194,7 @@
     (setf bndg-expression bndg expression)
     bndg)))
 
-(constrain make-literal (\ r (with-vars (a b) (`(function (,a frag expr buffer ,b) expr)r)r)))
+(constrain make-literal (\ r (with-vars (a b c) (`(function ,c (,a frag expr buffer ,b) expr)r)r)))
 
 (function make-literal (value frag meta reg handler)
   (substitute (.. reg handler) (let (t [buffer-alloc (expression) ..]) (do
@@ -208,7 +208,7 @@
     (setf expr-value t value)
     t))))
 
-(constrain make-symbol (\ r (with-vars (b) (`(function (string frag expr buffer ,b) expr)r)r)))
+(constrain make-symbol (\ r (with-vars (a b) (`(function ,a (string frag expr buffer ,b) expr)r)r)))
 
 (function make-symbol (name frag meta reg handler)
   (substitute (.. reg handler) (let (sym [buffer-alloc (expression) ..]) (do
@@ -227,7 +227,7 @@
   Binds a symbol expression to another symbol expression. symbol is the expression being
   bound. target is the symbol expression being bound to.)
 
-(constrain bind-symbol (\ r (`(function (expr expr) ())r)))
+(constrain bind-symbol (\ r (with-vars (a) (`(function ,a (expr expr) ())r)r)))
 
 (function bind-symbol (symbol target) (setf expr-symbol-binding-aug symbol (@ expr-symbol-binding-aug target)))
 
@@ -236,7 +236,7 @@
   to be the target of the symbol so as to enable type inferencing on symbols using this
   binding.)
 
-(constrain make-undefined-binding (\ r (with-vars (b) (`(function (string buffer ,b) bndg-aug)r)r)))
+(constrain make-undefined-binding (\ r (with-vars (a b) (`(function ,a (string buffer ,b) bndg-aug)r)r)))
 
 (function make-undefined-binding (name r handler)
   (substitute (.. r handler)
@@ -247,7 +247,7 @@
     (setf bndg-state bndg (undefined-state))
     bndg)))))
 
-(constrain make-function (\ r (with-vars (b) (`(function (expr (list expr) expr frag expr buffer ,b) expr)r)r)))
+(constrain make-function (\ r (with-vars (a b) (`(function ,a (expr (list expr) expr frag expr buffer ,b) expr)r)r)))
 
 (function make-function (ref params expr frag meta reg handler)
   (substitute (.. reg handler) (let (func [buffer-alloc (expression) ..]) (do
@@ -267,7 +267,7 @@
     (setf expr-expression func expr)
     func))))
 
-(constrain make-continuation (\ r (with-vars (b) (`(function (expr (list expr) expr frag expr buffer ,b) expr)r)r)))
+(constrain make-continuation (\ r (with-vars (a b) (`(function ,a (expr (list expr) expr frag expr buffer ,b) expr)r)r)))
 
 (function make-continuation (ref params expr frag meta reg handler)
   (substitute (.. reg handler) (let (cont [buffer-alloc (expression) ..]) (do
@@ -290,7 +290,7 @@
     (setf expr-expression cont expr)
     cont))))
 
-(constrain make-with (\ r (with-vars (b) (`(function (expr expr frag expr buffer ,b) expr)r)r)))
+(constrain make-with (\ r (with-vars (a b) (`(function ,a (expr expr frag expr buffer ,b) expr)r)r)))
 
 (function make-with (ref expr frag meta reg handler)
   (substitute (.. reg handler) (let (wth [buffer-alloc (expression) ..]) (do
@@ -312,7 +312,7 @@
     (setf expr-expression wth expr)
     wth))))
 
-(constrain make-jump (\ r (with-vars (b) (`(function (expr (list expr) frag expr buffer ,b) expr)r)r)))
+(constrain make-jump (\ r (with-vars (a b) (`(function ,a (expr (list expr) frag expr buffer ,b) expr)r)r)))
 
 (function make-jump (ref args frag meta reg handler)
   (substitute (.. reg handler) (let (u [buffer-alloc (expression) ..]) (do
@@ -329,7 +329,7 @@
     (setf expr-arguments u args)
     u))))
 
-(constrain make-storage (\ r (with-vars (b) (`(function (expr (list expr) frag expr buffer ,b) expr)r)r)))
+(constrain make-storage (\ r (with-vars (a b) (`(function ,a (expr (list expr) frag expr buffer ,b) expr)r)r)))
 
 (function make-storage (ref args frag meta reg handler)
   (substitute (.. reg handler) (let (u [buffer-alloc (expression) ..]) (do
@@ -345,7 +345,7 @@
     (setf expr-arguments u args)
     u))))
 
-(constrain make-meta (\ r (with-vars (a b) (`(function (expr frag expr buffer ,b) expr)r)r)))
+(constrain make-meta (\ r (with-vars (a b c) (`(function ,c (expr frag expr buffer ,b) expr)r)r)))
 
 (function make-meta (ref frag meta reg handler)
   (substitute (.. reg handler) (let (u [buffer-alloc (expression) ..]) (do
@@ -359,7 +359,7 @@
     (setf expr-fragment u frag)
     u))))
 
-(constrain make-constrain (\ r (with-vars (b) (`(function (expr expr frag expr buffer ,b) expr)r)r)))
+(constrain make-constrain (\ r (with-vars (a b) (`(function ,a (expr expr frag expr buffer ,b) expr)r)r)))
 
 (function make-constrain (expr ref frag meta reg handler)
   (substitute (.. reg handler) (let (u [buffer-alloc (expression) ..]) (do
@@ -374,7 +374,7 @@
     (setf expr-expression u expr)
     u))))
 
-(constrain make-if (\ r (with-vars (b) (`(function (expr expr expr frag expr buffer ,b) expr)r)r)))
+(constrain make-if (\ r (with-vars (a b) (`(function ,a (expr expr expr frag expr buffer ,b) expr)r)r)))
 
 (function make-if (condition consequent alternate frag meta reg handler)
   (substitute (.. reg handler) (let (u [buffer-alloc (expression) ..]) (do
@@ -390,7 +390,7 @@
     (setf expr-alternate u alternate)
     u))))
 
-(constrain make-invoke (\ r (with-vars (b) (`(function (expr (list expr) frag expr buffer ,b) expr)r)r)))
+(constrain make-invoke (\ r (with-vars (a b) (`(function ,a (expr (list expr) frag expr buffer ,b) expr)r)r)))
 
 (function make-invoke (ref args frag meta reg handler)
   (substitute (.. reg handler) (let (u [buffer-alloc (expression) ..]) (do
@@ -408,7 +408,7 @@
 
 (ignore Prints the given expression as it would be written in an L2 source file. s is an expression.)
 
-(constrain print-expression (\ r (with-vars (a) (`(function (expr ,a) ())r)r)))
+(constrain print-expression (\ r (with-vars (a b) (`(function ,b (expr ,a) ())r)r)))
 
 (function print-expression (s hdl) (substitute (.. hdl)
   (switch = (@ expr-type s)
@@ -492,7 +492,7 @@
   buffer reference by err set to the tuple (special-form-error, ...) in the event
   of a malformed expression.)
 
-(constrain build-expression (\ r (with-vars (a) (`(function (frag expr buffer ,a) expr)r)r)))
+(constrain build-expression (\ r (with-vars (a b) (`(function ,b (frag expr buffer ,a) expr)r)r)))
 
 (function build-expression (frag meta reg handler) (substitute (.. reg handler)
   (if [i/f:token? frag] [make-symbol [to-string [fragment->token frag] ..] frag meta ..]
@@ -567,7 +567,7 @@
   name with the same arguments that it received. The idea is that the intrinsic generators
   will replace the function call with inline assembly.)
 
-(constrain make-unary-intrinsic (\ r (with-vars (a) (`(function (string buffer ,a) expr)r)r)))
+(constrain make-unary-intrinsic (\ r (with-vars (a b) (`(function ,b (string buffer ,a) expr)r)r)))
 
 (function make-unary-intrinsic (name buf handler)
   (substitute (.. buf handler)
@@ -583,7 +583,7 @@
 
 (ignore Performs actions analogous to make-unary-intrinsic, but for binary functions.)
 
-(constrain make-binary-intrinsic (\ r (with-vars (a) (`(function (string buffer ,a) expr)r)r)))
+(constrain make-binary-intrinsic (\ r (with-vars (a b) (`(function ,b (string buffer ,a) expr)r)r)))
 
 (function make-binary-intrinsic (name buf handler)
   (substitute (.. buf handler)
