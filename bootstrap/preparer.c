@@ -306,29 +306,26 @@ bool unify(list x, list y) {
   list xl = evaluate(x);
   list yl = evaluate(y);
   
-  for(;;) {
-    if(is_var(xl) && is_var(yl) && var_equals(xl, yl)) {
-      return true;
-    } else if(is_var(xl)) {
-      return unify_var(xl, yl);
-    } else if(is_var(yl)) {
-      return unify_var(yl, xl);
-    } else if(is_token(xl) && is_token(yl)) {
-      return token_equals(xl, yl);
-    } else if(is_token(xl) || is_token(yl)) {
-      return false;
-    } else if(is_nil(xl) && is_nil(yl)) {
-      return true;
-    } else if(is_nil(xl) || is_nil(yl)) {
-      return false;
-    } else {
-      if(!unify(xl->fst, yl->fst)) {
+  if(is_var(xl) && is_var(yl) && var_equals(xl, yl)) {
+    return true;
+  } else if(is_var(xl)) {
+    return unify_var(xl, yl);
+  } else if(is_var(yl)) {
+    return unify_var(yl, xl);
+  } else if(is_token(xl) && is_token(yl)) {
+    return token_equals(xl, yl);
+  } else if(is_token(xl) || is_token(yl)) {
+    return false;
+  } else if(length(xl) == length(yl)) {
+    list a, b;
+    foreachzipped(a, b, xl, yl) {
+      if(!unify(a, b)) {
         return false;
-      } else {
-        xl = xl->rst;
-        yl = yl->rst;
       }
     }
+    return true;
+  } else {
+    return false;
   }
 }
 
