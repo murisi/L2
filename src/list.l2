@@ -199,7 +199,7 @@
 
 (storage nil nil nil)
 
-(constrain nil? (\ r (with-vars (a b c) (`(function ,c ((list ,a)) ,b)r)r)))
+(constrain nil? (\ r (with-vars (a b) (`(function ((list ,a)) ,b)r)r)))
 
 (function nil? (l) [= l nil])
 
@@ -208,7 +208,7 @@
   reference to the list that is to be appended to. r is the buffer into which the extension
   is being placed.)
 
-(constrain append (\ r (with-vars (et b a) (`(function ,a (,et (ref (list ,et)) buffer ,b) (ref ,et))r)r)))
+(constrain append (\ r (with-vars (et b) (`(function (,et (ref (list ,et)) buffer ,b) (ref ,et))r)r)))
 
 (function append (data l r handler)
   (loop next (l l)
@@ -225,7 +225,7 @@
   head. rest is the list that will be the tail of the new list. r is the buffer into which
   the extension is being placed. Return value is the new list.)
 
-(constrain cons (\ r (with-vars (et a b) (`(function ,b (,et (list ,et) buffer ,a) (list ,et))r)r)))
+(constrain cons (\ r (with-vars (et a) (`(function (,et (list ,et) buffer ,a) (list ,et))r)r)))
 
 (function cons (data rest r handler)
   (let (l [buffer-alloc (list-struct) r handler]) (do
@@ -237,7 +237,7 @@
   Appends the second list onto the first list. fst-ref is a reference to the list that
   will be appended to. snd is the list that will be appended.)
 
-(constrain append-list (\ r (with-vars (et a) (`(function ,a ((ref (list ,et)) (list ,et)) ())r)r)))
+(constrain append-list (\ r (with-vars (et) (`(function ((ref (list ,et)) (list ,et)) ())r)r)))
 
 (function append-list (fst-ref snd)
   (loop next (fst-ref fst-ref)
@@ -247,7 +247,7 @@
 
 (ignore Analogous to append above.)
 
-(constrain prepend (\ r (with-vars (et a b) (`(function ,b (,et (ref (list ,et)) buffer ,a) ())r)r)))
+(constrain prepend (\ r (with-vars (et a) (`(function (,et (ref (list ,et)) buffer ,a) ())r)r)))
 
 (function prepend (data l-ref r handler)
   (let (ret [buffer-alloc (list-struct) r handler]) (do
@@ -257,7 +257,7 @@
 
 (ignore Computes the length of the given list. l is the list whose length will be computed.)
 
-(constrain length (\ r (with-vars (et nt a) (`(function ,a ((list ,et)) ,nt)r)r)))
+(constrain length (\ r (with-vars (et nt) (`(function ((list ,et)) ,nt)r)r)))
 
 (function length (l)
   (loop next (l l) (size #0)
@@ -267,7 +267,7 @@
 
 (ignore Flattens the given list of lists and reverses them.)
 
-(constrain reverse-flatten (\ r (with-vars (a b c) (`(function ,c ((list (list ,a)) buffer ,b) (list ,a))r)r)))
+(constrain reverse-flatten (\ r (with-vars (a b) (`(function ((list (list ,a)) buffer ,b) (list ,a))r)r)))
 
 (function reverse-flatten (l r handler)
   (substitute (.. r handler)
@@ -278,7 +278,7 @@
   Constructs a reverse of the given list. l is the list that is to be reversed. r is the
   buffer into which the reversed list should be placed. Return value is the reversed list.)
 
-(constrain reverse (\ r (with-vars (et a b) (`(function ,b ((list ,et) buffer ,a) (list ,et))r)r)))
+(constrain reverse (\ r (with-vars (et a) (`(function ((list ,et) buffer ,a) (list ,et))r)r)))
 
 (function reverse (l r handler) (reverse-map (x l) x r handler))
 
@@ -286,7 +286,7 @@
   Searches for the given element in the given list and returns (true) if it is found.
   Otherwise returns (false).)
 
-(constrain contains (\ r (with-vars (et a b) (`(function ,b (,et (list ,et)) ,a)r)r)))
+(constrain contains (\ r (with-vars (et a) (`(function (,et (list ,et)) ,a)r)r)))
 
 (function contains (data l)
   (loop search (sub l)

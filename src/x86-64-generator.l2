@@ -18,7 +18,7 @@
 
   (function cont-rbp (l r) [=# [* #0 (word-size)] r])
 
-(constrain layout-frame-storages (\ r (with-vars (a b) (`(function ,b (expr ,a) ,a)r)r)))
+(constrain layout-frame-storages (\ r (with-vars (a) (`(function (expr ,a) ,a)r)r)))
 
 (function layout-frame-storages (n offset)
   (switch = (@ expr-type n)
@@ -72,7 +72,7 @@
   already in use. Assigns the given binding to the given register if it is not already in
   use and returns an indication to that effect, otherwise it fails.)
 
-(constrain try-binding-to-register (\ r (with-vars (a b c d) (`(function ,d (bndg-aug register ,a ,b) (values ,c ,a))r)r)))
+(constrain try-binding-to-register (\ r (with-vars (a b c) (`(function (bndg-aug register ,a ,b) (values ,c ,a))r)r)))
 
 (function try-binding-to-register (bndg reg in-use ret-val)
   (let (reg-idx [band reg (hex F)])
@@ -90,7 +90,7 @@
   registers that are currently in use. Returns the new stack offset and register usage
   bit-vector after the given bit-vector is placed.)
 
-(constrain binding-to-register/memory (\ r (with-vars (a b c) (`(function ,c (bndg-aug ,a ,b) ,b)r)r)))
+(constrain binding-to-register/memory (\ r (with-vars (a b) (`(function (bndg-aug ,a ,b) ,b)r)r)))
 
 (function binding-to-register/memory (bndg offset in-use)
   (if [= in-use (hex FFFFFFFFFFFFFFFF)]
@@ -107,7 +107,7 @@
       (setf bndg-offset bndg free-register)
       new-in-use)))))))
 
-(constrain layout-frames (\ r (with-vars (a b c d) (`(function ,d (expr ,b ,c) (values ,b ,a))r)r)))
+(constrain layout-frames (\ r (with-vars (a b c) (`(function (expr ,b ,c) (values ,b ,a))r)r)))
 
 (function layout-frames (n offset ret-val) (do
   (setf bndg-size (@ expr-binding-aug n) (word-size))
@@ -229,19 +229,19 @@
     (values (use-storage ret-val) offset (hex FFFFFFFFFFFF0C37)))))
 
 (constrain generator->function
-  (\ r (with-vars (a b c d) (`(function ,d (generator)
-    (function ,c (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b))r)r)))
+  (\ r (with-vars (a b) (`(function (generator)
+    (function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b))r)r)))
 
 (function generator->function (x) [cast x])
 
 (constrain function->generator
-  (\ r (with-vars (a b c d) (`(function ,d
-    ((function ,c (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)) generator)r)r)))
+  (\ r (with-vars (a b) (`(function
+    ((function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)) generator)r)r)))
 
 (function function->generator (x) [cast x])
 
 (constrain make-absolute-relocation-immediate
-  (\ r (with-vars (a b c d) (`(function ,d (,a ,b bndg-aug (ref (list reloc)) buffer ,c) operand)r)r)))
+  (\ r (with-vars (a b c) (`(function (,a ,b bndg-aug (ref (list reloc)) buffer ,c) operand)r)r)))
 
 (function make-absolute-relocation-immediate (size addend bndg relocs r handler)
   (substitute (.. r handler)
@@ -257,7 +257,7 @@
       op))))
 
 (constrain make-relative-relocation-immediate
-  (\ r (with-vars (a b c) (`(function ,c (,a bndg-aug (ref (list reloc)) buffer ,b) operand)r)r)))
+  (\ r (with-vars (a b) (`(function (,a bndg-aug (ref (list reloc)) buffer ,b) operand)r)r)))
 
 (function make-relative-relocation-immediate (size bndg relocs r handler)
   (substitute (.. r handler)
@@ -273,7 +273,7 @@
           [- ofst [+ instr-pos instr-size]]) ..] relocs ..]
       op))))
 
-(constrain make-label (\ r (with-vars (a b) (`(function ,b (bndg-aug buffer ,a) instr)r)r)))
+(constrain make-label (\ r (with-vars (a) (`(function (bndg-aug buffer ,a) instr)r)r)))
 
 (function make-label (bndg r handler)
   (substitute (.. r handler)
@@ -281,7 +281,7 @@
       (setf instr-binding lbl bndg)
       lbl))))
 
-(constrain bndg->partial-op (\ r (with-vars (a b c) (`(function ,c (,b bndg-aug (ref (list reloc)) buffer ,a) operand)r)r)))
+(constrain bndg->partial-op (\ r (with-vars (a b) (`(function (,b bndg-aug (ref (list reloc)) buffer ,a) operand)r)r)))
 
 (function bndg->partial-op (op-size bndg relocs buf handler)
   (substitute (.. buf handler)
@@ -306,13 +306,13 @@
     
       (ignore))))))
 
-(constrain bndg->op (\ r (with-vars (a b) (`(function ,b (bndg-aug (ref (list reloc)) buffer ,a) operand)r)r)))
+(constrain bndg->op (\ r (with-vars (a) (`(function (bndg-aug (ref (list reloc)) buffer ,a) operand)r)r)))
 
 (function bndg->op (bndg relocs buf handler)
   [bndg->partial-op (@ bndg-size bndg) bndg relocs buf handler])
 
 (constrain generate-if
-  (\ r (with-vars (a b c) (`(function ,c (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
+  (\ r (with-vars (a b) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
 (function generate-if (n gens c relocs r handler)
   (substitute (.. r handler)
@@ -337,7 +337,7 @@
         (true))))))
 
 (constrain generate-storage
-  (\ r (with-vars (a b c) (`(function ,c (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
+  (\ r (with-vars (a b) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
 (function generate-storage (n gens c relocs r handler)
   (substitute (.. r handler)
@@ -352,7 +352,7 @@
         (true))))))
 
 (constrain generate-symbol
-  (\ r (with-vars (a b c) (`(function ,c (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
+  (\ r (with-vars (a b) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
 (function generate-symbol (n gens c relocs r handler)
   (substitute (.. r handler)
@@ -369,7 +369,7 @@
             ([bndg->op expr-val-bndg relocs ..][bndg->op symbol-val-bndg relocs ..][make-reg-op(r10)..])..) c ..])
         (true))))))
 
-(constrain generate-store-continuation (\ r (with-vars (a b) (`(function ,b (expr (ref (list instr)) (ref (list reloc)) buffer ,a) ())r)r)))
+(constrain generate-store-continuation (\ r (with-vars (a) (`(function (expr (ref (list instr)) (ref (list reloc)) buffer ,a) ())r)r)))
 
 (function generate-store-continuation (n c relocs r handler)
   (substitute (.. r handler) (let
@@ -385,7 +385,7 @@
     [prepend (make-instrN (x86-mov) ([make-mem-op(word-size)(r9)(none)#0(cont-rbp)#4 ..] [make-reg-op (rbp) ..]) ..) c ..]))))
 
 (constrain generate-buffer-to-dest
-  (\ r (with-vars (a b c) (`(function ,c (expr register ,a (ref (list instr)) (ref (list reloc)) buffer ,b) ())r)r)))
+  (\ r (with-vars (a b) (`(function (expr register ,a (ref (list instr)) (ref (list reloc)) buffer ,b) ())r)r)))
 
 (function generate-buffer-to-dest (n dest-reg offset c relocs r handler)
   (substitute (.. r handler)
@@ -397,7 +397,7 @@
         [set+ dest-offset (word-size)]))))))
 
 (constrain generate-continuation
-  (\ r (with-vars (a b c) (`(function ,c (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
+  (\ r (with-vars (a b) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
 (function generate-continuation (n gens c relocs r handler)
   (substitute (.. r handler)
@@ -418,7 +418,7 @@
         (true))))))
 
 (constrain generate-with
-  (\ r (with-vars (a b c) (`(function ,c (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
+  (\ r (with-vars (a b) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
 (function generate-with (n gens c relocs r handler)
   (substitute (.. r handler)
@@ -438,7 +438,7 @@
         (true))))))
 
 (constrain generate-load-continuation
-  (\ r (with-vars (a b) (`(function ,b (register (ref (list instr)) (ref (list reloc)) buffer ,a) ())r)r)))
+  (\ r (with-vars (a) (`(function (register (ref (list instr)) (ref (list reloc)) buffer ,a) ())r)r)))
 
 (function generate-load-continuation (src-reg c relocs r handler)
   (substitute (.. r handler) (do
@@ -452,7 +452,7 @@
     [prepend (make-instrN(x86-jmp)([make-reg-op (r10) ..])..) c ..])))
 
 (constrain generate-jump
-  (\ r (with-vars (a b c) (`(function ,c (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
+  (\ r (with-vars (a b) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
 (function generate-jump (n gens c relocs r handler)
   (substitute (.. r handler)
@@ -478,7 +478,7 @@
         (true)))))
 
 (constrain generate-literal
-  (\ r (with-vars (a b c) (`(function ,c (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
+  (\ r (with-vars (a b) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
 (function generate-literal (n gens c relocs r handler) (substitute (.. r handler)
   (and [= (@ expr-type n) (-literal-)]
@@ -487,7 +487,7 @@
       (true))))))
 
 (constrain generate-function
-  (\ r (with-vars (a b c) (`(function ,c (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
+  (\ r (with-vars (a b) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
 (function generate-function (n gens c relocs r handler)
   (substitute (.. r handler)
@@ -531,7 +531,7 @@
       (true))))))
 
 (constrain generate-invoke
-  (\ r (with-vars (a b c) (`(function ,c (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
+  (\ r (with-vars (a b) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
 (function generate-invoke (n gens c relocs r handler)
   (substitute (.. r handler)
@@ -571,7 +571,7 @@
       (true))))))
 
 (constrain generate-constrain
-  (\ r (with-vars (a b c) (`(function ,c (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
+  (\ r (with-vars (a b) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
 (function generate-constrain (n gens c relocs r handler)
   (substitute (.. r handler)
@@ -584,7 +584,7 @@
         (true))))))
 
 (constrain generate-expression
-  (\ r (with-vars (a b c) (`(function ,c (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
+  (\ r (with-vars (a b) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
 (function generate-expression (n gens c relocs r handler)
   (substitute (.. r handler) (or
@@ -601,7 +601,7 @@
     [generate-constrain n gens c relocs ..])))
 
 (constrain generate-program
-  (\ r (with-vars (a b c) (`(function ,c ((list expr) (list generator) ,b buffer ,a) (values (list instr) (list reloc)))r)r)))
+  (\ r (with-vars (a b) (`(function ((list expr) (list generator) ,b buffer ,a) (values (list instr) (list reloc)))r)r)))
 
 (function generate-program (exprs gens outs r handler)
   (substitute (.. r handler)

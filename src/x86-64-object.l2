@@ -49,7 +49,7 @@
   addresses. The continuation handler is followed and the error buffer referenced by err
   set to the singleton (object-error) if relocation type is unrecognized.)
 
-(constrain do-relocations (\ r (with-vars (a b) (`(function ,b (obj ,a) ())r)r)))
+(constrain do-relocations (\ r (with-vars (a) (`(function (obj ,a) ())r)r)))
 
 (function do-relocations (obj handler)
   (until (sec-idx #0) [= sec-idx (@ e-shnum(@ obj-ehdr obj))] [+ sec-idx #1]
@@ -85,7 +85,7 @@
   the contents of the addend field may be overwritten by a relocation, which is a problem
   because the future relocations may depend on the value of the addend.)
 
-(constrain store-addends (\ r (with-vars (a b) (`(function ,b (obj buffer ,a) ())r)r)))
+(constrain store-addends (\ r (with-vars (a) (`(function (obj buffer ,a) ())r)r)))
 
 (function store-addends (obj reg handler)
   (until (sec-idx #0) [= sec-idx (@ e-shnum(@ obj-ehdr obj))] [+ sec-idx #1]
@@ -119,7 +119,7 @@
   The offsets specified in the object file need to be turned into addresses for the code
   to execute correctly.)
 
-(constrain offsets-to-addresses (\ r (with-vars (a) (`(function ,a (obj) ())r)r)))
+(constrain offsets-to-addresses (\ r (`(function (obj) ())r)))
 
 (function offsets-to-addresses (obj)
   (until (sec-idx #0) [= sec-idx (@ e-shnum(@ obj-ehdr obj))] [+ sec-idx #1]
@@ -151,7 +151,7 @@
   and updating. Constructs an object containing everything of interest in the object code
   in the buffer reg and returns it.)
 
-(constrain read-object (\ r (with-vars (a c d e) (`(function ,a (,c ,d buffer ,e) obj)r)r)))
+(constrain read-object (\ r (with-vars (c d e) (`(function (,c ,d buffer ,e) obj)r)r)))
 
 (function read-object (objsrc objsrc-sz reg handler)
   (let (obj [buffer-alloc (object) reg handler]) (do
@@ -202,7 +202,7 @@
   containing the object code. objsrc-sz is the size of the buffer. reg is the buffer in
   which our handle will be constructed. Return value is a handle to the object.)
 
-(constrain load (\ r (with-vars (a c d e) (`(function ,a (,c ,d buffer ,e) obj)r)r)))
+(constrain load (\ r (with-vars (c d e) (`(function (,c ,d buffer ,e) obj)r)r)))
 
 (function load (objsrc objsrc-sz reg handler)
   (let (obj [read-object objsrc objsrc-sz reg handler]) (do
@@ -211,7 +211,7 @@
     [do-relocations obj handler]
     obj)))
 
-(constrain name-of (\ r (with-vars (a) (`(function ,a (obj elf64-shdr elf64-sym) string)r)r)))
+(constrain name-of (\ r (`(function (obj elf64-shdr elf64-sym) string)r)))
 
 (function name-of (obj shdr sym)
   (let (seg-buf ($(loc (unit) (@ sh-link shdr) (@ obj-segs obj))))
@@ -222,7 +222,7 @@
   the binding. address is the address of the binding. reg is the buffer in which the
   binding should be constructed. Return value is the constructed binding.)
 
-(constrain make-binding (\ r (with-vars (a b c) (`(function ,c (string ,a buffer ,b) bndg-aug)r)r)))
+(constrain make-binding (\ r (with-vars (a b) (`(function (string ,a buffer ,b) bndg-aug)r)r)))
 
 (function make-binding (name address reg handler)
   (let (sym [buffer-alloc (binding) reg handler]) (do
@@ -235,7 +235,7 @@
   updating. updates is a list of bindings representing the updates that need to be applied
   to obj.)
 
-(constrain mutate-bindings (\ r (with-vars (a) (`(function ,a (obj (list bndg-aug)) ())r)r)))
+(constrain mutate-bindings (\ r (`(function (obj (list bndg-aug)) ())r)))
 
 (function mutate-bindings (obj updates) (do
   (foreach (update updates)
@@ -258,7 +258,7 @@
 
 (ignore Returns the bindings in the given object.)
 
-(constrain bindings (\ r (with-vars (a b c) (`(function ,c (,a obj buffer ,b) (list bndg-aug))r)r)))
+(constrain bindings (\ r (with-vars (a b) (`(function (,a obj buffer ,b) (list bndg-aug))r)r)))
 
 (function bindings (flag obj reg handler)
   (let (syms (storage _ nil)) (do
@@ -283,13 +283,13 @@
   mutable bindings are being queried. reg is the buffer in which the list of mutable
   bindings will be constructed. Return value is the list of mutable bindings.)
 
-(constrain mutable-bindings (\ r (with-vars (a b) (`(function ,a (obj buffer ,b) (list bndg-aug))r)r)))
+(constrain mutable-bindings (\ r (with-vars (b) (`(function (obj buffer ,b) (list bndg-aug))r)r)))
 
 (function mutable-bindings (obj reg handler) [bindings #1 obj reg handler])
 
 (ignore Analogous to above.)
 
-(constrain immutable-bindings (\ r (with-vars (a b) (`(function ,a (obj buffer ,b) (list bndg-aug))r)r)))
+(constrain immutable-bindings (\ r (with-vars (b) (`(function (obj buffer ,b) (list bndg-aug))r)r)))
 
 (function immutable-bindings (obj reg handler) [bindings #0 obj reg handler])
 
@@ -298,7 +298,7 @@
   is the object whose segment addresses is being queried. name is the name of the segment
   that is to be found.)
 
-(constrain segment (\ r (with-vars (a b) (`(function ,b (obj string) ,a)r)r)))
+(constrain segment (\ r (with-vars (a) (`(function (obj string) ,a)r)r)))
 
 (function segment (obj name) (with return
   (if [= (@ e-shstrndx(@ obj-ehdr obj)) (shn-undef)] (ignore)

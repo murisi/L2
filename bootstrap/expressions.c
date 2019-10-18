@@ -92,8 +92,6 @@ struct invoke_expression {
   
   unsigned long contains_flag;
   struct binding_aug *temp_storage_bndg;
-  
-  list parameter_names_fragment;
 };
 
 struct jump_expression {
@@ -446,7 +444,6 @@ union expression *make_invoke(union expression *ref, list args, list frag, union
   u->invoke.type = invoke;
   u->invoke.fragment = frag;
   u->invoke.signature = var(reg);
-  u->invoke.parameter_names_fragment = var(reg);
   u->invoke.lowlink = 0;
   u->invoke.dependencies = nil;
   u->invoke.meta = _meta;

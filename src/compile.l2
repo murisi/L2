@@ -3,7 +3,7 @@
   list into which the augmented bindings of the generated code will be put.)
 
 (constrain compile-program
-  (\ r (with-vars (a b c) (`(function ,c ((list expr) (list generator) ,b buffer ,a)
+  (\ r (with-vars (a b) (`(function ((list expr) (list generator) ,b buffer ,a)
     (values (list instr) (list reloc) (list bndg-aug) (list bndg-aug)))r)r)))
 
 (function compile-program (exprs gens outs buf handler)
@@ -32,7 +32,7 @@
   expr-buf is the buffer into which the results of compilation will be put. obj-buf is the
   buffer into which the object code will be put. Return value is an object.)
 
-(constrain load-program (\ r (with-vars (a b) (`(function ,b ((list expr) (list generator) buffer ,a) obj)r)r)))
+(constrain load-program (\ r (with-vars (a) (`(function ((list expr) (list generator) buffer ,a) obj)r)r)))
 
 (function load-program (exprs gens buf handler)
   (substitute (.. buf handler)
@@ -50,8 +50,7 @@
   <missing binding name>) if there is an undefined binding in the program that is not defined
   in bndgs.)
 
-(constrain load-program-and-mutate
-  (\ r (with-vars (a b) (`(function ,b ((list expr) (list generator) (list bndg-aug) buffer ,a) obj)r)r)))
+(constrain load-program-and-mutate (\ r (with-vars (a) (`(function ((list expr) (list generator) (list bndg-aug) buffer ,a) obj)r)r)))
 
 (function load-program-and-mutate (exprs gens bndgs buf handler)
   (let (obj [load-program exprs gens buf handler])
@@ -69,7 +68,7 @@
     [mutate-bindings obj bndgs]
     obj)))))
 
-(constrain read-to-buffer (\ r (with-vars (a b c d e) (`(function ,e (string ,a buffer ,b) (values ,c ,d))r)r)))
+(constrain read-to-buffer (\ r (with-vars (a b c d) (`(function (string ,a buffer ,b) (values ,c ,d))r)r)))
 
 (function read-to-buffer (fn outs buf handler)
   (let (fd [open fn handler])
@@ -89,7 +88,7 @@
   buf is the buffer into which the constructed expressions will be put. Return value is a
   list of expressions.)
 
-(constrain read-expressions (\ r (with-vars (a b) (`(function ,b (string buffer ,a) (list expr))r)r)))
+(constrain read-expressions (\ r (with-vars (a) (`(function (string buffer ,a) (list expr))r)r)))
 
 (function read-expressions (fn buf handler)
   (substitute (.. buf handler)
@@ -108,7 +107,7 @@
   bindings.)
 
 (constrain evaluate-files
-  (\ r (with-vars (a b) (`(function ,b ((list string) (list string) (list string) (ref (list bndg-aug)) buffer ,a) ())r)r)))
+  (\ r (with-vars (a) (`(function ((list string) (list string) (list string) (ref (list bndg-aug)) buffer ,a) ())r)r)))
 
 (function evaluate-files (source-fns object-fns intrinsic-fns bindings buf handler)
   (substitute (.. buf handler)
@@ -135,7 +134,7 @@
     
     (foreach (obj objects3) [mutate-bindings obj $bindings])))))))
 
-(constrain compile-program-to-elf (\ r (with-vars (a b) (`(function ,b ((list expr) (list generator) string buffer ,a) ())r)r)))
+(constrain compile-program-to-elf (\ r (with-vars (a) (`(function ((list expr) (list generator) string buffer ,a) ())r)r)))
 
 (function compile-program-to-elf (exprs gens outfn buf handler)
   (substitute (.. buf handler)
@@ -151,7 +150,7 @@
   pointing to the macros to be used during the meta-expression expansions. buf is the
   buffer into which constructed expressions and object code will be put.)
 
-(constrain compile-files (\ r (with-vars (a b) (`(function ,b ((list string) (list string) (list bndg-aug) buffer ,a) ())r)r)))
+(constrain compile-files (\ r (with-vars (a) (`(function ((list string) (list string) (list bndg-aug) buffer ,a) ())r)r)))
 
 (function compile-files (file-names intrinsic-fns bndgs buf handler)
   (substitute (.. buf handler)
