@@ -87,16 +87,18 @@
   buf is the buffer into which the constructed expressions will be put. Return value is a
   list of expressions.)
 
-(constrain read-expressions (\ r (with-vars (a) (`(function (string buffer ,a) (list expr))r)r)))
+(constrain read-expressions (\ r (with-vars (a) (`(function (string buffer buffer ,a) (list expr))r)r)))
 
-(function read-expressions (fn buf handler)
+(function read-expressions (fn buf :b handler)
   (substitute (.. buf handler)
-    (bind (src-buf src-sz) [read-to-buffer fn bind ..]
-    (let (pos (storage _ #0))
-      (loop cons-expr (expressions nil)
+    (with-buffer :b
+      (bind (src-buf src-sz) [read-to-buffer fn bind :b handler]
+      (let (pos (storage _ #0))
+      (let (exprs-start (storage _ nil))
+      (loop cons-expr (exprs-end exprs-start)
         (if [after-leading-space src-buf src-sz pos]
-          {cons-expr [cons [build-expression [build-fragment src-buf src-sz pos ..] null-expr ..] expressions ..]}
-          [reverse expressions ..]))))))
+          {cons-expr [append [build-expression [build-fragment src-buf src-sz pos ..] null-expr ..] exprs-end ..]}
+          $exprs-start))))))))
 
 (storage unsupported-intrinsics-error (ignore))
 
@@ -116,7 +118,7 @@
         {handler (storage _ unsupported-intrinsics-error intrinsic-fn)}) ..))
     
     (let (objects1 (fold (objects nil) (src source-fns)
-      (let (obj [load-program [generate-metaprogram [read-expressions src ..] gens bindings buf :b handler] gens buf :b handler])
+      (let (obj [load-program [generate-metaprogram [read-expressions src buf :b handler] gens bindings buf :b handler] gens buf :b handler])
         (do [append-list bindings [immutable-bindings obj ..]] [cons obj objects ..]))))
     
     (let (objects2 (fold (objects objects1) (src object-fns)
@@ -159,7 +161,7 @@
         {handler (storage _ unsupported-intrinsics-error intrinsic-fn)}) ..))
         
     (let (file-exprss (map (infn file-names)
-      (map (e [read-expressions infn ..])
+      (map (e [read-expressions infn buf :b handler])
         (let (f (storage _ e))
           (do [pre-visit-expressions vgenerate-metas f (values storage gens bndgs buf :b handler)] $f)) ..) ..)) (do
           
