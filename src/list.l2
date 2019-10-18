@@ -28,9 +28,9 @@
 
 (ignore
   Like a C-array initializer, but for lists. Does the following transformation:
-  (list (expr1 expr2 ... exprN) r handler)
+  (list (expr1 expr2 ... exprN) ..)
   ->
-  [cons expr1 [cons expr2 [... [cons exprN nil r handler] ...] r handler] r handler])
+  [cons expr1 [cons expr2 [... [cons exprN nil ..] ...] ..] ..])
 
 (function list (l r)
   (loop add-item (out (` nil r)) (in [meta:reverse [@fst l] r])
@@ -67,18 +67,15 @@
     (loop map:loop (map:l l) (map:end map:start)
       (if [nil? map:l]
         $map:start
-        (do
-          [set map:end [cons (let (x [@car map:l]) expr) nil ctx ...]]
-          {map:loop [@cdr map:l] (& cdr $map:end)})))))
+        {map:loop [@cdr map:l] [append (let (x [@car map:l]) expr) map:end ctx ...]}))))
 
 (function map (l r)
   (`(let (map:start (storage _ nil))
       (loop map:loop (map:l (,[@frfst l])) (map:end map:start)
         (if [nil? map:l]
           $map:start
-          (do
-            [set map:end (,[llllst (` invoke r) (` cons r) (`(let ((,[@ffst l]) [@car map:l]) (,[@frst l]))r) (` nil r) [@rrst l] r])]
-            {map:loop [@cdr map:l] (& cdr $map:end)}))))r))
+          {map:loop [@cdr map:l]
+            (,[llllst (` invoke r) (` append r) (`(let ((,[@ffst l]) [@car map:l]) (,[@frst l]))r) (` map:end r) [@rrst l] r])})))r))
 
 (ignore
   A macro to do a reverse filter. Does the following transformation:
@@ -208,7 +205,7 @@
   reference to the list that is to be appended to. r is the buffer into which the extension
   is being placed.)
 
-(constrain append (\ r (with-vars (et b) (`(function (,et (ref (list ,et)) buffer ,b) (ref ,et))r)r)))
+(constrain append (\ r (with-vars (et b) (`(function (,et (ref (list ,et)) buffer ,b) (ref (list ,et)))r)r)))
 
 (function append (data l r handler)
   (loop next (l l)
@@ -218,7 +215,7 @@
         [set l [buffer-alloc (list-struct) r handler]]
         (setf car $l data)
         (setf cdr $l nil)
-        (& car $l)))))
+        (& cdr $l)))))
 
 (ignore
   Makes a new list with the given head and tail. data is what is going to be put at the

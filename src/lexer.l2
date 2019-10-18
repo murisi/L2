@@ -64,8 +64,7 @@
     (let (d [evaluate frag])
       (if (or [vbl? d] [i/f:token? d])
         d
-        [list->fragment [reverse
-          (reverse-map (x [frag->list d]) [recursive-evaluate x ..] ..) ..]]))))
+        [list->fragment (map (x [frag->list d]) [recursive-evaluate x ..] ..)]))))
 
 (ignore
   What follows is a struct for representing fragment characters. It is conceptually in
@@ -122,10 +121,11 @@
 (constrain build-token (\ r (with-vars (c) (`(function (string buffer ,c) (list tchar))r)r)))
 
 (function build-token (str r handler)
-  (loop cons-char (sexprs nil) (strptr str)
-    (if [getb strptr]
-      {cons-char [cons (tkn-char [getb strptr]) sexprs r handler] [+ strptr #1]}
-      [reverse sexprs r handler])))
+  (let (sexprs-start (storage _ nil))
+    (loop cons-char (sexprs-end sexprs-start) (strptr str)
+      (if [getb strptr]
+        {cons-char [append (tkn-char [getb strptr]) sexprs-end r handler] [+ strptr #1]}
+        $sexprs-start))))
 
 (ignore
   Moves the supplied index forward to the first non-space character. l2src is a
@@ -170,11 +170,12 @@
 
 (function build-fragment-list (primitive delimeter l2src l2src-sz pos r handler)
   (substitute (.. r handler)
-    (loop cons-frag (sexprs (list ([token->fragment [build-token primitive ..]]) ..))
-      (let (rem [after-leading-space l2src l2src-sz pos])
-        (if (and rem [= [getb [+ l2src $pos]] delimeter])
-          (do [set+ pos #1] [reverse sexprs ..])
-          {cons-frag [cons [build-fragment l2src l2src-sz pos ..] sexprs ..]})))))
+    (let (sexprs-start (storage _ nil))
+      (loop cons-frag (sexprs-end [append [token->fragment [build-token primitive ..]] sexprs-start ..])
+        (let (rem [after-leading-space l2src l2src-sz pos])
+          (if (and rem [= [getb [+ l2src $pos]] delimeter])
+            (do [set+ pos #1] $sexprs-start)
+            {cons-frag [append [build-fragment l2src l2src-sz pos ..] sexprs-end ..]}))))))
 
 (storage unexpected-char-error (ignore))
 
