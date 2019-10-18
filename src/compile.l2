@@ -36,11 +36,12 @@
 
 (function load-program (exprs gens buf :b handler)
   (substitute (.. buf handler)
-    (bind (asms relocs undefined-bindings static-bindings) [compile-program exprs gens bind buf :b handler]
-    (bind (objdest objdest-sz) [write-elf asms relocs undefined-bindings static-bindings bind buf handler]
-    (let (obj [load objdest objdest-sz buf handler]) (do
-    [binding-offsets-to-addresses asms static-bindings obj]
-    obj))))))
+    (with-buffer :b
+      (bind (asms relocs undefined-bindings static-bindings) [compile-program exprs gens bind :b buf handler]
+      (bind (objdest objdest-sz) [write-elf asms relocs undefined-bindings static-bindings bind buf handler]
+      (let (obj [load objdest objdest-sz buf handler]) (do
+      [binding-offsets-to-addresses asms static-bindings obj]
+      obj)))))))
 
 (ignore
   Behavior is the same as load-program, but with the following addition: bndgs is a list
@@ -139,11 +140,12 @@
 
 (function compile-program-to-elf (exprs gens outfn buf :b handler)
   (substitute (.. buf handler)
-    (bind (asms relocs undefined-bindings static-bindings) [compile-program exprs gens bind buf :b handler]
-    (bind (objdest objdest-sz) [write-elf asms relocs undefined-bindings static-bindings bind ..]
-    (let (fd [create outfn handler]) (do
-    [print fd objdest objdest-sz handler]
-    [close fd handler]))))))
+    (with-buffer :b
+      (bind (asms relocs undefined-bindings static-bindings) [compile-program exprs gens bind :b buf handler]
+      (bind (objdest objdest-sz) [write-elf asms relocs undefined-bindings static-bindings bind :b handler]
+      (let (fd [create outfn handler]) (do
+      [print fd objdest objdest-sz handler]
+      [close fd handler])))))))
 
 (ignore
   Takes a list of L2 source files and compiles them into object files. programs is a
@@ -155,33 +157,34 @@
 
 (function compile-files (file-names intrinsic-fns bndgs buf :b handler)
   (substitute (.. buf handler)
-    (let (gens (reverse-map (intrinsic-fn intrinsic-fns)
-      (switch str= intrinsic-fn
-        ((" arithmetic) [function->generator generate-arithmetic-intrinsics])
-        {handler (storage _ unsupported-intrinsics-error intrinsic-fn)}) ..))
-        
-    (let (file-exprss (map (infn file-names)
-      (map (e [read-expressions infn buf :b handler])
-        (let (f (storage _ e))
-          (do [pre-visit-expressions vgenerate-metas f (values storage gens bndgs buf :b handler)] $f)) ..) ..)) (do
+    (with-buffer :b
+      (let (gens (reverse-map (intrinsic-fn intrinsic-fns)
+        (switch str= intrinsic-fn
+          ((" arithmetic) [function->generator generate-arithmetic-intrinsics])
+          {handler (storage _ unsupported-intrinsics-error intrinsic-fn)}) ..))
           
-    (let (all-exprs [reverse-flatten file-exprss ..])
-      (let (undefined-bindings (storage _ nil)) (global-bindings [global-binding-augs-of all-exprs ..]) (do
-        (foreach (expr all-exprs) [link-symbols expr (true) undefined-bindings global-bindings nil ..])
-        [infer-types all-exprs ..]
-        (foreach (expr all-exprs) [pre-visit-expressions vunlink-symbols (storage _ expr) (values storage global-bindings)])
-        (foreach (expr all-exprs) [pre-visit-expressions vunlink-symbols (storage _ expr) (values storage $undefined-bindings)]))))
+      (let (file-exprss (map (infn file-names)
+        (map (e [read-expressions infn buf :b handler])
+          (let (f (storage _ e))
+            (do [pre-visit-expressions vgenerate-metas f (values storage gens bndgs buf :b handler)] $f)) ..) ..)) (do
+            
+      (let (all-exprs [reverse-flatten file-exprss ..])
+        (let (undefined-bindings (storage _ nil)) (global-bindings [global-binding-augs-of all-exprs ..]) (do
+          (foreach (expr all-exprs) [link-symbols expr (true) undefined-bindings global-bindings nil ..])
+          [infer-types all-exprs ..]
+          (foreach (expr all-exprs) [pre-visit-expressions vunlink-symbols (storage _ expr) (values storage global-bindings)])
+          (foreach (expr all-exprs) [pre-visit-expressions vunlink-symbols (storage _ expr) (values storage $undefined-bindings)]))))
+        
+      (foreach (infn file-names) (exprs file-exprss)
+        (let (outfn [buffer-alloc [+ [strlen infn] #3] :b handler]) (do
+        [strcpy outfn infn]
+        [strcpy [strrchr outfn (nul)] (" .o)]
+        [compile-program-to-elf exprs gens outfn :b buf handler])))
       
-    (foreach (infn file-names) (exprs file-exprss)
-      (let (outfn [buffer-alloc [+ [strlen infn] #3] ..]) (do
-      [strcpy outfn infn]
-      [strcpy [strrchr outfn (nul)] (" .o)]
-      [compile-program-to-elf exprs gens outfn buf :b handler])))
-    
-    (foreach (intrinsic-fn intrinsic-fns)
-      (switch str= intrinsic-fn
-        ((" arithmetic) [compile-program-to-elf [wrap-arithmetic-intrinsics ..] gens (" arithmetic.o) buf :b handler])
-        {handler (storage _ unsupported-intrinsics-error intrinsic-fn)})))))))
+      (foreach (intrinsic-fn intrinsic-fns)
+        (switch str= intrinsic-fn
+          ((" arithmetic) [compile-program-to-elf [wrap-arithmetic-intrinsics ..] gens (" arithmetic.o) buf :b handler])
+          {handler (storage _ unsupported-intrinsics-error intrinsic-fn)}))))))))
 
 (storage arguments-error (ignore))
 

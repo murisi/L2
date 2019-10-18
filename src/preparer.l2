@@ -241,12 +241,11 @@
     (@ expr-signature e)
     [copy-fragment (@ expr-signature e) (storage _ nil) (storage _ nil) r handler]))
 
-(constrain generate-equations (\ r (with-vars (a) (`(function (expr (list expr) buffer ,a) (list (values frag frag)))r)r)))
+(constrain generate-equations
+  (\ r (with-vars (a) (`(function (expr (list expr) frag frag buffer ,a) (list (values frag frag)))r)r)))
 
-(function generate-equations (e scc buf handler)
+(function generate-equations (e scc function-token continuation-token buf handler)
   (substitute (.. buf handler)
-    (let (function-token [token->fragment [build-token [rstrcpy (" function) ..] ..]])
-    (let (continuation-token [token->fragment [build-token [rstrcpy (" continuation) ..] ..]])
     (switch = (@ expr-type e)
       ((-function-)
         (let (params-signature [list->fragment (map (x (@ expr-parameters e)) (@ expr-signature x) ..)])
@@ -293,7 +292,7 @@
       ((-symbol-)
         (list ((values (buffer-storage ..) (@ expr-signature e) (@ expr-signature (@ bndg-symbol (@ expr-symbol-binding-aug e))))) ..))
       
-      nil)))))
+      nil)))
 
 (storage unification-error (ignore))
 
@@ -307,14 +306,16 @@
     (foreach (expr exprs) [visit-expressions vfind-dependencies (storage _ expr) (values storage ..)])
     (foreach (expr exprs) [construct-sccs expr #1 stack sccs ..])
     
+    (let (function-token [token->fragment [build-token [rstrcpy (" function) ..] ..]])
+    (let (continuation-token [token->fragment [build-token [rstrcpy (" continuation) ..] ..]])
     (foreach (scc [reverse $sccs ..]) (do
       (foreach (e scc)
-        (foreach (equ [generate-equations e scc ..])
+        (foreach (equ [generate-equations e scc function-token continuation-token ..])
           (bind (lhs rhs) equ
             (if [unify lhs rhs] (ignore)
               {handler (storage _ unification-error [recursive-evaluate lhs ..] [recursive-evaluate rhs ..] e)}))))
       
-      (foreach (e scc) (setf expr-signature e [recursive-evaluate (@ expr-signature e) ..]))))))))))
+      (foreach (e scc) (setf expr-signature e [recursive-evaluate (@ expr-signature e) ..]))))))))))))
 
 (constrain visit-expressions (\ r (with-vars (a) (`(function ((function (expr ,a) expr) (ref expr) ,a) ())r)r)))
 
