@@ -7,20 +7,18 @@
 (constrain vfind-multiple-definitions (\ r (with-vars (a) (`(function (expr (values buffer ,a)) expr)r)r)))
 
 (function vfind-multiple-definitions (e ctx)
-  (bind (:a handler) ctx (do
-    (switch = (@ expr-type e)
-      ((-continuation-) (-function-)
-        (let (temp-reg [create-buffer #0 handler])
-        (let (ref-with-params [cons (@ expr-reference e) (@ expr-parameters e) temp-reg handler]) (do
-        (until (partial ref-with-params) [nil? partial] [@cdr partial]
-          (if [nil? (find (f (@ cdr partial)) [named-sym= f [@car partial]])] (ignore)
-            (let (dup-ref-name (@ expr-name[@car partial])) (do
-            [destroy-buffer temp-reg handler]
-            {handler (storage _ multiple-definition-error dup-ref-name)}))))
-        [destroy-buffer temp-reg handler]))))
-      
-      (ignore))
-    e)))
+  (bind (:a handler) ctx
+    (with-buffer :a (do
+      (switch = (@ expr-type e)
+        ((-continuation-) (-function-)
+          (let (ref-with-params [cons (@ expr-reference e) (@ expr-parameters e) :a handler])
+          (until (partial ref-with-params) [nil? partial] [@cdr partial]
+            (if [nil? (find (f (@ cdr partial)) [named-sym= f [@car partial]])] (ignore)
+              (let (dup-ref-name (@ expr-name[@car partial]))
+                {handler (storage _ multiple-definition-error dup-ref-name)})))))
+        
+        (ignore))
+      e))))
 
 (constrain global-binding-augs-of (\ r (with-vars (a) (`(function ((list expr) buffer ,a) (list bndg-aug))r)r)))
 
