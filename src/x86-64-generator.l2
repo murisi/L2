@@ -61,6 +61,7 @@
       (setf bndg-offset (@ expr-symbol-binding-aug(@ expr-reference n)) offset)
       (let (offset-ref (storage _ offset))
       (foreach (u (@ expr-arguments n)) (do
+        (setf bndg-size (@ expr-binding-aug u) (word-size))
         (setf bndg-offset (@ expr-binding-aug u) $offset-ref)
         [set+ offset-ref (word-size)])))
       (fold (offset offset) (u (@ expr-arguments n)) [layout-frame-storages u offset])))))
@@ -139,13 +140,13 @@
               {assign-args [+ offset (word-size)]
                 [binding-to-register/memory (@ expr-symbol-binding-aug [@car u]) offset in-use] [@cdr u]})))))))
       (values (use-storage ret-val) frame-size
-        (switch = (@ expr-type n) ((-continuation-)(hex FFFFFFFFFFFFFFFF)) ((-with-) in-use) (ignore)))))))))
+        (hex FFFFFFFFFFFFFFFF))))))))
     
     ((-storage-)
       (fold (memory-state (values (use-storage ret-val) offset (hex FFFFFFFFFFFFFFFF))) (u (@ expr-arguments n))
         (bind (bottom-offset in-use) memory-state
         (bind (bottom-offset' in-use') [layout-frames u offset bind]
-        (values (use-storage ret-val) [min bottom-offset bottom-offset'] [bor in-use in-use'])))))
+        (values (use-storage ret-val) [min bottom-offset bottom-offset'] (hex FFFFFFFFFFFFFFFF))))))
     
     ((-jump-)
       (let (sub-expr-offset [- offset [* [+ [length (@ expr-arguments n)] #1] (word-size)]])
@@ -221,14 +222,14 @@
       (bind (bottom-offset'' in-use'') [layout-frames (@ expr-alternate n) offset bind]
       (values (use-storage ret-val)
         [min bottom-offset [min bottom-offset' bottom-offset'']]
-        [bor in-use [bor in-use' in-use'']])))))))
+        (hex FFFFFFFFFFFFFFFF))))))))
     
     ((-constrain-)
       (let (offset [- offset (word-size)]) (do
       (setf bndg-offset (@ expr-binding-aug (@ expr-expression n)) offset)
       [layout-frames (@ expr-expression n) offset ret-val])))
     
-    ((-symbol-) (values (use-storage ret-val) offset (hex FFFFFFFFFFFFFFFF)))
+    ((-symbol-) (values (use-storage ret-val) offset (hex 0000000000000000)))
     
     ((-literal-) (values (use-storage ret-val) offset (hex FFFFFFFFFFFFFFFF)))
     

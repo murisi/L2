@@ -383,37 +383,45 @@
     
     (ignore))))
 
-(constrain collect-static-bindings (\ r (with-vars (a) (`(function (expr (ref (list bndg-aug)) buffer ,a) bndg-aug)r)r)))
+(constrain append-static-binding (\ r (with-vars (a b) (`(function (bndg-aug (ref (list bndg-aug)) buffer ,a) ,b)r)r)))
+
+(function append-static-binding (bndg binding-augs r handler)
+  (substitute (.. r handler)
+    (if [= (@ bndg-storage bndg) (absolute-storage)]
+      [append bndg binding-augs ..]
+      (ignore))))
+
+(constrain collect-static-bindings (\ r (with-vars (a b) (`(function (expr (ref (list bndg-aug)) buffer ,a) ,b)r)r)))
 
 (function collect-static-bindings (n binding-augs r handler)
   (substitute (.. r handler) (do
     (switch = (@ expr-type n)
       ((-continuation-) (-with-) (do
-        [append [collect-static-bindings (@ expr-expression n) binding-augs ..] binding-augs ..]
+        [collect-static-bindings (@ expr-expression n) binding-augs ..]
         (if (@ expr-escapes n)
-          [append (@ expr-symbol-binding-aug(@ expr-reference n)) binding-augs ..] (ignore))
+          [append-static-binding (@ expr-symbol-binding-aug(@ expr-reference n)) binding-augs ..] (ignore))
         (foreach (t (@ expr-parameters n))
-          [append (@ expr-symbol-binding-aug t) binding-augs ..])))
+          [append-static-binding (@ expr-symbol-binding-aug t) binding-augs ..])))
       
       ((-storage-) (do
-        [append (@ expr-symbol-binding-aug(@ expr-reference n)) binding-augs ..]
-        (foreach (u (@ expr-arguments n)) [append [collect-static-bindings u binding-augs ..] binding-augs ..])))
+        [append-static-binding (@ expr-symbol-binding-aug(@ expr-reference n)) binding-augs ..]
+        (foreach (u (@ expr-arguments n)) [collect-static-bindings u binding-augs ..])))
       
       ((-jump-) (-invoke-) (do
-        [append [collect-static-bindings (@ expr-reference n) binding-augs ..] binding-augs ..]
-        (foreach (u (@ expr-arguments n)) [append [collect-static-bindings u binding-augs ..] binding-augs ..])))
+        [collect-static-bindings (@ expr-reference n) binding-augs ..]
+        (foreach (u (@ expr-arguments n)) [collect-static-bindings u binding-augs ..])))
       
       ((-if-) (do
-        [append [collect-static-bindings (@ expr-condition n) binding-augs ..] binding-augs ..]
-        [append [collect-static-bindings (@ expr-consequent n) binding-augs ..] binding-augs ..]
-        [append [collect-static-bindings (@ expr-alternate n) binding-augs ..] binding-augs ..]))
+        [collect-static-bindings (@ expr-condition n) binding-augs ..]
+        [collect-static-bindings (@ expr-consequent n) binding-augs ..]
+        [collect-static-bindings (@ expr-alternate n) binding-augs ..]))
       
       ((-constrain-)
-        [append [collect-static-bindings (@ expr-expression n) binding-augs ..] binding-augs ..])
+        [collect-static-bindings (@ expr-expression n) binding-augs ..])
       
       (ignore))
       
-    (@ expr-binding-aug n))))
+    [append-static-binding (@ expr-binding-aug n) binding-augs ..])))
 
 (constrain containment-analysis (\ r (`(function (expr) expr-contains-flag)r)))
 
