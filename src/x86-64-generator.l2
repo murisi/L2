@@ -121,25 +121,28 @@
         (setf bndg-size (@ expr-symbol-binding-aug t) (word-size))
         (setf bndg-offset (@ expr-symbol-binding-aug t) parameter-offset)
         [+ parameter-offset (word-size)])))))
-      (values (use-storage ret-val) offset (hex FFFFFFFFFFFF0C37))))
+      (values (use-storage ret-val) offset (hex FFFFFFFFFFFFFFFF))))
     
     ((-continuation-) (-with-)
-      (let (offset (if (@ expr-escapes n) offset
-          (let (offset [- offset [* [length (@ expr-parameters n)] (word-size)]]) (do
-          (fold (offset offset) (t (@ expr-parameters n)) (do
-            (setf bndg-offset (@ expr-symbol-binding-aug t) offset)
-            (setf bndg-size (@ expr-symbol-binding-aug t) (word-size))
-            [+ offset (word-size)]))
+      (let (bottom-offset [- offset [* [+ [length (@ expr-parameters n)] #1] (word-size)]]) (do
+      (setf bndg-offset (@ expr-binding-aug (@ expr-expression n)) bottom-offset)
+      (bind (frame-size in-use) [layout-frames (@ expr-expression n) bottom-offset bind]
+      (let (in-use (hex FFFFFFFFFFFFFFFF))
+      (let (in-use
+        (if (@ expr-escapes n) in-use
+          (let (offset [- offset [* [length (@ expr-parameters n)] (word-size)]])
           (let (cont-bndg (@ expr-symbol-binding-aug(@ expr-reference n))) (do
           (setf bndg-size cont-bndg #0)
           (setf bndg-offset cont-bndg offset)
-          offset))))))
-        (let (offset [- offset (word-size)]) (do
-        (setf bndg-offset (@ expr-binding-aug (@ expr-expression n)) offset)
-        [layout-frames (@ expr-expression n) offset ret-val]))))
+          (loop assign-args (offset offset) (in-use in-use) (u (@ expr-parameters n))
+            (if [nil? u] in-use
+              {assign-args [+ offset (word-size)]
+                [binding-to-register/memory (@ expr-symbol-binding-aug [@car u]) offset in-use] [@cdr u]})))))))
+      (values (use-storage ret-val) frame-size
+        (switch = (@ expr-type n) ((-continuation-)(hex FFFFFFFFFFFFFFFF)) ((-with-) in-use) (ignore)))))))))
     
     ((-storage-)
-      (fold (memory-state (values (use-storage ret-val) offset (hex FFFFFFFFFFFF0C37))) (u (@ expr-arguments n))
+      (fold (memory-state (values (use-storage ret-val) offset (hex FFFFFFFFFFFFFFFF))) (u (@ expr-arguments n))
         (bind (bottom-offset in-use) memory-state
         (bind (bottom-offset' in-use') [layout-frames u offset bind]
         (values (use-storage ret-val) [min bottom-offset bottom-offset'] [bor in-use in-use'])))))
@@ -158,19 +161,18 @@
       (fold (offset offset) (u (@ expr-arguments n)) (do
         (setf bndg-offset (@ expr-binding-aug u) offset)
         [+ offset (word-size)])))
-      (values (use-storage ret-val) bottom-offset in-use)))))))
+      (values (use-storage ret-val) bottom-offset (hex FFFFFFFFFFFFFFFF))))))))
     
     ((-invoke-)
       (bind (bottom-offset in-use)
         (let (sub-expr-offset [- offset [* [+ [length (@ expr-arguments n)] #1] (word-size)]])
-        (let (memory-state [layout-frames (@ expr-reference n) sub-expr-offset ret-val])
+        (let (memory-state [layout-frames (@ expr-reference n) sub-expr-offset bind])
         (fold (memory-state memory-state) (u (@ expr-arguments n))
           (bind (bottom-offset in-use) memory-state
           (bind (bottom-offset' in-use') [layout-frames u sub-expr-offset bind]
           (values storage [min bottom-offset bottom-offset'] [bor in-use in-use']))))))
       
-      (let (in-use [bor in-use (hex FFFFFFFFFFFFFFF8)])
-      
+      (let (in-use [bor in-use (hex FFFFFFFFFFFFFF7F)])
       (let (arg-offset [- offset [* [+[length (@ expr-arguments n)]#1] (word-size)]])
       (let
         (in-use (if [< [length (@ expr-arguments n)] #1] in-use
@@ -207,7 +209,7 @@
       
       (let (ref-offset [- offset (word-size)])
       (let (in-use [binding-to-register/memory (@ expr-binding-aug(@ expr-reference n)) ref-offset in-use])
-      (values (use-storage ret-val) bottom-offset [bor in-use (hex FFFFFFFFFFFF0FC7)])))))))))
+      (values (use-storage ret-val) bottom-offset [bor in-use (hex FFFFFFFFFFFFFFFF)])))))))))
     
     ((-if-)
       (let (offset [- offset (word-size)]) (do
@@ -226,7 +228,11 @@
       (setf bndg-offset (@ expr-binding-aug (@ expr-expression n)) offset)
       [layout-frames (@ expr-expression n) offset ret-val])))
     
-    (values (use-storage ret-val) offset (hex FFFFFFFFFFFF0C37)))))
+    ((-symbol-) (values (use-storage ret-val) offset (hex FFFFFFFFFFFFFFFF)))
+    
+    ((-literal-) (values (use-storage ret-val) offset (hex FFFFFFFFFFFFFFFF)))
+    
+    (ignore))))
 
 (constrain generator->function
   (\ r (with-vars (a b) (`(function (generator)
@@ -538,27 +544,24 @@
     (and [= (@ expr-type n) (-invoke-)] (let
         (expr-val-bndg (@ expr-binding-aug n))
         (ref-val-bndg (@ expr-binding-aug (@ expr-reference n))) (do
-      (foreach (t (@ expr-arguments n)) [generate-expression t gens c relocs ..])
-      (if (or [= (@ expr-contains-flag n) (contains-with)] [= (@ expr-contains-flag n) (contains-none)])
-        (foreach (t [reverse (@ expr-arguments n) ..])
-          (let (src-val-bndg (@ expr-binding-aug t))
-            [prepend (make-instrN(x86-push) ([bndg->op src-val-bndg relocs ..]) ..) c ..]))
-        (ignore))
-      
       [generate-expression (@ expr-reference n) gens c relocs ..]
+      (foreach (t (@ expr-arguments n)) [generate-expression t gens c relocs ..])
+      (foreach (t [reverse (if [> [length (@ expr-arguments n)] #6] [@cddddddr(@ expr-arguments n)] nil) ..])
+        (let (src-val-bndg (@ expr-binding-aug t))
+          [prepend (make-instrN(x86-push) ([bndg->op src-val-bndg relocs ..]) ..) c ..]))
       
       (if [> [length (@ expr-arguments n)] #0]
-        [prepend (make-instrN(x86-pop)([make-reg-op (rdi) ..])..) c ..] (ignore))
+        [prepend (make-instrN(x86-mov)([make-reg-op (rdi) ..][bndg->op(@ expr-binding-aug [@car(@ expr-arguments n)]) relocs ..])..) c ..] (ignore))
       (if [> [length (@ expr-arguments n)] #1]
-        [prepend (make-instrN(x86-pop)([make-reg-op (rsi) ..])..) c ..] (ignore))
+        [prepend (make-instrN(x86-mov)([make-reg-op (rsi) ..][bndg->op(@ expr-binding-aug [@cadr(@ expr-arguments n)]) relocs ..])..) c ..] (ignore))
       (if [> [length (@ expr-arguments n)] #2]
-        [prepend (make-instrN(x86-pop)([make-reg-op (rdx) ..])..) c ..] (ignore))
+        [prepend (make-instrN(x86-mov)([make-reg-op (rdx) ..][bndg->op(@ expr-binding-aug [@caddr(@ expr-arguments n)]) relocs ..])..) c ..] (ignore))
       (if [> [length (@ expr-arguments n)] #3]
-        [prepend (make-instrN(x86-pop)([make-reg-op (rcx) ..])..) c ..] (ignore))
+        [prepend (make-instrN(x86-mov)([make-reg-op (rcx) ..][bndg->op(@ expr-binding-aug [@cadddr(@ expr-arguments n)]) relocs ..])..) c ..] (ignore))
       (if [> [length (@ expr-arguments n)] #4]
-        [prepend (make-instrN(x86-pop)([make-reg-op (r8) ..])..) c ..] (ignore))
+        [prepend (make-instrN(x86-mov)([make-reg-op (r8) ..][bndg->op(@ expr-binding-aug [@caddddr(@ expr-arguments n)]) relocs ..])..) c ..] (ignore))
       (if [> [length (@ expr-arguments n)] #5]
-        [prepend (make-instrN(x86-pop)([make-reg-op (r9) ..])..) c ..] (ignore))
+        [prepend (make-instrN(x86-mov)([make-reg-op (r9) ..][bndg->op(@ expr-binding-aug [@cadddddr(@ expr-arguments n)]) relocs ..])..) c ..] (ignore))
       
       [prepend (make-instrN(x86-mov)([make-reg-op (rax) ..] [make-imm-op #8 #0 ..])..) c ..]
       [prepend (make-instrN(x86-call)([bndg->op ref-val-bndg relocs ..])..) c ..]
