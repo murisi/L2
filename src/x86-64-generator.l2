@@ -173,7 +173,7 @@
           (bind (bottom-offset' in-use') [layout-frames u sub-expr-offset bind]
           (values storage [min bottom-offset bottom-offset'] [bor in-use in-use']))))))
       
-      (let (in-use [bor in-use (hex FFFFFFFFFFFFFC39)])
+      (let (in-use [bor in-use (hex FFFFFFFFFFFFF039)])
       (let (arg-offset [- offset [* [+[length (@ expr-arguments n)]#1] (word-size)]])
       (let
         (in-use (if [< [length (@ expr-arguments n)] #1] in-use
@@ -213,16 +213,18 @@
       (values (use-storage ret-val) bottom-offset [bor in-use (hex FFFFFFFFFFFF0FF7)])))))))))
     
     ((-if-)
-      (let (offset [- offset (word-size)]) (do
-      (setf bndg-offset (@ expr-binding-aug (@ expr-condition n)) offset)
-      (setf bndg-offset (@ expr-binding-aug (@ expr-consequent n)) offset)
-      (setf bndg-offset (@ expr-binding-aug (@ expr-alternate n)) offset)
+      (let (offset [- offset (word-size)])
       (bind (bottom-offset in-use) [layout-frames (@ expr-condition n) offset bind]
       (bind (bottom-offset' in-use') [layout-frames (@ expr-consequent n) offset bind]
       (bind (bottom-offset'' in-use'') [layout-frames (@ expr-alternate n) offset bind]
+      (let (in-use
+        [binding-to-register/memory (@ expr-binding-aug (@ expr-condition n)) offset
+        [binding-to-register/memory (@ expr-binding-aug (@ expr-consequent n)) offset
+        [binding-to-register/memory (@ expr-binding-aug (@ expr-alternate n)) offset
+          [bor in-use [bor in-use' [bor in-use'' (hex FFFFFFFFFFFFF838)]]]]]])
       (values (use-storage ret-val)
         [min bottom-offset [min bottom-offset' bottom-offset'']]
-        [bor in-use [bor in-use' in-use'']])))))))
+        in-use)))))))
     
     ((-constrain-)
       (let (offset [- offset (word-size)]) (do
@@ -332,14 +334,14 @@
           (alternate-instr-bndg [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr null-expr ..])
           (end-instr-binding [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr null-expr ..]) (do
         [generate-expression (@ expr-condition n) gens c relocs ..]
-        [prepend (make-instrN(x86-or)([bndg->op condition-val-bndg relocs ..][bndg->op condition-val-bndg relocs ..][make-reg-op(r10)..])..) c ..]
+        [prepend (make-instrN(x86-or)([bndg->op condition-val-bndg relocs ..][bndg->op condition-val-bndg relocs ..][make-reg-op(r11)..])..) c ..]
         [prepend (make-instrN (x86-je) ([make-relative-relocation-immediate #4 alternate-instr-bndg relocs ..]) ..) c ..]
         [generate-expression (@ expr-consequent n) gens c relocs ..]
-        [prepend (make-instrN(x86-mov)([bndg->op expr-val-bndg relocs ..][bndg->op consequent-val-bndg relocs ..][make-reg-op(r10)..])..) c ..]
+        [prepend (make-instrN(x86-mov)([bndg->op expr-val-bndg relocs ..][bndg->op consequent-val-bndg relocs ..][make-reg-op(r11)..])..) c ..]
         [prepend (make-instrN (x86-jmp) ([make-relative-relocation-immediate #4 end-instr-binding relocs ..]) ..) c ..]
         [prepend [make-label alternate-instr-bndg ..] c ..]
         [generate-expression (@ expr-alternate n) gens c relocs ..]
-        [prepend (make-instrN(x86-mov)([bndg->op expr-val-bndg relocs ..][bndg->op alternate-val-bndg relocs ..][make-reg-op(r10)..])..) c ..]
+        [prepend (make-instrN(x86-mov)([bndg->op expr-val-bndg relocs ..][bndg->op alternate-val-bndg relocs ..][make-reg-op(r11)..])..) c ..]
         [prepend [make-label end-instr-binding ..] c ..]
         (true))))))
 
