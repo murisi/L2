@@ -83,7 +83,7 @@
   already in use. Assigns the given binding to the given register if it is not already in
   use and returns an indication to that effect, otherwise it fails.)
 
-(constrain try-binding-to-register (\ r (with-vars (a b c) (`(function (bndg-aug register ,a ,b) (values ,c ,a))r)r)))
+(constrain try-binding-to-register (\ r (with-vars (b c) (`(function (bndg-aug register reg-use-vec ,b) (values ,c reg-use-vec))r)r)))
 
 (function try-binding-to-register (bndg reg in-use ret-val)
   (let (reg-idx [band reg (hex F)])
@@ -101,7 +101,7 @@
   registers that are currently in use. Returns the new stack offset and register usage
   bit-vector after the given bit-vector is placed.)
 
-(constrain binding-to-register/memory (\ r (with-vars (a b) (`(function (bndg-aug ,a ,b) ,b)r)r)))
+(constrain binding-to-register/memory (\ r (with-vars (a) (`(function (bndg-aug ,a reg-use-vec) reg-use-vec)r)r)))
 
 (function binding-to-register/memory (bndg offset in-use)
   (if [= in-use (hex FFFFFFFFFFFFFFFF)]
@@ -127,7 +127,7 @@
   (setf bndg-offset dst-bndg (@ bndg-offset src-bndg))
   (setf bndg-storage dst-bndg (@ bndg-storage src-bndg))))
 
-(constrain layout-frames (\ r (with-vars (a b c) (`(function (expr ,b ,c) (values ,b ,a))r)r)))
+(constrain layout-frames (\ r (with-vars (b c) (`(function (expr ,b ,c) (values ,b reg-use-vec))r)r)))
 
 (function layout-frames (n offset ret-val) (do
   (setf bndg-size (@ expr-binding-aug n) (word-size))
