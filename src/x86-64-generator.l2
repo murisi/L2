@@ -150,10 +150,10 @@
         (hex FFFFFFFFFFFFFFFF))))))))
     
     ((-storage-)
-      (fold (memory-state (values (use-storage ret-val) offset (hex FFFFFFFFFFFFFFFF))) (u (@ expr-arguments n))
+      (fold (memory-state (values (use-storage ret-val) offset (hex 0000000000000800))) (u (@ expr-arguments n))
         (bind (bottom-offset in-use) memory-state
         (bind (bottom-offset' in-use') [layout-frames u offset bind]
-        (values (use-storage ret-val) [min bottom-offset bottom-offset'] (hex FFFFFFFFFFFFFFFF))))))
+        (values (use-storage ret-val) [min bottom-offset bottom-offset'] [bor in-use in-use'])))))
     
     ((-jump-)
       (let (sub-expr-offset [- offset [* [+ [length (@ expr-arguments n)] #1] (word-size)]])
@@ -236,9 +236,11 @@
         [min bottom-offset [min bottom-offset' bottom-offset'']] in-use)))))))))
     
     ((-constrain-)
-      (let (offset [- offset (word-size)]) (do
-      (setf bndg-offset (@ expr-binding-aug (@ expr-expression n)) offset)
-      [layout-frames (@ expr-expression n) offset ret-val])))
+      (let (offset [- offset (word-size)])
+      (bind (bottom-offset in-use) [layout-frames (@ expr-expression n) offset ret-val]
+      (let (in-use
+        [binding-to-register/memory (@ expr-binding-aug (@ expr-expression n)) offset [bor in-use (hex FFFFFFFFFFFFF838)]])
+      (values (use-storage ret-val) bottom-offset in-use)))))
     
     ((-symbol-) (values (use-storage ret-val) offset (hex 0000000000000800)))
     
@@ -366,7 +368,7 @@
         (foreach (t (@ expr-arguments n)) [generate-expression t gens c relocs ..])
         
         [prepend(make-instrN(x86-lea)
-          ([bndg->op expr-val-bndg relocs ..][bndg->op storage-val-bndg relocs ..][make-reg-op(r10) ..])..) c ..]
+          ([bndg->op expr-val-bndg relocs ..][bndg->op storage-val-bndg relocs ..][make-reg-op(r11) ..])..) c ..]
         (true))))))
 
 (constrain generate-symbol
@@ -595,7 +597,7 @@
           (expr-val-bndg (@ expr-binding-aug n))
           (body-val-bndg (@ expr-binding-aug (@ expr-expression n))) (do
         [generate-expression (@ expr-expression n) gens c relocs ..]
-        [prepend (make-instrN(x86-mov)([bndg->op expr-val-bndg relocs ..][bndg->op body-val-bndg relocs ..][make-reg-op(r10)..])..) c ..]
+        [prepend (make-instrN(x86-mov)([bndg->op expr-val-bndg relocs ..][bndg->op body-val-bndg relocs ..][make-reg-op(r11)..])..) c ..]
         (true))))))
 
 (constrain generate-expression
