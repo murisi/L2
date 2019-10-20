@@ -578,8 +578,8 @@
       (if [= (@ op-disp-size modrm.rm-op) #4] #2 (ignore))))))
     
     (let (has-sib? (and [= (@ op-type modrm.rm-op) (memory-operand)]
-      (or [not= (@ op-index modrm.rm-op) (none)] [= (@ op-base modrm.rm-op) (esp)]
-        (and [= (@ op-base modrm.rm-op) (ebp)] [= (@ op-disp-size modrm.rm-op) #0]))))
+      (or [not= (@ op-index modrm.rm-op) (none)] [= modrm.rm-op-code [band (rsp) #7]]
+        (and [= modrm.rm-op-code [band (rbp) #7]] [= (@ op-disp-size modrm.rm-op) #0]))))
     
     (let (modrm.rm
       (if [= (@ op-type modrm.rm-op) (register-operand)] modrm.rm-op-code
@@ -602,7 +602,7 @@
         (and [not= (@ op-index modrm.rm-op) (none)] [= [register-size (@ op-index modrm.rm-op)] #8])
         [= (@ op-disp-size modrm.rm-op) #8]))))
     
-    (let (rex.w (or [= (@ op-size modrm.reg-op) #8] [= (@ op-size modrm.rm-op) #8] [= (@ op-size opcode.reg-op) #8]))
+    (let (rex.w (if (or [= (@ op-size modrm.reg-op) #8] [= (@ op-size modrm.rm-op) #8] [= (@ op-size opcode.reg-op) #8]) #1 #0))
     
     (let (rex.r (if (and [= (@ op-type modrm.reg-op) (register-operand)] [band (@ op-register modrm.reg-op) #8]) #1 #0))
     

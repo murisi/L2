@@ -125,7 +125,7 @@
       (bind (frame-size used-registers) [layout-frames (@ expr-expression n) offset bind] (do
       (setf bndg-offset (@ expr-binding-aug (@ expr-expression n)) offset)
       (setf expr-frame-size n frame-size)
-      (fold (parameter-offset [* #2 (word-size)]) (t (@ expr-parameters n)) (do
+      (fold (parameter-offset [* #7 (word-size)]) (t (@ expr-parameters n)) (do
         (setf bndg-size (@ expr-symbol-binding-aug t) (word-size))
         (setf bndg-offset (@ expr-symbol-binding-aug t) parameter-offset)
         [+ parameter-offset (word-size)])))))
@@ -162,7 +162,7 @@
           (bind (bottom-offset in-use) memory-state
           (bind (bottom-offset' in-use') [layout-frames u sub-expr-offset bind]
           (values (use-storage ret-val) [min bottom-offset bottom-offset'] [bor in-use in-use']))))
-      (let (in-use [bor in-use (hex FFFFFFFFFFFFFC38)])
+      (let (in-use [bor in-use (hex FFFFFFFFFFFF0C30)])
       (let (offset [- offset (word-size)])
       (let (in-use [binding-to-register/memory (@ expr-binding-aug(@ expr-reference n)) offset in-use])
       (let (offset [- offset [* [length (@ expr-arguments n)] (word-size)]])
@@ -183,7 +183,7 @@
           (bind (bottom-offset' in-use') [layout-frames u sub-expr-offset bind]
           (values storage [min bottom-offset bottom-offset'] [bor in-use in-use']))))))
       
-      (let (in-use [bor in-use (hex FFFFFFFFFFFFF039)])
+      (let (in-use [bor in-use (hex FFFFFFFFFFFF0031)])
       (let (arg-offset [- offset [* [+[length (@ expr-arguments n)]#1] (word-size)]])
       (let
         (in-use (if [< [length (@ expr-arguments n)] #1] in-use
@@ -232,7 +232,7 @@
         (consequent-bndg (@ expr-binding-aug (@ expr-consequent n)))
         (alternate-bndg (@ expr-binding-aug (@ expr-alternate n)))
       (let (in-use [binding-to-register/memory condition-bndg offset
-        [bor in-use [bor in-use' [bor in-use'' (hex FFFFFFFFFFFFF838)]]]]) (do
+        [bor in-use [bor in-use' [bor in-use'' (hex FFFFFFFFFFFF0830)]]]]) (do
       [copy-binding consequent-bndg condition-bndg]
       [copy-binding alternate-bndg condition-bndg]
       (values (use-storage ret-val)
@@ -242,7 +242,7 @@
       (let (offset [- offset (word-size)])
       (bind (bottom-offset in-use) [layout-frames (@ expr-expression n) offset ret-val]
       (let (in-use
-        [binding-to-register/memory (@ expr-binding-aug (@ expr-expression n)) offset [bor in-use (hex FFFFFFFFFFFFF838)]])
+        [binding-to-register/memory (@ expr-binding-aug (@ expr-expression n)) offset [bor in-use (hex FFFFFFFFFFFF0830)]])
       (values (use-storage ret-val) bottom-offset in-use)))))
     
     ((-symbol-) (values (use-storage ret-val) offset (hex 0000000000000800)))
@@ -509,6 +509,10 @@
       [prepend(make-instrN(x86-mov)([bndg->op expr-val-bndg relocs ..][make-imm-op #8 (@ expr-value n)..][make-reg-op (r11)..])..) c ..]
       (true))))))
 
+(storage callee-saved-x64-r64s-len #5)
+
+(storage callee-saved-x64-r64s (rbx)(r12)(r13)(r14)(r15))
+
 (constrain generate-function
   (\ r (with-vars (a b) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
@@ -534,6 +538,12 @@
       [prepend (make-instrN(x86-push)([make-reg-op (rsi) ..])..) c ..]
       [prepend (make-instrN(x86-push)([make-reg-op (rdi) ..])..) c ..]
       
+      [prepend (make-instrN(x86-sub)([make-reg-op (rsp) ..] [make-imm-op #4 [* #5(word-size)] ..])..) c ..]
+      (until (i #0) [= i $callee-saved-x64-r64s-len] [+ i #1]
+        [prepend (make-instrN (x86-mov)
+          ([make-mem-op(word-size)(rsp)(none)#0[* i(word-size)]#4 ..]
+          [make-reg-op ($(loc(word-size)i callee-saved-x64-r64s)) ..]) ..) c ..])
+      
       [prepend (make-instrN(x86-push)([make-reg-op (r11) ..])..) c ..]
       
       [prepend (make-instrN(x86-push)([make-reg-op (rbp) ..])..) c ..]
@@ -547,6 +557,13 @@
       [prepend (make-instrN(x86-leave)()..) c ..]
       
       [prepend (make-instrN(x86-pop)([make-reg-op (r11) ..])..) c ..]
+      
+      (until (i #0) [= i $callee-saved-x64-r64s-len] [+ i #1]
+        [prepend (make-instrN (x86-mov)
+          ([make-reg-op ($(loc(word-size)i callee-saved-x64-r64s)) ..]
+          [make-mem-op(word-size)(rsp)(none)#0[* i(word-size)]#4 ..]) ..) c ..])
+      [prepend (make-instrN(x86-add)([make-reg-op (rsp) ..] [make-imm-op #4 [* #5(word-size)] ..])..) c ..]
+      
       [prepend (make-instrN(x86-add)([make-reg-op (rsp) ..] [make-imm-op #4 [* #6(word-size)] ..])..) c ..]
       [prepend (make-instrN(x86-push)([make-reg-op (r11) ..])..) c ..]
       [prepend (make-instrN(x86-ret)()..) c ..]
