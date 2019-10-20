@@ -210,7 +210,7 @@
       
       (let (ref-offset [- offset (word-size)])
       (let (in-use [binding-to-register/memory (@ expr-binding-aug(@ expr-reference n)) ref-offset in-use])
-      (values (use-storage ret-val) bottom-offset [bor in-use (hex FFFFFFFFFFFFFFFF)])))))))))
+      (values (use-storage ret-val) bottom-offset [bor in-use (hex FFFFFFFFFFFF0FF7)])))))))))
     
     ((-if-)
       (let (offset [- offset (word-size)]) (do
@@ -222,16 +222,16 @@
       (bind (bottom-offset'' in-use'') [layout-frames (@ expr-alternate n) offset bind]
       (values (use-storage ret-val)
         [min bottom-offset [min bottom-offset' bottom-offset'']]
-        (hex FFFFFFFFFFFFFFFF))))))))
+        [bor in-use [bor in-use' in-use'']])))))))
     
     ((-constrain-)
       (let (offset [- offset (word-size)]) (do
       (setf bndg-offset (@ expr-binding-aug (@ expr-expression n)) offset)
       [layout-frames (@ expr-expression n) offset ret-val])))
     
-    ((-symbol-) (values (use-storage ret-val) offset (hex 0000000000000000)))
+    ((-symbol-) (values (use-storage ret-val) offset (hex 0000000000000800)))
     
-    ((-literal-) (values (use-storage ret-val) offset (hex 0000000000000000)))
+    ((-literal-) (values (use-storage ret-val) offset (hex 0000000000000800)))
     
     (ignore))))
 
@@ -371,9 +371,9 @@
         (if (and (or [= (@ expr-type target-expr) (-function-)] [= (@ expr-type target-expr) (-continuation-)])
             (not [nil? (find (x (@ expr-parameters target-expr)) [= x (@ bndg-symbol (@ expr-symbol-binding-aug n))])]))
           [prepend (make-instrN(x86-mov)
-            ([bndg->op expr-val-bndg relocs ..][bndg->op symbol-val-bndg relocs ..][make-reg-op(r10)..]) ..) c ..]
+            ([bndg->op expr-val-bndg relocs ..][bndg->op symbol-val-bndg relocs ..][make-reg-op(r11)..]) ..) c ..]
           [prepend (make-instrN(x86-lea)
-            ([bndg->op expr-val-bndg relocs ..][bndg->op symbol-val-bndg relocs ..][make-reg-op(r10)..])..) c ..])
+            ([bndg->op expr-val-bndg relocs ..][bndg->op symbol-val-bndg relocs ..][make-reg-op(r11)..])..) c ..])
         (true))))))
 
 (constrain generate-store-continuation (\ r (with-vars (a) (`(function (expr (ref (list instr)) (ref (list reloc)) buffer ,a) ())r)r)))
