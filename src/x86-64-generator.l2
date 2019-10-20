@@ -69,6 +69,16 @@
     offset))
 
 (ignore
+  Checks whether the given register is in use according to the given register usage
+  vector.)
+
+(constrain register-in-use? (\ r (`(function (register reg-use-vec) ())r)))
+
+(function register-in-use? (reg reg-use-vec)
+  (let (reg-idx [band reg (hex F)])
+  (if [band [<< #1 reg-idx] reg-use-vec] (true) (false))))
+
+(ignore
   Takes a binding, a register to assign it to, and a bit-vector indicating the registers
   already in use. Assigns the given binding to the given register if it is not already in
   use and returns an indication to that effect, otherwise it fails.)
@@ -108,6 +118,8 @@
       (setf bndg-offset bndg free-register)
       new-in-use)))))))
 
+(ignore Copies the storage location associated with the second binding into the first.)
+
 (constrain copy-binding (\ r (`(function (bndg-aug bndg-aug) ())r)))
 
 (function copy-binding (dst-bndg src-bndg) (do
@@ -123,6 +135,7 @@
     ((-function-) (do
       (let (offset [- (@ expr-frame-size n) (word-size)])
       (bind (frame-size used-registers) [layout-frames (@ expr-expression n) offset bind] (do
+      (setf expr-registers-used n used-registers)
       (setf bndg-offset (@ expr-binding-aug (@ expr-expression n)) offset)
       (setf expr-frame-size n frame-size)
       (fold (parameter-offset [* #7 (word-size)]) (t (@ expr-parameters n)) (do
@@ -540,9 +553,12 @@
       
       [prepend (make-instrN(x86-sub)([make-reg-op (rsp) ..] [make-imm-op #4 [* #5(word-size)] ..])..) c ..]
       (until (i #0) [= i $callee-saved-x64-r64s-len] [+ i #1]
-        [prepend (make-instrN (x86-mov)
-          ([make-mem-op(word-size)(rsp)(none)#0[* i(word-size)]#4 ..]
-          [make-reg-op ($(loc(word-size)i callee-saved-x64-r64s)) ..]) ..) c ..])
+        (let (current-register ($(loc(word-size)i callee-saved-x64-r64s)))
+          (if [register-in-use? current-register (@ expr-registers-used n)]
+            [prepend (make-instrN (x86-mov)
+              ([make-mem-op(word-size)(rsp)(none)#0[* i(word-size)]#4 ..]
+              [make-reg-op current-register ..]) ..) c ..]
+            (ignore))))
       
       [prepend (make-instrN(x86-push)([make-reg-op (r11) ..])..) c ..]
       
@@ -559,9 +575,12 @@
       [prepend (make-instrN(x86-pop)([make-reg-op (r11) ..])..) c ..]
       
       (until (i #0) [= i $callee-saved-x64-r64s-len] [+ i #1]
-        [prepend (make-instrN (x86-mov)
-          ([make-reg-op ($(loc(word-size)i callee-saved-x64-r64s)) ..]
-          [make-mem-op(word-size)(rsp)(none)#0[* i(word-size)]#4 ..]) ..) c ..])
+        (let (current-register ($(loc(word-size)i callee-saved-x64-r64s)))
+          (if [register-in-use? current-register (@ expr-registers-used n)]
+            [prepend (make-instrN (x86-mov)
+              ([make-reg-op current-register ..]
+              [make-mem-op(word-size)(rsp)(none)#0[* i(word-size)]#4 ..]) ..) c ..]
+            (ignore))))
       [prepend (make-instrN(x86-add)([make-reg-op (rsp) ..] [make-imm-op #4 [* #5(word-size)] ..])..) c ..]
       
       [prepend (make-instrN(x86-add)([make-reg-op (rsp) ..] [make-imm-op #4 [* #6(word-size)] ..])..) c ..]
