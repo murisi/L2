@@ -189,13 +189,14 @@
   invocation to calculate the address of the field. When macro-called, it
   adds the offset (the first item in the fragment l) to the base
   (the fifth item in the fragment l).)
-  
+
 (function &-aux (l r)
-  (`[(constrain (\ k [+ k (,[@fst l])]) (\ s
-        (let (obj-sig [(,[@frrrrst l]) s])
-          (let (prop-sig [(,[@frrrrrst l]) obj-sig s])
-            (`(function (,obj-sig) (ref ,prop-sig))s)))))
-      (,[@frrrrrrst l])]r))
+  (`(with &-aux:ret
+      {(constrain (continuation @-aux:cont (prop-ref obj) {&-aux:ret prop-ref}) (\ s
+          (let (obj-sig [(,[@frrrrst l]) s])
+            (let (prop-sig [(,[@frrrrrst l]) obj-sig s])
+              (`(continuation ((ref ,prop-sig) ,obj-sig))s)))))
+        [+ (,[@frrrrrrst l]) (,[@fst l])] (,[@frrrrrrst l])})r))
 
 (ignore
   The following function is a macro for getting the field of a struct. The
@@ -214,11 +215,12 @@
   (the fifth item in the fragment l).)
 
 (function @-aux (l r)
-  (`[(constrain (\ k [(,[@frrst l]) [+ k (,[@fst l])]]) (\ s
-        (let (obj-sig [(,[@frrrrst l]) s])
-          (let (prop-sig [(,[@frrrrrst l]) obj-sig s])
-            (`(function (,obj-sig) ,prop-sig)s)))))
-      (,[@frrrrrrst l])]r))
+  (`(with @-aux:ret
+      {(constrain (continuation @-aux:cont (prop obj) {@-aux:ret prop}) (\ s
+          (let (obj-sig [(,[@frrrrst l]) s])
+            (let (prop-sig [(,[@frrrrrst l]) obj-sig s])
+              (`(continuation (,prop-sig ,obj-sig))s)))))
+        [(,[@frrst l]) [+ (,[@frrrrrrst l]) (,[@fst l])]] (,[@frrrrrrst l])})r))
 
 (ignore
   The following function is a macro for setting the field of a struct. The
@@ -239,12 +241,13 @@
   fragment l).)
 
 (function setf-aux (l r)
-  (`[(constrain (\ k q [(,[@frrrst l]) [+ k (,[@fst l])] q]) (\ s
-        (with-vars (a)
+  (`(with setf-aux:ret
+      {(constrain (continuation setf-aux:cont (prop obj)
+            {setf-aux:ret [(,[@frrrst l]) [+ obj (,[@fst l])] prop]}) (\ s
           (let (obj-sig [(,[@frrrrst l]) s])
             (let (prop-sig [(,[@frrrrrst l]) obj-sig s])
-              (`(function (,obj-sig ,prop-sig) ,a)s)))s)))
-      (,[@frrrrrrst l]) (,[@frrrrrrrst l])]r))
+              (`(continuation (,prop-sig ,obj-sig))s)))))
+        (,[@frrrrrrrst l]) (,[@frrrrrrst l])})r))
 
 (ignore
   The following function is a helper function for generating the fields of
