@@ -108,6 +108,13 @@
       (setf bndg-offset bndg free-register)
       new-in-use)))))))
 
+(constrain copy-binding (\ r (`(function (bndg-aug bndg-aug) ())r)))
+
+(function copy-binding (dst-bndg src-bndg) (do
+  (setf bndg-size dst-bndg (@ bndg-size src-bndg))
+  (setf bndg-offset dst-bndg (@ bndg-offset src-bndg))
+  (setf bndg-storage dst-bndg (@ bndg-storage src-bndg))))
+
 (constrain layout-frames (\ r (with-vars (a b c) (`(function (expr ,b ,c) (values ,b ,a))r)r)))
 
 (function layout-frames (n offset ret-val) (do
@@ -217,14 +224,16 @@
       (bind (bottom-offset in-use) [layout-frames (@ expr-condition n) offset bind]
       (bind (bottom-offset' in-use') [layout-frames (@ expr-consequent n) offset bind]
       (bind (bottom-offset'' in-use'') [layout-frames (@ expr-alternate n) offset bind]
-      (let (in-use
-        [binding-to-register/memory (@ expr-binding-aug (@ expr-condition n)) offset
-        [binding-to-register/memory (@ expr-binding-aug (@ expr-consequent n)) offset
-        [binding-to-register/memory (@ expr-binding-aug (@ expr-alternate n)) offset
-          [bor in-use [bor in-use' [bor in-use'' (hex FFFFFFFFFFFFF838)]]]]]])
+      (let
+        (condition-bndg (@ expr-binding-aug (@ expr-condition n)))
+        (consequent-bndg (@ expr-binding-aug (@ expr-consequent n)))
+        (alternate-bndg (@ expr-binding-aug (@ expr-alternate n)))
+      (let (in-use [binding-to-register/memory condition-bndg offset
+        [bor in-use [bor in-use' [bor in-use'' (hex FFFFFFFFFFFFF838)]]]]) (do
+      [copy-binding consequent-bndg condition-bndg]
+      [copy-binding alternate-bndg condition-bndg]
       (values (use-storage ret-val)
-        [min bottom-offset [min bottom-offset' bottom-offset'']]
-        in-use)))))))
+        [min bottom-offset [min bottom-offset' bottom-offset'']] in-use)))))))))
     
     ((-constrain-)
       (let (offset [- offset (word-size)]) (do
