@@ -129,13 +129,13 @@
         (setf bndg-size (@ expr-symbol-binding-aug t) (word-size))
         (setf bndg-offset (@ expr-symbol-binding-aug t) parameter-offset)
         [+ parameter-offset (word-size)])))))
-      (values (use-storage ret-val) offset (hex FFFFFFFFFFFFFFFF))))
+      (values (use-storage ret-val) offset (hex 0000000000000800))))
     
     ((-continuation-) (-with-)
-      (let (bottom-offset [- offset [* [+ [length (@ expr-parameters n)] #1] (word-size)]]) (do
-      (setf bndg-offset (@ expr-binding-aug (@ expr-expression n)) bottom-offset)
+      (let (bottom-offset [- offset [* [+ [length (@ expr-parameters n)] #1] (word-size)]])
       (bind (frame-size in-use) [layout-frames (@ expr-expression n) bottom-offset bind]
-      (let (in-use (hex FFFFFFFFFFFFFFFF))
+      (let (in-use [bor (hex FFFFFFFFFFFFFC38) in-use])
+      (let (in-use [binding-to-register/memory (@ expr-binding-aug (@ expr-expression n)) bottom-offset in-use]) (do
       (let (in-use
         (if (@ expr-escapes n) in-use
           (let (offset [- offset [* [length (@ expr-parameters n)] (word-size)]])
@@ -146,8 +146,7 @@
             (if [nil? u] in-use
               {assign-args [+ offset (word-size)]
                 [binding-to-register/memory (@ expr-symbol-binding-aug [@car u]) offset in-use] [@cdr u]})))))))
-      (values (use-storage ret-val) frame-size
-        (hex FFFFFFFFFFFFFFFF))))))))
+      (values (use-storage ret-val) frame-size in-use))))))))
     
     ((-storage-)
       (fold (memory-state (values (use-storage ret-val) offset (hex 0000000000000800))) (u (@ expr-arguments n))
@@ -163,13 +162,17 @@
           (bind (bottom-offset in-use) memory-state
           (bind (bottom-offset' in-use') [layout-frames u sub-expr-offset bind]
           (values (use-storage ret-val) [min bottom-offset bottom-offset'] [bor in-use in-use']))))
-      (let (offset [- offset (word-size)]) (do
-      (setf bndg-offset (@ expr-binding-aug(@ expr-reference n)) offset)
+      (let (in-use [bor in-use (hex FFFFFFFFFFFFFC38)])
+      (let (offset [- offset (word-size)])
+      (let (in-use [binding-to-register/memory (@ expr-binding-aug(@ expr-reference n)) offset in-use])
       (let (offset [- offset [* [length (@ expr-arguments n)] (word-size)]])
-      (fold (offset offset) (u (@ expr-arguments n)) (do
-        (setf bndg-offset (@ expr-binding-aug u) offset)
-        [+ offset (word-size)])))
-      (values (use-storage ret-val) bottom-offset (hex FFFFFFFFFFFFFFFF))))))))
+      (let (in-use
+        (loop assign-args (offset offset) (in-use in-use) (u (@ expr-arguments n))
+          (if [nil? u]
+            in-use
+            {assign-args [+ offset (word-size)]
+              [binding-to-register/memory (@ expr-binding-aug [@car u]) offset in-use] [@cdr u]})))
+      (values (use-storage ret-val) bottom-offset in-use))))))))))
     
     ((-invoke-)
       (bind (bottom-offset in-use)
@@ -395,14 +398,14 @@
   (substitute (.. r handler) (let
       (cont-val-bndg (@ expr-symbol-binding-aug (@ expr-reference n)))
       (cont-instr-bndg (@ expr-cont-instr-bndg n)) (do
-    [prepend (make-instrN (x86-lea) ([make-reg-op (r9) ..] [bndg->op cont-val-bndg relocs ..]) ..) c ..]
-    [prepend (make-instrN (x86-mov) ([make-mem-op(word-size)(r9)(none)#0(cont-rbx)#4 ..] [make-reg-op (rbx) ..]) ..) c ..]
-    [prepend (make-instrN (x86-mov) ([make-mem-op(word-size)(r9)(none)#0(cont-r12)#4 ..] [make-reg-op (r12) ..]) ..) c ..]
-    [prepend (make-instrN (x86-mov) ([make-mem-op(word-size)(r9)(none)#0(cont-r13)#4 ..] [make-reg-op (r13) ..]) ..) c ..]
-    [prepend (make-instrN (x86-mov) ([make-mem-op(word-size)(r9)(none)#0(cont-r14)#4 ..] [make-reg-op (r14) ..]) ..) c ..]
-    [prepend (make-instrN (x86-mov) ([make-mem-op(word-size)(r9)(none)#0(cont-r15)#4 ..] [make-reg-op (r15) ..]) ..) c ..]
-    [prepend (make-instrN (x86-lea) ([make-mem-op(word-size)(r9)(none)#0(cont-cir)#4 ..] [bndg->op cont-instr-bndg relocs ..] [make-reg-op (r10) ..]) ..) c ..]
-    [prepend (make-instrN (x86-mov) ([make-mem-op(word-size)(r9)(none)#0(cont-rbp)#4 ..] [make-reg-op (rbp) ..]) ..) c ..]))))
+    [prepend (make-instrN (x86-lea) ([make-reg-op (r11) ..] [bndg->op cont-val-bndg relocs ..]) ..) c ..]
+    [prepend (make-instrN (x86-mov) ([make-mem-op(word-size)(r11)(none)#0(cont-rbx)#4 ..] [make-reg-op (rbx) ..]) ..) c ..]
+    [prepend (make-instrN (x86-mov) ([make-mem-op(word-size)(r11)(none)#0(cont-r12)#4 ..] [make-reg-op (r12) ..]) ..) c ..]
+    [prepend (make-instrN (x86-mov) ([make-mem-op(word-size)(r11)(none)#0(cont-r13)#4 ..] [make-reg-op (r13) ..]) ..) c ..]
+    [prepend (make-instrN (x86-mov) ([make-mem-op(word-size)(r11)(none)#0(cont-r14)#4 ..] [make-reg-op (r14) ..]) ..) c ..]
+    [prepend (make-instrN (x86-mov) ([make-mem-op(word-size)(r11)(none)#0(cont-r15)#4 ..] [make-reg-op (r15) ..]) ..) c ..]
+    [prepend (make-instrN (x86-lea) ([make-mem-op(word-size)(r11)(none)#0(cont-cir)#4 ..] [bndg->op cont-instr-bndg relocs ..] [make-reg-op (r10) ..]) ..) c ..]
+    [prepend (make-instrN (x86-mov) ([make-mem-op(word-size)(r11)(none)#0(cont-rbp)#4 ..] [make-reg-op (rbp) ..]) ..) c ..]))))
 
 (constrain generate-buffer-to-dest
   (\ r (with-vars (a b) (`(function (expr register ,a (ref (list instr)) (ref (list reloc)) buffer ,b) ())r)r)))
@@ -413,7 +416,7 @@
       (foreach (t (@ expr-arguments n)) (let
           (arg-val-bndg (@ expr-binding-aug t)) (do
         [prepend (make-instrN (x86-mov)
-          ([make-mem-op(word-size)dest-reg(none)#0 $dest-offset #4 ..][bndg->op arg-val-bndg relocs ..][make-reg-op(r10)..]) ..) c ..]
+          ([make-mem-op(word-size)dest-reg(none)#0 $dest-offset #4 ..][bndg->op arg-val-bndg relocs ..][make-reg-op(r11)..]) ..) c ..]
         [set+ dest-offset (word-size)]))))))
 
 (constrain generate-continuation
@@ -427,7 +430,7 @@
           (expr-val-bndg (@ expr-binding-aug n))
           (after-binding [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr null-expr ..]) (do
         (if (@ expr-escapes n) (do
-          [prepend (make-instrN(x86-lea)([bndg->op expr-val-bndg relocs ..][bndg->op cont-val-bndg relocs ..][make-reg-op (r10) ..]) ..) c ..]
+          [prepend (make-instrN(x86-lea)([bndg->op expr-val-bndg relocs ..][bndg->op cont-val-bndg relocs ..][make-reg-op (r11) ..]) ..) c ..]
           [generate-store-continuation n c relocs ..])
           (ignore))
         
@@ -450,10 +453,10 @@
           (end-instr-binding [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr null-expr ..]) (do
         (if (@ expr-escapes n) [generate-store-continuation n c relocs ..] (ignore))
         [generate-expression (@ expr-expression n) gens c relocs ..]
-        [prepend (make-instrN(x86-mov)([bndg->op expr-val-bndg relocs ..][bndg->op body-val-bndg relocs ..][make-reg-op(r10)..])..) c ..]
+        [prepend (make-instrN(x86-mov)([bndg->op expr-val-bndg relocs ..][bndg->op body-val-bndg relocs ..][make-reg-op(r11)..])..) c ..]
         [prepend (make-instrN (x86-jmp) ([make-relative-relocation-immediate #4 end-instr-binding relocs ..]) ..) c ..]
         [prepend [make-label (@ expr-cont-instr-bndg n) ..] c ..]
-        [prepend (make-instrN(x86-mov)([bndg->op expr-val-bndg relocs ..][bndg->op param-val-bndg relocs ..][make-reg-op(r10)..])..) c ..]
+        [prepend (make-instrN(x86-mov)([bndg->op expr-val-bndg relocs ..][bndg->op param-val-bndg relocs ..][make-reg-op(r11)..])..) c ..]
         [prepend [make-label end-instr-binding ..] c ..]
         (true))))))
 
@@ -467,9 +470,9 @@
     [prepend (make-instrN (x86-mov) ([make-reg-op (r13) ..] [make-mem-op(word-size)src-reg(none)#0(cont-r13)#4 ..]) ..) c ..]
     [prepend (make-instrN (x86-mov) ([make-reg-op (r14) ..] [make-mem-op(word-size)src-reg(none)#0(cont-r14)#4 ..]) ..) c ..]
     [prepend (make-instrN (x86-mov) ([make-reg-op (r15) ..] [make-mem-op(word-size)src-reg(none)#0(cont-r15)#4 ..]) ..) c ..]
-    [prepend (make-instrN (x86-mov) ([make-reg-op (r10) ..] [make-mem-op(word-size)src-reg(none)#0(cont-cir)#4 ..]) ..) c ..]
+    [prepend (make-instrN (x86-mov) ([make-reg-op (r11) ..] [make-mem-op(word-size)src-reg(none)#0(cont-cir)#4 ..]) ..) c ..]
     [prepend (make-instrN (x86-mov) ([make-reg-op (rbp) ..] [make-mem-op(word-size)src-reg(none)#0(cont-rbp)#4 ..]) ..) c ..]
-    [prepend (make-instrN(x86-jmp)([make-reg-op (r10) ..])..) c ..])))
+    [prepend (make-instrN(x86-jmp)([make-reg-op (r11) ..])..) c ..])))
 
 (constrain generate-jump
   (\ r (with-vars (a b) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
@@ -485,15 +488,15 @@
           (foreach (t (@ expr-arguments n)) [generate-expression t gens c relocs ..])
           (foreach (t (@ expr-arguments n)) (u (@ expr-parameters(@ expr-short-circuit n)))
             (let (src-bndg (@ expr-binding-aug t)) (dest-bndg (@ expr-symbol-binding-aug u))
-              [prepend (make-instrN(x86-mov)([bndg->op dest-bndg relocs ..][bndg->op src-bndg relocs ..][make-reg-op(r10)..])..) c ..]))
+              [prepend (make-instrN(x86-mov)([bndg->op dest-bndg relocs ..][bndg->op src-bndg relocs ..][make-reg-op(r11)..])..) c ..]))
           [prepend (make-instrN (x86-jmp) ([make-relative-relocation-immediate #4 cont-instr-bndg relocs ..]) ..) c ..]))
           
         (let (ref-val-bndg (@ expr-binding-aug (@ expr-reference n))) (do
           (foreach (t (@ expr-arguments n)) [generate-expression t gens c relocs ..])
           [generate-expression (@ expr-reference n) gens c relocs ..]
-          [prepend (make-instrN (x86-mov) ([make-reg-op (r11) ..] [bndg->op ref-val-bndg relocs ..]) ..) c ..]
-          [generate-buffer-to-dest n (r11) (cont-size) c relocs ..]
-          [generate-load-continuation (r11) c relocs ..])))
+          [prepend (make-instrN (x86-mov) ([make-reg-op (r10) ..] [bndg->op ref-val-bndg relocs ..]) ..) c ..]
+          [generate-buffer-to-dest n (r10) (cont-size) c relocs ..]
+          [generate-load-continuation (r10) c relocs ..])))
           
         (true)))))
 
@@ -517,7 +520,7 @@
         (body-val-bndg (@ expr-binding-aug (@ expr-expression n)))
         (after-binding [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr null-expr ..]) (do
       
-      [prepend(make-instrN(x86-lea)([bndg->op expr-val-bndg relocs ..][bndg->op ref-val-bndg relocs ..][make-reg-op(r10)..])..) c ..]
+      [prepend(make-instrN(x86-lea)([bndg->op expr-val-bndg relocs ..][bndg->op ref-val-bndg relocs ..][make-reg-op(r11)..])..) c ..]
       [prepend (make-instrN (x86-jmp)([make-relative-relocation-immediate #4 after-binding relocs ..])..) c ..]
       [prepend [make-label ref-val-bndg ..] c ..]
       
