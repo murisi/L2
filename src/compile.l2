@@ -19,11 +19,11 @@
             [link-symbols expr (true) undefined-bindings global-bindings nil ..]
             (ignore[infer-types expr ..])
             [escape-analysis expr (true)]
-            [layout-frame-storages expr storage-offset])))
+            [place-perm-bindings expr storage-offset])))
         (foreach (expr exprs) (do
           (setf bndg-offset (@ expr-binding-aug expr) [- storage-offset (word-size)])
           (setf bndg-size (@ expr-binding-aug expr) (word-size))
-          [layout-frames expr [- storage-offset (word-size)] (values storage (ignore) (ignore))]
+          [place-temp-bindings expr [- storage-offset (word-size)] (values storage (ignore) (ignore))]
           [collect-static-bindings expr static-bindings ..])))
       (bind (instrs relocs) [generate-program exprs gens bind ..]
         (values (use-storage outs) instrs relocs $undefined-bindings $static-bindings))))))
