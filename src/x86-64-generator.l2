@@ -18,12 +18,16 @@
 
   (function cont-rbp (l r) [=# [* #0 (word-size)] r])
 
+(function callee-saved-x64-r64s-len (l r) [=# #5 r])
+
+(storage callee-saved-x64-r64s (rbx)(r12)(r13)(r14)(r15))
+
 (constrain layout-frame-storages (\ r (with-vars (a) (`(function (expr ,a) ,a)r)r)))
 
 (function layout-frame-storages (n offset)
   (switch = (@ expr-type n)
     ((-function-) (do
-      (setf expr-frame-size n [layout-frame-storages (@ expr-expression n) [- #0 [* #6(word-size)]]])
+      (setf expr-frame-size n [layout-frame-storages (@ expr-expression n) [- #0 [* (callee-saved-x64-r64s-len)(word-size)]]])
       offset))
     
     ((-constrain-)
@@ -180,7 +184,7 @@
     ((-continuation-) (-with-)
       (let (bottom-offset [- offset [* [+ [length (@ expr-parameters n)] #1] (word-size)]])
       (bind (frame-size in-use) [layout-frames (@ expr-expression n) bottom-offset bind]
-      (let (in-use [bor (hex FFFFFFFFFFFFFC38) in-use])
+      (let (in-use [bor (hex FFFFFFFFFFFF0C38) in-use])
       (let (in-use [binding-to-register/memory (@ expr-binding-aug (@ expr-expression n)) bottom-offset in-use]) (do
       (let (in-use
         (if (@ expr-escapes n) in-use
@@ -555,10 +559,6 @@
       [prepend(make-instrN(x86-mov)([bndg->op expr-val-bndg relocs ..][make-imm-op #8 (@ expr-value n)..][make-reg-op (r11)..])..) c ..]
       (true))))))
 
-(storage callee-saved-x64-r64s-len #5)
-
-(storage callee-saved-x64-r64s (rbx)(r12)(r13)(r14)(r15))
-
 (constrain generate-function
   (\ r (with-vars (a b) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
@@ -577,8 +577,8 @@
       [prepend (make-instrN(x86-mov)([make-reg-op (rbp) ..] [make-reg-op (rsp) ..])..) c ..]
       [prepend (make-instrN(x86-sub)([make-reg-op (rsp) ..] [make-imm-op #4 [- #0 (@ expr-frame-size n)] ..])..) c ..]
       
-      (let (save-offset [- #0 [* #6 (word-size)]])
-      (until (i #0) [= i $callee-saved-x64-r64s-len] [+ i #1]
+      (let (save-offset [- #0 [* (callee-saved-x64-r64s-len)(word-size)]])
+      (until (i #0) [= i (callee-saved-x64-r64s-len)] [+ i #1]
         (let (current-register ($(loc(word-size)i callee-saved-x64-r64s)))
           (if [register-in-use? current-register (@ expr-registers-used n)]
             [prepend (make-instrN (x86-mov)
@@ -611,8 +611,8 @@
       [generate-expression (@ expr-expression n) gens c relocs ..]
       [prepend (make-instrN(x86-mov)([make-reg-op (rax) ..] [bndg->op body-val-bndg relocs ..])..) c ..]
       
-      (let (save-offset [- #0 [* #6 (word-size)]])
-      (until (i #0) [= i $callee-saved-x64-r64s-len] [+ i #1]
+      (let (save-offset [- #0 [* (callee-saved-x64-r64s-len)(word-size)]])
+      (until (i #0) [= i (callee-saved-x64-r64s-len)] [+ i #1]
         (let (current-register ($(loc(word-size)i callee-saved-x64-r64s)))
           (if [register-in-use? current-register (@ expr-registers-used n)]
             [prepend (make-instrN (x86-mov)
