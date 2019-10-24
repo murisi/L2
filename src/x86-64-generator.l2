@@ -479,18 +479,35 @@
           ([bndg->op expr-val-bndg relocs ..][bndg->op storage-val-bndg relocs ..][make-reg-op(r11) ..])..) c ..]
         (true))))))
 
+(ignore
+  Checks if a symbol is a value symbol, that is, a symbol that is bound to a function/
+  continuation parameter.)
+
+(constrain value-symbol? (\ r (with-vars (a) (`(function (expr) ,a)r)r)))
+
+(function value-symbol? (n)
+  (let (symbol-val-bndg (@ expr-symbol-binding-aug n))
+  (let (target-expr (@ bndg-expression symbol-val-bndg))
+  (and (or [= (@ expr-type target-expr) (-function-)] [= (@ expr-type target-expr) (-continuation-)])
+    [contains (@ bndg-symbol symbol-val-bndg) (@ expr-parameters target-expr)]))))
+
+(ignore
+  Checks if a symbol is a reference symbol. A reference symbol is a symbol that is not
+  a value symbol.)
+
+(constrain reference-symbol? (\ r (with-vars (a) (`(function (expr) ,a)r)r)))
+
+(function reference-symbol? (n) (not [value-symbol? n]))
+
 (constrain generate-symbol
   (\ r (with-vars (a b) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
 (function generate-symbol (n gens c relocs r handler)
   (substitute (.. r handler)
     (and [= (@ expr-type n) (-symbol-)]
-      (let
-          (expr-val-bndg (@ expr-binding-aug n))
-          (symbol-val-bndg (@ expr-symbol-binding-aug n))
-          (target-expr (@ bndg-expression(@ expr-symbol-binding-aug n))) (do
-        (if (and (or [= (@ expr-type target-expr) (-function-)] [= (@ expr-type target-expr) (-continuation-)])
-            (not [nil? (find (x (@ expr-parameters target-expr)) [= x (@ bndg-symbol (@ expr-symbol-binding-aug n))])]))
+      (let (expr-val-bndg (@ expr-binding-aug n))
+          (symbol-val-bndg (@ expr-symbol-binding-aug n)) (do
+        (if [value-symbol? n]
           [prepend (make-instrN(x86-mov)
             ([bndg->op expr-val-bndg relocs ..][bndg->op symbol-val-bndg relocs ..][make-reg-op(r11)..]) ..) c ..]
           [prepend (make-instrN(x86-lea)
