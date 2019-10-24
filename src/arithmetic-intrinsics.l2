@@ -214,7 +214,7 @@
           [generate-expression arg2 gens c relocs ..]
           [prepend (make-instrN(x86-xor)
             ([bndg->op expr-val-bndg relocs ..][bndg->op expr-val-bndg relocs ..][make-reg-op (r11)..])..) c ..]
-          [prepend (make-instrN(x86-sub)
+          [prepend (make-instrN(x86-cmp)
             ([bndg->op arg1-val-bndg relocs ..][bndg->op arg2-val-bndg relocs ..][make-reg-op (r11)..])..) c ..]
           [prepend (make-instrN (x86-setz) ([bndg->partial-op #1 expr-val-bndg relocs ..]) ..) c ..]
           (true)))))
@@ -229,7 +229,7 @@
           [generate-expression arg2 gens c relocs ..]
           [prepend (make-instrN(x86-xor)
             ([bndg->op expr-val-bndg relocs ..][bndg->op expr-val-bndg relocs ..][make-reg-op (r11)..])..) c ..]
-          [prepend (make-instrN(x86-sub)
+          [prepend (make-instrN(x86-cmp)
             ([bndg->op arg1-val-bndg relocs ..][bndg->op arg2-val-bndg relocs ..][make-reg-op (r11)..])..) c ..]
           [prepend (make-instrN (x86-setc) ([bndg->partial-op #1 expr-val-bndg relocs ..]) ..) c ..]
           (true)))))
@@ -244,7 +244,7 @@
           [generate-expression arg2 gens c relocs ..]
           [prepend (make-instrN(x86-xor)
             ([bndg->op expr-val-bndg relocs ..][bndg->op expr-val-bndg relocs ..][make-reg-op (r11)..])..) c ..]
-          [prepend (make-instrN(x86-sub)
+          [prepend (make-instrN(x86-cmp)
             ([bndg->op arg2-val-bndg relocs ..][bndg->op arg1-val-bndg relocs ..][make-reg-op (r11)..])..) c ..]
           [prepend (make-instrN (x86-setc) ([bndg->partial-op #1 expr-val-bndg relocs ..]) ..) c ..]
           (true)))))
@@ -259,7 +259,7 @@
           [generate-expression arg2 gens c relocs ..]
           [prepend (make-instrN (x86-mov) ([make-reg-op (rcx) ..] [bndg->op arg2-val-bndg relocs ..]) ..) c ..]
           [prepend (make-instrN(x86-mov)
-            ([bndg->op expr-val-bndg relocs ..][bndg->op arg1-val-bndg relocs ..][make-reg-op(r10)..])..) c ..]
+            ([bndg->op expr-val-bndg relocs ..][bndg->op arg1-val-bndg relocs ..][make-reg-op(r11)..])..) c ..]
           [prepend (make-instrN (x86-shl) ([bndg->op expr-val-bndg relocs ..] [make-reg-op (cl) ..]) ..) c ..]
           (true)))))
         
@@ -273,7 +273,7 @@
           [generate-expression arg2 gens c relocs ..]
           [prepend (make-instrN (x86-mov) ([make-reg-op (rcx) ..] [bndg->op arg2-val-bndg relocs ..]) ..) c ..]
           [prepend (make-instrN(x86-mov)
-            ([bndg->op expr-val-bndg relocs ..][bndg->op arg1-val-bndg relocs ..][make-reg-op (r10)..])..) c ..]
+            ([bndg->op expr-val-bndg relocs ..][bndg->op arg1-val-bndg relocs ..][make-reg-op (r11)..])..) c ..]
           [prepend (make-instrN (x86-shr) ([bndg->op expr-val-bndg relocs ..] [make-reg-op (cl) ..]) ..) c ..]
           (true)))))
         
@@ -330,7 +330,7 @@
         (let (sub-expr-offset [- offset (word-size)])
         (bind (bottom-offset in-use) [place-temp-bindings arg1 sub-expr-offset plcs ret-val]
         (let (in-use [bor in-use (hex FFFFFFFFFFFF0C31)])
-        (let (in-use [binding-to-register/memory arg1-val-bndg sub-expr-offset in-use]) (do
+        (let (in-use [expr-to-register/memory arg1 sub-expr-offset in-use]) (do
         (setf bndg-size (@ expr-binding-aug n) (word-size))
         (setf bndg-storage (@ expr-binding-aug (@ expr-reference n)) (nil-storage))
         (values (use-storage ret-val) bottom-offset in-use)
@@ -347,12 +347,69 @@
         (bind (bottom-offset2 in-use2) [place-temp-bindings arg2 sub-expr-offset plcs bind]
         (let (bottom-offset [min bottom-offset1 bottom-offset2])
         (let (in-use [bor [bor in-use1 in-use2] (hex FFFFFFFFFFFF0C31)])
-        (let (in-use [binding-to-register/memory arg1-val-bndg [- offset [* #1(word-size)]] in-use])
-        (let (in-use [binding-to-register/memory arg2-val-bndg [- offset [* #2(word-size)]] in-use]) (do
+        (let (in-use [expr-to-register/memory arg1 [- offset [* #1(word-size)]] in-use])
+        (let (in-use [expr-to-register/memory arg2 [- offset [* #2(word-size)]] in-use]) (do
         (setf bndg-size (@ expr-binding-aug n) (word-size))
         (setf bndg-storage (@ expr-binding-aug (@ expr-reference n)) (nil-storage))
         (values (use-storage ret-val) bottom-offset in-use)
         (true))))))))))))
+      
+      ((" /) (" rem) (let
+          (arg1 [@car (@ expr-arguments n)])
+          (arg2 [@cadr (@ expr-arguments n)]) (let
+          (arg1-val-bndg (@ expr-binding-aug arg1))
+          (arg2-val-bndg (@ expr-binding-aug arg2))
+          (expr-val-bndg (@ expr-binding-aug n))
+        (let (sub-expr-offset [- offset [* #2(word-size)]])
+        (bind (bottom-offset1 in-use1) [place-temp-bindings arg1 sub-expr-offset plcs bind]
+        (bind (bottom-offset2 in-use2) [place-temp-bindings arg2 sub-expr-offset plcs bind]
+        (let (bottom-offset [min bottom-offset1 bottom-offset2])
+        (let (in-use [bor [bor in-use1 in-use2] (hex FFFFFFFFFFFF0034)])
+        (bind (arg1-success? in-use) [try-binding-to-register arg1-val-bndg (rax) in-use bind]
+        (let (in-use (if arg1-success? in-use [expr-to-register/memory arg1 [- offset [* #1(word-size)]] in-use]))
+        (let (in-use [expr-to-register/memory arg2 [- offset [* #2(word-size)]] in-use]) (do
+        (setf bndg-size (@ expr-binding-aug n) (word-size))
+        (setf bndg-storage (@ expr-binding-aug (@ expr-reference n)) (nil-storage))
+        (values (use-storage ret-val) bottom-offset in-use)
+        (true)))))))))))))
+      
+      ((" *) (let
+          (arg1 [@car (@ expr-arguments n)])
+          (arg2 [@cadr (@ expr-arguments n)]) (let
+          (arg1-val-bndg (@ expr-binding-aug arg1))
+          (arg2-val-bndg (@ expr-binding-aug arg2))
+          (expr-val-bndg (@ expr-binding-aug n))
+        (let (sub-expr-offset [- offset [* #2(word-size)]])
+        (bind (bottom-offset1 in-use1) [place-temp-bindings arg1 sub-expr-offset plcs bind]
+        (bind (bottom-offset2 in-use2) [place-temp-bindings arg2 sub-expr-offset plcs bind]
+        (let (bottom-offset [min bottom-offset1 bottom-offset2])
+        (let (in-use [bor [bor in-use1 in-use2] (hex FFFFFFFFFFFF0030)])
+        (bind (arg1-success? in-use) [try-binding-to-register arg1-val-bndg (rax) in-use bind]
+        (let (in-use (if arg1-success? in-use [expr-to-register/memory arg1 [- offset [* #1(word-size)]] in-use]))
+        (let (in-use [expr-to-register/memory arg2 [- offset [* #2(word-size)]] in-use]) (do
+        (setf bndg-size (@ expr-binding-aug n) (word-size))
+        (setf bndg-storage (@ expr-binding-aug (@ expr-reference n)) (nil-storage))
+        (values (use-storage ret-val) bottom-offset [bor in-use (hex 0000000000000004)])
+        (true)))))))))))))
+      
+      ((" <<) (" >>) (let
+          (arg1 [@car (@ expr-arguments n)])
+          (arg2 [@cadr (@ expr-arguments n)]) (let
+          (arg1-val-bndg (@ expr-binding-aug arg1))
+          (arg2-val-bndg (@ expr-binding-aug arg2))
+          (expr-val-bndg (@ expr-binding-aug n))
+        (let (sub-expr-offset [- offset [* #2(word-size)]])
+        (bind (bottom-offset1 in-use1) [place-temp-bindings arg1 sub-expr-offset plcs bind]
+        (bind (bottom-offset2 in-use2) [place-temp-bindings arg2 sub-expr-offset plcs bind]
+        (let (bottom-offset [min bottom-offset1 bottom-offset2])
+        (let (in-use [bor [bor in-use1 in-use2] (hex FFFFFFFFFFFF0830)])
+        (let (in-use [expr-to-register/memory arg1 [- offset [* #1(word-size)]] in-use])
+        (bind (arg2-success? in-use) [try-binding-to-register arg2-val-bndg (rcx) in-use bind]
+        (let (in-use (if arg2-success? in-use [expr-to-register/memory arg2 [- offset [* #2(word-size)]] in-use])) (do
+        (setf bndg-size (@ expr-binding-aug n) (word-size))
+        (setf bndg-storage (@ expr-binding-aug (@ expr-reference n)) (nil-storage))
+        (values (use-storage ret-val) bottom-offset in-use)
+        (true)))))))))))))
       
       (false))))
 

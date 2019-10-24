@@ -86,6 +86,8 @@
   (function x86-setc (l r) [=## #49 (\ r (` instr-code r)) r])
   
   (function x86-nop (l r) [=## #50 (\ r (` instr-code r)) r])
+  
+  (function x86-cmp (l r) [=## #51 (\ r (` instr-code r)) r])
 
 (ignore A representation of an operand.)
   
@@ -874,16 +876,25 @@
           [write-mi-instr (hex 1F) (hex 80) (hex 81) (hex 81) (hex 81) [make-reg-op (x86-/5) ..] n bin pos ..]
           [write-mm-instr (hex 1F) (hex 28) (hex 29) (hex 29) (hex 29) n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
+        ((x86-cmp) (or
+          [write-rm-instr (hex 1F) (hex 3A) (hex 3B) (hex 3B) (hex 3B) n bin pos ..]
+          [write-mr-instr (hex 1F) (hex 38) (hex 39) (hex 39) (hex 39) n bin pos ..]
+          [write-mi-instr (hex 1F) (hex 80) (hex 81) (hex 81) (hex 81) [make-reg-op (x86-/7) ..] n bin pos ..]
+          [write-mm-instr (hex 1F) (hex 38) (hex 39) (hex 39) (hex 39) n bin pos ..]
+          {handler (storage _ unsupported-instruction-error n)}))
         ((x86-add) (or
+          [write-rm-instr (hex 1F) (hex 02) (hex 03) (hex 03) (hex 03) n bin pos ..]
           [write-mr-instr (hex 1F) (hex 00) (hex 01) (hex 01) (hex 01) n bin pos ..]
           [write-mi-instr (hex 1F) (hex 80) (hex 81) (hex 81) (hex 81) [make-reg-op (x86-/0) ..] n bin pos ..]
           [write-mm-instr (hex 1F) (hex 00) (hex 01) (hex 01) (hex 01) n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
         ((x86-or) (or
+          [write-rm-instr (hex 1F) (hex 0A) (hex 0B) (hex 0B) (hex 0B) n bin pos ..]
           [write-mr-instr (hex 1F) (hex 08) (hex 09) (hex 09) (hex 09) n bin pos ..]
           [write-mm-instr (hex 1F) (hex 08) (hex 09) (hex 09) (hex 09) n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
         ((x86-and) (or
+          [write-rm-instr (hex 1F) (hex 22) (hex 23) (hex 23) (hex 23) n bin pos ..]
           [write-mr-instr (hex 1F) (hex 20) (hex 21) (hex 21) (hex 21) n bin pos ..]
           [write-mm-instr (hex 1F) (hex 20) (hex 21) (hex 21) (hex 21) n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))

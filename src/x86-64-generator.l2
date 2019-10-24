@@ -122,6 +122,11 @@
       (setf bndg-offset bndg free-register)
       new-in-use)))))))
 
+(function expr-to-register/memory (n offset in-use)
+  (if (and [= (@ expr-type n) (-symbol-)] [value-symbol? n])
+    (do (setf expr-binding-aug n (@ expr-symbol-binding-aug n)) in-use)
+    [binding-to-register/memory (@ expr-binding-aug n) offset in-use]))
+
 (constrain placer->function
   (\ r (with-vars (b c) (`(function (placer)
     (function (expr ,b (list placer) (values ,b reg-use-vec)) ,c))r)r)))
@@ -176,7 +181,7 @@
           {assign-params [+ offset (word-size)]
             [binding-to-register/memory (@ expr-symbol-binding-aug [@car u]) offset in-use] [@cdr u]})))))
     
-    (let (in-use [binding-to-register/memory (@ expr-binding-aug (@ expr-expression n)) sub-expr-offset in-use]) (do
+    (let (in-use [expr-to-register/memory (@ expr-expression n) sub-expr-offset in-use]) (do
     (setf expr-registers-used n in-use)
     (setf expr-frame-size n frame-size)
     (foreach (t (@ expr-parameters n)) (setf bndg-size (@ expr-symbol-binding-aug t) (word-size)))))))))))
@@ -191,7 +196,7 @@
     (let (bottom-offset [- offset [* [+ [length (@ expr-parameters n)] #1] (word-size)]])
     (bind (frame-size in-use) [place-temp-bindings (@ expr-expression n) bottom-offset plcs bind]
     (let (in-use [bor (hex FFFFFFFFFFFF0C38) in-use])
-    (let (in-use [binding-to-register/memory (@ expr-binding-aug (@ expr-expression n)) bottom-offset in-use]) (do
+    (let (in-use [expr-to-register/memory (@ expr-expression n) bottom-offset in-use]) (do
     (let (in-use
       (if (@ expr-escapes n) in-use
         (let (offset [- offset [* [length (@ expr-parameters n)] (word-size)]])
@@ -230,14 +235,14 @@
         (values (use-storage ret-val) [min bottom-offset bottom-offset'] [bor in-use in-use']))))
     (let (in-use [bor in-use (hex FFFFFFFFFFFF0C30)])
     (let (offset [- offset (word-size)])
-    (let (in-use [binding-to-register/memory (@ expr-binding-aug(@ expr-reference n)) offset in-use])
+    (let (in-use [expr-to-register/memory (@ expr-reference n) offset in-use])
     (let (offset [- offset [* [length (@ expr-arguments n)] (word-size)]])
     (let (in-use
       (loop assign-args (offset offset) (in-use in-use) (u (@ expr-arguments n))
         (if [nil? u]
           in-use
           {assign-args [+ offset (word-size)]
-            [binding-to-register/memory (@ expr-binding-aug [@car u]) offset in-use] [@cdr u]}))) (do
+            [expr-to-register/memory [@car u] offset in-use] [@cdr u]}))) (do
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (values (use-storage ret-val) bottom-offset in-use)
     (true))))))))))))
@@ -258,39 +263,45 @@
     (let (arg-offset [- offset [* [+[length (@ expr-arguments n)]#1] (word-size)]])
     (let
       (in-use (if [< [length (@ expr-arguments n)] #1] in-use
-        (let (arg1-binding (@ expr-binding-aug [@car (@ expr-arguments n)]))
+        (let (arg1 [@car (@ expr-arguments n)])
+        (let (arg1-binding (@ expr-binding-aug arg1))
         (bind (arg1-success? in-use) [try-binding-to-register arg1-binding (rdi) in-use bind]
-          (where (if arg1-success? in-use [binding-to-register/memory arg1-binding [+ arg-offset [*(word-size)#0]] in-use])
+          (where (if arg1-success? in-use [expr-to-register/memory arg1 [+ arg-offset [*(word-size)#0]] in-use])
       (in-use (if [< [length (@ expr-arguments n)] #2] in-use
-        (let (arg2-binding (@ expr-binding-aug [@cadr (@ expr-arguments n)]))
+        (let (arg2 [@cadr (@ expr-arguments n)])
+        (let (arg2-binding (@ expr-binding-aug arg2))
         (bind (arg2-success? in-use) [try-binding-to-register arg2-binding (rsi) in-use bind]
-          (where (if arg2-success? in-use [binding-to-register/memory arg2-binding [+ arg-offset [*(word-size)#1]] in-use])
+          (where (if arg2-success? in-use [expr-to-register/memory arg2 [+ arg-offset [*(word-size)#1]] in-use])
       (in-use (if [< [length (@ expr-arguments n)] #3] in-use
-        (let (arg3-binding (@ expr-binding-aug [@caddr (@ expr-arguments n)]))
+        (let (arg3 [@caddr (@ expr-arguments n)])
+        (let (arg3-binding (@ expr-binding-aug arg3))
         (bind (arg3-success? in-use) [try-binding-to-register arg3-binding (rdx) in-use bind]
-          (where (if arg3-success? in-use [binding-to-register/memory arg3-binding [+ arg-offset [*(word-size)#2]] in-use])
+          (where (if arg3-success? in-use [expr-to-register/memory arg3 [+ arg-offset [*(word-size)#2]] in-use])
       (in-use (if [< [length (@ expr-arguments n)] #4] in-use
-        (let (arg4-binding (@ expr-binding-aug [@cadddr (@ expr-arguments n)]))
+        (let (arg4 [@cadddr (@ expr-arguments n)])
+        (let (arg4-binding (@ expr-binding-aug arg4))
         (bind (arg4-success? in-use) [try-binding-to-register arg4-binding (rcx) in-use bind]
-          (where (if arg4-success? in-use [binding-to-register/memory arg4-binding [+ arg-offset [*(word-size)#3]] in-use])
+          (where (if arg4-success? in-use [expr-to-register/memory arg4 [+ arg-offset [*(word-size)#3]] in-use])
       (in-use (if [< [length (@ expr-arguments n)] #5] in-use
-        (let (arg5-binding (@ expr-binding-aug [@caddddr (@ expr-arguments n)]))
+        (let (arg5 [@caddddr (@ expr-arguments n)])
+        (let (arg5-binding (@ expr-binding-aug arg5))
         (bind (arg5-success? in-use) [try-binding-to-register arg5-binding (r8) in-use bind]
-          (where (if arg5-success? in-use [binding-to-register/memory arg5-binding [+ arg-offset [*(word-size)#4]] in-use])
+          (where (if arg5-success? in-use [expr-to-register/memory arg5 [+ arg-offset [*(word-size)#4]] in-use])
       (in-use (if [< [length (@ expr-arguments n)] #6] in-use
-        (let (arg6-binding (@ expr-binding-aug [@cadddddr (@ expr-arguments n)]))
+        (let (arg6 [@cadddddr (@ expr-arguments n)])
+        (let (arg6-binding (@ expr-binding-aug arg6))
         (bind (arg6-success? in-use) [try-binding-to-register arg6-binding (r9) in-use bind]
-          (if arg6-success? in-use [binding-to-register/memory arg6-binding [+ arg-offset [*(word-size)#5]] in-use]))))))))))))))))))))))))))))))
+          (if arg6-success? in-use [expr-to-register/memory arg6 [+ arg-offset [*(word-size)#5]] in-use]))))))))))))))))))))))))))))))))))))
     
     (let (in-use
       (let (rem-offset [+ arg-offset [* #6 (word-size)]])
       (let (rem-args (if [>= [length (@ expr-arguments n)] #6] [@cddddddr (@ expr-arguments n)] nil))
       (loop assign-args (offset rem-offset) (in-use in-use) (u rem-args)
         (if [nil? u] in-use
-          {assign-args [+ offset (word-size)] [binding-to-register/memory (@ expr-binding-aug [@car u]) offset in-use] [@cdr u]})))))
+          {assign-args [+ offset (word-size)] [expr-to-register/memory [@car u] offset in-use] [@cdr u]})))))
     
     (let (ref-offset [- offset (word-size)])
-    (let (in-use [binding-to-register/memory (@ expr-binding-aug(@ expr-reference n)) ref-offset in-use]) (do
+    (let (in-use [expr-to-register/memory (@ expr-reference n) ref-offset in-use]) (do
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (values (use-storage ret-val) bottom-offset [bor in-use (hex FFFFFFFFFFFF0FF7)])
     (true)))))))))))
@@ -320,7 +331,7 @@
     (let (offset [- offset (word-size)])
     (bind (bottom-offset in-use) [place-temp-bindings (@ expr-expression n) offset plcs ret-val]
     (let (in-use
-      [binding-to-register/memory (@ expr-binding-aug (@ expr-expression n)) offset [bor in-use (hex FFFFFFFFFFFF0830)]]) (do
+      [expr-to-register/memory (@ expr-expression n) offset [bor in-use (hex FFFFFFFFFFFF0830)]]) (do
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (values (use-storage ret-val) bottom-offset in-use)
     (true)))))))
