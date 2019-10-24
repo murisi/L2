@@ -131,12 +131,24 @@
   (setf bndg-offset dst-bndg (@ bndg-offset src-bndg))
   (setf bndg-storage dst-bndg (@ bndg-storage src-bndg))))
 
-(constrain place-function-bindings (\ r (with-vars (b c) (`(function (expr ,b (values ,b reg-use-vec)) ,c)r)r)))
+(constrain placer->function
+  (\ r (with-vars (b c) (`(function (placer)
+    (function (expr ,b (list placer) (values ,b reg-use-vec)) ,c))r)r)))
 
-(function place-function-bindings (n offset ret-val)
+(function placer->function (x) [cast x])
+
+(constrain function->placer
+  (\ r (with-vars (b c) (`(function
+    ((function (expr ,b (list placer) (values ,b reg-use-vec)) ,c)) placer)r)r)))
+
+(function function->placer (x) [cast x])
+
+(constrain place-function-bindings (\ r (with-vars (b c) (`(function (expr ,b (list placer) (values ,b reg-use-vec)) ,c)r)r)))
+
+(function place-function-bindings (n offset plcs ret-val)
   (and [= (@ expr-type n) (-function-)] (do
     (let (sub-expr-offset [- (@ expr-frame-size n) [* #7(word-size)]])
-    (bind (frame-size in-use) [place-temp-bindings (@ expr-expression n) sub-expr-offset bind]
+    (bind (frame-size in-use) [place-temp-bindings (@ expr-expression n) sub-expr-offset plcs bind]
     (let (in-use [bor in-use (hex FFFFFFFFFFFF0831)])
     (let (param-offset [- (@ expr-frame-size n) [* #6(word-size)]])
     (let
@@ -181,12 +193,12 @@
     (values (use-storage ret-val) offset (hex 0000000000000800))
     (true))))
 
-(constrain place-continuation-with-bindings (\ r (with-vars (b c) (`(function (expr ,b (values ,b reg-use-vec)) ,c)r)r)))
+(constrain place-continuation-with-bindings (\ r (with-vars (b c) (`(function (expr ,b (list placer) (values ,b reg-use-vec)) ,c)r)r)))
 
-(function place-continuation-with-bindings (n offset ret-val)
+(function place-continuation-with-bindings (n offset plcs ret-val)
   (and (or [= (@ expr-type n) (-continuation-)] [= (@ expr-type n) (-with-)])
     (let (bottom-offset [- offset [* [+ [length (@ expr-parameters n)] #1] (word-size)]])
-    (bind (frame-size in-use) [place-temp-bindings (@ expr-expression n) bottom-offset bind]
+    (bind (frame-size in-use) [place-temp-bindings (@ expr-expression n) bottom-offset plcs bind]
     (let (in-use [bor (hex FFFFFFFFFFFF0C38) in-use])
     (let (in-use [binding-to-register/memory (@ expr-binding-aug (@ expr-expression n)) bottom-offset in-use]) (do
     (let (in-use
@@ -203,27 +215,27 @@
     (values (use-storage ret-val) frame-size in-use)
     (true))))))))))
 
-(constrain place-storage-bindings (\ r (with-vars (b c) (`(function (expr ,b (values ,b reg-use-vec)) ,c)r)r)))
+(constrain place-storage-bindings (\ r (with-vars (b c) (`(function (expr ,b (list placer) (values ,b reg-use-vec)) ,c)r)r)))
 
-(function place-storage-bindings (n offset ret-val)
+(function place-storage-bindings (n offset plcs ret-val)
   (and [= (@ expr-type n) (-storage-)] (do
     (fold (memory-state (values (use-storage ret-val) offset (hex 0000000000000800))) (u (@ expr-arguments n))
       (bind (bottom-offset in-use) memory-state
-      (bind (bottom-offset' in-use') [place-temp-bindings u offset bind]
+      (bind (bottom-offset' in-use') [place-temp-bindings u offset plcs bind]
       (values (use-storage ret-val) [min bottom-offset bottom-offset'] [bor in-use in-use']))))
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (true))))
 
-(constrain place-jump-bindings (\ r (with-vars (b c) (`(function (expr ,b (values ,b reg-use-vec)) ,c)r)r)))
+(constrain place-jump-bindings (\ r (with-vars (b c) (`(function (expr ,b (list placer) (values ,b reg-use-vec)) ,c)r)r)))
 
-(function place-jump-bindings (n offset ret-val)
+(function place-jump-bindings (n offset plcs ret-val)
   (and [= (@ expr-type n) (-jump-)]
     (let (sub-expr-offset [- offset [* [+ [length (@ expr-arguments n)] #1] (word-size)]])
-    (let (memory-state [place-temp-bindings (@ expr-reference n) sub-expr-offset ret-val])
+    (let (memory-state [place-temp-bindings (@ expr-reference n) sub-expr-offset plcs ret-val])
     (bind (bottom-offset in-use)
       (fold (memory-state memory-state) (u (@ expr-arguments n))
         (bind (bottom-offset in-use) memory-state
-        (bind (bottom-offset' in-use') [place-temp-bindings u sub-expr-offset bind]
+        (bind (bottom-offset' in-use') [place-temp-bindings u sub-expr-offset plcs bind]
         (values (use-storage ret-val) [min bottom-offset bottom-offset'] [bor in-use in-use']))))
     (let (in-use [bor in-use (hex FFFFFFFFFFFF0C30)])
     (let (offset [- offset (word-size)])
@@ -239,16 +251,16 @@
     (values (use-storage ret-val) bottom-offset in-use)
     (true))))))))))))
 
-(constrain place-invoke-bindings (\ r (with-vars (b c) (`(function (expr ,b (values ,b reg-use-vec)) ,c)r)r)))
+(constrain place-invoke-bindings (\ r (with-vars (b c) (`(function (expr ,b (list placer) (values ,b reg-use-vec)) ,c)r)r)))
 
-(function place-invoke-bindings (n offset ret-val)
+(function place-invoke-bindings (n offset plcs ret-val)
   (and [= (@ expr-type n) (-invoke-)]
     (bind (bottom-offset in-use)
       (let (sub-expr-offset [- offset [* [+ [length (@ expr-arguments n)] #1] (word-size)]])
-      (let (memory-state [place-temp-bindings (@ expr-reference n) sub-expr-offset bind])
+      (let (memory-state [place-temp-bindings (@ expr-reference n) sub-expr-offset plcs bind])
       (fold (memory-state memory-state) (u (@ expr-arguments n))
         (bind (bottom-offset in-use) memory-state
-        (bind (bottom-offset' in-use') [place-temp-bindings u sub-expr-offset bind]
+        (bind (bottom-offset' in-use') [place-temp-bindings u sub-expr-offset plcs bind]
         (values storage [min bottom-offset bottom-offset'] [bor in-use in-use']))))))
     
     (let (in-use [bor in-use (hex FFFFFFFFFFFF0031)])
@@ -292,14 +304,14 @@
     (values (use-storage ret-val) bottom-offset [bor in-use (hex FFFFFFFFFFFF0FF7)])
     (true)))))))))))
 
-(constrain place-if-bindings (\ r (with-vars (b c) (`(function (expr ,b (values ,b reg-use-vec)) ,c)r)r)))
+(constrain place-if-bindings (\ r (with-vars (b c) (`(function (expr ,b (list placer) (values ,b reg-use-vec)) ,c)r)r)))
 
-(function place-if-bindings (n offset ret-val)
+(function place-if-bindings (n offset plcs ret-val)
   (and [= (@ expr-type n) (-if-)]
     (let (offset [- offset (word-size)])
-    (bind (bottom-offset in-use) [place-temp-bindings (@ expr-condition n) offset bind]
-    (bind (bottom-offset' in-use') [place-temp-bindings (@ expr-consequent n) offset bind]
-    (bind (bottom-offset'' in-use'') [place-temp-bindings (@ expr-alternate n) offset bind]
+    (bind (bottom-offset in-use) [place-temp-bindings (@ expr-condition n) offset plcs bind]
+    (bind (bottom-offset' in-use') [place-temp-bindings (@ expr-consequent n) offset plcs bind]
+    (bind (bottom-offset'' in-use'') [place-temp-bindings (@ expr-alternate n) offset plcs bind]
     (let
       (condition-bndg (@ expr-binding-aug (@ expr-condition n)))
       (consequent-bndg (@ expr-binding-aug (@ expr-consequent n)))
@@ -313,46 +325,47 @@
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (true))))))))))
 
-(constrain place-constrain-bindings (\ r (with-vars (b c) (`(function (expr ,b (values ,b reg-use-vec)) ,c)r)r)))
+(constrain place-constrain-bindings (\ r (with-vars (b c) (`(function (expr ,b (list placer) (values ,b reg-use-vec)) ,c)r)r)))
 
-(function place-constrain-bindings (n offset ret-val)
+(function place-constrain-bindings (n offset plcs ret-val)
   (and [= (@ expr-type n) (-constrain-)]
     (let (offset [- offset (word-size)])
-    (bind (bottom-offset in-use) [place-temp-bindings (@ expr-expression n) offset ret-val]
+    (bind (bottom-offset in-use) [place-temp-bindings (@ expr-expression n) offset plcs ret-val]
     (let (in-use
       [binding-to-register/memory (@ expr-binding-aug (@ expr-expression n)) offset [bor in-use (hex FFFFFFFFFFFF0830)]]) (do
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (values (use-storage ret-val) bottom-offset in-use)
     (true)))))))
 
-(constrain place-symbol-bindings (\ r (with-vars (b c) (`(function (expr ,b (values ,b reg-use-vec)) ,c)r)r)))
+(constrain place-symbol-bindings (\ r (with-vars (b c) (`(function (expr ,b (list placer) (values ,b reg-use-vec)) ,c)r)r)))
 
-(function place-symbol-bindings (n offset ret-val)
+(function place-symbol-bindings (n offset plcs ret-val)
   (and [= (@ expr-type n) (-symbol-)] (do
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (values (use-storage ret-val) offset (hex 0000000000000800))
     (true))))
 
-(constrain place-literal-bindings (\ r (with-vars (b c) (`(function (expr ,b (values ,b reg-use-vec)) ,c)r)r)))
+(constrain place-literal-bindings (\ r (with-vars (b c) (`(function (expr ,b (list placer) (values ,b reg-use-vec)) ,c)r)r)))
 
-(function place-literal-bindings (n offset ret-val)
+(function place-literal-bindings (n offset plcs ret-val)
   (and [= (@ expr-type n) (-literal-)] (do
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (values (use-storage ret-val) offset (hex 0000000000000800))
     (true))))
 
-(constrain place-temp-bindings (\ r (with-vars (b c) (`(function (expr ,b ,c) (values ,b reg-use-vec))r)r)))
+(constrain place-temp-bindings (\ r (with-vars (b c) (`(function (expr ,b (list placer) ,c) (values ,b reg-use-vec))r)r)))
 
-(function place-temp-bindings (n offset ret-val) (do (or
-  [place-function-bindings n offset ret-val]
-  [place-continuation-with-bindings n offset ret-val]
-  [place-storage-bindings n offset ret-val]
-  [place-jump-bindings n offset ret-val]
-  [place-invoke-bindings n offset ret-val]
-  [place-if-bindings n offset ret-val]
-  [place-constrain-bindings n offset ret-val]
-  [place-symbol-bindings n offset ret-val]
-  [place-literal-bindings n offset ret-val])
+(function place-temp-bindings (n offset plcs ret-val) (do (or
+  (fold (found? (false)) (plc plcs) (or found? [[placer->function plc] n offset plcs ret-val]))
+  [place-function-bindings n offset plcs ret-val]
+  [place-continuation-with-bindings n offset plcs ret-val]
+  [place-storage-bindings n offset plcs ret-val]
+  [place-jump-bindings n offset plcs ret-val]
+  [place-invoke-bindings n offset plcs ret-val]
+  [place-if-bindings n offset plcs ret-val]
+  [place-constrain-bindings n offset plcs ret-val]
+  [place-symbol-bindings n offset plcs ret-val]
+  [place-literal-bindings n offset plcs ret-val])
   ret-val))
 
 (constrain generator->function
