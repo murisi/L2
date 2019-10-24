@@ -390,12 +390,43 @@
     
     (ignore))))
 
+(constrain setup-collect-static-bindings (\ r (with-vars (b) (`(function (expr) ,b)r)r)))
+
+(function setup-collect-static-bindings (n) (do
+  (switch = (@ expr-type n)
+    ((-continuation-) (-with-) (do
+      [setup-collect-static-bindings (@ expr-expression n)]
+      (if (@ expr-escapes n)
+        (setf bndg-context (@ expr-symbol-binding-aug(@ expr-reference n)) (true)) (ignore))
+      (foreach (t (@ expr-parameters n))
+        (setf bndg-context (@ expr-symbol-binding-aug t) (true)))))
+    
+    ((-storage-) (do
+      (setf bndg-context (@ expr-symbol-binding-aug(@ expr-reference n)) (true))
+      (foreach (u (@ expr-arguments n)) [setup-collect-static-bindings u])))
+    
+    ((-jump-) (-invoke-) (do
+      [setup-collect-static-bindings (@ expr-reference n)]
+      (foreach (u (@ expr-arguments n)) [setup-collect-static-bindings u])))
+    
+    ((-if-) (do
+      [setup-collect-static-bindings (@ expr-condition n)]
+      [setup-collect-static-bindings (@ expr-consequent n)]
+      [setup-collect-static-bindings (@ expr-alternate n)]))
+    
+    ((-constrain-)
+      [setup-collect-static-bindings (@ expr-expression n)])
+    
+    (ignore))
+  
+  (setf bndg-context (@ expr-binding-aug n) (true))))
+
 (constrain append-static-binding (\ r (with-vars (a b) (`(function (bndg-aug (ref (list bndg-aug)) buffer ,a) ,b)r)r)))
 
 (function append-static-binding (bndg binding-augs r handler)
   (substitute (.. r handler)
-    (if [= (@ bndg-storage bndg) (absolute-storage)]
-      [append bndg binding-augs ..]
+    (if (and [= (@ bndg-storage bndg) (absolute-storage)] (@ bndg-context bndg))
+      (do (setf bndg-context bndg (false)) [append bndg binding-augs ..])
       (ignore))))
 
 (constrain collect-static-bindings (\ r (with-vars (a b) (`(function (expr (ref (list bndg-aug)) buffer ,a) ,b)r)r)))

@@ -122,15 +122,6 @@
       (setf bndg-offset bndg free-register)
       new-in-use)))))))
 
-(ignore Copies the storage location associated with the second binding into the first.)
-
-(constrain copy-binding (\ r (`(function (bndg-aug bndg-aug) ())r)))
-
-(function copy-binding (dst-bndg src-bndg) (do
-  (setf bndg-size dst-bndg (@ bndg-size src-bndg))
-  (setf bndg-offset dst-bndg (@ bndg-offset src-bndg))
-  (setf bndg-storage dst-bndg (@ bndg-storage src-bndg))))
-
 (constrain placer->function
   (\ r (with-vars (b c) (`(function (placer)
     (function (expr ,b (list placer) (values ,b reg-use-vec)) ,c))r)r)))
@@ -312,14 +303,11 @@
     (bind (bottom-offset in-use) [place-temp-bindings (@ expr-condition n) offset plcs bind]
     (bind (bottom-offset' in-use') [place-temp-bindings (@ expr-consequent n) offset plcs bind]
     (bind (bottom-offset'' in-use'') [place-temp-bindings (@ expr-alternate n) offset plcs bind]
-    (let
-      (condition-bndg (@ expr-binding-aug (@ expr-condition n)))
-      (consequent-bndg (@ expr-binding-aug (@ expr-consequent n)))
-      (alternate-bndg (@ expr-binding-aug (@ expr-alternate n)))
+    (let (condition-bndg (@ expr-binding-aug (@ expr-condition n)))
     (let (in-use [binding-to-register/memory condition-bndg offset
       [bor in-use [bor in-use' [bor in-use'' (hex FFFFFFFFFFFF0830)]]]]) (do
-    [copy-binding consequent-bndg condition-bndg]
-    [copy-binding alternate-bndg condition-bndg]
+    (setf expr-binding-aug (@ expr-consequent n) condition-bndg)
+    (setf expr-binding-aug (@ expr-alternate n) condition-bndg)
     (values (use-storage ret-val)
       [min bottom-offset [min bottom-offset' bottom-offset'']] in-use)
     (setf bndg-size (@ expr-binding-aug n) (word-size))
