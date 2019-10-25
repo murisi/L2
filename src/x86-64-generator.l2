@@ -189,10 +189,10 @@
     (values (use-storage ret-val) offset (hex 0000000000000800))
     (true))))
 
-(constrain place-continuation-with-bindings (\ r (with-vars (b c) (`(function (expr ,b (list placer) (values ,b reg-use-vec)) ,c)r)r)))
+(constrain place-continuation-bindings (\ r (with-vars (b c) (`(function (expr ,b (list placer) (values ,b reg-use-vec)) ,c)r)r)))
 
-(function place-continuation-with-bindings (n offset plcs ret-val)
-  (and (or [= (@ expr-type n) (-continuation-)] [= (@ expr-type n) (-with-)])
+(function place-continuation-bindings (n offset plcs ret-val)
+  (and [= (@ expr-type n) (-continuation-)]
     (let (bottom-offset [- offset [* [+ [length (@ expr-parameters n)] #1] (word-size)]])
     (bind (frame-size in-use) [place-temp-bindings (@ expr-expression n) bottom-offset plcs bind]
     (let (in-use [bor (hex FFFFFFFFFFFF0C38) in-use])
@@ -210,6 +210,22 @@
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (values (use-storage ret-val) frame-size in-use)
     (true))))))))))
+
+(constrain place-with-bindings (\ r (with-vars (b c) (`(function (expr ,b (list placer) (values ,b reg-use-vec)) ,c)r)r)))
+
+(function place-with-bindings (n offset plcs ret-val)
+  (and (or [= (@ expr-type n) (-with-)]) (do
+    (setf expr-binding-aug (@ expr-expression n) (@ expr-binding-aug n))
+    (bind (frame-size in-use) [place-temp-bindings (@ expr-expression n) offset plcs bind] (do
+    (if (@ expr-escapes n) (ignore)
+      (let (cont-bndg (@ expr-symbol-binding-aug(@ expr-reference n))) (do
+      (setf bndg-size cont-bndg #0)
+      (setf bndg-offset cont-bndg offset)
+      (setf expr-symbol-binding-aug [@car (@ expr-parameters n)] (@ expr-binding-aug n)))))
+    (let (in-use [bor (hex FFFFFFFFFFFF0C38) in-use]) (do
+    (setf bndg-size (@ expr-binding-aug n) (word-size))
+    (values (use-storage ret-val) frame-size in-use)
+    (true))))))))
 
 (constrain place-storage-bindings (\ r (with-vars (b c) (`(function (expr ,b (list placer) (values ,b reg-use-vec)) ,c)r)r)))
 
@@ -356,7 +372,8 @@
 (function place-temp-bindings (n offset plcs ret-val) (do (or
   (fold (found? (false)) (plc plcs) (or found? [[placer->function plc] n offset plcs ret-val]))
   [place-function-bindings n offset plcs ret-val]
-  [place-continuation-with-bindings n offset plcs ret-val]
+  [place-continuation-bindings n offset plcs ret-val]
+  [place-with-bindings n offset plcs ret-val]
   [place-storage-bindings n offset plcs ret-val]
   [place-jump-bindings n offset plcs ret-val]
   [place-invoke-bindings n offset plcs ret-val]
@@ -612,11 +629,13 @@
           (end-instr-binding [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr null-expr ..]) (do
         (if (@ expr-escapes n) [generate-store-continuation n c relocs ..] (ignore))
         [generate-expression (@ expr-expression n) gens c relocs ..]
-        [generate-bndg-bndg-move expr-val-bndg body-val-bndg (r11) c relocs ..]
-        [prepend (make-instrN (x86-jmp) ([make-relative-relocation-immediate #4 end-instr-binding relocs ..]) ..) c ..]
-        [prepend [make-label (@ expr-cont-instr-bndg n) ..] c ..]
-        [generate-bndg-bndg-move expr-val-bndg param-val-bndg (r11) c relocs ..]
-        [prepend [make-label end-instr-binding ..] c ..]
+        (if (@ expr-escapes n)
+          (do
+            [prepend (make-instrN (x86-jmp) ([make-relative-relocation-immediate #4 end-instr-binding relocs ..]) ..) c ..]
+            [prepend [make-label (@ expr-cont-instr-bndg n) ..] c ..]
+            [generate-bndg-bndg-move expr-val-bndg param-val-bndg (r11) c relocs ..]
+            [prepend [make-label end-instr-binding ..] c ..])
+          [prepend [make-label (@ expr-cont-instr-bndg n) ..] c ..])
         (true))))))
 
 (constrain generate-load-continuation
@@ -647,7 +666,20 @@
               [generate-bndg-bndg-move dest-bndg src-bndg (r11) c relocs ..]))
           [prepend [make-label (@ expr-cont-instr-bndg cont) ..] c ..]
           [generate-expression (@ expr-expression cont) gens c relocs ..]))
-        
+      
+      (if (let (cont (@ expr-short-circuit n))
+          (and [not= cont null-expr] [= (@ expr-type cont) (-with-)] (not (@ expr-escapes (@ expr-reference n)))
+            (loop enter (current (@ expr-expression cont))
+              (if [= n current]
+                (true)
+              (if (and [= (@ expr-type current) (-jump-)] [= (@ expr-type (@ expr-reference current)) (-continuation-)])
+                {enter (@ expr-expression (@ expr-reference current))}
+                (false))))))
+        (let (dest-bndg (@ expr-symbol-binding-aug [@car (@ expr-parameters (@ expr-short-circuit n))]))
+            (src-bndg (@ expr-binding-aug [@car (@ expr-arguments n)])) (do
+          [generate-expression [@car (@ expr-arguments n)] gens c relocs ..]
+          [generate-bndg-bndg-move dest-bndg src-bndg (r11) c relocs ..]))
+      
       (if [not= (@ expr-short-circuit n) null-expr]
         (let (cont-instr-bndg (@ expr-cont-instr-bndg(@ expr-short-circuit n))) (do
           (if [= (@ expr-type(@ expr-reference n)) (-continuation-)]
@@ -664,7 +696,7 @@
           [generate-expression (@ expr-reference n) gens c relocs ..]
           [generate-register-bndg-move (r10) ref-val-bndg c relocs ..]
           [generate-buffer-to-dest n (r10) (cont-size) c relocs ..]
-          [generate-load-continuation (r10) c relocs ..]))))
+          [generate-load-continuation (r10) c relocs ..])))))
           
         (true)))))
 
