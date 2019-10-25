@@ -310,15 +310,14 @@
 
 (function place-if-bindings (n offset plcs ret-val)
   (and [= (@ expr-type n) (-if-)]
-    (let (offset [- offset (word-size)])
+    (let (offset [- offset (word-size)]) (do
+    (setf expr-binding-aug (@ expr-condition n) (@ expr-binding-aug n))
+    (setf expr-binding-aug (@ expr-consequent n) (@ expr-binding-aug n))
+    (setf expr-binding-aug (@ expr-alternate n) (@ expr-binding-aug n))
     (bind (bottom-offset in-use) [place-temp-bindings (@ expr-condition n) offset plcs bind]
     (bind (bottom-offset' in-use') [place-temp-bindings (@ expr-consequent n) offset plcs bind]
     (bind (bottom-offset'' in-use'') [place-temp-bindings (@ expr-alternate n) offset plcs bind]
-    (let (condition-bndg (@ expr-binding-aug (@ expr-condition n)))
-    (let (in-use [binding-to-register/memory condition-bndg offset
-      [bor in-use [bor in-use' [bor in-use'' (hex FFFFFFFFFFFF0830)]]]]) (do
-    (setf expr-binding-aug (@ expr-consequent n) condition-bndg)
-    (setf expr-binding-aug (@ expr-alternate n) condition-bndg)
+    (let (in-use [bor in-use [bor in-use' [bor in-use'' (hex FFFFFFFFFFFF0830)]]]) (do
     (values (use-storage ret-val)
       [min bottom-offset [min bottom-offset' bottom-offset'']] in-use)
     (setf bndg-size (@ expr-binding-aug n) (word-size))
@@ -639,8 +638,17 @@
 
 (function generate-jump (n gens c relocs r handler)
   (substitute (.. r handler)
-    (and [= (@ expr-type n) (-jump-)]
-      (do (if [not= (@ expr-short-circuit n) null-expr]
+    (and [= (@ expr-type n) (-jump-)] (do
+      (if (and [= (@ expr-type (@ expr-reference n)) (-continuation-)] (not (@ expr-escapes (@ expr-reference n))))
+        (let (cont (@ expr-reference n)) (do
+          (foreach (t (@ expr-arguments n)) [generate-expression t gens c relocs ..])
+          (foreach (t (@ expr-arguments n)) (u (@ expr-parameters cont))
+            (let (src-bndg (@ expr-binding-aug t)) (dest-bndg (@ expr-symbol-binding-aug u))
+              [generate-bndg-bndg-move dest-bndg src-bndg (r11) c relocs ..]))
+          [prepend [make-label (@ expr-cont-instr-bndg cont) ..] c ..]
+          [generate-expression (@ expr-expression cont) gens c relocs ..]))
+        
+      (if [not= (@ expr-short-circuit n) null-expr]
         (let (cont-instr-bndg (@ expr-cont-instr-bndg(@ expr-short-circuit n))) (do
           (if [= (@ expr-type(@ expr-reference n)) (-continuation-)]
             [generate-expression (@ expr-reference n) gens c relocs ..]
@@ -656,7 +664,7 @@
           [generate-expression (@ expr-reference n) gens c relocs ..]
           [generate-register-bndg-move (r10) ref-val-bndg c relocs ..]
           [generate-buffer-to-dest n (r10) (cont-size) c relocs ..]
-          [generate-load-continuation (r10) c relocs ..])))
+          [generate-load-continuation (r10) c relocs ..]))))
           
         (true)))))
 
