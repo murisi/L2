@@ -88,6 +88,10 @@
   (function x86-nop (l r) [=## #50 (\ r (` instr-code r)) r])
   
   (function x86-cmp (l r) [=## #51 (\ r (` instr-code r)) r])
+  
+  (function x86-jnz (l r) [=## #52 (\ r (` instr-code r)) r])
+  
+  (function x86-jnc (l r) [=## #53 (\ r (` instr-code r)) r])
 
 (ignore A representation of an operand.)
   
@@ -482,7 +486,8 @@
     ((x86-pop) (" pop)) ((x86-leave) (" leave)) ((x86-ret) (" ret)) ((x86-je) (" je))
     ((x86-or) (" or)) ((x86-call) (" call)) ((x86-mul) (" mul)) ((x86-shl) (" shl))
     ((x86-shr) (" shr)) ((x86-and) (" and)) ((x86-not) (" not)) ((x86-xor) (" xor))
-    ((x86-div) (" div)) ((x86-setz) (" setz)) ((x86-setc) (" setc)) (ignore)) handler])
+    ((x86-div) (" div)) ((x86-setz) (" setz)) ((x86-setc) (" setc)) ((x86-jnc) (" jnc))
+    ((x86-jnz) (" jnz)) ((x86-cmp) (" cmp)) (ignore)) handler])
 
 (constrain print-register (\ r (with-vars (a) (`(function (register ,a) ())r)r)))
 
@@ -906,6 +911,12 @@
           {handler (storage _ unsupported-instruction-error n)}))
         ((x86-je) (or
           [write-d-instr (hex 24) (ignore) (ignore) (hex 840F) (ignore) n bin pos ..]
+          {handler (storage _ unsupported-instruction-error n)}))
+        ((x86-jnz) (or
+          [write-d-instr (hex 24) (ignore) (ignore) (hex 850F) (ignore) n bin pos ..]
+          {handler (storage _ unsupported-instruction-error n)}))
+        ((x86-jnc) (or
+          [write-d-instr (hex 24) (ignore) (ignore) (hex 830F) (ignore) n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
         ((x86-shl) (or
           [write-mc-instr (hex 1F) (hex D2) (hex D3) (hex D3) (hex D3) [make-reg-op (x86-/4) ..] n bin pos ..]
