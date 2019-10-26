@@ -27,6 +27,27 @@
     (@ expr-expression e)
     e))
 
+(ignore Does the following optimization:
+  (if (if cond <zero literal> <non-zero literal>) <consequent> <alternate>)
+  ->
+  (if cond <alternate> <consequent>))
+
+(constrain vswap-branches (\ r (`(function (expr ()) expr)r)))
+
+(function vswap-branches (e ctx)
+  (if (and [= (@ expr-type e) (-if-)]
+      (let (cond (@ expr-condition e))
+      (and [= (@ expr-type cond) (-if-)]
+        (let (consequent (@ expr-consequent cond)) (alternate (@ expr-alternate cond))
+          (and [= (@ expr-type consequent) (-literal-)] [= (@ expr-value consequent) #0]
+            [= (@ expr-type alternate) (-literal-)] [not= (@ expr-value alternate) #0])))))
+    (let (tmp-branch (@ expr-consequent e)) (do
+      (setf expr-condition e (@ expr-condition (@ expr-condition e)))
+      (setf expr-consequent e (@ expr-alternate e))
+      (setf expr-alternate e tmp-branch)
+      e))
+    e))
+
 (constrain global-binding-augs-of (\ r (with-vars (a) (`(function ((list expr) buffer ,a) (list bndg-aug))r)r)))
 
 (function global-binding-augs-of (exprs r handler)
