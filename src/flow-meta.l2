@@ -7,24 +7,26 @@
 (function true (l r) [=# #1 r])
 
 (ignore
-  The following macro returns the first non-zero argument supplied to it leaving the rest
-  unevaluated. If all the arguments are zero, then it returns (false).)
+  The following macro iterates through its arguments in order and returns (true) upon
+  encountering the first non-zero argument supplied to it. If all the arguments are zero,
+  then it returns (false).)
 
 (function or (l r)
   (loop prepend-or (l [meta:reverse l r]) (sexpr (`(false)r))
     (if [emt? l]
       sexpr
-      {prepend-or [@rst l] (`(let (or:temp (,[@fst l])) (if or:temp or:temp (, sexpr r)))r)})))
+      {prepend-or [@rst l] (`(if (,[@fst l]) (true) (, sexpr r))r)})))
 
 (ignore
-  The following macro returns the first zero argument supplied to it leaving the rest
-  unevaluated. If all the arguments are non-zero, then it returns (true).)
+  The following macro iterates through its arguments in order and returns (false) upon
+  encountering the first zero argument supplied to it. If all the arguments are non-zero,
+  then it returns (true).)
 
 (function and (l r)
   (loop prepend-and (l [meta:reverse l r]) (sexpr (`(true)r))
     (if [emt? l]
       sexpr
-      {prepend-and [@rst l] (`(let (and:temp (,[@fst l])) (if and:temp (, sexpr r) and:temp))r)})))
+      {prepend-and [@rst l] (`(if (,[@fst l]) (, sexpr r) (false))r)})))
 
 (ignore
   The following macro returns (false) if the single argument supplied to it is non-zero.
