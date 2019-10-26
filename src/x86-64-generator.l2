@@ -553,6 +553,15 @@
 
 (function reference-symbol? (n) (not [value-symbol? n]))
 
+(ignore
+  Checks if a symbol is a reference symbol that is bound to an absolute location in
+  memory.)
+
+(constrain absolute-reference-symbol? (\ r (with-vars (a) (`(function (expr) ,a)r)r)))
+
+(function absolute-reference-symbol? (n)
+  (and [reference-symbol? n] [= (@ bndg-storage (@ expr-symbol-binding-aug n)) (absolute-storage)]))
+
 (constrain generate-symbol
   (\ r (with-vars (a b) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
@@ -781,8 +790,13 @@
   (substitute (.. r handler)
     (and [= (@ expr-type n) (-invoke-)] (let
         (expr-val-bndg (@ expr-binding-aug n))
+        (ref-expr (@ expr-reference n))
         (ref-val-bndg (@ expr-binding-aug (@ expr-reference n))) (do
-      [generate-expression (@ expr-reference n) gens c relocs ..]
+      (ignore If the invoke expression's reference is not an absolute symbol, then put the
+        target address into a register and then emit a call on that register.)
+      (if (and [= (@ expr-type ref-expr) (-symbol-)] [absolute-reference-symbol? ref-expr])
+        (ignore)
+        [generate-expression (@ expr-reference n) gens c relocs ..])
       (foreach (t (@ expr-arguments n)) [generate-expression t gens c relocs ..])
       (foreach (t [reverse (if [> [length (@ expr-arguments n)] #6] [@cddddddr(@ expr-arguments n)] nil) ..])
         (let (src-val-bndg (@ expr-binding-aug t))
@@ -801,8 +815,11 @@
       (and [> [length (@ expr-arguments n)] #5]
         [generate-register-bndg-move (r9) (@ expr-binding-aug [@cadddddr(@ expr-arguments n)]) c relocs ..])))))))))))
       
-      [prepend (make-instrN(x86-mov)([make-reg-op (rax) ..] [make-imm-op #8 #0 ..])..) c ..]
-      [prepend (make-instrN(x86-call)([bndg->op ref-val-bndg relocs ..])..) c ..]
+      [prepend (make-instrN(x86-xor)([make-reg-op (rax) ..] [make-reg-op (rax) ..])..) c ..]
+      (if (and [= (@ expr-type ref-expr) (-symbol-)] [absolute-reference-symbol? ref-expr])
+        (let (ref-sym-bndg (@ expr-symbol-binding-aug ref-expr))
+          [prepend (make-instrN(x86-call)([make-relative-relocation-immediate #4 ref-sym-bndg relocs ..])..) c ..])
+        [prepend (make-instrN(x86-call)([bndg->op ref-val-bndg relocs ..])..) c ..])
       [generate-bndg-register-move expr-val-bndg (rax) c relocs ..]
       
       (if [> [length (@ expr-arguments n)] #6]
