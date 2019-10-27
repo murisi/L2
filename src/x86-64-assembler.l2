@@ -92,6 +92,8 @@
   (function x86-jnz (l r) [=## #52 (\ r (` instr-code r)) r])
   
   (function x86-jnc (l r) [=## #53 (\ r (` instr-code r)) r])
+  
+  (function x86-setg (l r) [=## #54 (\ r (` instr-code r)) r])
 
 (ignore A representation of an operand.)
   
@@ -487,7 +489,7 @@
     ((x86-or) (" or)) ((x86-call) (" call)) ((x86-mul) (" mul)) ((x86-shl) (" shl))
     ((x86-shr) (" shr)) ((x86-and) (" and)) ((x86-not) (" not)) ((x86-xor) (" xor))
     ((x86-div) (" div)) ((x86-setz) (" setz)) ((x86-setc) (" setc)) ((x86-jnc) (" jnc))
-    ((x86-jnz) (" jnz)) ((x86-cmp) (" cmp)) (ignore)) handler])
+    ((x86-jnz) (" jnz)) ((x86-cmp) (" cmp)) ((x86-setg) (" setg)) (ignore)) handler])
 
 (constrain print-register (\ r (with-vars (a) (`(function (register ,a) ())r)r)))
 
@@ -749,6 +751,27 @@
         [write-instr bin pos opcode-64 [>> mask #4] [make-none-op ..] opcode.reg-op op1 op2 ..]
         (false)))))))))
 
+(constrain write-mi8-instr (\ r (with-vars (a b c d e f g h i) (`(function (,a ,b ,c ,d ,e operand instr ,f (ref ,g) buffer ,h) ,i)r)r)))
+
+(function write-mi8-instr (mask opcode-8 opcode-16 opcode-32 opcode-64 opcode.reg-op n bin pos buf handler)
+  (substitute (.. buf handler)
+    (and [>= [length (@ instr-operands n)] #2] (let
+        (op1 [@car (@ instr-operands n)])
+        (op2 [@cadr (@ instr-operands n)])
+      (if (and [= (@ op-size op1) #1] (or [= (@ op-type op1) (memory-operand)] [= (@ op-type op1) (register-operand)])
+              [= (@ op-size op2) #1] [= (@ op-type op2) (immediate-operand)])
+        [write-instr bin pos opcode-8 [>> mask #4] [make-none-op ..] opcode.reg-op op1 op2 ..]
+      (if (and [= (@ op-size op1) #2] (or [= (@ op-type op1) (memory-operand)] [= (@ op-type op1) (register-operand)])
+          [= (@ op-size op2) #1] [= (@ op-type op2) (immediate-operand)])
+        [write-instr bin pos opcode-16 [>> mask #4] [make-none-op ..] opcode.reg-op op1 op2 ..]
+      (if (and [= (@ op-size op1) #4] (or [= (@ op-type op1) (memory-operand)] [= (@ op-type op1) (register-operand)])
+          [= (@ op-size op2) #1] [= (@ op-type op2) (immediate-operand)])
+        [write-instr bin pos opcode-32 [>> mask #4] [make-none-op ..] opcode.reg-op op1 op2 ..]
+      (if (and [= (@ op-size op1) #8] (or [= (@ op-type op1) (memory-operand)] [= (@ op-type op1) (register-operand)])
+          [= (@ op-size op2) #1] [= (@ op-type op2) (immediate-operand)])
+        [write-instr bin pos opcode-64 [>> mask #4] [make-none-op ..] opcode.reg-op op1 op2 ..]
+        (false)))))))))
+
 (constrain write-mm-instr (\ r (with-vars (a b c d e f g h i) (`(function (,a ,b ,c ,d ,e instr ,f (ref ,g) buffer ,h) ,i)r)r)))
 
 (function write-mm-instr (mask opcode-8 opcode-16 opcode-32 opcode-64 n bin pos buf handler)
@@ -865,6 +888,9 @@
         ((x86-setc) (or
           [write-m-instr (hex 21) (hex 920F) (ignore) (ignore) (ignore) [make-none-op ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
+        ((x86-setg) (or
+          [write-m-instr (hex 21) (hex 9F0F) (ignore) (ignore) (ignore) [make-none-op ..] n bin pos ..]
+          {handler (storage _ unsupported-instruction-error n)}))
         ((x86-mul) (or
           [write-m-instr (hex 1F) (hex F6) (hex F7) (hex F7) (hex F7) [make-reg-op (x86-/4) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
@@ -880,18 +906,21 @@
           [write-mr-instr (hex 1F) (hex 28) (hex 29) (hex 29) (hex 29) n bin pos ..]
           [write-mi-instr (hex 1F) (hex 80) (hex 81) (hex 81) (hex 81) [make-reg-op (x86-/5) ..] n bin pos ..]
           [write-mm-instr (hex 1F) (hex 28) (hex 29) (hex 29) (hex 29) n bin pos ..]
+          [write-mi8-instr (hex 1E) (ignore) (hex 83) (hex 83) (hex 83) [make-reg-op (x86-/5) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
         ((x86-cmp) (or
           [write-rm-instr (hex 1F) (hex 3A) (hex 3B) (hex 3B) (hex 3B) n bin pos ..]
           [write-mr-instr (hex 1F) (hex 38) (hex 39) (hex 39) (hex 39) n bin pos ..]
           [write-mi-instr (hex 1F) (hex 80) (hex 81) (hex 81) (hex 81) [make-reg-op (x86-/7) ..] n bin pos ..]
           [write-mm-instr (hex 1F) (hex 38) (hex 39) (hex 39) (hex 39) n bin pos ..]
+          [write-mi8-instr (hex 1E) (ignore) (hex 83) (hex 83) (hex 83) [make-reg-op (x86-/7) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
         ((x86-add) (or
           [write-rm-instr (hex 1F) (hex 02) (hex 03) (hex 03) (hex 03) n bin pos ..]
           [write-mr-instr (hex 1F) (hex 00) (hex 01) (hex 01) (hex 01) n bin pos ..]
           [write-mi-instr (hex 1F) (hex 80) (hex 81) (hex 81) (hex 81) [make-reg-op (x86-/0) ..] n bin pos ..]
           [write-mm-instr (hex 1F) (hex 00) (hex 01) (hex 01) (hex 01) n bin pos ..]
+          [write-mi8-instr (hex 1E) (ignore) (hex 83) (hex 83) (hex 83) [make-reg-op (x86-/0) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
         ((x86-or) (or
           [write-rm-instr (hex 1F) (hex 0A) (hex 0B) (hex 0B) (hex 0B) n bin pos ..]

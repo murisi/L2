@@ -32,12 +32,16 @@
     [make-binary-intrinsic [rstrcpy (" band) ..] ..]
     [make-unary-intrinsic [rstrcpy (" bnot) ..] ..]) ..)))
 
+(constrain undefined-symbol-invoke? (\ r (with-vars (a) (`(function (expr) ,a)r)r)))
+
+(function undefined-symbol-invoke? (n)
+  (and [= (@ expr-type n) (-invoke-)] [= (@ expr-type (@ expr-reference n)) (-symbol-)]
+    [= (@ bndg-state (@ expr-symbol-binding-aug (@ expr-reference n))) (undefined-state)]))
+
 (constrain place-unary-arithmetic-operators (\ r (with-vars (b c) (`(function (expr ,b (list placer) (values ,b reg-use-vec)) ,c)r)r)))
 
 (function place-unary-arithmetic-operators (n offset plcs ret-val)
-  (and (and [= (@ expr-type n) (-invoke-)] [= (@ expr-type (@ expr-reference n)) (-symbol-)]
-      [= (@ bndg-state (@ expr-symbol-binding-aug (@ expr-reference n))) (undefined-state)]
-      [= [length (@ expr-arguments n)] #1])
+  (and (and [undefined-symbol-invoke? n] [= [length (@ expr-arguments n)] #1])
     (let
       (arg1 [@car (@ expr-arguments n)]) (let
       (arg1-val-bndg (@ expr-binding-aug arg1))
@@ -67,9 +71,7 @@
 
 (function generate-unary-arithmetic-operators (n gens c relocs r handler)
   (substitute (.. r handler)
-    (and (and [= (@ expr-type n) (-invoke-)] [= (@ expr-type (@ expr-reference n)) (-symbol-)]
-        [= (@ bndg-state (@ expr-symbol-binding-aug (@ expr-reference n))) (undefined-state)]
-        [= [length (@ expr-arguments n)] #1])
+    (and (and [undefined-symbol-invoke? n] [= [length (@ expr-arguments n)] #1])
       (let
         (arg1 [@car (@ expr-arguments n)]) (let
         (arg1-val-bndg (@ expr-binding-aug arg1))
@@ -116,9 +118,7 @@
 (constrain place-binary-arithmetic-operators (\ r (with-vars (b c) (`(function (expr ,b (list placer) (values ,b reg-use-vec)) ,c)r)r)))
 
 (function place-binary-arithmetic-operators (n offset plcs ret-val)
-  (and (and [= (@ expr-type n) (-invoke-)] [= (@ expr-type (@ expr-reference n)) (-symbol-)]
-      [= (@ bndg-state (@ expr-symbol-binding-aug (@ expr-reference n))) (undefined-state)]
-      [= [length (@ expr-arguments n)] #2])
+  (and (and [undefined-symbol-invoke? n] [= [length (@ expr-arguments n)] #2])
     (let
       (arg1 [@car (@ expr-arguments n)])
       (arg2 [@cadr (@ expr-arguments n)]) (let
@@ -189,9 +189,7 @@
 
 (function generate-binary-arithmetic-operators (n gens c relocs r handler)
   (substitute (.. r handler)
-    (and (and [= (@ expr-type n) (-invoke-)] [= (@ expr-type (@ expr-reference n)) (-symbol-)]
-        [= (@ bndg-state (@ expr-symbol-binding-aug (@ expr-reference n))) (undefined-state)]
-        [= [length (@ expr-arguments n)] #2])
+    (and (and [undefined-symbol-invoke? n] [= [length (@ expr-arguments n)] #2])
       (let
         (arg1 [@car (@ expr-arguments n)])
         (arg2 [@cadr (@ expr-arguments n)]) (let
@@ -344,6 +342,12 @@
           
         (false)))))))
 
+(function sbyte? (val)
+  (or [= val [band val (hex 000000000000007F)]] [= val [bor val (hex FFFFFFFFFFFFFF80)]]))
+
+(function sword? (val)
+  (or [= val [band val (hex 000000007FFFFFFF)]] [= val [bor val (hex FFFFFFFF80000000)]]))
+
 (constrain arithmetic-if-name (\ r (`(function (expr) string)r)))
 
 (function arithmetic-if-name (n) (@ bndg-name (@ expr-symbol-binding-aug (@ expr-reference (@ expr-condition n)))))
@@ -352,8 +356,7 @@
 
 (function arithmetic-if? (n)
   (let (cond (@ expr-condition n))
-    (and [= (@ expr-type cond) (-invoke-)] [= (@ expr-type (@ expr-reference cond)) (-symbol-)]
-      [= (@ bndg-state (@ expr-symbol-binding-aug (@ expr-reference cond))) (undefined-state)]
+    (and [undefined-symbol-invoke? cond]
       (switch str= [arithmetic-if-name n] ((" <) (" >) (" =) (true)) (false)))))
 
 (constrain place-arithmetic-if-bindings (\ r (with-vars (b c) (`(function (expr ,b (list placer) (values ,b reg-use-vec)) ,c)r)r)))
