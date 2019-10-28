@@ -363,6 +363,99 @@
 
 (function loc (l r) (`[+ [* (,[@fst l]) (,[@frst l])] (,[@frrst l])]r))
 
+(ignore
+  A macro for partial macro application. Does the following transformation:
+  ((%(func arg1 arg2 ... argN)) argN+1 argN+2 ... argM)
+  ->
+  (func arg1 arg2 ... argN argN+1 argN+2 argM))
+
+(function % (%:l %:r)
+  (`(function %:temp (l r)
+      [meta:concat (,[`[llst [@fst %:l] (` r %:r) emt %:r] %:r]) l r])%:r))
+
+(ignore
+  A macro for matching objects against certain properties. The macro does the following
+  transformation:
+  (match-property (prop1 matcher1) (prop2 matcher2) ... (propN matcherN) obj)
+  ->
+  (and (matcher1 (@ prop1 obj)) (matcher2 (@ prop2 obj)) ... (matcherN (@ propN obj))))
+
+(function match-property (l r)
+  (let (obj [@fst [meta:reverse l r]])
+    [lst (` and r)
+      (loop build (conds emt) (parts [@rst [meta:reverse l r]])
+        (if [emt? parts]
+          conds
+          (let (matcher [@frfst parts]) (prop [@ffst parts])
+            {build [lst (`(,matcher (@ ,prop ,obj))r) conds r] [@cdr parts]}))) r]))
+
+(ignore
+  A macro for matching objects to at least one of the given matchers. The macro does the
+  following transformation:
+  (match-or matcher1 matcher2 ... matcherN obj)
+  ->
+  (or (matcher1 obj) (matcher2 obj) ... (matcherN obj)))
+
+(function match-or (l r)
+  (let (obj [@fst [meta:reverse l r]])
+    [lst (` or r)
+      (loop build (conds emt) (parts [@rst [meta:reverse l r]])
+        (if [emt? parts]
+          conds
+          (let (matcher [@fst parts])
+            {build [lst (`(,matcher ,obj)r) conds r] [@cdr parts]}))) r]))
+
+(ignore
+  A macro for matching objects to at least one of the given matchers. The macro does the
+  following transformation:
+  (match-and matcher1 matcher2 ... matcherN obj)
+  ->
+  (and (matcher1 obj) (matcher2 obj) ... (matcherN obj)))
+
+(function match-and (l r)
+  (let (obj [@fst [meta:reverse l r]])
+    [lst (` and r)
+      (loop build (conds emt) (parts [@rst [meta:reverse l r]])
+        (if [emt? parts]
+          conds
+          (let (matcher [@fst parts])
+            {build [lst (`(,matcher ,obj)r) conds r] [@cdr parts]}))) r]))
+
+(ignore
+  (guard-match matcher guard obj)
+  ->
+  (and (matcher1 obj) guard))
+
+(function guard-match (l r) (`(and ((,[@fst l]) (,[@frrst l])) (,[@frst l]))r))
+
+(ignore
+  A variant of the if-expression where the condition and the consequent are evaluated in
+  the environment of the given storage bindings. The macro performs the following
+  transformation:
+  (bind-if cond (param1 param2 ... paramN)
+    consequent
+    alternate)
+  ->
+  (with bind-if:return (do
+    (let
+        (param1 (storage bind-if:temp (ignore)))
+        (param2 (storage bind-if:temp (ignore)))
+        ...
+        (paramN (storage bind-if:temp (ignore)))
+      (if cond
+        {bind-if:return consequent}
+        (ignore)))
+    alternate)))
+
+(function bind-if (l r)
+  (let (cond [@fst l]) (params [@frst l]) (consequent [@frrst l]) (alternate [@frrrst l])
+  (let (bindings [meta:map2 params r
+      (function _ (elt r) (`(,elt (storage bind-if:temp (ignore)))r)) r])
+    (`(with bind-if:return (do
+        (,[lst (` let r)
+            [meta:reverse [lst (`(if ,cond {bind-if:return ,consequent} (ignore))r) bindings r] r] r])
+        ,alternate))r))))
+
 (ignore The following function measures the length of the list given as its argument.)
 
 (function meta:length (l)
