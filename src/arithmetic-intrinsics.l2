@@ -80,6 +80,22 @@
       (false))))))
 
 (ignore
+  If the given binding is not already in a register, a move is generated from the binding
+  to the given register. Returns the register in which the value at the binding can be
+  found.)
+
+(constrain generate-move-to-register
+  (\ r (with-vars (a) (`(function (register bndg-aug (ref (list instr)) (ref (list reloc)) buffer ,a) register)r)r)))
+
+(function generate-move-to-register (reg bndg c relocs r handler)
+  (substitute (.. r handler)
+    (if [= (@ bndg-storage bndg) (register-storage)]
+      (@ bndg-offset bndg)
+      (do
+        [prepend (make-instrN (x86-mov) ([make-reg-op reg ..] [bndg->op bndg relocs ..]) ..) c ..]
+        reg))))
+
+(ignore
   The following function generates inline assembly for the following functions: getb,
   get1b, get2b, get4b, get8b, get, setb, set1b, set2b, set4b, set8b, set, +, -, *, /, rem,
   =, <, >, <<, >>, bor, band, bnot. This function only applies to invocations of functions
@@ -442,7 +458,7 @@
         [prepend [make-label end-instr-binding ..] c ..]
         (true))))))
 
-(function match-base+offset (name base offset n)
+(function match-get-base+offset (name base offset n)
   (bind-if (match-property
       (expr-type (%[= (-invoke-)]))
       (expr-reference (%[undefined-symbol?]))
@@ -467,23 +483,38 @@
         (do [set base $addr-part1] [set offset (@ expr-value $addr-part2)] (true)))
     (false)))
 
-(constrain generate-move-to-register
-  (\ r (with-vars (a) (`(function (register bndg-aug (ref (list instr)) (ref (list reloc)) buffer ,a) register)r)r)))
-
-(function generate-move-to-register (reg bndg c relocs r handler)
-  (substitute (.. r handler)
-    (if [= (@ bndg-storage bndg) (register-storage)]
-      (@ bndg-offset bndg)
-      (do
-        [prepend (make-instrN (x86-mov) ([make-reg-op reg ..] [bndg->op bndg relocs ..]) ..) c ..]
-        reg))))
+(function match-set-base+offset (name base offset value n)
+  (bind-if (match-property
+      (expr-type (%[= (-invoke-)]))
+      (expr-reference (%[undefined-symbol?]))
+      (expr-reference (%(match-property (expr-symbol-binding-aug
+        (%(match-property (bndg-name (%[variable name]))))))))
+      (expr-arguments (%(match-list
+        (%(match-property
+            (expr-type (%[= (-invoke-)]))
+            (expr-reference (%[undefined-symbol?]))
+            (expr-reference (%[symbol-name= (" +)]))
+            (expr-arguments
+              (%(guard-match
+                  (%(match-list
+                      (%[variable addr-part1])
+                      (%[variable addr-part2])))
+                  (or
+                    [= (@ expr-type $addr-part1) (-literal-)]
+                    [= (@ expr-type $addr-part2) (-literal-)]))))))
+        (%[variable value])))) n)
+    (addr-part1 addr-part2)
+      (if [= (@ expr-type $addr-part1) (-literal-)]
+        (do [set base $addr-part2] [set offset (@ expr-value $addr-part1)] (true))
+        (do [set base $addr-part1] [set offset (@ expr-value $addr-part2)] (true)))
+    (false)))
 
 (constrain generate-memory-operators
   (\ r (with-vars (a b) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
 (function generate-memory-operators (n gens c relocs r handler)
   (substitute (.. r handler)
-    (bind-if [match-base+offset name base offset n]
+    (bind-if [match-get-base+offset name base offset n]
       (name base offset)
         (if [sbyte? $offset]
           (switch str= $name
@@ -516,7 +547,44 @@
               (true)))
             (false))
           (false))
-      (false))))
+    (bind-if [match-set-base+offset name base offset value n]
+      (name base offset value)
+        (if [sbyte? $offset]
+          (switch str= $name
+            ((" setb) (" set1b) (do
+              [generate-expression $value gens c relocs ..]
+              [generate-expression $base gens c relocs ..]
+              (let (base-reg [generate-move-to-register (r10) (@ expr-binding-aug $base) c relocs ..])
+                [prepend (make-instrN (x86-mov) ([make-mem-op #1 base-reg (none)#0 $offset #1 ..]
+                  [bndg->partial-op #1 (@ expr-binding-aug $value) relocs ..] [make-reg-op(r11)..]) ..) c ..])
+              (true)))
+            
+            ((" set2b) (do
+              [generate-expression $value gens c relocs ..]
+              [generate-expression $base gens c relocs ..]
+              (let (base-reg [generate-move-to-register (r10) (@ expr-binding-aug $base) c relocs ..])
+                [prepend (make-instrN (x86-mov) ([make-mem-op #2 base-reg (none)#0 $offset #1 ..]
+                  [bndg->partial-op #2 (@ expr-binding-aug $value) relocs ..] [make-reg-op(r11)..]) ..) c ..])
+              (true)))
+            
+            ((" set4b) (do
+              [generate-expression $value gens c relocs ..]
+              [generate-expression $base gens c relocs ..]
+              (let (base-reg [generate-move-to-register (r10) (@ expr-binding-aug $base) c relocs ..])
+                [prepend (make-instrN (x86-mov) ([make-mem-op #4 base-reg (none)#0 $offset #1 ..]
+                  [bndg->partial-op #4 (@ expr-binding-aug $value) relocs ..] [make-reg-op(r11)..]) ..) c ..])
+              (true)))
+            
+            ((" set) (" set8b) (do
+              [generate-expression $value gens c relocs ..]
+              [generate-expression $base gens c relocs ..]
+              (let (base-reg [generate-move-to-register (r10) (@ expr-binding-aug $base) c relocs ..])
+                [prepend (make-instrN (x86-mov) ([make-mem-op(word-size)base-reg(none)#0 $offset #1 ..]
+                  [bndg->op (@ expr-binding-aug $value) relocs ..] [make-reg-op(r11)..]) ..) c ..])
+              (true)))
+            (false))
+          (false))
+        (false)))))
 
 (constrain place-arithmetic-intrinsics (\ r (with-vars (b c) (`(function (expr ,b (list placer) (values ,b reg-use-vec)) ,c)r)r)))
 
