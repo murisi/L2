@@ -38,6 +38,11 @@
   (and [= (@ expr-type n) (-invoke-)] [= (@ expr-type (@ expr-reference n)) (-symbol-)]
     [= (@ bndg-state (@ expr-symbol-binding-aug (@ expr-reference n))) (undefined-state)]))
 
+(constrain invoke-symbol-name (\ r (`(function (expr) string)r)))
+
+(function invoke-symbol-name (n)
+  (@ bndg-name (@ expr-symbol-binding-aug (@ expr-reference n))))
+
 (constrain place-unary-arithmetic-operators (\ r (with-vars (b c) (`(function (expr ,b (list placer) (values ,b reg-use-vec)) ,c)r)r)))
 
 (function place-unary-arithmetic-operators (n offset plcs ret-val)
@@ -46,7 +51,7 @@
       (arg1 [@car (@ expr-arguments n)]) (let
       (arg1-val-bndg (@ expr-binding-aug arg1))
       (expr-val-bndg (@ expr-binding-aug n))
-    (switch str= (@ bndg-name (@ expr-symbol-binding-aug (@ expr-reference n)))
+    (switch str= [invoke-symbol-name n]
       ((" getb) (" get1b) (" get2b) (" get4b) (" get8b) (" get) (" bnot)
         (let (sub-expr-offset [- offset (word-size)])
         (bind (bottom-offset in-use) [place-temp-bindings arg1 sub-expr-offset plcs ret-val]
@@ -77,7 +82,7 @@
         (arg1-val-bndg (@ expr-binding-aug arg1))
         (expr-val-bndg (@ expr-binding-aug n))
         
-      (switch str= (@ bndg-name (@ expr-symbol-binding-aug (@ expr-reference n)))
+      (switch str= [invoke-symbol-name n]
         ((" getb) (" get1b) (do
           [generate-expression arg1 gens c relocs ..]
           [prepend (make-instrN (x86-mov) ([make-reg-op (r11) ..] [bndg->op arg1-val-bndg relocs ..]) ..) c ..]
@@ -126,7 +131,7 @@
       (arg2-val-bndg (@ expr-binding-aug arg2))
       (expr-val-bndg (@ expr-binding-aug n))
       
-    (switch str= (@ bndg-name (@ expr-symbol-binding-aug (@ expr-reference n)))
+    (switch str= [invoke-symbol-name n]
       ((" setb) (" set1b) (" set2b) (" set4b) (" set8b) (" set) (" bor) (" band) (" +) (" -) (" =) (" <) (" >)
         (let (sub-expr-offset [- offset [* #2(word-size)]])
         (bind (bottom-offset1 in-use1) [place-temp-bindings arg1 sub-expr-offset plcs bind]
@@ -197,7 +202,7 @@
         (arg2-val-bndg (@ expr-binding-aug arg2))
         (expr-val-bndg (@ expr-binding-aug n))
         
-      (switch str= (@ bndg-name (@ expr-symbol-binding-aug (@ expr-reference n)))
+      (switch str= [invoke-symbol-name n]
         ((" setb) (" set1b) (do
           [generate-expression arg1 gens c relocs ..]
           [generate-expression arg2 gens c relocs ..]
