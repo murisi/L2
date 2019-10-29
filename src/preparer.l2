@@ -27,6 +27,26 @@
     (@ expr-expression e)
     e))
 
+(constrain vpropagate-expressions (\ r (with-vars (a) (`(function (expr (values buffer ,a)) expr)r)r)))
+
+(function vpropagate-expressions (e ctx)
+  (bind (:a handler) ctx
+    (if (and [= (@ expr-type e) (-continuation-)] (not (@ expr-escapes e)) [= [length (@ expr-jumps e)] #1])
+      (do
+        (let (jmp [@car (@ expr-jumps e)])
+          (foreach (u (@ expr-parameters e)) (v (@ expr-arguments jmp))
+            (setf bndg-propagate (@ expr-symbol-binding-aug u) v)))
+        e)
+    (if (and [= (@ expr-type e) (-symbol-)] [not= (@ bndg-propagate (@ expr-symbol-binding-aug e)) null-expr]
+        [= (@ expr-type (@ bndg-propagate (@ expr-symbol-binding-aug e))) (-symbol-)])
+      (do
+        (setf expr-symbol-binding-aug e (@ expr-symbol-binding-aug (@ bndg-propagate (@ expr-symbol-binding-aug e))))
+        e)
+    (if (and [= (@ expr-type e) (-symbol-)] [not= (@ bndg-propagate (@ expr-symbol-binding-aug e)) null-expr]
+        [= (@ expr-type (@ bndg-propagate (@ expr-symbol-binding-aug e))) (-literal-)])
+      [make-literal (@ expr-value (@ bndg-propagate (@ expr-symbol-binding-aug e))) null-frag null-expr :a handler]
+      e)))))
+
 (ignore Does the following optimization:
   (if (if cond <zero literal> <non-zero literal>) <consequent> <alternate>)
   ->
@@ -130,48 +150,51 @@
       
       (ignore)))))))
 
-(constrain escape-analysis (\ r (with-vars (a) (`(function (expr ,a) ())r)r)))
+(constrain escape-analysis (\ r (with-vars (a b) (`(function (expr ,a buffer ,b) ())r)r)))
 
-(function escape-analysis (s escaping)
-  (switch = (@ expr-type s)
-    ((-symbol-)
-      (let (target-expr (@ bndg-expression (@ expr-symbol-binding-aug s)))
-        (if (and escaping (or [= (@ expr-type target-expr) (-continuation-)] [= (@ expr-type target-expr) (-with-)])
-            [= (@ expr-reference target-expr) (@ bndg-symbol (@ expr-symbol-binding-aug s))])
-          (setf expr-escapes target-expr escaping)
-          (ignore))))
-    
-    ((-if-) (do
-      [escape-analysis (@ expr-condition s) (true)]
-      [escape-analysis (@ expr-consequent s) (true)]
-      [escape-analysis (@ expr-alternate s) (true)]))
-    
-    ((-function-) (-continuation-) (-with-) (do
-      (if (and escaping [= (@ expr-type s) (-continuation-)])
-        (setf expr-escapes s escaping)
-        (ignore))
-      [escape-analysis (@ expr-expression s) (true)]))
-    
-    ((-storage-) (-jump-) (-invoke-) (do
-      (if [= (@ expr-type s) (-jump-)] (do
-        (if [= (@ expr-type (@ expr-reference s)) (-symbol-)]
-          (let (target-expr (@ bndg-expression (@ expr-symbol-binding-aug (@ expr-reference s))))
-          (if (and (or [= (@ expr-type target-expr) (-continuation-)] [= (@ expr-type target-expr) (-with-)])
-              [= (@ expr-reference target-expr) (@ bndg-symbol (@ expr-symbol-binding-aug (@ expr-reference s)))])
-            (setf expr-short-circuit s target-expr)
+(function escape-analysis (s escaping r handler)
+  (substitute (.. r handler)
+    (switch = (@ expr-type s)
+      ((-symbol-)
+        (let (target-expr (@ bndg-expression (@ expr-symbol-binding-aug s)))
+          (if (and escaping (or [= (@ expr-type target-expr) (-continuation-)] [= (@ expr-type target-expr) (-with-)])
+              [= (@ expr-reference target-expr) (@ bndg-symbol (@ expr-symbol-binding-aug s))])
+            (setf expr-escapes target-expr escaping)
+            (ignore))))
+      
+      ((-if-) (do
+        [escape-analysis (@ expr-condition s) (true) ..]
+        [escape-analysis (@ expr-consequent s) (true) ..]
+        [escape-analysis (@ expr-alternate s) (true) ..]))
+      
+      ((-function-) (-continuation-) (-with-) (do
+        (if (and escaping [= (@ expr-type s) (-continuation-)])
+          (setf expr-escapes s escaping)
+          (ignore))
+        [escape-analysis (@ expr-expression s) (true) ..]))
+      
+      ((-storage-) (-jump-) (-invoke-) (do
+        (if [= (@ expr-type s) (-jump-)] (do
+          (if [= (@ expr-type (@ expr-reference s)) (-symbol-)]
+            (let (target-expr (@ bndg-expression (@ expr-symbol-binding-aug (@ expr-reference s))))
+            (if (and (or [= (@ expr-type target-expr) (-continuation-)] [= (@ expr-type target-expr) (-with-)])
+                [= (@ expr-reference target-expr) (@ bndg-symbol (@ expr-symbol-binding-aug (@ expr-reference s)))]) (do
+              [prepend s (& expr-jumps target-expr) ..]
+              (setf expr-short-circuit s target-expr))
+              (ignore)))
+          (if [= (@ expr-type (@ expr-reference s)) (-continuation-)] (do
+            [prepend s (& expr-jumps (@ expr-reference s)) ..]
+            (setf expr-short-circuit s (@ expr-reference s)))
             (ignore)))
-        (if [= (@ expr-type (@ expr-reference s)) (-continuation-)]
-          (setf expr-short-circuit s (@ expr-reference s))
+          [escape-analysis (@ expr-reference s) (false) ..])
+        (if [= (@ expr-type s) (-invoke-)]
+          [escape-analysis (@ expr-reference s) (true) ..]
           (ignore)))
-        [escape-analysis (@ expr-reference s) (false)])
-      (if [= (@ expr-type s) (-invoke-)]
-        [escape-analysis (@ expr-reference s) (true)]
-        (ignore)))
-      (foreach (t (@ expr-arguments s)) [escape-analysis t (true)])))
-    
-    ((-constrain-) [escape-analysis (@ expr-expression s) (true)])
-    
-    (ignore)))
+        (foreach (t (@ expr-arguments s)) [escape-analysis t (true) ..])))
+      
+      ((-constrain-) [escape-analysis (@ expr-expression s) (true) ..])
+      
+      (ignore))))
 
 (constrain vfind-dependencies (\ r (with-vars (a) (`(function (expr (values buffer ,a)) expr)r)r)))
 
