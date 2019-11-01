@@ -111,8 +111,10 @@
 (ignore Only for type(s) (-symbol-))
 
   (function expr-name (l r) [property #56 #8 (\ r (` expr r)) (\ s r (` string r)) l r])
-  
-  (function expr-symbol-binding-aug (l r) [property #64 #8 (\ r (` expr r)) (\ s r (` bndg-aug r)) l r])
+
+(ignore Only for type(s) (-symbol-) (-continuation-) (-storage-))
+
+  (function expr-buffer (l r) [property #96 #8 (\ r (` expr r)) (\ s r (` bndg-aug r)) l r])
 
 (ignore Only for type(s) (-invoke-) (-jump-))
 
@@ -227,7 +229,7 @@
     (setf expr-dependencies sym nil)
     (setf expr-binding-aug sym [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) null-string null-expr sym ..])
     (setf expr-name sym name)
-    (setf expr-symbol-binding-aug sym null-binding)
+    (setf expr-buffer sym null-binding)
     sym))))
 
 (ignore
@@ -236,7 +238,7 @@
 
 (constrain bind-symbol (\ r (`(function (expr expr) ())r)))
 
-(function bind-symbol (symbol target) (setf expr-symbol-binding-aug symbol (@ expr-symbol-binding-aug target)))
+(function bind-symbol (symbol target) (setf expr-buffer symbol (@ expr-buffer target)))
 
 (ignore
   Makes an undefined binding with the given name. Internally, a storage expression is made
@@ -248,7 +250,7 @@
 (function make-undefined-binding (name r handler)
   (substitute (.. r handler)
     (let (stg [make-storage [make-symbol name null-frag null-expr ..] nil null-frag null-expr ..])
-    (let (bndg (@ expr-symbol-binding-aug (@ expr-reference stg))) (do
+    (let (bndg (@ expr-buffer (@ expr-reference stg))) (do
     (setf bndg-storage bndg (absolute-storage))
     (setf bndg-scope bndg (global-scope))
     (setf bndg-state bndg (undefined-state))
@@ -266,10 +268,10 @@
     (setf expr-dependencies func nil)
     (setf expr-binding-aug func [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) null-string null-expr func ..])
     (setf expr-reference func ref)
-    (setf expr-symbol-binding-aug ref [make-binding-aug (absolute-storage) (local-scope) (defined-state) (@ expr-name ref) ref func ..])
+    (setf expr-buffer ref [make-binding-aug (absolute-storage) (local-scope) (defined-state) (@ expr-name ref) ref func ..])
     (setf expr-parameters func params)
     (foreach (param params)
-      (setf expr-symbol-binding-aug param
+      (setf expr-buffer param
         [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) (@ expr-name param) param func ..]))
     (setf expr-expression func expr)
     func))))
@@ -289,10 +291,10 @@
     (setf expr-cont-instr-bndg cont
       [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr null-expr ..])
     (setf expr-reference cont ref)
-    (setf expr-symbol-binding-aug ref [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) (@ expr-name ref) ref cont ..])
+    (setf expr-buffer ref [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) (@ expr-name ref) ref cont ..])
     (setf expr-parameters cont params)
     (foreach (param params)
-      (setf expr-symbol-binding-aug param
+      (setf expr-buffer param
         [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) (@ expr-name param) param cont ..]))
     (setf expr-escapes cont (false))
     (setf expr-expression cont expr)
@@ -312,9 +314,9 @@
     (setf expr-binding-aug wth [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) null-string null-expr wth ..])
     (setf expr-cont-instr-bndg wth [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr null-expr ..])
     (setf expr-reference wth ref)
-    (setf expr-symbol-binding-aug ref [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) (@ expr-name ref) ref wth ..])
+    (setf expr-buffer ref [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) (@ expr-name ref) ref wth ..])
     (let (param [make-symbol null-string null-fragment null-expr ..]) (do
-      (setf expr-symbol-binding-aug param
+      (setf expr-buffer param
         [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) (@ expr-name param) param wth ..])
       (setf expr-parameters wth [cons param nil ..])))
     (and (match-property
@@ -355,7 +357,7 @@
     (setf expr-dependencies u nil)
     (setf expr-binding-aug u [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) null-string null-expr u ..])
     (setf expr-reference u ref)
-    (setf expr-symbol-binding-aug ref [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) (@ expr-name ref) ref u ..])
+    (setf expr-buffer ref [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) (@ expr-name ref) ref u ..])
     (setf expr-arguments u args)
     u))))
 
@@ -485,7 +487,7 @@
         [print-str (stdout) (@ expr-name s) ..]
         (do
           [print-str (stdout) (" (lparen)reference(space)) ..]
-          [print-uint (stdout) (@ expr-symbol-binding-aug s) ..]
+          [print-uint (stdout) (@ expr-buffer s) ..]
           [print-str (stdout) (" (rparen)) ..])))
           
     ((-literal-) (do
@@ -591,7 +593,7 @@
         (arg-a [make-symbol null-string null-fragment null-expr ..])
       (let (func (make-functionN func-symbol (param-a)
           (make-invokeN callee-symbol (arg-a) null-fragment null-expr ..) null-fragment null-expr ..)) (do
-        (setf expr-symbol-binding-aug callee-symbol [make-undefined-binding (@ expr-name func-symbol) ..])
+        (setf expr-buffer callee-symbol [make-undefined-binding (@ expr-name func-symbol) ..])
         [bind-symbol arg-a param-a]
         func)))))
 
@@ -609,7 +611,7 @@
         (arg-b [make-symbol null-string null-fragment null-expr ..])
       (let (func (make-functionN func-symbol (param-a param-b)
           (make-invokeN callee-symbol (arg-a arg-b) null-fragment null-expr ..) null-fragment null-expr ..)) (do
-        (setf expr-symbol-binding-aug callee-symbol [make-undefined-binding (@ expr-name func-symbol) ..])
+        (setf expr-buffer callee-symbol [make-undefined-binding (@ expr-name func-symbol) ..])
         [bind-symbol arg-a param-a]
         [bind-symbol arg-b param-b]
         func)))))
