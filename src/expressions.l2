@@ -1,6 +1,6 @@
 (ignore A complete description for bindings that will be put into generated object files.)
 
-  (function binding-aug (l r) [=# #64 r])
+  (function binding-aug (l r) [=# #56 r])
 
   (function bndg-name (l r) [property #0 #8 (\ r (` bndg-aug r)) (\ s r (` string r)) l r])
 
@@ -8,13 +8,13 @@
 
   (function bndg-size (l r) [property #16 #8 (\ r (` bndg-aug r)) (\ s r [var r]) l r])
 
-  (function bndg-symbol (l r) [property #24 #8 (\ r (` bndg-aug r)) (\ s r (` expr r)) l r])
+  (function bndg-expression (l r) [property #24 #8 (\ r (` bndg-aug r)) (\ s r (` expr r)) l r])
 
-  (function bndg-expression (l r) [property #32 #8 (\ r (` bndg-aug r)) (\ s r (` expr r)) l r])
-
-  (function bndg-context (l r) [property #40 #8 (\ r (` bndg-aug r)) (\ s r [var r]) l r])
+  (function bndg-context (l r) [property #32 #8 (\ r (` bndg-aug r)) (\ s r [var r]) l r])
   
-  (function bndg-propagate (l r) [property #48 #8 (\ r (` bndg-aug r)) (\ s r (` expr r)) l r])
+  (function bndg-propagate (l r) [property #40 #8 (\ r (` bndg-aug r)) (\ s r (` expr r)) l r])
+  
+  (function bndg-signature (l r) [property #48 #8 (\ r (` bndg-aug r)) (\ s r (` frag r)) l r])
 
   (function bndg-storage (l r) [property #56 #1 (\ r (` bndg-aug r)) (\ s r (` bndg-storage r)) l r])
 
@@ -54,8 +54,6 @@
 
   (function expr-meta (l r) [property #16 #8 (\ r (` expr r)) (\ s r (` expr r)) l r])
 
-  (function expr-signature (l r) [property #24 #8 (\ r (` expr r)) (\ s r (` frag r)) l r])
-
   (function expr-lowlink (l r) [property #32 #8 (\ r (` expr r)) (\ s r [var r]) l r])
 
   (function expr-dependencies (l r) [property #40 #8 (\ r (` expr r)) (\ s r (` (list expr) r)) l r])
@@ -66,9 +64,13 @@
 
   (function expr-arguments (l r) [property #64 #8 (\ r (` expr r)) (\ s r (` (list expr) r)) l r])
 
-(ignore Only for type(s) (-storage-) (-invoke-) (-jump-) (-function-) (-continuation-) (-with-) (-meta-) (-constrain-))
+(ignore Only for type(s) (-storage-) (-function-) (-continuation-) (-with-))
 
-  (function expr-reference (l r) [property #56 #8 (\ r (` expr r)) (\ s r (` expr r)) l r])
+  (function expr-reference (l r) [property #56 #8 (\ r (` expr r)) (\ s r (` bndg-aug r)) l r])
+
+(ignore Only for type(s) (-invoke-) (-jump-) (-meta-) (-constrain-))
+
+  (function expr-target (l r) [property #56 #8 (\ r (` expr r)) (\ s r (` expr r)) l r])
 
 (ignore Only for type(s) (-jump-))
 
@@ -92,7 +94,7 @@
 
 (ignore Only for type(s) (-function-) (-continuation-) (-with-))
 
-  (function expr-parameters (l r) [property #72 #8 (\ r (` expr r)) (\ s r (` (list expr) r)) l r])
+  (function expr-parameters (l r) [property #72 #8 (\ r (` expr r)) (\ s r (` (list bndg-aug) r)) l r])
 
 (ignore Only for type(s) (-function-))
   
@@ -111,10 +113,6 @@
 (ignore Only for type(s) (-symbol-))
 
   (function expr-name (l r) [property #56 #8 (\ r (` expr r)) (\ s r (` string r)) l r])
-
-(ignore Only for type(s) (-symbol-) (-continuation-) (-storage-))
-
-  (function expr-buffer (l r) [property #96 #8 (\ r (` expr r)) (\ s r (` bndg-aug r)) l r])
 
 (ignore Only for type(s) (-invoke-) (-jump-))
 
@@ -190,15 +188,15 @@
 (storage null-binding (ignore))
 
 (constrain make-binding-aug
-  (\ r (with-vars (a) (`(function (bndg-storage bndg-scope bndg-state string expr expr buffer ,a) bndg-aug)r)r)))
+  (\ r (with-vars (a) (`(function (bndg-storage bndg-scope bndg-state string frag expr buffer ,a) bndg-aug)r)r)))
 
-(function make-binding-aug (type scope state name symbol expression r handler)
+(function make-binding-aug (type scope state name sig expression r handler)
   (let (bndg [buffer-alloc (binding-aug) r handler]) (do
     (setf bndg-storage bndg type)
     (setf bndg-scope bndg scope)
     (setf bndg-state bndg state)
     (setf bndg-name bndg name)
-    (setf bndg-symbol bndg symbol)
+    (setf bndg-signature bndg sig)
     (setf bndg-expression bndg expression)
     (setf bndg-propagate bndg null-expr)
     bndg)))
@@ -210,10 +208,10 @@
     (setf expr-type t (-literal-))
     (setf expr-fragment t frag)
     (setf expr-meta t meta)
-    (setf expr-signature t [vbl->frag [vbl ..]])
     (setf expr-lowlink t #0)
     (setf expr-dependencies t nil)
-    (setf expr-binding-aug t [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) null-string null-expr t ..])
+    (setf expr-binding-aug t
+      [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) null-string [vbl->frag [vbl ..]] t ..])
     (setf expr-value t value)
     t))))
 
@@ -224,21 +222,13 @@
     (setf expr-type sym (-symbol-))
     (setf expr-fragment sym frag)
     (setf expr-meta sym meta)
-    (setf expr-signature sym [vbl->frag [vbl ..]])
     (setf expr-lowlink sym #0)
     (setf expr-dependencies sym nil)
-    (setf expr-binding-aug sym [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) null-string null-expr sym ..])
+    (setf expr-binding-aug sym
+      [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) null-string [vbl->frag [vbl ..]] sym ..])
     (setf expr-name sym name)
-    (setf expr-buffer sym null-binding)
+    (setf expr-reference sym null-binding)
     sym))))
-
-(ignore
-  Binds a symbol expression to another symbol expression. symbol is the expression being
-  bound. target is the symbol expression being bound to.)
-
-(constrain bind-symbol (\ r (`(function (expr expr) ())r)))
-
-(function bind-symbol (symbol target) (setf expr-buffer symbol (@ expr-buffer target)))
 
 (ignore
   Makes an undefined binding with the given name. Internally, a storage expression is made
@@ -249,81 +239,73 @@
 
 (function make-undefined-binding (name r handler)
   (substitute (.. r handler)
-    (let (stg [make-storage [make-symbol name null-frag null-expr ..] nil null-frag null-expr ..])
-    (let (bndg (@ expr-buffer (@ expr-reference stg))) (do
+    (let (stg [make-storage name nil null-frag null-expr ..])
+    (let (bndg (@ expr-reference stg)) (do
     (setf bndg-storage bndg (absolute-storage))
     (setf bndg-scope bndg (global-scope))
     (setf bndg-state bndg (undefined-state))
     bndg)))))
 
-(constrain make-function (\ r (with-vars (b) (`(function (expr (list expr) expr frag expr buffer ,b) expr)r)r)))
+(constrain expr-signature (\ r (`(function (expr) frag)r)))
+
+(function expr-signature (expr) (@ bndg-signature (@ expr-binding-aug expr)))
+
+(constrain make-function (\ r (with-vars (b) (`(function (string (list string) expr frag expr buffer ,b) expr)r)r)))
 
 (function make-function (ref params expr frag meta reg handler)
   (substitute (.. reg handler) (let (func [buffer-alloc (expression) ..]) (do
     (setf expr-type func (-function-))
     (setf expr-fragment func frag)
     (setf expr-meta func meta)
-    (setf expr-signature func [vbl->frag [vbl ..]])
     (setf expr-lowlink func #0)
     (setf expr-dependencies func nil)
-    (setf expr-binding-aug func [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) null-string null-expr func ..])
-    (setf expr-reference func ref)
-    (setf expr-buffer ref [make-binding-aug (absolute-storage) (local-scope) (defined-state) (@ expr-name ref) ref func ..])
-    (setf expr-parameters func params)
-    (foreach (param params)
-      (setf expr-buffer param
-        [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) (@ expr-name param) param func ..]))
+    (setf expr-binding-aug func
+      [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) null-string [vbl->frag [vbl ..]] func ..])
+    (setf expr-reference func [make-binding-aug (absolute-storage) (local-scope) (defined-state) ref null-frag func ..])
+    (setf expr-parameters func
+      (map (param params)
+        [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) param [vbl->frag [vbl ..]] func ..] ..))
     (setf expr-expression func expr)
     func))))
 
-(constrain make-continuation (\ r (with-vars (b) (`(function (expr (list expr) expr frag expr buffer ,b) expr)r)r)))
+(constrain make-continuation (\ r (with-vars (b) (`(function (string (list string) expr frag expr buffer ,b) expr)r)r)))
 
 (function make-continuation (ref params expr frag meta reg handler)
   (substitute (.. reg handler) (let (cont [buffer-alloc (expression) ..]) (do
     (setf expr-type cont (-continuation-))
     (setf expr-fragment cont frag)
     (setf expr-meta cont meta)
-    (setf expr-signature cont [vbl->frag [vbl ..]])
     (setf expr-lowlink cont #0)
     (setf expr-dependencies cont nil)
     (setf expr-jumps cont nil)
-    (setf expr-binding-aug cont [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) null-string null-expr cont ..])
+    (setf expr-binding-aug cont
+      [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) null-string [vbl->frag [vbl ..]] cont ..])
     (setf expr-cont-instr-bndg cont
-      [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr null-expr ..])
-    (setf expr-reference cont ref)
-    (setf expr-buffer ref [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) (@ expr-name ref) ref cont ..])
-    (setf expr-parameters cont params)
-    (foreach (param params)
-      (setf expr-buffer param
-        [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) (@ expr-name param) param cont ..]))
+      [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-frag null-expr ..])
+    (setf expr-reference cont [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) ref null-frag cont ..])
+    (setf expr-parameters cont
+      (map (param params)
+        [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) param [vbl->frag [vbl ..]] cont ..] ..))
     (setf expr-escapes cont (false))
     (setf expr-expression cont expr)
     cont))))
 
-(constrain make-with (\ r (with-vars (b) (`(function (expr expr frag expr buffer ,b) expr)r)r)))
+(constrain make-with (\ r (with-vars (b) (`(function (string expr frag expr buffer ,b) expr)r)r)))
 
 (function make-with (ref expr frag meta reg handler)
   (substitute (.. reg handler) (let (wth [buffer-alloc (expression) ..]) (do
     (setf expr-type wth (-with-))
     (setf expr-fragment wth frag)
     (setf expr-meta wth meta)
-    (setf expr-signature wth [vbl->frag [vbl ..]])
     (setf expr-lowlink wth #0)
     (setf expr-dependencies wth nil)
     (setf expr-jumps wth nil)
-    (setf expr-binding-aug wth [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) null-string null-expr wth ..])
-    (setf expr-cont-instr-bndg wth [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr null-expr ..])
-    (setf expr-reference wth ref)
-    (setf expr-buffer ref [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) (@ expr-name ref) ref wth ..])
-    (let (param [make-symbol null-string null-fragment null-expr ..]) (do
-      (setf expr-buffer param
-        [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) (@ expr-name param) param wth ..])
-      (setf expr-parameters wth [cons param nil ..])))
-    (and (match-property
-      (expr-type (%(match-or (%[= (-with-)]) (%[= (-storage-)]))))
-      (expr-fragment (%[= frag]))
-      (expr-parameters (%(match-list ))) wth)
-      [print-str (stdout) (" A match!(lf)) #0])
+    (setf expr-binding-aug wth
+      [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) null-string [vbl->frag [vbl ..]] wth ..])
+    (setf expr-cont-instr-bndg wth [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-frag null-expr ..])
+    (setf expr-reference wth [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) ref null-frag wth ..])
+    (setf expr-parameters wth
+      [cons [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) null-string [vbl->frag [vbl ..]] wth ..] nil ..])
     (setf expr-escapes wth (false))
     (setf expr-expression wth expr)
     wth))))
@@ -335,29 +317,28 @@
     (setf expr-type u (-jump-))
     (setf expr-fragment u frag)
     (setf expr-meta u meta)
-    (setf expr-signature u [vbl->frag [vbl ..]])
     (setf expr-lowlink u #0)
     (setf expr-dependencies u nil)
-    (setf expr-binding-aug u [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) null-string null-expr u ..])
+    (setf expr-binding-aug u
+      [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) null-string [vbl->frag [vbl ..]] u ..])
     (setf expr-short-circuit u null-expr)
-    (setf expr-reference u ref)
+    (setf expr-target u ref)
     (setf expr-contains-flag u (contains-with))
     (setf expr-arguments u args)
     u))))
 
-(constrain make-storage (\ r (with-vars (b) (`(function (expr (list expr) frag expr buffer ,b) expr)r)r)))
+(constrain make-storage (\ r (with-vars (b) (`(function (string (list expr) frag expr buffer ,b) expr)r)r)))
 
 (function make-storage (ref args frag meta reg handler)
   (substitute (.. reg handler) (let (u [buffer-alloc (expression) ..]) (do
     (setf expr-type u (-storage-))
     (setf expr-fragment u frag)
     (setf expr-meta u meta)
-    (setf expr-signature u [vbl->frag [vbl ..]])
     (setf expr-lowlink u #0)
     (setf expr-dependencies u nil)
-    (setf expr-binding-aug u [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) null-string null-expr u ..])
-    (setf expr-reference u ref)
-    (setf expr-buffer ref [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) (@ expr-name ref) ref u ..])
+    (setf expr-binding-aug u
+      [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) null-string [vbl->frag [vbl ..]] u ..])
+    (setf expr-reference u [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) ref null-frag u ..])
     (setf expr-arguments u args)
     u))))
 
@@ -367,11 +348,10 @@
   (substitute (.. reg handler) (let (u [buffer-alloc (expression) ..]) (do
     (setf expr-type u (-meta-))
     (setf expr-meta u meta)
-    (setf expr-signature u [vbl->frag [vbl ..]])
     (setf expr-lowlink u #0)
     (setf expr-dependencies u nil)
     (setf expr-binding-aug u null-binding)
-    (setf expr-reference u ref)
+    (setf expr-target u ref)
     (setf expr-fragment u frag)
     u))))
 
@@ -382,11 +362,11 @@
     (setf expr-type u (-constrain-))
     (setf expr-fragment u frag)
     (setf expr-meta u meta)
-    (setf expr-signature u [vbl->frag [vbl ..]])
     (setf expr-lowlink u #0)
     (setf expr-dependencies u nil)
-    (setf expr-binding-aug u [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) null-string null-expr u ..])
-    (setf expr-reference u ref)
+    (setf expr-binding-aug u
+      [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) null-string [vbl->frag [vbl ..]] u ..])
+    (setf expr-target u ref)
     (setf expr-expression u expr)
     u))))
 
@@ -397,10 +377,10 @@
     (setf expr-type u (-if-))
     (setf expr-fragment u frag)
     (setf expr-meta u meta)
-    (setf expr-signature u [vbl->frag [vbl ..]])
     (setf expr-lowlink u #0)
     (setf expr-dependencies u nil)
-    (setf expr-binding-aug u [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) null-string null-expr u ..])
+    (setf expr-binding-aug u
+      [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) null-string [vbl->frag [vbl ..]] u ..])
     (setf expr-condition u condition)
     (setf expr-consequent u consequent)
     (setf expr-alternate u alternate)
@@ -413,11 +393,11 @@
     (setf expr-type u (-invoke-))
     (setf expr-fragment u frag)
     (setf expr-meta u meta)
-    (setf expr-signature u [vbl->frag [vbl ..]])
     (setf expr-lowlink u #0)
     (setf expr-dependencies u nil)
-    (setf expr-binding-aug u [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) null-string null-expr u ..])
-    (setf expr-reference u ref)
+    (setf expr-binding-aug u
+      [make-binding-aug (frame-relative-storage) (local-scope) (defined-state) null-string [vbl->frag [vbl ..]] u ..])
+    (setf expr-target u ref)
     (setf expr-contains-flag u (contains-with))
     (setf expr-arguments u args)
     u))))
@@ -430,17 +410,30 @@
   (switch = (@ expr-type s)
     ((-with-) (do
       [print-str (stdout) (" (lparen)with(space)) ..]
-      [print-expression (@ expr-reference s) ..]
+      [print-str (stdout) (@ bndg-name (@ expr-reference s)) ..]
       [print-str (stdout) (" (space)) ..]
       [print-expression (@ expr-expression s) ..]
       [print-str (stdout) (" (rparen)) ..]))
     
-    ((-invoke-) (-jump-) (-storage-) (do
+    ((-storage-) (do
+      [print-str (stdout) (" (lparen)storage(space)) ..]
+      [print-str (stdout) (@ bndg-name (@ expr-reference s)) ..]
+      [print-str (stdout) (" (space)) ..]
+      (foreach (t (@ expr-arguments s)) (do
+        [print-expression t ..]
+        [print-str (stdout) (" (space)) ..]))
+      [print-str (stdout) (" (bs)) ..]
+      [print-str (stdout) (switch = (@ expr-type s)
+        ((-invoke-) (" (rbracket)))
+        ((-jump-) (" (rbrace)))
+        (" (rbracket))) ..]))
+    
+    ((-invoke-) (-jump-) (do
       [print-str (stdout) (switch = (@ expr-type s)
         ((-invoke-) (" (lbracket)))
         ((-jump-) (" (lbrace)))
-        (" (lparen)storage(space))) ..]
-      [print-expression (@ expr-reference s) ..]
+        (ignore)) ..]
+      [print-expression (@ expr-target s) ..]
       [print-str (stdout) (" (space)) ..]
       (foreach (t (@ expr-arguments s)) (do
         [print-expression t ..]
@@ -457,10 +450,10 @@
         ((-function-) (" function))
         (" continuation)) ..]
       [print-str (stdout) (" (space)) ..]
-      [print-expression (@ expr-reference s) ..]
+      [print-str (stdout) (@ bndg-name (@ expr-reference s)) ..]
       [print-str (stdout) (" (space)(lparen)(space)) ..]
       (foreach (t (@ expr-parameters s)) (do
-        [print-expression t ..]
+        [print-str (stdout) (@ bndg-name t) ..]
         [print-str (stdout) (" (space)) ..]))
       [print-str (stdout) (" (rparen)(space)) ..]
       [print-expression (@ expr-expression s) ..]
@@ -479,15 +472,15 @@
       [print-str (stdout) (" (lparen)constrain(space)) ..]
       [print-expression (@ expr-expression s) ..]
       [print-str (stdout) (" (space)) ..]
-      [print-fragment (@ expr-signature s) ..]
+      [print-fragment (@ bndg-signature (@ expr-binding-aug s)) ..]
       [print-str (stdout) (" (rparen)) ..]))
     
     ((-symbol-)
       (if [not= (@ expr-name s) null-string]
         [print-str (stdout) (@ expr-name s) ..]
         (do
-          [print-str (stdout) (" (lparen)reference(space)) ..]
-          [print-uint (stdout) (@ expr-buffer s) ..]
+          [print-str (stdout) (" (lparen)symbol(space)) ..]
+          [print-uint (stdout) (@ expr-reference s) ..]
           [print-str (stdout) (" (rparen)) ..])))
           
     ((-literal-) (do
@@ -520,7 +513,7 @@
           {handler (storage _ special-form-error d null-fragment)}
         (if (not [i/f:token? [@cadr d]])
           {handler (storage _ special-form-error d [@cadr d])}
-          [make-with [build-expression [@cadr d] meta ..] [build-expression [@caddr d] meta ..] frag meta ..])))
+          [make-with [to-string [fragment->token [@cadr d]] ..] [build-expression [@caddr d] meta ..] frag meta ..])))
       
       ((" if)
         (if (not [= [length d] #4])
@@ -537,15 +530,23 @@
           {handler (storage _ special-form-error d [@caddr d])}
           (let (parameters (map (v [frag->list [@caddr d]])
               (if [i/f:token? v]
-                [build-expression v meta ..]
+                [to-string [fragment->token v] ..]
                 {handler (storage _ special-form-error d v)}) ..))
                 
             [(switch str= [to-string [fragment->token [@car d]] ..]
                 ((" function) make-function)
                 make-continuation)
-              [build-expression [@cadr d] meta ..] parameters [build-expression [@cadddr d] meta ..] frag meta ..])))))
+              [to-string [fragment->token [@cadr d]] ..] parameters [build-expression [@cadddr d] meta ..] frag meta ..])))))
       
-      ((" invoke) (" jump) (" storage)
+      ((" storage)
+        (if [= [length d] #1]
+          {handler (storage _ special-form-error d null-fragment)}
+        (if (and [str= [to-string [fragment->token [@car d]] ..] (" storage)] (not [i/f:token? [@cadr d]]))
+          {handler (storage _ special-form-error d [@cadr d])}
+          [make-storage
+            [to-string [fragment->token [@cadr d]] ..] (map (v [@cddr d]) [build-expression v meta ..] ..) frag meta ..])))
+      
+      ((" invoke) (" jump)
         (if [= [length d] #1]
           {handler (storage _ special-form-error d null-fragment)}
         (if (and [str= [to-string [fragment->token [@car d]] ..] (" storage)] (not [i/f:token? [@cadr d]]))
@@ -553,7 +554,7 @@
           [(switch str= [to-string [fragment->token [@car d]] ..]
               ((" invoke) make-invoke)
               ((" jump) make-jump)
-              make-storage)
+              (ignore))
             [build-expression [@cadr d] meta ..] (map (v [@cddr d]) [build-expression v meta ..] ..) frag meta ..])))
       
       ((" literal)
@@ -587,14 +588,12 @@
 
 (function make-unary-intrinsic (name buf handler)
   (substitute (.. buf handler)
-    (let (func-symbol [make-symbol name null-fragment null-expr ..])
-        (callee-symbol [make-symbol null-string null-fragment null-expr ..])
-        (param-a [make-symbol null-string null-fragment null-expr ..])
+    (let (callee-symbol [make-symbol null-string null-fragment null-expr ..])
         (arg-a [make-symbol null-string null-fragment null-expr ..])
-      (let (func (make-functionN func-symbol (param-a)
+      (let (func (make-functionN name (null-string)
           (make-invokeN callee-symbol (arg-a) null-fragment null-expr ..) null-fragment null-expr ..)) (do
-        (setf expr-buffer callee-symbol [make-undefined-binding (@ expr-name func-symbol) ..])
-        [bind-symbol arg-a param-a]
+        (setf expr-reference callee-symbol [make-undefined-binding name ..])
+        (setf expr-reference arg-a [@car (@ expr-parameters func)])
         func)))))
 
 (ignore Performs actions analogous to make-unary-intrinsic, but for binary functions.)
@@ -603,16 +602,13 @@
 
 (function make-binary-intrinsic (name buf handler)
   (substitute (.. buf handler)
-    (let (func-symbol [make-symbol name null-fragment null-expr ..])
-        (callee-symbol [make-symbol null-string null-fragment null-expr ..])
-        (param-a [make-symbol null-string null-fragment null-expr ..])
-        (param-b [make-symbol null-string null-fragment null-expr ..])
+    (let (callee-symbol [make-symbol null-string null-fragment null-expr ..])
         (arg-a [make-symbol null-string null-fragment null-expr ..])
         (arg-b [make-symbol null-string null-fragment null-expr ..])
-      (let (func (make-functionN func-symbol (param-a param-b)
+      (let (func (make-functionN name (null-string null-string)
           (make-invokeN callee-symbol (arg-a arg-b) null-fragment null-expr ..) null-fragment null-expr ..)) (do
-        (setf expr-buffer callee-symbol [make-undefined-binding (@ expr-name func-symbol) ..])
-        [bind-symbol arg-a param-a]
-        [bind-symbol arg-b param-b]
+        (setf expr-reference callee-symbol [make-undefined-binding name ..])
+        (setf expr-reference arg-a [@car (@ expr-parameters func)])
+        (setf expr-reference arg-b [@cadr (@ expr-parameters func)])
         func)))))
 

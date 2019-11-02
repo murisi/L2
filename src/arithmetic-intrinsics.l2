@@ -36,12 +36,12 @@
 
 (function undefined-symbol? (n)
   (and [= (@ expr-type n) (-symbol-)]
-    [= (@ bndg-state (@ expr-buffer n)) (undefined-state)]))
+    [= (@ bndg-state (@ expr-reference n)) (undefined-state)]))
 
 (constrain symbol-name= (\ r (with-vars (a) (`(function (string expr) ,a)r)r)))
 
 (function symbol-name= (str n)
-  [str= str (@ bndg-name (@ expr-buffer n))])
+  [str= str (@ bndg-name (@ expr-reference n))])
 
 (constrain variable (\ r (with-vars (a b) (`(function ((ref ,b) ,b) ,a)r)r)))
 
@@ -50,13 +50,13 @@
 (constrain undefined-symbol-invoke? (\ r (with-vars (a) (`(function (expr) ,a)r)r)))
 
 (function undefined-symbol-invoke? (n)
-  (and [= (@ expr-type n) (-invoke-)] [= (@ expr-type (@ expr-reference n)) (-symbol-)]
-    [= (@ bndg-state (@ expr-buffer (@ expr-reference n))) (undefined-state)]))
+  (and [= (@ expr-type n) (-invoke-)] [= (@ expr-type (@ expr-target n)) (-symbol-)]
+    [= (@ bndg-state (@ expr-reference (@ expr-target n))) (undefined-state)]))
 
 (constrain invoke-symbol-name (\ r (`(function (expr) string)r)))
 
 (function invoke-symbol-name (n)
-  (@ bndg-name (@ expr-buffer (@ expr-reference n))))
+  (@ bndg-name (@ expr-reference (@ expr-target n))))
 
 (constrain place-unary-arithmetic-operators (\ r (with-vars (b c) (`(function (expr ,b (list placer) (values ,b reg-use-vec)) ,c)r)r)))
 
@@ -73,7 +73,7 @@
         (let (in-use [bor in-use (hex FFFFFFFFFFFF0831)])
         (let (in-use [expr-to-register/memory arg1 sub-expr-offset in-use]) (do
         (setf bndg-size (@ expr-binding-aug n) (word-size))
-        (setf bndg-storage (@ expr-binding-aug (@ expr-reference n)) (nil-storage))
+        (setf bndg-storage (@ expr-binding-aug (@ expr-target n)) (nil-storage))
         (values (use-storage ret-val) bottom-offset in-use)
         (true)))))))
       
@@ -172,7 +172,7 @@
         (let (in-use [expr-to-register/memory arg1 [- offset [* #1(word-size)]] in-use])
         (let (in-use [expr-to-register/memory arg2 [- offset [* #2(word-size)]] in-use]) (do
         (setf bndg-size (@ expr-binding-aug n) (word-size))
-        (setf bndg-storage (@ expr-binding-aug (@ expr-reference n)) (nil-storage))
+        (setf bndg-storage (@ expr-binding-aug (@ expr-target n)) (nil-storage))
         (values (use-storage ret-val) bottom-offset in-use)
         (true))))))))))
       
@@ -186,7 +186,7 @@
         (let (in-use (if arg1-success? in-use [expr-to-register/memory arg1 [- offset [* #1(word-size)]] in-use]))
         (let (in-use [expr-to-register/memory arg2 [- offset [* #2(word-size)]] in-use]) (do
         (setf bndg-size (@ expr-binding-aug n) (word-size))
-        (setf bndg-storage (@ expr-binding-aug (@ expr-reference n)) (nil-storage))
+        (setf bndg-storage (@ expr-binding-aug (@ expr-target n)) (nil-storage))
         (values (use-storage ret-val) bottom-offset in-use)
         (true)))))))))))
       
@@ -200,7 +200,7 @@
         (let (in-use (if arg1-success? in-use [expr-to-register/memory arg1 [- offset [* #1(word-size)]] in-use]))
         (let (in-use [expr-to-register/memory arg2 [- offset [* #2(word-size)]] in-use]) (do
         (setf bndg-size (@ expr-binding-aug n) (word-size))
-        (setf bndg-storage (@ expr-binding-aug (@ expr-reference n)) (nil-storage))
+        (setf bndg-storage (@ expr-binding-aug (@ expr-target n)) (nil-storage))
         (values (use-storage ret-val) bottom-offset [bor in-use (hex 0000000000000004)])
         (true)))))))))))
       
@@ -214,7 +214,7 @@
         (bind (arg2-success? in-use) [try-binding-to-register arg2-val-bndg (rcx) in-use bind]
         (let (in-use (if arg2-success? in-use [expr-to-register/memory arg2 [- offset [* #2(word-size)]] in-use])) (do
         (setf bndg-size (@ expr-binding-aug n) (word-size))
-        (setf bndg-storage (@ expr-binding-aug (@ expr-reference n)) (nil-storage))
+        (setf bndg-storage (@ expr-binding-aug (@ expr-target n)) (nil-storage))
         (values (use-storage ret-val) bottom-offset in-use)
         (true)))))))))))
       
@@ -386,7 +386,7 @@
 
 (constrain arithmetic-if-name (\ r (`(function (expr) string)r)))
 
-(function arithmetic-if-name (n) (@ bndg-name (@ expr-buffer (@ expr-reference (@ expr-condition n)))))
+(function arithmetic-if-name (n) (@ bndg-name (@ expr-reference (@ expr-target (@ expr-condition n)))))
 
 (constrain arithmetic-if? (\ r (with-vars (a) (`(function (expr) ,a)r)r)))
 
@@ -412,7 +412,7 @@
     (let (in-use [expr-to-register/memory [@car args] [+ offset [* #1(word-size)]] in-use])
     (let (in-use [expr-to-register/memory [@cadr args] [+ offset [* #0(word-size)]] in-use]) (do
     (setf bndg-storage (@ expr-binding-aug (@ expr-condition n)) (nil-storage))
-    (setf bndg-storage (@ expr-binding-aug (@ expr-reference (@ expr-condition n))) (nil-storage))
+    (setf bndg-storage (@ expr-binding-aug (@ expr-target (@ expr-condition n))) (nil-storage))
     (values (use-storage ret-val) bottom-offset in-use)
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (true)))))))))))))))
@@ -431,8 +431,8 @@
           (arg2-val-bndg (@ expr-binding-aug [@cadr (@ expr-arguments (@ expr-condition n))]))
           (consequent-val-bndg (@ expr-binding-aug (@ expr-consequent n)))
           (alternate-val-bndg (@ expr-binding-aug (@ expr-alternate n)))
-          (alternate-instr-bndg [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr null-expr ..])
-          (end-instr-binding [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-expr null-expr ..]) (do
+          (alternate-instr-bndg [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-frag null-expr ..])
+          (end-instr-binding [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-frag null-expr ..]) (do
         [generate-expression arg1 gens c relocs ..]
         [generate-expression arg2 gens c relocs ..]
         (switch str= [arithmetic-if-name n]
@@ -461,14 +461,14 @@
 (function match-get-base+offset (name base offset n)
   (bind-if (match-property
       (expr-type (%[= (-invoke-)]))
-      (expr-reference (%[undefined-symbol?]))
-      (expr-reference (%(match-property (expr-buffer
+      (expr-target (%[undefined-symbol?]))
+      (expr-target (%(match-property (expr-reference
         (%(match-property (bndg-name (%[variable name]))))))))
       (expr-arguments (%(match-list
         (%(match-property
             (expr-type (%[= (-invoke-)]))
-            (expr-reference (%[undefined-symbol?]))
-            (expr-reference (%[symbol-name= (" +)]))
+            (expr-target (%[undefined-symbol?]))
+            (expr-target (%[symbol-name= (" +)]))
             (expr-arguments
               (%(guard-match
                   (%(match-list
@@ -486,14 +486,14 @@
 (function match-set-base+offset (name base offset value n)
   (bind-if (match-property
       (expr-type (%[= (-invoke-)]))
-      (expr-reference (%[undefined-symbol?]))
-      (expr-reference (%(match-property (expr-buffer
+      (expr-target (%[undefined-symbol?]))
+      (expr-target (%(match-property (expr-reference
         (%(match-property (bndg-name (%[variable name]))))))))
       (expr-arguments (%(match-list
         (%(match-property
             (expr-type (%[= (-invoke-)]))
-            (expr-reference (%[undefined-symbol?]))
-            (expr-reference (%[symbol-name= (" +)]))
+            (expr-target (%[undefined-symbol?]))
+            (expr-target (%[symbol-name= (" +)]))
             (expr-arguments
               (%(guard-match
                   (%(match-list
