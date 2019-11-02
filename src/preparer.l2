@@ -428,10 +428,12 @@
   (switch = (@ expr-type expr)
     ((-constrain-) [classify-program-bindings (@ expr-expression expr)])
     
-    ((-storage-) (-jump-) (-invoke-) (do
-      (if [= (@ expr-type expr) (-storage-)]
-        (setf bndg-storage (@ expr-reference expr) (absolute-storage))
-        [classify-program-bindings (@ expr-target expr)])
+    ((-storage-) (do
+      (setf bndg-storage (@ expr-reference expr) (absolute-storage))
+      (foreach (t (@ expr-arguments expr)) [classify-program-bindings t])))
+    
+    ((-jump-) (-invoke-) (do
+      [classify-program-bindings (@ expr-target expr)]
       (foreach (t (@ expr-arguments expr)) [classify-program-bindings t])))
     
     ((-continuation-) (-with-) (do
@@ -629,7 +631,7 @@
             [make-literal :b null-fragment null-expr ..] [make-literal handler null-fragment null-expr ..]
             [make-literal cache null-fragment null-expr ..]) null-fragment null-expr ..) args null-fragment null-expr ..]
             null-fragment null-expr ..]) (do
-          (foreach (a params) (t args) [bind-symbol t a])
+          (foreach (a (@ expr-parameters thunk)) (t args) (setf expr-reference t a))
           [cons thunk c ..]))))
         
           c)))) ..]))

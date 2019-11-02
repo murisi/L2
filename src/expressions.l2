@@ -1,6 +1,6 @@
 (ignore A complete description for bindings that will be put into generated object files.)
 
-  (function binding-aug (l r) [=# #56 r])
+  (function binding-aug (l r) [=# #64 r])
 
   (function bndg-name (l r) [property #0 #8 (\ r (` bndg-aug r)) (\ s r (` string r)) l r])
 
@@ -64,7 +64,7 @@
 
   (function expr-arguments (l r) [property #64 #8 (\ r (` expr r)) (\ s r (` (list expr) r)) l r])
 
-(ignore Only for type(s) (-storage-) (-function-) (-continuation-) (-with-))
+(ignore Only for type(s) (-storage-) (-function-) (-continuation-) (-with-) (-symbol-))
 
   (function expr-reference (l r) [property #56 #8 (\ r (` expr r)) (\ s r (` bndg-aug r)) l r])
 
@@ -112,7 +112,7 @@
 
 (ignore Only for type(s) (-symbol-))
 
-  (function expr-name (l r) [property #56 #8 (\ r (` expr r)) (\ s r (` string r)) l r])
+  (function expr-name (l r) [property #64 #8 (\ r (` expr r)) (\ s r (` string r)) l r])
 
 (ignore Only for type(s) (-invoke-) (-jump-))
 
@@ -404,20 +404,28 @@
 
 (ignore Prints the given expression as it would be written in an L2 source file. s is an expression.)
 
+(function print-binding (bndg hdl) (substitute (.. hdl)
+  (if [not= (@ bndg-name bndg) null-string]
+    [print-str (stdout) (@ bndg-name bndg) ..]
+    (do
+      [print-str (stdout) (" (lparen)binding(space)) ..]
+      [print-uint (stdout) bndg ..]
+      [print-str (stdout) (" (rparen)) ..]))))
+
 (constrain print-expression (\ r (with-vars (a) (`(function (expr ,a) ())r)r)))
 
 (function print-expression (s hdl) (substitute (.. hdl)
   (switch = (@ expr-type s)
     ((-with-) (do
       [print-str (stdout) (" (lparen)with(space)) ..]
-      [print-str (stdout) (@ bndg-name (@ expr-reference s)) ..]
+      [print-binding (@ expr-reference s) ..]
       [print-str (stdout) (" (space)) ..]
       [print-expression (@ expr-expression s) ..]
       [print-str (stdout) (" (rparen)) ..]))
     
     ((-storage-) (do
       [print-str (stdout) (" (lparen)storage(space)) ..]
-      [print-str (stdout) (@ bndg-name (@ expr-reference s)) ..]
+      [print-binding (@ expr-reference s) ..]
       [print-str (stdout) (" (space)) ..]
       (foreach (t (@ expr-arguments s)) (do
         [print-expression t ..]
@@ -448,12 +456,13 @@
       [print-str (stdout) (" (lparen)) ..]
       [print-str (stdout) (switch = (@ expr-type s)
         ((-function-) (" function))
-        (" continuation)) ..]
+        ((-continuation-) (" continuation))
+        (ignore)) ..]
       [print-str (stdout) (" (space)) ..]
-      [print-str (stdout) (@ bndg-name (@ expr-reference s)) ..]
+      [print-binding (@ expr-reference s) ..]
       [print-str (stdout) (" (space)(lparen)(space)) ..]
       (foreach (t (@ expr-parameters s)) (do
-        [print-str (stdout) (@ bndg-name t) ..]
+        [print-binding t ..]
         [print-str (stdout) (" (space)) ..]))
       [print-str (stdout) (" (rparen)(space)) ..]
       [print-expression (@ expr-expression s) ..]
@@ -478,10 +487,7 @@
     ((-symbol-)
       (if [not= (@ expr-name s) null-string]
         [print-str (stdout) (@ expr-name s) ..]
-        (do
-          [print-str (stdout) (" (lparen)symbol(space)) ..]
-          [print-uint (stdout) (@ expr-reference s) ..]
-          [print-str (stdout) (" (rparen)) ..])))
+        [print-binding (@ expr-reference s) ..]))
           
     ((-literal-) (do
       [print-str (stdout) (" (lparen)literal(space)) ..]
@@ -535,7 +541,8 @@
                 
             [(switch str= [to-string [fragment->token [@car d]] ..]
                 ((" function) make-function)
-                make-continuation)
+                ((" continuation) make-continuation)
+                (ignore))
               [to-string [fragment->token [@cadr d]] ..] parameters [build-expression [@cadddr d] meta ..] frag meta ..])))))
       
       ((" storage)
