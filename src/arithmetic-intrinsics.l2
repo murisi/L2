@@ -58,10 +58,10 @@
 (function invoke-symbol-name (n)
   (@ bndg-name (@ expr-reference (@ expr-target n))))
 
-(constrain place-unary-arithmetic-operators
+(constrain initialize-unary-arithmetic-operators
   (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
 
-(function place-unary-arithmetic-operators (n offset plcs ret-val)
+(function initialize-unary-arithmetic-operators (n offset plcs ret-val)
   (and (and [undefined-symbol-invoke? n] [= [length (@ expr-arguments n)] #1])
     (let
       (arg1 [@car (@ expr-arguments n)]) (let
@@ -153,9 +153,10 @@
           
         (false)))))))
 
-(constrain place-binary-arithmetic-operators (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
+(constrain initialize-binary-arithmetic-operators
+  (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
 
-(function place-binary-arithmetic-operators (n offset plcs ret-val)
+(function initialize-binary-arithmetic-operators (n offset plcs ret-val)
   (and (and [undefined-symbol-invoke? n] [= [length (@ expr-arguments n)] #2])
     (let
       (arg1 [@car (@ expr-arguments n)])
@@ -401,9 +402,10 @@
     (and [undefined-symbol-invoke? cond]
       (switch str= [arithmetic-if-name n] ((" <) (" >) (" =) (true)) (false)))))
 
-(constrain place-arithmetic-if-bindings (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
+(constrain initialize-arithmetic-if-bindings
+  (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
 
-(function place-arithmetic-if-bindings (n offset plcs ret-val)
+(function initialize-arithmetic-if-bindings (n offset plcs ret-val)
   (and [= (@ expr-type n) (-if-)] [arithmetic-if? n]
     (let (offset [- offset [* #2(word-size)]])
     (let (args (@ expr-arguments (@ expr-condition n))) (do
@@ -593,19 +595,11 @@
           (false))
         (false)))))
 
-(constrain place-arithmetic-intrinsics (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
+(constrain initialize-arithmetic-intrinsics
+  (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
 
-(function place-arithmetic-intrinsics (n offset plcs ret-val) (or
-  [place-arithmetic-if-bindings n offset plcs ret-val]
-  [place-unary-arithmetic-operators n offset plcs ret-val]
-  [place-binary-arithmetic-operators n offset plcs ret-val]))
-
-(constrain generate-arithmetic-intrinsics
-  (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
-
-(function generate-arithmetic-intrinsics (n c relocs r handler)
-  (substitute (.. r handler) (or
-    [generate-arithmetic-if n c relocs ..]
-    [generate-unary-arithmetic-operators n c relocs ..]
-    [generate-binary-arithmetic-operators n c relocs ..])))
+(function initialize-arithmetic-intrinsics (n offset plcs ret-val) (or
+  [initialize-arithmetic-if-bindings n offset plcs ret-val]
+  [initialize-unary-arithmetic-operators n offset plcs ret-val]
+  [initialize-binary-arithmetic-operators n offset plcs ret-val]))
 
