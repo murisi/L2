@@ -58,7 +58,8 @@
 (function invoke-symbol-name (n)
   (@ bndg-name (@ expr-reference (@ expr-target n))))
 
-(constrain place-unary-arithmetic-operators (\ r (with-vars (b c) (`(function (expr ,b (list placer) (values ,b reg-use-vec)) ,c)r)r)))
+(constrain place-unary-arithmetic-operators
+  (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
 
 (function place-unary-arithmetic-operators (n offset plcs ret-val)
   (and (and [undefined-symbol-invoke? n] [= [length (@ expr-arguments n)] #1])
@@ -104,9 +105,9 @@
   environment.)
 
 (constrain generate-unary-arithmetic-operators
-  (\ r (with-vars (a b) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
+  (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
-(function generate-unary-arithmetic-operators (n gens c relocs r handler)
+(function generate-unary-arithmetic-operators (n c relocs r handler)
   (substitute (.. r handler)
     (and (and [undefined-symbol-invoke? n] [= [length (@ expr-arguments n)] #1])
       (let
@@ -116,35 +117,35 @@
         
       (switch str= [invoke-symbol-name n]
         ((" getb) (" get1b) (do
-          [generate-expression arg1 gens c relocs ..]
+          [generate-expression arg1 c relocs ..]
           (let (arg1-reg [generate-move-to-register (r11) arg1-val-bndg c relocs ..])
             [prepend (make-instrN(x86-movzx)
               ([bndg->op expr-val-bndg relocs ..][make-mem-op #1 arg1-reg (none)#0 #0 #4 ..][make-reg-op(r11)..])..) c ..])
           (true)))
         
         ((" get2b) (do
-          [generate-expression arg1 gens c relocs ..]
+          [generate-expression arg1 c relocs ..]
           (let (arg1-reg [generate-move-to-register (r11) arg1-val-bndg c relocs ..])
             [prepend (make-instrN (x86-movzx)
               ([bndg->op expr-val-bndg relocs ..][make-mem-op #2 arg1-reg (none)#0 #0 #4 ..][make-reg-op(r11)..])..) c ..])
           (true)))
         
         ((" get4b) (do
-          [generate-expression arg1 gens c relocs ..]
+          [generate-expression arg1 c relocs ..]
           (let (arg1-reg [generate-move-to-register (r11) arg1-val-bndg c relocs ..])
             [prepend (make-instrN (x86-movzx)
               ([bndg->op expr-val-bndg relocs ..][make-mem-op #4 arg1-reg (none)#0 #0 #4 ..][make-reg-op(r11)..])..) c ..])
           (true)))
         
         ((" get8b) (" get) (do
-          [generate-expression arg1 gens c relocs ..]
+          [generate-expression arg1 c relocs ..]
           (let (arg1-reg [generate-move-to-register (r11) arg1-val-bndg c relocs ..])
             [prepend (make-instrN (x86-mov)
               ([bndg->op expr-val-bndg relocs ..][make-mem-op #8 arg1-reg (none)#0 #0 #4 ..][make-reg-op(r11)..])..) c ..])
           (true)))
         
         ((" bnot) (do
-          [generate-expression arg1 gens c relocs ..]
+          [generate-expression arg1 c relocs ..]
           [prepend (make-instrN(x86-mov)
             ([bndg->op expr-val-bndg relocs ..][bndg->op arg1-val-bndg relocs ..][make-reg-op (r11)..]) ..) c ..]
           [prepend (make-instrN (x86-not) ([bndg->op expr-val-bndg relocs ..]) ..) c ..]
@@ -152,7 +153,7 @@
           
         (false)))))))
 
-(constrain place-binary-arithmetic-operators (\ r (with-vars (b c) (`(function (expr ,b (list placer) (values ,b reg-use-vec)) ,c)r)r)))
+(constrain place-binary-arithmetic-operators (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
 
 (function place-binary-arithmetic-operators (n offset plcs ret-val)
   (and (and [undefined-symbol-invoke? n] [= [length (@ expr-arguments n)] #2])
@@ -226,9 +227,9 @@
       (false))))))
 
 (constrain generate-binary-arithmetic-operators
-  (\ r (with-vars (a b) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
+  (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
-(function generate-binary-arithmetic-operators (n gens c relocs r handler)
+(function generate-binary-arithmetic-operators (n c relocs r handler)
   (substitute (.. r handler)
     (and (and [undefined-symbol-invoke? n] [= [length (@ expr-arguments n)] #2])
       (let
@@ -240,40 +241,40 @@
         
       (switch str= [invoke-symbol-name n]
         ((" setb) (" set1b) (do
-          [generate-expression arg1 gens c relocs ..]
-          [generate-expression arg2 gens c relocs ..]
+          [generate-expression arg1 c relocs ..]
+          [generate-expression arg2 c relocs ..]
           (let (arg1-reg [generate-move-to-register (r10) arg1-val-bndg c relocs ..])
             [prepend (make-instrN (x86-mov)
               ([make-mem-op #1 arg1-reg (none)#0 #0 #4 ..][bndg->partial-op #1 arg2-val-bndg relocs ..][make-reg-op(r11l)..]) ..) c ..])
           (true)))
         
         ((" set2b) (do
-          [generate-expression arg1 gens c relocs ..]
-          [generate-expression arg2 gens c relocs ..]
+          [generate-expression arg1 c relocs ..]
+          [generate-expression arg2 c relocs ..]
           (let (arg1-reg [generate-move-to-register (r10) arg1-val-bndg c relocs ..])
             [prepend (make-instrN (x86-mov)
               ([make-mem-op #2 arg1-reg (none)#0 #0 #4 ..][bndg->partial-op #2 arg2-val-bndg relocs ..][make-reg-op(r11w)..]) ..) c ..])
           (true)))
         
         ((" set4b) (do
-          [generate-expression arg1 gens c relocs ..]
-          [generate-expression arg2 gens c relocs ..]
+          [generate-expression arg1 c relocs ..]
+          [generate-expression arg2 c relocs ..]
           (let (arg1-reg [generate-move-to-register (r10) arg1-val-bndg c relocs ..])
             [prepend (make-instrN (x86-mov)
               ([make-mem-op #4 arg1-reg (none)#0 #0 #4 ..][bndg->partial-op #4 arg2-val-bndg relocs ..][make-reg-op(r11d)..]) ..) c ..])
           (true)))
         
         ((" set8b) (" set) (do
-          [generate-expression arg1 gens c relocs ..]
-          [generate-expression arg2 gens c relocs ..]
+          [generate-expression arg1 c relocs ..]
+          [generate-expression arg2 c relocs ..]
           (let (arg1-reg [generate-move-to-register (r10) arg1-val-bndg c relocs ..])
             [prepend (make-instrN (x86-mov)
               ([make-mem-op #8 arg1-reg (none)#0 #0 #4 ..][bndg->partial-op #8 arg2-val-bndg relocs ..][make-reg-op(r11)..]) ..) c ..])
           (true)))
           
         ((" +) (do
-          [generate-expression arg1 gens c relocs ..]
-          [generate-expression arg2 gens c relocs ..]
+          [generate-expression arg1 c relocs ..]
+          [generate-expression arg2 c relocs ..]
           [prepend (make-instrN(x86-mov)
             ([bndg->op expr-val-bndg relocs ..][bndg->op arg1-val-bndg relocs ..][make-reg-op (r11) ..]) ..) c ..]
           [prepend (make-instrN (x86-add)
@@ -281,8 +282,8 @@
           (true)))
         
         ((" -) (do
-          [generate-expression arg1 gens c relocs ..]
-          [generate-expression arg2 gens c relocs ..]
+          [generate-expression arg1 c relocs ..]
+          [generate-expression arg2 c relocs ..]
           [prepend (make-instrN(x86-mov)
             ([bndg->op expr-val-bndg relocs ..][bndg->op arg1-val-bndg relocs ..][make-reg-op (r11)..])..) c ..]
           [prepend (make-instrN (x86-sub)
@@ -290,16 +291,16 @@
           (true)))
         
         ((" *) (do
-          [generate-expression arg1 gens c relocs ..]
-          [generate-expression arg2 gens c relocs ..]
+          [generate-expression arg1 c relocs ..]
+          [generate-expression arg2 c relocs ..]
           [prepend (make-instrN (x86-mov) ([make-reg-op (rax) ..] [bndg->op arg1-val-bndg relocs ..]) ..) c ..]
           [prepend (make-instrN (x86-mul) ([bndg->op arg2-val-bndg relocs ..]) ..) c ..]
           [prepend (make-instrN (x86-mov) ([bndg->op expr-val-bndg relocs ..] [make-reg-op (rax) ..]) ..) c ..]
           (true)))
         
         ((" /) (do
-          [generate-expression arg1 gens c relocs ..]
-          [generate-expression arg2 gens c relocs ..]
+          [generate-expression arg1 c relocs ..]
+          [generate-expression arg2 c relocs ..]
           [prepend (make-instrN (x86-xor) ([make-reg-op (rdx) ..] [make-reg-op (rdx) ..]) ..) c ..]
           [prepend (make-instrN (x86-mov) ([make-reg-op (rax) ..] [bndg->op arg1-val-bndg relocs ..]) ..) c ..]
           [prepend (make-instrN (x86-div) ([bndg->op arg2-val-bndg relocs ..]) ..) c ..]
@@ -307,8 +308,8 @@
           (true)))
         
         ((" rem) (do
-          [generate-expression arg1 gens c relocs ..]
-          [generate-expression arg2 gens c relocs ..]
+          [generate-expression arg1 c relocs ..]
+          [generate-expression arg2 c relocs ..]
           [prepend (make-instrN (x86-xor) ([make-reg-op (rdx) ..] [make-reg-op (rdx) ..]) ..) c ..]
           [prepend (make-instrN (x86-mov) ([make-reg-op (rax) ..] [bndg->op arg1-val-bndg relocs ..]) ..) c ..]
           [prepend (make-instrN (x86-div) ([bndg->op arg2-val-bndg relocs ..]) ..) c ..]
@@ -316,8 +317,8 @@
           (true)))
         
         ((" =) (do
-          [generate-expression arg1 gens c relocs ..]
-          [generate-expression arg2 gens c relocs ..]
+          [generate-expression arg1 c relocs ..]
+          [generate-expression arg2 c relocs ..]
           [prepend (make-instrN(x86-xor)
             ([bndg->op expr-val-bndg relocs ..][bndg->op expr-val-bndg relocs ..][make-reg-op (r11)..])..) c ..]
           [prepend (make-instrN(x86-cmp)
@@ -326,8 +327,8 @@
           (true)))
         
         ((" <) (do
-          [generate-expression arg1 gens c relocs ..]
-          [generate-expression arg2 gens c relocs ..]
+          [generate-expression arg1 c relocs ..]
+          [generate-expression arg2 c relocs ..]
           [prepend (make-instrN(x86-xor)
             ([bndg->op expr-val-bndg relocs ..][bndg->op expr-val-bndg relocs ..][make-reg-op (r11)..])..) c ..]
           [prepend (make-instrN(x86-cmp)
@@ -336,8 +337,8 @@
           (true)))
         
         ((" >) (do
-          [generate-expression arg1 gens c relocs ..]
-          [generate-expression arg2 gens c relocs ..]
+          [generate-expression arg1 c relocs ..]
+          [generate-expression arg2 c relocs ..]
           [prepend (make-instrN(x86-xor)
             ([bndg->op expr-val-bndg relocs ..][bndg->op expr-val-bndg relocs ..][make-reg-op (r11)..])..) c ..]
           [prepend (make-instrN(x86-cmp)
@@ -346,8 +347,8 @@
           (true)))
         
         ((" <<) (do
-          [generate-expression arg1 gens c relocs ..]
-          [generate-expression arg2 gens c relocs ..]
+          [generate-expression arg1 c relocs ..]
+          [generate-expression arg2 c relocs ..]
           [prepend (make-instrN (x86-mov) ([make-reg-op (rcx) ..] [bndg->op arg2-val-bndg relocs ..]) ..) c ..]
           [prepend (make-instrN(x86-mov)
             ([bndg->op expr-val-bndg relocs ..][bndg->op arg1-val-bndg relocs ..][make-reg-op(r11)..])..) c ..]
@@ -355,8 +356,8 @@
           (true)))
         
         ((" >>) (do
-          [generate-expression arg1 gens c relocs ..]
-          [generate-expression arg2 gens c relocs ..]
+          [generate-expression arg1 c relocs ..]
+          [generate-expression arg2 c relocs ..]
           [prepend (make-instrN (x86-mov) ([make-reg-op (rcx) ..] [bndg->op arg2-val-bndg relocs ..]) ..) c ..]
           [prepend (make-instrN(x86-mov)
             ([bndg->op expr-val-bndg relocs ..][bndg->op arg1-val-bndg relocs ..][make-reg-op (r11)..])..) c ..]
@@ -364,8 +365,8 @@
           (true)))
         
         ((" bor) (do
-          [generate-expression arg1 gens c relocs ..]
-          [generate-expression arg2 gens c relocs ..]
+          [generate-expression arg1 c relocs ..]
+          [generate-expression arg2 c relocs ..]
           [prepend (make-instrN(x86-mov)
             ([bndg->op expr-val-bndg relocs ..][bndg->op arg1-val-bndg relocs ..][make-reg-op (r11)..]) ..) c ..]
           [prepend (make-instrN(x86-or)
@@ -373,8 +374,8 @@
           (true)))
         
         ((" band) (do
-          [generate-expression arg1 gens c relocs ..]
-          [generate-expression arg2 gens c relocs ..]
+          [generate-expression arg1 c relocs ..]
+          [generate-expression arg2 c relocs ..]
           [prepend (make-instrN(x86-mov)
             ([bndg->op expr-val-bndg relocs ..] [bndg->op arg1-val-bndg relocs ..][make-reg-op (r11)..]) ..) c ..]
           [prepend (make-instrN(x86-and)
@@ -400,7 +401,7 @@
     (and [undefined-symbol-invoke? cond]
       (switch str= [arithmetic-if-name n] ((" <) (" >) (" =) (true)) (false)))))
 
-(constrain place-arithmetic-if-bindings (\ r (with-vars (b c) (`(function (expr ,b (list placer) (values ,b reg-use-vec)) ,c)r)r)))
+(constrain place-arithmetic-if-bindings (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
 
 (function place-arithmetic-if-bindings (n offset plcs ret-val)
   (and [= (@ expr-type n) (-if-)] [arithmetic-if? n]
@@ -424,9 +425,9 @@
     (true)))))))))))))))
 
 (constrain generate-arithmetic-if
-  (\ r (with-vars (a b) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
+  (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
-(function generate-arithmetic-if (n gens c relocs r handler)
+(function generate-arithmetic-if (n c relocs r handler)
   (substitute (.. r handler)
     (and [= (@ expr-type n) (-if-)] [arithmetic-if? n]
       (let
@@ -439,8 +440,8 @@
           (alternate-val-bndg (@ expr-binding-aug (@ expr-alternate n)))
           (alternate-instr-bndg [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-frag null-expr ..])
           (end-instr-binding [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-frag null-expr ..]) (do
-        [generate-expression arg1 gens c relocs ..]
-        [generate-expression arg2 gens c relocs ..]
+        [generate-expression arg1 c relocs ..]
+        [generate-expression arg2 c relocs ..]
         (switch str= [arithmetic-if-name n]
           ((" =) (do
             [prepend (make-instrN(x86-cmp)
@@ -455,11 +456,11 @@
               ([bndg->op arg2-val-bndg relocs ..][bndg->op arg1-val-bndg relocs ..][make-reg-op (r11)..])..) c ..]
             [prepend (make-instrN (x86-jnc) ([make-relative-relocation-immediate #4 alternate-instr-bndg relocs ..]) ..) c ..]))
           (ignore))
-        [generate-expression (@ expr-consequent n) gens c relocs ..]
+        [generate-expression (@ expr-consequent n) c relocs ..]
         [generate-bndg-bndg-move expr-val-bndg consequent-val-bndg (r11) c relocs ..]
         [prepend (make-instrN (x86-jmp) ([make-relative-relocation-immediate #4 end-instr-binding relocs ..]) ..) c ..]
         [prepend [make-label alternate-instr-bndg ..] c ..]
-        [generate-expression (@ expr-alternate n) gens c relocs ..]
+        [generate-expression (@ expr-alternate n) c relocs ..]
         [generate-bndg-bndg-move expr-val-bndg alternate-val-bndg (r11) c relocs ..]
         [prepend [make-label end-instr-binding ..] c ..]
         (true))))))
@@ -516,37 +517,37 @@
     (false)))
 
 (constrain generate-memory-operators
-  (\ r (with-vars (a b) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
+  (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
-(function generate-memory-operators (n gens c relocs r handler)
+(function generate-memory-operators (n c relocs r handler)
   (substitute (.. r handler)
     (bind-if [match-get-base+offset name base offset n]
       (name base offset)
         (if [sbyte? $offset]
           (switch str= $name
             ((" getb) (" get1b) (do
-              [generate-expression $base gens c relocs ..]
+              [generate-expression $base c relocs ..]
               (let (base-reg [generate-move-to-register (r11) (@ expr-binding-aug $base) c relocs ..])
                 [prepend (make-instrN (x86-movzx) ([bndg->op (@ expr-binding-aug n) relocs ..]
                   [make-mem-op #1 base-reg (none)#0 $offset #1 ..] [make-reg-op(r11)..]) ..) c ..])
               (true)))
             
             ((" get2b) (do
-              [generate-expression $base gens c relocs ..]
+              [generate-expression $base c relocs ..]
               (let (base-reg [generate-move-to-register (r11) (@ expr-binding-aug $base) c relocs ..])
                 [prepend (make-instrN (x86-movzx) ([bndg->op (@ expr-binding-aug n) relocs ..]
                   [make-mem-op #2 base-reg (none)#0 $offset #1 ..] [make-reg-op(r11)..]) ..) c ..])
               (true)))
             
             ((" get4b) (do
-              [generate-expression $base gens c relocs ..]
+              [generate-expression $base c relocs ..]
               (let (base-reg [generate-move-to-register (r11) (@ expr-binding-aug $base) c relocs ..])
                 [prepend (make-instrN (x86-movzx) ([bndg->op (@ expr-binding-aug n) relocs ..]
                   [make-mem-op #4 base-reg (none)#0 $offset #1 ..] [make-reg-op(r11)..]) ..) c ..])
               (true)))
             
             ((" get) (" get8b) (do
-              [generate-expression $base gens c relocs ..]
+              [generate-expression $base c relocs ..]
               (let (base-reg [generate-move-to-register (r11) (@ expr-binding-aug $base) c relocs ..])
                 [prepend (make-instrN (x86-mov) ([bndg->op (@ expr-binding-aug n) relocs ..]
                   [make-mem-op(word-size)base-reg(none)#0 $offset #1 ..] [make-reg-op(r11)..]) ..) c ..])
@@ -558,32 +559,32 @@
         (if [sbyte? $offset]
           (switch str= $name
             ((" setb) (" set1b) (do
-              [generate-expression $value gens c relocs ..]
-              [generate-expression $base gens c relocs ..]
+              [generate-expression $value c relocs ..]
+              [generate-expression $base c relocs ..]
               (let (base-reg [generate-move-to-register (r10) (@ expr-binding-aug $base) c relocs ..])
                 [prepend (make-instrN (x86-mov) ([make-mem-op #1 base-reg (none)#0 $offset #1 ..]
                   [bndg->partial-op #1 (@ expr-binding-aug $value) relocs ..] [make-reg-op(r11)..]) ..) c ..])
               (true)))
             
             ((" set2b) (do
-              [generate-expression $value gens c relocs ..]
-              [generate-expression $base gens c relocs ..]
+              [generate-expression $value c relocs ..]
+              [generate-expression $base c relocs ..]
               (let (base-reg [generate-move-to-register (r10) (@ expr-binding-aug $base) c relocs ..])
                 [prepend (make-instrN (x86-mov) ([make-mem-op #2 base-reg (none)#0 $offset #1 ..]
                   [bndg->partial-op #2 (@ expr-binding-aug $value) relocs ..] [make-reg-op(r11)..]) ..) c ..])
               (true)))
             
             ((" set4b) (do
-              [generate-expression $value gens c relocs ..]
-              [generate-expression $base gens c relocs ..]
+              [generate-expression $value c relocs ..]
+              [generate-expression $base c relocs ..]
               (let (base-reg [generate-move-to-register (r10) (@ expr-binding-aug $base) c relocs ..])
                 [prepend (make-instrN (x86-mov) ([make-mem-op #4 base-reg (none)#0 $offset #1 ..]
                   [bndg->partial-op #4 (@ expr-binding-aug $value) relocs ..] [make-reg-op(r11)..]) ..) c ..])
               (true)))
             
             ((" set) (" set8b) (do
-              [generate-expression $value gens c relocs ..]
-              [generate-expression $base gens c relocs ..]
+              [generate-expression $value c relocs ..]
+              [generate-expression $base c relocs ..]
               (let (base-reg [generate-move-to-register (r10) (@ expr-binding-aug $base) c relocs ..])
                 [prepend (make-instrN (x86-mov) ([make-mem-op(word-size)base-reg(none)#0 $offset #1 ..]
                   [bndg->op (@ expr-binding-aug $value) relocs ..] [make-reg-op(r11)..]) ..) c ..])
@@ -592,7 +593,7 @@
           (false))
         (false)))))
 
-(constrain place-arithmetic-intrinsics (\ r (with-vars (b c) (`(function (expr ,b (list placer) (values ,b reg-use-vec)) ,c)r)r)))
+(constrain place-arithmetic-intrinsics (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
 
 (function place-arithmetic-intrinsics (n offset plcs ret-val) (or
   [place-arithmetic-if-bindings n offset plcs ret-val]
@@ -600,11 +601,11 @@
   [place-binary-arithmetic-operators n offset plcs ret-val]))
 
 (constrain generate-arithmetic-intrinsics
-  (\ r (with-vars (a b) (`(function (expr (list generator) (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
+  (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
-(function generate-arithmetic-intrinsics (n gens c relocs r handler)
+(function generate-arithmetic-intrinsics (n c relocs r handler)
   (substitute (.. r handler) (or
-    [generate-arithmetic-if n gens c relocs ..]
-    [generate-unary-arithmetic-operators n gens c relocs ..]
-    [generate-binary-arithmetic-operators n gens c relocs ..])))
+    [generate-arithmetic-if n c relocs ..]
+    [generate-unary-arithmetic-operators n c relocs ..]
+    [generate-binary-arithmetic-operators n c relocs ..])))
 
