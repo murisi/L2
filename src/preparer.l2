@@ -550,7 +550,7 @@
 (storage undefined-symbol-error (ignore))
 
 (function preprocessed-expression-address (l r)
-  (`(\ s gens bindings buf :b handler
+  (`(\ s inits bindings buf :b handler
     (substitute (.. buf handler)
       (if [= (@ expr-type s) (-symbol-)]
         (do
@@ -567,8 +567,8 @@
                   {find-binding [@cdr bindings]})))))
         (do
           (let (expr-container [make-function null-string nil s null-frag null-expr ..])
-          (let (exprs-preprocessed [generate-metaprogram [cons expr-container nil ..] gens (storage _ bindings) buf :b handler]) (do
-          [load-program-and-mutate exprs-preprocessed gens bindings buf :b handler]
+          (let (exprs-preprocessed [generate-metaprogram [cons expr-container nil ..] inits (storage _ bindings) buf :b handler]) (do
+          [load-program-and-mutate exprs-preprocessed inits bindings buf :b handler]
           (let (expr-container-preprocessed [@car exprs-preprocessed])
           [(@ bndg-offset (@ expr-reference expr-container-preprocessed))]))))))))r))
 
@@ -577,31 +577,31 @@
   corresponding expression builder. It also sets the signatures of constrain-expressions
   to the result of evaluating a signature builder.)
 
-(constrain vgenerate-metas (\ r (with-vars (a) (`(function (expr (values (list generator) (list bndg-aug) buffer buffer ,a)) expr)r)r)))
+(constrain vgenerate-metas (\ r (with-vars (a) (`(function (expr (values (list initializer) (list bndg-aug) buffer buffer ,a)) expr)r)r)))
 
 (function vgenerate-metas (s ctx)
-  (bind (gens bindings buf :b handler) ctx
+  (bind (inits bindings buf :b handler) ctx
     (switch = (@ expr-type s)
       ((-meta-)
-        (let (macro [(preprocessed-expression-address) (@ expr-target s) gens bindings buf :b handler])
+        (let (macro [(preprocessed-expression-address) (@ expr-target s) inits bindings buf :b handler])
           [vgenerate-metas [build-expression [macro [list->fragment [@cdr [frag->list (@ expr-fragment s)]]] buf] s buf handler] ctx]))
       
       ((-constrain-)
-        (let (macro [(preprocessed-expression-address) (@ expr-target s) gens bindings buf :b handler])
+        (let (macro [(preprocessed-expression-address) (@ expr-target s) inits bindings buf :b handler])
           (do (setf bndg-signature (@ expr-binding-aug s) [macro buf]) s)))
       
       s)))
 
 (constrain init-function
-  (\ r (with-vars (a b) (`(function (expr (list generator) (ref (list bndg-aug)) buffer buffer ,a (ref ,b)) ,b)r)r)))
+  (\ r (with-vars (a b) (`(function (expr (list initializer) (ref (list bndg-aug)) buffer buffer ,a (ref ,b)) ,b)r)r)))
 
-(function init-function (function-expr gens bindings buf :b handler cache)
+(function init-function (function-expr inits bindings buf :b handler cache)
   (substitute (.. buf handler)
     (if [not= $cache null-cache]
       $cache
       (let (function-expr-ref (storage _ function-expr)) (do
-        [pre-visit-expressions vgenerate-metas function-expr-ref (values storage gens $bindings buf :b handler)]
-        [load-program-and-mutate [cons $function-expr-ref nil ..] gens $bindings buf :b handler]
+        [pre-visit-expressions vgenerate-metas function-expr-ref (values storage inits $bindings buf :b handler)]
+        [load-program-and-mutate [cons $function-expr-ref nil ..] inits $bindings buf :b handler]
         [set cache (@ bndg-offset (@ expr-reference $function-expr-ref))]
         $cache)))))
 
@@ -613,9 +613,9 @@
   expanded only when they are first called.)
 
 (constrain generate-metaprogram
-  (\ r (with-vars (a) (`(function ((list expr) (list generator) (ref (list bndg-aug)) buffer buffer ,a) (list expr))r)r)))
+  (\ r (with-vars (a) (`(function ((list expr) (list initializer) (ref (list bndg-aug)) buffer buffer ,a) (list expr))r)r)))
 
-(function generate-metaprogram (exprs gens bindings buf :b handler)
+(function generate-metaprogram (exprs inits bindings buf :b handler)
   (substitute (.. buf handler)
     [reverse (fold (c nil) (s exprs)
       (let (cache [buffer-alloc (unit) buf handler]) (do
@@ -626,7 +626,7 @@
           (let (args (reverse-map (_ (@ expr-parameters s)) [make-symbol null-string null-fragment null-expr ..] ..))
           (let (thunk [make-function (@ bndg-name (@ expr-reference s)) params
             [make-invoke (make-invokeN [make-literal init-function null-fragment null-expr ..]
-            ([make-literal s null-fragment null-expr ..] [make-literal gens null-fragment null-expr ..]
+            ([make-literal s null-fragment null-expr ..] [make-literal inits null-fragment null-expr ..]
             [make-literal bindings null-fragment null-expr ..] [make-literal buf null-fragment null-expr ..]
             [make-literal :b null-fragment null-expr ..] [make-literal handler null-fragment null-expr ..]
             [make-literal cache null-fragment null-expr ..]) null-fragment null-expr ..) args null-fragment null-expr ..]

@@ -3,10 +3,10 @@
   list into which the augmented bindings of the generated code will be put.)
 
 (constrain compile-program
-  (\ r (with-vars (a b) (`(function ((list expr) (list generator) ,b buffer buffer ,a)
+  (\ r (with-vars (a b) (`(function ((list expr) (list initializer) ,b buffer buffer ,a)
     (values (list instr) (list reloc) (list bndg-aug) (list bndg-aug)))r)r)))
 
-(function compile-program (exprs gens outs buf :b handler)
+(function compile-program (exprs inits outs buf :b handler)
   (substitute (.. buf handler)
     (let (static-bindings (storage _ nil)) (undefined-bindings (storage _ nil))
         (global-bindings [global-binding-augs-of exprs ..]) (do
@@ -25,7 +25,7 @@
         (foreach (expr exprs) (do
           (setf bndg-offset (@ expr-binding-aug expr) [- storage-offset (word-size)])
           (setf bndg-size (@ expr-binding-aug expr) (word-size))
-          [initialize-expression expr [- storage-offset (word-size)] [cons [function->initializer initialize-arithmetic-intrinsics] nil ..] (values storage (ignore) (ignore))]
+          [initialize-expression expr [- storage-offset (word-size)] inits (values storage (ignore) (ignore))]
           [setup-collect-static-bindings expr]
           [collect-static-bindings expr static-bindings ..])))
       (bind (instrs relocs) [generate-program exprs bind ..]
@@ -36,12 +36,12 @@
   expr-buf is the buffer into which the results of compilation will be put. obj-buf is the
   buffer into which the object code will be put. Return value is an object.)
 
-(constrain load-program (\ r (with-vars (a) (`(function ((list expr) (list generator) buffer buffer ,a) obj)r)r)))
+(constrain load-program (\ r (with-vars (a) (`(function ((list expr) (list initializer) buffer buffer ,a) obj)r)r)))
 
-(function load-program (exprs gens buf :b handler)
+(function load-program (exprs inits buf :b handler)
   (substitute (.. buf handler)
     (with-buffer :b
-      (bind (asms relocs undefined-bindings static-bindings) [compile-program exprs gens bind :b buf handler]
+      (bind (asms relocs undefined-bindings static-bindings) [compile-program exprs inits bind :b buf handler]
       (bind (objdest objdest-sz) [write-elf asms relocs undefined-bindings static-bindings bind buf handler]
       (let (obj [load objdest objdest-sz buf handler]) (do
       [binding-offsets-to-addresses asms static-bindings obj]
@@ -56,11 +56,11 @@
   in bndgs.)
 
 (constrain load-program-and-mutate
-  (\ r (with-vars (a) (`(function ((list expr) (list generator) (list bndg-aug) buffer buffer ,a) obj)r)r)))
+  (\ r (with-vars (a) (`(function ((list expr) (list initializer) (list bndg-aug) buffer buffer ,a) obj)r)r)))
 
-(function load-program-and-mutate (exprs gens bndgs buf :b handler)
+(function load-program-and-mutate (exprs inits bndgs buf :b handler)
   (with-buffer :b
-    (let (obj [load-program exprs gens buf :b handler])
+    (let (obj [load-program exprs inits buf :b handler])
     (let (ms [mutable-bindings obj :b handler]) (do
       (foreach (d ms)
         (if [nil? (find (x bndgs) [str= (@ bndg-name d) (@ bndg-name x)])]
@@ -117,13 +117,13 @@
 
 (function evaluate-files (source-fns object-fns intrinsic-fns bindings buf :b handler)
   (substitute (.. buf handler)
-    (let (gens (reverse-map (intrinsic-fn intrinsic-fns)
+    (let (inits (reverse-map (intrinsic-fn intrinsic-fns)
       (switch str= intrinsic-fn
-        ((" arithmetic) [function->generator generate-arithmetic-intrinsics])
+        ((" arithmetic) [function->initializer initialize-arithmetic-intrinsics])
         {handler (storage _ unsupported-intrinsics-error intrinsic-fn)}) ..))
     
     (let (objects1 (fold (objects nil) (src source-fns)
-      (let (obj [load-program [generate-metaprogram [read-expressions src buf :b handler] gens bindings buf :b handler] gens buf :b handler])
+      (let (obj [load-program [generate-metaprogram [read-expressions src buf :b handler] inits bindings buf :b handler] inits buf :b handler])
         (do [append-list bindings [immutable-bindings obj ..]] [cons obj objects ..]))))
     
     (let (objects2 (fold (objects objects1) (src object-fns)
@@ -134,18 +134,18 @@
     (let (objects3 (fold (objects objects2) (intrinsic-fn intrinsic-fns)
       (switch str= intrinsic-fn
         ((" arithmetic)
-          (let (obj [load-program [wrap-arithmetic-intrinsics ..] gens buf :b handler])
+          (let (obj [load-program [wrap-arithmetic-intrinsics ..] inits buf :b handler])
             (do [append-list bindings [immutable-bindings obj ..]] [cons obj objects ..])))
         {handler (storage _ unsupported-intrinsics-error intrinsic-fn)})))
     
     (foreach (obj objects3) [mutate-bindings obj $bindings])))))))
 
-(constrain compile-program-to-elf (\ r (with-vars (a) (`(function ((list expr) (list generator) string buffer buffer ,a) ())r)r)))
+(constrain compile-program-to-elf (\ r (with-vars (a) (`(function ((list expr) (list initializer) string buffer buffer ,a) ())r)r)))
 
-(function compile-program-to-elf (exprs gens outfn buf :b handler)
+(function compile-program-to-elf (exprs inits outfn buf :b handler)
   (substitute (.. buf handler)
     (with-buffer :b
-      (bind (asms relocs undefined-bindings static-bindings) [compile-program exprs gens bind :b buf handler]
+      (bind (asms relocs undefined-bindings static-bindings) [compile-program exprs inits bind :b buf handler]
       (bind (objdest objdest-sz) [write-elf asms relocs undefined-bindings static-bindings bind :b handler]
       (let (fd [create outfn handler]) (do
       [print fd objdest objdest-sz handler]
@@ -162,15 +162,15 @@
 (function compile-files (file-names intrinsic-fns bndgs buf :b handler)
   (substitute (.. buf handler)
     (with-buffer :b
-      (let (gens (reverse-map (intrinsic-fn intrinsic-fns)
+      (let (inits (reverse-map (intrinsic-fn intrinsic-fns)
         (switch str= intrinsic-fn
-          ((" arithmetic) [function->generator generate-arithmetic-intrinsics])
+          ((" arithmetic) [function->initializer initialize-arithmetic-intrinsics])
           {handler (storage _ unsupported-intrinsics-error intrinsic-fn)}) ..))
           
       (let (file-exprss (map (infn file-names)
         (map (e [read-expressions infn buf :b handler])
           (let (f (storage _ e))
-            (do [pre-visit-expressions vgenerate-metas f (values storage gens bndgs buf :b handler)] $f)) ..) ..)) (do
+            (do [pre-visit-expressions vgenerate-metas f (values storage inits bndgs buf :b handler)] $f)) ..) ..)) (do
             
       (let (all-exprs [reverse-flatten file-exprss ..])
         (let (undefined-bindings (storage _ nil)) (global-bindings [global-binding-augs-of all-exprs ..]) (do
@@ -183,11 +183,11 @@
         (let (outfn [buffer-alloc [+ [strlen infn] #3] :b handler]) (do
         [strcpy outfn infn]
         [strcpy [strrchr outfn (nul)] (" .o)]
-        [compile-program-to-elf exprs gens outfn :b buf handler])))
+        [compile-program-to-elf exprs inits outfn :b buf handler])))
       
       (foreach (intrinsic-fn intrinsic-fns)
         (switch str= intrinsic-fn
-          ((" arithmetic) [compile-program-to-elf [wrap-arithmetic-intrinsics ..] gens (" arithmetic.o) buf :b handler])
+          ((" arithmetic) [compile-program-to-elf [wrap-arithmetic-intrinsics ..] inits (" arithmetic.o) buf :b handler])
           {handler (storage _ unsupported-intrinsics-error intrinsic-fn)}))))))))
 
 (storage arguments-error (ignore))
