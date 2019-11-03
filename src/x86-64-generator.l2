@@ -197,10 +197,10 @@
 
 (constrain initialize-function (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
 
-(function initialize-function (n offset plcs ret-val)
+(function initialize-function (n offset inits ret-val)
   (and [= (@ expr-type n) (-function-)] (do
     (let (sub-expr-offset [- (@ expr-frame-size n) [* #7(word-size)]])
-    (bind (frame-size in-use) [initialize-expression (@ expr-expression n) sub-expr-offset plcs bind]
+    (bind (frame-size in-use) [initialize-expression (@ expr-expression n) sub-expr-offset inits bind]
     (let (in-use [bor in-use (hex FFFFFFFFFFFF0831)])
     (let (param-offset [- (@ expr-frame-size n) [* #6(word-size)]])
     (let
@@ -284,10 +284,10 @@
 
 (constrain initialize-continuation (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
 
-(function initialize-continuation (n offset plcs ret-val)
+(function initialize-continuation (n offset inits ret-val)
   (and [= (@ expr-type n) (-continuation-)]
     (let (bottom-offset [- offset [* [+ [length (@ expr-parameters n)] #1] (word-size)]])
-    (bind (frame-size in-use) [initialize-expression (@ expr-expression n) bottom-offset plcs bind]
+    (bind (frame-size in-use) [initialize-expression (@ expr-expression n) bottom-offset inits bind]
     (let (in-use [bor (hex FFFFFFFFFFFF0C38) in-use])
     (let (in-use [expr-to-register/memory (@ expr-expression n) bottom-offset in-use]) (do
     (let (in-use
@@ -329,10 +329,10 @@
 
 (constrain initialize-with (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
 
-(function initialize-with (n offset plcs ret-val)
+(function initialize-with (n offset inits ret-val)
   (and (or [= (@ expr-type n) (-with-)]) (do
     (setf expr-binding-aug (@ expr-expression n) (@ expr-binding-aug n))
-    (bind (frame-size in-use) [initialize-expression (@ expr-expression n) offset plcs bind] (do
+    (bind (frame-size in-use) [initialize-expression (@ expr-expression n) offset inits bind] (do
     (if (@ expr-escapes n) (ignore)
       (let (cont-bndg (@ expr-reference n)) (do
       (setf bndg-size cont-bndg #0)
@@ -360,11 +360,11 @@
 
 (constrain initialize-storage (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
 
-(function initialize-storage (n offset plcs ret-val)
+(function initialize-storage (n offset inits ret-val)
   (and [= (@ expr-type n) (-storage-)] (do
     (fold (memory-state (values (use-storage ret-val) offset (hex 0000000000000800))) (u (@ expr-arguments n))
       (bind (bottom-offset in-use) memory-state
-      (bind (bottom-offset' in-use') [initialize-expression u offset plcs bind]
+      (bind (bottom-offset' in-use') [initialize-expression u offset inits bind]
       (values (use-storage ret-val) [min bottom-offset bottom-offset'] [bor in-use in-use']))))
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (setf expr-generator n [function->generator generate-storage])
@@ -446,14 +446,14 @@
 
 (constrain initialize-jump (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
 
-(function initialize-jump (n offset plcs ret-val)
+(function initialize-jump (n offset inits ret-val)
   (and [= (@ expr-type n) (-jump-)]
     (let (sub-expr-offset [- offset [* [+ [length (@ expr-arguments n)] #1] (word-size)]])
-    (let (memory-state [initialize-expression (@ expr-target n) sub-expr-offset plcs ret-val])
+    (let (memory-state [initialize-expression (@ expr-target n) sub-expr-offset inits ret-val])
     (bind (bottom-offset in-use)
       (fold (memory-state memory-state) (u (@ expr-arguments n))
         (bind (bottom-offset in-use) memory-state
-        (bind (bottom-offset' in-use') [initialize-expression u sub-expr-offset plcs bind]
+        (bind (bottom-offset' in-use') [initialize-expression u sub-expr-offset inits bind]
         (values (use-storage ret-val) [min bottom-offset bottom-offset'] [bor in-use in-use']))))
     (let (in-use [bor in-use (hex FFFFFFFFFFFF0C30)])
     (let (offset [- offset (word-size)])
@@ -517,14 +517,14 @@
 
 (constrain initialize-invoke (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
 
-(function initialize-invoke (n offset plcs ret-val)
+(function initialize-invoke (n offset inits ret-val)
   (and [= (@ expr-type n) (-invoke-)]
     (bind (bottom-offset in-use)
       (let (sub-expr-offset [- offset [* [+ [length (@ expr-arguments n)] #1] (word-size)]])
-      (let (memory-state [initialize-expression (@ expr-target n) sub-expr-offset plcs bind])
+      (let (memory-state [initialize-expression (@ expr-target n) sub-expr-offset inits bind])
       (fold (memory-state memory-state) (u (@ expr-arguments n))
         (bind (bottom-offset in-use) memory-state
-        (bind (bottom-offset' in-use') [initialize-expression u sub-expr-offset plcs bind]
+        (bind (bottom-offset' in-use') [initialize-expression u sub-expr-offset inits bind]
         (values storage [min bottom-offset bottom-offset'] [bor in-use in-use']))))))
     
     (let (in-use [bor in-use (hex FFFFFFFFFFFF0031)])
@@ -602,14 +602,14 @@
 
 (constrain initialize-if (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
 
-(function initialize-if (n offset plcs ret-val)
+(function initialize-if (n offset inits ret-val)
   (and [= (@ expr-type n) (-if-)] (do
     (setf expr-binding-aug (@ expr-condition n) (@ expr-binding-aug n))
     (setf expr-binding-aug (@ expr-consequent n) (@ expr-binding-aug n))
     (setf expr-binding-aug (@ expr-alternate n) (@ expr-binding-aug n))
-    (bind (bottom-offset in-use) [initialize-expression (@ expr-condition n) offset plcs bind]
-    (bind (bottom-offset' in-use') [initialize-expression (@ expr-consequent n) offset plcs bind]
-    (bind (bottom-offset'' in-use'') [initialize-expression (@ expr-alternate n) offset plcs bind]
+    (bind (bottom-offset in-use) [initialize-expression (@ expr-condition n) offset inits bind]
+    (bind (bottom-offset' in-use') [initialize-expression (@ expr-consequent n) offset inits bind]
+    (bind (bottom-offset'' in-use'') [initialize-expression (@ expr-alternate n) offset inits bind]
     (let (in-use [bor in-use [bor in-use' [bor in-use'' (hex FFFFFFFFFFFF0830)]]]) (do
     (setf expr-generator n [function->generator generate-if])
     (values (use-storage ret-val)
@@ -632,10 +632,10 @@
 
 (constrain initialize-constrain (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
 
-(function initialize-constrain (n offset plcs ret-val)
+(function initialize-constrain (n offset inits ret-val)
   (and [= (@ expr-type n) (-constrain-)]
     (let (offset [- offset (word-size)])
-    (bind (bottom-offset in-use) [initialize-expression (@ expr-expression n) offset plcs ret-val]
+    (bind (bottom-offset in-use) [initialize-expression (@ expr-expression n) offset inits ret-val]
     (let (in-use
       [expr-to-register/memory (@ expr-expression n) offset [bor in-use (hex FFFFFFFFFFFF0830)]]) (do
     (setf bndg-size (@ expr-binding-aug n) (word-size))
@@ -688,7 +688,7 @@
 
 (constrain initialize-symbol (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
 
-(function initialize-symbol (n offset plcs ret-val)
+(function initialize-symbol (n offset inits ret-val)
   (and [= (@ expr-type n) (-symbol-)] (do
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (setf expr-generator n [function->generator generate-symbol])
@@ -706,7 +706,7 @@
 
 (constrain initialize-literal (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
 
-(function initialize-literal (n offset plcs ret-val)
+(function initialize-literal (n offset inits ret-val)
   (and [= (@ expr-type n) (-literal-)] (do
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (setf expr-generator n [function->generator generate-literal])
@@ -715,18 +715,18 @@
 
 (constrain initialize-expression (\ r (with-vars (b c) (`(function (expr ,b (list initializer) ,c) (values ,b reg-use-vec))r)r)))
 
-(function initialize-expression (n offset plcs ret-val) (do (or
-  (fold (found? (false)) (plc plcs) (or found? [[initializer->function plc] n offset plcs ret-val]))
-  [initialize-function n offset plcs ret-val]
-  [initialize-continuation n offset plcs ret-val]
-  [initialize-with n offset plcs ret-val]
-  [initialize-storage n offset plcs ret-val]
-  [initialize-jump n offset plcs ret-val]
-  [initialize-invoke n offset plcs ret-val]
-  [initialize-if n offset plcs ret-val]
-  [initialize-constrain n offset plcs ret-val]
-  [initialize-symbol n offset plcs ret-val]
-  [initialize-literal n offset plcs ret-val])
+(function initialize-expression (n offset inits ret-val) (do (or
+  (fold (found? (false)) (init inits) (or found? [[initializer->function init] n offset inits ret-val]))
+  [initialize-function n offset inits ret-val]
+  [initialize-continuation n offset inits ret-val]
+  [initialize-with n offset inits ret-val]
+  [initialize-storage n offset inits ret-val]
+  [initialize-jump n offset inits ret-val]
+  [initialize-invoke n offset inits ret-val]
+  [initialize-if n offset inits ret-val]
+  [initialize-constrain n offset inits ret-val]
+  [initialize-symbol n offset inits ret-val]
+  [initialize-literal n offset inits ret-val])
   ret-val))
 
 (constrain generator->function

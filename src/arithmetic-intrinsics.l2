@@ -61,7 +61,7 @@
 (constrain initialize-unary-arithmetic-operators
   (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
 
-(function initialize-unary-arithmetic-operators (n offset plcs ret-val)
+(function initialize-unary-arithmetic-operators (n offset inits ret-val)
   (and (and [undefined-symbol-invoke? n] [= [length (@ expr-arguments n)] #1])
     (let
       (arg1 [@car (@ expr-arguments n)]) (let
@@ -70,7 +70,7 @@
     (switch str= [invoke-symbol-name n]
       ((" getb) (" get1b) (" get2b) (" get4b) (" get8b) (" get) (" bnot)
         (let (sub-expr-offset [- offset (word-size)])
-        (bind (bottom-offset in-use) [initialize-expression arg1 sub-expr-offset plcs ret-val]
+        (bind (bottom-offset in-use) [initialize-expression arg1 sub-expr-offset inits ret-val]
         (let (in-use [bor in-use (hex FFFFFFFFFFFF0831)])
         (let (in-use [expr-to-register/memory arg1 sub-expr-offset in-use]) (do
         (setf bndg-size (@ expr-binding-aug n) (word-size))
@@ -156,7 +156,7 @@
 (constrain initialize-binary-arithmetic-operators
   (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
 
-(function initialize-binary-arithmetic-operators (n offset plcs ret-val)
+(function initialize-binary-arithmetic-operators (n offset inits ret-val)
   (and (and [undefined-symbol-invoke? n] [= [length (@ expr-arguments n)] #2])
     (let
       (arg1 [@car (@ expr-arguments n)])
@@ -168,8 +168,8 @@
     (switch str= [invoke-symbol-name n]
       ((" setb) (" set1b) (" set2b) (" set4b) (" set8b) (" set) (" bor) (" band) (" +) (" -) (" =) (" <) (" >)
         (let (sub-expr-offset [- offset [* #2(word-size)]])
-        (bind (bottom-offset1 in-use1) [initialize-expression arg1 sub-expr-offset plcs bind]
-        (bind (bottom-offset2 in-use2) [initialize-expression arg2 sub-expr-offset plcs bind]
+        (bind (bottom-offset1 in-use1) [initialize-expression arg1 sub-expr-offset inits bind]
+        (bind (bottom-offset2 in-use2) [initialize-expression arg2 sub-expr-offset inits bind]
         (let (bottom-offset [min bottom-offset1 bottom-offset2])
         (let (in-use [bor [bor in-use1 in-use2] (hex FFFFFFFFFFFF0C31)])
         (let (in-use [expr-to-register/memory arg1 [- offset [* #1(word-size)]] in-use])
@@ -182,8 +182,8 @@
       
       ((" /) (" rem)
         (let (sub-expr-offset [- offset [* #2(word-size)]])
-        (bind (bottom-offset1 in-use1) [initialize-expression arg1 sub-expr-offset plcs bind]
-        (bind (bottom-offset2 in-use2) [initialize-expression arg2 sub-expr-offset plcs bind]
+        (bind (bottom-offset1 in-use1) [initialize-expression arg1 sub-expr-offset inits bind]
+        (bind (bottom-offset2 in-use2) [initialize-expression arg2 sub-expr-offset inits bind]
         (let (bottom-offset [min bottom-offset1 bottom-offset2])
         (let (in-use [bor [bor in-use1 in-use2] (hex FFFFFFFFFFFF0034)])
         (bind (arg1-success? in-use) [try-binding-to-register arg1-val-bndg (rax) in-use bind]
@@ -197,8 +197,8 @@
       
       ((" *)
         (let (sub-expr-offset [- offset [* #2(word-size)]])
-        (bind (bottom-offset1 in-use1) [initialize-expression arg1 sub-expr-offset plcs bind]
-        (bind (bottom-offset2 in-use2) [initialize-expression arg2 sub-expr-offset plcs bind]
+        (bind (bottom-offset1 in-use1) [initialize-expression arg1 sub-expr-offset inits bind]
+        (bind (bottom-offset2 in-use2) [initialize-expression arg2 sub-expr-offset inits bind]
         (let (bottom-offset [min bottom-offset1 bottom-offset2])
         (let (in-use [bor [bor in-use1 in-use2] (hex FFFFFFFFFFFF0030)])
         (bind (arg1-success? in-use) [try-binding-to-register arg1-val-bndg (rax) in-use bind]
@@ -212,8 +212,8 @@
       
       ((" <<) (" >>)
         (let (sub-expr-offset [- offset [* #2(word-size)]])
-        (bind (bottom-offset1 in-use1) [initialize-expression arg1 sub-expr-offset plcs bind]
-        (bind (bottom-offset2 in-use2) [initialize-expression arg2 sub-expr-offset plcs bind]
+        (bind (bottom-offset1 in-use1) [initialize-expression arg1 sub-expr-offset inits bind]
+        (bind (bottom-offset2 in-use2) [initialize-expression arg2 sub-expr-offset inits bind]
         (let (bottom-offset [min bottom-offset1 bottom-offset2])
         (let (in-use [bor [bor in-use1 in-use2] (hex FFFFFFFFFFFF0830)])
         (let (in-use [expr-to-register/memory arg1 [- offset [* #1(word-size)]] in-use])
@@ -405,16 +405,16 @@
 (constrain initialize-arithmetic-if-bindings
   (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
 
-(function initialize-arithmetic-if-bindings (n offset plcs ret-val)
+(function initialize-arithmetic-if-bindings (n offset inits ret-val)
   (and [= (@ expr-type n) (-if-)] [arithmetic-if? n]
     (let (offset [- offset [* #2(word-size)]])
     (let (args (@ expr-arguments (@ expr-condition n))) (do
     (setf expr-binding-aug (@ expr-consequent n) (@ expr-binding-aug n))
     (setf expr-binding-aug (@ expr-alternate n) (@ expr-binding-aug n))
-    (bind (bottom-offset in-use) [initialize-expression [@car args] offset plcs bind]
-    (bind (bottom-offset' in-use') [initialize-expression [@cadr args] offset plcs bind]
-    (bind (bottom-offset'' in-use'') [initialize-expression (@ expr-consequent n) offset plcs bind]
-    (bind (bottom-offset''' in-use''') [initialize-expression (@ expr-alternate n) offset plcs bind]
+    (bind (bottom-offset in-use) [initialize-expression [@car args] offset inits bind]
+    (bind (bottom-offset' in-use') [initialize-expression [@cadr args] offset inits bind]
+    (bind (bottom-offset'' in-use'') [initialize-expression (@ expr-consequent n) offset inits bind]
+    (bind (bottom-offset''' in-use''') [initialize-expression (@ expr-alternate n) offset inits bind]
     (let (in-use [bor in-use [bor in-use' [bor in-use'' [bor in-use''' (hex FFFFFFFFFFFF0830)]]]])
     (let (bottom-offset [min bottom-offset [min bottom-offset' [min bottom-offset'' bottom-offset''']]])
     (let (in-use [expr-to-register/memory [@car args] [+ offset [* #1(word-size)]] in-use])
@@ -598,8 +598,8 @@
 (constrain initialize-arithmetic-intrinsics
   (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
 
-(function initialize-arithmetic-intrinsics (n offset plcs ret-val) (or
-  [initialize-arithmetic-if-bindings n offset plcs ret-val]
-  [initialize-unary-arithmetic-operators n offset plcs ret-val]
-  [initialize-binary-arithmetic-operators n offset plcs ret-val]))
+(function initialize-arithmetic-intrinsics (n offset inits ret-val) (or
+  [initialize-arithmetic-if-bindings n offset inits ret-val]
+  [initialize-unary-arithmetic-operators n offset inits ret-val]
+  [initialize-binary-arithmetic-operators n offset inits ret-val]))
 
