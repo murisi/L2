@@ -47,39 +47,41 @@
 
 (function variable (var val) (do [set var val] (true)))
 
-(constrain undefined-symbol-invoke? (\ r (with-vars (a) (`(function (expr) ,a)r)r)))
+(constrain match-undefined-unary-invoke (\ r (with-vars (a) (`(function ((ref string) (ref expr) expr) ,a)r)r)))
 
-(function undefined-symbol-invoke? (n)
-  (and [= (@ expr-type n) (-invoke-)] [= (@ expr-type (@ expr-target n)) (-symbol-)]
-    [= (@ bndg-state (@ expr-reference (@ expr-target n))) (undefined-state)]))
-
-(constrain invoke-symbol-name (\ r (`(function (expr) string)r)))
-
-(function invoke-symbol-name (n)
-  (@ bndg-name (@ expr-reference (@ expr-target n))))
+(function match-undefined-unary-invoke (name arg1 n)
+  (match-property
+    (expr-type (%[= (-invoke-)]))
+    (expr-target (%(match-property
+      (expr-type (%[= (-symbol-)]))
+      (expr-reference (%(match-property
+        (bndg-state (%[= (undefined-state)]))
+        (bndg-name (%[variable name]))))))))
+    (expr-arguments (%(match-list
+      (%[variable arg1])))) n))
 
 (constrain initialize-unary-arithmetic-operators
   (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
 
 (function initialize-unary-arithmetic-operators (n offset inits ret-val)
-  (and (and [undefined-symbol-invoke? n] [= [length (@ expr-arguments n)] #1])
+  (bind-if [match-undefined-unary-invoke name arg1 n] (name arg1)
     (let
-      (arg1 [@car (@ expr-arguments n)]) (let
-      (arg1-val-bndg (@ expr-binding-aug arg1))
-      (expr-val-bndg (@ expr-binding-aug n))
-    (switch str= [invoke-symbol-name n]
-      ((" getb) (" get1b) (" get2b) (" get4b) (" get8b) (" get) (" bnot)
-        (let (sub-expr-offset [- offset (word-size)])
-        (bind (bottom-offset in-use) [initialize-expression arg1 sub-expr-offset inits ret-val]
-        (let (in-use [bor in-use (hex FFFFFFFFFFFF0831)])
-        (let (in-use [expr-to-register/memory arg1 sub-expr-offset in-use]) (do
-        (setf bndg-size (@ expr-binding-aug n) (word-size))
-        (setf bndg-storage (@ expr-binding-aug (@ expr-target n)) (nil-storage))
-        (setf expr-generator n [function->generator generate-unary-arithmetic-operators])
-        (values (use-storage ret-val) bottom-offset in-use)
-        (true)))))))
-      
-      (false))))))
+        (arg1-val-bndg (@ expr-binding-aug $arg1))
+        (expr-val-bndg (@ expr-binding-aug n))
+      (switch str= $name
+        ((" getb) (" get1b) (" get2b) (" get4b) (" get8b) (" get) (" bnot)
+          (let (sub-expr-offset [- offset (word-size)])
+          (bind (bottom-offset in-use) [initialize-expression $arg1 sub-expr-offset inits ret-val]
+          (let (in-use [bor in-use (hex FFFFFFFFFFFF0831)])
+          (let (in-use [expr-to-register/memory $arg1 sub-expr-offset in-use]) (do
+          (setf bndg-size (@ expr-binding-aug n) (word-size))
+          (setf bndg-storage (@ expr-binding-aug (@ expr-target n)) (nil-storage))
+          (setf expr-generator n [function->generator generate-unary-arithmetic-operators])
+          (values (use-storage ret-val) bottom-offset in-use)
+          (true)))))))
+        
+        (false)))
+    (false)))
 
 (ignore
   If the given binding is not already in a register, a move is generated from the binding
@@ -109,71 +111,83 @@
 
 (function generate-unary-arithmetic-operators (n c relocs r handler)
   (substitute (.. r handler)
-    (and (and [undefined-symbol-invoke? n] [= [length (@ expr-arguments n)] #1])
+    (bind-if [match-undefined-unary-invoke name arg1 n] (name arg1)
       (let
-        (arg1 [@car (@ expr-arguments n)]) (let
-        (arg1-val-bndg (@ expr-binding-aug arg1))
+        (arg1-val-bndg (@ expr-binding-aug $arg1))
         (expr-val-bndg (@ expr-binding-aug n))
         
-      (switch str= [invoke-symbol-name n]
+      (switch str= $name
         ((" getb) (" get1b) (do
-          [generate-expression arg1 c relocs ..]
+          [generate-expression $arg1 c relocs ..]
           (let (arg1-reg [generate-move-to-register (r11) arg1-val-bndg c relocs ..])
             [prepend (make-instrN(x86-movzx)
               ([bndg->op expr-val-bndg relocs ..][make-mem-op #1 arg1-reg (none)#0 #0 #4 ..][make-reg-op(r11)..])..) c ..])
           (true)))
         
         ((" get2b) (do
-          [generate-expression arg1 c relocs ..]
+          [generate-expression $arg1 c relocs ..]
           (let (arg1-reg [generate-move-to-register (r11) arg1-val-bndg c relocs ..])
             [prepend (make-instrN (x86-movzx)
               ([bndg->op expr-val-bndg relocs ..][make-mem-op #2 arg1-reg (none)#0 #0 #4 ..][make-reg-op(r11)..])..) c ..])
           (true)))
         
         ((" get4b) (do
-          [generate-expression arg1 c relocs ..]
+          [generate-expression $arg1 c relocs ..]
           (let (arg1-reg [generate-move-to-register (r11) arg1-val-bndg c relocs ..])
             [prepend (make-instrN (x86-movzx)
               ([bndg->op expr-val-bndg relocs ..][make-mem-op #4 arg1-reg (none)#0 #0 #4 ..][make-reg-op(r11)..])..) c ..])
           (true)))
         
         ((" get8b) (" get) (do
-          [generate-expression arg1 c relocs ..]
+          [generate-expression $arg1 c relocs ..]
           (let (arg1-reg [generate-move-to-register (r11) arg1-val-bndg c relocs ..])
             [prepend (make-instrN (x86-mov)
               ([bndg->op expr-val-bndg relocs ..][make-mem-op #8 arg1-reg (none)#0 #0 #4 ..][make-reg-op(r11)..])..) c ..])
           (true)))
         
         ((" bnot) (do
-          [generate-expression arg1 c relocs ..]
+          [generate-expression $arg1 c relocs ..]
           [prepend (make-instrN(x86-mov)
             ([bndg->op expr-val-bndg relocs ..][bndg->op arg1-val-bndg relocs ..][make-reg-op (r11)..]) ..) c ..]
           [prepend (make-instrN (x86-not) ([bndg->op expr-val-bndg relocs ..]) ..) c ..]
           (true)))
           
-        (false)))))))
+        (false)))
+      (false))))
+
+(constrain match-undefined-binary-invoke (\ r (with-vars (a) (`(function ((ref string) (ref expr) (ref expr) expr) ,a)r)r)))
+
+(function match-undefined-binary-invoke (name arg1 arg2 n)
+  (match-property
+    (expr-type (%[= (-invoke-)]))
+    (expr-target (%(match-property
+      (expr-type (%[= (-symbol-)]))
+      (expr-reference (%(match-property
+        (bndg-state (%[= (undefined-state)]))
+        (bndg-name (%[variable name]))))))))
+    (expr-arguments (%(match-list
+      (%[variable arg1])
+      (%[variable arg2])))) n))
 
 (constrain initialize-binary-arithmetic-operators
   (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
 
 (function initialize-binary-arithmetic-operators (n offset inits ret-val)
-  (and (and [undefined-symbol-invoke? n] [= [length (@ expr-arguments n)] #2])
+  (bind-if [match-undefined-binary-invoke name arg1 arg2 n] (name arg1 arg2)
     (let
-      (arg1 [@car (@ expr-arguments n)])
-      (arg2 [@cadr (@ expr-arguments n)]) (let
-      (arg1-val-bndg (@ expr-binding-aug arg1))
-      (arg2-val-bndg (@ expr-binding-aug arg2))
+      (arg1-val-bndg (@ expr-binding-aug $arg1))
+      (arg2-val-bndg (@ expr-binding-aug $arg2))
       (expr-val-bndg (@ expr-binding-aug n))
       
-    (switch str= [invoke-symbol-name n]
+    (switch str= $name
       ((" setb) (" set1b) (" set2b) (" set4b) (" set8b) (" set) (" bor) (" band) (" +) (" -) (" =) (" <) (" >)
         (let (sub-expr-offset [- offset [* #2(word-size)]])
-        (bind (bottom-offset1 in-use1) [initialize-expression arg1 sub-expr-offset inits bind]
-        (bind (bottom-offset2 in-use2) [initialize-expression arg2 sub-expr-offset inits bind]
+        (bind (bottom-offset1 in-use1) [initialize-expression $arg1 sub-expr-offset inits bind]
+        (bind (bottom-offset2 in-use2) [initialize-expression $arg2 sub-expr-offset inits bind]
         (let (bottom-offset [min bottom-offset1 bottom-offset2])
         (let (in-use [bor [bor in-use1 in-use2] (hex FFFFFFFFFFFF0C31)])
-        (let (in-use [expr-to-register/memory arg1 [- offset [* #1(word-size)]] in-use])
-        (let (in-use [expr-to-register/memory arg2 [- offset [* #2(word-size)]] in-use]) (do
+        (let (in-use [expr-to-register/memory $arg1 [- offset [* #1(word-size)]] in-use])
+        (let (in-use [expr-to-register/memory $arg2 [- offset [* #2(word-size)]] in-use]) (do
         (setf bndg-size (@ expr-binding-aug n) (word-size))
         (setf bndg-storage (@ expr-binding-aug (@ expr-target n)) (nil-storage))
         (setf expr-generator n [function->generator generate-binary-arithmetic-operators])
@@ -182,13 +196,13 @@
       
       ((" /) (" rem)
         (let (sub-expr-offset [- offset [* #2(word-size)]])
-        (bind (bottom-offset1 in-use1) [initialize-expression arg1 sub-expr-offset inits bind]
-        (bind (bottom-offset2 in-use2) [initialize-expression arg2 sub-expr-offset inits bind]
+        (bind (bottom-offset1 in-use1) [initialize-expression $arg1 sub-expr-offset inits bind]
+        (bind (bottom-offset2 in-use2) [initialize-expression $arg2 sub-expr-offset inits bind]
         (let (bottom-offset [min bottom-offset1 bottom-offset2])
         (let (in-use [bor [bor in-use1 in-use2] (hex FFFFFFFFFFFF0034)])
         (bind (arg1-success? in-use) [try-binding-to-register arg1-val-bndg (rax) in-use bind]
-        (let (in-use (if arg1-success? in-use [expr-to-register/memory arg1 [- offset [* #1(word-size)]] in-use]))
-        (let (in-use [expr-to-register/memory arg2 [- offset [* #2(word-size)]] in-use]) (do
+        (let (in-use (if arg1-success? in-use [expr-to-register/memory $arg1 [- offset [* #1(word-size)]] in-use]))
+        (let (in-use [expr-to-register/memory $arg2 [- offset [* #2(word-size)]] in-use]) (do
         (setf bndg-size (@ expr-binding-aug n) (word-size))
         (setf bndg-storage (@ expr-binding-aug (@ expr-target n)) (nil-storage))
         (setf expr-generator n [function->generator generate-binary-arithmetic-operators])
@@ -197,13 +211,13 @@
       
       ((" *)
         (let (sub-expr-offset [- offset [* #2(word-size)]])
-        (bind (bottom-offset1 in-use1) [initialize-expression arg1 sub-expr-offset inits bind]
-        (bind (bottom-offset2 in-use2) [initialize-expression arg2 sub-expr-offset inits bind]
+        (bind (bottom-offset1 in-use1) [initialize-expression $arg1 sub-expr-offset inits bind]
+        (bind (bottom-offset2 in-use2) [initialize-expression $arg2 sub-expr-offset inits bind]
         (let (bottom-offset [min bottom-offset1 bottom-offset2])
         (let (in-use [bor [bor in-use1 in-use2] (hex FFFFFFFFFFFF0030)])
         (bind (arg1-success? in-use) [try-binding-to-register arg1-val-bndg (rax) in-use bind]
-        (let (in-use (if arg1-success? in-use [expr-to-register/memory arg1 [- offset [* #1(word-size)]] in-use]))
-        (let (in-use [expr-to-register/memory arg2 [- offset [* #2(word-size)]] in-use]) (do
+        (let (in-use (if arg1-success? in-use [expr-to-register/memory $arg1 [- offset [* #1(word-size)]] in-use]))
+        (let (in-use [expr-to-register/memory $arg2 [- offset [* #2(word-size)]] in-use]) (do
         (setf bndg-size (@ expr-binding-aug n) (word-size))
         (setf bndg-storage (@ expr-binding-aug (@ expr-target n)) (nil-storage))
         (setf expr-generator n [function->generator generate-binary-arithmetic-operators])
@@ -212,70 +226,69 @@
       
       ((" <<) (" >>)
         (let (sub-expr-offset [- offset [* #2(word-size)]])
-        (bind (bottom-offset1 in-use1) [initialize-expression arg1 sub-expr-offset inits bind]
-        (bind (bottom-offset2 in-use2) [initialize-expression arg2 sub-expr-offset inits bind]
+        (bind (bottom-offset1 in-use1) [initialize-expression $arg1 sub-expr-offset inits bind]
+        (bind (bottom-offset2 in-use2) [initialize-expression $arg2 sub-expr-offset inits bind]
         (let (bottom-offset [min bottom-offset1 bottom-offset2])
         (let (in-use [bor [bor in-use1 in-use2] (hex FFFFFFFFFFFF0830)])
-        (let (in-use [expr-to-register/memory arg1 [- offset [* #1(word-size)]] in-use])
+        (let (in-use [expr-to-register/memory $arg1 [- offset [* #1(word-size)]] in-use])
         (bind (arg2-success? in-use) [try-binding-to-register arg2-val-bndg (rcx) in-use bind]
-        (let (in-use (if arg2-success? in-use [expr-to-register/memory arg2 [- offset [* #2(word-size)]] in-use])) (do
+        (let (in-use (if arg2-success? in-use [expr-to-register/memory $arg2 [- offset [* #2(word-size)]] in-use])) (do
         (setf bndg-size (@ expr-binding-aug n) (word-size))
         (setf bndg-storage (@ expr-binding-aug (@ expr-target n)) (nil-storage))
         (setf expr-generator n [function->generator generate-binary-arithmetic-operators])
         (values (use-storage ret-val) bottom-offset in-use)
         (true)))))))))))
       
-      (false))))))
+      (false)))
+    (false)))
 
 (constrain generate-binary-arithmetic-operators
   (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
 (function generate-binary-arithmetic-operators (n c relocs r handler)
   (substitute (.. r handler)
-    (and (and [undefined-symbol-invoke? n] [= [length (@ expr-arguments n)] #2])
+    (bind-if [match-undefined-binary-invoke name arg1 arg2 n] (name arg1 arg2)
       (let
-        (arg1 [@car (@ expr-arguments n)])
-        (arg2 [@cadr (@ expr-arguments n)]) (let
-        (arg1-val-bndg (@ expr-binding-aug arg1))
-        (arg2-val-bndg (@ expr-binding-aug arg2))
+        (arg1-val-bndg (@ expr-binding-aug $arg1))
+        (arg2-val-bndg (@ expr-binding-aug $arg2))
         (expr-val-bndg (@ expr-binding-aug n))
         
-      (switch str= [invoke-symbol-name n]
+      (switch str= $name
         ((" setb) (" set1b) (do
-          [generate-expression arg1 c relocs ..]
-          [generate-expression arg2 c relocs ..]
+          [generate-expression $arg1 c relocs ..]
+          [generate-expression $arg2 c relocs ..]
           (let (arg1-reg [generate-move-to-register (r10) arg1-val-bndg c relocs ..])
             [prepend (make-instrN (x86-mov)
               ([make-mem-op #1 arg1-reg (none)#0 #0 #4 ..][bndg->partial-op #1 arg2-val-bndg relocs ..][make-reg-op(r11l)..]) ..) c ..])
           (true)))
         
         ((" set2b) (do
-          [generate-expression arg1 c relocs ..]
-          [generate-expression arg2 c relocs ..]
+          [generate-expression $arg1 c relocs ..]
+          [generate-expression $arg2 c relocs ..]
           (let (arg1-reg [generate-move-to-register (r10) arg1-val-bndg c relocs ..])
             [prepend (make-instrN (x86-mov)
               ([make-mem-op #2 arg1-reg (none)#0 #0 #4 ..][bndg->partial-op #2 arg2-val-bndg relocs ..][make-reg-op(r11w)..]) ..) c ..])
           (true)))
         
         ((" set4b) (do
-          [generate-expression arg1 c relocs ..]
-          [generate-expression arg2 c relocs ..]
+          [generate-expression $arg1 c relocs ..]
+          [generate-expression $arg2 c relocs ..]
           (let (arg1-reg [generate-move-to-register (r10) arg1-val-bndg c relocs ..])
             [prepend (make-instrN (x86-mov)
               ([make-mem-op #4 arg1-reg (none)#0 #0 #4 ..][bndg->partial-op #4 arg2-val-bndg relocs ..][make-reg-op(r11d)..]) ..) c ..])
           (true)))
         
         ((" set8b) (" set) (do
-          [generate-expression arg1 c relocs ..]
-          [generate-expression arg2 c relocs ..]
+          [generate-expression $arg1 c relocs ..]
+          [generate-expression $arg2 c relocs ..]
           (let (arg1-reg [generate-move-to-register (r10) arg1-val-bndg c relocs ..])
             [prepend (make-instrN (x86-mov)
               ([make-mem-op #8 arg1-reg (none)#0 #0 #4 ..][bndg->partial-op #8 arg2-val-bndg relocs ..][make-reg-op(r11)..]) ..) c ..])
           (true)))
           
         ((" +) (do
-          [generate-expression arg1 c relocs ..]
-          [generate-expression arg2 c relocs ..]
+          [generate-expression $arg1 c relocs ..]
+          [generate-expression $arg2 c relocs ..]
           [prepend (make-instrN(x86-mov)
             ([bndg->op expr-val-bndg relocs ..][bndg->op arg1-val-bndg relocs ..][make-reg-op (r11) ..]) ..) c ..]
           [prepend (make-instrN (x86-add)
@@ -283,8 +296,8 @@
           (true)))
         
         ((" -) (do
-          [generate-expression arg1 c relocs ..]
-          [generate-expression arg2 c relocs ..]
+          [generate-expression $arg1 c relocs ..]
+          [generate-expression $arg2 c relocs ..]
           [prepend (make-instrN(x86-mov)
             ([bndg->op expr-val-bndg relocs ..][bndg->op arg1-val-bndg relocs ..][make-reg-op (r11)..])..) c ..]
           [prepend (make-instrN (x86-sub)
@@ -292,16 +305,16 @@
           (true)))
         
         ((" *) (do
-          [generate-expression arg1 c relocs ..]
-          [generate-expression arg2 c relocs ..]
+          [generate-expression $arg1 c relocs ..]
+          [generate-expression $arg2 c relocs ..]
           [prepend (make-instrN (x86-mov) ([make-reg-op (rax) ..] [bndg->op arg1-val-bndg relocs ..]) ..) c ..]
           [prepend (make-instrN (x86-mul) ([bndg->op arg2-val-bndg relocs ..]) ..) c ..]
           [prepend (make-instrN (x86-mov) ([bndg->op expr-val-bndg relocs ..] [make-reg-op (rax) ..]) ..) c ..]
           (true)))
         
         ((" /) (do
-          [generate-expression arg1 c relocs ..]
-          [generate-expression arg2 c relocs ..]
+          [generate-expression $arg1 c relocs ..]
+          [generate-expression $arg2 c relocs ..]
           [prepend (make-instrN (x86-xor) ([make-reg-op (rdx) ..] [make-reg-op (rdx) ..]) ..) c ..]
           [prepend (make-instrN (x86-mov) ([make-reg-op (rax) ..] [bndg->op arg1-val-bndg relocs ..]) ..) c ..]
           [prepend (make-instrN (x86-div) ([bndg->op arg2-val-bndg relocs ..]) ..) c ..]
@@ -309,8 +322,8 @@
           (true)))
         
         ((" rem) (do
-          [generate-expression arg1 c relocs ..]
-          [generate-expression arg2 c relocs ..]
+          [generate-expression $arg1 c relocs ..]
+          [generate-expression $arg2 c relocs ..]
           [prepend (make-instrN (x86-xor) ([make-reg-op (rdx) ..] [make-reg-op (rdx) ..]) ..) c ..]
           [prepend (make-instrN (x86-mov) ([make-reg-op (rax) ..] [bndg->op arg1-val-bndg relocs ..]) ..) c ..]
           [prepend (make-instrN (x86-div) ([bndg->op arg2-val-bndg relocs ..]) ..) c ..]
@@ -318,8 +331,8 @@
           (true)))
         
         ((" =) (do
-          [generate-expression arg1 c relocs ..]
-          [generate-expression arg2 c relocs ..]
+          [generate-expression $arg1 c relocs ..]
+          [generate-expression $arg2 c relocs ..]
           [prepend (make-instrN(x86-xor)
             ([bndg->op expr-val-bndg relocs ..][bndg->op expr-val-bndg relocs ..][make-reg-op (r11)..])..) c ..]
           [prepend (make-instrN(x86-cmp)
@@ -328,8 +341,8 @@
           (true)))
         
         ((" <) (do
-          [generate-expression arg1 c relocs ..]
-          [generate-expression arg2 c relocs ..]
+          [generate-expression $arg1 c relocs ..]
+          [generate-expression $arg2 c relocs ..]
           [prepend (make-instrN(x86-xor)
             ([bndg->op expr-val-bndg relocs ..][bndg->op expr-val-bndg relocs ..][make-reg-op (r11)..])..) c ..]
           [prepend (make-instrN(x86-cmp)
@@ -338,8 +351,8 @@
           (true)))
         
         ((" >) (do
-          [generate-expression arg1 c relocs ..]
-          [generate-expression arg2 c relocs ..]
+          [generate-expression $arg1 c relocs ..]
+          [generate-expression $arg2 c relocs ..]
           [prepend (make-instrN(x86-xor)
             ([bndg->op expr-val-bndg relocs ..][bndg->op expr-val-bndg relocs ..][make-reg-op (r11)..])..) c ..]
           [prepend (make-instrN(x86-cmp)
@@ -348,8 +361,8 @@
           (true)))
         
         ((" <<) (do
-          [generate-expression arg1 c relocs ..]
-          [generate-expression arg2 c relocs ..]
+          [generate-expression $arg1 c relocs ..]
+          [generate-expression $arg2 c relocs ..]
           [prepend (make-instrN (x86-mov) ([make-reg-op (rcx) ..] [bndg->op arg2-val-bndg relocs ..]) ..) c ..]
           [prepend (make-instrN(x86-mov)
             ([bndg->op expr-val-bndg relocs ..][bndg->op arg1-val-bndg relocs ..][make-reg-op(r11)..])..) c ..]
@@ -357,8 +370,8 @@
           (true)))
         
         ((" >>) (do
-          [generate-expression arg1 c relocs ..]
-          [generate-expression arg2 c relocs ..]
+          [generate-expression $arg1 c relocs ..]
+          [generate-expression $arg2 c relocs ..]
           [prepend (make-instrN (x86-mov) ([make-reg-op (rcx) ..] [bndg->op arg2-val-bndg relocs ..]) ..) c ..]
           [prepend (make-instrN(x86-mov)
             ([bndg->op expr-val-bndg relocs ..][bndg->op arg1-val-bndg relocs ..][make-reg-op (r11)..])..) c ..]
@@ -366,8 +379,8 @@
           (true)))
         
         ((" bor) (do
-          [generate-expression arg1 c relocs ..]
-          [generate-expression arg2 c relocs ..]
+          [generate-expression $arg1 c relocs ..]
+          [generate-expression $arg2 c relocs ..]
           [prepend (make-instrN(x86-mov)
             ([bndg->op expr-val-bndg relocs ..][bndg->op arg1-val-bndg relocs ..][make-reg-op (r11)..]) ..) c ..]
           [prepend (make-instrN(x86-or)
@@ -375,15 +388,16 @@
           (true)))
         
         ((" band) (do
-          [generate-expression arg1 c relocs ..]
-          [generate-expression arg2 c relocs ..]
+          [generate-expression $arg1 c relocs ..]
+          [generate-expression $arg2 c relocs ..]
           [prepend (make-instrN(x86-mov)
             ([bndg->op expr-val-bndg relocs ..] [bndg->op arg1-val-bndg relocs ..][make-reg-op (r11)..]) ..) c ..]
           [prepend (make-instrN(x86-and)
             ([bndg->op expr-val-bndg relocs ..][bndg->op arg2-val-bndg relocs ..][make-reg-op (r11)..]) ..) c ..]
           (true)))
           
-        (false)))))))
+        (false)))
+      (false))))
 
 (function sbyte? (val)
   (or [= val [band val (hex 000000000000007F)]] [= val [bor val (hex FFFFFFFFFFFFFF80)]]))
@@ -391,60 +405,61 @@
 (function sword? (val)
   (or [= val [band val (hex 000000007FFFFFFF)]] [= val [bor val (hex FFFFFFFF80000000)]]))
 
-(constrain arithmetic-if-name (\ r (`(function (expr) string)r)))
+(constrain match-arithmetic-if
+  (\ r (with-vars (a) (`(function ((ref string) (ref expr) (ref expr) (ref expr) (ref expr) expr) ,a)r)r)))
 
-(function arithmetic-if-name (n) (@ bndg-name (@ expr-reference (@ expr-target (@ expr-condition n)))))
-
-(constrain arithmetic-if? (\ r (with-vars (a) (`(function (expr) ,a)r)r)))
-
-(function arithmetic-if? (n)
-  (let (cond (@ expr-condition n))
-    (and [undefined-symbol-invoke? cond]
-      (switch str= [arithmetic-if-name n] ((" <) (" >) (" =) (true)) (false)))))
+(function match-arithmetic-if (name arg1 arg2 consequent alternate n)
+  (match-property
+    (expr-type (%[= (-if-)]))
+    (expr-condition
+      (%(guard-match
+        (%[match-undefined-binary-invoke name arg1 arg2])
+        (switch str= $name ((" <) (" >) (" =) (true)) (false)))))
+    (expr-consequent (%[variable consequent]))
+    (expr-alternate (%[variable alternate])) n))
 
 (constrain initialize-arithmetic-if-bindings
   (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
 
 (function initialize-arithmetic-if-bindings (n offset inits ret-val)
-  (and [= (@ expr-type n) (-if-)] [arithmetic-if? n]
-    (let (offset [- offset [* #2(word-size)]])
-    (let (args (@ expr-arguments (@ expr-condition n))) (do
-    (setf expr-binding-aug (@ expr-consequent n) (@ expr-binding-aug n))
-    (setf expr-binding-aug (@ expr-alternate n) (@ expr-binding-aug n))
-    (bind (bottom-offset in-use) [initialize-expression [@car args] offset inits bind]
-    (bind (bottom-offset' in-use') [initialize-expression [@cadr args] offset inits bind]
-    (bind (bottom-offset'' in-use'') [initialize-expression (@ expr-consequent n) offset inits bind]
-    (bind (bottom-offset''' in-use''') [initialize-expression (@ expr-alternate n) offset inits bind]
-    (let (in-use [bor in-use [bor in-use' [bor in-use'' [bor in-use''' (hex FFFFFFFFFFFF0830)]]]])
-    (let (bottom-offset [min bottom-offset [min bottom-offset' [min bottom-offset'' bottom-offset''']]])
-    (let (in-use [expr-to-register/memory [@car args] [+ offset [* #1(word-size)]] in-use])
-    (let (in-use [expr-to-register/memory [@cadr args] [+ offset [* #0(word-size)]] in-use]) (do
-    (setf bndg-storage (@ expr-binding-aug (@ expr-condition n)) (nil-storage))
-    (setf bndg-storage (@ expr-binding-aug (@ expr-target (@ expr-condition n))) (nil-storage))
-    (setf expr-generator n [function->generator generate-arithmetic-if])
-    (values (use-storage ret-val) bottom-offset in-use)
-    (setf bndg-size (@ expr-binding-aug n) (word-size))
-    (true)))))))))))))))
+  (bind-if [match-arithmetic-if name arg1 arg2 consequent alternate n]
+    (name arg1 arg2 consequent alternate)
+      (let (offset [- offset [* #2(word-size)]]) (do
+      (setf expr-binding-aug $consequent (@ expr-binding-aug n))
+      (setf expr-binding-aug $alternate (@ expr-binding-aug n))
+      (bind (bottom-offset in-use) [initialize-expression $arg1 offset inits bind]
+      (bind (bottom-offset' in-use') [initialize-expression $arg2 offset inits bind]
+      (bind (bottom-offset'' in-use'') [initialize-expression $consequent offset inits bind]
+      (bind (bottom-offset''' in-use''') [initialize-expression $alternate offset inits bind]
+      (let (in-use [bor in-use [bor in-use' [bor in-use'' [bor in-use''' (hex FFFFFFFFFFFF0830)]]]])
+      (let (bottom-offset [min bottom-offset [min bottom-offset' [min bottom-offset'' bottom-offset''']]])
+      (let (in-use [expr-to-register/memory $arg1 [+ offset [* #1(word-size)]] in-use])
+      (let (in-use [expr-to-register/memory $arg2 [+ offset [* #0(word-size)]] in-use]) (do
+      (setf bndg-storage (@ expr-binding-aug (@ expr-condition n)) (nil-storage))
+      (setf bndg-storage (@ expr-binding-aug (@ expr-target (@ expr-condition n))) (nil-storage))
+      (setf expr-generator n [function->generator generate-arithmetic-if])
+      (values (use-storage ret-val) bottom-offset in-use)
+      (setf bndg-size (@ expr-binding-aug n) (word-size))
+      (true))))))))))))
+    (false)))
 
 (constrain generate-arithmetic-if
   (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
 (function generate-arithmetic-if (n c relocs r handler)
   (substitute (.. r handler)
-    (and [= (@ expr-type n) (-if-)] [arithmetic-if? n]
+    (bind-if [match-arithmetic-if name arg1 arg2 consequent alternate n] (name arg1 arg2 consequent alternate)
       (let
           (expr-val-bndg (@ expr-binding-aug n))
-          (arg1 [@car (@ expr-arguments (@ expr-condition n))])
-          (arg2 [@cadr (@ expr-arguments (@ expr-condition n))])
-          (arg1-val-bndg (@ expr-binding-aug [@car (@ expr-arguments (@ expr-condition n))]))
-          (arg2-val-bndg (@ expr-binding-aug [@cadr (@ expr-arguments (@ expr-condition n))]))
-          (consequent-val-bndg (@ expr-binding-aug (@ expr-consequent n)))
-          (alternate-val-bndg (@ expr-binding-aug (@ expr-alternate n)))
+          (arg1-val-bndg (@ expr-binding-aug $arg1))
+          (arg2-val-bndg (@ expr-binding-aug $arg2))
+          (consequent-val-bndg (@ expr-binding-aug $consequent))
+          (alternate-val-bndg (@ expr-binding-aug $alternate))
           (alternate-instr-bndg [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-frag null-expr ..])
           (end-instr-binding [make-binding-aug (absolute-storage) (local-scope) (defined-state) null-string null-frag null-expr ..]) (do
-        [generate-expression arg1 c relocs ..]
-        [generate-expression arg2 c relocs ..]
-        (switch str= [arithmetic-if-name n]
+        [generate-expression $arg1 c relocs ..]
+        [generate-expression $arg2 c relocs ..]
+        (switch str= $name
           ((" =) (do
             [prepend (make-instrN(x86-cmp)
               ([bndg->op arg1-val-bndg relocs ..][bndg->op arg2-val-bndg relocs ..][make-reg-op (r11)..])..) c ..]
@@ -458,14 +473,15 @@
               ([bndg->op arg2-val-bndg relocs ..][bndg->op arg1-val-bndg relocs ..][make-reg-op (r11)..])..) c ..]
             [prepend (make-instrN (x86-jnc) ([make-relative-relocation-immediate #4 alternate-instr-bndg relocs ..]) ..) c ..]))
           (ignore))
-        [generate-expression (@ expr-consequent n) c relocs ..]
+        [generate-expression $consequent c relocs ..]
         [generate-bndg-bndg-move expr-val-bndg consequent-val-bndg (r11) c relocs ..]
         [prepend (make-instrN (x86-jmp) ([make-relative-relocation-immediate #4 end-instr-binding relocs ..]) ..) c ..]
         [prepend [make-label alternate-instr-bndg ..] c ..]
-        [generate-expression (@ expr-alternate n) c relocs ..]
+        [generate-expression $alternate c relocs ..]
         [generate-bndg-bndg-move expr-val-bndg alternate-val-bndg (r11) c relocs ..]
         [prepend [make-label end-instr-binding ..] c ..]
-        (true))))))
+        (true)))
+      (false))))
 
 (function match-get-base+offset (name base offset n)
   (bind-if (match-property
@@ -492,36 +508,10 @@
         (do [set base $addr-part1] [set offset (@ expr-value $addr-part2)] (true)))
     (false)))
 
-(function match-set-base+offset (name base offset value n)
-  (bind-if (match-property
-      (expr-type (%[= (-invoke-)]))
-      (expr-target (%[undefined-symbol?]))
-      (expr-target (%(match-property (expr-reference
-        (%(match-property (bndg-name (%[variable name]))))))))
-      (expr-arguments (%(match-list
-        (%(match-property
-            (expr-type (%[= (-invoke-)]))
-            (expr-target (%[undefined-symbol?]))
-            (expr-target (%[symbol-name= (" +)]))
-            (expr-arguments
-              (%(guard-match
-                  (%(match-list
-                      (%[variable addr-part1])
-                      (%[variable addr-part2])))
-                  (or
-                    [= (@ expr-type $addr-part1) (-literal-)]
-                    [= (@ expr-type $addr-part2) (-literal-)]))))))
-        (%[variable value])))) n)
-    (addr-part1 addr-part2)
-      (if [= (@ expr-type $addr-part1) (-literal-)]
-        (do [set base $addr-part2] [set offset (@ expr-value $addr-part1)] (true))
-        (do [set base $addr-part1] [set offset (@ expr-value $addr-part2)] (true)))
-    (false)))
-
-(constrain generate-memory-operators
+(constrain generate-get-base+offset
   (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
-(function generate-memory-operators (n c relocs r handler)
+(function generate-get-base+offset (n c relocs r handler)
   (substitute (.. r handler)
     (bind-if [match-get-base+offset name base offset n]
       (name base offset)
@@ -556,6 +546,39 @@
               (true)))
             (false))
           (false))
+      (false))))
+
+(function match-set-base+offset (name base offset value n)
+  (bind-if (match-property
+      (expr-type (%[= (-invoke-)]))
+      (expr-target (%[undefined-symbol?]))
+      (expr-target (%(match-property (expr-reference
+        (%(match-property (bndg-name (%[variable name]))))))))
+      (expr-arguments (%(match-list
+        (%(match-property
+            (expr-type (%[= (-invoke-)]))
+            (expr-target (%[undefined-symbol?]))
+            (expr-target (%[symbol-name= (" +)]))
+            (expr-arguments
+              (%(guard-match
+                  (%(match-list
+                      (%[variable addr-part1])
+                      (%[variable addr-part2])))
+                  (or
+                    [= (@ expr-type $addr-part1) (-literal-)]
+                    [= (@ expr-type $addr-part2) (-literal-)]))))))
+        (%[variable value])))) n)
+    (addr-part1 addr-part2)
+      (if [= (@ expr-type $addr-part1) (-literal-)]
+        (do [set base $addr-part2] [set offset (@ expr-value $addr-part1)] (true))
+        (do [set base $addr-part1] [set offset (@ expr-value $addr-part2)] (true)))
+    (false)))
+
+(constrain generate-set-base+offset
+  (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
+
+(function generate-set-base+offset (n c relocs r handler)
+  (substitute (.. r handler)
     (bind-if [match-set-base+offset name base offset value n]
       (name base offset value)
         (if [sbyte? $offset]
@@ -593,7 +616,7 @@
               (true)))
             (false))
           (false))
-        (false)))))
+      (false))))
 
 (constrain initialize-arithmetic-intrinsics
   (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
