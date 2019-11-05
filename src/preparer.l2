@@ -520,34 +520,6 @@
       
     [append-static-binding (@ expr-binding-aug n) binding-augs ..])))
 
-(constrain containment-analysis (\ r (`(function (expr) expr-contains-flag)r)))
-
-(function containment-analysis (s)
-  (switch = (@ expr-type s)
-    ((-constrain-) [containment-analysis (@ expr-expression s)])
-    
-    ((-if-)
-      (let (condition-flag [containment-analysis (@ expr-condition s)])
-          (consequent-flag [containment-analysis (@ expr-consequent s)])
-          (alternate-flag [containment-analysis (@ expr-alternate s)])
-        (if [= [+ consequent-flag alternate-flag] #1]
-          (contains-with)
-          [bor condition-flag [bor consequent-flag alternate-flag]])))
-    
-    ((-function-) (-continuation-) (-with-) (do
-      [containment-analysis (@ expr-expression s)]
-      (if [= (@ expr-type s) (-with-)] (contains-with) (contains-none))))
-    
-    ((-storage-) (fold (acc (contains-none)) (x (@ expr-arguments s)) [bor acc [containment-analysis x]]))
-    
-    ((-jump-) (-invoke-)
-      (let (contains-flag (fold (acc [containment-analysis (@ expr-target s)]) (x (@ expr-arguments s))
-          [bor acc [containment-analysis x]])) (do
-        (setf expr-contains-flag s contains-flag)
-        (if [= (@ expr-type s) (-jump-)] (contains-jump) contains-flag))))
-    
-    (contains-none)))
-
 (storage undefined-symbol-error (ignore))
 
 (function preprocessed-expression-address (l r)
