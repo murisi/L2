@@ -455,12 +455,12 @@
     ((-continuation-) (-with-) (do
       [setup-collect-static-bindings (@ expr-expression n)]
       (if (@ expr-escapes n)
-        (setf bndg-context (@ expr-reference n) (true)) (ignore))
+        (setf bndg-other (@ expr-reference n) (true)) (ignore))
       (foreach (t (@ expr-parameters n))
-        (setf bndg-context t (true)))))
+        (setf bndg-other t (true)))))
     
     ((-storage-) (do
-      (setf bndg-context (@ expr-reference n) (true))
+      (setf bndg-other (@ expr-reference n) (true))
       (foreach (u (@ expr-arguments n)) [setup-collect-static-bindings u])))
     
     ((-jump-) (-invoke-) (do
@@ -477,14 +477,14 @@
     
     (ignore))
   
-  (setf bndg-context (@ expr-binding-aug n) (true))))
+  (setf bndg-other (@ expr-binding-aug n) (true))))
 
 (constrain append-static-binding (\ r (with-vars (a b) (`(function (bndg-aug (ref (list bndg-aug)) buffer ,a) ,b)r)r)))
 
 (function append-static-binding (bndg binding-augs r handler)
   (substitute (.. r handler)
-    (if (and [= (@ bndg-storage bndg) (absolute-storage)] (@ bndg-context bndg))
-      (do (setf bndg-context bndg (false)) [append bndg binding-augs ..])
+    (if (and [= (@ bndg-storage bndg) (absolute-storage)] (@ bndg-other bndg))
+      (do (setf bndg-other bndg (false)) [append bndg binding-augs ..])
       (ignore))))
 
 (constrain collect-static-bindings (\ r (with-vars (a b) (`(function (expr (ref (list bndg-aug)) buffer ,a) ,b)r)r)))
