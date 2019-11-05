@@ -378,48 +378,64 @@
   transformation:
   (match-property (prop1 matcher1) (prop2 matcher2) ... (propN matcherN) obj)
   ->
-  (and (matcher1 (@ prop1 obj)) (matcher2 (@ prop2 obj)) ... (matcherN (@ propN obj))))
+  (let (match-property:obj obj) (and
+    (matcher1 (@ prop1 match-property:obj))
+    (matcher2 (@ prop2 match-property:obj))
+    ...
+    (matcherN (@ propN match-property:obj)))))
 
 (function match-property (l r)
   (let (obj [@fst [meta:reverse l r]])
-    [lst (` and r)
-      (loop build (conds emt) (parts [@rst [meta:reverse l r]])
-        (if [emt? parts]
-          conds
-          (let (matcher [@frfst parts]) (prop [@ffst parts])
-            {build [lst (`(,matcher (@ ,prop ,obj))r) conds r] [@cdr parts]}))) r]))
+    (`(let (match-property:obj ,obj)
+        (,[lst (` and r)
+          (loop build (conds emt) (parts [@rst [meta:reverse l r]])
+            (if [emt? parts]
+              conds
+              (let (matcher [@frfst parts]) (prop [@ffst parts])
+                {build [lst (`(,matcher (@ ,prop match-property:obj))r) conds r]
+                  [@cdr parts]}))) r]))r)))
 
 (ignore
   A macro for matching objects to at least one of the given matchers. The macro does the
   following transformation:
   (match-or matcher1 matcher2 ... matcherN obj)
   ->
-  (or (matcher1 obj) (matcher2 obj) ... (matcherN obj)))
+  (let (match-or:obj obj) (or
+    (matcher1 match-or:obj)
+    (matcher2 match-or:obj)
+    ...
+    (matcherN match-or:obj))))
 
 (function match-or (l r)
   (let (obj [@fst [meta:reverse l r]])
-    [lst (` or r)
-      (loop build (conds emt) (parts [@rst [meta:reverse l r]])
-        (if [emt? parts]
-          conds
-          (let (matcher [@fst parts])
-            {build [lst (`(,matcher ,obj)r) conds r] [@cdr parts]}))) r]))
+    (`(let (match-or:obj ,obj)
+        (,[lst (` or r)
+          (loop build (conds emt) (parts [@rst [meta:reverse l r]])
+            (if [emt? parts]
+              conds
+              (let (matcher [@fst parts])
+                {build [lst (`(,matcher match-or:obj)r) conds r] [@cdr parts]}))) r]))r)))
 
 (ignore
   A macro for matching objects to at least one of the given matchers. The macro does the
   following transformation:
   (match-and matcher1 matcher2 ... matcherN obj)
   ->
-  (and (matcher1 obj) (matcher2 obj) ... (matcherN obj)))
+  (let (match-and:obj obj) (and
+    (matcher1 match-and:obj)
+    (matcher2 match-and:obj)
+    ...
+    (matcherN match-and:obj))))
 
 (function match-and (l r)
   (let (obj [@fst [meta:reverse l r]])
-    [lst (` and r)
-      (loop build (conds emt) (parts [@rst [meta:reverse l r]])
-        (if [emt? parts]
-          conds
-          (let (matcher [@fst parts])
-            {build [lst (`(,matcher ,obj)r) conds r] [@cdr parts]}))) r]))
+    (`(let (match-and:obj ,obj)
+        (,[lst (` and r)
+          (loop build (conds emt) (parts [@rst [meta:reverse l r]])
+            (if [emt? parts]
+              conds
+              (let (matcher [@fst parts])
+                {build [lst (`(,matcher match-and:obj)r) conds r] [@cdr parts]}))) r]))r)))
 
 (ignore
   (guard-match matcher guard obj)

@@ -508,6 +508,31 @@
         (do [set base $addr-part1] [set offset (@ expr-value $addr-part2)] (true)))
     (false)))
 
+(constrain initialize-get-base+offset
+  (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
+
+(function initialize-get-base+offset (n offset inits ret-val)
+  (bind-if (and [match-get-base+offset name base addr-offset n] [sbyte? $addr-offset])
+    (name base addr-offset)
+      (let
+          (base-val-bndg (@ expr-binding-aug $base))
+          (expr-val-bndg (@ expr-binding-aug n))
+        (switch str= $name
+          ((" getb) (" get1b) (" get2b) (" get4b) (" get8b) (" get)
+            (let (sub-expr-offset [- offset (word-size)])
+            (bind (bottom-offset in-use) [initialize-expression $base sub-expr-offset inits ret-val]
+            (let (in-use [bor in-use (hex FFFFFFFFFFFF0831)])
+            (let (in-use [expr-to-register/memory $base sub-expr-offset in-use]) (do
+            (setf bndg-size (@ expr-binding-aug n) (word-size))
+            (setf bndg-storage (@ expr-binding-aug (@ expr-target n)) (nil-storage))
+            (setf bndg-storage (@ expr-binding-aug (@ expr-target [@car (@ expr-arguments n)])) (nil-storage))
+            (setf expr-generator n [function->generator generate-get-base+offset])
+            (values (use-storage ret-val) bottom-offset in-use)
+            (true)))))))
+          
+          (false)))
+    (false)))
+
 (constrain generate-get-base+offset
   (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
@@ -622,6 +647,7 @@
   (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
 
 (function initialize-arithmetic-intrinsics (n offset inits ret-val) (or
+  [initialize-get-base+offset n offset inits ret-val]
   [initialize-arithmetic-if-bindings n offset inits ret-val]
   [initialize-unary-arithmetic-operators n offset inits ret-val]
   [initialize-binary-arithmetic-operators n offset inits ret-val]))
