@@ -592,6 +592,33 @@
         (do [set base $addr-part1] [set offset (@ expr-value $addr-part2)] (true)))
     (false)))
 
+(constrain initialize-set-base+offset
+  (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
+
+(function initialize-set-base+offset (n offset inits ret-val)
+  (bind-if [match-set-base+offset name base addr-offset val n] (name base addr-offset val)
+    (let
+      (base-val-bndg (@ expr-binding-aug $base))
+      (val-val-bndg (@ expr-binding-aug $val))
+      (expr-val-bndg (@ expr-binding-aug n))
+      
+    (switch str= $name
+      ((" setb) (" set1b) (" set2b) (" set4b) (" set8b) (" set)
+        (let (sub-expr-offset [- offset [* #2(word-size)]])
+        (bind (bottom-offset1 in-use1) [initialize-expression $base sub-expr-offset inits bind]
+        (bind (bottom-offset2 in-use2) [initialize-expression $val sub-expr-offset inits bind]
+        (let (bottom-offset [min bottom-offset1 bottom-offset2])
+        (let (in-use [bor [bor in-use1 in-use2] (hex FFFFFFFFFFFF0C31)])
+        (let (in-use [expr-to-register/memory $base [- offset [* #1(word-size)]] in-use])
+        (let (in-use [expr-to-register/memory $val [- offset [* #2(word-size)]] in-use]) (do
+        (setf bndg-size (@ expr-binding-aug n) (word-size))
+        (setf expr-generator n [function->generator generate-set-base+offset])
+        (values (use-storage ret-val) bottom-offset in-use)
+        (true))))))))))
+      
+      (false)))
+    (false)))
+
 (constrain generate-set-base+offset
   (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
@@ -640,6 +667,8 @@
   (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
 
 (function initialize-arithmetic-intrinsics (n offset inits ret-val) (or
+  [initialize-get-base+offset n offset inits ret-val]
+  [initialize-set-base+offset n offset inits ret-val]
   [initialize-arithmetic-if-bindings n offset inits ret-val]
   [initialize-unary-arithmetic-operators n offset inits ret-val]
   [initialize-binary-arithmetic-operators n offset inits ret-val]))
