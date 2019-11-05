@@ -1031,21 +1031,23 @@
                 (false))))))) (false))
           {handler (storage _ unsupported-instruction-error n)}))
         
-        ((x86-mov) (let
-            (op1 [@car (@ instr-operands n)])
-            (op2 [@cadr (@ instr-operands n)]) (or
+        ((x86-mov) (or
           [write-mr-instr (hex 1F) (hex 88) (hex 89) (hex 89) (hex 89) n bin pos ..]
           [write-rm-instr (hex 1F) (hex 8A) (hex 8B) (hex 8B) (hex 8B) n bin pos ..]
           [write-mm-instr (hex 1F) (hex 88) (hex 89) (hex 89) (hex 89) n bin pos ..]
-          (if (and [= (@ op-size op1) #8] [= (@ op-type op1) (register-operand)]
-              [= (@ op-size op2) #8] [= (@ op-type op2) (immediate-operand)])
-            [write-instr bin pos (hex B8) #1 op1 [make-none-op ..] [make-none-op ..] op2 ..]
-          (let (op3 [@caddr (@ instr-operands n)])
-          (if (and [= (@ op-size op1) #8] [= (@ op-type op1) (memory-operand)]
-              [= (@ op-size op2) #8] [= (@ op-type op2) (immediate-operand)]) (do
-            [write-instr bin pos (hex B8) #1 op3 [make-none-op ..] [make-none-op ..] op2 ..]
-            [write-instr bin pos (hex 89) #1 [make-none-op ..] op3 op1 [make-none-op ..] ..])
-            {handler (storage _ unsupported-instruction-error n)}))))))
+          (bind-if (match-list-prefix
+              (%(match-and (%[variable op1]) (%(match-property (op-type (%[= (register-operand)]))))))
+              (%(match-and (%[variable op2]) (%(match-property (op-type (%[= (immediate-operand)])))))) (@ instr-operands n))
+            (op1 op2) (if (and [= (@ op-size $op1) #8] [= (@ op-size $op2) #8])
+              [write-instr bin pos (hex B8) #1 $op1 [make-none-op ..] [make-none-op ..] $op2 ..] (false)) (false))
+          (bind-if (match-list-prefix
+              (%(match-and (%[variable op1]) (%(match-property (op-type (%[= (memory-operand)]))))))
+              (%(match-and (%[variable op2]) (%(match-property (op-type (%[= (immediate-operand)]))))))
+              (%[variable op3]) (@ instr-operands n))
+            (op1 op2 op3) (if (and [= (@ op-size $op1) #8] [= (@ op-size $op2) #8]) (do
+              [write-instr bin pos (hex B8) #1 $op3 [make-none-op ..] [make-none-op ..] $op2 ..]
+              [write-instr bin pos (hex 89) #1 [make-none-op ..] $op3 $op1 [make-none-op ..] ..]) (false)) (false))
+          {handler (storage _ unsupported-instruction-error n)}))
         
         ((x86-lea) (or
           (bind-if (match-list-prefix
