@@ -424,12 +424,12 @@
 (constrain classify-program-bindings (\ r (`(function (expr) ())r)))
 
 (function classify-program-bindings (expr) (do
-  (setf bndg-storage (@ expr-binding-aug expr) (absolute-storage))
+  (setf bndg-context (@ expr-binding-aug expr) (extra-function-context))
   (switch = (@ expr-type expr)
     ((-constrain-) [classify-program-bindings (@ expr-expression expr)])
     
     ((-storage-) (do
-      (setf bndg-storage (@ expr-reference expr) (absolute-storage))
+      (setf bndg-context (@ expr-reference expr) (extra-function-context))
       (foreach (t (@ expr-arguments expr)) [classify-program-bindings t])))
     
     ((-jump-) (-invoke-) (do
@@ -437,8 +437,9 @@
       (foreach (t (@ expr-arguments expr)) [classify-program-bindings t])))
     
     ((-continuation-) (-with-) (do
-      (setf bndg-storage (@ expr-reference expr) (absolute-storage))
-      (foreach (t (@ expr-parameters expr)) (setf bndg-storage t (absolute-storage)))
+      (setf bndg-context (@ expr-reference expr) (extra-function-context))
+      (foreach (t (@ expr-parameters expr))
+        (setf bndg-context t (extra-function-context)))
       [classify-program-bindings (@ expr-expression expr)]))
     
     ((-if-) (do
