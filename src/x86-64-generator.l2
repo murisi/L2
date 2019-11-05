@@ -167,7 +167,7 @@
         (ref-val-bndg (@ expr-reference n))
         (expr-val-bndg (@ expr-binding-aug n))
         (body-val-bndg (@ expr-binding-aug (@ expr-expression n)))
-        (after-binding [make-binding-aug (extra-function-context) (local-scope) (defined-state) null-string null-frag null-expr ..]) (do
+        (after-binding [make-binding-aug (extra-function-context) (absolute-storage) (local-scope) (defined-state) null-string null-frag null-expr ..]) (do
       
       [prepend(make-instrN(x86-lea)([bndg->op expr-val-bndg relocs ..][bndg->op ref-val-bndg relocs ..][make-reg-op(r11)..])..) c ..]
       [prepend (make-instrN (x86-jmp)([make-relative-relocation-immediate #4 after-binding relocs ..])..) c ..]
@@ -299,7 +299,7 @@
       (let
           (cont-val-bndg (@ expr-reference n))
           (expr-val-bndg (@ expr-binding-aug n))
-          (after-binding [make-binding-aug (extra-function-context) (local-scope) (defined-state) null-string null-frag null-expr ..]) (do
+          (after-binding [make-binding-aug (extra-function-context) (absolute-storage) (local-scope) (defined-state) null-string null-frag null-expr ..]) (do
         (if (@ expr-escapes n) (do
           [prepend (make-instrN(x86-lea)([bndg->op expr-val-bndg relocs ..][bndg->op cont-val-bndg relocs ..][make-reg-op (r11) ..]) ..) c ..]
           [generate-store-continuation n c relocs ..])
@@ -345,7 +345,7 @@
           (body-val-bndg (@ expr-binding-aug (@ expr-expression n)))
           (param-val-bndg [@car(@ expr-parameters n)])
           (end-instr-binding
-            [make-binding-aug (extra-function-context) (local-scope) (defined-state) null-string null-frag null-expr ..]) (do
+            [make-binding-aug (extra-function-context) (absolute-storage) (local-scope) (defined-state) null-string null-frag null-expr ..]) (do
         (if (@ expr-escapes n) [generate-store-continuation n c relocs ..] (ignore))
         [generate-expression (@ expr-expression n) c relocs ..]
         (if (@ expr-escapes n)
@@ -617,9 +617,9 @@
           (consequent-val-bndg (@ expr-binding-aug (@ expr-consequent n)))
           (alternate-val-bndg (@ expr-binding-aug (@ expr-alternate n)))
           (alternate-instr-bndg
-            [make-binding-aug (extra-function-context) (local-scope) (defined-state) null-string null-frag null-expr ..])
+            [make-binding-aug (extra-function-context) (absolute-storage) (local-scope) (defined-state) null-string null-frag null-expr ..])
           (end-instr-binding
-            [make-binding-aug (extra-function-context) (local-scope) (defined-state) null-string null-frag null-expr ..]) (do
+            [make-binding-aug (extra-function-context) (absolute-storage) (local-scope) (defined-state) null-string null-frag null-expr ..]) (do
         [generate-expression (@ expr-condition n) c relocs ..]
         [prepend (make-instrN(x86-or)([bndg->op condition-val-bndg relocs ..][bndg->op condition-val-bndg relocs ..][make-reg-op(r11)..])..) c ..]
         [prepend (make-instrN (x86-je) ([make-relative-relocation-immediate #4 alternate-instr-bndg relocs ..]) ..) c ..]
