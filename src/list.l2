@@ -227,6 +227,24 @@
                       (let (match-list-prefix:temp [@cdr match-list-prefix:temp]) ,expr)
                       ((,[@fst parts]) [@car match-list-prefix:temp])))r) [@rst parts]}))))r)))
 
+(ignore
+  The following macro does the same thing as cons except that it uses the stack instead of
+  the heap. It does the following transformation:
+  (storage-cons data rest)
+  ->
+  (with storage-cons:ret
+    {(constrain
+      (continuation storage-cons:cont (storage-cons:data storage-cons:rest)
+        {storage-cons:ret (storage storage-cons:stor storage-cons:data storage-cons:rest)})
+      (\ r (with-vars (et) (`(continuation (,et (list ,et)))r)r))) data rest}))
+
+(function storage-cons (l r)
+  (`(with storage-cons:ret
+    {(constrain
+      (continuation storage-cons:cont (storage-cons:data storage-cons:rest)
+        {storage-cons:ret (storage storage-cons:stor storage-cons:data storage-cons:rest)})
+      (\ r (with-vars (et) (`(continuation (,et (list ,et)))r)r))) (,[@fst l]) (,[@frst l])})r))
+
 (function list-struct (l r) [=# #16 r])
 
 (function car (l r) [property #0 #8 (\ r (with-vars (a) (`(list ,a)r)r)) (\ s r [@frst s]) l r])
