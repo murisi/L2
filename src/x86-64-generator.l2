@@ -647,15 +647,11 @@
 (constrain initialize-constrain (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
 
 (function initialize-constrain (n offset inits ret-val)
-  (and [= (@ expr-type n) (-constrain-)]
-    (let (offset [- offset (word-size)])
-    (bind (bottom-offset in-use) [initialize-expression (@ expr-expression n) offset inits ret-val]
-    (let (in-use
-      [expr-to-register/memory (@ expr-expression n) offset [bor in-use (hex FFFFFFFFFFFF0830)]]) (do
+  (and [= (@ expr-type n) (-constrain-)] (do
+    [initialize-expressions (storage-cons (@ expr-expression n) nil) nil offset (hex FFFFFFFFFFFF0830) inits ret-val]
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (setf expr-generator n [function->generator generate-constrain])
-    (values (use-storage ret-val) bottom-offset in-use)
-    (true)))))))
+    (true))))
 
 (ignore
   Checks if a symbol is a value symbol, that is, a symbol that is bound to a function/

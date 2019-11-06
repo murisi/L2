@@ -179,60 +179,34 @@
       (expr-val-bndg (@ expr-binding-aug n))
       
     (switch str= $name
-      ((" setb) (" set1b) (" set2b) (" set4b) (" set8b) (" set) (" bor) (" band) (" +) (" -) (" =) (" <) (" >)
-        (let (sub-expr-offset [- offset [* #2(word-size)]])
-        (bind (bottom-offset1 in-use1) [initialize-expression $arg1 sub-expr-offset inits bind]
-        (bind (bottom-offset2 in-use2) [initialize-expression $arg2 sub-expr-offset inits bind]
-        (let (bottom-offset [min bottom-offset1 bottom-offset2])
-        (let (in-use [bor [bor in-use1 in-use2] (hex FFFFFFFFFFFF0C31)])
-        (let (in-use [expr-to-register/memory $arg1 [- offset [* #1(word-size)]] in-use])
-        (let (in-use [expr-to-register/memory $arg2 [- offset [* #2(word-size)]] in-use]) (do
+      ((" setb) (" set1b) (" set2b) (" set4b) (" set8b) (" set) (" bor) (" band) (" +) (" -) (" =) (" <) (" >) (do
+        [initialize-expressions (storage-cons $arg1 (storage-cons $arg2 nil)) nil offset (hex FFFFFFFFFFFF0C31) inits ret-val]
         (setf bndg-size (@ expr-binding-aug n) (word-size))
         (setf expr-generator n [function->generator generate-binary-arithmetic-operators])
-        (values (use-storage ret-val) bottom-offset in-use)
-        (true))))))))))
+        (true)))
       
-      ((" /) (" rem)
-        (let (sub-expr-offset [- offset [* #2(word-size)]])
-        (bind (bottom-offset1 in-use1) [initialize-expression $arg1 sub-expr-offset inits bind]
-        (bind (bottom-offset2 in-use2) [initialize-expression $arg2 sub-expr-offset inits bind]
-        (let (bottom-offset [min bottom-offset1 bottom-offset2])
-        (let (in-use [bor [bor in-use1 in-use2] (hex FFFFFFFFFFFF0034)])
-        (bind (arg1-success? in-use) [try-binding-to-register arg1-val-bndg (rax) in-use bind]
-        (let (in-use (if arg1-success? in-use [expr-to-register/memory $arg1 [- offset [* #1(word-size)]] in-use]))
-        (let (in-use [expr-to-register/memory $arg2 [- offset [* #2(word-size)]] in-use]) (do
+      ((" /) (" rem) (do
+        (setf bndg-preferred-register arg1-val-bndg (rax))
+        [initialize-expressions (storage-cons $arg1 (storage-cons $arg2 nil)) nil offset (hex FFFFFFFFFFFF0034) inits ret-val]
         (setf bndg-size (@ expr-binding-aug n) (word-size))
         (setf expr-generator n [function->generator generate-binary-arithmetic-operators])
-        (values (use-storage ret-val) bottom-offset in-use)
-        (true)))))))))))
+        (true)))
       
-      ((" *)
-        (let (sub-expr-offset [- offset [* #2(word-size)]])
-        (bind (bottom-offset1 in-use1) [initialize-expression $arg1 sub-expr-offset inits bind]
-        (bind (bottom-offset2 in-use2) [initialize-expression $arg2 sub-expr-offset inits bind]
-        (let (bottom-offset [min bottom-offset1 bottom-offset2])
-        (let (in-use [bor [bor in-use1 in-use2] (hex FFFFFFFFFFFF0030)])
-        (bind (arg1-success? in-use) [try-binding-to-register arg1-val-bndg (rax) in-use bind]
-        (let (in-use (if arg1-success? in-use [expr-to-register/memory $arg1 [- offset [* #1(word-size)]] in-use]))
-        (let (in-use [expr-to-register/memory $arg2 [- offset [* #2(word-size)]] in-use]) (do
+      ((" *) (do
+        (setf bndg-preferred-register arg1-val-bndg (rax))
+        (bind (bottom-offset in-use)
+          [initialize-expressions (storage-cons $arg1 (storage-cons $arg2 nil)) nil offset (hex FFFFFFFFFFFF0030) inits bind] (do
         (setf bndg-size (@ expr-binding-aug n) (word-size))
         (setf expr-generator n [function->generator generate-binary-arithmetic-operators])
         (values (use-storage ret-val) bottom-offset [bor in-use (hex 0000000000000004)])
-        (true)))))))))))
+        (true)))))
       
-      ((" <<) (" >>)
-        (let (sub-expr-offset [- offset [* #2(word-size)]])
-        (bind (bottom-offset1 in-use1) [initialize-expression $arg1 sub-expr-offset inits bind]
-        (bind (bottom-offset2 in-use2) [initialize-expression $arg2 sub-expr-offset inits bind]
-        (let (bottom-offset [min bottom-offset1 bottom-offset2])
-        (let (in-use [bor [bor in-use1 in-use2] (hex FFFFFFFFFFFF0830)])
-        (let (in-use [expr-to-register/memory $arg1 [- offset [* #1(word-size)]] in-use])
-        (bind (arg2-success? in-use) [try-binding-to-register arg2-val-bndg (rcx) in-use bind]
-        (let (in-use (if arg2-success? in-use [expr-to-register/memory $arg2 [- offset [* #2(word-size)]] in-use])) (do
+      ((" <<) (" >>) (do
+        (setf bndg-preferred-register arg2-val-bndg (rcx))
+        [initialize-expressions (storage-cons $arg1 (storage-cons $arg2 nil)) nil offset (hex FFFFFFFFFFFF0830) inits ret-val]
         (setf bndg-size (@ expr-binding-aug n) (word-size))
         (setf expr-generator n [function->generator generate-binary-arithmetic-operators])
-        (values (use-storage ret-val) bottom-offset in-use)
-        (true)))))))))))
+        (true)))
       
       (false)))
     (false)))
@@ -513,15 +487,11 @@
           (base-val-bndg (@ expr-binding-aug $base))
           (expr-val-bndg (@ expr-binding-aug n))
         (switch str= $name
-          ((" getb) (" get1b) (" get2b) (" get4b) (" get8b) (" get)
-            (let (sub-expr-offset [- offset (word-size)])
-            (bind (bottom-offset in-use) [initialize-expression $base sub-expr-offset inits ret-val]
-            (let (in-use [bor in-use (hex FFFFFFFFFFFF0831)])
-            (let (in-use [expr-to-register/memory $base sub-expr-offset in-use]) (do
+          ((" getb) (" get1b) (" get2b) (" get4b) (" get8b) (" get) (do
+            [initialize-expressions (storage-cons $base nil) nil offset (hex FFFFFFFFFFFF0831) inits ret-val]
             (setf bndg-size (@ expr-binding-aug n) (word-size))
             (setf expr-generator n [function->generator generate-get-base+offset])
-            (values (use-storage ret-val) bottom-offset in-use)
-            (true)))))))
+            (true)))
           
           (false)))
     (false)))
@@ -603,18 +573,11 @@
       (expr-val-bndg (@ expr-binding-aug n))
       
     (switch str= $name
-      ((" setb) (" set1b) (" set2b) (" set4b) (" set8b) (" set)
-        (let (sub-expr-offset [- offset [* #2(word-size)]])
-        (bind (bottom-offset1 in-use1) [initialize-expression $base sub-expr-offset inits bind]
-        (bind (bottom-offset2 in-use2) [initialize-expression $val sub-expr-offset inits bind]
-        (let (bottom-offset [min bottom-offset1 bottom-offset2])
-        (let (in-use [bor [bor in-use1 in-use2] (hex FFFFFFFFFFFF0C31)])
-        (let (in-use [expr-to-register/memory $base [- offset [* #1(word-size)]] in-use])
-        (let (in-use [expr-to-register/memory $val [- offset [* #2(word-size)]] in-use]) (do
+      ((" setb) (" set1b) (" set2b) (" set4b) (" set8b) (" set) (do
+        [initialize-expressions (storage-cons $base (storage-cons $val nil)) nil offset (hex FFFFFFFFFFFF0C31) inits ret-val]
         (setf bndg-size (@ expr-binding-aug n) (word-size))
         (setf expr-generator n [function->generator generate-set-base+offset])
-        (values (use-storage ret-val) bottom-offset in-use)
-        (true))))))))))
+        (true)))
       
       (false)))
     (false)))
