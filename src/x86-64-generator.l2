@@ -120,20 +120,31 @@
       (setf bndg-offset bndg reg)
       (values (use-storage ret-val) (true) [bor [<< #1 reg-idx] in-use]))))))
 
-(function try-bndg-to-preferred-register (bndg in-use)
-  (let (reg (@ bndg-preferred-register bndg))
-  (let (reg-idx [band reg (hex F)])
-  (let (reg-occupied? [band [<< #1 reg-idx] in-use])
-  (if (or reg-occupied? [= reg (none)])
-    in-use
-    (do
-      (setf bndg-size bndg (word-size))
-      (setf bndg-storage bndg (register-storage))
-      (setf bndg-offset bndg reg)
-      [bor [<< #1 reg-idx] in-use]))))))
+(function try-bndg-to-preferred-location (bndg in-use)
+  (switch = (@ bndg-preferred-storage bndg)
+    ((nil-storage) in-use)
+    
+    ((frame-relative-storage) (absolute-storage) (do
+      (setf bndg-storage bndg (@ bndg-preferred-storage bndg))
+      (setf bndg-offset bndg (@ bndg-preferred-offset bndg))
+      in-use))
+      
+    ((register-storage)
+      (let (reg (@ bndg-preferred-offset bndg))
+      (let (reg-idx [band reg (hex F)])
+      (let (reg-occupied? [band [<< #1 reg-idx] in-use])
+      (if (or reg-occupied? [= reg (none)])
+        in-use
+        (do
+          (setf bndg-size bndg (word-size))
+          (setf bndg-storage bndg (register-storage))
+          (setf bndg-offset bndg reg)
+          [bor [<< #1 reg-idx] in-use]))))))
+          
+    (ignore)))
 
-(function try-expr-to-preferred-register (n in-use)
-  [try-bndg-to-preferred-register (@ expr-binding-aug n) in-use])
+(function try-expr-to-preferred-location (n in-use)
+  [try-bndg-to-preferred-location (@ expr-binding-aug n) in-use])
 
 (ignore
   Takes a binding, the current offset in the stack frame, and a bit-vector indicating the
@@ -185,8 +196,8 @@
         (values (use-storage bind) bottom-offset in-use)
         (bind (bottom-offset' in-use') [initialize-expression [@car u] sub-expr-offset inits bind]
           {init-subs [min bottom-offset bottom-offset'] [bor in-use in-use'] [@cdr u]})))
-  (let (in-use (fold (in-use in-use) (u exprs) [try-expr-to-preferred-register u in-use]))
-  (let (in-use (fold (in-use in-use) (u bndgs) [try-bndg-to-preferred-register u in-use]))
+  (let (in-use (fold (in-use in-use) (u exprs) [try-expr-to-preferred-location u in-use]))
+  (let (in-use (fold (in-use in-use) (u bndgs) [try-bndg-to-preferred-location u in-use]))
   (let (in-use
     (loop assign-args (offset [- offset [* [length exprs] (word-size)]]) (in-use in-use) (u exprs)
       (if [nil? u]
@@ -578,7 +589,8 @@
     (let (call-regs (storage _ (rdi)(rsi)(rdx)(rcx)(r8)(r9)))
       (loop set-prefs (rem-args (@ expr-arguments n)) (i #0)
         (if (or [= i #6] [nil? rem-args]) (ignore) (do
-          (setf bndg-preferred-register (@ expr-binding-aug [@car rem-args]) ($(loc (unit) i call-regs)))
+          (setf bndg-preferred-storage (@ expr-binding-aug [@car rem-args]) (register-storage))
+          (setf bndg-preferred-offset (@ expr-binding-aug [@car rem-args]) ($(loc (unit) i call-regs)))
           {set-prefs [@cdr rem-args] [+ i #1]}))))
     (bind (bottom-offset in-use)
       [initialize-expressions (storage-cons (@ expr-target n) (@ expr-arguments n)) nil offset (hex FFFFFFFFFFFF0031) inits ret-val] (do
