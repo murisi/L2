@@ -282,48 +282,27 @@
 
 (function initialize-function (n offset inits ret-val)
   (and [= (@ expr-type n) (-function-)] (do
-    (let (sub-expr-offset [- (@ expr-frame-size n) [* #7(word-size)]])
-    (bind (frame-size in-use) [initialize-expression (@ expr-expression n) sub-expr-offset inits bind]
-    (let (in-use [bor in-use (hex FFFFFFFFFFFF0831)])
-    (let (param-offset [- (@ expr-frame-size n) [* #6(word-size)]])
-    (let
-      (in-use (if [< [length (@ expr-parameters n)] #1] in-use
-        (let (param1-binding [@car (@ expr-parameters n)])
-        (bind (param1-success? in-use) [try-binding-to-register param1-binding (rdi) in-use bind]
-          (where (if param1-success? in-use [binding-to-register/memory param1-binding [+ param-offset [*(word-size)#0]] in-use])
-      (in-use (if [< [length (@ expr-parameters n)] #2] in-use
-        (let (param2-binding [@cadr (@ expr-parameters n)])
-        (bind (param2-success? in-use) [try-binding-to-register param2-binding (rsi) in-use bind]
-          (where (if param2-success? in-use [binding-to-register/memory param2-binding [+ param-offset [*(word-size)#1]] in-use])
-      (in-use (if [< [length (@ expr-parameters n)] #3] in-use
-        (let (param3-binding [@caddr (@ expr-parameters n)])
-        (bind (param3-success? in-use) [try-binding-to-register param3-binding (rdx) in-use bind]
-          (where (if param3-success? in-use [binding-to-register/memory param3-binding [+ param-offset [*(word-size)#2]] in-use])
-      (in-use (if [< [length (@ expr-parameters n)] #4] in-use
-        (let (param4-binding [@cadddr (@ expr-parameters n)])
-        (bind (param4-success? in-use) [try-binding-to-register param4-binding (rcx) in-use bind]
-          (where (if param4-success? in-use [binding-to-register/memory param4-binding [+ param-offset [*(word-size)#3]] in-use])
-      (in-use (if [< [length (@ expr-parameters n)] #5] in-use
-        (let (param5-binding [@caddddr (@ expr-parameters n)])
-        (bind (param5-success? in-use) [try-binding-to-register param5-binding (r8) in-use bind]
-          (where (if param5-success? in-use [binding-to-register/memory param5-binding [+ param-offset [*(word-size)#4]] in-use])
-      (in-use (if [< [length (@ expr-parameters n)] #6] in-use
-        (let (param6-binding [@cadddddr (@ expr-parameters n)])
-        (bind (param6-success? in-use) [try-binding-to-register param6-binding (r9) in-use bind]
-          (if param6-success? in-use [binding-to-register/memory param6-binding [+ param-offset [*(word-size)#5]] in-use]))))))))))))))))))))))))))))))
+    (let (call-regs (storage _ (rdi)(rsi)(rdx)(rcx)(r8)(r9)))
+      (loop set-prefs (rem-params (@ expr-parameters n)) (i #0)
+        (if (or [= i #6] [nil? rem-params]) (ignore) (do
+          (setf bndg-preferred-storage [@car rem-params] (register-storage))
+          (setf bndg-preferred-offset [@car rem-params] ($(loc (unit) i call-regs)))
+          {set-prefs [@cdr rem-params] [+ i #1]}))))
     
-    (let (in-use
-      (let (rem-offset [* #2(word-size)])
-      (let (rem-params (if [>= [length (@ expr-parameters n)] #6] [@cddddddr (@ expr-parameters n)] nil))
-      (loop assign-params (offset rem-offset) (in-use in-use) (u rem-params)
-        (if [nil? u] in-use
-          {assign-params [+ offset (word-size)]
-            [binding-to-register/memory [@car u] offset in-use] [@cdr u]})))))
+    (let (rem-offset [* #2(word-size)])
+    (let (rem-params (if [>= [length (@ expr-parameters n)] #6] [@cddddddr (@ expr-parameters n)] nil))
+    (loop assign-params (offset rem-offset) (u rem-params)
+      (if [nil? u] (ignore) (do
+        (setf bndg-preferred-storage [@car u] (frame-relative-storage))
+        (setf bndg-preferred-offset [@car u] offset)
+        {assign-params [+ offset (word-size)] [@cdr u]})))))
     
-    (let (in-use [expr-to-register/memory (@ expr-expression n) sub-expr-offset in-use]) (do
+    (bind (frame-size in-use)
+      [initialize-expressions (storage-cons (@ expr-expression n) nil) (@ expr-parameters n)
+        (@ expr-frame-size n) (hex FFFFFFFFFFFF0831) inits ret-val] (do
     (setf expr-registers-used n in-use)
     (setf expr-frame-size n frame-size)
-    (foreach (t (@ expr-parameters n)) (setf bndg-size t (word-size)))))))))))
+    (foreach (t (@ expr-parameters n)) (setf bndg-size t (word-size)))))
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (setf expr-generator n [function->generator generate-function])
     (values (use-storage ret-val) offset (hex 0000000000000800))
