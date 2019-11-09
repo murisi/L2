@@ -59,7 +59,27 @@
       (let (offset [place-perm-bindings (@ expr-alternate n) offset])
         offset))))
     
-    ((-continuation-) (-with-)
+    ((-continuation-)
+      (if (@ expr-escapes n)
+        (let (offset [- offset [* [length (@ expr-parameters n)] (word-size)]]) (do
+          (let (offset-ref (storage _ offset))
+          (foreach (t (@ expr-parameters n)) (do
+            (setf bndg-preferred-storage t [context->memory-storage (@ bndg-context t)])
+            (setf bndg-preferred-offset t $offset-ref)
+            (setf bndg-size t (word-size))
+            [set+ offset-ref (word-size)])))
+          (let (cont-bndg (@ expr-reference n)) (offset [- offset (cont-size)]) (do
+          (setf bndg-storage cont-bndg [context->memory-storage (@ bndg-context cont-bndg)])
+          (setf bndg-size cont-bndg (cont-size))
+          (setf bndg-offset cont-bndg offset)
+          [place-perm-bindings (@ expr-expression n) offset]))))
+        (let (cont-bndg (@ expr-reference n)) (do
+          (setf bndg-storage cont-bndg [context->memory-storage (@ bndg-context cont-bndg)])
+          (setf bndg-size cont-bndg #0)
+          (setf bndg-offset cont-bndg offset)
+          [place-perm-bindings (@ expr-expression n) offset]))))
+    
+    ((-with-)
       (if (@ expr-escapes n)
         (let (offset [- offset [* [length (@ expr-parameters n)] (word-size)]]) (do
         (let (offset-ref (storage _ offset))
@@ -334,25 +354,12 @@
 (constrain initialize-continuation (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
 
 (function initialize-continuation (n offset inits ret-val)
-  (and [= (@ expr-type n) (-continuation-)]
-    (let (bottom-offset [- offset [* [+ [length (@ expr-parameters n)] #1] (word-size)]])
-    (bind (frame-size in-use) [initialize-expression (@ expr-expression n) bottom-offset inits bind]
-    (let (in-use [bor (hex FFFFFFFFFFFF0C38) in-use])
-    (let (in-use [expr-to-register/memory (@ expr-expression n) bottom-offset in-use]) (do
-    (let (in-use
-      (if (@ expr-escapes n) in-use
-        (let (offset [- offset [* [length (@ expr-parameters n)] (word-size)]])
-        (let (cont-bndg (@ expr-reference n)) (do
-        (setf bndg-size cont-bndg #0)
-        (setf bndg-offset cont-bndg offset)
-        (loop assign-args (offset offset) (in-use in-use) (u (@ expr-parameters n))
-          (if [nil? u] in-use
-            {assign-args [+ offset (word-size)]
-              [binding-to-register/memory [@car u] offset in-use] [@cdr u]}))))))) (do
+  (and [= (@ expr-type n) (-continuation-)] (do
+    [initialize-expressions (storage-cons (@ expr-expression n) nil) (@ expr-parameters n)
+      offset (hex FFFFFFFFFFFF0C38) inits ret-val]
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (setf expr-generator n [function->generator generate-continuation])
-    (values (use-storage ret-val) frame-size in-use)
-    (true))))))))))
+    (true))))
 
 (constrain generate-with
   (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
