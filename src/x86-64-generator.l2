@@ -107,19 +107,6 @@
   already in use. Assigns the given binding to the given register if it is not already in
   use and returns an indication to that effect, otherwise it fails.)
 
-(constrain try-binding-to-register (\ r (with-vars (b c) (`(function (bndg-aug register reg-use-vec ,b) (values ,c reg-use-vec))r)r)))
-
-(function try-binding-to-register (bndg reg in-use ret-val)
-  (let (reg-idx [band reg (hex F)])
-  (let (reg-occupied? [band [<< #1 reg-idx] in-use])
-  (if reg-occupied?
-    (values (use-storage ret-val) (false) in-use)
-    (do
-      (setf bndg-size bndg (word-size))
-      (setf bndg-storage bndg (register-storage))
-      (setf bndg-offset bndg reg)
-      (values (use-storage ret-val) (true) [bor [<< #1 reg-idx] in-use]))))))
-
 (function try-bndg-to-preferred-location (bndg in-use)
   (switch = (@ bndg-preferred-storage bndg)
     ((nil-storage) in-use)
