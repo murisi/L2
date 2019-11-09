@@ -59,7 +59,7 @@
       (let (offset [place-perm-bindings (@ expr-alternate n) offset])
         offset))))
     
-    ((-continuation-)
+    ((-continuation-) (-with-)
       (if (@ expr-escapes n)
         (let (offset [- offset [* [length (@ expr-parameters n)] (word-size)]]) (do
           (let (offset-ref (storage _ offset))
@@ -79,23 +79,6 @@
           (setf bndg-offset cont-bndg offset)
           [place-perm-bindings (@ expr-expression n) offset]))))
     
-    ((-with-)
-      (if (@ expr-escapes n)
-        (let (offset [- offset [* [length (@ expr-parameters n)] (word-size)]]) (do
-        (let (offset-ref (storage _ offset))
-        (foreach (t (@ expr-parameters n)) (do
-          (setf bndg-storage t [context->memory-storage (@ bndg-context t)])
-          (setf bndg-offset t $offset-ref)
-          (setf bndg-size t (word-size))
-          [set+ offset-ref (word-size)])))
-        (let (cont-bndg (@ expr-reference n))
-          (offset [- offset (cont-size)]) (do
-        (setf bndg-storage cont-bndg [context->memory-storage (@ bndg-context cont-bndg)])
-        (setf bndg-size cont-bndg (cont-size))
-        (setf bndg-offset cont-bndg offset)
-        [place-perm-bindings (@ expr-expression n) offset]))))
-        [place-perm-bindings (@ expr-expression n) offset]))
-    
     ((-storage-)
       (let (storage-size [* [length (@ expr-arguments n)] (word-size)])
       (let (offset [- offset storage-size]) (do
@@ -105,8 +88,8 @@
       (let (offset-ref (storage _ offset))
       (foreach (u (@ expr-arguments n)) (do
         (setf bndg-size (@ expr-binding-aug u) (word-size))
-        (setf bndg-offset (@ expr-binding-aug u) $offset-ref)
-        (setf bndg-storage (@ expr-binding-aug u) [context->memory-storage (@ bndg-context (@ expr-binding-aug u))])
+        (setf bndg-preferred-offset (@ expr-binding-aug u) $offset-ref)
+        (setf bndg-preferred-storage (@ expr-binding-aug u) [context->memory-storage (@ bndg-context (@ expr-binding-aug u))])
         [set+ offset-ref (word-size)])))
       (fold (offset offset) (u (@ expr-arguments n)) [place-perm-bindings u offset])))))
     
@@ -419,10 +402,7 @@
 
 (function initialize-storage (n offset inits ret-val)
   (and [= (@ expr-type n) (-storage-)] (do
-    (fold (memory-state (values (use-storage ret-val) offset (hex 0000000000000800))) (u (@ expr-arguments n))
-      (bind (bottom-offset in-use) memory-state
-      (bind (bottom-offset' in-use') [initialize-expression u offset inits bind]
-      (values (use-storage ret-val) [min bottom-offset bottom-offset'] [bor in-use in-use']))))
+    [initialize-expressions (@ expr-arguments n) nil offset (hex FFFFFFFFFFFF0C38) inits ret-val]
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (setf expr-generator n [function->generator generate-storage])
     (true))))
