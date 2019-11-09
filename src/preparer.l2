@@ -68,28 +68,6 @@
       e))
     e))
 
-(ignore Does the following optimization:
-  (function fun1 (param1 ... paramN) [fun2 param1 ... paramN])
-  ->
-  fun2)
-
-(constrain vunwrap-functions (\ r (`(function (expr ()) expr)r)))
-
-(function vunwrap-functions (e ctx)
-  (if (and [= (@ expr-type e) (-function-)] [= (@ expr-type (@ expr-expression e)) (-invoke-)]
-      [= (@ expr-type (@ expr-target (@ expr-expression e))) (-symbol-)]
-      (not [contains (@ expr-reference (@ expr-target (@ expr-expression e)))
-        (storage-cons (@ expr-reference e) (@ expr-parameters e))])
-      (loop compare (params (@ expr-parameters e)) (args (@ expr-arguments (@ expr-expression e)))
-        (if (and [nil? params] [nil? args]) (true)
-        (if [nil? params] (false)
-        (if [nil? args] (false)
-        (if (and [= (@ expr-type [@car args]) (-symbol-)] [= (@ expr-reference [@car args]) [@car params]])
-          {compare [@cdr params] [@cdr args]}
-          (false)))))))
-    (@ expr-target (@ expr-expression e))
-    e))
-
 (constrain global-binding-augs-of (\ r (with-vars (a) (`(function ((list expr) buffer ,a) (list bndg-aug))r)r)))
 
 (function global-binding-augs-of (exprs r handler)
