@@ -454,18 +454,20 @@
           [prepend [make-label (@ expr-cont-instr-bndg cont) ..] c ..]
           [generate-expression (@ expr-expression cont) c relocs ..]))
       
-      (if (let (cont (@ expr-short-circuit n))
-          (and [not= cont null-expr] [= (@ expr-type cont) (-with-)] (not (@ expr-escapes (@ expr-target n)))
-            (loop enter (current (@ expr-expression cont))
-              (if [= n current]
-                (true)
-              (if (and [= (@ expr-type current) (-jump-)] [= (@ expr-type (@ expr-target current)) (-continuation-)])
-                {enter (@ expr-expression (@ expr-target current))}
-                (false))))))
-        (let (dest-bndg (@ expr-binding-aug (@ expr-expression (@ expr-short-circuit n))))
-            (src-bndg (@ expr-binding-aug [@car (@ expr-arguments n)])) (do
-          [generate-expression [@car (@ expr-arguments n)] c relocs ..]
-          [generate-bndg-bndg-move dest-bndg src-bndg (r11) c relocs ..]))
+      (bind-if
+        (loop enter (with-expr (@ expr-short-circuit n)) (current (@ expr-short-circuit n))
+          (if [= n current]
+            (do [set dest with-expr] (true))
+          (if (and [not= current null-expr] [= (@ expr-type current) (-with-)])
+            {enter current (@ expr-expression current)}
+          (if (and [= (@ expr-type current) (-jump-)] [= (@ expr-type (@ expr-target current)) (-continuation-)])
+            {enter with-expr (@ expr-expression (@ expr-target current))}
+            (false)))))
+        (dest)
+          (let (dest-bndg (@ expr-binding-aug (@ expr-expression $dest)))
+              (src-bndg (@ expr-binding-aug [@car (@ expr-arguments n)])) (do
+            [generate-expression [@car (@ expr-arguments n)] c relocs ..]
+            [generate-bndg-bndg-move dest-bndg src-bndg (r11) c relocs ..]))
       
       (if [not= (@ expr-short-circuit n) null-expr]
         (let (cont-instr-bndg (@ expr-cont-instr-bndg(@ expr-short-circuit n))) (do

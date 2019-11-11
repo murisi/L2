@@ -68,6 +68,26 @@
       e))
     e))
 
+(ignore Does the following optimizations:
+  [... {expr1 ... exprN} ...] -> {expr1 ... exprN}
+  {... {expr1 ... exprN} ...} -> {expr1 ... exprN}
+  (if {expr1 ... exprN} cons alt) -> {expr1 ... exprN})
+
+(function vdominate-jumps (e ctx)
+  (switch = (@ expr-type e)
+    ((-invoke-) (-jump-)
+      (loop search (exprs (storage-cons (@ expr-target e) (@ expr-arguments e)))
+        (if [nil? exprs] e
+        (if [= (@ expr-type [@car exprs]) (-jump-)] [@car exprs]
+          {search [@cdr exprs]}))))
+    
+    ((-if-)
+      (if [= (@ expr-type (@ expr-condition e)) (-jump-)]
+        (@ expr-condition e)
+        e))
+    
+    e))
+
 (constrain global-binding-augs-of (\ r (with-vars (a) (`(function ((list expr) buffer ,a) (list bndg-aug))r)r)))
 
 (function global-binding-augs-of (exprs r handler)
