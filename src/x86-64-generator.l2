@@ -495,7 +495,11 @@
           (setf expr-binding-aug u v))
         [initialize-expressions (storage-cons (@ expr-expression (@ expr-target n)) (@ expr-arguments n))
           (@ expr-parameters (@ expr-target n)) offset (hex FFFFFFFFFFFF0C38) inits ret-val])
-      [initialize-expressions (storage-cons (@ expr-target n) (@ expr-arguments n)) nil offset (hex FFFFFFFFFFFF0C30) inits ret-val])
+    (if (and [not= (@ expr-short-circuit n) null-expr] [= [length (@ expr-parameters (@ expr-short-circuit n))] #1])
+      (do
+        (setf expr-binding-aug [@car (@ expr-arguments n)] [@car (@ expr-parameters (@ expr-short-circuit n))])
+        [initialize-expressions (storage-cons (@ expr-target n) (@ expr-arguments n)) nil offset (hex FFFFFFFFFFFF0C30) inits ret-val])
+      [initialize-expressions (storage-cons (@ expr-target n) (@ expr-arguments n)) nil offset (hex FFFFFFFFFFFF0C30) inits ret-val]))
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (setf expr-generator n [function->generator generate-jump])
     (true))))
