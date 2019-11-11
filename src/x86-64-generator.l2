@@ -364,10 +364,13 @@
         (if (@ expr-escapes n) [generate-store-continuation n c relocs ..] (ignore))
         [generate-expression (@ expr-expression n) c relocs ..]
         [generate-bndg-bndg-move expr-val-bndg body-val-bndg (r11) c relocs ..]
-        [prepend (make-instrN (x86-jmp) ([make-relative-relocation-immediate #4 end-instr-binding relocs ..]) ..) c ..]
-        [prepend [make-label (@ expr-cont-instr-bndg n) ..] c ..]
-        [generate-bndg-bndg-move expr-val-bndg param-val-bndg (r11) c relocs ..]
-        [prepend [make-label end-instr-binding ..] c ..]
+        (if [bndg= expr-val-bndg param-val-bndg]
+          [prepend [make-label (@ expr-cont-instr-bndg n) ..] c ..]
+          (do
+            [prepend (make-instrN (x86-jmp) ([make-relative-relocation-immediate #4 end-instr-binding relocs ..]) ..) c ..]
+            [prepend [make-label (@ expr-cont-instr-bndg n) ..] c ..]
+            [generate-bndg-bndg-move expr-val-bndg param-val-bndg (r11) c relocs ..]
+            [prepend [make-label end-instr-binding ..] c ..]))
         (true))))))
 
 (constrain initialize-with (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
@@ -786,14 +789,19 @@
 (function bndg->op (bndg relocs buf handler)
   [bndg->partial-op (@ bndg-size bndg) bndg relocs buf handler])
 
+(constrain bndg= (\ r (with-vars (a) (`(function (bndg-aug bndg-aug) ,a)r)r)))
+
+(function bndg= (a b)
+  (and [= (@ bndg-storage a) (@ bndg-storage b)]
+    [= (@ bndg-offset a) (@ bndg-offset b)]
+    [= (@ bndg-size a) (@ bndg-size b)]))
+
 (constrain generate-bndg-bndg-move
   (\ r (with-vars (a b) (`(function (bndg-aug bndg-aug register (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
 (function generate-bndg-bndg-move (dst src tmp c relocs r handler)
   (substitute (.. r handler)
-    (if (and [= (@ bndg-storage dst) (@ bndg-storage src)]
-        [= (@ bndg-offset dst) (@ bndg-offset src)]
-        [= (@ bndg-size dst) (@ bndg-size src)])
+    (if [bndg= dst src]
       (ignore)
       [prepend (make-instrN(x86-mov)([bndg->op dst relocs ..][bndg->op src relocs ..][make-reg-op tmp ..])..) c ..])))
 
