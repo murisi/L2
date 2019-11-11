@@ -186,14 +186,19 @@
         (values (use-storage bind) bottom-offset in-use)
         (bind (bottom-offset' in-use') [initialize-expression [@car u] sub-expr-offset inits bind]
           {init-subs [min bottom-offset bottom-offset'] [bor in-use in-use'] [@cdr u]})))
-  (let (in-use (fold (in-use in-use) (u exprs) [try-expr-to-preferred-location u in-use]))
+  (let (in-use (fold (in-use in-use) (u exprs)
+    (if [= u (@ bndg-expression (@ expr-binding-aug u))]
+      [try-expr-to-preferred-location u in-use]
+      in-use)))
   (let (in-use (fold (in-use in-use) (u bndgs) [try-bndg-to-preferred-location u in-use]))
   (let (in-use
     (loop assign-args (offset [- offset [* [length exprs] (word-size)]]) (in-use in-use) (u exprs)
       (if [nil? u]
         in-use
         {assign-args [+ offset (word-size)]
-          (if [expr-assigned? [@car u]] in-use [expr-to-register/memory [@car u] offset in-use]) [@cdr u]})))
+          (if (or [expr-assigned? [@car u]] [not= [@car u] (@ bndg-expression (@ expr-binding-aug [@car u]))])
+            in-use
+            [expr-to-register/memory [@car u] offset in-use]) [@cdr u]})))
   (let (in-use
     (loop assign-args (offset [- offset [* [+ [length exprs] [length bndgs]] (word-size)]]) (in-use in-use) (u bndgs)
       (if [nil? u]
@@ -574,6 +579,9 @@
 
 (function initialize-if (n offset inits ret-val)
   (and [= (@ expr-type n) (-if-)] (do
+    (setf expr-binding-aug (@ expr-condition n) (@ expr-binding-aug n))
+    (setf expr-binding-aug (@ expr-consequent n) (@ expr-binding-aug n))
+    (setf expr-binding-aug (@ expr-alternate n) (@ expr-binding-aug n))
     [initialize-expressions
       (storage-cons (@ expr-condition n) (storage-cons (@ expr-consequent n) (storage-cons (@ expr-alternate n) nil)))
       nil offset (hex FFFFFFFFFFFF0830) inits ret-val]
@@ -598,6 +606,7 @@
 
 (function initialize-constrain (n offset inits ret-val)
   (and [= (@ expr-type n) (-constrain-)] (do
+    (setf expr-binding-aug (@ expr-expression n) (@ expr-binding-aug n))
     [initialize-expressions (storage-cons (@ expr-expression n) nil) nil offset (hex FFFFFFFFFFFF0830) inits ret-val]
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (setf expr-generator n [function->generator generate-constrain])
