@@ -688,6 +688,14 @@
     
     (true)))))))))))))))))))))))))))))
 
+(constrain write-nm-instr (\ r (with-vars (f g h i) (`(function (instr ,f (ref ,g) buffer ,h) ,i)r)r)))
+
+(function write-nm-instr (n bin pos buf handler)
+  (substitute (.. buf handler)
+    (bind-if (match-list-prefix
+        (%(match-property (op-type (%[= (none-operand)])))) (@ instr-operands n))
+      () (true) (false))))
+
 (constrain write-mr-instr (\ r (with-vars (a b c d e f g h i) (`(function (,a ,b ,c ,d ,e instr ,f (ref ,g) buffer ,h) ,i)r)r)))
 
 (function write-mr-instr (mask opcode-8 opcode-16 opcode-32 opcode-64 n bin pos buf handler)
@@ -1032,6 +1040,7 @@
           {handler (storage _ unsupported-instruction-error n)}))
         
         ((x86-mov) (or
+          [write-nm-instr n bin pos ..]
           [write-mr-instr (hex 1F) (hex 88) (hex 89) (hex 89) (hex 89) n bin pos ..]
           [write-rm-instr (hex 1F) (hex 8A) (hex 8B) (hex 8B) (hex 8B) n bin pos ..]
           [write-mm-instr (hex 1F) (hex 88) (hex 89) (hex 89) (hex 89) n bin pos ..]
@@ -1050,6 +1059,7 @@
           {handler (storage _ unsupported-instruction-error n)}))
         
         ((x86-lea) (or
+          [write-nm-instr n bin pos ..]
           (bind-if (match-list-prefix
               (%(match-and
                 (%[variable op1])

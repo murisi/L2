@@ -187,16 +187,18 @@
         (bind (bottom-offset' in-use') [initialize-expression [@car u] sub-expr-offset inits bind]
           {init-subs [min bottom-offset bottom-offset'] [bor in-use in-use'] [@cdr u]})))
   (let (in-use (fold (in-use in-use) (u exprs)
-    (if [= u (@ bndg-expression (@ expr-binding-aug u))]
+    (if (and [= u (@ bndg-expression (@ expr-binding-aug u))] (@ bndg-is-read (@ expr-binding-aug u)))
       [try-expr-to-preferred-location u in-use]
       in-use)))
-  (let (in-use (fold (in-use in-use) (u bndgs) [try-bndg-to-preferred-location u in-use]))
+  (let (in-use (fold (in-use in-use) (u bndgs)
+    (if (@ bndg-is-read u) [try-bndg-to-preferred-location u in-use] in-use)))
   (let (in-use
     (loop assign-args (offset [- offset [* [length exprs] (word-size)]]) (in-use in-use) (u exprs)
       (if [nil? u]
         in-use
         {assign-args [+ offset (word-size)]
-          (if (or [expr-assigned? [@car u]] [not= [@car u] (@ bndg-expression (@ expr-binding-aug [@car u]))])
+          (if (or [expr-assigned? [@car u]] [not= [@car u] (@ bndg-expression (@ expr-binding-aug [@car u]))]
+              (not (@ bndg-is-read (@ expr-binding-aug [@car u]))))
             in-use
             [expr-to-register/memory [@car u] offset in-use]) [@cdr u]})))
   (let (in-use
@@ -204,7 +206,7 @@
       (if [nil? u]
         in-use
         {assign-args [+ offset (word-size)]
-          (if [bndg-assigned? [@car u]] in-use [binding-to-register/memory [@car u] offset in-use]) [@cdr u]})))
+          (if (or [bndg-assigned? [@car u]] (not (@ bndg-is-read [@car u]))) in-use [binding-to-register/memory [@car u] offset in-use]) [@cdr u]})))
   (values (use-storage ret-val) bottom-offset in-use))))))))
 
 (constrain generate-function
@@ -597,7 +599,6 @@
 
 (function initialize-if (n offset inits ret-val)
   (and [= (@ expr-type n) (-if-)] (do
-    (setf expr-binding-aug (@ expr-condition n) (@ expr-binding-aug n))
     (setf expr-binding-aug (@ expr-consequent n) (@ expr-binding-aug n))
     (setf expr-binding-aug (@ expr-alternate n) (@ expr-binding-aug n))
     [initialize-expressions
@@ -773,6 +774,9 @@
 
 (function bndg->partial-op (op-size bndg relocs buf handler)
   (substitute (.. buf handler)
+    (if [= (@ bndg-storage bndg) (nil-storage)]
+      [make-none-op ..]
+      
     (if [= (@ bndg-storage bndg) (absolute-storage)]
       (let (op [make-mem-op op-size (rip) (none) #0 #0 #4 ..]) (do
         [prepend [make-relocation (r-x86-64-pc32) op bndg (ignore)
@@ -792,7 +796,7 @@
           (#8 reg-lower-64)
           (ignore)) (@ bndg-offset bndg)] ..]
     
-      (ignore))))))
+      (ignore)))))))
 
 (constrain bndg->op (\ r (with-vars (a) (`(function (bndg-aug (ref (list reloc)) buffer ,a) operand)r)r)))
 
