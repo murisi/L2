@@ -374,8 +374,13 @@
 
 (function initialize-with (n offset inits ret-val)
   (and (or [= (@ expr-type n) (-with-)]) (do
-    [initialize-expressions (storage-cons (@ expr-expression n) nil) (@ expr-parameters n)
-      offset (hex FFFFFFFFFFFF0C38) inits ret-val]
+    (setf expr-binding-aug (@ expr-expression n) (@ expr-binding-aug n))
+    (if (@ expr-escapes n)
+      [initialize-expressions (storage-cons (@ expr-expression n) nil) (@ expr-parameters n)
+        offset (hex FFFFFFFFFFFF0C38) inits ret-val]
+      (do
+        (setf car (@ expr-parameters n) (@ expr-binding-aug n))
+        [initialize-expressions (storage-cons (@ expr-expression n) nil) nil offset (hex FFFFFFFFFFFF0C38) inits ret-val]))
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (setf expr-generator n [function->generator generate-with])
     (true))))
