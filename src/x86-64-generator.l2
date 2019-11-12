@@ -162,6 +162,11 @@
 (function expr-to-register/memory (n offset in-use)
   [binding-to-register/memory (@ expr-binding-aug n) offset in-use])
 
+(function coalesce-expr-bndg (n)
+  (if (and [= (@ expr-type n) (-symbol-)] [= (@ bndg-mode (@ expr-reference n)) (value-mode)])
+    (do (setf expr-binding-aug n (@ expr-reference n)) n)
+    n))
+
 (function bndg-assigned? (bndg) [not= (@ bndg-storage bndg) (nil-storage)])
 
 (function expr-assigned? (expr) [bndg-assigned? (@ expr-binding-aug expr)])
@@ -296,9 +301,12 @@
         (setf bndg-preferred-offset [@car u] offset)
         {assign-params [+ offset (word-size)] [@cdr u]})))))
     
+    (setf bndg-preferred-storage (@ expr-binding-aug (@ expr-expression n)) (register-storage))
+    (setf bndg-preferred-offset (@ expr-binding-aug (@ expr-expression n)) (rax))
+    
     (bind (frame-size in-use)
       [initialize-expressions (storage-cons (@ expr-expression n) nil) (@ expr-parameters n)
-        (@ expr-frame-size n) (hex FFFFFFFFFFFF0831) inits ret-val] (do
+        (@ expr-frame-size n) (hex FFFFFFFFFFFF0830) inits ret-val] (do
     (setf expr-registers-used n in-use)
     (setf expr-frame-size n frame-size)
     (foreach (t (@ expr-parameters n)) (setf bndg-size t (word-size)))))

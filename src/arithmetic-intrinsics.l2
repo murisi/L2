@@ -70,7 +70,7 @@
         (expr-val-bndg (@ expr-binding-aug n))
       (switch str= $name
         ((" getb) (" get1b) (" get2b) (" get4b) (" get8b) (" get) (" bnot) (do
-          [initialize-expressions (storage-cons $arg1 nil) nil offset (hex FFFFFFFFFFFF0831) inits ret-val]
+          [initialize-expressions (storage-cons [coalesce-expr-bndg $arg1] nil) nil offset (hex FFFFFFFFFFFF0830) inits ret-val]
           (setf bndg-size (@ expr-binding-aug n) (word-size))
           (setf expr-generator n [function->generator generate-unary-arithmetic-operators])
           (true)))
@@ -176,7 +176,8 @@
       
     (switch str= $name
       ((" setb) (" set1b) (" set2b) (" set4b) (" set8b) (" set) (" bor) (" band) (" +) (" -) (" =) (" <) (" >) (do
-        [initialize-expressions (storage-cons $arg1 (storage-cons $arg2 nil)) nil offset (hex FFFFFFFFFFFF0C31) inits ret-val]
+        [initialize-expressions (storage-cons [coalesce-expr-bndg $arg1] (storage-cons [coalesce-expr-bndg $arg2] nil))
+          nil offset (hex FFFFFFFFFFFF0C30) inits ret-val]
         (setf bndg-size (@ expr-binding-aug n) (word-size))
         (setf expr-generator n [function->generator generate-binary-arithmetic-operators])
         (true)))
@@ -487,7 +488,7 @@
           (expr-val-bndg (@ expr-binding-aug n))
         (switch str= $name
           ((" getb) (" get1b) (" get2b) (" get4b) (" get8b) (" get) (do
-            [initialize-expressions (storage-cons $base nil) nil offset (hex FFFFFFFFFFFF0831) inits ret-val]
+            [initialize-expressions (storage-cons [coalesce-expr-bndg $base] nil) nil offset (hex FFFFFFFFFFFF0830) inits ret-val]
             (setf bndg-size (@ expr-binding-aug n) (word-size))
             (setf expr-generator n [function->generator generate-get-base+offset])
             (true)))
@@ -573,7 +574,8 @@
       
     (switch str= $name
       ((" setb) (" set1b) (" set2b) (" set4b) (" set8b) (" set) (do
-        [initialize-expressions (storage-cons $base (storage-cons $val nil)) nil offset (hex FFFFFFFFFFFF0C31) inits ret-val]
+        [initialize-expressions (storage-cons [coalesce-expr-bndg $base] (storage-cons [coalesce-expr-bndg $val] nil))
+          nil offset (hex FFFFFFFFFFFF0C30) inits ret-val]
         (setf bndg-size (@ expr-binding-aug n) (word-size))
         (setf expr-generator n [function->generator generate-set-base+offset])
         (true)))
