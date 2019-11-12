@@ -73,6 +73,8 @@
   {... {expr1 ... exprN} ...} -> {expr1 ... exprN}
   (if {expr1 ... exprN} cons alt) -> {expr1 ... exprN})
 
+(constrain vdominate-jumps (\ r (`(function (expr ()) expr)r)))
+
 (function vdominate-jumps (e ctx)
   (switch = (@ expr-type e)
     ((-invoke-) (-jump-)
@@ -87,6 +89,26 @@
         e))
     
     e))
+
+(ignore Assigns depths to the given expression and its descendents.)
+
+(constrain assign-depths (\ r (with-vars (a) (`(function (expr ,a) ())r)r)))
+
+(function assign-depths (e depth) (do
+  (setf expr-depth e depth)
+  (switch = (@ expr-type e)
+    ((-function-) (-continuation-) (-with-) (-constrain-)
+      [assign-depths (@ expr-expression e) [+ depth #1]])
+    ((-if-) (do
+      [assign-depths (@ expr-condition e) [+ depth #1]]
+      [assign-depths (@ expr-consequent e) [+ depth #1]]
+      [assign-depths (@ expr-alternate e) [+ depth #1]]))
+    ((-invoke-) (-jump-)
+      (foreach (u (storage-cons (@ expr-target e) (@ expr-arguments e)))
+        [assign-depths u [+ depth #1]]))
+    ((-storage-)
+      (foreach (u (@ expr-arguments e)) [assign-depths u [+ depth #1]]))
+    (ignore))))
 
 (constrain global-binding-augs-of (\ r (with-vars (a) (`(function ((list expr) buffer ,a) (list bndg-aug))r)r)))
 

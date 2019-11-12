@@ -185,7 +185,9 @@
       (if [nil? u]
         (values (use-storage bind) bottom-offset in-use)
         (bind (bottom-offset' in-use') [initialize-expression [@car u] sub-expr-offset inits bind]
-          {init-subs [min bottom-offset bottom-offset'] [bor in-use in-use'] [@cdr u]})))
+          {init-subs [min bottom-offset bottom-offset'] [bor in-use in-use'] [@cdr u]}))) (do
+  (foreach (u exprs) (setf bndg-storage (@ expr-binding-aug u) (nil-storage)))
+  (foreach (u bndgs) (setf bndg-storage u (nil-storage)))
   (let (in-use (fold (in-use in-use) (u exprs)
     (if (and [= u (@ bndg-expression (@ expr-binding-aug u))] (@ bndg-is-read (@ expr-binding-aug u)))
       [try-expr-to-preferred-location u in-use]
@@ -207,7 +209,7 @@
         in-use
         {assign-args [+ offset (word-size)]
           (if (or [bndg-assigned? [@car u]] (not (@ bndg-is-read [@car u]))) in-use [binding-to-register/memory [@car u] offset in-use]) [@cdr u]})))
-  (values (use-storage ret-val) bottom-offset in-use))))))))
+  (values (use-storage ret-val) bottom-offset in-use)))))))))
 
 (constrain generate-function
   (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
@@ -218,7 +220,7 @@
         (ref-val-bndg (@ expr-reference n))
         (expr-val-bndg (@ expr-binding-aug n))
         (body-val-bndg (@ expr-binding-aug (@ expr-expression n)))
-        (after-binding [make-binding-aug (extra-function-context) (absolute-storage) (local-scope) (defined-state) null-string null-frag null-expr ..]) (do
+        (after-binding [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope) (defined-state) null-string null-frag null-expr ..]) (do
       
       [prepend(make-instrN(x86-lea)([bndg->op expr-val-bndg relocs ..][bndg->op ref-val-bndg relocs ..][make-reg-op(r11)..])..) c ..]
       [prepend (make-instrN (x86-jmp)([make-relative-relocation-immediate #4 after-binding relocs ..])..) c ..]
@@ -329,7 +331,7 @@
       (let
           (cont-val-bndg (@ expr-reference n))
           (expr-val-bndg (@ expr-binding-aug n))
-          (after-binding [make-binding-aug (extra-function-context) (absolute-storage) (local-scope) (defined-state) null-string null-frag null-expr ..]) (do
+          (after-binding [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope) (defined-state) null-string null-frag null-expr ..]) (do
         (if (@ expr-escapes n) (do
           [prepend (make-instrN(x86-lea)([bndg->op expr-val-bndg relocs ..][bndg->op cont-val-bndg relocs ..][make-reg-op (r11) ..]) ..) c ..]
           [generate-store-continuation n c relocs ..])
@@ -362,7 +364,7 @@
           (body-val-bndg (@ expr-binding-aug (@ expr-expression n)))
           (param-val-bndg [@car(@ expr-parameters n)])
           (end-instr-binding
-            [make-binding-aug (extra-function-context) (absolute-storage) (local-scope) (defined-state) null-string null-frag null-expr ..]) (do
+            [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope) (defined-state) null-string null-frag null-expr ..]) (do
         (if (@ expr-escapes n) [generate-store-continuation n c relocs ..] (ignore))
         [generate-expression (@ expr-expression n) c relocs ..]
         [generate-bndg-bndg-move expr-val-bndg body-val-bndg (r11) c relocs ..]
@@ -380,12 +382,37 @@
 (function initialize-with (n offset inits ret-val)
   (and (or [= (@ expr-type n) (-with-)]) (do
     (setf expr-binding-aug (@ expr-expression n) (@ expr-binding-aug n))
-    (if (@ expr-escapes n)
+    (if (@ expr-escapes n) (ignore) (setf car (@ expr-parameters n) (@ expr-binding-aug n)))
+    
+    (if [= [length (@ expr-jumps n)] #1]
+      (let (arg [@car (@ expr-arguments [@car (@ expr-jumps n)])])
+        (if [= (@ expr-type arg) (-symbol-)]
+          (let (repl-target (@ expr-reference arg))
+            (if (and [= (@ bndg-mode repl-target) (value-mode)] [> (@ expr-depth (@ bndg-expression repl-target)) (@ expr-depth n)])
+              [visit-expressions
+                (function vreplace-bindings (e ctx)
+                  (bind (repl-target replacement) ctx (do
+                    (if [= (@ expr-binding-aug e) repl-target]
+                      (setf expr-binding-aug e replacement)
+                      (ignore))
+                    (switch = (@ expr-type e)
+                      ((-continuation-) (-with-) (-function-)
+                        (loop replace (rem-params (@ expr-parameters e))
+                          (if [nil? rem-params] e
+                          (if [= [@car rem-params] repl-target]
+                            (do (setf car rem-params replacement) {replace [@cdr rem-params]})
+                            {replace [@cdr rem-params]}))))
+                      ((-symbol-)
+                        (if [= (@ expr-reference e) repl-target]
+                          (do (setf expr-reference e replacement) e)
+                          e))
+                      e))))
+                (storage _ (@ expr-expression n)) (values storage repl-target [@car (@ expr-parameters n)])]
+              (ignore))) (ignore))) (ignore))
+    
       [initialize-expressions (storage-cons (@ expr-expression n) nil) (@ expr-parameters n)
         offset (hex FFFFFFFFFFFF0C38) inits ret-val]
-      (do
-        (setf car (@ expr-parameters n) (@ expr-binding-aug n))
-        [initialize-expressions (storage-cons (@ expr-expression n) nil) nil offset (hex FFFFFFFFFFFF0C38) inits ret-val]))
+      
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (setf expr-generator n [function->generator generate-with])
     (true))))
@@ -582,9 +609,9 @@
           (consequent-val-bndg (@ expr-binding-aug (@ expr-consequent n)))
           (alternate-val-bndg (@ expr-binding-aug (@ expr-alternate n)))
           (alternate-instr-bndg
-            [make-binding-aug (extra-function-context) (absolute-storage) (local-scope) (defined-state) null-string null-frag null-expr ..])
+            [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope) (defined-state) null-string null-frag null-expr ..])
           (end-instr-binding
-            [make-binding-aug (extra-function-context) (absolute-storage) (local-scope) (defined-state) null-string null-frag null-expr ..]) (do
+            [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope) (defined-state) null-string null-frag null-expr ..]) (do
         [generate-expression (@ expr-condition n) c relocs ..]
         [prepend (make-instrN(x86-or)([bndg->op condition-val-bndg relocs ..][bndg->op condition-val-bndg relocs ..][make-reg-op(r11)..])..) c ..]
         [prepend (make-instrN (x86-je) ([make-relative-relocation-immediate #4 alternate-instr-bndg relocs ..]) ..) c ..]
@@ -634,33 +661,16 @@
     (true))))
 
 (ignore
-  Checks if a symbol is a value symbol, that is, a symbol that is bound to a function/
-  continuation parameter.)
-
-(constrain value-symbol? (\ r (with-vars (a) (`(function (expr) ,a)r)r)))
-
-(function value-symbol? (n)
-  (let (symbol-val-bndg (@ expr-reference n))
-  (let (target-expr (@ bndg-expression symbol-val-bndg))
-  (and (or [= (@ expr-type target-expr) (-function-)] [= (@ expr-type target-expr) (-continuation-)])
-    [contains symbol-val-bndg (@ expr-parameters target-expr)]))))
-
-(ignore
-  Checks if a symbol is a reference symbol. A reference symbol is a symbol that is not
-  a value symbol.)
-
-(constrain reference-symbol? (\ r (with-vars (a) (`(function (expr) ,a)r)r)))
-
-(function reference-symbol? (n) (not [value-symbol? n]))
-
-(ignore
   Checks if a symbol is a reference symbol that is bound to an absolute location in
   memory.)
 
 (constrain absolute-reference-symbol? (\ r (with-vars (a) (`(function (expr) ,a)r)r)))
 
 (function absolute-reference-symbol? (n)
-  (and [reference-symbol? n] [= (@ bndg-storage (@ expr-reference n)) (absolute-storage)]))
+  (and
+    [= (@ expr-type n) (-symbol-)]
+    [= (@ bndg-mode (@ expr-reference n)) (reference-mode)]
+    [= (@ bndg-storage (@ expr-reference n)) (absolute-storage)]))
 
 (constrain generate-symbol
   (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
@@ -670,7 +680,7 @@
     (and [= (@ expr-type n) (-symbol-)]
       (let (expr-val-bndg (@ expr-binding-aug n))
           (symbol-val-bndg (@ expr-reference n)) (do
-        (if [value-symbol? n]
+        (if [= (@ bndg-mode (@ expr-reference n)) (value-mode)]
           [generate-bndg-bndg-move expr-val-bndg symbol-val-bndg (r11) c relocs ..]
           [prepend (make-instrN(x86-lea)
             ([bndg->op expr-val-bndg relocs ..][bndg->op symbol-val-bndg relocs ..][make-reg-op(r11)..])..) c ..])
