@@ -40,11 +40,15 @@
     (if (and [= (@ expr-type e) (-symbol-)] [not= (@ bndg-propagate (@ expr-reference e)) null-expr]
         [= (@ expr-type (@ bndg-propagate (@ expr-reference e))) (-symbol-)])
       (do
+        [set- (& bndg-read-count (@ expr-reference e)) #1]
         (setf expr-reference e (@ expr-reference (@ bndg-propagate (@ expr-reference e))))
+        [set+ (& bndg-read-count (@ expr-reference e)) #1]
         e)
     (if (and [= (@ expr-type e) (-symbol-)] [not= (@ bndg-propagate (@ expr-reference e)) null-expr]
         [= (@ expr-type (@ bndg-propagate (@ expr-reference e))) (-literal-)])
-      [make-literal (@ expr-value (@ bndg-propagate (@ expr-reference e))) null-frag null-expr :a handler]
+      (do
+        [set- (& bndg-read-count (@ expr-reference e)) #1]
+        [make-literal (@ expr-value (@ bndg-propagate (@ expr-reference e))) null-frag null-expr :a handler])
       e)))))
 
 (ignore Does the following optimization:
@@ -140,7 +144,7 @@
       (let (ba [@car bindings])
         (if (and [not= (@ bndg-name ba) null-string] [not= (@ expr-name s) null-string]
             [str= (@ bndg-name ba) (@ expr-name s)])
-          (do (setf expr-reference s ba) (setf bndg-is-read ba (true)) (true))
+          (do (setf expr-reference s ba) [set+ (& bndg-read-count ba) #1] (true))
           {find [@cdr bindings]})))))
 
 (constrain link-symbols
