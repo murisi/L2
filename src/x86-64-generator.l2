@@ -385,26 +385,6 @@
             [prepend [make-label end-instr-binding ..] c ..]))
         (true))))))
 
-(constrain vreplace-value-bindings (\ r (`(function (expr (values bndg-aug bndg-aug)) expr)r)))
-
-(function vreplace-value-bindings (e ctx)
-  (bind (repl-target replacement) ctx (do
-    (if [= (@ expr-binding-aug e) repl-target]
-      (setf expr-binding-aug e replacement)
-      (ignore))
-    (switch = (@ expr-type e)
-      ((-continuation-) (-with-) (-function-)
-        (loop replace (rem-params (@ expr-parameters e))
-          (if [nil? rem-params] e
-          (if [= [@car rem-params] repl-target]
-            (do (setf car rem-params replacement) {replace [@cdr rem-params]})
-            {replace [@cdr rem-params]}))))
-      ((-symbol-)
-        (if [= (@ expr-reference e) repl-target]
-          (do (setf expr-reference e replacement) e)
-          e))
-      e))))
-
 (constrain initialize-with (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
 
 (function initialize-with (n offset inits ret-val)

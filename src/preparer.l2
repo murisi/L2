@@ -4,21 +4,22 @@
 
 (storage multiple-definition-error (ignore))
 
-(constrain vfind-multiple-definitions (\ r (with-vars (a) (`(function (expr (values buffer ,a)) expr)r)r)))
+(constrain vfind-multiple-definitions (\ r (with-vars (a) (`(function (expr ,a) expr)r)r)))
 
-(function vfind-multiple-definitions (e ctx)
-  (bind (:a handler) ctx
-    (with-buffer :a (do
-      (switch = (@ expr-type e)
-        ((-continuation-) (-function-)
-          (let (ref-with-params [cons (@ expr-reference e) (@ expr-parameters e) :a handler])
-          (until (partial ref-with-params) [nil? partial] [@cdr partial]
-            (if [nil? (find (f [@cdr partial]) [bndg-name= f [@car partial]])] (ignore)
-              (let (dup-ref-name (@ bndg-name[@car partial]))
-                {handler (storage _ multiple-definition-error dup-ref-name)})))))
-        
-        (ignore))
-      e))))
+(function vfind-multiple-definitions (e handler)
+  (switch = (@ expr-type e)
+    ((-continuation-) (-function-) (do
+      (let (ref-with-params (storage-cons (@ expr-reference e) (@ expr-parameters e)))
+      (until (partial ref-with-params) [nil? partial] [@cdr partial]
+        (if [nil? (find (f [@cdr partial]) [bndg-name= f [@car partial]])] (ignore)
+          (let (dup-ref-name (@ bndg-name[@car partial]))
+            {handler (storage _ multiple-definition-error dup-ref-name)}))))
+      e))
+    e))
+
+(ignore
+  A visitor to remove constrain expressions. This is a harmless operation providing that
+  type-checking has been completed.)
 
 (constrain veliminate-constrain (\ r (`(function (expr ()) expr)r)))
 
@@ -26,6 +27,10 @@
   (if [= (@ expr-type e) (-constrain-)]
     (@ expr-expression e)
     e))
+
+(ignore
+  Replaces symbols with the literal or the symbol they are defined by in the cases in
+  which it is possible.)
 
 (constrain vpropagate-expressions (\ r (with-vars (a) (`(function (expr (values buffer ,a)) expr)r)r)))
 
@@ -113,6 +118,30 @@
     ((-storage-)
       (foreach (u (@ expr-arguments e)) [assign-depths u [+ depth #1]]))
     (ignore))))
+
+(ignore
+  A visitor that replaces all occurences of the first binding in function/continuation
+  /with parameters, symbol references, and expression bindings with the second binding.)
+
+(constrain vreplace-value-bindings (\ r (`(function (expr (values bndg-aug bndg-aug)) expr)r)))
+
+(function vreplace-value-bindings (e ctx)
+  (bind (repl-target replacement) ctx (do
+    (if [= (@ expr-binding-aug e) repl-target]
+      (setf expr-binding-aug e replacement)
+      (ignore))
+    (switch = (@ expr-type e)
+      ((-continuation-) (-with-) (-function-)
+        (loop replace (rem-params (@ expr-parameters e))
+          (if [nil? rem-params] e
+          (if [= [@car rem-params] repl-target]
+            (do (setf car rem-params replacement) {replace [@cdr rem-params]})
+            {replace [@cdr rem-params]}))))
+      ((-symbol-)
+        (if [= (@ expr-reference e) repl-target]
+          (do (setf expr-reference e replacement) e)
+          e))
+      e))))
 
 (constrain global-binding-augs-of (\ r (with-vars (a) (`(function ((list expr) buffer ,a) (list bndg-aug))r)r)))
 
