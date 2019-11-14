@@ -28,9 +28,7 @@
 (constrain veliminate-constrain (\ r (`(function (expr ()) expr)r)))
 
 (function veliminate-constrain (e ctx)
-  (if [= (@ expr-type e) (-constrain-)]
-    (@ expr-expression e)
-    e))
+  (if [= (@ expr-type e) (-constrain-)] (@ expr-expression e) e))
 
 (ignore
   Replaces symbols with the literal or the symbol they are defined by in the cases in
@@ -387,13 +385,15 @@
         (let (params-signature [list->fragment (map (x (@ expr-parameters e)) (@ bndg-signature x) ..)])
         (list
           ((values (buffer-storage ..) [expr-signature e] [list->fragment [cons function-token [cons params-signature
-            [cons [expr-signature (@ expr-expression e)] nil ..] ..] ..]])) ..)))
+            [cons [expr-signature (@ expr-expression e)] nil ..] ..] ..]])
+          (values (buffer-storage ..) [expr-signature e] (@ bndg-signature (@ expr-reference e)))) ..)))
       
       ((-continuation-)
         (let (params-signature [list->fragment (map (x (@ expr-parameters e)) (@ bndg-signature x) ..)])
         (list
           ((values (buffer-storage ..) [expr-signature e] [list->fragment [cons continuation-token
-            [cons params-signature nil ..] ..]])) ..)))
+            [cons params-signature nil ..] ..]])
+          (values (buffer-storage ..) [expr-signature e] (@ bndg-signature (@ expr-reference e)))) ..)))
       
       ((-constrain-)
         (list ((values (buffer-storage ..) [expr-signature e] [expr-signature (@ expr-expression e)])) ..))
