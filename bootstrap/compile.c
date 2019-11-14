@@ -11,7 +11,7 @@ typedef unsigned long int bool;
 #include "expressions.c"
 #include "elf.c"
 #include "x86_64_object.c"
-#include "preparer.c"
+#include "analysis.c"
 #include "x86_64_generator.c"
 #include "x86_64_assembler.c"
 
