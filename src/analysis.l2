@@ -145,6 +145,40 @@
           e))
       e))))
 
+(constrain update-expr-read-counts (\ r (`(function (expr) ())r)))
+
+(function update-expr-read-counts (s)
+  (switch = (@ expr-type s)
+    ((-if-) (do
+      [update-expr-read-counts (@ expr-condition s)]
+      [set-expr-read-count (@ expr-condition s) #1]
+      [update-expr-read-counts (@ expr-consequent s)]
+      [set-expr-read-count (@ expr-consequent s) #1]
+      [update-expr-read-counts (@ expr-alternate s)]
+      [set-expr-read-count (@ expr-alternate s) #1]))
+    
+    ((-function-) (-with-) (-constrain-) (do
+      [update-expr-read-counts (@ expr-expression s)]
+      [set-expr-read-count (@ expr-expression s) #1]))
+    
+    ((-continuation-) (do
+      [update-expr-read-counts (@ expr-expression s)]
+      [set-expr-read-count (@ expr-expression s) #0]))
+    
+    ((-storage-)
+      (foreach (u (@ expr-arguments s)) (do
+        [update-expr-read-counts u]
+        [set-expr-read-count u #1])))
+    
+    ((-jump-) (-invoke-) (do
+      [update-expr-read-counts (@ expr-target s)]
+      [set-expr-read-count (@ expr-target s) #1]
+      (foreach (u (@ expr-arguments s)) (do
+        [update-expr-read-counts u]
+        [set-expr-read-count u #1]))))
+    
+    (ignore)))
+
 (constrain global-binding-augs-of (\ r (with-vars (a) (`(function ((list expr) buffer ,a) (list bndg-aug))r)r)))
 
 (function global-binding-augs-of (exprs r handler)
@@ -210,7 +244,7 @@
           (let (bndg [make-undefined-binding (@ expr-name s) ..]) (do
             (setf expr-reference s bndg)
             [prepend (@ expr-reference s) undefined-bindings ..]))
-          (ignore)))
+          [set+ (& bndg-read-count (@ expr-reference s)) #1]))
       
       ((-if-) (do
         [link-symbols (@ expr-condition s) static-storage undefined-bindings $statics-ref $dynamics-ref ..]
