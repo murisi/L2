@@ -395,17 +395,20 @@
     (setf expr-binding-aug (@ expr-expression n) (@ expr-binding-aug n))
     (if (@ expr-escapes n) (ignore) (setf car (@ expr-parameters n) (@ expr-binding-aug n)))
     
-    (if [> [length (@ expr-jumps n)] #0]
-      (let (arg [@car (@ expr-arguments [@car (@ expr-jumps n)])])
-        (if [= (@ expr-type arg) (-symbol-)]
-          (let (repl-target (@ expr-reference arg))
-            (if (and [= (@ bndg-mode repl-target) (value-mode)] [> (@ expr-depth (@ bndg-expression repl-target)) (@ expr-depth n)])
-              [visit-expressions vreplace-value-bindings (storage _ (@ expr-expression n))
-                (values storage repl-target [@car (@ expr-parameters n)])] (ignore))) (ignore))) (ignore))
+    (loop search (rem-jumps (@ expr-jumps n))
+      (if [nil? rem-jumps] (ignore)
+        (let (arg [@car (@ expr-arguments [@car rem-jumps])])
+          (if [= (@ expr-type arg) (-symbol-)]
+            (let (repl-target (@ expr-reference arg))
+              (if (and [= (@ bndg-mode repl-target) (value-mode)] [> (@ expr-depth (@ bndg-expression repl-target)) (@ expr-depth n)])
+                [visit-expressions vreplace-value-bindings (storage _ (@ expr-expression n))
+                  (values storage repl-target [@car (@ expr-parameters n)])]
+                {search [@cdr rem-jumps]}))
+            {search [@cdr rem-jumps]}))))
     
-      [initialize-expressions (storage-cons (@ expr-expression n) nil) (@ expr-parameters n)
-        offset (hex FFFFFFFFFFFF0C38) inits ret-val]
-      
+    [initialize-expressions (storage-cons (@ expr-expression n) nil) (@ expr-parameters n)
+      offset (hex FFFFFFFFFFFF0C38) inits ret-val]
+    
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (setf expr-generator n [function->generator generate-with])
     (true))))
