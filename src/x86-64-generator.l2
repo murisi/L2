@@ -141,6 +141,8 @@
   registers that are currently in use. Returns the new stack offset and register usage
   bit-vector after the given bit-vector is placed.)
 
+(storage binding-to-register/memory-prefs (r10)(r11)(rax)(r9)(r8)(rcx)(rdx)(rsi)(rdi)(r12)(r13)(r14)(r15)(rbx)(rsp)(rbp))
+
 (constrain binding-to-register/memory (\ r (with-vars (a) (`(function (bndg-aug ,a reg-use-vec) reg-use-vec)r)r)))
 
 (function binding-to-register/memory (bndg offset in-use)
@@ -153,11 +155,13 @@
     (do
       (setf bndg-size bndg (word-size))
       (setf bndg-storage bndg (register-storage))
-      (let (free-register-idx [lb [bnot in-use]])
-      (let (free-register ($(loc (unit) free-register-idx x64-r64s)))
-      (let (new-in-use [bor in-use [<< #1 free-register-idx]]) (do
+      (let (free-register
+        (loop search (i #0)
+          (let (test-reg ($(loc (unit) i binding-to-register/memory-prefs)))
+            (if [register-in-use? test-reg in-use] {search [+ i #1]} test-reg))))
+      (let (new-in-use [bor in-use [<< #1 [band free-register (hex 0F)]]]) (do
       (setf bndg-offset bndg free-register)
-      new-in-use)))))))
+      new-in-use))))))
 
 (function expr-to-register/memory (n offset in-use)
   [binding-to-register/memory (@ expr-binding-aug n) offset in-use])
