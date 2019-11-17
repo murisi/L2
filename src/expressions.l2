@@ -224,6 +224,17 @@
 (function set-expr-read-count (expr val)
   [set (& bndg-read-count (@ expr-binding-aug expr)) val])
 
+(ignore
+  Replace the first binding with the second binding whilst taking care to update the read
+  counts appropriately.)
+
+(constrain set-binding (\ r (`(function ((ref bndg-aug) bndg-aug) ())r)))
+
+(function set-binding (target val) (do
+  [set- (& bndg-read-count $target) #1]
+  [set target val]
+  [set+ (& bndg-read-count val) #1]))
+
 (constrain make-literal (\ r (with-vars (a b) (`(function (,a frag expr buffer ,b) expr)r)r)))
 
 (function make-literal (value frag meta reg handler)

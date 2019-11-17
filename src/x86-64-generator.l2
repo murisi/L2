@@ -164,7 +164,7 @@
 
 (function coalesce-expr-bndg (n)
   (if (and [= (@ expr-type n) (-symbol-)] [= (@ bndg-mode (@ expr-reference n)) (value-mode)])
-    (do (setf expr-binding-aug n (@ expr-reference n)) n)
+    (do [set-binding (& expr-binding-aug n) (@ expr-reference n)] n)
     n))
 
 (function bndg-assigned? (bndg) [not= (@ bndg-storage bndg) (nil-storage)])
@@ -392,7 +392,7 @@
 
 (function initialize-with (n offset inits ret-val)
   (and (or [= (@ expr-type n) (-with-)]) (do
-    (setf expr-binding-aug (@ expr-expression n) (@ expr-binding-aug n))
+    [set-binding (& expr-binding-aug (@ expr-expression n)) (@ expr-binding-aug n)]
     (if (@ expr-escapes n) (ignore) (setf car (@ expr-parameters n) (@ expr-binding-aug n)))
     
     (loop search (rem-jumps (@ expr-jumps n))
@@ -519,12 +519,12 @@
     (if [= (@ expr-type (@ expr-target n)) (-continuation-)]
       (do
         (foreach (u (@ expr-arguments n)) (v (@ expr-parameters (@ expr-target n)))
-          (setf expr-binding-aug u v))
+          [set-binding (& expr-binding-aug u) v])
         [initialize-expressions (storage-cons (@ expr-expression (@ expr-target n)) (@ expr-arguments n))
           (@ expr-parameters (@ expr-target n)) offset (hex FFFFFFFFFFFF0C38) inits ret-val])
     (if (and [not= (@ expr-short-circuit n) null-expr] [= [length (@ expr-parameters (@ expr-short-circuit n))] #1])
       (do
-        (setf expr-binding-aug [@car (@ expr-arguments n)] [@car (@ expr-parameters (@ expr-short-circuit n))])
+        [set-binding (& expr-binding-aug [@car (@ expr-arguments n)]) [@car (@ expr-parameters (@ expr-short-circuit n))]]
         [initialize-expressions (storage-cons (@ expr-target n) (@ expr-arguments n)) nil offset (hex FFFFFFFFFFFF0C30) inits ret-val])
       [initialize-expressions (storage-cons (@ expr-target n) (@ expr-arguments n)) nil offset (hex FFFFFFFFFFFF0C30) inits ret-val]))
     (setf bndg-size (@ expr-binding-aug n) (word-size))
@@ -624,8 +624,8 @@
 
 (function initialize-if (n offset inits ret-val)
   (and [= (@ expr-type n) (-if-)] (do
-    (setf expr-binding-aug (@ expr-consequent n) (@ expr-binding-aug n))
-    (setf expr-binding-aug (@ expr-alternate n) (@ expr-binding-aug n))
+    [set-binding (& expr-binding-aug (@ expr-consequent n)) (@ expr-binding-aug n)]
+    [set-binding (& expr-binding-aug (@ expr-alternate n)) (@ expr-binding-aug n)]
     [initialize-expressions
       (storage-cons (@ expr-condition n) (storage-cons (@ expr-consequent n) (storage-cons (@ expr-alternate n) nil)))
       nil offset (hex FFFFFFFFFFFF0830) inits ret-val]
@@ -650,7 +650,7 @@
 
 (function initialize-constrain (n offset inits ret-val)
   (and [= (@ expr-type n) (-constrain-)] (do
-    (setf expr-binding-aug (@ expr-expression n) (@ expr-binding-aug n))
+    [set-binding (& expr-binding-aug (@ expr-expression n)) (@ expr-binding-aug n)]
     [initialize-expressions (storage-cons (@ expr-expression n) nil) nil offset (hex FFFFFFFFFFFF0830) inits ret-val]
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (setf expr-generator n [function->generator generate-constrain])

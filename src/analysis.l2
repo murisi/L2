@@ -130,18 +130,18 @@
 (function vreplace-value-bindings (e ctx)
   (bind (repl-target replacement) ctx (do
     (if [= (@ expr-binding-aug e) repl-target]
-      (setf expr-binding-aug e replacement)
+      [set-binding (& expr-binding-aug e) replacement]
       (ignore))
     (switch = (@ expr-type e)
       ((-continuation-) (-with-) (-function-)
         (loop replace (rem-params (@ expr-parameters e))
           (if [nil? rem-params] e
           (if [= [@car rem-params] repl-target]
-            (do (setf car rem-params replacement) {replace [@cdr rem-params]})
+            (do [set-binding (& car rem-params) replacement] {replace [@cdr rem-params]})
             {replace [@cdr rem-params]}))))
       ((-symbol-)
         (if [= (@ expr-reference e) repl-target]
-          (do (setf expr-reference e replacement) e)
+          (do [set-binding (& expr-reference e) replacement] e)
           e))
       e))))
 
