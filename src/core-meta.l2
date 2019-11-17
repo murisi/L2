@@ -192,11 +192,10 @@
 
 (function &-aux (l r)
   (`(with &-aux:ret
-      {(constrain (continuation @-aux:cont (prop-ref obj) {&-aux:ret prop-ref}) (\ s
-          (let (obj-sig [(,[@frrrrst l]) s])
-            (let (prop-sig [(,[@frrrrrst l]) obj-sig s])
-              (`(continuation ((ref ,prop-sig) ,obj-sig))s)))))
-        [+ (,[@frrrrrrst l]) (,[@fst l])] (,[@frrrrrrst l])})r))
+      {(constrain (constrain (continuation @-aux:cont (pseudo prop-ref obj) {&-aux:ret prop-ref})
+          (\ s (with-vars (a b) (`(continuation ((,[(,[@frrrrst l]) s]) ,a ,b))s)s)))
+          (\ s (with-vars (a b) (`(continuation ((@ ,a ,b) (ref ,a) ,b))s)s)))
+        (ignore) [+ (,[@frrrrrst l]) (,[@fst l])] (,[@frrrrrst l])})r))
 
 (ignore
   The following function is a macro for getting the field of a struct. The
@@ -216,12 +215,11 @@
 
 (function @-aux (l r)
   (`(with @-aux:ret
-      (let (@-aux:obj (,[@frrrrrrst l]))
-        {(constrain (continuation @-aux:cont (prop obj) {@-aux:ret prop}) (\ s
-            (let (obj-sig [(,[@frrrrst l]) s])
-              (let (prop-sig [(,[@frrrrrst l]) obj-sig s])
-                (`(continuation (,prop-sig ,obj-sig))s)))))
-          [(,[@frrst l]) [+ @-aux:obj (,[@fst l])]] @-aux:obj}))r))
+      (let (@-aux:obj (,[@frrrrrst l]))
+        {(constrain (constrain (continuation @-aux:cont (pseudo prop obj) {@-aux:ret prop})
+            (\ s (with-vars (a b) (`(continuation ((,[(,[@frrrrst l]) s]) ,a ,b))s)s)))
+            (\ s (with-vars (a b) (`(continuation ((@ ,a ,b) ,a ,b))s)s)))
+          (ignore) [(,[@frrst l]) [+ @-aux:obj (,[@fst l])]] @-aux:obj}))r))
 
 (ignore
   The following function is a macro for setting the field of a struct. The
@@ -243,12 +241,11 @@
 
 (function setf-aux (l r)
   (`(with setf-aux:ret
-      {(constrain (continuation setf-aux:cont (prop obj)
-            {setf-aux:ret [(,[@frrrst l]) [+ obj (,[@fst l])] prop]}) (\ s
-          (let (obj-sig [(,[@frrrrst l]) s])
-            (let (prop-sig [(,[@frrrrrst l]) obj-sig s])
-              (`(continuation (,prop-sig ,obj-sig))s)))))
-        (,[@frrrrrrrst l]) (,[@frrrrrrst l])})r))
+      {(constrain (constrain (continuation setf-aux:cont (pseudo prop obj)
+            {setf-aux:ret [(,[@frrrst l]) [+ obj (,[@fst l])] prop]})
+          (\ s (with-vars (a b) (`(continuation ((,[(,[@frrrrst l]) s]) ,a ,b))s)s)))
+          (\ s (with-vars (a b) (`(continuation ((@ ,a ,b) ,a ,b))s)s)))
+        (ignore) (,[@frrrrrrst l]) (,[@frrrrrst l])})r))
 
 (ignore
   The following function is a helper function for generating the fields of
@@ -256,11 +253,11 @@
   in the fragment l supplying to it the offset, size, getter, and setter of
   the field in addition to the rest of the fragment l.)
 
-(function property (offset size obj-sig prop-sig l r)
-  [lllllllst [@fst l] [=# offset r] [=# size r]
+(function property (offset size sig l r)
+  [llllllst [@fst l] [=# offset r] [=# size r]
     (switch = size (#1 (` get1b r)) (#2 (` get2b r)) (#4 (` get4b r)) (#8 (` get8b r)) (`(ignore)r))
     (switch = size (#1 (` set1b r)) (#2 (` set2b r)) (#4 (` set4b r)) (#8 (` set8b r)) (`(ignore)r))
-    [=# obj-sig r] [=# prop-sig r] [@rst l] r])
+    [=# sig r] [@rst l] r])
 
 (ignore
   The following function provides a method for ignoring L2 code. It is being used for this
