@@ -522,6 +522,13 @@
   (and [= (@ expr-type n) (-jump-)] (do
     (if [= (@ expr-type (@ expr-target n)) (-continuation-)]
       (do
+        (ignore(if [= [length (@ expr-jumps (@ expr-target n))] #1]
+          (foreach (u (@ expr-arguments n)) (v (@ expr-parameters (@ expr-target n)))
+            (if (and [= (@ expr-type u) (-symbol-)] [= (@ bndg-mode (@ expr-reference u)) (value-mode)]
+                [= (@ bndg-expression v) (@ expr-target n)])
+              [visit-expressions vreplace-value-bindings (storage _ (@ expr-target n))
+                (values storage v (@ expr-reference u))]
+              (ignore))) (ignore)))
         (foreach (u (@ expr-arguments n)) (v (@ expr-parameters (@ expr-target n)))
           (setf expr-binding-aug u v))
         [initialize-expressions (storage-cons (@ expr-expression (@ expr-target n)) (@ expr-arguments n))
