@@ -47,9 +47,7 @@
     (if (and [= (@ expr-type e) (-symbol-)] [not= (@ bndg-propagate (@ expr-reference e)) null-expr]
         [= (@ expr-type (@ bndg-propagate (@ expr-reference e))) (-symbol-)])
       (do
-        [set- (& bndg-read-count (@ expr-reference e)) #1]
-        (setf expr-reference e (@ expr-reference (@ bndg-propagate (@ expr-reference e))))
-        [set+ (& bndg-read-count (@ expr-reference e)) #1]
+        [set-binding (& expr-reference e) (@ expr-reference (@ bndg-propagate (@ expr-reference e)))]
         e)
     (if (and [= (@ expr-type e) (-symbol-)] [not= (@ bndg-propagate (@ expr-reference e)) null-expr]
         [= (@ expr-type (@ bndg-propagate (@ expr-reference e))) (-literal-)])
@@ -130,14 +128,14 @@
 (function vreplace-value-bindings (e ctx)
   (bind (repl-target replacement) ctx (do
     (if [= (@ expr-binding-aug e) repl-target]
-      [set-binding (& expr-binding-aug e) replacement]
+      (setf expr-binding-aug e replacement)
       (ignore))
     (switch = (@ expr-type e)
       ((-continuation-) (-with-) (-function-)
         (loop replace (rem-params (@ expr-parameters e))
           (if [nil? rem-params] e
           (if [= [@car rem-params] repl-target]
-            (do [set-binding (& car rem-params) replacement] {replace [@cdr rem-params]})
+            (do (setf car rem-params replacement) {replace [@cdr rem-params]})
             {replace [@cdr rem-params]}))))
       ((-symbol-)
         (if [= (@ expr-reference e) repl-target]
