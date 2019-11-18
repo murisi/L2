@@ -47,12 +47,11 @@
     (if (and [= (@ expr-type e) (-symbol-)] [not= (@ bndg-propagate (@ expr-reference e)) null-expr]
         [= (@ expr-type (@ bndg-propagate (@ expr-reference e))) (-symbol-)])
       (do
-        [set-binding (& expr-reference e) (@ expr-reference (@ bndg-propagate (@ expr-reference e)))]
+        (setf expr-reference e (@ expr-reference (@ bndg-propagate (@ expr-reference e))))
         e)
     (if (and [= (@ expr-type e) (-symbol-)] [not= (@ bndg-propagate (@ expr-reference e)) null-expr]
         [= (@ expr-type (@ bndg-propagate (@ expr-reference e))) (-literal-)])
       (do
-        [set- (& bndg-read-count (@ expr-reference e)) #1]
         [make-literal (@ expr-value (@ bndg-propagate (@ expr-reference e))) null-frag null-expr :a handler])
       e)))))
 
@@ -139,41 +138,56 @@
             {replace [@cdr rem-params]}))))
       ((-symbol-)
         (if [= (@ expr-reference e) repl-target]
-          (do [set-binding (& expr-reference e) replacement] e)
+          (do (setf expr-reference e replacement) e)
           e))
       e))))
 
-(constrain update-expr-read-counts (\ r (`(function (expr) ())r)))
+(constrain assign-expr-is-reads (\ r (`(function (expr) ())r)))
 
-(function update-expr-read-counts (s)
+(function assign-expr-is-reads (s)
   (switch = (@ expr-type s)
     ((-if-) (do
-      [update-expr-read-counts (@ expr-condition s)]
-      [set-expr-read-count (@ expr-condition s) #1]
-      [update-expr-read-counts (@ expr-consequent s)]
-      [set-expr-read-count (@ expr-consequent s) #1]
-      [update-expr-read-counts (@ expr-alternate s)]
-      [set-expr-read-count (@ expr-alternate s) #1]))
+      [assign-expr-is-reads (@ expr-condition s)]
+      [set-expr-is-read (@ expr-condition s) (true)]
+      [assign-expr-is-reads (@ expr-consequent s)]
+      [set-expr-is-read (@ expr-consequent s) (true)]
+      [assign-expr-is-reads (@ expr-alternate s)]
+      [set-expr-is-read (@ expr-alternate s) (true)]))
     
-    ((-function-) (-with-) (-constrain-) (do
-      [update-expr-read-counts (@ expr-expression s)]
-      [set-expr-read-count (@ expr-expression s) #1]))
+    ((-constrain-) (do
+      [assign-expr-is-reads (@ expr-expression s)]
+      [set-expr-is-read (@ expr-expression s) (true)]))
+    
+    ((-function-) (do
+      (setf bndg-is-read (@ expr-reference s) (true))
+      [assign-expr-is-reads (@ expr-expression s)]
+      [set-expr-is-read (@ expr-expression s) (true)]))
+    
+    ((-with-) (do
+      (setf bndg-is-read (@ expr-reference s) (true))
+      (setf bndg-is-read [@car (@ expr-parameters s)] (true))
+      [assign-expr-is-reads (@ expr-expression s)]
+      [set-expr-is-read (@ expr-expression s) (true)]))
     
     ((-continuation-) (do
-      [update-expr-read-counts (@ expr-expression s)]
-      [set-expr-read-count (@ expr-expression s) #0]))
+      (setf bndg-is-read (@ expr-reference s) (true))
+      [assign-expr-is-reads (@ expr-expression s)]
+      [set-expr-is-read (@ expr-expression s) (false)]))
     
-    ((-storage-)
+    ((-storage-) (do
+      (setf bndg-is-read (@ expr-reference s) (true))
       (foreach (u (@ expr-arguments s)) (do
-        [update-expr-read-counts u]
-        [set-expr-read-count u #1])))
+        [assign-expr-is-reads u]
+        [set-expr-is-read u (true)]))))
     
     ((-jump-) (-invoke-) (do
-      [update-expr-read-counts (@ expr-target s)]
-      [set-expr-read-count (@ expr-target s) #1]
+      [assign-expr-is-reads (@ expr-target s)]
+      [set-expr-is-read (@ expr-target s) (true)]
       (foreach (u (@ expr-arguments s)) (do
-        [update-expr-read-counts u]
-        [set-expr-read-count u #1]))))
+        [assign-expr-is-reads u]
+        [set-expr-is-read u (true)]))))
+    
+    ((-symbol-) (setf bndg-is-read (@ expr-reference s) (true)))
     
     (ignore)))
 
@@ -207,7 +221,7 @@
       (let (ba [@car bindings])
         (if (and [not= (@ bndg-name ba) null-string] [not= (@ expr-name s) null-string]
             [str= (@ bndg-name ba) (@ expr-name s)])
-          (do (setf expr-reference s ba) [set+ (& bndg-read-count ba) #1] (true))
+          (do (setf expr-reference s ba) (true))
           {find [@cdr bindings]})))))
 
 (constrain link-symbols
@@ -242,7 +256,7 @@
           (let (bndg [make-undefined-binding (@ expr-name s) ..]) (do
             (setf expr-reference s bndg)
             [prepend (@ expr-reference s) undefined-bindings ..]))
-          [set+ (& bndg-read-count (@ expr-reference s)) #1]))
+          (ignore)))
       
       ((-if-) (do
         [link-symbols (@ expr-condition s) static-storage undefined-bindings $statics-ref $dynamics-ref ..]

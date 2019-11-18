@@ -18,7 +18,7 @@
   
   (function bndg-preferred-offset (l r) [property #56 #8 (\ r (`(@ (,[var r]) bndg-aug)r)) l r])
   
-  (function bndg-read-count (l r) [property #64 #8 (\ r (`(@ (,[var r]) bndg-aug)r)) l r])
+  (function bndg-is-read (l r) [property #64 #8 (\ r (`(@ (,[var r]) bndg-aug)r)) l r])
 
   (function bndg-storage (l r) [property #72 #1 (\ r (`(@ bndg-storage bndg-aug)r)) l r])
 
@@ -215,25 +215,14 @@
     (setf bndg-expression bndg expression)
     (setf bndg-propagate bndg null-expr)
     (setf bndg-preferred-storage bndg (nil-storage))
-    (setf bndg-read-count bndg #0)
+    (setf bndg-is-read bndg (false))
     (setf bndg-mode bndg mode)
     bndg)))
 
-(constrain set-expr-read-count (\ r (with-vars (a) (`(function (expr ,a) ())r)r)))
+(constrain set-expr-is-read (\ r (with-vars (a) (`(function (expr ,a) ())r)r)))
 
-(function set-expr-read-count (expr val)
-  [set (& bndg-read-count (@ expr-binding-aug expr)) val])
-
-(ignore
-  Replace the first binding with the second binding whilst taking care to update the read
-  counts appropriately.)
-
-(constrain set-binding (\ r (`(function ((ref bndg-aug) bndg-aug) ())r)))
-
-(function set-binding (target val) (do
-  [set- (& bndg-read-count $target) #1]
-  [set target val]
-  [set+ (& bndg-read-count val) #1]))
+(function set-expr-is-read (expr val)
+  (setf bndg-is-read (@ expr-binding-aug expr) val))
 
 (constrain make-literal (\ r (with-vars (a b) (`(function (,a frag expr buffer ,b) expr)r)r)))
 
@@ -302,7 +291,6 @@
     (setf expr-reference func
       [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope)
         (defined-state) ref [vbl->frag [vbl ..]] func ..])
-    (setf bndg-read-count (@ expr-reference func) #1)
     (setf expr-parameters func
       (map (param params)
         [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
@@ -329,7 +317,6 @@
     (setf expr-reference cont
       [make-binding-aug (reference-mode) (intra-function-context) (nil-storage) (local-scope)
         (defined-state) ref [vbl->frag [vbl ..]] cont ..])
-    (setf bndg-read-count (@ expr-reference cont) #1)
     (setf expr-parameters cont
       (map (param params)
         [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
@@ -357,11 +344,9 @@
     (setf expr-reference wth
       [make-binding-aug (reference-mode) (intra-function-context) (nil-storage) (local-scope)
         (defined-state) ref [vbl->frag [vbl ..]] wth ..])
-    (setf bndg-read-count (@ expr-reference wth) #1)
     (setf expr-parameters wth [cons
       [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
         (defined-state) null-string [vbl->frag [vbl ..]] wth ..] nil ..])
-    (setf bndg-read-count [@car (@ expr-parameters wth)] #1)
     (setf expr-escapes wth (false))
     (setf expr-expression wth expr)
     wth))))
@@ -398,7 +383,6 @@
     (setf expr-reference u
       [make-binding-aug (reference-mode) (intra-function-context) (nil-storage) (local-scope)
         (defined-state) ref [vbl->frag [vbl ..]] u ..])
-    (setf bndg-read-count (@ expr-reference u) #1)
     (setf expr-arguments u args)
     u))))
 

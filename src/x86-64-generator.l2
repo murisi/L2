@@ -201,18 +201,18 @@
   (foreach (u exprs) (setf bndg-storage (@ expr-binding-aug u) (nil-storage)))
   (foreach (u bndgs) (setf bndg-storage u (nil-storage)))
   (let (in-use (fold (in-use in-use) (u exprs)
-    (if (and [= u (@ bndg-expression (@ expr-binding-aug u))] [> (@ bndg-read-count (@ expr-binding-aug u)) #0])
+    (if (and [= u (@ bndg-expression (@ expr-binding-aug u))] (@ bndg-is-read (@ expr-binding-aug u)))
       [try-expr-to-preferred-location u in-use]
       in-use)))
   (let (in-use (fold (in-use in-use) (u bndgs)
-    (if [> (@ bndg-read-count u) #0] [try-bndg-to-preferred-location u in-use] in-use)))
+    (if (@ bndg-is-read u) [try-bndg-to-preferred-location u in-use] in-use)))
   (let (in-use
     (loop assign-args (offset [- offset [* [length exprs] (word-size)]]) (in-use in-use) (u exprs)
       (if [nil? u]
         in-use
         {assign-args [+ offset (word-size)]
           (if (or [expr-assigned? [@car u]] [not= [@car u] (@ bndg-expression (@ expr-binding-aug [@car u]))]
-              [= (@ bndg-read-count (@ expr-binding-aug [@car u])) #0])
+              (not (@ bndg-is-read (@ expr-binding-aug [@car u]))))
             in-use
             [expr-to-register/memory [@car u] offset in-use]) [@cdr u]})))
   (let (in-use
@@ -220,7 +220,7 @@
       (if [nil? u]
         in-use
         {assign-args [+ offset (word-size)]
-          (if (or [bndg-assigned? [@car u]] [= (@ bndg-read-count [@car u]) #0]) in-use [binding-to-register/memory [@car u] offset in-use]) [@cdr u]})))
+          (if (or [bndg-assigned? [@car u]] (not (@ bndg-is-read [@car u]))) in-use [binding-to-register/memory [@car u] offset in-use]) [@cdr u]})))
   (values (use-storage ret-val) bottom-offset in-use)))))))))
 
 (constrain generate-function
