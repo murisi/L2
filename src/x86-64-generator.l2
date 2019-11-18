@@ -188,9 +188,9 @@
 (function function->initializer (x) [cast x])
 
 (constrain initialize-expressions
-  (\ r (with-vars (a b) (`(function ((list expr) (list bndg-aug) ,a reg-use-vec (list initializer) ,b) (values ,a reg-use-vec))r)r)))
+  (\ r (with-vars (a b c) (`(function ((list expr) (list bndg-aug) ,a reg-use-vec ,c (list initializer) ,b) (values ,a reg-use-vec))r)r)))
 
-(function initialize-expressions (exprs bndgs offset mask inits ret-val)
+(function initialize-expressions (exprs bndgs offset mask depth inits ret-val)
   (let (sub-expr-offset [- offset [* [+ [length exprs] [length bndgs]] (word-size)]])
   (bind (bottom-offset in-use)
     (loop init-subs (bottom-offset sub-expr-offset) (in-use mask) (u exprs)
@@ -201,26 +201,31 @@
   (foreach (u exprs) (setf bndg-storage (@ expr-binding-aug u) (nil-storage)))
   (foreach (u bndgs) (setf bndg-storage u (nil-storage)))
   (let (in-use (fold (in-use in-use) (u exprs)
-    (if (and [= u (@ bndg-expression (@ expr-binding-aug u))] (@ bndg-is-read (@ expr-binding-aug u)))
+    (if (and [>= [expr-binding-depth u] depth] (@ bndg-is-read (@ expr-binding-aug u)))
       [try-expr-to-preferred-location u in-use]
       in-use)))
   (let (in-use (fold (in-use in-use) (u bndgs)
-    (if (@ bndg-is-read u) [try-bndg-to-preferred-location u in-use] in-use)))
+    (if (and [>= [bndg-depth u] depth] (@ bndg-is-read u))
+      [try-bndg-to-preferred-location u in-use]
+      in-use)))
   (let (in-use
     (loop assign-args (offset [- offset [* [length exprs] (word-size)]]) (in-use in-use) (u exprs)
       (if [nil? u]
         in-use
-        {assign-args [+ offset (word-size)]
-          (if (or [expr-assigned? [@car u]] [not= [@car u] (@ bndg-expression (@ expr-binding-aug [@car u]))]
-              (not (@ bndg-is-read (@ expr-binding-aug [@car u]))))
-            in-use
-            [expr-to-register/memory [@car u] offset in-use]) [@cdr u]})))
+        (let (v [@car u])
+          {assign-args [+ offset (word-size)]
+            (if (and [>= [expr-binding-depth v] depth] (not [expr-assigned? v]) (@ bndg-is-read (@ expr-binding-aug v)))
+              [expr-to-register/memory v offset in-use]
+              in-use) [@cdr u]}))))
   (let (in-use
     (loop assign-args (offset [- offset [* [+ [length exprs] [length bndgs]] (word-size)]]) (in-use in-use) (u bndgs)
       (if [nil? u]
         in-use
-        {assign-args [+ offset (word-size)]
-          (if (or [bndg-assigned? [@car u]] (not (@ bndg-is-read [@car u]))) in-use [binding-to-register/memory [@car u] offset in-use]) [@cdr u]})))
+        (let (v [@car u])
+          {assign-args [+ offset (word-size)]
+            (if (and [>= [bndg-depth v] depth] (not [bndg-assigned? v]) (@ bndg-is-read v))
+              [binding-to-register/memory v offset in-use]
+              in-use) [@cdr u]}))))
   (values (use-storage ret-val) bottom-offset in-use)))))))))
 
 (constrain generate-function
@@ -313,7 +318,7 @@
     
     (bind (frame-size in-use)
       [initialize-expressions (storage-cons (@ expr-expression n) nil) (@ expr-parameters n)
-        (@ expr-frame-size n) (hex FFFFFFFFFFFF0830) inits ret-val] (do
+        (@ expr-frame-size n) (hex FFFFFFFFFFFF0830) (@ expr-depth n) inits ret-val] (do
     (setf expr-registers-used n in-use)
     (setf expr-frame-size n frame-size)
     (foreach (t (@ expr-parameters n)) (setf bndg-size t (word-size)))))
@@ -363,7 +368,7 @@
 (function initialize-continuation (n offset inits ret-val)
   (and [= (@ expr-type n) (-continuation-)] (do
     [initialize-expressions (storage-cons (@ expr-expression n) nil) (@ expr-parameters n)
-      offset (hex FFFFFFFFFFFF0C38) inits ret-val]
+      offset (hex FFFFFFFFFFFF0C38) (@ expr-depth n) inits ret-val]
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (setf expr-generator n [function->generator generate-continuation])
     (true))))
@@ -411,7 +416,7 @@
             {search [@cdr rem-jumps]}))))
     
     [initialize-expressions (storage-cons (@ expr-expression n) nil) (@ expr-parameters n)
-      offset (hex FFFFFFFFFFFF0C38) inits ret-val]
+      offset (hex FFFFFFFFFFFF0C38) (@ expr-depth n) inits ret-val]
     
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (setf expr-generator n [function->generator generate-with])
@@ -435,7 +440,7 @@
 
 (function initialize-storage (n offset inits ret-val)
   (and [= (@ expr-type n) (-storage-)] (do
-    [initialize-expressions (@ expr-arguments n) nil offset (hex FFFFFFFFFFFF0C38) inits ret-val]
+    [initialize-expressions (@ expr-arguments n) nil offset (hex FFFFFFFFFFFF0C38) (@ expr-depth n) inits ret-val]
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (setf expr-generator n [function->generator generate-storage])
     (true))))
@@ -525,12 +530,14 @@
         (foreach (u (@ expr-arguments n)) (v (@ expr-parameters (@ expr-target n)))
           (setf expr-binding-aug u v))
         [initialize-expressions (storage-cons (@ expr-expression (@ expr-target n)) (@ expr-arguments n))
-          (@ expr-parameters (@ expr-target n)) offset (hex FFFFFFFFFFFF0C38) inits ret-val])
+          nil offset (hex FFFFFFFFFFFF0C38) (@ expr-depth n) inits ret-val])
     (if (and [not= (@ expr-short-circuit n) null-expr] [= [length (@ expr-parameters (@ expr-short-circuit n))] #1])
       (do
         (setf expr-binding-aug [@car (@ expr-arguments n)] [@car (@ expr-parameters (@ expr-short-circuit n))])
-        [initialize-expressions (storage-cons (@ expr-target n) (@ expr-arguments n)) nil offset (hex FFFFFFFFFFFF0C30) inits ret-val])
-      [initialize-expressions (storage-cons (@ expr-target n) (@ expr-arguments n)) nil offset (hex FFFFFFFFFFFF0C30) inits ret-val]))
+        [initialize-expressions (storage-cons (@ expr-target n) (@ expr-arguments n)) nil offset
+          (hex FFFFFFFFFFFF0C30) (@ expr-depth n) inits ret-val])
+      [initialize-expressions (storage-cons (@ expr-target n) (@ expr-arguments n)) nil offset
+        (hex FFFFFFFFFFFF0C30) (@ expr-depth n) inits ret-val]))
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (setf expr-generator n [function->generator generate-jump])
     (true))))
@@ -591,7 +598,8 @@
           (setf bndg-preferred-offset (@ expr-binding-aug [@car rem-args]) ($(loc (unit) i call-regs)))
           {set-prefs [@cdr rem-args] [+ i #1]}))))
     (bind (bottom-offset in-use)
-      [initialize-expressions (storage-cons (@ expr-target n) (@ expr-arguments n)) nil offset (hex FFFFFFFFFFFF0031) inits ret-val] (do
+      [initialize-expressions (storage-cons (@ expr-target n) (@ expr-arguments n)) nil offset
+        (hex FFFFFFFFFFFF0031) (@ expr-depth n) inits ret-val] (do
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (setf expr-generator n [function->generator generate-invoke])
     (values (use-storage ret-val) bottom-offset [bor in-use (hex FFFFFFFFFFFF0FF7)])
@@ -632,7 +640,7 @@
     (setf expr-binding-aug (@ expr-alternate n) (@ expr-binding-aug n))
     [initialize-expressions
       (storage-cons (@ expr-condition n) (storage-cons (@ expr-consequent n) (storage-cons (@ expr-alternate n) nil)))
-      nil offset (hex FFFFFFFFFFFF0830) inits ret-val]
+      nil offset (hex FFFFFFFFFFFF0830) (@ expr-depth n) inits ret-val]
     (setf expr-generator n [function->generator generate-if])
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (true))))
@@ -655,7 +663,8 @@
 (function initialize-constrain (n offset inits ret-val)
   (and [= (@ expr-type n) (-constrain-)] (do
     (setf expr-binding-aug (@ expr-expression n) (@ expr-binding-aug n))
-    [initialize-expressions (storage-cons (@ expr-expression n) nil) nil offset (hex FFFFFFFFFFFF0830) inits ret-val]
+    [initialize-expressions (storage-cons (@ expr-expression n) nil) nil offset
+      (hex FFFFFFFFFFFF0830) (@ expr-depth n) inits ret-val]
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (setf expr-generator n [function->generator generate-constrain])
     (true))))
