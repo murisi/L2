@@ -14,17 +14,17 @@ echo "* Compiling the instruction wrappers that provide x86-64 functionality ...
 
 gcc --static -g -c -o bin/x86_64.o bootstrap/x86_64.s
 
-objcopy --redefine-syms=src/x86_64_sym_pairs bin/x86_64.o
+objcopy --redefine-syms=bootstrap/x86_64_sym_pairs bin/x86_64.o
 
 cd ./src
 
 echo "* Compiling L2 source code into object files ..."
 
-gdb --args ../bin/l2compile0 core-meta.l2 text-meta.l2 flow-meta.l2 elf-meta.l2 x86-64-linux-interface.l2 lexer.l2 x86-64-object.l2 expressions.l2 x86-64-assembler.l2 analysis.l2 x86-64-generator.l2 compile.l2 list.l2 64-numbers.l2 x86-64-arithmetic-intrinsics.l2 - - ../bin/x86_64.o
+../bin/l2compile0 core-meta.l2 text-meta.l2 flow-meta.l2 elf-meta.l2 x86-64-linux-interface.l2 lexer.l2 x86-64-object.l2 expressions.l2 x86-64-assembler.l2 analysis.l2 x86-64-generator.l2 compile.l2 list.l2 64-numbers.l2 x86-64-arithmetic-intrinsics.l2 - - ../bin/x86_64.o
 
 echo "* Linking the produced object files together and replacing l2compile ..."
 
-gcc -fuse-ld=gold -static -nostdlib -Wl,--unresolved-symbols=ignore-in-object-files x86-64-linux-interface.o lexer.o x86-64-object.o expressions.o x86-64-assembler.o analysis.o x86-64-generator.o x86-64-arithmetic-intrinsics.o compile.o list.o 64-numbers.o ../bin/x86_64.o --entry=0x000000000040010c -o ../bin/l2compile
+gold --section-start .text=0x400000 --entry 0x400000 --unresolved-symbols ignore-in-object-files x86-64-linux-interface.o lexer.o x86-64-object.o expressions.o x86-64-assembler.o analysis.o x86-64-generator.o x86-64-arithmetic-intrinsics.o compile.o list.o 64-numbers.o ../bin/x86_64.o -o ../bin/l2compile
 
 echo "* Removing the intermediate files ..."
 
