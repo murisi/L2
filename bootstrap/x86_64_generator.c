@@ -444,15 +444,10 @@ void generate_expressions(union expression *n, list *c, buffer r) {
 
 list generate_program(list exprs, buffer r) {
   list c = nil;
-  prepend(make_asm1(PUSHQ_REG, make_asm0(RBP, r), r), &c, r);
-  prepend(make_asm2(MOVQ_REG_TO_REG, make_asm0(RSP, r), make_asm0(RBP, r), r), &c, r);
-  
   union expression *expr;
   foreach(expr, exprs) {
     generate_expressions(expr, &c, r);
   }
-  prepend(make_asm0(LEAVE, r), &c, r);
-  prepend(make_asm0(RET, r), &c, r);
   return reverse(c, r);
 }
 

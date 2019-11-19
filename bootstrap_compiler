@@ -22,39 +22,11 @@ echo "* Compiling L2 source code into object files ..."
 
 gdb --args ../bin/l2compile0 core-meta.l2 text-meta.l2 flow-meta.l2 elf-meta.l2 x86-64-linux-interface.l2 lexer.l2 x86-64-object.l2 expressions.l2 x86-64-assembler.l2 analysis.l2 x86-64-generator.l2 compile.l2 list.l2 64-numbers.l2 x86-64-arithmetic-intrinsics.l2 - - ../bin/x86_64.o
 
-echo "* Writing out labels for object files ..."
-
-echo $'.globl x8664linuxinterfaceo\n.text\nx8664linuxinterfaceo:\n' > "x86-64-linux-interface.s"
-
-echo $'.globl lexero\n.text\nlexero:\n' > "lexer.s"
-
-echo $'.globl x8664objecto\n.text\nx8664objecto:\n' > "x86-64-object.s"
-
-echo $'.globl expressionso\n.text\nexpressionso:\n' > "expressions.s"
-
-echo $'.globl x8664assemblero\n.text\nx8664assemblero:\n' > "x86-64-assembler.s"
-
-echo $'.globl analysiso\n.text\nanalysiso:\n' > "analysis.s"
-
-echo $'.globl x8664generatoro\n.text\nx8664generatoro:\n' > "x86-64-generator.s"
-
-echo $'.globl x8664arithmeticintrinsicso\n.text\nx8664arithmeticintrinsicso:\n' > "arithmetic-intrinsics.s"
-
-echo $'.globl compileo\n.text\ncompileo:\n' > "compile.s"
-
-echo $'.globl listo\n.text\nlisto:\n' > "list.s"
-
-echo $'.globl numbers64o\n.text\nnumbers64o:\n' > "64-numbers.s"
-
-echo "* Writing out some assembly to call each initializer one by one"
-
-echo $'.globl _start\n.text\n_start:\ncall x8664linuxinterfaceo\ncall lexero\ncall x8664objecto\ncall expressionso\ncall x8664assemblero\ncall analysiso\ncall x8664generatoro\ncall listo\ncall numbers64o\ncall x8664arithmeticintrinsicso\ncall compileo\n' > "start.s"
-
 echo "* Linking the produced object files together and replacing l2compile ..."
 
-gcc -fuse-ld=gold -static -nostdlib -Wl,--unresolved-symbols=ignore-in-object-files x86-64-linux-interface.s x86-64-linux-interface.o lexer.s lexer.o x86-64-object.s x86-64-object.o expressions.s expressions.o x86-64-assembler.s x86-64-assembler.o analysis.s analysis.o x86-64-generator.s x86-64-generator.o arithmetic-intrinsics.s x86-64-arithmetic-intrinsics.o compile.s compile.o list.s list.o 64-numbers.s 64-numbers.o ../bin/x86_64.o start.s -o ../bin/l2compile
+gcc -fuse-ld=gold -static -nostdlib -Wl,--unresolved-symbols=ignore-in-object-files x86-64-linux-interface.o lexer.o x86-64-object.o expressions.o x86-64-assembler.o analysis.o x86-64-generator.o x86-64-arithmetic-intrinsics.o compile.o list.o 64-numbers.o ../bin/x86_64.o --entry=0x000000000040010c -o ../bin/l2compile
 
 echo "* Removing the intermediate files ..."
 
-rm "x86-64-linux-interface.s" "lexer.s" "x86-64-object.s" "expressions.s" "x86-64-assembler.s" "analysis.s" "x86-64-generator.s" "arithmetic-intrinsics.s" "compile.s" "list.s" "64-numbers.s" "x86-64-linux-interface.o" "lexer.o" "x86-64-object.o" "expressions.o" "x86-64-assembler.o" "analysis.o" "x86-64-generator.o" "x86-64-arithmetic-intrinsics.o" "compile.o" "list.o" "64-numbers.o" "elf-meta.o" "flow-meta.o" "text-meta.o" "core-meta.o" "start.s"
+rm "x86-64-linux-interface.o" "lexer.o" "x86-64-object.o" "expressions.o" "x86-64-assembler.o" "analysis.o" "x86-64-generator.o" "x86-64-arithmetic-intrinsics.o" "compile.o" "list.o" "64-numbers.o" "elf-meta.o" "flow-meta.o" "text-meta.o" "core-meta.o"
 
