@@ -879,11 +879,13 @@
 
 (storage unsupported-instruction-error (ignore))
 
-(constrain assemble (\ r (with-vars (a b e) (`(function ((list instr) ,a (ref ,b) buffer ,e) ())r)r)))
+(constrain assemble (\ r (with-vars (a b c e) (`(function ((list instr) ,a buffer ,e) (values ,b ,c))r)r)))
 
-(function assemble (instrs bin pos buf handler)
-  (substitute (.. buf handler) (do
-    [set pos #0]
+(function assemble (instrs ret-val buf handler)
+  (substitute (.. buf handler)
+    (let (pos (storage _ #0))
+    (let (max-text-sec-len [pad-size [* (write-elf-max-instr-len) [length instrs]] (write-elf-alignment)])
+    (let (bin [buffer-alloc max-text-sec-len ..]) (do
     (foreach (n instrs) (do
       (let (instr-bndg (@ instr-binding n))
         (if [not= instr-bndg null-binding] (do
@@ -1094,7 +1096,8 @@
                 (false)))) (false))
           {handler (storage _ unsupported-instruction-error n)}))
         
-        {handler (storage _ unsupported-instruction-error n)}))))))
+        {handler (storage _ unsupported-instruction-error n)})))
+    (values (use-storage ret-val) bin [pad-size $pos (write-elf-alignment)])))))))
 
 (storage shstrtab ("(nul).shstrtab(nul).text(nul).strtab(nul).symtab(nul).bss(nul).rela.text(nul)))
 
@@ -1301,15 +1304,9 @@
               (setf bndg-other instr-bndg $sym-ptr)
               [set+ sym-ptr (elf64-sym)])
               (ignore))))
-    
-        (let (text-len (storage _ (ignore)))
-        (let (max-text-sec-len [pad-size [* (write-elf-max-instr-len) [length generated-expressions]] (write-elf-alignment)])
-        
-        (let (text [buffer-alloc max-text-sec-len temp-buf cleanup]) (do
-        
-        [assemble generated-expressions text text-len reg handler]
+              
+        (bind (text text-len) [assemble generated-expressions bind reg handler]
         (bind (relas relas-size) [make-relocation-table relocations syms bind temp-buf cleanup] (do
-        
         (ignore Mandatory undefined section)
         (let (undef-shdr [buffer-alloc (elf64-shdr) temp-buf cleanup]) (do
         (setf sh-name undef-shdr #0)
@@ -1345,7 +1342,7 @@
         (setf sh-flags text-shdr [bor (shf-alloc) (shf-execinstr)])
         (setf sh-addr text-shdr #0)
         (setf sh-offset text-shdr [+ (@ sh-offset shstrtab-shdr) shstrtab-padded-len])
-        (setf sh-size text-shdr $text-len)
+        (setf sh-size text-shdr text-len)
         (setf sh-link text-shdr (shn-undef))
         (setf sh-info text-shdr #0)
         (setf sh-addralign text-shdr #1)
@@ -1356,7 +1353,7 @@
         (setf sh-type strtab-shdr (sht-strtab))
         (setf sh-flags strtab-shdr #0)
         (setf sh-addr strtab-shdr #0)
-        (setf sh-offset strtab-shdr [+ (@ sh-offset text-shdr) max-text-sec-len])
+        (setf sh-offset strtab-shdr [+ (@ sh-offset text-shdr) text-len])
         (setf sh-size strtab-shdr strtab-len)
         (setf sh-link strtab-shdr (shn-undef))
         (setf sh-info strtab-shdr #0)
@@ -1402,7 +1399,7 @@
         (let (pos (storage _ #0))
         (let (bin [buffer-alloc
           [+ (elf64-ehdr) [+ [* (elf64-shdr) #7] [+ shstrtab-padded-len
-          [+ max-text-sec-len [+ strtab-padded-len [+ [* sym-count (elf64-sym)]
+          [+ text-len [+ strtab-padded-len [+ [* sym-count (elf64-sym)]
           relas-size]]]]]] reg cleanup]) (do
         [mem-write bin pos ehdr (elf64-ehdr)]
         [mem-write bin pos undef-shdr (elf64-shdr)]
@@ -1413,12 +1410,12 @@
         [mem-write bin pos bss-shdr (elf64-shdr)]
         [mem-write bin pos rela-shdr (elf64-shdr)]
         [mem-write bin pos shstrtab-padded shstrtab-padded-len]
-        [mem-write bin pos text max-text-sec-len]
+        [mem-write bin pos text text-len]
         [mem-write bin pos strtab strtab-padded-len]
         [mem-write bin pos syms [* sym-count (elf64-sym)]]
         [mem-write bin pos relas relas-size]
         
-        (storage _ no-error bin $pos)))))))))))))))))))))))))))))))))))))))))))
+        (storage _ no-error bin $pos))))))))))))))))))))))))))))))))))))))))
         
       (cleanup err (do [destroy-buffer temp-buf return-cont] err))
       
