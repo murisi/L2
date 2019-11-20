@@ -866,11 +866,17 @@
     [[generator->function (@ expr-generator n)] n c relocs ..]))
 
 (constrain generate-program
-  (\ r (with-vars (a b) (`(function ((list expr) ,b buffer ,a) (values (list instr) (list reloc)))r)r)))
+  (\ r (with-vars (a b) (`(function ((list expr) ,b buffer ,a)
+    (values (list instr) (list reloc) (list (values string (list instr) (list reloc)))))r)r)))
 
 (function generate-program (exprs outs r handler)
   (substitute (.. r handler)
-    (let (c (storage _ nil)) (relocs (storage _ nil)) (do
-    (foreach (expr exprs) [generate-expression expr c relocs ..])
-    (values (use-storage outs) [reverse $c ..] $relocs)))))
+    (let (c (storage _ nil)) (relocs (storage _ nil)) (func-secs (storage _ nil)) (do
+      (foreach (expr exprs)
+        (if [not= (@ expr-type expr) (-function-)]
+          [generate-expression expr c relocs ..]
+          (let (c (storage _ nil)) (relocs (storage _ nil)) (do
+            [generate-expression expr c relocs ..]
+            [append (values (buffer-storage ..) (@ bndg-name (@ expr-reference expr)) $c $relocs) func-secs ..]))))
+      (values (use-storage outs) [reverse $c ..] $relocs $func-secs)))))
 

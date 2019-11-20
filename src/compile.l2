@@ -4,7 +4,7 @@
 
 (constrain compile-program
   (\ r (with-vars (a b) (`(function ((list expr) (list initializer) ,b buffer buffer ,a)
-    (values (list instr) (list reloc) (list bndg-aug) (list bndg-aug)))r)r)))
+    (values (list instr) (list reloc) (list (values string (list instr) (list reloc))) (list bndg-aug) (list bndg-aug)))r)r)))
 
 (function compile-program (exprs inits outs buf :b handler)
   (substitute (.. buf handler)
@@ -31,8 +31,8 @@
           [initialize-expression expr [- storage-offset (word-size)] inits (values storage (ignore) (ignore))]
           [setup-collect-static-bindings expr]
           [collect-static-bindings expr static-bindings ..])))
-      (bind (instrs relocs) [generate-program exprs bind ..]
-        (values (use-storage outs) instrs relocs $undefined-bindings $static-bindings))))))
+      (bind (instrs relocs func-secs) [generate-program exprs bind ..]
+        (values (use-storage outs) instrs relocs func-secs $undefined-bindings $static-bindings))))))
 
 (ignore
   Loads a program into memory and returns a handle to it. program is a program expression.
@@ -44,8 +44,8 @@
 (function load-program (exprs inits buf :b handler)
   (substitute (.. buf handler)
     (with-buffer :b
-      (bind (asms relocs undefined-bindings static-bindings) [compile-program exprs inits bind :b buf handler]
-      (bind (objdest objdest-sz) [write-elf asms relocs undefined-bindings static-bindings bind :b handler]
+      (bind (asms relocs func-secs undefined-bindings static-bindings) [compile-program exprs inits bind :b buf handler]
+      (bind (objdest objdest-sz) [write-elf asms relocs func-secs undefined-bindings static-bindings bind :b handler]
       (let (obj [load objdest objdest-sz buf handler]) (do
       [binding-offsets-to-addresses asms static-bindings obj]
       obj)))))))
@@ -148,8 +148,8 @@
 (function compile-program-to-elf (exprs inits outfn buf :b handler)
   (substitute (.. buf handler)
     (with-buffer :b
-      (bind (asms relocs undefined-bindings static-bindings) [compile-program exprs inits bind :b buf handler]
-      (bind (objdest objdest-sz) [write-elf asms relocs undefined-bindings static-bindings bind :b handler]
+      (bind (asms relocs func-secs undefined-bindings static-bindings) [compile-program exprs inits bind :b buf handler]
+      (bind (objdest objdest-sz) [write-elf asms relocs func-secs undefined-bindings static-bindings bind :b handler]
       (let (fd [create outfn handler]) (do
       [print fd objdest objdest-sz handler]
       [close fd handler])))))))
