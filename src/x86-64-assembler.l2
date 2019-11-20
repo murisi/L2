@@ -1123,6 +1123,23 @@
         (fold (acc #0) (e generated-expressions) [+ acc (if [not= (@ instr-binding e) null-binding] #1 #0)]))
     [+ #1 [+ generated-expressions-len [+ [length undefined-bindings] [length static-bindings]]]]))
 
+(constrain make-relocation-table
+  (\ r (with-vars (a b c) (`(function ((list reloc) (ref elf64-sym) ,a buffer ,b) (values (ref elf64-rela) ,c))r)r)))
+
+(function make-relocation-table (relocations syms ret-val temp-buf cleanup)
+  (let (max-rela-sec-len [* [length relocations] (elf64-rela)])
+  (let (relas [buffer-alloc max-rela-sec-len temp-buf cleanup])
+  (let (rela-ptr (storage _ relas)) (do
+  (foreach (reloc relocations)
+    (foreach (loca (@ op-locations (@ reloc-operand reloc)))
+      (bind (operand-pos operand-size instr-pos instr-size) loca (do
+        (setf r-offset $rela-ptr operand-pos)
+        (setf r-info $rela-ptr (elf64-r-info [/[- (@ bndg-other(@ reloc-binding reloc)) syms](elf64-sym)] (@ reloc-type reloc)))
+        (setf r-addend $rela-ptr
+          [(@ reloc-addend-func reloc) (@ reloc-context reloc) operand-pos operand-size instr-pos instr-size])
+        [set+ rela-ptr (elf64-rela)]))))
+  (values (use-storage ret-val) relas [- $rela-ptr relas]))))))
+
 (ignore
   Takes assembly code and a list of symbols as constructs an object file.
   generated-expressions is a list of assembly expressions. symbols is a list of the static
@@ -1287,22 +1304,11 @@
     
         (let (text-len (storage _ (ignore)))
         (let (max-text-sec-len [pad-size [* (write-elf-max-instr-len) [length generated-expressions]] (write-elf-alignment)])
-        (let (max-rela-sec-len [* [length relocations] (elf64-rela)])
         
-        (let (text [buffer-alloc max-text-sec-len temp-buf cleanup])
-        (let (relas [buffer-alloc max-rela-sec-len temp-buf cleanup])
-        (let (rela-ptr (storage _ relas)) (do
+        (let (text [buffer-alloc max-text-sec-len temp-buf cleanup]) (do
         
         [assemble generated-expressions text text-len reg handler]
-        
-        (foreach (reloc relocations)
-          (foreach (loca (@ op-locations (@ reloc-operand reloc)))
-            (bind (operand-pos operand-size instr-pos instr-size) loca (do
-              (setf r-offset $rela-ptr operand-pos)
-              (setf r-info $rela-ptr (elf64-r-info [/[- (@ bndg-other(@ reloc-binding reloc)) syms](elf64-sym)] (@ reloc-type reloc)))
-              (setf r-addend $rela-ptr
-                [(@ reloc-addend-func reloc) (@ reloc-context reloc) operand-pos operand-size instr-pos instr-size])
-              [set+ rela-ptr (elf64-rela)]))))
+        (bind (relas relas-size) [make-relocation-table relocations syms bind temp-buf cleanup] (do
         
         (ignore Mandatory undefined section)
         (let (undef-shdr [buffer-alloc (elf64-shdr) temp-buf cleanup]) (do
@@ -1387,7 +1393,7 @@
         (setf sh-flags rela-shdr #0)
         (setf sh-addr rela-shdr #0)
         (setf sh-offset rela-shdr [+ (@ sh-offset bss-shdr) #0])
-        (setf sh-size rela-shdr [- $rela-ptr relas])
+        (setf sh-size rela-shdr relas-size)
         (setf sh-link rela-shdr #4)
         (setf sh-info rela-shdr #2)
         (setf sh-addralign rela-shdr #0)
@@ -1397,7 +1403,7 @@
         (let (bin [buffer-alloc
           [+ (elf64-ehdr) [+ [* (elf64-shdr) #7] [+ shstrtab-padded-len
           [+ max-text-sec-len [+ strtab-padded-len [+ [* sym-count (elf64-sym)]
-          [- $rela-ptr relas]]]]]]] reg cleanup]) (do
+          relas-size]]]]]] reg cleanup]) (do
         [mem-write bin pos ehdr (elf64-ehdr)]
         [mem-write bin pos undef-shdr (elf64-shdr)]
         [mem-write bin pos shstrtab-shdr (elf64-shdr)]
@@ -1410,9 +1416,9 @@
         [mem-write bin pos text max-text-sec-len]
         [mem-write bin pos strtab strtab-padded-len]
         [mem-write bin pos syms [* sym-count (elf64-sym)]]
-        [mem-write bin pos relas [- $rela-ptr relas]]
+        [mem-write bin pos relas relas-size]
         
-        (storage _ no-error bin $pos))))))))))))))))))))))))))))))))))))))))))))
+        (storage _ no-error bin $pos)))))))))))))))))))))))))))))))))))))))))))
         
       (cleanup err (do [destroy-buffer temp-buf return-cont] err))
       
