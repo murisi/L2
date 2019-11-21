@@ -1101,9 +1101,44 @@
 
 (storage shstrtab ("(nul).shstrtab(nul).text(nul).strtab(nul).symtab(nul).bss(nul).rela.text(nul)))
 
-(constrain measure-strtab (\ r (with-vars (a) (`(function ((list instr) (list bndg-aug) (list bndg-aug)) ,a)r)r)))
+(function make-shstrtab-list (function-sections buf handler)
+  (substitute (.. buf handler)
+    [cons (" .shstrtab) [cons (" .text) [cons (" .strtab) [cons (" .symtab) [cons (" .bss) [cons (" .rela.text)
+      (map (func-sec function-sections)
+        (bind (name instrs relocs) func-sec
+          [rstrcat (" .text.) name ..]) ..) ..] ..] ..] ..] ..] ..]))
 
-(function measure-strtab (generated-expressions undefined-bindings static-bindings)
+(function shstrtab-list-strlen (shstrtab-list)
+  (fold (acc #1) (str shstrtab-list) [+ acc [+ [strlen str] #1]]))
+
+(function shstrtab-list->shstrtab (shstrtab-list buf handler)
+  (substitute (.. buf handler)
+    (let (len [shstrtab-list-strlen shstrtab-list])
+    (let (shstrtab [buffer-alloc len ..]) (do
+      [setb shstrtab (nul)]
+      (fold (acc [+ shstrtab #1]) (elt shstrtab-list) [+ [strcpy acc elt] #1])
+      shstrtab)))))
+
+(function shstrtab-offsets (shstrtab-list buf handler)
+  (substitute (.. buf handler)
+    (loop build-offsets (pos #1) (offsets nil) (rem shstrtab-list)
+      (if [nil? rem]
+        [reverse offsets ..]
+        {build-offsets [+ pos [strlen [@car rem]]] [cons pos offsets ..] [@cdr rem]}))))
+
+(constrain measure-instrs-strtab (\ r (with-vars (a) (`(function ((list instr)) ,a)r)r)))
+
+(function measure-instrs-strtab (generated-expressions)
+  (fold (acc #0) (e generated-expressions)
+    [+ acc (let (instr-bndg (@ instr-binding e)) (if [not= instr-bndg null-binding]
+      (let (label-str (@ bndg-name instr-bndg))
+        (if [not= label-str null-string] [+ [strlen label-str] #1] #0))
+      #0))]))
+
+(constrain measure-strtab (\ r (with-vars (a) (`(function ((list instr) (list (values string (list instr) (list reloc)))
+  (list bndg-aug) (list bndg-aug)) ,a)r)r)))
+
+(function measure-strtab (generated-expressions function-sections undefined-bindings static-bindings)
   (let (undefined-bindings-len (fold (acc #0) (sym undefined-bindings)
         [+ acc (if [not= (@ bndg-name sym) null-string]
           [+ [strlen(@ bndg-name sym)] #1]
@@ -1112,18 +1147,24 @@
         [+ acc (if [not= (@ bndg-name sym) null-string]
           [+ [strlen(@ bndg-name sym)] #1]
           #0)]))
-      (generated-expressions-len (fold (acc #0) (e generated-expressions)
-        [+ acc (let (instr-bndg (@ instr-binding e)) (if [not= instr-bndg null-binding]
-          (let (label-str (@ bndg-name instr-bndg))
-            (if [not= label-str null-string] [+ [strlen label-str] #1] #0))
-          #0))]))
+      (generated-expressions-len (fold (acc [measure-instrs-strtab generated-expressions]) (func-sec function-sections)
+        (bind (name instrs relocs) func-sec
+          [+ acc [measure-instrs-strtab instrs]])))
     [+ #1 [+ undefined-bindings-len [+ static-bindings-len generated-expressions-len]]]))
 
-(constrain measure-symtab (\ r (with-vars (a) (`(function ((list instr) (list bndg-aug) (list bndg-aug)) ,a)r)r)))
+(constrain measure-instrs-symtab (\ r (with-vars (a) (`(function ((list instr)) ,a)r)r)))
 
-(function measure-symtab (generated-expressions undefined-bindings static-bindings)
+(function measure-instrs-symtab (generated-expressions)
+  (fold (acc #0) (e generated-expressions) [+ acc (if [not= (@ instr-binding e) null-binding] #1 #0)]))
+
+(constrain measure-symtab (\ r (with-vars (a) (`(function ((list instr) (list (values string (list instr) (list reloc)))
+  (list bndg-aug) (list bndg-aug)) ,a)r)r)))
+
+(function measure-symtab (generated-expressions function-sections undefined-bindings static-bindings)
   (let (generated-expressions-len
-        (fold (acc #0) (e generated-expressions) [+ acc (if [not= (@ instr-binding e) null-binding] #1 #0)]))
+      (fold (acc [measure-instrs-symtab generated-expressions]) (func-sec function-sections)
+        (bind (name instrs relocs) func-sec
+          [+ acc [measure-instrs-symtab instrs]])))
     [+ #1 [+ generated-expressions-len [+ [length undefined-bindings] [length static-bindings]]]]))
 
 (constrain make-relocation-table
@@ -1142,6 +1183,29 @@
           [(@ reloc-addend-func reloc) (@ reloc-context reloc) operand-pos operand-size instr-pos instr-size])
         [set+ rela-ptr (elf64-rela)]))))
   (values (use-storage ret-val) relas [- $rela-ptr relas]))))))
+
+(constrain instr-labels->strtab+symtab
+  (\ r (with-vars (a b) (`(function ((list instr) string (ref string) (ref elf64-sym) bndg-scope ,b) ,a)r)r)))
+
+(function instr-labels->strtab+symtab (generated-expressions strtab strtabptr sym-ptr scope shndx)
+  (foreach (e generated-expressions)
+    (let (instr-bndg (@ instr-binding e))
+      (if (and [not= instr-bndg null-binding] [= (@ bndg-scope instr-bndg) scope]) (do
+        (if [not= (@ bndg-name instr-bndg) null-string]
+          (do
+            [strcpy $strtabptr (@ bndg-name instr-bndg)]
+            (setf st-name $sym-ptr [- $strtabptr strtab])
+            [set+ strtabptr [+[strlen(@ bndg-name instr-bndg)]#1]])
+          (setf st-name $sym-ptr #0))
+    
+        (setf st-value $sym-ptr #0)
+        (setf st-size $sym-ptr #0)
+        (setf st-info $sym-ptr (elf64-st-info (if [= (@ bndg-scope instr-bndg) (local-scope)] (stb-local) (stb-global)) (stt-notype)))
+        (setf st-other $sym-ptr #0)
+        (setf st-shndx $sym-ptr shndx)
+        (setf bndg-other instr-bndg $sym-ptr)
+        [set+ sym-ptr (elf64-sym)])
+        (ignore)))))
 
 (ignore
   Takes assembly code and a list of symbols as constructs an object file.
@@ -1185,8 +1249,8 @@
         (setf e-shnum ehdr (write-elf-sh-count))
         (setf e-shstrndx ehdr #1)
         
-        (let (strtab-len [measure-strtab generated-expressions undefined-bindings static-bindings])
-        (let (sym-count [measure-symtab generated-expressions undefined-bindings static-bindings])
+        (let (strtab-len [measure-strtab generated-expressions function-sections undefined-bindings static-bindings])
+        (let (sym-count [measure-symtab generated-expressions function-sections undefined-bindings static-bindings])
     
         (let (syms [buffer-alloc [* sym-count (elf64-sym)] temp-buf cleanup])
         (let (sym-ptr (storage _ syms)) (do
@@ -1228,24 +1292,7 @@
             [set+ sym-ptr (elf64-sym)])
             (ignore)))
     
-        (foreach (e generated-expressions)
-          (let (instr-bndg (@ instr-binding e))
-            (if (and [not= instr-bndg null-binding] [= (@ bndg-scope instr-bndg) (local-scope)]) (do
-              (if [not= (@ bndg-name instr-bndg) null-string]
-                (do
-                  [strcpy $strtabptr (@ bndg-name instr-bndg)]
-                  (setf st-name $sym-ptr [- $strtabptr strtab])
-                  [set+ strtabptr [+[strlen(@ bndg-name instr-bndg)]#1]])
-                (setf st-name $sym-ptr #0))
-          
-              (setf st-value $sym-ptr #0)
-              (setf st-size $sym-ptr #0)
-              (setf st-info $sym-ptr (elf64-st-info (stb-local) (stt-notype)))
-              (setf st-other $sym-ptr #0)
-              (setf st-shndx $sym-ptr #2)
-              (setf bndg-other instr-bndg $sym-ptr)
-              [set+ sym-ptr (elf64-sym)])
-              (ignore))))
+        [instr-labels->strtab+symtab generated-expressions strtab strtabptr sym-ptr (local-scope) #2]
     
         (let (local-symbol-count [/[- $sym-ptr syms](elf64-sym)]) (do
         
@@ -1285,28 +1332,12 @@
             (setf bndg-other sym $sym-ptr)
             [set+ sym-ptr (elf64-sym)])
             (ignore)))
-    
-        (foreach (e generated-expressions)
-          (let (instr-bndg (@ instr-binding e))
-            (if (and [not= instr-bndg null-binding] [= (@ bndg-scope instr-bndg) (global-scope)]) (do
-              (if [not= (@ bndg-name instr-bndg) null-string]
-                (do
-                  [strcpy $strtabptr (@ bndg-name instr-bndg)]
-                  (setf st-name $sym-ptr [- $strtabptr strtab])
-                  [set+ strtabptr [+[strlen(@ bndg-name instr-bndg)]#1]])
-                (setf st-name $sym-ptr #0))
-          
-              (setf st-value $sym-ptr #0)
-              (setf st-size $sym-ptr #0)
-              (setf st-info $sym-ptr (elf64-st-info (stb-global) (stt-notype)))
-              (setf st-other $sym-ptr #0)
-              (setf st-shndx $sym-ptr #2)
-              (setf bndg-other instr-bndg $sym-ptr)
-              [set+ sym-ptr (elf64-sym)])
-              (ignore))))
+        
+        [instr-labels->strtab+symtab generated-expressions strtab strtabptr sym-ptr (global-scope) #2]
               
         (bind (text text-len) [assemble generated-expressions bind reg handler]
         (bind (relas relas-size) [make-relocation-table relocations syms bind temp-buf cleanup] (do
+        
         (ignore Mandatory undefined section)
         (let (undef-shdr [buffer-alloc (elf64-shdr) temp-buf cleanup]) (do
         (setf sh-name undef-shdr #0)
