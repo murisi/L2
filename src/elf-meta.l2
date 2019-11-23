@@ -445,8 +445,8 @@
 (function make-lkdstrt (str buf hdl)
   (substitute (.. buf hdl)
     (let (lkdstrt [buffer-alloc (linked-elf64-strtab) ..]) (do
-      (setf lkdstrt-raw lkstrt str)
-      lkstrt))))
+      (setf lkdstrt-raw lkdstrt str)
+      lkdstrt))))
 
 (constrain make-lkdr (\ r (with-vars (a) (`(function (linked-elf64-sym buffer ,a) linked-elf64-rela)r)r)))
 
@@ -468,50 +468,55 @@
       lkdst))))
 
 (constrain make-lkdsymtab
-  (\ r (with-vars (a) (`(function (linked-elf64-strtab (list linked-elf64-sym) (list linked-elf64-sym) buffer ,a) linked-elf64-sh)r)r)))
+  (\ r (with-vars (a) (`(function (linked-elf64-strtab linked-elf64-sh (list linked-elf64-sym) (list linked-elf64-sym) buffer ,a) linked-elf64-sh)r)r)))
 
-(function make-lkdsymtab (name local-symtab nonlocal-symtab buf hdl)
+(function make-lkdsymtab (name link local-symtab nonlocal-symtab buf hdl)
   (substitute (.. buf hdl)
     (let (lkdsh [buffer-alloc (linked-elf64-sh) ..]) (do
       (setf lkdsh-raw lkdsh [buffer-alloc (elf64-shdr) ..])
       (setf sh-type (@ lkdsh-raw lkdsh) (sht-symtab))
       (setf lkdsh-name lkdsh name)
+      (setf lkdsh-link lkdsh link)
       (setf lkdsh-local-symtab lkdsh local-symtab)
       (setf lkdsh-nonlocal-symtab lkdsh nonlocal-symtab)
       lkdsh))))
 
 (constrain make-lkdstrtab
-  (\ r (with-vars (a) (`(function (linked-elf64-strtab (list linked-elf64-strtab) buffer ,a) linked-elf64-sh)r)r)))
+  (\ r (with-vars (a) (`(function (linked-elf64-strtab linked-elf64-sh (list linked-elf64-strtab) buffer ,a) linked-elf64-sh)r)r)))
 
-(function make-lkdstrtab (name strtab buf hdl)
+(function make-lkdstrtab (name link strtab buf hdl)
   (substitute (.. buf hdl)
     (let (lkdsh [buffer-alloc (linked-elf64-sh) ..]) (do
       (setf lkdsh-raw lkdsh [buffer-alloc (elf64-shdr) ..])
       (setf sh-type (@ lkdsh-raw lkdsh) (sht-strtab))
       (setf lkdsh-name lkdsh name)
       (setf lkdsh-strtab lkdsh strtab)
+      (setf lkdsh-link lkdsh link)
       lkdsh))))
 
 (constrain make-lkdrela
-  (\ r (with-vars (a) (`(function (linked-elf64-strtab (list linked-elf64-rela) buffer ,a) linked-elf64-sh)r)r)))
+  (\ r (with-vars (a) (`(function (linked-elf64-strtab linked-elf64-sh linked-elf64-sh (list linked-elf64-rela) buffer ,a) linked-elf64-sh)r)r)))
 
-(function make-lkdrela (name rela buf hdl)
+(function make-lkdrela (name link info rela buf hdl)
   (substitute (.. buf hdl)
     (let (lkdsh [buffer-alloc (linked-elf64-sh) ..]) (do
       (setf lkdsh-raw lkdsh [buffer-alloc (elf64-shdr) ..])
       (setf sh-type (@ lkdsh-raw lkdsh) (sht-rela))
       (setf lkdsh-name lkdsh name)
       (setf lkdsh-rela lkdsh rela)
+      (setf lkdsh-link lkdsh link)
+      (setf lkdsh-rela-info lkdsh info)
       lkdsh))))
 
 (constrain make-lkds
-  (\ r (with-vars (a) (`(function (linked-elf64-strtab buffer ,a) linked-elf64-sh)r)r)))
+  (\ r (with-vars (a) (`(function (linked-elf64-strtab linked-elf64-sh buffer ,a) linked-elf64-sh)r)r)))
 
-(function make-lkds (name buf hdl)
+(function make-lkds (name link buf hdl)
   (substitute (.. buf hdl)
     (let (lkdsh [buffer-alloc (linked-elf64-sh) ..]) (do
       (setf lkdsh-raw lkdsh [buffer-alloc (elf64-shdr) ..])
       (setf lkdsh-name lkdsh name)
+      (setf lkdsh-link lkdsh link)
       lkdsh))))
 
 (constrain make-lkde
@@ -527,4 +532,11 @@
       (setf lkde-undef lkde undef)
       (setf lkde-shstr lkde shstr)
       lkde))))
+
+(function layout-strtab (strtab)
+  (let (strtab-len
+      (fold (acc #0) (ent (@ lkdsh-strtab strtab)) (do
+        (setf lkdstrt-ndx ent acc)
+        [+ acc [+ [strlen (@ lkdstrt-ndx ent)] #1]])))
+    (setf sh-size (@ lkdsh-raw strtab) [pad-size strtab-len (write-elf-alignment)])))
 
