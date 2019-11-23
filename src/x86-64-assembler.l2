@@ -1180,7 +1180,7 @@
         (setf e-shstrndx ehdr #1)
         
         (let (shstrtab-name [make-lkdstrt (" .shstrtab) temp-buf cleanup])
-        (let (lkd-shstrtab-shdr [make-lkdstrtab shstrtab-name lkd-undef-shdr nil temp-buf cleanup])
+        (let (lkd-shstrtab-shdr [make-lkdstrtab shstrtab-name (ignore) nil temp-buf cleanup])
         (let (shstrtab-shdr (@ lkdsh-raw lkd-shstrtab-shdr)) (do
         [append shstrtab-name (& lkdsh-strtab lkd-shstrtab-shdr) temp-buf cleanup]
         (setf sh-type shstrtab-shdr (sht-strtab))
@@ -1207,6 +1207,7 @@
         (setf sh-addralign undef-shdr #0)
         (setf sh-entsize undef-shdr #0)
         (setf lkde-undef lkd-ehdr lkd-undef-shdr)
+        (setf lkdsh-link lkd-shstrtab-shdr lkd-undef-shdr)
         
         (let (text-name [make-lkdstrt (" .text) temp-buf cleanup])
         (let (lkd-text-shdr [make-lkds text-name lkd-undef-shdr temp-buf cleanup])
@@ -1342,11 +1343,27 @@
         (setf sh-size text-shdr text-len)
         [make-relocation-table relocations (& lkdsh-rela lkd-rela-shdr) temp-buf cleanup]
         
+        (ignore Assign the strings in the string table indicies.)
+        
+        (foreach (sec (@ lkde-sh lkd-ehdr))
+          (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-strtab)]
+            (fold (acc #0) (str (@ lkdsh-strtab sec)) (do
+              (setf lkdstrt-ndx str acc)
+              [+ acc [+ #1 [strlen (@ lkdstrt-raw str)]]])) (ignore)))
+        
         (ignore Give each section an index.)
         
-        (fold (idx #0) (sec (storage-cons lkd-undef-shdr (@ lkde-sh lkd-ehdr))) (do
-          (setf lkdsh-ndx sec idx)
-          [+ idx #1]))
+        (fold (idx #0) (sec (storage-cons lkd-undef-shdr (@ lkde-sh lkd-ehdr)))
+          (do (setf lkdsh-ndx sec idx) [+ idx #1]))
+        
+        (ignore Substitute into ELF Section sh-names and sh-links, and sh-infos if possible.)
+        
+        (foreach (sec (@ lkde-sh lkd-ehdr)) (do
+          (setf sh-link (@ lkdsh-raw sec) (@ lkdsh-ndx (@ lkdsh-link sec)))
+          (setf sh-name (@ lkdsh-raw sec) (@ lkdstrt-ndx (@ lkdsh-name sec)))
+          (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-rela)]
+            (setf sh-info (@ lkdsh-raw sec) (@ lkdsh-ndx (@ lkdsh-rela-info sec)))
+            (ignore))))
         
         (ignore Substitute into ELF Header e-shstrndx, e-shnum, and e-shoff)
         
@@ -1364,14 +1381,6 @@
               (setf sh-info (@ lkdsh-raw sec) local-end-idx)
               (fold (acc local-end-idx) (sym (@ lkdsh-nonlocal-symtab sec))
                 (do (setf lkdst-ndx sym acc) [+ acc #1])))) (ignore)))
-        
-        (ignore Assign the strings in the string table indicies.)
-        
-        (foreach (sec (@ lkde-sh lkd-ehdr))
-          (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-strtab)]
-            (fold (acc #0) (str (@ lkdsh-strtab sec)) (do
-              (setf lkdstrt-ndx str acc)
-              [+ acc [+ #1 [strlen (@ lkdstrt-raw str)]]])) (ignore)))
         
         (ignore Calculate the sizes of the individual sections.)
         
@@ -1440,6 +1449,9 @@
           [set pos [pad-size $pos (write-elf-alignment)]]))
         
         [print-str (stdout) (" Hello) #0]
+        (let (fd [create (" thisiswhatisseen.o) handler]) (do
+        [print fd bin elf-size handler]
+        [close fd handler]))
         
         (storage _ no-error bin $pos))))))))))))))))))))))))))))))))))))))))))))))
         
