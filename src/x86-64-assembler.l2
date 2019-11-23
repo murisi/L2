@@ -1116,12 +1116,12 @@
 
 (constrain instr-labels->strtab+symtab
   (\ r (with-vars (c) (`(function ((list instr) (ref (list linked-elf64-strtab)) linked-elf64-strtab (ref (list linked-elf64-sym))
-    linked-elf64-sh bndg-scope buffer ,c) ())r)r)))
+    linked-elf64-sh buffer ,c) ())r)r)))
 
-(function instr-labels->strtab+symtab (generated-expressions strtab strtab-null-name symtab lkd-instr-shdr scope temp-buf cleanup)
+(function instr-labels->strtab+symtab (generated-expressions strtab strtab-null-name symtab lkd-instr-shdr temp-buf cleanup)
   (foreach (e generated-expressions)
     (let (instr-bndg (@ instr-binding e))
-      (if (and [not= instr-bndg null-binding] [= (@ bndg-scope instr-bndg) scope])
+      (if [not= instr-bndg null-binding]
         (let (sym-name (if [not= (@ bndg-name instr-bndg) null-string]
             (let (sym-name [make-lkdstrt (@ bndg-name instr-bndg) temp-buf cleanup])
               (do [append sym-name strtab temp-buf cleanup] sym-name))
@@ -1130,7 +1130,11 @@
           (let (sym (@ lkdst-raw lkd-sym)) (do
           (setf st-value sym #0)
           (setf st-size sym #0)
-          (setf st-info sym (elf64-st-info (if [= (@ bndg-scope instr-bndg) (local-scope)] (stb-local) (stb-global)) (stt-notype)))
+          (setf st-info sym (elf64-st-info
+            (switch = (@ bndg-scope instr-bndg)
+              ((local-scope)(stb-local))
+              ((global-scope)(stb-global))
+              (ignore)) (stt-notype)))
           (setf st-other sym #0)
           (setf bndg-other instr-bndg lkd-sym)
           [append lkd-sym symtab temp-buf cleanup]))))
@@ -1236,7 +1240,7 @@
         [append lkd-strtab-shdr (& lkde-sh lkd-ehdr) temp-buf cleanup]
         
         (let (symtab-name [make-lkdstrt (" .symtab) temp-buf cleanup])
-        (let (lkd-symtab-shdr [make-lkdsymtab symtab-name lkd-strtab-shdr nil nil temp-buf cleanup])
+        (let (lkd-symtab-shdr [make-lkdsymtab symtab-name lkd-strtab-shdr nil temp-buf cleanup])
         (let (symtab-shdr (@ lkdsh-raw lkd-symtab-shdr)) (do
         [append symtab-name (& lkdsh-strtab lkd-shstrtab-shdr) temp-buf cleanup]
         (setf sh-type symtab-shdr (sht-symtab))
@@ -1286,7 +1290,7 @@
         (setf st-other und-sym #0)
         
         (foreach (bndg static-bindings)
-          (if [= (@ bndg-scope bndg) (local-scope)]
+          (if [= (@ bndg-state bndg) (defined-state)]
             (let (sym-name (if [not= (@ bndg-name bndg) null-string]
                 (let (sym-name [make-lkdstrt (@ bndg-name bndg) temp-buf cleanup])
                   (do [append sym-name (& lkdsh-strtab lkd-strtab-shdr) temp-buf cleanup] sym-name))
@@ -1296,30 +1300,17 @@
               [set- (& bndg-offset bndg) bss-extent]
               (setf st-value sym (@ bndg-offset bndg))
               (setf st-size sym (@ bndg-size bndg))
-              (setf st-info sym (elf64-st-info (stb-local) (stt-notype)))
+              (setf st-info sym (elf64-st-info
+                (switch = (@ bndg-scope bndg)
+                  ((local-scope)(stb-local))
+                  ((global-scope)(stb-global))
+                  (ignore)) (stt-notype)))
               (setf st-other sym #0)
               (setf bndg-other bndg lkd-sym)
-              [append lkd-sym (& lkdsh-local-symtab lkd-symtab-shdr) temp-buf cleanup]))))
+              [append lkd-sym (& lkdsh-symtab lkd-symtab-shdr) temp-buf cleanup]))))
             (ignore)))
     
-        [instr-labels->strtab+symtab generated-expressions (& lkdsh-strtab lkd-strtab-shdr) strtab-null-name (& lkdsh-local-symtab lkd-symtab-shdr) lkd-text-shdr (local-scope) temp-buf cleanup]
-        
-        (foreach (bndg static-bindings)
-          (if (and [= (@ bndg-scope bndg) (global-scope)] [= (@ bndg-state bndg) (defined-state)])
-            (let (sym-name (if [not= (@ bndg-name bndg) null-string]
-                (let (sym-name [make-lkdstrt (@ bndg-name bndg) temp-buf cleanup])
-                  (do [append sym-name (& lkdsh-strtab lkd-strtab-shdr) temp-buf cleanup] sym-name))
-                strtab-null-name))
-              (let (lkd-sym [make-lkdst sym-name lkd-bss-shdr temp-buf cleanup])
-              (let (sym (@ lkdst-raw lkd-sym)) (do
-              [set- (& bndg-offset bndg) bss-extent]
-              (setf st-value sym (@ bndg-offset bndg))
-              (setf st-size sym (@ bndg-size bndg))
-              (setf st-info sym (elf64-st-info (stb-global) (stt-notype)))
-              (setf st-other sym #0)
-              (setf bndg-other bndg lkd-sym)
-              [append lkd-sym (& lkdsh-nonlocal-symtab lkd-symtab-shdr) temp-buf cleanup]))))
-            (ignore)))
+        [instr-labels->strtab+symtab generated-expressions (& lkdsh-strtab lkd-strtab-shdr) strtab-null-name (& lkdsh-symtab lkd-symtab-shdr) lkd-text-shdr temp-buf cleanup]
     
         (foreach (bndg undefined-bindings)
           (if (and [= (@ bndg-scope bndg) (global-scope)] [= (@ bndg-state bndg) (undefined-state)])
@@ -1334,10 +1325,8 @@
               (setf st-info sym (elf64-st-info (stb-global) (stt-notype)))
               (setf st-other sym #0)
               (setf bndg-other bndg lkd-sym)
-              [append lkd-sym (& lkdsh-nonlocal-symtab lkd-symtab-shdr) temp-buf cleanup]))))
+              [append lkd-sym (& lkdsh-symtab lkd-symtab-shdr) temp-buf cleanup]))))
             (ignore)))
-        
-        [instr-labels->strtab+symtab generated-expressions (& lkdsh-strtab lkd-strtab-shdr) strtab-null-name (& lkdsh-nonlocal-symtab lkd-symtab-shdr) lkd-text-shdr (global-scope) temp-buf cleanup]
               
         (bind (text text-len) [assemble generated-expressions bind reg handler] (do
         (setf sh-size text-shdr text-len)
@@ -1376,18 +1365,22 @@
         (foreach (sec (@ lkde-sh lkd-ehdr))
           (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-symtab)]
             (let (local-end-idx
-                (fold (acc #0) (sym (@ lkdsh-local-symtab sec))
-                  (do (setf lkdst-ndx sym acc) [+ acc #1]))) (do
+                (fold (acc #0) (sym (@ lkdsh-symtab sec))
+                  (if [= (elf64-st-bind (@ st-info (@ lkdst-raw sym))) (stb-local)]
+                    (do (setf lkdst-ndx sym acc) [+ acc #1])
+                    acc))) (do
               (setf sh-info (@ lkdsh-raw sec) local-end-idx)
-              (fold (acc local-end-idx) (sym (@ lkdsh-nonlocal-symtab sec))
-                (do (setf lkdst-ndx sym acc) [+ acc #1])))) (ignore)))
+              (fold (acc local-end-idx) (sym (@ lkdsh-symtab sec))
+                (if [= (elf64-st-bind (@ st-info (@ lkdst-raw sym))) (stb-local)]
+                  acc
+                  (do (setf lkdst-ndx sym acc) [+ acc #1]))))) (ignore)))
         
         (ignore Calculate the sizes of the individual sections.)
         
         (foreach (sec (@ lkde-sh lkd-ehdr))
           (switch = (@ sh-type (@ lkdsh-raw sec))
             ((sht-symtab) (setf sh-size (@ lkdsh-raw sec)
-              [* [+ [length (@ lkdsh-local-symtab sec)] [length (@ lkdsh-nonlocal-symtab sec)]] (elf64-sym)]))
+              [* [length (@ lkdsh-symtab sec)] (elf64-sym)]))
             ((sht-rela) (setf sh-size (@ lkdsh-raw sec)
               [* [length (@ lkdsh-rela sec)] (elf64-rela)]))
             ((sht-strtab) (setf sh-size (@ lkdsh-raw sec)
@@ -1399,10 +1392,7 @@
         
         (foreach (sec (@ lkde-sh lkd-ehdr))
           (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-symtab)] (do
-            (foreach (sym (@ lkdsh-local-symtab sec)) (do
-              (setf st-shndx (@ lkdst-raw sym) (@ lkdsh-ndx (@ lkdst-sh sym)))
-              (setf st-name (@ lkdst-raw sym) (@ lkdstrt-ndx (@ lkdst-name sym)))))
-            (foreach (sym (@ lkdsh-nonlocal-symtab sec)) (do
+            (foreach (sym (@ lkdsh-symtab sec)) (do
               (setf st-shndx (@ lkdst-raw sym) (@ lkdsh-ndx (@ lkdst-sh sym)))
               (setf st-name (@ lkdst-raw sym) (@ lkdstrt-ndx (@ lkdst-name sym)))))) (ignore)))
         
@@ -1434,10 +1424,12 @@
         (foreach (sec (@ lkde-sh lkd-ehdr)) (do
           (switch = (@ sh-type (@ lkdsh-raw sec))
             ((sht-symtab) (do
-              (foreach (sym (@ lkdsh-local-symtab sec))
-                [mem-write bin pos (@ lkdst-raw sym) (elf64-sym)])
-              (foreach (sym (@ lkdsh-nonlocal-symtab sec))
-                [mem-write bin pos (@ lkdst-raw sym) (elf64-sym)])))
+              (foreach (sym (@ lkdsh-symtab sec))
+                (if [= (elf64-st-bind (@ st-info (@ lkdst-raw sym))) (stb-local)]
+                  [mem-write bin pos (@ lkdst-raw sym) (elf64-sym)] (ignore)))
+              (foreach (sym (@ lkdsh-symtab sec))
+                (if [= (elf64-st-bind (@ st-info (@ lkdst-raw sym))) (stb-local)] (ignore)
+                  [mem-write bin pos (@ lkdst-raw sym) (elf64-sym)]))))
             ((sht-rela)
               (foreach (rela (@ lkdsh-rela sec))
                 [mem-write bin pos (@ lkdr-raw rela) (elf64-rela)]))
