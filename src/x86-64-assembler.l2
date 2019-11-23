@@ -1213,18 +1213,6 @@
         (setf lkde-undef lkd-ehdr lkd-undef-shdr)
         (setf lkdsh-link lkd-shstrtab-shdr lkd-undef-shdr)
         
-        (let (text-name [make-lkdstrt (" .text) temp-buf cleanup])
-        (let (lkd-text-shdr [make-lkds text-name lkd-undef-shdr temp-buf cleanup])
-        (let (text-shdr (@ lkdsh-raw lkd-text-shdr)) (do
-        [append text-name (& lkdsh-strtab lkd-shstrtab-shdr) temp-buf cleanup]
-        (setf sh-type text-shdr (sht-progbits))
-        (setf sh-flags text-shdr [bor (shf-alloc) (shf-execinstr)])
-        (setf sh-addr text-shdr #0)
-        (setf sh-info text-shdr #0)
-        (setf sh-addralign text-shdr #1)
-        (setf sh-entsize text-shdr #0)
-        [append lkd-text-shdr (& lkde-sh lkd-ehdr) temp-buf cleanup]
-        
         (let (strtab-name [make-lkdstrt (" .strtab) temp-buf cleanup])
         (let (lkd-strtab-shdr [make-lkdstrtab strtab-name lkd-undef-shdr nil temp-buf cleanup])
         (let (strtab-shdr (@ lkdsh-raw lkd-strtab-shdr)) (do
@@ -1232,7 +1220,6 @@
         (setf sh-type strtab-shdr (sht-strtab))
         (setf sh-flags strtab-shdr #0)
         (setf sh-addr strtab-shdr #0)
-        (setf sh-size strtab-shdr strtab-len)
         (setf sh-link strtab-shdr (shn-undef))
         (setf sh-info strtab-shdr #0)
         (setf sh-addralign strtab-shdr #0)
@@ -1267,17 +1254,6 @@
         (setf sh-entsize bss-shdr #0)
         [append lkd-bss-shdr (& lkde-sh lkd-ehdr) temp-buf cleanup]
         
-        (let (rela-name [make-lkdstrt (" .rela.text) temp-buf cleanup])
-        (let (lkd-rela-shdr [make-lkdrela rela-name lkd-symtab-shdr lkd-text-shdr nil temp-buf cleanup])
-        (let (rela-shdr (@ lkdsh-raw lkd-rela-shdr)) (do
-        [append rela-name (& lkdsh-strtab lkd-shstrtab-shdr) temp-buf cleanup]
-        (setf sh-type rela-shdr (sht-rela))
-        (setf sh-flags rela-shdr #0)
-        (setf sh-addr rela-shdr #0)
-        (setf sh-addralign rela-shdr #0)
-        (setf sh-entsize rela-shdr (elf64-rela))
-        [append lkd-rela-shdr (& lkde-sh lkd-ehdr) temp-buf cleanup]
-        
         (let (strtab-null-name [make-lkdstrt (" ) temp-buf cleanup])
         (let (lkd-und-sym [make-lkdst strtab-null-name lkd-undef-shdr temp-buf cleanup])
         (let (und-sym (@ lkdst-raw lkd-und-sym)) (do
@@ -1309,9 +1285,7 @@
               (setf bndg-other bndg lkd-sym)
               [append lkd-sym (& lkdsh-symtab lkd-symtab-shdr) temp-buf cleanup]))))
             (ignore)))
-    
-        [instr-labels->strtab+symtab generated-expressions (& lkdsh-strtab lkd-strtab-shdr) strtab-null-name (& lkdsh-symtab lkd-symtab-shdr) lkd-text-shdr temp-buf cleanup]
-    
+        
         (foreach (bndg undefined-bindings)
           (if (and [= (@ bndg-scope bndg) (global-scope)] [= (@ bndg-state bndg) (undefined-state)])
             (let (sym-name (if [not= (@ bndg-name bndg) null-string]
@@ -1327,6 +1301,31 @@
               (setf bndg-other bndg lkd-sym)
               [append lkd-sym (& lkdsh-symtab lkd-symtab-shdr) temp-buf cleanup]))))
             (ignore)))
+        
+        (let (text-name [make-lkdstrt (" .text) temp-buf cleanup])
+        (let (lkd-text-shdr [make-lkds text-name lkd-undef-shdr temp-buf cleanup])
+        (let (text-shdr (@ lkdsh-raw lkd-text-shdr)) (do
+        [append text-name (& lkdsh-strtab lkd-shstrtab-shdr) temp-buf cleanup]
+        (setf sh-type text-shdr (sht-progbits))
+        (setf sh-flags text-shdr [bor (shf-alloc) (shf-execinstr)])
+        (setf sh-addr text-shdr #0)
+        (setf sh-info text-shdr #0)
+        (setf sh-addralign text-shdr #1)
+        (setf sh-entsize text-shdr #0)
+        [append lkd-text-shdr (& lkde-sh lkd-ehdr) temp-buf cleanup]
+        
+        (let (rela-name [make-lkdstrt (" .rela.text) temp-buf cleanup])
+        (let (lkd-rela-shdr [make-lkdrela rela-name lkd-symtab-shdr lkd-text-shdr nil temp-buf cleanup])
+        (let (rela-shdr (@ lkdsh-raw lkd-rela-shdr)) (do
+        [append rela-name (& lkdsh-strtab lkd-shstrtab-shdr) temp-buf cleanup]
+        (setf sh-type rela-shdr (sht-rela))
+        (setf sh-flags rela-shdr #0)
+        (setf sh-addr rela-shdr #0)
+        (setf sh-addralign rela-shdr #0)
+        (setf sh-entsize rela-shdr (elf64-rela))
+        [append lkd-rela-shdr (& lkde-sh lkd-ehdr) temp-buf cleanup]
+    
+        [instr-labels->strtab+symtab generated-expressions (& lkdsh-strtab lkd-strtab-shdr) strtab-null-name (& lkdsh-symtab lkd-symtab-shdr) lkd-text-shdr temp-buf cleanup]
               
         (bind (text text-len) [assemble generated-expressions bind reg handler] (do
         (setf sh-size text-shdr text-len)
@@ -1470,4 +1469,3 @@
       (if [not= instr-bndg null-binding]
         [set+ (& bndg-offset instr-bndg) [segment obj (" .text)]]
         (ignore))))))
-
