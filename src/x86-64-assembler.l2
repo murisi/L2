@@ -1140,6 +1140,37 @@
           [append lkd-sym symtab temp-buf cleanup]))))
         (ignore)))))
 
+(function initialize-function-section (generated-expressions text-name-str relocations rela-name-str lkd-ehdr lkd-strtab-shdr lkd-symtab-shdr temp-buf cleanup)
+  (let (text-name [make-lkdstrt text-name-str temp-buf cleanup])
+  (let (lkd-text-shdr [make-lkds text-name (@ lkde-undef lkd-ehdr) temp-buf cleanup])
+  (let (text-shdr (@ lkdsh-raw lkd-text-shdr)) (do
+  [append text-name (& lkdsh-strtab (@ lkde-shstr lkd-ehdr)) temp-buf cleanup]
+  (setf sh-type text-shdr (sht-progbits))
+  (setf sh-flags text-shdr [bor (shf-alloc) (shf-execinstr)])
+  (setf sh-addr text-shdr #0)
+  (setf sh-info text-shdr #0)
+  (setf sh-addralign text-shdr #1)
+  (setf sh-entsize text-shdr #0)
+  [append lkd-text-shdr (& lkde-sh lkd-ehdr) temp-buf cleanup]
+  
+  (let (rela-name [make-lkdstrt rela-name-str temp-buf cleanup])
+  (let (lkd-rela-shdr [make-lkdrela rela-name lkd-symtab-shdr lkd-text-shdr nil temp-buf cleanup])
+  (let (rela-shdr (@ lkdsh-raw lkd-rela-shdr)) (do
+  [append rela-name (& lkdsh-strtab (@ lkde-shstr lkd-ehdr)) temp-buf cleanup]
+  (setf sh-type rela-shdr (sht-rela))
+  (setf sh-flags rela-shdr #0)
+  (setf sh-addr rela-shdr #0)
+  (setf sh-addralign rela-shdr #0)
+  (setf sh-entsize rela-shdr (elf64-rela))
+  [append lkd-rela-shdr (& lkde-sh lkd-ehdr) temp-buf cleanup]
+
+  [instr-labels->strtab+symtab generated-expressions
+    (& lkdsh-strtab lkd-strtab-shdr) [@car(@ lkdsh-strtab lkd-strtab-shdr)] (& lkdsh-symtab lkd-symtab-shdr) lkd-text-shdr temp-buf cleanup]
+  (bind (text text-len) [assemble generated-expressions bind temp-buf cleanup] (do
+  (setf sh-size (@ lkdsh-raw lkd-text-shdr) text-len)
+  (setf lkdsh-offset lkd-text-shdr text)
+  [make-relocation-table relocations (& lkdsh-rela lkd-rela-shdr) temp-buf cleanup])))))))))))
+
 (ignore
   Takes assembly code and a list of symbols as constructs an object file.
   generated-expressions is a list of assembly expressions. symbols is a list of the static
@@ -1302,34 +1333,7 @@
               [append lkd-sym (& lkdsh-symtab lkd-symtab-shdr) temp-buf cleanup]))))
             (ignore)))
         
-        (let (text-name [make-lkdstrt (" .text) temp-buf cleanup])
-        (let (lkd-text-shdr [make-lkds text-name lkd-undef-shdr temp-buf cleanup])
-        (let (text-shdr (@ lkdsh-raw lkd-text-shdr)) (do
-        [append text-name (& lkdsh-strtab lkd-shstrtab-shdr) temp-buf cleanup]
-        (setf sh-type text-shdr (sht-progbits))
-        (setf sh-flags text-shdr [bor (shf-alloc) (shf-execinstr)])
-        (setf sh-addr text-shdr #0)
-        (setf sh-info text-shdr #0)
-        (setf sh-addralign text-shdr #1)
-        (setf sh-entsize text-shdr #0)
-        [append lkd-text-shdr (& lkde-sh lkd-ehdr) temp-buf cleanup]
-        
-        (let (rela-name [make-lkdstrt (" .rela.text) temp-buf cleanup])
-        (let (lkd-rela-shdr [make-lkdrela rela-name lkd-symtab-shdr lkd-text-shdr nil temp-buf cleanup])
-        (let (rela-shdr (@ lkdsh-raw lkd-rela-shdr)) (do
-        [append rela-name (& lkdsh-strtab lkd-shstrtab-shdr) temp-buf cleanup]
-        (setf sh-type rela-shdr (sht-rela))
-        (setf sh-flags rela-shdr #0)
-        (setf sh-addr rela-shdr #0)
-        (setf sh-addralign rela-shdr #0)
-        (setf sh-entsize rela-shdr (elf64-rela))
-        [append lkd-rela-shdr (& lkde-sh lkd-ehdr) temp-buf cleanup]
-    
-        [instr-labels->strtab+symtab generated-expressions (& lkdsh-strtab lkd-strtab-shdr) strtab-null-name (& lkdsh-symtab lkd-symtab-shdr) lkd-text-shdr temp-buf cleanup]
-              
-        (bind (text text-len) [assemble generated-expressions bind reg handler] (do
-        (setf sh-size text-shdr text-len)
-        [make-relocation-table relocations (& lkdsh-rela lkd-rela-shdr) temp-buf cleanup]
+        [initialize-function-section generated-expressions (" .text) relocations (" .rela.text) lkd-ehdr lkd-strtab-shdr lkd-symtab-shdr temp-buf cleanup]
         
         (ignore Assign the strings in the string table indicies.)
         
@@ -1444,7 +1448,7 @@
         [print fd bin elf-size handler]
         [close fd handler]))
         
-        (storage _ no-error bin $pos))))))))))))))))))))))))))))))))))))))))))))))
+        (storage _ no-error bin $pos))))))))))))))))))))))))))))))))))))
         
       (cleanup err (do [destroy-buffer temp-buf return-cont] err))
       
