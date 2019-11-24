@@ -1099,21 +1099,6 @@
         {handler (storage _ unsupported-instruction-error n)})))
     (values (use-storage ret-val) bin [pad-size $pos (write-elf-alignment)])))))))
 
-(constrain make-relocation-table
-  (\ r (with-vars (b c) (`(function ((list reloc) (ref (list linked-elf64-rela)) buffer ,b) (values (ref elf64-rela) ,c))r)r)))
-
-(function make-relocation-table (relocations relas temp-buf cleanup)
-  (foreach (reloc relocations)
-    (foreach (loca (@ op-locations (@ reloc-operand reloc)))
-      (bind (operand-pos operand-size instr-pos instr-size) loca
-        (let (lkd-rela [make-lkdr (@ bndg-other(@ reloc-binding reloc)) temp-buf cleanup])
-        (let (rela (@ lkdr-raw lkd-rela)) (do
-        (setf r-offset rela operand-pos)
-        (setf r-info rela (elf64-r-info (ignore) (@ reloc-type reloc)))
-        (setf r-addend rela
-          [(@ reloc-addend-func reloc) (@ reloc-context reloc) operand-pos operand-size instr-pos instr-size])
-        [append lkd-rela relas temp-buf cleanup])))))))
-
 (constrain instr-labels->strtab+symtab
   (\ r (with-vars (c) (`(function ((list instr) (ref (list linked-elf64-strtab)) linked-elf64-strtab (ref (list linked-elf64-sym))
     linked-elf64-sh buffer ,c) ())r)r)))
@@ -1140,7 +1125,7 @@
           [append lkd-sym symtab temp-buf cleanup]))))
         (ignore)))))
 
-(function initialize-function-section (generated-expressions text-name-str relocations rela-name-str lkd-ehdr lkd-strtab-shdr lkd-symtab-shdr temp-buf cleanup)
+(function make-function-text-section (generated-expressions text-name-str lkd-ehdr lkd-strtab-shdr lkd-symtab-shdr temp-buf cleanup)
   (let (text-name [make-lkdstrt text-name-str temp-buf cleanup])
   (let (lkd-text-shdr [make-lkds text-name (@ lkde-undef lkd-ehdr) temp-buf cleanup])
   (let (text-shdr (@ lkdsh-raw lkd-text-shdr)) (do
@@ -1153,6 +1138,30 @@
   (setf sh-entsize text-shdr #0)
   [append lkd-text-shdr (& lkde-sh lkd-ehdr) temp-buf cleanup]
   
+  [instr-labels->strtab+symtab generated-expressions
+    (& lkdsh-strtab lkd-strtab-shdr) [@car(@ lkdsh-strtab lkd-strtab-shdr)] (& lkdsh-symtab lkd-symtab-shdr) lkd-text-shdr temp-buf cleanup]
+  (bind (text text-len) [assemble generated-expressions bind temp-buf cleanup] (do
+  (setf sh-size (@ lkdsh-raw lkd-text-shdr) text-len)
+  (setf lkdsh-offset lkd-text-shdr text)
+  
+  lkd-text-shdr)))))))
+
+(constrain make-relocation-table
+  (\ r (with-vars (b c) (`(function ((list reloc) (ref (list linked-elf64-rela)) buffer ,b) (values (ref elf64-rela) ,c))r)r)))
+
+(function make-relocation-table (relocations relas temp-buf cleanup)
+  (foreach (reloc relocations)
+    (foreach (loca (@ op-locations (@ reloc-operand reloc)))
+      (bind (operand-pos operand-size instr-pos instr-size) loca
+        (let (lkd-rela [make-lkdr (@ bndg-other(@ reloc-binding reloc)) temp-buf cleanup])
+        (let (rela (@ lkdr-raw lkd-rela)) (do
+        (setf r-offset rela operand-pos)
+        (setf r-info rela (elf64-r-info (ignore) (@ reloc-type reloc)))
+        (setf r-addend rela
+          [(@ reloc-addend-func reloc) (@ reloc-context reloc) operand-pos operand-size instr-pos instr-size])
+        [append lkd-rela relas temp-buf cleanup])))))))
+
+(function make-function-relocation-section (relocations rela-name-str lkd-ehdr lkd-text-shdr lkd-strtab-shdr lkd-symtab-shdr temp-buf cleanup)
   (let (rela-name [make-lkdstrt rela-name-str temp-buf cleanup])
   (let (lkd-rela-shdr [make-lkdrela rela-name lkd-symtab-shdr lkd-text-shdr nil temp-buf cleanup])
   (let (rela-shdr (@ lkdsh-raw lkd-rela-shdr)) (do
@@ -1164,12 +1173,9 @@
   (setf sh-entsize rela-shdr (elf64-rela))
   [append lkd-rela-shdr (& lkde-sh lkd-ehdr) temp-buf cleanup]
 
-  [instr-labels->strtab+symtab generated-expressions
-    (& lkdsh-strtab lkd-strtab-shdr) [@car(@ lkdsh-strtab lkd-strtab-shdr)] (& lkdsh-symtab lkd-symtab-shdr) lkd-text-shdr temp-buf cleanup]
-  (bind (text text-len) [assemble generated-expressions bind temp-buf cleanup] (do
-  (setf sh-size (@ lkdsh-raw lkd-text-shdr) text-len)
-  (setf lkdsh-offset lkd-text-shdr text)
-  [make-relocation-table relocations (& lkdsh-rela lkd-rela-shdr) temp-buf cleanup])))))))))))
+  [make-relocation-table relocations (& lkdsh-rela lkd-rela-shdr) temp-buf cleanup]
+  
+  lkd-rela-shdr)))))
 
 (ignore
   Takes assembly code and a list of symbols as constructs an object file.
@@ -1333,12 +1339,19 @@
               [append lkd-sym (& lkdsh-symtab lkd-symtab-shdr) temp-buf cleanup]))))
             (ignore)))
         
-        [initialize-function-section generated-expressions (" .text) relocations (" .rela.text) lkd-ehdr lkd-strtab-shdr lkd-symtab-shdr temp-buf cleanup]
+        (let (main-text-sec [make-function-text-section generated-expressions (" .text) lkd-ehdr lkd-strtab-shdr lkd-symtab-shdr temp-buf cleanup])
         
-        (foreach (func-sec function-sections)
+        (let (func-text-secs (map (func-sec function-sections)
           (bind (name instrs relocs) func-sec
-            [initialize-function-section instrs [rstrcat (" .text.) name temp-buf cleanup] relocs
-              [rstrcat (" .rela.text.) name temp-buf cleanup] lkd-ehdr lkd-strtab-shdr lkd-symtab-shdr temp-buf cleanup]))
+            [make-function-text-section instrs [rstrcat (" .text.) name temp-buf cleanup]
+              lkd-ehdr lkd-strtab-shdr lkd-symtab-shdr temp-buf cleanup]) temp-buf cleanup)) (do
+        
+        [make-function-relocation-section relocations (" .rela.text) lkd-ehdr main-text-sec lkd-strtab-shdr lkd-symtab-shdr temp-buf cleanup]
+        
+        (foreach (func-sec function-sections) (func-text-sec func-text-secs)
+          (bind (name instrs relocs) func-sec
+            [make-function-relocation-section relocs [rstrcat (" .rela.text.) name temp-buf cleanup]
+              lkd-ehdr func-text-sec lkd-strtab-shdr lkd-symtab-shdr temp-buf cleanup])))))
         
         (ignore Assign the strings in the string table indicies.)
         
