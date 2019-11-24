@@ -1161,7 +1161,7 @@
           [(@ reloc-addend-func reloc) (@ reloc-context reloc) operand-pos operand-size instr-pos instr-size])
         [append lkd-rela relas temp-buf cleanup])))))))
 
-(function make-function-relocation-section (relocations rela-name-str lkd-ehdr lkd-text-shdr lkd-strtab-shdr lkd-symtab-shdr temp-buf cleanup)
+(function make-function-relocation-section (relocations rela-name-str lkd-ehdr lkd-text-shdr lkd-symtab-shdr temp-buf cleanup)
   (let (rela-name [make-lkdstrt rela-name-str temp-buf cleanup])
   (let (lkd-rela-shdr [make-lkdrela rela-name lkd-symtab-shdr lkd-text-shdr nil temp-buf cleanup])
   (let (rela-shdr (@ lkdsh-raw lkd-rela-shdr)) (do
@@ -1346,12 +1346,12 @@
             [make-function-text-section instrs [rstrcat (" .text.) name temp-buf cleanup]
               lkd-ehdr lkd-strtab-shdr lkd-symtab-shdr temp-buf cleanup]) temp-buf cleanup)) (do
         
-        [make-function-relocation-section relocations (" .rela.text) lkd-ehdr main-text-sec lkd-strtab-shdr lkd-symtab-shdr temp-buf cleanup]
+        [make-function-relocation-section relocations (" .rela.text) lkd-ehdr main-text-sec lkd-symtab-shdr temp-buf cleanup]
         
         (foreach (func-sec function-sections) (func-text-sec func-text-secs)
           (bind (name instrs relocs) func-sec
             [make-function-relocation-section relocs [rstrcat (" .rela.text.) name temp-buf cleanup]
-              lkd-ehdr func-text-sec lkd-strtab-shdr lkd-symtab-shdr temp-buf cleanup])))))
+              lkd-ehdr func-text-sec lkd-symtab-shdr temp-buf cleanup])))))
         
         (ignore Assign the strings in the string table indicies.)
         
