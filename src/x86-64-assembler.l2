@@ -1421,12 +1421,12 @@
     
     (ignore Assign an offset to each section and record ELF size.)
     
-    (let (elf-size (fold (offset [+ (elf64-ehdr) [* (elf64-shdr) [+ [length (@ lkde-sh lkd-ehdr)] #1]]])
+    (let (elf-size [pad-size (fold (offset [+ (elf64-ehdr) [* (elf64-shdr) [+ [length (@ lkde-sh lkd-ehdr)] #1]]])
         (sec (@ lkde-sh lkd-ehdr)) (do
       (setf sh-offset (@ lkdsh-raw sec) offset)
       (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-nobits)]
         offset
-        [+ offset [pad-size (@ sh-size (@ lkdsh-raw sec)) (write-elf-alignment)]])))) (do
+        [+ offset [pad-size (@ sh-size (@ lkdsh-raw sec)) (write-elf-alignment)]]))) (write-elf-alignment)]) (do
     
     (ignore Write out the ELF file.)
     
