@@ -1181,286 +1181,280 @@
   (\ r (with-vars (a b c d) (`(function ((list instr) (list reloc) (list (values string (list instr) (list reloc)))
     (list bndg-aug) (list bndg-aug) ,a buffer buffer ,c) (values ,b ,d))r)r)))
 
-(function write-elf (instrs relocations function-sections undefined-bindings static-bindings outs rgn1 temp-buf handler)
-  (with-buffer temp-buf
-    (fallthrough
-      (do
-        (let (lkd-ehdr [make-lkde nil nil (ignore) (ignore) temp-buf cleanup])
-        (let (ehdr (@ lkde-raw lkd-ehdr)) (do
-        (setf ei-mag0 (& e-ident ehdr) (elfmag0))
-        (setf ei-mag1 (& e-ident ehdr) (elfmag1))
-        (setf ei-mag2 (& e-ident ehdr) (elfmag2))
-        (setf ei-mag3 (& e-ident ehdr) (elfmag3))
-        (setf ei-class (& e-ident ehdr) (elfclass64))
-        (setf ei-data (& e-ident ehdr) (elfdata2lsb))
-        (setf ei-version (& e-ident ehdr) #1)
-        (setf ei-osabi (& e-ident ehdr) (elfosabi-sysv))
-        (setf ei-abiversion (& e-ident ehdr) #0)
+(function write-elf (instrs relocations function-sections undefined-bindings static-bindings outs rgn1 rgn2 handler)
+  (with-buffer rgn2 (do
+    (let (lkd-ehdr [make-lkde nil nil (ignore) (ignore) rgn2 handler])
+    (let (ehdr (@ lkde-raw lkd-ehdr)) (do
+    (setf ei-mag0 (& e-ident ehdr) (elfmag0))
+    (setf ei-mag1 (& e-ident ehdr) (elfmag1))
+    (setf ei-mag2 (& e-ident ehdr) (elfmag2))
+    (setf ei-mag3 (& e-ident ehdr) (elfmag3))
+    (setf ei-class (& e-ident ehdr) (elfclass64))
+    (setf ei-data (& e-ident ehdr) (elfdata2lsb))
+    (setf ei-version (& e-ident ehdr) #1)
+    (setf ei-osabi (& e-ident ehdr) (elfosabi-sysv))
+    (setf ei-abiversion (& e-ident ehdr) #0)
+
+    (until (i #7) [= i (ei-nident)] [+ i #1] [setb (loc(byte)i(& e-ident ehdr)) #0])
+
+    (setf e-type ehdr (et-rel))
+    (setf e-machine ehdr (em-x86-64))
+    (setf e-version ehdr #1)
+    (setf e-entry ehdr #0)
+    (setf e-phoff ehdr #0)
+    (setf e-shoff ehdr (elf64-ehdr))
+    (setf e-flags ehdr #0)
+    (setf e-ehsize ehdr (elf64-ehdr))
+    (setf e-phentsize ehdr #0)
+    (setf e-phnum ehdr #0)
+    (setf e-shentsize ehdr (elf64-shdr))
+    (setf e-shnum ehdr (write-elf-sh-count))
+    (setf e-shstrndx ehdr #1)
     
-        (until (i #7) [= i (ei-nident)] [+ i #1] [setb (loc(byte)i(& e-ident ehdr)) #0])
+    (let (shstrtab-name [make-lkdstrt (" .shstrtab) rgn2 handler])
+    (let (lkd-shstrtab-shdr [make-lkdstrtab shstrtab-name (ignore) nil rgn2 handler])
+    (let (shstrtab-shdr (@ lkdsh-raw lkd-shstrtab-shdr)) (do
+    [append shstrtab-name (& lkdsh-strtab lkd-shstrtab-shdr) rgn2 handler]
+    (setf sh-type shstrtab-shdr (sht-strtab))
+    (setf sh-flags shstrtab-shdr #0)
+    (setf sh-addr shstrtab-shdr #0)
+    (setf sh-info shstrtab-shdr #0)
+    (setf sh-addralign shstrtab-shdr #0)
+    (setf sh-entsize shstrtab-shdr #0)
+    [append lkd-shstrtab-shdr (& lkde-sh lkd-ehdr) rgn2 handler]
+    (setf lkde-shstr lkd-ehdr lkd-shstrtab-shdr)
     
-        (setf e-type ehdr (et-rel))
-        (setf e-machine ehdr (em-x86-64))
-        (setf e-version ehdr #1)
-        (setf e-entry ehdr #0)
-        (setf e-phoff ehdr #0)
-        (setf e-shoff ehdr (elf64-ehdr))
-        (setf e-flags ehdr #0)
-        (setf e-ehsize ehdr (elf64-ehdr))
-        (setf e-phentsize ehdr #0)
-        (setf e-phnum ehdr #0)
-        (setf e-shentsize ehdr (elf64-shdr))
-        (setf e-shnum ehdr (write-elf-sh-count))
-        (setf e-shstrndx ehdr #1)
-        
-        (let (shstrtab-name [make-lkdstrt (" .shstrtab) temp-buf cleanup])
-        (let (lkd-shstrtab-shdr [make-lkdstrtab shstrtab-name (ignore) nil temp-buf cleanup])
-        (let (shstrtab-shdr (@ lkdsh-raw lkd-shstrtab-shdr)) (do
-        [append shstrtab-name (& lkdsh-strtab lkd-shstrtab-shdr) temp-buf cleanup]
-        (setf sh-type shstrtab-shdr (sht-strtab))
-        (setf sh-flags shstrtab-shdr #0)
-        (setf sh-addr shstrtab-shdr #0)
-        (setf sh-info shstrtab-shdr #0)
-        (setf sh-addralign shstrtab-shdr #0)
-        (setf sh-entsize shstrtab-shdr #0)
-        [append lkd-shstrtab-shdr (& lkde-sh lkd-ehdr) temp-buf cleanup]
-        (setf lkde-shstr lkd-ehdr lkd-shstrtab-shdr)
-        
-        (ignore Mandatory undefined section)
-        (let (shstrtab-null-name [make-lkdstrt (" ) temp-buf cleanup])
-        (let (lkd-undef-shdr [make-lkds shstrtab-null-name (ignore) temp-buf cleanup])
-        (let (undef-shdr (@ lkdsh-raw lkd-undef-shdr)) (do
-        [prepend shstrtab-null-name (& lkdsh-strtab lkd-shstrtab-shdr) temp-buf cleanup]
-        (setf lkdsh-link lkd-undef-shdr lkd-undef-shdr)
-        (setf sh-name undef-shdr #0)
-        (setf sh-type undef-shdr (sht-null))
-        (setf sh-flags undef-shdr #0)
-        (setf sh-addr undef-shdr #0)
-        (setf sh-offset undef-shdr #0)
-        (setf sh-size undef-shdr #0)
-        (setf sh-info undef-shdr #0)
-        (setf sh-addralign undef-shdr #0)
-        (setf sh-entsize undef-shdr #0)
-        (setf lkde-undef lkd-ehdr lkd-undef-shdr)
-        (setf lkdsh-link lkd-shstrtab-shdr lkd-undef-shdr)
-        
-        (let (strtab-name [make-lkdstrt (" .strtab) temp-buf cleanup])
-        (let (lkd-strtab-shdr [make-lkdstrtab strtab-name lkd-undef-shdr nil temp-buf cleanup])
-        (let (strtab-shdr (@ lkdsh-raw lkd-strtab-shdr)) (do
-        [append strtab-name (& lkdsh-strtab lkd-shstrtab-shdr) temp-buf cleanup]
-        (setf sh-type strtab-shdr (sht-strtab))
-        (setf sh-flags strtab-shdr #0)
-        (setf sh-addr strtab-shdr #0)
-        (setf sh-link strtab-shdr (shn-undef))
-        (setf sh-info strtab-shdr #0)
-        (setf sh-addralign strtab-shdr #0)
-        (setf sh-entsize strtab-shdr #0)
-        [append lkd-strtab-shdr (& lkde-sh lkd-ehdr) temp-buf cleanup]
-        
-        (let (symtab-name [make-lkdstrt (" .symtab) temp-buf cleanup])
-        (let (lkd-symtab-shdr [make-lkdsymtab symtab-name lkd-strtab-shdr nil temp-buf cleanup])
-        (let (symtab-shdr (@ lkdsh-raw lkd-symtab-shdr)) (do
-        [append symtab-name (& lkdsh-strtab lkd-shstrtab-shdr) temp-buf cleanup]
-        (setf sh-type symtab-shdr (sht-symtab))
-        (setf sh-flags symtab-shdr #0)
-        (setf sh-addr symtab-shdr #0)
-        (setf sh-addralign symtab-shdr #0)
-        (setf sh-entsize symtab-shdr (elf64-sym))
-        [append lkd-symtab-shdr (& lkde-sh lkd-ehdr) temp-buf cleanup]
-        
-        (let (bss-extent
-          (fold (bss-extent [- #0 (word-size)]) (bndg static-bindings)
-            [min bss-extent (@ bndg-offset bndg)])) (do
-        
-        (let (bss-name [make-lkdstrt (" .bss) temp-buf cleanup])
-        (let (lkd-bss-shdr [make-lkds bss-name lkd-undef-shdr temp-buf cleanup])
-        (let (bss-shdr (@ lkdsh-raw lkd-bss-shdr)) (do
-        [append bss-name (& lkdsh-strtab lkd-shstrtab-shdr) temp-buf cleanup]
-        (setf sh-type bss-shdr (sht-nobits))
-        (setf sh-flags bss-shdr [bor (shf-write) (shf-alloc)])
-        (setf sh-addr bss-shdr #0)
-        (setf sh-size bss-shdr [- #0 bss-extent])
-        (setf sh-info bss-shdr #0)
-        (setf sh-addralign bss-shdr (word-size))
-        (setf sh-entsize bss-shdr #0)
-        [append lkd-bss-shdr (& lkde-sh lkd-ehdr) temp-buf cleanup]
-        
-        (let (strtab-null-name [make-lkdstrt (" ) temp-buf cleanup])
-        (let (lkd-und-sym [make-lkdst strtab-null-name lkd-undef-shdr temp-buf cleanup])
-        (let (und-sym (@ lkdst-raw lkd-und-sym)) (do
-        (ignore Mandatory undefined symbol)
-        [append strtab-null-name (& lkdsh-strtab lkd-strtab-shdr) temp-buf cleanup]
-        (setf st-name und-sym #0)
-        (setf st-value und-sym #0)
-        (setf st-size und-sym #0)
-        (setf st-info und-sym #0)
-        (setf st-other und-sym #0)
-        [prepend lkd-und-sym (& lkdsh-symtab lkd-symtab-shdr) temp-buf cleanup]
-        
-        (foreach (bndg static-bindings)
-          (if [= (@ bndg-state bndg) (defined-state)]
-            (let (sym-name (if [not= (@ bndg-name bndg) null-string]
-                (let (sym-name [make-lkdstrt (@ bndg-name bndg) temp-buf cleanup])
-                  (do [append sym-name (& lkdsh-strtab lkd-strtab-shdr) temp-buf cleanup] sym-name))
-                strtab-null-name))
-              (let (lkd-sym [make-lkdst sym-name lkd-bss-shdr temp-buf cleanup])
-              (let (sym (@ lkdst-raw lkd-sym)) (do
-              [set- (& bndg-offset bndg) bss-extent]
-              (setf st-value sym (@ bndg-offset bndg))
-              (setf st-size sym (@ bndg-size bndg))
-              (setf st-info sym (elf64-st-info
-                (switch = (@ bndg-scope bndg)
-                  ((local-scope)(stb-local))
-                  ((global-scope)(stb-global))
-                  (ignore)) (stt-notype)))
-              (setf st-other sym #0)
-              (setf bndg-other bndg lkd-sym)
-              [append lkd-sym (& lkdsh-symtab lkd-symtab-shdr) temp-buf cleanup]))))
-            (ignore)))
-        
-        (foreach (bndg undefined-bindings)
-          (if (and [= (@ bndg-scope bndg) (global-scope)] [= (@ bndg-state bndg) (undefined-state)])
-            (let (sym-name (if [not= (@ bndg-name bndg) null-string]
-                (let (sym-name [make-lkdstrt (@ bndg-name bndg) temp-buf cleanup])
-                    (do [append sym-name (& lkdsh-strtab lkd-strtab-shdr) temp-buf cleanup] sym-name))
-                strtab-null-name))
-              (let (lkd-sym [make-lkdst sym-name lkd-undef-shdr temp-buf cleanup])
-              (let (sym (@ lkdst-raw lkd-sym)) (do
-              (setf st-value sym #0)
-              (setf st-size sym #0)
-              (setf st-info sym (elf64-st-info (stb-global) (stt-notype)))
-              (setf st-other sym #0)
-              (setf bndg-other bndg lkd-sym)
-              [append lkd-sym (& lkdsh-symtab lkd-symtab-shdr) temp-buf cleanup]))))
-            (ignore)))
-        
-        (let (main-text-sec [make-function-text-section instrs (" .text) lkd-ehdr lkd-strtab-shdr lkd-symtab-shdr temp-buf cleanup])
-        
-        (let (func-text-secs (map (func-sec function-sections)
-          (bind (name instrs relocs) func-sec
-            [make-function-text-section instrs [rstrcat (" .text.) name temp-buf cleanup]
-              lkd-ehdr lkd-strtab-shdr lkd-symtab-shdr temp-buf cleanup]) temp-buf cleanup)) (do
-        
-        [make-function-relocation-section relocations (" .rela.text) lkd-ehdr main-text-sec lkd-symtab-shdr temp-buf cleanup]
-        
-        (foreach (func-sec function-sections) (func-text-sec func-text-secs)
-          (bind (name instrs relocs) func-sec
-            [make-function-relocation-section relocs [rstrcat (" .rela.text.) name temp-buf cleanup]
-              lkd-ehdr func-text-sec lkd-symtab-shdr temp-buf cleanup])))))
-        
-        (ignore Assign the strings in the string table indicies.)
-        
-        (foreach (sec (@ lkde-sh lkd-ehdr))
-          (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-strtab)]
-            (fold (acc #0) (str (@ lkdsh-strtab sec)) (do
-              (setf lkdstrt-ndx str acc)
-              [+ acc [+ #1 [strlen (@ lkdstrt-raw str)]]])) (ignore)))
-        
-        (ignore Give each section an index.)
-        
-        (fold (idx #0) (sec (storage-cons lkd-undef-shdr (@ lkde-sh lkd-ehdr)))
-          (do (setf lkdsh-ndx sec idx) [+ idx #1]))
-        
-        (ignore Substitute into ELF Section sh-names and sh-links, and sh-infos if possible.)
-        
-        (foreach (sec (@ lkde-sh lkd-ehdr)) (do
-          (setf sh-link (@ lkdsh-raw sec) (@ lkdsh-ndx (@ lkdsh-link sec)))
-          (setf sh-name (@ lkdsh-raw sec) (@ lkdstrt-ndx (@ lkdsh-name sec)))
-          (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-rela)]
-            (setf sh-info (@ lkdsh-raw sec) (@ lkdsh-ndx (@ lkdsh-rela-info sec)))
-            (ignore))))
-        
-        (ignore Substitute into ELF Header e-shstrndx, e-shnum, and e-shoff)
-        
-        (setf e-shstrndx (@ lkde-raw lkd-ehdr) (@ lkdsh-ndx (@ lkde-shstr lkd-ehdr)))
-        (setf e-shnum (@ lkde-raw lkd-ehdr) [+ [length (@ lkde-sh lkd-ehdr)] #1])
-        (setf e-shoff (@ lkde-raw lkd-ehdr) (elf64-ehdr))
-        
-        (ignore Assign the symbols in each symbol table consecutive indicies.)
-        
-        (foreach (sec (@ lkde-sh lkd-ehdr))
-          (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-symtab)]
-            (let (local-end-idx
-                (fold (acc #0) (sym (@ lkdsh-symtab sec))
-                  (if [= (elf64-st-bind (@ st-info (@ lkdst-raw sym))) (stb-local)]
-                    (do (setf lkdst-ndx sym acc) [+ acc #1])
-                    acc))) (do
-              (setf sh-info (@ lkdsh-raw sec) local-end-idx)
-              (fold (acc local-end-idx) (sym (@ lkdsh-symtab sec))
-                (if [= (elf64-st-bind (@ st-info (@ lkdst-raw sym))) (stb-local)]
-                  acc
-                  (do (setf lkdst-ndx sym acc) [+ acc #1]))))) (ignore)))
-        
-        (ignore Calculate the sizes of the individual sections.)
-        
-        (foreach (sec (@ lkde-sh lkd-ehdr))
-          (switch = (@ sh-type (@ lkdsh-raw sec))
-            ((sht-symtab) (setf sh-size (@ lkdsh-raw sec)
-              [* [length (@ lkdsh-symtab sec)] (elf64-sym)]))
-            ((sht-rela) (setf sh-size (@ lkdsh-raw sec)
-              [* [length (@ lkdsh-rela sec)] (elf64-rela)]))
-            ((sht-strtab) (setf sh-size (@ lkdsh-raw sec)
-              (fold (acc #0) (str (@ lkdsh-strtab sec))
-                [+ acc [+ #1 [strlen (@ lkdstrt-raw str)]]])))
-            (ignore)))
-        
-        (ignore Substitute into symbol table entry shndxs and names.)
-        
-        (foreach (sec (@ lkde-sh lkd-ehdr))
-          (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-symtab)] (do
-            (foreach (sym (@ lkdsh-symtab sec)) (do
-              (setf st-shndx (@ lkdst-raw sym) (@ lkdsh-ndx (@ lkdst-sh sym)))
-              (setf st-name (@ lkdst-raw sym) (@ lkdstrt-ndx (@ lkdst-name sym)))))) (ignore)))
-        
-        (ignore Substitute into relocation r-info.syms.)
-        
-        (foreach (sec (@ lkde-sh lkd-ehdr))
-          (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-rela)]
-            (foreach (rela (@ lkdsh-rela sec))
-              (setf r-info (@ lkdr-raw rela) (elf64-r-info
-                (@ lkdst-ndx (@ lkdr-info-sym rela))
-                (elf64-r-type (@ r-info (@ lkdr-raw rela)))))) (ignore)))
-        
-        (ignore Assign an offset to each section and record ELF size.)
-        
-        (let (elf-size (fold (offset [+ (elf64-ehdr) [* (elf64-shdr) [+ [length (@ lkde-sh lkd-ehdr)] #1]]])
-            (sec (@ lkde-sh lkd-ehdr)) (do
-          (setf sh-offset (@ lkdsh-raw sec) offset)
-          (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-nobits)]
-            offset
-            [+ offset [pad-size (@ sh-size (@ lkdsh-raw sec)) (write-elf-alignment)]])))) (do
-        
-        (ignore Write out the ELF file.)
-        
-        (let (pos (storage _ #0))
-        (let (bin [buffer-alloc elf-size rgn1 cleanup]) (do
-        [mem-write bin pos (@ lkde-raw lkd-ehdr) (elf64-ehdr)]
-        (foreach (sec (storage-cons lkd-undef-shdr (@ lkde-sh lkd-ehdr)))
-          [mem-write bin pos (@ lkdsh-raw sec) (elf64-shdr)])
-        (foreach (sec (@ lkde-sh lkd-ehdr)) (do
-          (switch = (@ sh-type (@ lkdsh-raw sec))
-            ((sht-symtab) (do
-              (foreach (sym (@ lkdsh-symtab sec))
-                (if [= (elf64-st-bind (@ st-info (@ lkdst-raw sym))) (stb-local)]
-                  [mem-write bin pos (@ lkdst-raw sym) (elf64-sym)] (ignore)))
-              (foreach (sym (@ lkdsh-symtab sec))
-                (if [= (elf64-st-bind (@ st-info (@ lkdst-raw sym))) (stb-local)] (ignore)
-                  [mem-write bin pos (@ lkdst-raw sym) (elf64-sym)]))))
-            ((sht-rela)
-              (foreach (rela (@ lkdsh-rela sec))
-                [mem-write bin pos (@ lkdr-raw rela) (elf64-rela)]))
-            ((sht-strtab)
-              (foreach (str (@ lkdsh-strtab sec))
-                [mem-write bin pos (@ lkdstrt-raw str) [+ [strlen (@ lkdstrt-raw str)] #1]]))
-            ((sht-nobits) (ignore))
-            [mem-write bin pos (@ lkdsh-offset sec) (@ sh-size (@ lkdsh-raw sec))])
-          [set pos [pad-size $pos (write-elf-alignment)]]))
-        
-        (storage _ no-error bin $pos))))))))))))))))))))))))))))))))))))
-        
-      (cleanup err err)
-      
-      (return-cont err (if [= (@0 err) no-error] (values (use-storage outs) (@1 err) (@2 err)) {handler err})))))
+    (ignore Mandatory undefined section)
+    (let (shstrtab-null-name [make-lkdstrt (" ) rgn2 handler])
+    (let (lkd-undef-shdr [make-lkds shstrtab-null-name (ignore) rgn2 handler])
+    (let (undef-shdr (@ lkdsh-raw lkd-undef-shdr)) (do
+    [prepend shstrtab-null-name (& lkdsh-strtab lkd-shstrtab-shdr) rgn2 handler]
+    (setf lkdsh-link lkd-undef-shdr lkd-undef-shdr)
+    (setf sh-name undef-shdr #0)
+    (setf sh-type undef-shdr (sht-null))
+    (setf sh-flags undef-shdr #0)
+    (setf sh-addr undef-shdr #0)
+    (setf sh-offset undef-shdr #0)
+    (setf sh-size undef-shdr #0)
+    (setf sh-info undef-shdr #0)
+    (setf sh-addralign undef-shdr #0)
+    (setf sh-entsize undef-shdr #0)
+    (setf lkde-undef lkd-ehdr lkd-undef-shdr)
+    (setf lkdsh-link lkd-shstrtab-shdr lkd-undef-shdr)
+    
+    (let (strtab-name [make-lkdstrt (" .strtab) rgn2 handler])
+    (let (lkd-strtab-shdr [make-lkdstrtab strtab-name lkd-undef-shdr nil rgn2 handler])
+    (let (strtab-shdr (@ lkdsh-raw lkd-strtab-shdr)) (do
+    [append strtab-name (& lkdsh-strtab lkd-shstrtab-shdr) rgn2 handler]
+    (setf sh-type strtab-shdr (sht-strtab))
+    (setf sh-flags strtab-shdr #0)
+    (setf sh-addr strtab-shdr #0)
+    (setf sh-link strtab-shdr (shn-undef))
+    (setf sh-info strtab-shdr #0)
+    (setf sh-addralign strtab-shdr #0)
+    (setf sh-entsize strtab-shdr #0)
+    [append lkd-strtab-shdr (& lkde-sh lkd-ehdr) rgn2 handler]
+    
+    (let (symtab-name [make-lkdstrt (" .symtab) rgn2 handler])
+    (let (lkd-symtab-shdr [make-lkdsymtab symtab-name lkd-strtab-shdr nil rgn2 handler])
+    (let (symtab-shdr (@ lkdsh-raw lkd-symtab-shdr)) (do
+    [append symtab-name (& lkdsh-strtab lkd-shstrtab-shdr) rgn2 handler]
+    (setf sh-type symtab-shdr (sht-symtab))
+    (setf sh-flags symtab-shdr #0)
+    (setf sh-addr symtab-shdr #0)
+    (setf sh-addralign symtab-shdr #0)
+    (setf sh-entsize symtab-shdr (elf64-sym))
+    [append lkd-symtab-shdr (& lkde-sh lkd-ehdr) rgn2 handler]
+    
+    (let (bss-extent
+      (fold (bss-extent [- #0 (word-size)]) (bndg static-bindings)
+        [min bss-extent (@ bndg-offset bndg)])) (do
+    
+    (let (bss-name [make-lkdstrt (" .bss) rgn2 handler])
+    (let (lkd-bss-shdr [make-lkds bss-name lkd-undef-shdr rgn2 handler])
+    (let (bss-shdr (@ lkdsh-raw lkd-bss-shdr)) (do
+    [append bss-name (& lkdsh-strtab lkd-shstrtab-shdr) rgn2 handler]
+    (setf sh-type bss-shdr (sht-nobits))
+    (setf sh-flags bss-shdr [bor (shf-write) (shf-alloc)])
+    (setf sh-addr bss-shdr #0)
+    (setf sh-size bss-shdr [- #0 bss-extent])
+    (setf sh-info bss-shdr #0)
+    (setf sh-addralign bss-shdr (word-size))
+    (setf sh-entsize bss-shdr #0)
+    [append lkd-bss-shdr (& lkde-sh lkd-ehdr) rgn2 handler]
+    
+    (let (strtab-null-name [make-lkdstrt (" ) rgn2 handler])
+    (let (lkd-und-sym [make-lkdst strtab-null-name lkd-undef-shdr rgn2 handler])
+    (let (und-sym (@ lkdst-raw lkd-und-sym)) (do
+    (ignore Mandatory undefined symbol)
+    [append strtab-null-name (& lkdsh-strtab lkd-strtab-shdr) rgn2 handler]
+    (setf st-name und-sym #0)
+    (setf st-value und-sym #0)
+    (setf st-size und-sym #0)
+    (setf st-info und-sym #0)
+    (setf st-other und-sym #0)
+    [prepend lkd-und-sym (& lkdsh-symtab lkd-symtab-shdr) rgn2 handler]
+    
+    (foreach (bndg static-bindings)
+      (if [= (@ bndg-state bndg) (defined-state)]
+        (let (sym-name (if [not= (@ bndg-name bndg) null-string]
+            (let (sym-name [make-lkdstrt (@ bndg-name bndg) rgn2 handler])
+              (do [append sym-name (& lkdsh-strtab lkd-strtab-shdr) rgn2 handler] sym-name))
+            strtab-null-name))
+          (let (lkd-sym [make-lkdst sym-name lkd-bss-shdr rgn2 handler])
+          (let (sym (@ lkdst-raw lkd-sym)) (do
+          [set- (& bndg-offset bndg) bss-extent]
+          (setf st-value sym (@ bndg-offset bndg))
+          (setf st-size sym (@ bndg-size bndg))
+          (setf st-info sym (elf64-st-info
+            (switch = (@ bndg-scope bndg)
+              ((local-scope)(stb-local))
+              ((global-scope)(stb-global))
+              (ignore)) (stt-notype)))
+          (setf st-other sym #0)
+          (setf bndg-other bndg lkd-sym)
+          [append lkd-sym (& lkdsh-symtab lkd-symtab-shdr) rgn2 handler]))))
+        (ignore)))
+    
+    (foreach (bndg undefined-bindings)
+      (if (and [= (@ bndg-scope bndg) (global-scope)] [= (@ bndg-state bndg) (undefined-state)])
+        (let (sym-name (if [not= (@ bndg-name bndg) null-string]
+            (let (sym-name [make-lkdstrt (@ bndg-name bndg) rgn2 handler])
+                (do [append sym-name (& lkdsh-strtab lkd-strtab-shdr) rgn2 handler] sym-name))
+            strtab-null-name))
+          (let (lkd-sym [make-lkdst sym-name lkd-undef-shdr rgn2 handler])
+          (let (sym (@ lkdst-raw lkd-sym)) (do
+          (setf st-value sym #0)
+          (setf st-size sym #0)
+          (setf st-info sym (elf64-st-info (stb-global) (stt-notype)))
+          (setf st-other sym #0)
+          (setf bndg-other bndg lkd-sym)
+          [append lkd-sym (& lkdsh-symtab lkd-symtab-shdr) rgn2 handler]))))
+        (ignore)))
+    
+    (let (main-text-sec [make-function-text-section instrs (" .text) lkd-ehdr lkd-strtab-shdr lkd-symtab-shdr rgn2 handler])
+    
+    (let (func-text-secs (map (func-sec function-sections)
+      (bind (name instrs relocs) func-sec
+        [make-function-text-section instrs [rstrcat (" .text.) name rgn2 handler]
+          lkd-ehdr lkd-strtab-shdr lkd-symtab-shdr rgn2 handler]) rgn2 handler)) (do
+    
+    [make-function-relocation-section relocations (" .rela.text) lkd-ehdr main-text-sec lkd-symtab-shdr rgn2 handler]
+    
+    (foreach (func-sec function-sections) (func-text-sec func-text-secs)
+      (bind (name instrs relocs) func-sec
+        [make-function-relocation-section relocs [rstrcat (" .rela.text.) name rgn2 handler]
+          lkd-ehdr func-text-sec lkd-symtab-shdr rgn2 handler])))))
+    
+    (ignore Assign the strings in the string table indicies.)
+    
+    (foreach (sec (@ lkde-sh lkd-ehdr))
+      (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-strtab)]
+        (fold (acc #0) (str (@ lkdsh-strtab sec)) (do
+          (setf lkdstrt-ndx str acc)
+          [+ acc [+ #1 [strlen (@ lkdstrt-raw str)]]])) (ignore)))
+    
+    (ignore Give each section an index.)
+    
+    (fold (idx #0) (sec (storage-cons lkd-undef-shdr (@ lkde-sh lkd-ehdr)))
+      (do (setf lkdsh-ndx sec idx) [+ idx #1]))
+    
+    (ignore Substitute into ELF Section sh-names and sh-links, and sh-infos if possible.)
+    
+    (foreach (sec (@ lkde-sh lkd-ehdr)) (do
+      (setf sh-link (@ lkdsh-raw sec) (@ lkdsh-ndx (@ lkdsh-link sec)))
+      (setf sh-name (@ lkdsh-raw sec) (@ lkdstrt-ndx (@ lkdsh-name sec)))
+      (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-rela)]
+        (setf sh-info (@ lkdsh-raw sec) (@ lkdsh-ndx (@ lkdsh-rela-info sec)))
+        (ignore))))
+    
+    (ignore Substitute into ELF Header e-shstrndx, e-shnum, and e-shoff)
+    
+    (setf e-shstrndx (@ lkde-raw lkd-ehdr) (@ lkdsh-ndx (@ lkde-shstr lkd-ehdr)))
+    (setf e-shnum (@ lkde-raw lkd-ehdr) [+ [length (@ lkde-sh lkd-ehdr)] #1])
+    (setf e-shoff (@ lkde-raw lkd-ehdr) (elf64-ehdr))
+    
+    (ignore Assign the symbols in each symbol table consecutive indicies.)
+    
+    (foreach (sec (@ lkde-sh lkd-ehdr))
+      (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-symtab)]
+        (let (local-end-idx
+            (fold (acc #0) (sym (@ lkdsh-symtab sec))
+              (if [= (elf64-st-bind (@ st-info (@ lkdst-raw sym))) (stb-local)]
+                (do (setf lkdst-ndx sym acc) [+ acc #1])
+                acc))) (do
+          (setf sh-info (@ lkdsh-raw sec) local-end-idx)
+          (fold (acc local-end-idx) (sym (@ lkdsh-symtab sec))
+            (if [= (elf64-st-bind (@ st-info (@ lkdst-raw sym))) (stb-local)]
+              acc
+              (do (setf lkdst-ndx sym acc) [+ acc #1]))))) (ignore)))
+    
+    (ignore Calculate the sizes of the individual sections.)
+    
+    (foreach (sec (@ lkde-sh lkd-ehdr))
+      (switch = (@ sh-type (@ lkdsh-raw sec))
+        ((sht-symtab) (setf sh-size (@ lkdsh-raw sec)
+          [* [length (@ lkdsh-symtab sec)] (elf64-sym)]))
+        ((sht-rela) (setf sh-size (@ lkdsh-raw sec)
+          [* [length (@ lkdsh-rela sec)] (elf64-rela)]))
+        ((sht-strtab) (setf sh-size (@ lkdsh-raw sec)
+          (fold (acc #0) (str (@ lkdsh-strtab sec))
+            [+ acc [+ #1 [strlen (@ lkdstrt-raw str)]]])))
+        (ignore)))
+    
+    (ignore Substitute into symbol table entry shndxs and names.)
+    
+    (foreach (sec (@ lkde-sh lkd-ehdr))
+      (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-symtab)] (do
+        (foreach (sym (@ lkdsh-symtab sec)) (do
+          (setf st-shndx (@ lkdst-raw sym) (@ lkdsh-ndx (@ lkdst-sh sym)))
+          (setf st-name (@ lkdst-raw sym) (@ lkdstrt-ndx (@ lkdst-name sym)))))) (ignore)))
+    
+    (ignore Substitute into relocation r-info.syms.)
+    
+    (foreach (sec (@ lkde-sh lkd-ehdr))
+      (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-rela)]
+        (foreach (rela (@ lkdsh-rela sec))
+          (setf r-info (@ lkdr-raw rela) (elf64-r-info
+            (@ lkdst-ndx (@ lkdr-info-sym rela))
+            (elf64-r-type (@ r-info (@ lkdr-raw rela)))))) (ignore)))
+    
+    (ignore Assign an offset to each section and record ELF size.)
+    
+    (let (elf-size (fold (offset [+ (elf64-ehdr) [* (elf64-shdr) [+ [length (@ lkde-sh lkd-ehdr)] #1]]])
+        (sec (@ lkde-sh lkd-ehdr)) (do
+      (setf sh-offset (@ lkdsh-raw sec) offset)
+      (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-nobits)]
+        offset
+        [+ offset [pad-size (@ sh-size (@ lkdsh-raw sec)) (write-elf-alignment)]])))) (do
+    
+    (ignore Write out the ELF file.)
+    
+    (let (pos (storage _ #0))
+    (let (bin [buffer-alloc elf-size rgn1 handler]) (do
+    [mem-write bin pos (@ lkde-raw lkd-ehdr) (elf64-ehdr)]
+    (foreach (sec (storage-cons lkd-undef-shdr (@ lkde-sh lkd-ehdr)))
+      [mem-write bin pos (@ lkdsh-raw sec) (elf64-shdr)])
+    (foreach (sec (@ lkde-sh lkd-ehdr)) (do
+      (switch = (@ sh-type (@ lkdsh-raw sec))
+        ((sht-symtab) (do
+          (foreach (sym (@ lkdsh-symtab sec))
+            (if [= (elf64-st-bind (@ st-info (@ lkdst-raw sym))) (stb-local)]
+              [mem-write bin pos (@ lkdst-raw sym) (elf64-sym)] (ignore)))
+          (foreach (sym (@ lkdsh-symtab sec))
+            (if [= (elf64-st-bind (@ st-info (@ lkdst-raw sym))) (stb-local)] (ignore)
+              [mem-write bin pos (@ lkdst-raw sym) (elf64-sym)]))))
+        ((sht-rela)
+          (foreach (rela (@ lkdsh-rela sec))
+            [mem-write bin pos (@ lkdr-raw rela) (elf64-rela)]))
+        ((sht-strtab)
+          (foreach (str (@ lkdsh-strtab sec))
+            [mem-write bin pos (@ lkdstrt-raw str) [+ [strlen (@ lkdstrt-raw str)] #1]]))
+        ((sht-nobits) (ignore))
+        [mem-write bin pos (@ lkdsh-offset sec) (@ sh-size (@ lkdsh-raw sec))])
+      [set pos [pad-size $pos (write-elf-alignment)]]))
+    
+    (values (use-storage outs) bin $pos))))))))))))))))))))))))))))))))))))))
 
 (ignore
   Converts the offsets of the static bindings associated with L2 source code that has now
