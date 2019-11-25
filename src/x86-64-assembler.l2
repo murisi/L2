@@ -1102,7 +1102,7 @@
 (constrain make-function-text-section
   (\ r (with-vars (a) (`(function ((list instr) string linked-elf64-e linked-elf64-sh linked-elf64-sh buffer ,a) linked-elf64-sh)r)r)))
 
-(function make-function-text-section (generated-expressions text-name-str lkd-ehdr lkd-strtab-shdr lkd-symtab-shdr temp-buf cleanup)
+(function make-function-text-section (instrs text-name-str lkd-ehdr lkd-strtab-shdr lkd-symtab-shdr temp-buf cleanup)
   (let (text-name [make-lkdstrt text-name-str temp-buf cleanup])
   (let (lkd-text-shdr [make-lkds text-name (@ lkde-undef lkd-ehdr) temp-buf cleanup])
   (let (text-shdr (@ lkdsh-raw lkd-text-shdr)) (do
@@ -1115,7 +1115,7 @@
   (setf sh-entsize text-shdr #0)
   [append lkd-text-shdr (& lkde-sh lkd-ehdr) temp-buf cleanup]
   
-  (foreach (e generated-expressions)
+  (foreach (e instrs)
     (let (instr-bndg (@ instr-binding e))
       (if [not= instr-bndg null-binding]
         (let (sym-name (if [not= (@ bndg-name instr-bndg) null-string]
@@ -1136,7 +1136,7 @@
           [append lkd-sym (& lkdsh-symtab lkd-symtab-shdr) temp-buf cleanup]))))
         (ignore))))
         
-  (bind (text text-len) [assemble generated-expressions bind temp-buf cleanup] (do
+  (bind (text text-len) [assemble instrs bind temp-buf cleanup] (do
   (setf sh-size (@ lkdsh-raw lkd-text-shdr) text-len)
   (setf lkdsh-offset lkd-text-shdr text)
   
@@ -1172,17 +1172,17 @@
 
 (ignore
   Takes assembly code and a list of symbols as constructs an object file.
-  generated-expressions is a list of assembly expressions. symbols is a list of the static
+  instrs is a list of assembly expressions. symbols is a list of the static
   symbols used in the assembly expressions. reg is the buffer into which the generated
   object code should be put. Returns a pair containing a reference to the generated object
   code and the size of the generated object code.)
 
 (constrain write-elf
   (\ r (with-vars (a b c d) (`(function ((list instr) (list reloc) (list (values string (list instr) (list reloc)))
-    (list bndg-aug) (list bndg-aug) ,a buffer ,c) (values ,b ,d))r)r)))
+    (list bndg-aug) (list bndg-aug) ,a buffer buffer ,c) (values ,b ,d))r)r)))
 
-(function write-elf (generated-expressions relocations function-sections undefined-bindings static-bindings outs reg handler)
-  (let (temp-buf [create-buffer #0 handler])
+(function write-elf (instrs relocations function-sections undefined-bindings static-bindings outs rgn1 temp-buf handler)
+  (with-buffer temp-buf
     (fallthrough
       (do
         (let (lkd-ehdr [make-lkde nil nil (ignore) (ignore) temp-buf cleanup])
@@ -1232,6 +1232,7 @@
         (let (undef-shdr (@ lkdsh-raw lkd-undef-shdr)) (do
         [prepend shstrtab-null-name (& lkdsh-strtab lkd-shstrtab-shdr) temp-buf cleanup]
         (setf lkdsh-link lkd-undef-shdr lkd-undef-shdr)
+        (setf sh-name undef-shdr #0)
         (setf sh-type undef-shdr (sht-null))
         (setf sh-flags undef-shdr #0)
         (setf sh-addr undef-shdr #0)
@@ -1333,7 +1334,7 @@
               [append lkd-sym (& lkdsh-symtab lkd-symtab-shdr) temp-buf cleanup]))))
             (ignore)))
         
-        (let (main-text-sec [make-function-text-section generated-expressions (" .text) lkd-ehdr lkd-strtab-shdr lkd-symtab-shdr temp-buf cleanup])
+        (let (main-text-sec [make-function-text-section instrs (" .text) lkd-ehdr lkd-strtab-shdr lkd-symtab-shdr temp-buf cleanup])
         
         (let (func-text-secs (map (func-sec function-sections)
           (bind (name instrs relocs) func-sec
@@ -1432,7 +1433,7 @@
         (ignore Write out the ELF file.)
         
         (let (pos (storage _ #0))
-        (let (bin [buffer-alloc elf-size reg cleanup]) (do
+        (let (bin [buffer-alloc elf-size rgn1 cleanup]) (do
         [mem-write bin pos (@ lkde-raw lkd-ehdr) (elf64-ehdr)]
         (foreach (sec (storage-cons lkd-undef-shdr (@ lkde-sh lkd-ehdr)))
           [mem-write bin pos (@ lkdsh-raw sec) (elf64-shdr)])
@@ -1457,7 +1458,7 @@
         
         (storage _ no-error bin $pos))))))))))))))))))))))))))))))))))))
         
-      (cleanup err (do [destroy-buffer temp-buf return-cont] err))
+      (cleanup err err)
       
       (return-cont err (if [= (@0 err) no-error] (values (use-storage outs) (@1 err) (@2 err)) {handler err})))))
 
