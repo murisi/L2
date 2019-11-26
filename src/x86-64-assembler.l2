@@ -1346,29 +1346,56 @@
         [make-function-relocation-section relocs [rstrcat (" .rela.text.) name rgn2 handler]
           lkd-ehdr func-text-sec lkd-symtab-shdr rgn2 handler])))))
     
+    (ignore Mark every symbol as false in preparation for the usage analysis.)
+    
+    (foreach (sec (@ lkde-sh lkd-ehdr))
+      (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-symtab)]
+        (foreach (sym (@ lkdsh-symtab sec))
+          (setf lkdst-other sym (false))) (ignore)))
+    
+    (ignore
+      Find relocations such that their symbol's section matches the target section,
+      apply them, and remove them from the relocations list. For the relocations that
+      remain, mark the symbols that they refer to.)
+    
     (foreach (sec (@ lkde-sh lkd-ehdr))
       (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-rela)]
         (filter (lkd-rela (& lkdsh-rela sec))
           (if [= (@ lkdst-sh (@ lkdr-info-sym lkd-rela)) (@ lkdsh-rela-info sec)]
             (let (rela (@ lkdr-raw lkd-rela))
-            (let (target [+ (@ r-offset rela) (@ lkdsh-offset (@ lkdsh-rela-info sec))])
-            (let (addend (@ r-addend rela))
-            (let (sym (@ lkdst-raw (@ lkdr-info-sym lkd-rela))) (do
-            (switch = (elf64-r-type (@ r-info rela))
-              ((r-x86-64-none) (ignore))
-              ((r-x86-64-64) [memcpy target (storage _[+(@ st-value sym)addend]) #8])
-              ((r-x86-64-pc32) [memcpy target (storage _[assert-sword [-[+(@ st-value sym)addend](@ r-offset rela)] handler]) #4])
-              ((r-x86-64-glob-dat) [memcpy target (storage _(@ st-value sym)) #8])
-              ((r-x86-64-jump-slot) [memcpy target (storage _(@ st-value sym)) #8])
-              ((r-x86-64-32) [memcpy target (storage _[assert-word [+(@ st-value sym) addend] handler]) #4])
-              ((r-x86-64-32s) [memcpy target (storage _[assert-sword [+(@ st-value sym) addend] handler]) #4])
-              ((r-x86-64-16) [memcpy target (storage _[assert-half [+(@ st-value sym) addend] handler]) #2])
-              ((r-x86-64-pc16) [memcpy target (storage _[assert-shalf [-[+(@ st-value sym)addend](@ r-offset rela)] handler])#2])
-              ((r-x86-64-8) [memcpy target (storage _[assert-byte [+(@ st-value sym)addend] handler]) #1])
-              ((r-x86-64-pc8) [memcpy target (storage _[assert-sbyte [-[+(@ st-value sym)addend](@ r-offset rela)] handler])#1])
-              ((r-x86-64-size32) [memcpy target (storage _[+(@ st-size sym)addend]) #4])
-              ((r-x86-64-size64) [memcpy target (storage _[+(@ st-size sym)addend]) #8])
-              {handler (storage _ object-error)}) (false)))))) (true))) (ignore)))
+              (let (target [+ (@ r-offset rela) (@ lkdsh-offset (@ lkdsh-rela-info sec))])
+              (let (addend (@ r-addend rela))
+              (let (sym (@ lkdst-raw (@ lkdr-info-sym lkd-rela))) (do
+              (switch = (elf64-r-type (@ r-info rela))
+                ((r-x86-64-none) (ignore))
+                ((r-x86-64-64) [memcpy target (storage _[+(@ st-value sym)addend]) #8])
+                ((r-x86-64-pc32) [memcpy target (storage _[assert-sword [-[+(@ st-value sym)addend](@ r-offset rela)] handler]) #4])
+                ((r-x86-64-glob-dat) [memcpy target (storage _(@ st-value sym)) #8])
+                ((r-x86-64-jump-slot) [memcpy target (storage _(@ st-value sym)) #8])
+                ((r-x86-64-32) [memcpy target (storage _[assert-word [+(@ st-value sym) addend] handler]) #4])
+                ((r-x86-64-32s) [memcpy target (storage _[assert-sword [+(@ st-value sym) addend] handler]) #4])
+                ((r-x86-64-16) [memcpy target (storage _[assert-half [+(@ st-value sym) addend] handler]) #2])
+                ((r-x86-64-pc16) [memcpy target (storage _[assert-shalf [-[+(@ st-value sym)addend](@ r-offset rela)] handler])#2])
+                ((r-x86-64-8) [memcpy target (storage _[assert-byte [+(@ st-value sym)addend] handler]) #1])
+                ((r-x86-64-pc8) [memcpy target (storage _[assert-sbyte [-[+(@ st-value sym)addend](@ r-offset rela)] handler])#1])
+                ((r-x86-64-size32) [memcpy target (storage _[+(@ st-size sym)addend]) #4])
+                ((r-x86-64-size64) [memcpy target (storage _[+(@ st-size sym)addend]) #8])
+                {handler (storage _ object-error)}) (false))))))
+            (do
+              (setf lkdst-other (@ lkdr-info-sym lkd-rela) (true))
+              (true))))
+        (ignore)))
+    
+    (ignore
+      Filter all the symbol tables keeping only the symbols that are referred to
+      in relocations or have non-local binding.)
+    
+    (foreach (sec (@ lkde-sh lkd-ehdr))
+      (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-symtab)]
+        (filter (sym (& cdr (@ lkdsh-symtab sec)))
+          (or
+            (@ lkdst-other sym)
+            [not= (elf64-st-bind (@ st-info (@ lkdst-raw sym))) (stb-local)])) (ignore)))
     
     (ignore Assign the strings in the string table indicies.)
     
