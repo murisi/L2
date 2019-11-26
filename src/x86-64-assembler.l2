@@ -1369,11 +1369,11 @@
     (foreach (sec (@ lkde-sh lkd-ehdr))
       (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-rela)]
         (filter (lkd-rela (& lkdsh-rela sec))
+          (let (rela (@ lkdr-raw lkd-rela))
+          (let (addend (@ r-addend rela))
+          (let (sym (@ lkdst-raw (@ lkdr-info-sym lkd-rela)))
           (if [= (@ lkdst-sh (@ lkdr-info-sym lkd-rela)) (@ lkdsh-rela-info sec)]
-            (let (rela (@ lkdr-raw lkd-rela))
-              (let (target [+ (@ r-offset rela) (@ lkdsh-offset (@ lkdsh-rela-info sec))])
-              (let (addend (@ r-addend rela))
-              (let (sym (@ lkdst-raw (@ lkdr-info-sym lkd-rela))) (do
+            (let (target [+ (@ r-offset rela) (@ lkdsh-offset (@ lkdsh-rela-info sec))]) (do
               (switch = (elf64-r-type (@ r-info rela))
                 ((r-x86-64-none) (ignore))
                 ((r-x86-64-64) [memcpy target (storage _[+(@ st-value sym)addend]) #8])
@@ -1389,15 +1389,15 @@
                 ((r-x86-64-size32) [memcpy target (storage _[+(@ st-size sym)addend]) #4])
                 ((r-x86-64-size64) [memcpy target (storage _[+(@ st-size sym)addend]) #8])
                 {handler (storage _ object-error)})
-              (false))))))
+              (false)))
           (if [= (@ lkdst-sh (@ lkdr-info-sym lkd-rela)) lkd-bss-shdr]
-            (let (prev-addend (@ r-addend (@ lkdr-raw lkd-rela))) (do
-              (setf r-addend (@ lkdr-raw lkd-rela) [+ (@ st-value (@ lkdst-raw (@ lkdr-info-sym lkd-rela))) prev-addend])
+            (do
+              (setf r-addend rela [+ (@ st-value sym) addend])
               (setf lkdr-info-sym lkd-rela lkd-bss-sym)
-              (true)))
+              (true))
             (do
               (setf lkdst-other (@ lkdr-info-sym lkd-rela) (true))
-              (true)))))
+              (true))))))))
         (ignore)))
     
     (ignore
