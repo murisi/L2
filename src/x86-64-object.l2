@@ -17,53 +17,6 @@
 (function binding (l r) (`[* #2(unit)]r))
 
 (ignore
-  The following functions are for ensuring that truncating the outcome of a relocation
-  computation preserves its value.)
-
-(function assert-byte (val handler)
-  (if [= val [band val (hex 00000000000000FF)]]
-    val {handler (storage _ object-error)}))
-
-(function assert-sbyte (val handler)
-  (if (or [= val [band val (hex 000000000000007F)]] [= val [bor val (hex FFFFFFFFFFFFFF80)]])
-    val {handler (storage _ object-error)}))
-
-(function assert-half (val handler)
-  (if [= val [band val (hex 000000000000FFFF)]]
-    val {handler (storage _ object-error)}))
-
-(function assert-shalf (val handler)
-  (if (or [= val [band val (hex 0000000000007FFF)]] [= val [bor val (hex FFFFFFFFFFFF8000)]])
-    val {handler (storage _ object-error)}))
-
-(function assert-word (val handler)
-  (if [= val [band val (hex 00000000FFFFFFFF)]]
-    val {handler (storage _ object-error)}))
-
-(function assert-sword (val handler)
-  (if (or [= val [band val (hex 000000007FFFFFFF)]] [= val [bor val (hex FFFFFFFF80000000)]])
-    val {handler (storage _ object-error)}))
-
-(constrain do-relocation (\ r (with-vars (a b c d) (`(function (,d elf64-rela elf64-sym ,a ,b) ,c)r)r)))
-
-(function do-relocation (target rela sym addend handler)
-	(switch = (elf64-r-type (@ r-info rela))
-    ((r-x86-64-none) (ignore))
-    ((r-x86-64-64) [memcpy target (storage _[+(@ st-value sym)addend]) #8])
-    ((r-x86-64-pc32) [memcpy target (storage _[assert-sword [-[+(@ st-value sym)addend](@ r-offset rela)] handler]) #4])
-    ((r-x86-64-glob-dat) [memcpy target (storage _(@ st-value sym)) #8])
-    ((r-x86-64-jump-slot) [memcpy target (storage _(@ st-value sym)) #8])
-    ((r-x86-64-32) [memcpy target (storage _[assert-word [+(@ st-value sym) addend] handler]) #4])
-    ((r-x86-64-32s) [memcpy target (storage _[assert-sword [+(@ st-value sym) addend] handler]) #4])
-    ((r-x86-64-16) [memcpy target (storage _[assert-half [+(@ st-value sym) addend] handler]) #2])
-    ((r-x86-64-pc16) [memcpy target (storage _[assert-shalf [-[+(@ st-value sym)addend](@ r-offset rela)] handler])#2])
-    ((r-x86-64-8) [memcpy target (storage _[assert-byte [+(@ st-value sym)addend] handler]) #1])
-    ((r-x86-64-pc8) [memcpy target (storage _[assert-sbyte [-[+(@ st-value sym)addend](@ r-offset rela)] handler])#1])
-    ((r-x86-64-size32) [memcpy target (storage _[+(@ st-size sym)addend]) #4])
-    ((r-x86-64-size64) [memcpy target (storage _[+(@ st-size sym)addend]) #8])
-    {handler (storage _ object-error)}))
-
-(ignore
   Does the relocations specified in the object file in light of the current binding
   addresses. The continuation handler is followed and the error buffer referenced by err
   set to the singleton (object-error) if relocation type is unrecognized.)
@@ -255,9 +208,7 @@
               (or [= (@ st-shndx sym) (shn-undef)] [= (@ st-shndx sym) (shn-common)])
               (or [= (elf64-st-bind (@ st-info sym)) (stb-global)]
                 [= (elf64-st-bind (@ st-info sym)) (stb-weak)]))
-            (setf st-value sym (@ bndg-offset update))
-            (ignore))))))
-        (ignore)))))
+            (setf st-value sym (@ bndg-offset update)) (ignore)))))) (ignore)))))
   (ignore If obj was created using load, the following invocation cannot produce an error; hence the unspecified handler arguments.)
   [do-relocations obj (ignore)]))
 
@@ -278,9 +229,7 @@
             (or [= (elf64-st-bind (@ st-info sym)) (stb-global)]
               [= (elf64-st-bind (@ st-info sym)) (stb-weak)]))
           [prepend [make-binding [name-of obj shdr-buf sym] (@ st-value sym) reg handler] syms
-            reg handler]
-          (ignore))))))
-    (ignore))))
+            reg handler] (ignore)))))) (ignore))))
   $syms)))
 
 (ignore
