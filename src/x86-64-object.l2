@@ -44,6 +44,25 @@
   (if (or [= val [band val (hex 000000007FFFFFFF)]] [= val [bor val (hex FFFFFFFF80000000)]])
     val {handler (storage _ object-error)}))
 
+(constrain do-relocation (\ r (with-vars (a b c d) (`(function (,d elf64-rela elf64-sym ,a ,b) ,c)r)r)))
+
+(function do-relocation (target rela sym addend handler)
+	(switch = (elf64-r-type (@ r-info rela))
+    ((r-x86-64-none) (ignore))
+    ((r-x86-64-64) [memcpy target (storage _[+(@ st-value sym)addend]) #8])
+    ((r-x86-64-pc32) [memcpy target (storage _[assert-sword [-[+(@ st-value sym)addend](@ r-offset rela)] handler]) #4])
+    ((r-x86-64-glob-dat) [memcpy target (storage _(@ st-value sym)) #8])
+    ((r-x86-64-jump-slot) [memcpy target (storage _(@ st-value sym)) #8])
+    ((r-x86-64-32) [memcpy target (storage _[assert-word [+(@ st-value sym) addend] handler]) #4])
+    ((r-x86-64-32s) [memcpy target (storage _[assert-sword [+(@ st-value sym) addend] handler]) #4])
+    ((r-x86-64-16) [memcpy target (storage _[assert-half [+(@ st-value sym) addend] handler]) #2])
+    ((r-x86-64-pc16) [memcpy target (storage _[assert-shalf [-[+(@ st-value sym)addend](@ r-offset rela)] handler])#2])
+    ((r-x86-64-8) [memcpy target (storage _[assert-byte [+(@ st-value sym)addend] handler]) #1])
+    ((r-x86-64-pc8) [memcpy target (storage _[assert-sbyte [-[+(@ st-value sym)addend](@ r-offset rela)] handler])#1])
+    ((r-x86-64-size32) [memcpy target (storage _[+(@ st-size sym)addend]) #4])
+    ((r-x86-64-size64) [memcpy target (storage _[+(@ st-size sym)addend]) #8])
+    {handler (storage _ object-error)}))
+
 (ignore
   Does the relocations specified in the object file in light of the current binding
   addresses. The continuation handler is followed and the error buffer referenced by err
@@ -63,21 +82,7 @@
         (let (rela (loc (elf64-rela) rela-idx relas-buf))
         (let (addend ($(loc (elf64-sxword) rela-idx addends-buf)))
         (let (sym (loc (elf64-sym) (elf64-r-sym (@ r-info rela)) syms-buf))
-        (switch = (elf64-r-type (@ r-info rela))
-          ((r-x86-64-none) (ignore))
-          ((r-x86-64-64) [memcpy (@ r-offset rela) (storage _[+(@ st-value sym)addend]) #8])
-          ((r-x86-64-pc32) [memcpy (@ r-offset rela) (storage _[assert-sword [-[+(@ st-value sym)addend](@ r-offset rela)] handler]) #4])
-          ((r-x86-64-glob-dat) [memcpy (@ r-offset rela) (storage _(@ st-value sym)) #8])
-          ((r-x86-64-jump-slot) [memcpy (@ r-offset rela) (storage _(@ st-value sym)) #8])
-          ((r-x86-64-32) [memcpy (@ r-offset rela) (storage _[assert-word [+(@ st-value sym) addend] handler]) #4])
-          ((r-x86-64-32s) [memcpy (@ r-offset rela) (storage _[assert-sword [+(@ st-value sym) addend] handler]) #4])
-          ((r-x86-64-16) [memcpy (@ r-offset rela) (storage _[assert-half [+(@ st-value sym) addend] handler]) #2])
-          ((r-x86-64-pc16) [memcpy (@ r-offset rela) (storage _[assert-shalf [-[+(@ st-value sym)addend](@ r-offset rela)] handler])#2])
-          ((r-x86-64-8) [memcpy (@ r-offset rela) (storage _[assert-byte [+(@ st-value sym)addend] handler]) #1])
-          ((r-x86-64-pc8) [memcpy (@ r-offset rela) (storage _[assert-sbyte [-[+(@ st-value sym)addend](@ r-offset rela)] handler])#1])
-          ((r-x86-64-size32) [memcpy (@ r-offset rela) (storage _[+(@ st-size sym)addend]) #4])
-          ((r-x86-64-size64) [memcpy (@ r-offset rela) (storage _[+(@ st-size sym)addend]) #8])
-          {handler (storage _ object-error)})))))))))
+          [do-relocation (@ r-offset rela) rela sym addend handler]))))))))
       (ignore)))))
 
 (ignore
