@@ -1295,6 +1295,14 @@
     (setf st-other und-sym #0)
     [prepend lkd-und-sym (& lkdsh-symtab lkd-symtab-shdr) rgn2 handler]
     
+    (let (lkd-bss-sym [make-lkdst strtab-null-name lkd-bss-shdr rgn2 handler])
+    (let (bss-sym (@ lkdst-raw lkd-bss-sym)) (do
+    (setf st-value bss-sym #0)
+    (setf st-size bss-sym [- #0 bss-extent])
+    (setf st-info bss-sym (elf64-st-info (stb-local) (stt-notype)))
+    (setf st-other bss-sym #0)
+    [append lkd-bss-sym (& lkdsh-symtab lkd-symtab-shdr) rgn2 handler]
+    
     (foreach (bndg static-bindings)
       (if [= (@ bndg-state bndg) (defined-state)]
         (let (sym-name (if [not= (@ bndg-name bndg) null-string]
@@ -1380,19 +1388,28 @@
                 ((r-x86-64-pc8) [memcpy target (storage _[assert-sbyte [-[+(@ st-value sym)addend](@ r-offset rela)] handler])#1])
                 ((r-x86-64-size32) [memcpy target (storage _[+(@ st-size sym)addend]) #4])
                 ((r-x86-64-size64) [memcpy target (storage _[+(@ st-size sym)addend]) #8])
-                {handler (storage _ object-error)}) (false))))))
+                {handler (storage _ object-error)})
+              (false))))))
+          (if [= (@ lkdst-sh (@ lkdr-info-sym lkd-rela)) lkd-bss-shdr]
+            (let (prev-addend (@ r-addend (@ lkdr-raw lkd-rela))) (do
+              (setf r-addend (@ lkdr-raw lkd-rela) [+ (@ st-value (@ lkdst-raw (@ lkdr-info-sym lkd-rela))) prev-addend])
+              (setf lkdr-info-sym lkd-rela lkd-bss-sym)
+              (true)))
             (do
               (setf lkdst-other (@ lkdr-info-sym lkd-rela) (true))
-              (true))))
+              (true)))))
         (ignore)))
     
     (ignore
       Filter all the symbol tables keeping only the symbols that are referred to
       in relocations or have non-local binding.)
     
+    (setf lkdst-other lkd-und-sym (true))
+    (setf lkdst-other lkd-bss-sym (true))
+    
     (foreach (sec (@ lkde-sh lkd-ehdr))
       (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-symtab)]
-        (filter (sym (& cdr (@ lkdsh-symtab sec)))
+        (filter (sym (& lkdsh-symtab sec))
           (or
             (@ lkdst-other sym)
             [not= (elf64-st-bind (@ st-info (@ lkdst-raw sym))) (stb-local)])) (ignore)))
@@ -1505,7 +1522,7 @@
         [mem-write bin pos (@ lkdsh-offset sec) (@ sh-size (@ lkdsh-raw sec))])
       [set pos [pad-size $pos (write-elf-alignment)]]))
     
-    (values (use-storage outs) bin $pos))))))))))))))))))))))))))))))))))))))
+    (values (use-storage outs) bin $pos)))))))))))))))))))))))))))))))))))))))))
 
 (ignore
   Converts the offsets of the static bindings associated with L2 source code that has now
