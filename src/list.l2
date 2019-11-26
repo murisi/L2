@@ -27,6 +27,31 @@
           {foreach:return (ignore)})r) emt r] [meta:map bindings @frst r]r]))r))))
 
 (ignore
+  Does an in-place filter over a list. Does the following transformation:
+  (filter (x l) expr)
+  ->
+  (let (filter:l l)
+    (loop filter:loop (filter:m filter:l)
+      (if [nil? $filter:m]
+        filter:l
+        (if (let (x [@car $filter:m]) expr)
+          {filter:loop (& cdr $filter:m)}
+          (do
+            [set filter:m [@cdr $filter:m]]
+            {filter:loop filter:m}))))))
+
+(function filter (l r)
+  (`(let (filter:l (,[@frfst l]))
+      (loop filter:loop (filter:m filter:l)
+        (if [nil? $filter:m]
+          filter:l
+          (if (let ((,[@ffst l]) [@car $filter:m]) (,[@frst l]))
+            {filter:loop (& cdr $filter:m)}
+            (do
+              [set filter:m [@cdr $filter:m]]
+              {filter:loop filter:m})))))r))
+
+(ignore
   Like a C-array initializer, but for lists. Does the following transformation:
   (list (expr1 expr2 ... exprN) ..)
   ->
