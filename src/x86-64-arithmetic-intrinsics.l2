@@ -61,9 +61,9 @@
       (%[variable arg1])))) n))
 
 (constrain initialize-unary-arithmetic-operators
-  (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
+  (\ r (with-vars (b c d) (`(function (expr ,b (list initializer) (values ,b reg-use-vec) buffer ,d) ,c)r)r)))
 
-(function initialize-unary-arithmetic-operators (n offset inits ret-val)
+(function initialize-unary-arithmetic-operators (n offset inits ret-val buf hdl)
   (bind-if [match-undefined-unary-invoke name arg1 n] (name arg1)
     (let
         (arg1-val-bndg (@ expr-binding-aug $arg1))
@@ -71,7 +71,7 @@
       (switch str= $name
         ((" getb) (" get1b) (" get2b) (" get4b) (" get8b) (" get) (" bnot) (do
           [initialize-expressions (storage-cons [coalesce-expr-bndg $arg1] nil) nil offset
-            (hex FFFFFFFFFFFF0830) (@ expr-depth n) inits ret-val]
+            (hex FFFFFFFFFFFF0830) (@ expr-depth n) inits ret-val buf hdl]
           (setf bndg-size (@ expr-binding-aug n) (word-size))
           (setf expr-generator n [function->generator generate-unary-arithmetic-operators])
           (true)))
@@ -161,9 +161,9 @@
       (%[variable arg2])))) n))
 
 (constrain initialize-binary-arithmetic-operators
-  (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
+  (\ r (with-vars (b c d) (`(function (expr ,b (list initializer) (values ,b reg-use-vec) buffer ,d) ,c)r)r)))
 
-(function initialize-binary-arithmetic-operators (n offset inits ret-val)
+(function initialize-binary-arithmetic-operators (n offset inits ret-val buf hdl)
   (bind-if [match-undefined-binary-invoke name arg1 arg2 n] (name arg1 arg2)
     (let
       (arg1-val-bndg (@ expr-binding-aug $arg1))
@@ -172,7 +172,7 @@
     (switch str= $name
       ((" setb) (" set1b) (" set2b) (" set4b) (" set8b) (" set) (" bor) (" band) (" +) (" -) (" =) (" <) (" >) (do
         [initialize-expressions (storage-cons [coalesce-expr-bndg $arg1] (storage-cons [coalesce-expr-bndg $arg2] nil))
-          nil offset (hex FFFFFFFFFFFF0C30) (@ expr-depth n) inits ret-val]
+          nil offset (hex FFFFFFFFFFFF0C30) (@ expr-depth n) inits ret-val buf hdl]
         (setf bndg-size (@ expr-binding-aug n) (word-size))
         (setf expr-generator n [function->generator generate-binary-arithmetic-operators])
         (true)))
@@ -181,7 +181,7 @@
         (setf bndg-preferred-storage arg1-val-bndg (register-storage))
         (setf bndg-preferred-offset arg1-val-bndg (rax))
         [initialize-expressions (storage-cons $arg1 (storage-cons $arg2 nil)) nil offset
-          (hex FFFFFFFFFFFF0034) (@ expr-depth n) inits ret-val]
+          (hex FFFFFFFFFFFF0034) (@ expr-depth n) inits ret-val buf hdl]
         (setf bndg-size (@ expr-binding-aug n) (word-size))
         (setf expr-generator n [function->generator generate-binary-arithmetic-operators])
         (true)))
@@ -191,7 +191,7 @@
         (setf bndg-preferred-offset arg1-val-bndg (rax))
         (bind (bottom-offset in-use)
           [initialize-expressions (storage-cons $arg1 (storage-cons $arg2 nil)) nil offset
-            (hex FFFFFFFFFFFF0030) (@ expr-depth n) inits bind] (do
+            (hex FFFFFFFFFFFF0030) (@ expr-depth n) inits bind buf hdl] (do
         (setf bndg-size (@ expr-binding-aug n) (word-size))
         (setf expr-generator n [function->generator generate-binary-arithmetic-operators])
         (values (use-storage ret-val) bottom-offset [bor in-use (hex 0000000000000004)])
@@ -201,7 +201,7 @@
         (setf bndg-preferred-storage arg2-val-bndg (register-storage))
         (setf bndg-preferred-offset arg2-val-bndg (rcx))
         [initialize-expressions (storage-cons $arg1 (storage-cons $arg2 nil)) nil offset
-          (hex FFFFFFFFFFFF0830) (@ expr-depth n) inits ret-val]
+          (hex FFFFFFFFFFFF0830) (@ expr-depth n) inits ret-val buf hdl]
         (setf bndg-size (@ expr-binding-aug n) (word-size))
         (setf expr-generator n [function->generator generate-binary-arithmetic-operators])
         (true)))
@@ -363,28 +363,28 @@
         (expr-value (%[variable arg2]))))))) n))
 
 (constrain initialize-binary-right-imm-arithmetic-operators
-  (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
+  (\ r (with-vars (b c d) (`(function (expr ,b (list initializer) (values ,b reg-use-vec) buffer ,d) ,c)r)r)))
 
-(function initialize-binary-right-imm-arithmetic-operators (n offset inits ret-val)
+(function initialize-binary-right-imm-arithmetic-operators (n offset inits ret-val buf hdl)
   (bind-if [match-undefined-binary-right-imm-invoke name arg1 arg2 n] (name arg1 arg2)
     (switch str= $name
       ((" setb) (" set1b) (" set2b) (" set4b) (" <<) (" >>) (do
         [initialize-expressions (storage-cons [coalesce-expr-bndg $arg1] nil)
-          nil offset (hex FFFFFFFFFFFF0C30) (@ expr-depth n) inits ret-val]
+          nil offset (hex FFFFFFFFFFFF0C30) (@ expr-depth n) inits ret-val buf hdl]
         (setf bndg-size (@ expr-binding-aug n) (word-size))
         (setf expr-generator n [function->generator generate-binary-right-imm-arithmetic-operators])
         (true)))
         
       ((" set8b) (" set) (and [sword? $arg2] (do
         [initialize-expressions (storage-cons [coalesce-expr-bndg $arg1] nil)
-          nil offset (hex FFFFFFFFFFFF0C30) (@ expr-depth n) inits ret-val]
+          nil offset (hex FFFFFFFFFFFF0C30) (@ expr-depth n) inits ret-val buf hdl]
         (setf bndg-size (@ expr-binding-aug n) (word-size))
         (setf expr-generator n [function->generator generate-binary-right-imm-arithmetic-operators])
         (true))))
       
       ((" bor) (" band) (" +) (" -) (" =) (" <) (" >) (and (or [sbyte? $arg2] [sword? $arg2]) (do
         [initialize-expressions (storage-cons [coalesce-expr-bndg $arg1] nil)
-          nil offset (hex FFFFFFFFFFFF0C30) (@ expr-depth n) inits ret-val]
+          nil offset (hex FFFFFFFFFFFF0C30) (@ expr-depth n) inits ret-val buf hdl]
         (setf bndg-size (@ expr-binding-aug n) (word-size))
         (setf expr-generator n [function->generator generate-binary-right-imm-arithmetic-operators])
         (true))))
@@ -445,24 +445,24 @@
           [prepend (make-instrN(x86-xor)
             ([bndg->op expr-val-bndg relocs ..][bndg->op expr-val-bndg relocs ..][make-reg-op (r11)..])..) c ..]
           [prepend (make-instrN(x86-cmp)
-            ([bndg->op arg1-val-bndg relocs ..][make-imm-op #4 $arg2 ..][make-reg-op (r11)..])..) c ..]
-          [prepend (make-instrN (x86-setz) ([bndg->partial-op imm-size expr-val-bndg relocs ..]) ..) c ..]))
+            ([bndg->op arg1-val-bndg relocs ..][make-imm-op imm-size $arg2 ..][make-reg-op (r11)..])..) c ..]
+          [prepend (make-instrN (x86-setz) ([bndg->partial-op #1 expr-val-bndg relocs ..]) ..) c ..]))
         
         ((" <) (do
           [generate-expression $arg1 c relocs ..]
           [prepend (make-instrN(x86-xor)
             ([bndg->op expr-val-bndg relocs ..][bndg->op expr-val-bndg relocs ..][make-reg-op (r11)..])..) c ..]
           [prepend (make-instrN(x86-cmp)
-            ([bndg->op arg1-val-bndg relocs ..][make-imm-op #4 $arg2 ..][make-reg-op (r11)..])..) c ..]
-          [prepend (make-instrN (x86-setc) ([bndg->partial-op imm-size expr-val-bndg relocs ..]) ..) c ..]))
+            ([bndg->op arg1-val-bndg relocs ..][make-imm-op imm-size $arg2 ..][make-reg-op (r11)..])..) c ..]
+          [prepend (make-instrN (x86-setc) ([bndg->partial-op #1 expr-val-bndg relocs ..]) ..) c ..]))
         
         ((" >) (do
           [generate-expression $arg1 c relocs ..]
           [prepend (make-instrN(x86-xor)
             ([bndg->op expr-val-bndg relocs ..][bndg->op expr-val-bndg relocs ..][make-reg-op (r11)..])..) c ..]
           [prepend (make-instrN(x86-cmp)
-            ([bndg->op arg1-val-bndg relocs ..][make-imm-op #4 $arg2 ..][make-reg-op (r11)..])..) c ..]
-          [prepend (make-instrN (x86-setg) ([bndg->partial-op imm-size expr-val-bndg relocs ..]) ..) c ..]))
+            ([bndg->op arg1-val-bndg relocs ..][make-imm-op imm-size $arg2 ..][make-reg-op (r11)..])..) c ..]
+          [prepend (make-instrN (x86-setg) ([bndg->partial-op #1 expr-val-bndg relocs ..]) ..) c ..]))
         
         ((" <<) (do
           [generate-expression $arg1 c relocs ..]
@@ -511,16 +511,16 @@
     (expr-alternate (%[variable alternate])) n))
 
 (constrain initialize-arithmetic-if-bindings
-  (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
+  (\ r (with-vars (b c d) (`(function (expr ,b (list initializer) (values ,b reg-use-vec) buffer ,d) ,c)r)r)))
 
-(function initialize-arithmetic-if-bindings (n offset inits ret-val)
+(function initialize-arithmetic-if-bindings (n offset inits ret-val buf hdl)
   (bind-if [match-arithmetic-if name arg1 arg2 consequent alternate n]
     (name arg1 arg2 consequent alternate) (do
       (setf expr-binding-aug $consequent (@ expr-binding-aug n))
       (setf expr-binding-aug $alternate (@ expr-binding-aug n))
       [initialize-expressions
         (storage-cons $arg1 (storage-cons $arg2 (storage-cons $consequent (storage-cons $alternate nil))))
-        nil offset (hex FFFFFFFFFFFF0830) (@ expr-depth n) inits ret-val]
+        nil offset (hex FFFFFFFFFFFF0830) (@ expr-depth n) inits ret-val buf hdl]
       (setf expr-generator n [function->generator generate-arithmetic-if])
       (setf bndg-size (@ expr-binding-aug n) (word-size))
       (true))
@@ -584,9 +584,9 @@
     (false)))
 
 (constrain initialize-get-base+offset
-  (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
+  (\ r (with-vars (b c d) (`(function (expr ,b (list initializer) (values ,b reg-use-vec) buffer ,d) ,c)r)r)))
 
-(function initialize-get-base+offset (n offset inits ret-val)
+(function initialize-get-base+offset (n offset inits ret-val buf hdl)
   (bind-if (and [match-get-base+offset name base addr-offset n] [sbyte? $addr-offset])
     (name base addr-offset)
       (let
@@ -595,7 +595,7 @@
         (switch str= $name
           ((" getb) (" get1b) (" get2b) (" get4b) (" get8b) (" get) (do
             [initialize-expressions (storage-cons [coalesce-expr-bndg $base] nil) nil offset
-              (hex FFFFFFFFFFFF0830) (@ expr-depth n) inits ret-val]
+              (hex FFFFFFFFFFFF0830) (@ expr-depth n) inits ret-val buf hdl]
             (setf bndg-size (@ expr-binding-aug n) (word-size))
             (setf expr-generator n [function->generator generate-get-base+offset])
             (true)))
@@ -666,9 +666,9 @@
     (false)))
 
 (constrain initialize-set-base+offset
-  (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
+  (\ r (with-vars (b c d) (`(function (expr ,b (list initializer) (values ,b reg-use-vec) buffer ,d) ,c)r)r)))
 
-(function initialize-set-base+offset (n offset inits ret-val)
+(function initialize-set-base+offset (n offset inits ret-val buf hdl)
   (bind-if [match-set-base+offset name base addr-offset val n] (name base addr-offset val)
     (let
       (base-val-bndg (@ expr-binding-aug $base))
@@ -678,7 +678,7 @@
     (switch str= $name
       ((" setb) (" set1b) (" set2b) (" set4b) (" set8b) (" set) (do
         [initialize-expressions (storage-cons [coalesce-expr-bndg $base] (storage-cons [coalesce-expr-bndg $val] nil))
-          nil offset (hex FFFFFFFFFFFF0C30) (@ expr-depth n) inits ret-val]
+          nil offset (hex FFFFFFFFFFFF0C30) (@ expr-depth n) inits ret-val buf hdl]
         (setf bndg-size (@ expr-binding-aug n) (word-size))
         (setf expr-generator n [function->generator generate-set-base+offset])
         (true)))
@@ -728,13 +728,14 @@
       (ignore))))
 
 (constrain initialize-arithmetic-intrinsics
-  (\ r (with-vars (b c) (`(function (expr ,b (list initializer) (values ,b reg-use-vec)) ,c)r)r)))
+  (\ r (with-vars (b c d) (`(function (expr ,b (list initializer) (values ,b reg-use-vec) buffer ,d) ,c)r)r)))
 
-(function initialize-arithmetic-intrinsics (n offset inits ret-val) (or
-  [initialize-get-base+offset n offset inits ret-val]
-  [initialize-set-base+offset n offset inits ret-val]
-  [initialize-arithmetic-if-bindings n offset inits ret-val]
-  [initialize-unary-arithmetic-operators n offset inits ret-val]
-  [initialize-binary-right-imm-arithmetic-operators n offset inits ret-val]
-  [initialize-binary-arithmetic-operators n offset inits ret-val]))
+(function initialize-arithmetic-intrinsics (n offset inits ret-val buf hdl)
+  (substitute (.. buf hdl) (or
+    [initialize-get-base+offset n offset inits ret-val ..]
+    [initialize-set-base+offset n offset inits ret-val ..]
+    [initialize-arithmetic-if-bindings n offset inits ret-val ..]
+    [initialize-unary-arithmetic-operators n offset inits ret-val ..]
+    [initialize-binary-right-imm-arithmetic-operators n offset inits ret-val ..]
+    [initialize-binary-arithmetic-operators n offset inits ret-val ..])))
 
