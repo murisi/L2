@@ -126,7 +126,7 @@
             reverse-filter:acc)}))r))
 
 (ignore
-  A macro to do a reverse map. Does the following transformation:
+  A macro to do a fold. Does the following transformation:
   (fold (y acc) (x l) expr)
   ->
   (loop fold:loop (fold:acc acc) (fold:l l)
@@ -143,6 +143,25 @@
         {fold:loop
           (let ((,[@ffst l]) fold:acc) ((,[@ffrst l]) [@car fold:l]) (,[@frrst l]))
           [@cdr fold:l]}))r))
+
+(ignore
+  A macro to do a mutating fold. Does the following transformation:
+  (fold-ref (y acc) (x l) expr)
+  ->
+  (loop fold-ref:loop (fold-ref:acc acc) (fold-ref:l l)
+    (if [nil? fold-ref:l]
+      fold-ref:acc
+      {fold-ref:loop
+        (let (y fold-ref:acc) (x (& car fold-ref:l)) expr)
+        [@cdr fold-ref:l]})))
+
+(function fold-ref (l r)
+  (`(loop fold-ref:loop (fold-ref:acc (,[@frfst l])) (fold-ref:l (,[@frfrst l]))
+      (if [nil? fold-ref:l]
+        fold-ref:acc
+        {fold-ref:loop
+          (let ((,[@ffst l]) fold-ref:acc) ((,[@ffrst l]) (& car fold-ref:l)) (,[@frrst l]))
+          [@cdr fold-ref:l]}))r))
 
 (ignore
   A macro to do a find. Does the following transformation:

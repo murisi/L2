@@ -11,24 +11,21 @@
     (let (static-bindings (storage _ nil)) (undefined-bindings (storage _ nil))
         (global-bindings [global-binding-augs-of exprs ..]) (do
       (let (storage-offset
-          (fold (storage-offset [- #0 (word-size)]) (expr exprs) (do
-            [visit-expressions vfind-multiple-definitions (storage _ expr) handler]
-            [visit-expressions veliminate-constrain (storage _ expr) (ignore)]
-            [visit-expressions vswap-branches (storage _ expr) (ignore)]
-            [visit-expressions vdominate-jumps (storage _ expr) (ignore)]
-            [classify-program-bindings expr]
-            [link-symbols expr (true) undefined-bindings global-bindings nil ..]
-            (ignore[infer-types expr ..])
-            [escape-analysis expr (true) ..]
-            [pre-visit-expressions vpropagate-expressions (storage _ expr) (values storage :b handler)]
-            [assign-expr-is-reads expr]
-            [place-perm-bindings expr storage-offset])))
+          (fold-ref (storage-offset [- #0 (word-size)]) (expr exprs) (do
+            [visit-expressions vfind-multiple-definitions expr handler]
+            [visit-expressions veliminate-constrain expr (ignore)]
+            [visit-expressions vswap-branches expr (ignore)]
+            [visit-expressions vdominate-jumps expr (ignore)]
+            [classify-program-bindings $expr]
+            [link-symbols $expr (true) undefined-bindings global-bindings nil ..]
+            (ignore[infer-types $expr ..])
+            [escape-analysis $expr (true) ..]
+            [pre-visit-expressions vpropagate-expressions expr (values storage :b handler)]
+            [assign-expr-is-reads $expr]
+            [place-perm-bindings $expr storage-offset])))
         (foreach (expr exprs) (do
-          (setf bndg-offset (@ expr-binding-aug expr) [- storage-offset (word-size)])
-          (setf bndg-size (@ expr-binding-aug expr) (word-size))
-          (setf bndg-storage (@ expr-binding-aug expr) (absolute-storage))
           [assign-depths expr #0]
-          [initialize-expression expr [- storage-offset (word-size)] inits (values storage (ignore) (ignore))]
+          [initialize-expressions (storage-cons expr nil) nil [- storage-offset (word-size)] #0 #0 inits (values storage (ignore)(ignore))]
           [setup-collect-static-bindings expr]
           [collect-static-bindings expr static-bindings ..])))
       (bind (instrs relocs func-secs) [generate-program exprs bind ..]
