@@ -544,19 +544,12 @@
             [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope) (defined-state) null-string null-fragment null-expr ..]) (do
         [generate-expression $arg1 c relocs ..]
         [generate-expression $arg2 c relocs ..]
+        [prepend (make-instrN(x86-cmp)
+          ([bndg->op arg1-val-bndg relocs ..][bndg->op arg2-val-bndg relocs ..][make-reg-op (r11)..])..) c ..]
         (switch str= $name
-          ((" =) (do
-            [prepend (make-instrN(x86-cmp)
-              ([bndg->op arg1-val-bndg relocs ..][bndg->op arg2-val-bndg relocs ..][make-reg-op (r11)..])..) c ..]
-            [prepend (make-instrN (x86-jnz) ([make-relative-relocation-immediate #4 alternate-instr-bndg relocs ..]) ..) c ..]))
-          ((" <) (do
-            [prepend (make-instrN(x86-cmp)
-              ([bndg->op arg1-val-bndg relocs ..][bndg->op arg2-val-bndg relocs ..][make-reg-op (r11)..])..) c ..]
-            [prepend (make-instrN (x86-jnc) ([make-relative-relocation-immediate #4 alternate-instr-bndg relocs ..]) ..) c ..]))
-          ((" >) (do
-            [prepend (make-instrN(x86-cmp)
-              ([bndg->op arg2-val-bndg relocs ..][bndg->op arg1-val-bndg relocs ..][make-reg-op (r11)..])..) c ..]
-            [prepend (make-instrN (x86-jnc) ([make-relative-relocation-immediate #4 alternate-instr-bndg relocs ..]) ..) c ..]))
+          ((" =) [prepend (make-instrN (x86-jnz) ([make-relative-relocation-immediate #4 alternate-instr-bndg relocs ..]) ..) c ..])
+          ((" <) [prepend (make-instrN (x86-jae) ([make-relative-relocation-immediate #4 alternate-instr-bndg relocs ..]) ..) c ..])
+          ((" >) [prepend (make-instrN (x86-jle) ([make-relative-relocation-immediate #4 alternate-instr-bndg relocs ..]) ..) c ..])
           (ignore))
         [generate-expression $consequent c relocs ..]
         [generate-bndg-bndg-move expr-val-bndg consequent-val-bndg (r11) c relocs ..]
