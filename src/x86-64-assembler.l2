@@ -83,6 +83,8 @@
   
   (function x86-setc (l r) [=## #49 (\ r (` instr-code r)) r])
   
+  (function x86-setb (l r) [=## #49 (\ r (` instr-code r)) r])
+  
   (function x86-nop (l r) [=## #50 (\ r (` instr-code r)) r])
   
   (function x86-cmp (l r) [=## #51 (\ r (` instr-code r)) r])
@@ -775,13 +777,13 @@
           (%[variable op2])
           (%(match-property (op-type (%[= (immediate-operand)])))))) (@ instr-operands n))
       (op1 op2)
-        (if (and [= (@ op-size $op1) #1] [= (@ op-size $op2) #1])
+        (if (and [band mask #1] [= (@ op-size $op1) #1] [= (@ op-size $op2) #1])
           [write-instr bin pos opcode-8 [>> mask #4] [make-none-op ..] opcode.reg-op $op1 $op2 ..]
-        (if (and [= (@ op-size $op1) #2] [= (@ op-size $op2) #1])
+        (if (and [band mask #2] [= (@ op-size $op1) #2] [= (@ op-size $op2) #1])
           [write-instr bin pos opcode-16 [>> mask #4] [make-none-op ..] opcode.reg-op $op1 $op2 ..]
-        (if (and [= (@ op-size $op1) #4] [= (@ op-size $op2) #1])
+        (if (and [band mask #4] [= (@ op-size $op1) #4] [= (@ op-size $op2) #1])
           [write-instr bin pos opcode-32 [>> mask #4] [make-none-op ..] opcode.reg-op $op1 $op2 ..]
-        (if (and [= (@ op-size $op1) #8] [= (@ op-size $op2) #1])
+        (if (and [band mask #8] [= (@ op-size $op1) #8] [= (@ op-size $op2) #1])
           [write-instr bin pos opcode-64 [>> mask #4] [make-none-op ..] opcode.reg-op $op1 $op2 ..]
           (false)))))
       (false))))
@@ -954,11 +956,15 @@
           [write-rm-instr (hex 1F) (hex 0A) (hex 0B) (hex 0B) (hex 0B) n bin pos ..]
           [write-mr-instr (hex 1F) (hex 08) (hex 09) (hex 09) (hex 09) n bin pos ..]
           [write-mm-instr (hex 1F) (hex 08) (hex 09) (hex 09) (hex 09) n bin pos ..]
+          [write-mi-instr (hex 1F) (hex 80) (hex 81) (hex 81) (hex 81) [make-reg-op (x86-/1) ..] n bin pos ..]
+          [write-mi8-instr (hex 1F) (hex 80) (hex 83) (hex 83) (hex 83) [make-reg-op (x86-/1) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
         ((x86-and) (or
           [write-rm-instr (hex 1F) (hex 22) (hex 23) (hex 23) (hex 23) n bin pos ..]
           [write-mr-instr (hex 1F) (hex 20) (hex 21) (hex 21) (hex 21) n bin pos ..]
           [write-mm-instr (hex 1F) (hex 20) (hex 21) (hex 21) (hex 21) n bin pos ..]
+          [write-mi-instr (hex 1F) (hex 80) (hex 81) (hex 81) (hex 81) [make-reg-op (x86-/4) ..] n bin pos ..]
+          [write-mi8-instr (hex 1F) (hex 80) (hex 83) (hex 83) (hex 83) [make-reg-op (x86-/4) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
         ((x86-not) (or
           [write-m-instr (hex 1F) (hex F6) (hex F7) (hex F7) (hex F7) [make-reg-op (x86-/2) ..] n bin pos ..]
@@ -978,9 +984,11 @@
           {handler (storage _ unsupported-instruction-error n)}))
         ((x86-shl) (or
           [write-mc-instr (hex 1F) (hex D2) (hex D3) (hex D3) (hex D3) [make-reg-op (x86-/4) ..] n bin pos ..]
+          [write-mi8-instr (hex 1F) (hex C0) (hex C1) (hex C1) (hex C1) [make-reg-op (x86-/4) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
         ((x86-shr) (or
           [write-mc-instr (hex 1F) (hex D2) (hex D3) (hex D3) (hex D3) [make-reg-op (x86-/5) ..] n bin pos ..]
+          [write-mi8-instr (hex 1F) (hex C0) (hex C1) (hex C1) (hex C1) [make-reg-op (x86-/5) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
         ((x86-leave)
           [write-instr bin pos (hex C9) #1 [make-none-op ..] [make-none-op ..] [make-none-op ..] [make-none-op ..] ..])
@@ -1044,6 +1052,7 @@
           [write-mr-instr (hex 1F) (hex 88) (hex 89) (hex 89) (hex 89) n bin pos ..]
           [write-rm-instr (hex 1F) (hex 8A) (hex 8B) (hex 8B) (hex 8B) n bin pos ..]
           [write-mm-instr (hex 1F) (hex 88) (hex 89) (hex 89) (hex 89) n bin pos ..]
+          [write-mi-instr (hex 1F) (hex C6) (hex C7) (hex C7) (hex C7) [make-reg-op (x86-/0) ..] n bin pos ..]
           (bind-if (match-list-prefix
               (%(match-and (%[variable op1]) (%(match-property (op-type (%[= (register-operand)]))))))
               (%(match-and (%[variable op2]) (%(match-property (op-type (%[= (immediate-operand)])))))) (@ instr-operands n))
