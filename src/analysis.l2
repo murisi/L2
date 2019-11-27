@@ -55,25 +55,38 @@
         [make-literal (@ expr-value (@ bndg-propagate (@ expr-reference e))) null-fragment null-expr :a handler])
       e)))))
 
-(ignore Does the following optimization:
+(ignore Does the following optimizations:
   (if (if cond <zero literal> <non-zero literal>) <consequent> <alternate>)
   ->
-  (if cond <alternate> <consequent>))
+  (if cond <alternate> <consequent>)
+  AND
+  (if (if cond <non-zero literal> <zero literal>) <consequent> <alternate>)
+  ->
+  (if cond <consequent> <alternate>))
 
 (constrain vswap-branches (\ r (`(function (expr ()) expr)r)))
 
 (function vswap-branches (e ctx)
-  (if (and [= (@ expr-type e) (-if-)]
-      (let (cond (@ expr-condition e))
-      (and [= (@ expr-type cond) (-if-)]
-        (let (consequent (@ expr-consequent cond)) (alternate (@ expr-alternate cond))
-          (and [= (@ expr-type consequent) (-literal-)] [= (@ expr-value consequent) #0]
-            [= (@ expr-type alternate) (-literal-)] [not= (@ expr-value alternate) #0])))))
-    (let (tmp-branch (@ expr-consequent e)) (do
-      (setf expr-condition e (@ expr-condition (@ expr-condition e)))
-      (setf expr-consequent e (@ expr-alternate e))
-      (setf expr-alternate e tmp-branch)
-      e))
+  (bind-if (match-property
+      (expr-type (%[= (-if-)]))
+      (expr-condition (%(guard-match (%(match-property
+          (expr-type (%[= (-if-)]))
+          (expr-condition (%[variable cond]))
+          (expr-consequent (%(match-property
+            (expr-type (%[= (-literal-)]))
+            (expr-value (%[variable cons-val])))))
+          (expr-alternate (%(match-property
+            (expr-type (%[= (-literal-)]))
+            (expr-value (%[variable alt-val])))))))
+        (and (or $cons-val $alt-val) (not (and $cons-val $alt-val))))))
+      (expr-consequent (%[variable consequent]))
+      (expr-alternate (%[variable alternate])) e)
+    (cond cons-val alt-val consequent alternate) (do
+      (setf expr-condition e $cond)
+      (if $alt-val (do
+        (setf expr-consequent e $alternate)
+        (setf expr-alternate e $consequent)) (ignore))
+      e)
     e))
 
 (ignore Does the following optimizations:
