@@ -546,11 +546,9 @@
         [generate-expression $arg2 c relocs ..]
         [prepend (make-instrN(x86-cmp)
           ([bndg->op arg1-val-bndg relocs ..][bndg->op arg2-val-bndg relocs ..][make-reg-op (r11)..])..) c ..]
-        (switch str= $name
-          ((" =) [prepend (make-instrN (x86-jnz) ([make-relative-relocation-immediate #4 alternate-instr-bndg relocs ..]) ..) c ..])
-          ((" <) [prepend (make-instrN (x86-jae) ([make-relative-relocation-immediate #4 alternate-instr-bndg relocs ..]) ..) c ..])
-          ((" >) [prepend (make-instrN (x86-jle) ([make-relative-relocation-immediate #4 alternate-instr-bndg relocs ..]) ..) c ..])
-          (ignore))
+        [prepend (make-instrN
+          (switch str= $name ((" =)(x86-jnz)) ((" <)(x86-jae)) ((" >)(x86-jle)) (ignore))
+          ([make-relative-relocation-immediate #4 alternate-instr-bndg relocs ..]) ..) c ..]
         [generate-expression $consequent c relocs ..]
         [generate-bndg-bndg-move expr-val-bndg consequent-val-bndg (r11) c relocs ..]
         [prepend (make-instrN (x86-jmp) ([make-relative-relocation-immediate #4 end-instr-binding relocs ..]) ..) c ..]
