@@ -589,6 +589,18 @@
     (values (use-storage ret-val) bottom-offset [bor in-use (hex FFFFFFFFFFFF0FF7)])
     (true))))))
 
+(constrain negate-jump-condition (\ r (`(function (instr-code) instr-code)r)))
+
+(function negate-jump-condition (jc)
+  (switch = jc
+    ((x86-jae) (x86-jb))
+    ((x86-jbe) (x86-ja))
+    ((x86-jb) (x86-jae))
+    ((x86-ja) (x86-jbe))
+    ((x86-je) (x86-jne))
+    ((x86-jne) (x86-je))
+    (ignore)))
+
 (constrain generate-if
   (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
 
@@ -654,12 +666,12 @@
       (let (conds (loop gen-cond (sub-if (@ expr-condition n)) (conds nil)
         (if (or [not= (@ expr-type sub-if) (-if-)] (not (or [= (@ expr-type (@ expr-consequent sub-if)) (-literal-)] [= (@ expr-type (@ expr-alternate sub-if)) (-literal-)])))
           (do
-            (setf expr-binding-aug sub-if (@ expr-binding-aug (@ expr-condition n)))
+            (setf bndg-is-condition (@ expr-binding-aug sub-if) (true))
             [cons sub-if conds ..])
           (let (sub-if-val-bndg (@ expr-binding-aug (@ expr-condition sub-if)))
               (consequent (@ expr-consequent sub-if))
               (alternate (@ expr-alternate sub-if)) (do
-            (setf expr-binding-aug (@ expr-condition sub-if) (@ expr-binding-aug (@ expr-condition n)))
+            (setf bndg-is-condition (@ expr-binding-aug (@ expr-condition sub-if)) (true))
             (if (and [= (@ expr-type sub-if) (-if-)] [= (@ expr-type consequent) (-literal-)] (@ expr-value consequent)) (do
               {gen-cond (@ expr-alternate sub-if) [cons (@ expr-condition sub-if) conds ..]})
             (if (and [= (@ expr-type sub-if) (-if-)] [= (@ expr-type consequent) (-literal-)] (not (@ expr-value consequent))) (do

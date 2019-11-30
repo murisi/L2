@@ -59,10 +59,6 @@
 
   (function x86-ret (l r) [=## #27 (\ r (` instr-code r)) r])
 
-  (function x86-je (l r) [=## #29 (\ r (` instr-code r)) r])
-  
-  (function x86-jz (l r) [=## #29 (\ r (` instr-code r)) r])
-
   (function x86-or (l r) [=## #30 (\ r (` instr-code r)) r])
 
   (function x86-call (l r) [=## #32 (\ r (` instr-code r)) r])
@@ -91,15 +87,35 @@
   
   (function x86-cmp (l r) [=## #51 (\ r (` instr-code r)) r])
   
+  (function x86-je (l r) [=## #29 (\ r (` instr-code r)) r])
+  
+  (function x86-jz (l r) [=## #29 (\ r (` instr-code r)) r])
+  
   (function x86-jnz (l r) [=## #52 (\ r (` instr-code r)) r])
+  
+  (function x86-jne (l r) [=## #52 (\ r (` instr-code r)) r])
   
   (function x86-jnc (l r) [=## #53 (\ r (` instr-code r)) r])
   
   (function x86-jae (l r) [=## #53 (\ r (` instr-code r)) r])
   
+  (function x86-jnb (l r) [=## #53 (\ r (` instr-code r)) r])
+  
   (function x86-setg (l r) [=## #54 (\ r (` instr-code r)) r])
   
-  (function x86-jle (l r) [=## #55 (\ r (` instr-code r)) r])
+  (function x86-jbe (l r) [=## #55 (\ r (` instr-code r)) r])
+  
+  (function x86-jna (l r) [=## #55 (\ r (` instr-code r)) r])
+  
+  (function x86-jnae (l r) [=## #56 (\ r (` instr-code r)) r])
+  
+  (function x86-jb (l r) [=## #56 (\ r (` instr-code r)) r])
+  
+  (function x86-jc (l r) [=## #56 (\ r (` instr-code r)) r])
+  
+  (function x86-jnbe (l r) [=## #57 (\ r (` instr-code r)) r])
+  
+  (function x86-ja (l r) [=## #57 (\ r (` instr-code r)) r])
 
 (ignore A representation of an operand.)
   
@@ -494,9 +510,9 @@
     ((x86-pop) (" pop)) ((x86-leave) (" leave)) ((x86-ret) (" ret)) ((x86-je) (" je))
     ((x86-or) (" or)) ((x86-call) (" call)) ((x86-mul) (" mul)) ((x86-shl) (" shl))
     ((x86-shr) (" shr)) ((x86-and) (" and)) ((x86-not) (" not)) ((x86-xor) (" xor))
-    ((x86-div) (" div)) ((x86-setz) (" setz)) ((x86-setc) (" setc)) ((x86-jnc) (" jnc))
-    ((x86-jnz) (" jnz)) ((x86-cmp) (" cmp)) ((x86-setg) (" setg)) ((x86-jle) (" jle))
-    (ignore)) handler])
+    ((x86-div) (" div)) ((x86-setz) (" setz)) ((x86-setc) (" setc)) ((x86-jae) (" jae))
+    ((x86-jne) (" jne)) ((x86-cmp) (" cmp)) ((x86-setg) (" setg)) ((x86-jbe) (" jbe))
+    ((x86-ja) (" ja)) ((x86-jb) (" jb)) (ignore)) handler])
 
 (constrain print-register (\ r (with-vars (a) (`(function (register ,a) ())r)r)))
 
@@ -980,17 +996,23 @@
           [write-m-instr (hex 1E) (ignore) (hex FF) (hex FF) (hex FF) [make-reg-op (x86-/2) ..] n bin pos ..]
           [write-d-instr (hex 16) (ignore) (hex E8) (hex E8) (ignore) n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-je) (or
+        ((x86-je) (x86-jz) (or
           [write-d-instr (hex 24) (ignore) (ignore) (hex 840F) (ignore) n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-jnz) (or
+        ((x86-jnz) (x86-jne) (or
           [write-d-instr (hex 24) (ignore) (ignore) (hex 850F) (ignore) n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-jnc) (x86-jae) (or
+        ((x86-jnc) (x86-jnb) (x86-jae) (or
           [write-d-instr (hex 24) (ignore) (ignore) (hex 830F) (ignore) n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-jle) (or
-          [write-d-instr (hex 24) (ignore) (ignore) (hex 8E0F) (ignore) n bin pos ..]
+        ((x86-jbe) (x86-jna) (or
+          [write-d-instr (hex 24) (ignore) (ignore) (hex 860F) (ignore) n bin pos ..]
+          {handler (storage _ unsupported-instruction-error n)}))
+        ((x86-jnbe) (x86-ja) (or
+          [write-d-instr (hex 24) (ignore) (ignore) (hex 870F) (ignore) n bin pos ..]
+          {handler (storage _ unsupported-instruction-error n)}))
+        ((x86-jnae) (x86-jb) (x86-jc) (or
+          [write-d-instr (hex 24) (ignore) (ignore) (hex 820F) (ignore) n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
         ((x86-shl) (or
           [write-mc-instr (hex 1F) (hex D2) (hex D3) (hex D3) (hex D3) [make-reg-op (x86-/4) ..] n bin pos ..]
