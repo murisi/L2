@@ -451,3 +451,31 @@
         [close f handler]
         (if [= (@0 err) no-error] (@1 err) {handler err}))))))
 
+(storage time-error (ignore))
+
+(function clock-gettime (handler)
+  (let (t (storage _ (ignore)(ignore)))
+    (let (ret [syscall (sys-clock-gettime) (clock-process-cputime-id) t (ignore) (ignore) (ignore) (ignore)])
+      (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
+        {handler (storage _ time-error)}
+        [+ [* $t #1000000000] ($[+ t (unit)])]))))
+
+(ignore
+  Times the execution of the given expression in nanoseconds and adds it
+  to the given accumulator. This expression evaluates to the values of its
+  inner expression. Does the following transformation:
+  
+  (time acc expr handler)
+  ->
+  (let (time:handler handler)
+    (let (time:start [clock-gettime time:handler])
+      (let (time:val expr) (do
+        [set+ acc [- [clock-gettime time:handler] time:start]]
+        time:val)))))
+
+(function time (l r)
+  (`(let (time:handler (,[@frrst l]))
+      (let (time:start [clock-gettime time:handler])
+        (let (time:val (,[@frst l])) (do
+          [set+ (,[@fst l]) [- [clock-gettime time:handler] time:start]]
+          time:val))))r))
