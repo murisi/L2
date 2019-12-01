@@ -1,0 +1,137 @@
+(function ht-initial-bucket-count (l r) [=# #2 r])
+
+(function ht-resize-factor (l r) [=# #2 r])
+
+(function ht-load-factor-num (l r) [=# #3 r])
+
+(function ht-load-factor-den (l r) [=# #4 r])
+
+
+(function hash-table-struct (l r) [=# #40 r])
+
+(function ht-bucket-count (l r) [property #0 #8 (\ r (with-vars (a b c) (`(@ ,c (hash-table ,a ,b))r)r)) l r])
+
+(function ht-element-count (l r) [property #8 #8 (\ r (with-vars (a b c) (`(@ ,c (hash-table ,a ,b))r)r)) l r])
+
+(function ht-hash-func (l r) [property #16 #8 (\ r (with-vars (a b c) (`(@ (function (,a) ,c) (hash-table ,a ,b))r)r)) l r])
+
+(function ht-equals-func (l r) [property #24 #8 (\ r (with-vars (a b c) (`(@ (function (,a ,a) ,c) (hash-table ,a ,b))r)r)) l r])
+
+(function ht-values (l r) [property #32 #8 (\ r (with-vars (a b c) (`(@ ,c (hash-table ,a ,b))r)r)) l r])
+
+(constrain ht-create (\ r (with-vars (a b c d e) (`(function ((function (,a) ,d) (function (,a ,a) ,e) buffer ,c) (hash-table ,a ,b))r)r)))
+
+(function ht-create (hash-func equals-func buf hdl)
+  (substitute (.. buf hdl)
+    (let (ht [buffer-alloc (hash-table-struct) ..]) (do
+      (setf ht-bucket-count ht (ht-initial-bucket-count))
+      (setf ht-element-count ht #0)
+      (setf ht-hash-func ht hash-func)
+      (setf ht-equals-func ht equals-func)
+      (setf ht-values ht [buffer-alloc [*(ht-initial-bucket-count)(unit)] ..])
+      (until (i #0) [= i (ht-initial-bucket-count)] [+ i #1] [set (loc(unit)i (@ ht-values ht)) nil])
+      ht))))
+
+(constrain ht-resize (\ r (with-vars (a b c d) (`(function ((hash-table ,a ,b) buffer ,c) ,d)r)r)))
+
+(function ht-resize (ht buf hdl)
+  (substitute (.. buf hdl)
+    (if [> [* (@ ht-element-count ht) (ht-load-factor-den)] [* (@ ht-bucket-count ht) (ht-load-factor-num)]]
+      (let (new-bucket-count [* (@ ht-bucket-count ht) (ht-resize-factor)])
+      (let (new-values [buffer-alloc [* new-bucket-count(unit)] ..]) (do
+        (until (i #0) [= i new-bucket-count] [+ i #1] [set (loc(unit)i new-values) nil])
+        (until (i #0) [= i (@ ht-bucket-count ht)] [+ i #1]
+          (let (bucket ($(loc(unit)i(@ ht-values ht))))
+          (loop move-node (bucket bucket)
+            (if [nil? bucket] (ignore)
+              (bind (key value) [@car bucket]
+              (let (next [@cdr bucket])
+              (let (new-bucket-idx [rem [(@ ht-hash-func ht) key] new-bucket-count]) (do
+              (setf cdr bucket ($(loc(unit)new-bucket-idx new-values)))
+              [set (loc(unit)new-bucket-idx new-values) bucket]
+              {move-node next}))))))))
+        (setf ht-bucket-count ht new-bucket-count)
+        (setf ht-values ht new-values)))) (ignore))))
+
+(constrain ht-put (\ r (with-vars (a b c d) (`(function (,a ,b (hash-table ,a ,b) buffer ,c) ,d)r)r)))
+
+(function ht-put (key value ht buf hdl)
+  (substitute (.. buf hdl)
+    (let (bucket-idx [rem [(@ ht-hash-func ht) key] (@ ht-bucket-count ht)])
+    (let (bucket (loc(unit)bucket-idx(@ ht-values ht)))
+    (loop find-end (bucket bucket)
+      (if [nil? $bucket]
+        (do
+          [append (values (buffer-storage ..) key value) bucket ..]
+          [set+ (& ht-element-count ht) #1]
+          [ht-resize ht ..])
+        (bind (k v) [@car $bucket]
+          (if [(@ ht-equals-func ht) key k]
+            (values (use-storage [@car $bucket]) key value)
+            {find-end (& cdr $bucket)}))))))))
+
+(constrain ht-contains (\ r (with-vars (a b c d) (`(function (,a (hash-table ,a ,b)) ,d)r)r)))
+
+(function ht-contains (key ht)
+  (let (bucket-idx [rem [(@ ht-hash-func ht) key] (@ ht-bucket-count ht)])
+  (let (bucket ($(loc(unit)bucket-idx(@ ht-values ht))))
+  (loop find-end (bucket bucket)
+    (if [nil? bucket]
+      (false)
+      (bind (k v) [@car bucket]
+        (if [(@ ht-equals-func ht) key k]
+          (true)
+          {find-end [@cdr bucket]})))))))
+
+(constrain ht-get (\ r (with-vars (a b c) (`(function (,a (hash-table ,a ,b)) ,b)r)r)))
+
+(function ht-get (key ht)
+  (let (bucket-idx [rem [(@ ht-hash-func ht) key] (@ ht-bucket-count ht)])
+  (let (bucket ($(loc(unit)bucket-idx(@ ht-values ht))))
+  (loop find-end (bucket bucket)
+    (bind (k v) [@car bucket]
+      (if [(@ ht-equals-func ht) key k]
+        v
+        {find-end [@cdr bucket]}))))))
+
+(constrain ht-remove (\ r (with-vars (a b c d) (`(function (,a (hash-table ,a ,b)) ,d)r)r)))
+
+(function ht-remove (key ht)
+  (let (bucket-idx [rem [(@ ht-hash-func ht) key] (@ ht-bucket-count ht)])
+  (let (bucket (loc(unit)bucket-idx(@ ht-values ht)))
+  (loop find-end (bucket bucket)
+    (if [nil? $bucket]
+      (ignore)
+      (bind (k v) [@car $bucket]
+        (if [(@ ht-equals-func ht) key k]
+          [set bucket [@cdr $bucket]]
+          {find-end (& cdr $bucket)})))))))
+
+(ignore
+  Iterates through the entries in the hash-table. Does the following
+  transformation:
+  
+  (ht-foreach (key value ht) expr)
+  ->
+  (let (ht-foreach:ht ht)
+    (until (ht-foreach:i #0) [= ht-foreach:i (@ ht-bucket-count ht-foreach:ht)] [+ ht-foreach:i #1]
+      (foreach (ht-foreach:assoc ($(loc (unit) ht-foreach:i (@ ht-values ht-foreach:ht))))
+        (bind (key value) ht-foreach:assoc expr)))))
+
+(function ht-foreach (l r)
+  (`(let (ht-foreach:ht (,[@frrfst l]))
+      (until (ht-foreach:i #0) [= ht-foreach:i (@ ht-bucket-count ht-foreach:ht)] [+ ht-foreach:i #1]
+        (foreach (ht-foreach:assoc ($(loc (unit) ht-foreach:i (@ ht-values ht-foreach:ht))))
+          (bind ((,[@ffst l]) (,[@frfst l])) ht-foreach:assoc (,[@frst l])))))r))
+
+(constrain hash-str (\ r (with-vars (a) (`(function (string) ,a)r)r)))
+
+(function hash-str (str)
+  (loop do-hash (i #0) (h #0)
+    (let (ch [getb [+ str i]])
+      (if ch
+        (let (h [+ [<< h #4] ch])
+        (let (g [band h (hex F0000000)])
+        (let (h (if g [bxor h [>> g #24]] h))
+        (let (h [band h [bnot g]])
+          {do-hash [+ i #1] h})))) h))))
