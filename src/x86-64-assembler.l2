@@ -1267,7 +1267,7 @@
 
 (constrain write-elf
   (\ r (with-vars (a b c d) (`(function ((list instr) (list reloc) (list (values string (list instr) (list reloc)))
-    (list bndg-aug) (list bndg-aug) ,a buffer buffer ,c) (values ,b ,d))r)r)))
+    (hash-table string bndg-aug) (list bndg-aug) ,a buffer buffer ,c) (values ,b ,d))r)r)))
 
 (function write-elf (instrs relocations function-sections undefined-bindings static-bindings outs rgn1 rgn2 handler)
   (with-buffer rgn2 (do
@@ -1412,7 +1412,7 @@
           [append lkd-sym (& lkdsh-symtab lkd-symtab-shdr) rgn2 handler]))))
         (ignore)))
     
-    (foreach (bndg undefined-bindings)
+    (ht-foreach (bndg-name bndg undefined-bindings)
       (if (and [= (@ bndg-scope bndg) (global-scope)] [= (@ bndg-state bndg) (undefined-state)])
         (let (sym-name (if [not= (@ bndg-name bndg) null-string]
             (let (sym-name [make-lkdstrt (@ bndg-name bndg) rgn2 handler])

@@ -1,6 +1,6 @@
 (constrain defined-str= (\ r (with-vars (a) (`(function (string string) ,a)r)r)))
 
-(function defined-str= (a b) (and [not= a null-string] [not= b null-string] [str= a b]))
+(function defined-str= (a b) (and [getb a] [getb b] [str= a b]))
 
 (constrain bndg-name= (\ r (with-vars (a) (`(function (bndg-aug bndg-aug) ,a)r)r)))
 
@@ -204,87 +204,90 @@
     
     (ignore)))
 
-(constrain global-binding-augs-of (\ r (with-vars (a) (`(function ((list expr) buffer ,a) (list bndg-aug))r)r)))
+(constrain global-binding-augs-of (\ r (with-vars (a) (`(function ((list expr) buffer ,a) (hash-table string bndg-aug))r)r)))
 
 (function global-binding-augs-of (exprs r handler)
-  (loop add-binding (binding-augs nil) (exprs exprs)
-    (if [nil? exprs]
-      binding-augs
-      (let (t [@car exprs])
-        (if (or [= (@ expr-type t) (-function-)] [= (@ expr-type t) (-storage-)])
-          (do
-            (setf bndg-scope (@ expr-reference t) (global-scope))
-            {add-binding [cons (@ expr-reference t) binding-augs r handler] [@cdr exprs]})
-          {add-binding binding-augs [@cdr exprs]})))))
+  (substitute (.. r handler)
+    (let (binding-augs [ht-create hash-str str= ..])
+    (loop add-binding (exprs exprs)
+      (if [nil? exprs]
+        binding-augs
+        (let (t [@car exprs])
+          (if (or [= (@ expr-type t) (-function-)] [= (@ expr-type t) (-storage-)])
+            (do
+              (setf bndg-scope (@ expr-reference t) (global-scope))
+              [ht-put (@ bndg-name (@ expr-reference t)) (@ expr-reference t) binding-augs ..]
+              {add-binding [@cdr exprs]})
+            {add-binding [@cdr exprs]})))))))
 
-(constrain vunlink-symbols (\ r (`(function (expr (values (list bndg-aug))) expr)r)))
+(constrain vunlink-symbols (\ r (with-vars (a) (`(function (expr (values (hash-table string bndg-aug) buffer ,a)) expr)r)r)))
 
 (function vunlink-symbols (s ctx)
-  (bind (blacklist) ctx
-    (if (and [= (@ expr-type s) (-symbol-)] (not [nil? (find (x blacklist) [= x (@ expr-reference s)])]))
-      (do (setf expr-reference s null-binding) s)
-      s)))
+  (bind (blacklist buf hdl) ctx
+    (with-buffer buf
+      (if (and [= (@ expr-type s) (-symbol-)]
+          [contains (@ expr-reference s) [ht-getall (@ bndg-name (@ expr-reference s)) blacklist buf hdl]])
+        (do (setf expr-reference s null-binding) s)
+        s))))
 
-(constrain assign-binding (\ r (with-vars (a) (`(function (expr (list bndg-aug)) ,a)r)r)))
+(constrain assign-binding (\ r (with-vars (a) (`(function (expr (hash-table string bndg-aug)) ,a)r)r)))
 
 (function assign-binding (s bindings)
-  (loop find (bindings bindings)
-    (if [nil? bindings]
-      (false)
-      (let (ba [@car bindings])
-        (if (and [not= (@ bndg-name ba) null-string] [not= (@ expr-name s) null-string]
-            [str= (@ bndg-name ba) (@ expr-name s)])
-          (do (setf expr-reference s ba) (true))
-          {find [@cdr bindings]})))))
+  (if [ht-contains (@ expr-name s) bindings]
+    (do (setf expr-reference s [ht-get (@ expr-name s) bindings]) (true))
+    (false)))
 
 (constrain link-symbols
-  (\ r (with-vars (a b) (`(function (expr ,a (ref (list bndg-aug)) (list bndg-aug) (list bndg-aug) buffer ,b) ())r)r)))
+  (\ r (with-vars (a b) (`(function (expr ,a (hash-table string bndg-aug) (hash-table string bndg-aug) (hash-table string bndg-aug) buffer ,b) ())r)r)))
 
 (function link-symbols (s static-storage undefined-bindings static-bindings dynamic-bindings r handler)
   (substitute (.. r handler)
-    (let (statics-ref (storage _ static-bindings))
-    (let (dynamics-ref (storage _ dynamic-bindings))
-    (let (bindings-ref (if static-storage statics-ref dynamics-ref))
+    (let (bindings (if static-storage static-bindings dynamic-bindings))
     
     (switch = (@ expr-type s)
       ((-function-) (do
-        [prepend (@ expr-reference s) statics-ref ..]
-        [set dynamics-ref nil]
-        (foreach (u (@ expr-parameters s)) [prepend u dynamics-ref ..])
-        [link-symbols (@ expr-expression s) (false) undefined-bindings $statics-ref $dynamics-ref ..]))
+        [ht-put (@ bndg-name(@ expr-reference s)) (@ expr-reference s) static-bindings ..]
+        (let (dynamic-bindings [ht-create hash-str str= ..]) (do
+        (foreach (u (@ expr-parameters s)) [ht-put (@ bndg-name u) u dynamic-bindings ..])
+        [link-symbols (@ expr-expression s) (false) undefined-bindings static-bindings dynamic-bindings ..]))
+        [ht-remove (@ bndg-name(@ expr-reference s)) static-bindings]))
       
       ((-with-) (-continuation-) (do
-        [prepend (@ expr-reference s) bindings-ref ..]
-        (foreach (u (@ expr-parameters s)) [prepend u bindings-ref ..])
-        [link-symbols (@ expr-expression s) static-storage undefined-bindings $statics-ref $dynamics-ref ..]))
+        [ht-put (@ bndg-name(@ expr-reference s)) (@ expr-reference s) bindings ..]
+        (foreach (u (@ expr-parameters s)) [ht-put (@ bndg-name u) u bindings ..])
+        [link-symbols (@ expr-expression s) static-storage undefined-bindings static-bindings dynamic-bindings ..]
+        (foreach (u (@ expr-parameters s)) [ht-remove (@ bndg-name u) bindings])
+        [ht-remove (@ bndg-name(@ expr-reference s)) bindings]))
       
       ((-storage-) (do
-        [prepend (@ expr-reference s) bindings-ref ..]
+        [ht-put (@ bndg-name (@ expr-reference s)) (@ expr-reference s) bindings ..]
         (foreach (u (@ expr-arguments s))
-          [link-symbols u static-storage undefined-bindings $statics-ref $dynamics-ref ..])))
+          [link-symbols u static-storage undefined-bindings static-bindings dynamic-bindings ..])
+        [ht-remove (@ bndg-name (@ expr-reference s)) bindings]))
       
       ((-symbol-)
-        (if (and [= (@ expr-reference s) null-binding] (not [assign-binding s $dynamics-ref])
-            (not [assign-binding s $statics-ref]) (not [assign-binding s $undefined-bindings]))
+        (if (and [= (@ expr-reference s) null-binding] (not (or static-storage [assign-binding s dynamic-bindings]))
+            (not [assign-binding s static-bindings]) (not [assign-binding s undefined-bindings]))
           (let (bndg [make-undefined-binding (@ expr-name s) ..]) (do
             (setf expr-reference s bndg)
-            [prepend (@ expr-reference s) undefined-bindings ..]))
+            [ht-put (@ bndg-name(@ expr-reference s)) (@ expr-reference s) undefined-bindings ..]
+            (ignore)))
           (ignore)))
       
       ((-if-) (do
-        [link-symbols (@ expr-condition s) static-storage undefined-bindings $statics-ref $dynamics-ref ..]
-        [link-symbols (@ expr-consequent s) static-storage undefined-bindings $statics-ref $dynamics-ref ..]
-        [link-symbols (@ expr-alternate s) static-storage undefined-bindings $statics-ref $dynamics-ref ..]))
+        [link-symbols (@ expr-condition s) static-storage undefined-bindings static-bindings dynamic-bindings ..]
+        [link-symbols (@ expr-consequent s) static-storage undefined-bindings static-bindings dynamic-bindings ..]
+        [link-symbols (@ expr-alternate s) static-storage undefined-bindings static-bindings dynamic-bindings ..]))
       
       ((-invoke-) (-jump-) (do
-        [link-symbols (@ expr-target s) static-storage undefined-bindings $statics-ref $dynamics-ref ..]
+        [link-symbols (@ expr-target s) static-storage undefined-bindings static-bindings dynamic-bindings ..]
         (foreach (u (@ expr-arguments s))
-          [link-symbols u static-storage undefined-bindings $statics-ref $dynamics-ref ..])))
+          [link-symbols u static-storage undefined-bindings static-bindings dynamic-bindings ..])))
       
       ((-constrain-)
-        [link-symbols (@ expr-expression s) static-storage undefined-bindings $statics-ref $dynamics-ref ..])
+        [link-symbols (@ expr-expression s) static-storage undefined-bindings static-bindings dynamic-bindings ..])
       
-      (ignore)))))))
+      (ignore)))))
 
 (constrain escape-analysis (\ r (with-vars (a b) (`(function (expr ,a buffer ,b) ())r)r)))
 
@@ -673,7 +676,7 @@
             (@ bndg-offset [ht-get (@ expr-name s) bindings])
             {handler (storage _ undefined-symbol-error (@ expr-name s))}))
         (do
-          (let (expr-container [make-function null-string nil s null-fragment null-expr ..])
+          (let (expr-container [make-function empty-string nil s null-fragment null-expr ..])
           (let (exprs-preprocessed [generate-metaprogram [cons expr-container nil ..] inits bindings buf :b handler]) (do
           [load-program-and-mutate exprs-preprocessed inits bindings buf :b handler]
           (let (expr-container-preprocessed [@car exprs-preprocessed])
@@ -730,8 +733,8 @@
         [set cache null-cache]
         
         (if [= (@ expr-type s) (-function-)]
-          (let (params (reverse-map (_ (@ expr-parameters s)) null-string ..))
-          (let (args (reverse-map (_ (@ expr-parameters s)) [make-symbol null-string null-fragment null-expr ..] ..))
+          (let (params (reverse-map (_ (@ expr-parameters s)) empty-string ..))
+          (let (args (reverse-map (_ (@ expr-parameters s)) [make-symbol empty-string null-fragment null-expr ..] ..))
           (let (thunk [make-function (@ bndg-name (@ expr-reference s)) params
             [make-invoke (make-invokeN [make-literal init-function null-fragment null-expr ..]
             ([make-literal s null-fragment null-expr ..] [make-literal inits null-fragment null-expr ..]
