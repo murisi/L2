@@ -196,19 +196,18 @@
 (constrain mutate-bindings (\ r (`(function (obj (hash-table string bndg-aug)) ())r)))
 
 (function mutate-bindings (obj updates) (do
-  (ht-foreach (update-name update updates)
-    (until (sec-idx #0) [= sec-idx (@ e-shnum(@ obj-ehdr obj))] [+ sec-idx #1]
-      (let (shdr-buf (loc (elf64-shdr) sec-idx (@ obj-shdrs obj)))
-      (if [= (@ sh-type shdr-buf) (sht-symtab)]
-        (let (symnum [/ (@ sh-size shdr-buf) (@ sh-entsize shdr-buf)])
-        (let (syms-buf ($(loc (unit) sec-idx (@ obj-syms obj))))
-        (until (sym-idx #1) [= sym-idx symnum] [+ sym-idx #1]
-          (let (sym (loc (elf64-sym) sym-idx syms-buf))
-          (if (and (not [strcmp [name-of obj shdr-buf sym] (@ bndg-name update)])
-              (or [= (@ st-shndx sym) (shn-undef)] [= (@ st-shndx sym) (shn-common)])
-              (or [= (elf64-st-bind (@ st-info sym)) (stb-global)]
-                [= (elf64-st-bind (@ st-info sym)) (stb-weak)]))
-            (setf st-value sym (@ bndg-offset update)) (ignore)))))) (ignore)))))
+  (until (sec-idx #0) [= sec-idx (@ e-shnum(@ obj-ehdr obj))] [+ sec-idx #1]
+    (let (shdr-buf (loc (elf64-shdr) sec-idx (@ obj-shdrs obj)))
+    (if [= (@ sh-type shdr-buf) (sht-symtab)]
+      (let (symnum [/ (@ sh-size shdr-buf) (@ sh-entsize shdr-buf)])
+      (let (syms-buf ($(loc (unit) sec-idx (@ obj-syms obj))))
+      (until (sym-idx #1) [= sym-idx symnum] [+ sym-idx #1]
+        (let (sym (loc (elf64-sym) sym-idx syms-buf))
+        (if (and [ht-contains [name-of obj shdr-buf sym] updates]
+            (or [= (@ st-shndx sym) (shn-undef)] [= (@ st-shndx sym) (shn-common)])
+            (or [= (elf64-st-bind (@ st-info sym)) (stb-global)]
+              [= (elf64-st-bind (@ st-info sym)) (stb-weak)]))
+          (setf st-value sym (@ bndg-offset [ht-get [name-of obj shdr-buf sym] updates])) (ignore)))))) (ignore))))
   (ignore If obj was created using load, the following invocation cannot produce an error; hence the unspecified handler arguments.)
   [do-relocations obj (ignore)]))
 
