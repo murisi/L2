@@ -53,7 +53,7 @@
         (setf ht-bucket-count ht new-bucket-count)
         (setf ht-values ht new-values)))) (ignore))))
 
-(constrain ht-put (\ r (with-vars (a b c d) (`(function (,a ,b (hash-table ,a ,b) buffer ,c) ,d)r)r)))
+(constrain ht-put (\ r (with-vars (a b c) (`(function (,a ,b (hash-table ,a ,b) buffer ,c) (hash-table ,a ,b))r)r)))
 
 (function ht-put (key value ht buf hdl)
   (substitute (.. buf hdl)
@@ -64,10 +64,11 @@
         (do
           [append (values (buffer-storage ..) key value) bucket ..]
           [set+ (& ht-element-count ht) #1]
-          [ht-resize ht ..])
+          [ht-resize ht ..]
+          ht)
         (bind (k v) [@car $bucket]
           (if [(@ ht-equals-func ht) key k]
-            (values (use-storage [@car $bucket]) key value)
+            (do (values (use-storage [@car $bucket]) key value) ht)
             {find-end (& cdr $bucket)}))))))))
 
 (constrain ht-contains (\ r (with-vars (a b c d) (`(function (,a (hash-table ,a ,b)) ,d)r)r)))
@@ -123,6 +124,18 @@
       (until (ht-foreach:i #0) [= ht-foreach:i (@ ht-bucket-count ht-foreach:ht)] [+ ht-foreach:i #1]
         (foreach (ht-foreach:assoc ($(loc (unit) ht-foreach:i (@ ht-values ht-foreach:ht))))
           (bind ((,[@ffst l]) (,[@frfst l])) ht-foreach:assoc (,[@frst l])))))r))
+
+(ignore
+  Puts all the given associations into the given hash table. Does the following
+  transformation.
+  (ht-putall (ht ..) (k1 v1) (k2 v2) ... (kN vN))
+  ->
+  [ht-put kN vN [... [ht-put k2 v2 [ht-put k1 v1 ht ..] ..] ...] ..])
+
+(function ht-putall (l r)
+  (loop build-expr (expr [@ffst l]) (rem [@rst l])
+    (if [emt? rem] expr
+      {build-expr [lllllst (` invoke r) (` ht-put r) [@ffst rem] [@frfst rem] expr [@rfst l] r] [@rst rem]})))
 
 (constrain hash-str (\ r (with-vars (a) (`(function (string) ,a)r)r)))
 

@@ -669,16 +669,12 @@
             If the expression, s, is a mere symbol, then we can just lookup its value in
             the bindings list instead of preprocessing, compiling, and then evaluating
             the expression.)
-          (loop find-binding (bindings bindings)
-            (if [nil? bindings]
-              {handler (storage _ undefined-symbol-error (@ expr-name s))}
-              (let (bndg [@car bindings])
-                (if [str= (@ bndg-name bndg) (@ expr-name s)]
-                  (@ bndg-offset bndg)
-                  {find-binding [@cdr bindings]})))))
+          (if [ht-contains (@ expr-name s) bindings]
+            (@ bndg-offset [ht-get (@ expr-name s) bindings])
+            {handler (storage _ undefined-symbol-error (@ expr-name s))}))
         (do
           (let (expr-container [make-function null-string nil s null-fragment null-expr ..])
-          (let (exprs-preprocessed [generate-metaprogram [cons expr-container nil ..] inits (storage _ bindings) buf :b handler]) (do
+          (let (exprs-preprocessed [generate-metaprogram [cons expr-container nil ..] inits bindings buf :b handler]) (do
           [load-program-and-mutate exprs-preprocessed inits bindings buf :b handler]
           (let (expr-container-preprocessed [@car exprs-preprocessed])
           [(@ bndg-offset (@ expr-reference expr-container-preprocessed))]))))))))r))
@@ -689,7 +685,7 @@
   to the result of evaluating a signature builder.)
 
 (constrain vgenerate-metas
-  (\ r (with-vars (a) (`(function (expr (values (list initializer) (list bndg-aug) buffer buffer ,a)) expr)r)r)))
+  (\ r (with-vars (a) (`(function (expr (values (list initializer) (hash-table string bndg-aug) buffer buffer ,a)) expr)r)r)))
 
 (function vgenerate-metas (s ctx)
   (bind (inits bindings buf :b handler) ctx
@@ -705,15 +701,15 @@
       s)))
 
 (constrain init-function
-  (\ r (with-vars (a b) (`(function (expr (list initializer) (ref (list bndg-aug)) buffer buffer ,a (ref ,b)) ,b)r)r)))
+  (\ r (with-vars (a b) (`(function (expr (list initializer) (hash-table string bndg-aug) buffer buffer ,a (ref ,b)) ,b)r)r)))
 
 (function init-function (function-expr inits bindings buf :b handler cache)
   (substitute (.. buf handler)
     (if [not= $cache null-cache]
       $cache
       (let (function-expr-ref (storage _ function-expr)) (do
-        [pre-visit-expressions vgenerate-metas function-expr-ref (values storage inits $bindings buf :b handler)]
-        [load-program-and-mutate [cons $function-expr-ref nil ..] inits $bindings buf :b handler]
+        [pre-visit-expressions vgenerate-metas function-expr-ref (values storage inits bindings buf :b handler)]
+        [load-program-and-mutate [cons $function-expr-ref nil ..] inits bindings buf :b handler]
         [set cache (@ bndg-offset (@ expr-reference $function-expr-ref))]
         $cache)))))
 
@@ -725,7 +721,7 @@
   expanded only when they are first called.)
 
 (constrain generate-metaprogram
-  (\ r (with-vars (a) (`(function ((list expr) (list initializer) (ref (list bndg-aug)) buffer buffer ,a) (list expr))r)r)))
+  (\ r (with-vars (a) (`(function ((list expr) (list initializer) (hash-table string bndg-aug) buffer buffer ,a) (list expr))r)r)))
 
 (function generate-metaprogram (exprs inits bindings buf :b handler)
   (substitute (.. buf handler)

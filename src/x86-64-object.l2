@@ -193,10 +193,10 @@
   updating. updates is a list of bindings representing the updates that need to be applied
   to obj.)
 
-(constrain mutate-bindings (\ r (`(function (obj (list bndg-aug)) ())r)))
+(constrain mutate-bindings (\ r (`(function (obj (hash-table string bndg-aug)) ())r)))
 
 (function mutate-bindings (obj updates) (do
-  (foreach (update updates)
+  (ht-foreach (update-name update updates)
     (until (sec-idx #0) [= sec-idx (@ e-shnum(@ obj-ehdr obj))] [+ sec-idx #1]
       (let (shdr-buf (loc (elf64-shdr) sec-idx (@ obj-shdrs obj)))
       (if [= (@ sh-type shdr-buf) (sht-symtab)]
@@ -214,10 +214,9 @@
 
 (ignore Returns the bindings in the given object.)
 
-(constrain bindings (\ r (with-vars (a b) (`(function (,a obj buffer ,b) (list bndg-aug))r)r)))
+(constrain bindings (\ r (with-vars (a b) (`(function (,a obj (hash-table string bndg-aug) buffer ,b) (hash-table string bndg-aug))r)r)))
 
-(function bindings (flag obj reg handler)
-  (let (syms (storage _ nil)) (do
+(function bindings (flag obj ht reg handler) (do
   (until (sec-idx #0) [= sec-idx (@ e-shnum(@ obj-ehdr obj))] [+ sec-idx #1]
     (let (shdr-buf (loc (elf64-shdr) sec-idx (@ obj-shdrs obj)))
     (if [= (@ sh-type shdr-buf) (sht-symtab)]
@@ -228,24 +227,24 @@
         (if (and [= (not(not(or [= (@ st-shndx sym) (shn-undef)] [= (@ st-shndx sym) (shn-common)]))) flag]
             (or [= (elf64-st-bind (@ st-info sym)) (stb-global)]
               [= (elf64-st-bind (@ st-info sym)) (stb-weak)]))
-          [prepend [make-binding [name-of obj shdr-buf sym] (@ st-value sym) reg handler] syms
+          [ht-put [name-of obj shdr-buf sym] [make-binding [name-of obj shdr-buf sym] (@ st-value sym) reg handler] ht
             reg handler] (ignore)))))) (ignore))))
-  $syms)))
+  ht))
 
 (ignore
   Returns a list of the mutable bindings in the given object. obj is the object whose
   mutable bindings are being queried. reg is the buffer in which the list of mutable
   bindings will be constructed. Return value is the list of mutable bindings.)
 
-(constrain mutable-bindings (\ r (with-vars (b) (`(function (obj buffer ,b) (list bndg-aug))r)r)))
+(constrain mutable-bindings (\ r (with-vars (b) (`(function (obj (hash-table string bndg-aug) buffer ,b) (hash-table string bndg-aug))r)r)))
 
-(function mutable-bindings (obj reg handler) [bindings #1 obj reg handler])
+(function mutable-bindings (obj ht reg handler) [bindings #1 obj ht reg handler])
 
 (ignore Analogous to above.)
 
-(constrain immutable-bindings (\ r (with-vars (b) (`(function (obj buffer ,b) (list bndg-aug))r)r)))
+(constrain immutable-bindings (\ r (with-vars (b) (`(function (obj (hash-table string bndg-aug) buffer ,b) (hash-table string bndg-aug))r)r)))
 
-(function immutable-bindings (obj reg handler) [bindings #0 obj reg handler])
+(function immutable-bindings (obj ht reg handler) [bindings #0 obj ht reg handler])
 
 (ignore
   Returns the address of the segment of the given object that has a particular name. obj
