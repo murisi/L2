@@ -361,9 +361,14 @@
 (ignore
   A macro to produce the address of an element of a multi-dimensional array.
   For example, (loc(unit) #4 $arr) gets the address corresponding to unit 4
-  from $arr.)
+  from $arr. The signature of the expression is the same as that of the base.)
 
-(function loc (l r) (`[+ [* (,[@fst l]) (,[@frst l])] (,[@frrst l])]r))
+(function loc (l r)
+  (`(with loc:return
+      (let (loc:base (,[@frrst l]))
+        {(constrain (continuation loc:cont (base val) {loc:return val})
+            (\ r (with-vars (a) (`(continuation (,a ,a))r)r)))
+          loc:base [+ [* (,[@fst l]) (,[@frst l])] loc:base]}))r))
 
 (ignore
   A macro for partial macro application. Does the following transformation:
