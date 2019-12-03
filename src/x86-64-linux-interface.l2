@@ -149,16 +149,12 @@
       {handler (storage _ file-access-error path)}
       ret)))
 
-(constrain null-string (\ r (` string r)))
-
-(storage null-string (ignore))
-
 (constrain print (\ r (with-vars (a b c e) (`(function (fd ,a ,b ,c) ,e)r)r)))
 
 (function print (fd d len handler)
   (let (ret [syscall (sys-write) fd d len (ignore) (ignore) (ignore)])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
-      {handler (storage _ file-access-error null-string)}
+      {handler (storage _ file-access-error empty-string)}
       ret)))
 
 (constrain print-str (\ r (with-vars (b e) (`(function (fd string ,b) ,e)r)r)))
@@ -233,7 +229,7 @@
 (function read (fd buf cnt handler)
   (let (ret [syscall (sys-read) fd buf cnt (ignore) (ignore) (ignore)])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
-      {handler (storage _ file-access-error null-string)}
+      {handler (storage _ file-access-error empty-string)}
       ret)))
 
 (constrain close (\ r (with-vars (a c) (`(function (fd ,a) ,c)r)r)))
@@ -241,7 +237,7 @@
 (function close (fd handler)
   (let (ret [syscall (sys-close) fd (ignore) (ignore) (ignore) (ignore) (ignore)])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
-      {handler (storage _ file-access-error null-string)}
+      {handler (storage _ file-access-error empty-string)}
       ret)))
 
 (constrain size (\ r (with-vars (a c) (`(function (fd ,a) ,c)r)r)))
@@ -251,7 +247,7 @@
     (ignore)(ignore)(ignore)(ignore)(ignore)(ignore)(ignore)(ignore)(ignore)))
   (let (ret [syscall (sys-fstat) fd statbuf (ignore) (ignore) (ignore) (ignore)])
     (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
-      {handler (storage _ file-access-error null-string)}
+      {handler (storage _ file-access-error empty-string)}
       [get [+ statbuf #48]]))))
 
 (storage memory-access-error (ignore))
