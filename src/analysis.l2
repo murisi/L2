@@ -233,8 +233,8 @@
 (constrain assign-binding (\ r (with-vars (a) (`(function (expr (hash-table string bndg-aug)) ,a)r)r)))
 
 (function assign-binding (s bindings)
-  (if [ht-contains (@ expr-name s) bindings]
-    (do (setf expr-reference s [ht-get (@ expr-name s) bindings]) (true))
+  (bind-if [ht-contains (@ expr-name s) bindings bndg]
+    (bndg) (do (setf expr-reference s $bndg) (true))
     (false)))
 
 (constrain link-symbols
@@ -671,8 +671,8 @@
           If the expression, s, is a mere symbol, then we can just lookup its value in
           the bindings list instead of preprocessing, compiling, and then evaluating
           the expression.)
-        (if [ht-contains (@ expr-name s) bindings]
-          (@ bndg-offset [ht-get (@ expr-name s) bindings])
+        (bind-if [ht-contains (@ expr-name s) bindings bndg]
+          (bndg) (@ bndg-offset $bndg)
           {handler (storage _ undefined-symbol-error (@ expr-name s))}))
       (do
         (let (expr-container [make-function empty-string nil s null-fragment null-expr ..])

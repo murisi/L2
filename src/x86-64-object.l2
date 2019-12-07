@@ -203,11 +203,11 @@
       (let (syms-buf ($(loc (unit) sec-idx (@ obj-syms obj))))
       (until (sym-idx #1) [= sym-idx symnum] [+ sym-idx #1]
         (let (sym (loc (elf64-sym) sym-idx syms-buf))
-        (if (and [ht-contains [name-of obj shdr-buf sym] updates]
+        (bind-if (and [ht-contains [name-of obj shdr-buf sym] updates bndg]
             (or [= (@ st-shndx sym) (shn-undef)] [= (@ st-shndx sym) (shn-common)])
             (or [= (elf64-st-bind (@ st-info sym)) (stb-global)]
               [= (elf64-st-bind (@ st-info sym)) (stb-weak)]))
-          (setf st-value sym (@ bndg-offset [ht-get [name-of obj shdr-buf sym] updates])) (ignore)))))) (ignore))))
+          (bndg) (setf st-value sym (@ bndg-offset $bndg)) (ignore)))))) (ignore))))
   (ignore If obj was created using load, the following invocation cannot produce an error; hence the unspecified handler arguments.)
   [do-relocations obj (ignore)]))
 

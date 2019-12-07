@@ -71,9 +71,9 @@
     [ht-resize ht ..]
     ht)))))
 
-(constrain ht-contains (\ r (with-vars (a b d) (`(function (,a (hash-table ,a ,b)) ,d)r)r)))
+(constrain ht-contains (\ r (with-vars (a b d) (`(function (,a (hash-table ,a ,b) (ref ,b)) ,d)r)r)))
 
-(function ht-contains (key ht)
+(function ht-contains (key ht out)
   (let (bucket-idx [rem [(@ ht-hash-func ht) key] (@ ht-bucket-count ht)])
   (let (bucket ($(loc(unit)bucket-idx(@ ht-values ht))))
   (loop find-end (bucket bucket)
@@ -81,7 +81,7 @@
       (false)
       (bind (k v) [@car bucket]
         (if [(@ ht-equals-func ht) key k]
-          (true)
+          (do [set out v] (true))
           {find-end [@cdr bucket]})))))))
 
 (constrain ht-get (\ r (with-vars (a b) (`(function (,a (hash-table ,a ,b)) ,b)r)r)))
