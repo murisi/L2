@@ -23,6 +23,7 @@
 .global band
 .global bor
 .global bnot
+.global bxor
 .global syscall
 .global cast
 
@@ -137,6 +138,11 @@ ret
 bor:
 movq %rdi, %rax
 orq %rsi, %rax
+ret
+
+bxor:
+movq %rdi, %rax
+xorq %rsi, %rax
 ret
 
 bnot:
