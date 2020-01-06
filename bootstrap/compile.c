@@ -15,7 +15,7 @@ typedef unsigned long int bool;
 #include "x86_64_generator.c"
 #include "x86_64_assembler.c"
 
-list compile_program(list exprs, list *undefined_bindings, list *static_bindings, buffer expr_buf, jumpbuf *handler) {
+list compile_program(list exprs, list *undefined_bindings, list *static_bindings, region expr_buf, jumpbuf *handler) {
   *static_bindings = nil;
   *undefined_bindings = nil;
   list global_bindings = global_binding_augs_of(exprs, expr_buf);
@@ -32,7 +32,7 @@ list compile_program(list exprs, list *undefined_bindings, list *static_bindings
   return generate_program(exprs, expr_buf);
 }
 
-Object *load_program(list exprs, buffer expr_buf, buffer obj_buf, jumpbuf *handler) {
+Object *load_program(list exprs, region expr_buf, region obj_buf, jumpbuf *handler) {
   list static_bindings, undefined_bindings;
   list asms = compile_program(exprs, &undefined_bindings, &static_bindings, expr_buf, handler);
   unsigned char *objdest; int objdest_sz;
@@ -46,23 +46,23 @@ bool binding_equals(struct binding *bndg1, struct binding *bndg2) {
   return !strcmp(bndg1->name, bndg2->name);
 }
 
-Object *load_program_and_mutate(list exprs, list bindings, buffer expr_buf, buffer obj_buf, jumpbuf *handler) {
+Object *load_program_and_mutate(list exprs, list bindings, region expr_buf, region obj_buf, jumpbuf *handler) {
   Object *obj = load_program(exprs, expr_buf, obj_buf, handler);
-  buffer temp_reg = create_buffer(0);
+  region temp_reg = create_region(0);
   list ms = mutable_bindings(obj, temp_reg);
   struct binding_aug *missing_bndg = not_subset((bool (*)(void *, void *)) binding_equals, ms, bindings);
   if(missing_bndg) {
     throw_undefined_symbol(missing_bndg->name, handler);
   }
-  destroy_buffer(temp_reg);
+  destroy_region(temp_reg);
   mutate_bindings(obj, bindings);
   return obj;
 }
 
-list read_expressions(unsigned char *src, buffer expr_buf, jumpbuf *handler) {
+list read_expressions(unsigned char *src, region expr_buf, jumpbuf *handler) {
   int fd = open(src, handler);
   long int src_sz = size(fd);
-  unsigned char *src_buf = buffer_alloc(expr_buf, src_sz);
+  unsigned char *src_buf = region_alloc(expr_buf, src_sz);
   read(fd, src_buf, src_sz);
   close(fd);
   
@@ -74,7 +74,7 @@ list read_expressions(unsigned char *src, buffer expr_buf, jumpbuf *handler) {
   return expressions;
 }
 
-void evaluate_files(list source_fns, list object_fns, list *bindings, buffer expr_buf, buffer obj_buf, jumpbuf *handler) {
+void evaluate_files(list source_fns, list object_fns, list *bindings, region expr_buf, region obj_buf, jumpbuf *handler) {
   list objects = nil;
   char *fn;
   {foreach(fn, source_fns) {
@@ -94,7 +94,7 @@ void evaluate_files(list source_fns, list object_fns, list *bindings, buffer exp
     
     int obj_fd = open(fn, handler);
     long int obj_sz = size(obj_fd);
-    unsigned char *buf = buffer_alloc(obj_buf, obj_sz);
+    unsigned char *buf = region_alloc(obj_buf, obj_sz);
     read(obj_fd, buf, obj_sz);
     close(obj_fd);
     
@@ -109,7 +109,7 @@ void evaluate_files(list source_fns, list object_fns, list *bindings, buffer exp
   }}
 }
 
-void compile_files(list file_names, list bndgs, buffer expr_buf, buffer obj_buf, jumpbuf *handler) {
+void compile_files(list file_names, list bndgs, region expr_buf, region obj_buf, jumpbuf *handler) {
   char *infn;
   list file_exprss = nil, all_exprs = nil;
   foreach(infn, file_names) {
@@ -139,7 +139,7 @@ void compile_files(list file_names, list bndgs, buffer expr_buf, buffer obj_buf,
     list asms = compile_program(exprs, &undefined_bindings, &static_bindings, expr_buf, handler);
     unsigned char *objdest; int objdest_sz;
     write_elf(asms, undefined_bindings, static_bindings, &objdest, &objdest_sz, obj_buf);
-    char *outfn = buffer_alloc(obj_buf, strlen(infn) + 1);
+    char *outfn = region_alloc(obj_buf, strlen(infn) + 1);
     strcpy(outfn, infn);
     char *dot = strrchr(outfn, '.');
     strcpy(dot, ".o");
@@ -162,10 +162,10 @@ list _rst_(list l) {
 int main(int argc, char *argv[]) {
   //Initialize the error handler
   jumpbuf evaluate_handler;
-  buffer evaluate_buffer = evaluate_handler.ctx = create_buffer(0);
+  region evaluate_region = evaluate_handler.ctx = create_region(0);
   setjump(&evaluate_handler);
   
-  if(evaluate_handler.ctx != evaluate_buffer) {
+  if(evaluate_handler.ctx != evaluate_region) {
     union evaluate_error *err = (union evaluate_error *) evaluate_handler.ctx;
     write_str(STDOUT, "Error found: ");
     switch(err->arguments.type) {
@@ -338,8 +338,8 @@ int main(int argc, char *argv[]) {
     {.name = "var", .address = var}
   };
   
-  buffer obj_buf = create_buffer(0);
-  buffer expr_buf = create_buffer(0);
+  region obj_buf = create_region(0);
+  region expr_buf = create_region(0);
   list bndgs = nil;
   
   int i, j;
@@ -357,13 +357,13 @@ int main(int argc, char *argv[]) {
   list source_fns = nil, intrinsic_fns = nil, object_fns = nil;
   int k;
   for(k = 1; k < i; k++) {
-    append(argv[k], &source_fns, evaluate_buffer);
+    append(argv[k], &source_fns, evaluate_region);
   }
   for(k = i+1; k < j; k++) {
-    append(argv[k], &intrinsic_fns, evaluate_buffer);
+    append(argv[k], &intrinsic_fns, evaluate_region);
   }
   for(k = j+1; k < argc; k++) {
-    append(argv[k], &object_fns, evaluate_buffer);
+    append(argv[k], &object_fns, evaluate_region);
   }
   
   char *intrinsic_fn;
@@ -373,7 +373,7 @@ int main(int argc, char *argv[]) {
   evaluate_files(source_fns, object_fns, &bndgs, expr_buf, obj_buf, &evaluate_handler);
   compile_files(source_fns, bndgs, expr_buf, obj_buf, &evaluate_handler);
   
-  destroy_buffer(expr_buf);
-  destroy_buffer(obj_buf);
+  destroy_region(expr_buf);
+  destroy_region(obj_buf);
   return 0;
 }

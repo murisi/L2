@@ -77,19 +77,19 @@ void do_relocations(Object *obj) {
  * Store the relocation addends because we may want to do several relocations on
  * the object files.
  */
-void store_addends(Object *obj, buffer reg, jumpbuf *handler) {
+void store_addends(Object *obj, region reg, jumpbuf *handler) {
   int sec;
   for(sec = 0; sec < obj->ehdr->e_shnum; sec++) {
     if(obj->shdrs[sec].sh_type == SHT_RELA) {
       int relanum = obj->shdrs[sec].sh_size / obj->shdrs[sec].sh_entsize;
-      obj->addends[sec] = buffer_alloc(reg, relanum * sizeof(Elf64_Sxword));
+      obj->addends[sec] = region_alloc(reg, relanum * sizeof(Elf64_Sxword));
       int rela;
       for(rela = 0; rela < relanum; rela++) {
         obj->addends[sec][rela] = obj->relas[sec][rela].r_addend;
       }
     } else if(obj->shdrs[sec].sh_type == SHT_REL) {
       int relnum = obj->shdrs[sec].sh_size / obj->shdrs[sec].sh_entsize;
-      obj->addends[sec] = buffer_alloc(reg, relnum * sizeof(Elf64_Sxword));
+      obj->addends[sec] = region_alloc(reg, relnum * sizeof(Elf64_Sxword));
       int rel;
       for(rel = 0; rel < relnum; rel++) {
         switch(ELF64_R_TYPE(obj->relas[sec][rel].r_info)) {
@@ -156,9 +156,9 @@ void offsets_to_addresses(Object *obj) {
  * at address mem and require the amount of memory stated by
  * object_required_memory. Returns a handle to manipulate the loaded object.
  */
-Object *read_object(unsigned char *objsrc, int objsrc_sz, buffer reg, jumpbuf *handler) {
-  Object *obj = buffer_alloc(reg, sizeof(Object));
-  obj->ehdr = buffer_alloc(reg, sizeof(Elf64_Ehdr));
+Object *read_object(unsigned char *objsrc, int objsrc_sz, region reg, jumpbuf *handler) {
+  Object *obj = region_alloc(reg, sizeof(Object));
+  obj->ehdr = region_alloc(reg, sizeof(Elf64_Ehdr));
   if(objsrc_sz < sizeof(Elf64_Ehdr)) throw_object(handler);
   memcpy(obj->ehdr, objsrc, sizeof(Elf64_Ehdr));
   if(!(obj->ehdr->e_ident[EI_MAG0] == ELFMAG0 && obj->ehdr->e_ident[EI_MAG1] == ELFMAG1 &&
@@ -166,30 +166,30 @@ Object *read_object(unsigned char *objsrc, int objsrc_sz, buffer reg, jumpbuf *h
     obj->ehdr->e_ident[EI_CLASS] == ELFCLASS64 && obj->ehdr->e_ident[EI_DATA] == ELFDATA2LSB))
       throw_object(handler);
   
-  obj->shdrs = buffer_alloc(reg, obj->ehdr->e_shnum * sizeof(Elf64_Shdr));
-  obj->syms = buffer_alloc(reg, obj->ehdr->e_shnum * sizeof(Elf64_Sym *));
-  obj->relas = buffer_alloc(reg, obj->ehdr->e_shnum * sizeof(Elf64_Rela *));
-  obj->addends = buffer_alloc(reg, obj->ehdr->e_shnum * sizeof(Elf64_Sxword *));
-  obj->segs = buffer_alloc(reg, obj->ehdr->e_shnum * sizeof(void *));
+  obj->shdrs = region_alloc(reg, obj->ehdr->e_shnum * sizeof(Elf64_Shdr));
+  obj->syms = region_alloc(reg, obj->ehdr->e_shnum * sizeof(Elf64_Sym *));
+  obj->relas = region_alloc(reg, obj->ehdr->e_shnum * sizeof(Elf64_Rela *));
+  obj->addends = region_alloc(reg, obj->ehdr->e_shnum * sizeof(Elf64_Sxword *));
+  obj->segs = region_alloc(reg, obj->ehdr->e_shnum * sizeof(void *));
   
   int sec;
   for(sec = 0; sec < obj->ehdr->e_shnum; sec++) {
     memcpy(&obj->shdrs[sec], objsrc + obj->ehdr->e_shoff + (obj->ehdr->e_shentsize * sec), sizeof(Elf64_Shdr));
-    obj->segs[sec] = buffer_alloc(reg, obj->shdrs[sec].sh_size);
+    obj->segs[sec] = region_alloc(reg, obj->shdrs[sec].sh_size);
     if(obj->shdrs[sec].sh_type != SHT_NOBITS) {
       memcpy(obj->segs[sec], objsrc + obj->shdrs[sec].sh_offset, obj->shdrs[sec].sh_size);
     }
     
     if(obj->shdrs[sec].sh_type == SHT_SYMTAB) {
       int symnum = obj->shdrs[sec].sh_size / obj->shdrs[sec].sh_entsize;
-      obj->syms[sec] = buffer_alloc(reg, symnum * sizeof(Elf64_Sym));
+      obj->syms[sec] = region_alloc(reg, symnum * sizeof(Elf64_Sym));
       int sym;
       for(sym = 0; sym < symnum; sym++) {
         memcpy(&obj->syms[sec][sym], obj->segs[sec] + (obj->shdrs[sec].sh_entsize * sym), sizeof(Elf64_Sym));
       }
     } else if(obj->shdrs[sec].sh_type == SHT_RELA || obj->shdrs[sec].sh_type == SHT_REL) {
       int relanum = obj->shdrs[sec].sh_size / obj->shdrs[sec].sh_entsize;
-      obj->relas[sec] = buffer_alloc(reg, relanum * sizeof(Elf64_Rela));
+      obj->relas[sec] = region_alloc(reg, relanum * sizeof(Elf64_Rela));
       int rela;
       for(rela = 0; rela < relanum; rela++) {
         memcpy(&obj->relas[sec][rela], obj->segs[sec] + (obj->shdrs[sec].sh_entsize * rela),
@@ -209,7 +209,7 @@ Object *read_object(unsigned char *objsrc, int objsrc_sz, buffer reg, jumpbuf *h
  * object code now has a concrete address in memory. Returns a handle to
  * manipulate the loaded object.
  */
-Object *load(unsigned char *objsrc, int objsrc_sz, buffer reg, jumpbuf *handler) {
+Object *load(unsigned char *objsrc, int objsrc_sz, region reg, jumpbuf *handler) {
   Object *obj = read_object(objsrc, objsrc_sz, reg, handler);
   offsets_to_addresses(obj);
   store_addends(obj, reg, handler);
@@ -226,8 +226,8 @@ struct binding {
   void *address;
 };
 
-struct binding *make_binding(char *nm, void *addr, buffer r) {
-  struct binding *sym = buffer_alloc(r, sizeof(struct binding));
+struct binding *make_binding(char *nm, void *addr, region r) {
+  struct binding *sym = region_alloc(r, sizeof(struct binding));
   sym->name = nm;
   sym->address = addr;
   return sym;
@@ -259,7 +259,7 @@ void mutate_bindings(Object *obj, list updates) {
   do_relocations(obj);
 }
 
-list bindings(int flag, Object *obj, buffer reg) {
+list bindings(int flag, Object *obj, region reg) {
   list syms = nil;
   int sec;
   for(sec = 0; sec < obj->ehdr->e_shnum; sec++) {
@@ -270,7 +270,7 @@ list bindings(int flag, Object *obj, buffer reg) {
         if(((obj->syms[sec][sym].st_shndx == SHN_UNDEF || obj->syms[sec][sym].st_shndx == SHN_COMMON) == flag) &&
           (ELF64_ST_BIND(obj->syms[sec][sym].st_info) == STB_GLOBAL ||
           ELF64_ST_BIND(obj->syms[sec][sym].st_info) == STB_WEAK)) {
-            struct binding *bndg = buffer_alloc(reg, sizeof(struct binding));
+            struct binding *bndg = region_alloc(reg, sizeof(struct binding));
             bndg->name = name_of(obj, &obj->shdrs[sec], &obj->syms[sec][sym]);
             bndg->address = (void *) obj->syms[sec][sym].st_value;
             prepend(bndg, &syms, reg);
@@ -284,14 +284,14 @@ list bindings(int flag, Object *obj, buffer reg) {
 /*
  * See the analogous function for mutable bindings.
  */
-list mutable_bindings(Object *obj, buffer reg) {
+list mutable_bindings(Object *obj, region reg) {
   return bindings(1, obj, reg);
 }
 
 /*
  * See the analogous function for mutable bindings.
  */
-list immutable_bindings(Object *obj, buffer reg) {
+list immutable_bindings(Object *obj, region reg) {
   return bindings(0, obj, reg);
 }
 

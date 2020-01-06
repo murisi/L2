@@ -59,7 +59,7 @@ union expression *vfind_multiple_definitions(union expression *e, void *ctx) {
   jumpbuf *handler = ctx;
   union expression *t;
   list *partial;
-  buffer tempreg = create_buffer(0);
+  region tempreg = create_region(0);
   switch(e->base.type) {
     case continuation: case function: {
       list ref_with_params = lst(e->continuation.reference, e->continuation.parameters, tempreg);
@@ -71,7 +71,7 @@ union expression *vfind_multiple_definitions(union expression *e, void *ctx) {
       break;
     }
   }
-  destroy_buffer(tempreg);
+  destroy_region(tempreg);
   return e;
 }
 
@@ -79,7 +79,7 @@ bool reference_equals(union expression *a, union expression *b) {
   return a == b || (a->symbol.name && b->symbol.name && !strcmp(a->symbol.name, b->symbol.name));
 }
 
-list global_binding_augs_of(list exprs, buffer r) {
+list global_binding_augs_of(list exprs, region r) {
   list binding_augs = nil;
   union expression *t;
   foreach(t, exprs) {
@@ -112,7 +112,7 @@ bool assign_binding(union expression *s, list bindings) {
   return false;
 }
 
-void link_symbols(union expression *s, bool static_storage, list *undefined_bindings, list static_bindings, list dynamic_bindings, buffer r) {
+void link_symbols(union expression *s, bool static_storage, list *undefined_bindings, list static_bindings, list dynamic_bindings, region r) {
   list *bindings = static_storage ? &static_bindings : &dynamic_bindings;
   switch(s->base.type) {
     case function: {
@@ -217,7 +217,7 @@ void escape_analysis(union expression *s, bool escaping) {
   }
 }
 
-union expression *vfind_dependencies(union expression *s, buffer r) {
+union expression *vfind_dependencies(union expression *s, region r) {
   switch(s->base.type) {
     case _if: {
       prepend(s->_if.condition, &s->_if.dependencies, r);
@@ -248,7 +248,7 @@ union expression *vfind_dependencies(union expression *s, buffer r) {
   return s;
 }
 
-void construct_sccs(union expression *s, int preorder, list *stack, list *sccs, buffer r) {
+void construct_sccs(union expression *s, int preorder, list *stack, list *sccs, region r) {
   if(s->function.lowlink == 0) {
     list marker = *stack;
     s->function.lowlink = preorder;
@@ -329,7 +329,7 @@ bool unify(list x, list y) {
   }
 }
 
-list scoped_signature(union expression *e, list scc, buffer reg) {
+list scoped_signature(union expression *e, list scc, region reg) {
   if(exists(equals, &scc, e)) {
     return e->base.signature;
   } else {
@@ -338,7 +338,7 @@ list scoped_signature(union expression *e, list scc, buffer reg) {
   }
 }
 
-void infer_types(list exprs, buffer expr_buf, jumpbuf *handler) {
+void infer_types(list exprs, region expr_buf, jumpbuf *handler) {
   // These (parameterized) types are the only ones built into L2
   list function_token = build_token("function", expr_buf);
   list continuation_token = build_token("continuation", expr_buf);
@@ -518,11 +518,11 @@ void classify_program_binding_augs(union expression *expr) {
   }
 }
 
-Object *load_program_and_mutate(list exprs, list bindings, buffer expr_buf, buffer obj_buf, jumpbuf *handler);
+Object *load_program_and_mutate(list exprs, list bindings, region expr_buf, region obj_buf, jumpbuf *handler);
 
-list generate_metaprogram(list exprs, list *bindings, buffer expr_buf, buffer obj_buf, jumpbuf *handler);
+list generate_metaprogram(list exprs, list *bindings, region expr_buf, region obj_buf, jumpbuf *handler);
 
-void *preprocessed_expression_address(union expression *s, list bindings, buffer expr_buf, buffer obj_buf, jumpbuf *handler) {
+void *preprocessed_expression_address(union expression *s, list bindings, region expr_buf, region obj_buf, jumpbuf *handler) {
   if(s->base.type == symbol) {
     struct binding *bndg;
     foreach(bndg, bindings) {
@@ -544,14 +544,14 @@ void *preprocessed_expression_address(union expression *s, list bindings, buffer
 
 union expression *vgenerate_metas(union expression *s, void *ctx) {
   jumpbuf *handler = ((void **) ctx)[2];
-  buffer expr_buf = ((void **) ctx)[1];
+  region expr_buf = ((void **) ctx)[1];
   list bindings = ((void **) ctx)[0];
   
   if(s->base.type == meta) {
-    list (*macro)(list, buffer) = preprocessed_expression_address(s->meta.reference, bindings, expr_buf, expr_buf, handler);
+    list (*macro)(list, region) = preprocessed_expression_address(s->meta.reference, bindings, expr_buf, expr_buf, handler);
     return vgenerate_metas(build_expression(macro(s->meta.fragment->rst, expr_buf), s, expr_buf, handler), ctx);
   } else if(s->base.type == constrain) {
-    list (*macro)(buffer) = preprocessed_expression_address(s->constrain.reference, bindings, expr_buf, expr_buf, handler);
+    list (*macro)(region) = preprocessed_expression_address(s->constrain.reference, bindings, expr_buf, expr_buf, handler);
     s->constrain.signature = macro(expr_buf);
     return s;
   } else {
@@ -559,7 +559,7 @@ union expression *vgenerate_metas(union expression *s, void *ctx) {
   }
 }
 
-void *init_function(union expression *function_expr, list *bindings, buffer expr_buf, buffer obj_buf, jumpbuf *handler, void **cache) {
+void *init_function(union expression *function_expr, list *bindings, region expr_buf, region obj_buf, jumpbuf *handler, void **cache) {
   if(*cache) {
     return *cache;
   } else {
@@ -570,11 +570,11 @@ void *init_function(union expression *function_expr, list *bindings, buffer expr
   }
 }
 
-list generate_metaprogram(list exprs, list *bindings, buffer expr_buf, buffer obj_buf, jumpbuf *handler) {
+list generate_metaprogram(list exprs, list *bindings, region expr_buf, region obj_buf, jumpbuf *handler) {
   union expression *s;
   list c = nil;
   foreach(s, exprs) {
-    void **cache = buffer_alloc(obj_buf, sizeof(void *));
+    void **cache = region_alloc(obj_buf, sizeof(void *));
     *cache = NULL;
     if(s->base.type == function) {
       list params = nil, args = nil;

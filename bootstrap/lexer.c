@@ -45,7 +45,7 @@ struct character chars[][1] = {
 
 #define _char(d) (chars[d])
 
-list build_token(char *str, buffer r) {
+list build_token(char *str, region r) {
   list sexprs = nil;
   for(; *str; str++) {
     append(_char(*str), &sexprs, r);
@@ -58,9 +58,9 @@ int after_leading_space(char *l2src, int l2src_sz, int *pos) {
   return l2src_sz - *pos;
 }
 
-list build_fragment(char *l2src, int l2src_sz, int *pos, buffer r, jumpbuf *handler);
+list build_fragment(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler);
 
-list build_sigilled_token(char *sigil, char *l2src, int l2src_sz, int *pos, buffer r, jumpbuf *handler) {
+list build_sigilled_token(char *sigil, char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
   if(l2src_sz == *pos) {
     return build_token(sigil, r);
   }
@@ -75,7 +75,7 @@ list build_sigilled_token(char *sigil, char *l2src, int l2src_sz, int *pos, buff
   }
 }
 
-list build_fragment_list(char *primitive, char delimiter, char *l2src, int l2src_sz, int *pos, buffer r, jumpbuf *handler) {
+list build_fragment_list(char *primitive, char delimiter, char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
   list sexprs = nil;
   append(build_token(primitive, r), &sexprs, r);
   
@@ -90,7 +90,7 @@ list build_fragment_list(char *primitive, char delimiter, char *l2src, int l2src
   return sexprs;
 }
 
-list build_fragment(char *l2src, int l2src_sz, int *pos, buffer r, jumpbuf *handler) {
+list build_fragment(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
   if(l2src_sz == *pos) {
     throw_unexpected_character(0, *pos, handler);
   }
@@ -129,8 +129,8 @@ bool is_token(list d) {
   return !is_var(d) && length(d) && !((struct character *) d->fst)->flag;
 }
 
-char *to_string(list d, buffer r) {
-  char *str = buffer_alloc(r, (length(d) + 1) * sizeof(char));
+char *to_string(list d, region r) {
+  char *str = region_alloc(r, (length(d) + 1) * sizeof(char));
   int i = 0;
   
   struct character *t;
@@ -154,8 +154,8 @@ bool token_equals(list a, list b) {
   return true;
 }
 
-list var(buffer reg) {
-  list ret = buffer_alloc(reg, sizeof(struct _list_));
+list var(region reg) {
+  list ret = region_alloc(reg, sizeof(struct _list_));
   ret->fst = ret;
   ret->rst = ret;
   return ret;
@@ -169,7 +169,7 @@ list evaluate(list val) {
   return val;
 }
 
-list recursive_evaluate(list fragment, buffer reg) {
+list recursive_evaluate(list fragment, region reg) {
   list d = evaluate(fragment);
   if(is_var(d) || is_token(d)) {
     return d;
@@ -182,7 +182,7 @@ list recursive_evaluate(list fragment, buffer reg) {
   }
 }
 
-list copy_fragment(list l, list *old_vars, list *new_vars, buffer r) {
+list copy_fragment(list l, list *old_vars, list *new_vars, region r) {
   if(is_var(l)) {
     list ov, nv;
     foreachzipped(ov, nv, *old_vars, *new_vars) {

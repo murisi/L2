@@ -45,7 +45,7 @@
 #define CONT_CIR (1*WORD_SIZE)
 #define CONT_RBP (0*WORD_SIZE)
 
-void layout_frames(union expression *n, list *binding_augs, buffer r) {
+void layout_frames(union expression *n, list *binding_augs, region r) {
   switch(n->base.type) {
     case function: {
       layout_frames(n->function.expression, &n->function.binding_augs, r);
@@ -117,7 +117,7 @@ void layout_frames(union expression *n, list *binding_augs, buffer r) {
   }
 }
 
-void make_load(struct binding_aug *bndg, unsigned long offset, union expression *dest_reg, union expression *scratch_reg, list *c, buffer r) {
+void make_load(struct binding_aug *bndg, unsigned long offset, union expression *dest_reg, union expression *scratch_reg, list *c, region r) {
   switch(bndg->type) {
     case frame_relative_storage: {
       prepend(make_asm3(MOVQ_MDB_TO_REG, make_literal(bndg->offset + offset, NULL, NULL, r), make_asm0(RBP, r), dest_reg, r), c, r);
@@ -134,7 +134,7 @@ void make_load(struct binding_aug *bndg, unsigned long offset, union expression 
   }
 }
 
-void make_store(union expression *src_reg, struct binding_aug *bndg, unsigned long offset, union expression *scratch_reg, list *c, buffer r) {
+void make_store(union expression *src_reg, struct binding_aug *bndg, unsigned long offset, union expression *scratch_reg, list *c, region r) {
   switch(bndg->type) {
     case frame_relative_storage: {
       prepend(make_asm3(MOVQ_REG_TO_MDB, src_reg, make_literal(bndg->offset + offset, NULL, NULL, r), make_asm0(RBP, r), r), c, r);
@@ -151,9 +151,9 @@ void make_store(union expression *src_reg, struct binding_aug *bndg, unsigned lo
   }
 }
 
-void generate_expressions(union expression *n, list *c, buffer r);
+void generate_expressions(union expression *n, list *c, region r);
 
-void sgenerate_ifs(union expression *n, list *c, buffer r) {
+void sgenerate_ifs(union expression *n, list *c, region r) {
   generate_expressions(n->_if.condition, c, r);
   prepend(make_asm2(ORQ_REG_TO_REG, make_asm0(RAX, r), make_asm0(RAX, r), r), c, r);
   
@@ -167,7 +167,7 @@ void sgenerate_ifs(union expression *n, list *c, buffer r) {
   prepend(make_asm1(LABEL, use_binding(end_binding, r), r), c, r);
 }
 
-void make_load_address(struct binding_aug *bndg, union expression *dest_reg, list *c, buffer r) {
+void make_load_address(struct binding_aug *bndg, union expression *dest_reg, list *c, region r) {
   switch(bndg->type) {
     case frame_relative_storage: {
       prepend(make_asm3(LEAQ_MDB_TO_REG, make_literal(bndg->offset, NULL, NULL, r), make_asm0(RBP, r), dest_reg, r), c, r);
@@ -182,7 +182,7 @@ void make_load_address(struct binding_aug *bndg, union expression *dest_reg, lis
   }
 }
 
-void sgenerate_storage_expressions(union expression *n, list *c, buffer r) {
+void sgenerate_storage_expressions(union expression *n, list *c, region r) {
   int offset = 0;
   union expression *t;
   foreach(t, n->storage.arguments) {
@@ -193,7 +193,7 @@ void sgenerate_storage_expressions(union expression *n, list *c, buffer r) {
   make_load_address(n->storage.reference->symbol.binding_aug, make_asm0(RAX, r), c, r);
 }
 
-void sgenerate_symbols(union expression *n, list *c, buffer r) {
+void sgenerate_symbols(union expression *n, list *c, region r) {
   union expression *target_expr = n->symbol.binding_aug->expression;
   if((target_expr->base.type == function || target_expr->base.type == continuation) &&
     exists(equals, &target_expr->function.parameters, n->symbol.binding_aug->symbol)) {
@@ -203,7 +203,7 @@ void sgenerate_symbols(union expression *n, list *c, buffer r) {
   }
 }
 
-void make_store_continuation(union expression *n, list *c, buffer r) {
+void make_store_continuation(union expression *n, list *c, region r) {
   make_store(make_asm0(RBX, r), n->continuation.reference->symbol.binding_aug, CONT_RBX, make_asm0(R11, r), c, r);
   make_store(make_asm0(R12, r), n->continuation.reference->symbol.binding_aug, CONT_R12, make_asm0(R11, r), c, r);
   make_store(make_asm0(R13, r), n->continuation.reference->symbol.binding_aug, CONT_R13, make_asm0(R11, r), c, r);
@@ -214,19 +214,19 @@ void make_store_continuation(union expression *n, list *c, buffer r) {
   make_store(make_asm0(RBP, r), n->continuation.reference->symbol.binding_aug, CONT_RBP, make_asm0(R11, r), c, r);
 }
 
-void cond_push_relative_storage(union expression *n, list *c, buffer r) {
+void cond_push_relative_storage(union expression *n, list *c, region r) {
   if(n->jump.temp_storage_bndg->type == top_relative_storage) {
     prepend(make_asm2(SUBQ_IMM_TO_REG, make_literal(length(n->jump.arguments) * WORD_SIZE, NULL, NULL, r), make_asm0(RSP, r), r), c, r);
   }
 }
 
-void cond_pop_relative_storage(union expression *n, list *c, buffer r) {
+void cond_pop_relative_storage(union expression *n, list *c, region r) {
   if(n->jump.temp_storage_bndg->type == top_relative_storage) {
     prepend(make_asm2(ADDQ_IMM_TO_REG, make_literal(length(n->jump.arguments) * WORD_SIZE, NULL, NULL, r), make_asm0(RSP, r), r), c, r);
   }
 }
 
-void generate_args_to_buffer(union expression *n, list *c, buffer r) {
+void generate_args_to_buffer(union expression *n, list *c, region r) {
   int offset = 0;
   union expression *t;
   {foreach(t, n->jump.arguments) {
@@ -236,7 +236,7 @@ void generate_args_to_buffer(union expression *n, list *c, buffer r) {
   }}
 }
 
-void generate_buffer_to_dest(union expression *n, union expression *dest_reg, int offset, list *c, buffer r) {
+void generate_buffer_to_dest(union expression *n, union expression *dest_reg, int offset, list *c, region r) {
   int tmp_offset = 0;
   union expression *t;
   foreach(t, n->jump.arguments) {
@@ -247,7 +247,7 @@ void generate_buffer_to_dest(union expression *n, union expression *dest_reg, in
   }
 }
 
-void sgenerate_continuations(union expression *n, list *c, buffer r) {
+void sgenerate_continuations(union expression *n, list *c, region r) {
   if(n->continuation.escapes) {
     make_load_address(n->continuation.reference->symbol.binding_aug, make_asm0(RAX, r), c, r);
     make_store_continuation(n, c, r);
@@ -261,7 +261,7 @@ void sgenerate_continuations(union expression *n, list *c, buffer r) {
   prepend(make_asm1(LABEL, use_binding(after_binding, r), r), c, r);
 }
 
-void sgenerate_withs(union expression *n, list *c, buffer r) {
+void sgenerate_withs(union expression *n, list *c, region r) {
   if(n->with.escapes) {
     make_store_continuation(n, c, r);
   }
@@ -273,7 +273,7 @@ void sgenerate_withs(union expression *n, list *c, buffer r) {
   prepend(make_asm1(LABEL, use_binding(end_binding, r), r), c, r);
 }
 
-void sgenerate_jumps(union expression *n, list *c, buffer r) {
+void sgenerate_jumps(union expression *n, list *c, region r) {
   if(n->jump.short_circuit) {
     if(n->jump.reference->base.type == continuation) {
       generate_expressions(n->jump.reference, c, r);
@@ -307,7 +307,7 @@ void sgenerate_jumps(union expression *n, list *c, buffer r) {
   }
 }
 
-void sgenerate_literals(union expression *n, list *c, buffer r) {
+void sgenerate_literals(union expression *n, list *c, region r) {
   prepend(make_asm2(MOVQ_IMM_TO_REG, make_literal(n->literal.value, NULL, NULL, r), make_asm0(RAX, r), r), c, r);
 }
 
@@ -319,7 +319,7 @@ int get_current_offset(union expression *function) {
   }
 }
 
-void sgenerate_functions(union expression *n, list *c, buffer r) {
+void sgenerate_functions(union expression *n, list *c, region r) {
   make_load_address(n->function.reference->symbol.binding_aug, make_asm0(RAX, r), c, r);
   
   struct binding_aug *after_binding = make_binding_aug(absolute_storage, local_scope, defined_state, NULL, NULL, NULL, r);
@@ -355,7 +355,7 @@ void sgenerate_functions(union expression *n, list *c, buffer r) {
   prepend(make_asm1(LABEL, use_binding(after_binding, r), r), c, r);
 }
 
-void sgenerate_invokes(union expression *n, list *c, buffer r) {
+void sgenerate_invokes(union expression *n, list *c, region r) {
   //Push arguments onto stack
   cond_push_relative_storage(n, c, r);
   generate_args_to_buffer(n, c, r);
@@ -402,11 +402,11 @@ void sgenerate_invokes(union expression *n, list *c, buffer r) {
   }
 }
 
-void sgenerate_constrains(union expression *n, list *c, buffer r) {
+void sgenerate_constrains(union expression *n, list *c, region r) {
   generate_expressions(n->constrain.expression, c, r);
 }
 
-void generate_expressions(union expression *n, list *c, buffer r) {
+void generate_expressions(union expression *n, list *c, region r) {
   switch(n->base.type) {
     case continuation: {
       sgenerate_continuations(n, c, r);
@@ -442,7 +442,7 @@ void generate_expressions(union expression *n, list *c, buffer r) {
   }
 }
 
-list generate_program(list exprs, buffer r) {
+list generate_program(list exprs, region r) {
   list c = nil;
   union expression *expr;
   foreach(expr, exprs) {
