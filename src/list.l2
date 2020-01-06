@@ -334,30 +334,30 @@
 
 (ignore
   Appends an item to the given list. data is the data that is to be appended. l is a
-  reference to the list that is to be appended to. r is the buffer into which the extension
+  reference to the list that is to be appended to. r is the region into which the extension
   is being placed.)
 
-(constrain append (\ r (with-vars (et b) (`(function (,et (ref (list ,et)) buffer ,b) (ref (list ,et)))r)r)))
+(constrain append (\ r (with-vars (et b) (`(function (,et (ref (list ,et)) region ,b) (ref (list ,et)))r)r)))
 
 (function append (data l r handler)
   (loop next (l l)
     (if (not [nil? $l])
       {next (& cdr $l)}
       (do
-        [set l [buffer-alloc (list-struct) r handler]]
+        [set l [region-alloc (list-struct) r handler]]
         (setf car $l data)
         (setf cdr $l nil)
         (& cdr $l)))))
 
 (ignore
   Makes a new list with the given head and tail. data is what is going to be put at the
-  head. rest is the list that will be the tail of the new list. r is the buffer into which
+  head. rest is the list that will be the tail of the new list. r is the region into which
   the extension is being placed. Return value is the new list.)
 
-(constrain cons (\ r (with-vars (et a) (`(function (,et (list ,et) buffer ,a) (list ,et))r)r)))
+(constrain cons (\ r (with-vars (et a) (`(function (,et (list ,et) region ,a) (list ,et))r)r)))
 
 (function cons (data rest r handler)
-  (let (l [buffer-alloc (list-struct) r handler]) (do
+  (let (l [region-alloc (list-struct) r handler]) (do
     (setf car l data)
     (setf cdr l rest)
     l)))
@@ -376,10 +376,10 @@
 
 (ignore Analogous to append above.)
 
-(constrain prepend (\ r (with-vars (et a) (`(function (,et (ref (list ,et)) buffer ,a) ())r)r)))
+(constrain prepend (\ r (with-vars (et a) (`(function (,et (ref (list ,et)) region ,a) ())r)r)))
 
 (function prepend (data l-ref r handler)
-  (let (ret [buffer-alloc (list-struct) r handler]) (do
+  (let (ret [region-alloc (list-struct) r handler]) (do
     (setf car ret data)
     (setf cdr ret $l-ref)
     [set l-ref ret])))
@@ -396,7 +396,7 @@
 
 (ignore Flattens the given list of lists and reverses them.)
 
-(constrain reverse-flatten (\ r (with-vars (a b) (`(function ((list (list ,a)) buffer ,b) (list ,a))r)r)))
+(constrain reverse-flatten (\ r (with-vars (a b) (`(function ((list (list ,a)) region ,b) (list ,a))r)r)))
 
 (function reverse-flatten (l r handler)
   (substitute (.. r handler)
@@ -405,9 +405,9 @@
 
 (ignore
   Constructs a reverse of the given list. l is the list that is to be reversed. r is the
-  buffer into which the reversed list should be placed. Return value is the reversed list.)
+  region into which the reversed list should be placed. Return value is the reversed list.)
 
-(constrain reverse (\ r (with-vars (et a) (`(function ((list ,et) buffer ,a) (list ,et))r)r)))
+(constrain reverse (\ r (with-vars (et a) (`(function ((list ,et) region ,a) (list ,et))r)r)))
 
 (function reverse (l r handler) (reverse-map (x l) x r handler))
 
@@ -427,7 +427,7 @@
 
 (ignore Makes a new list comprising of the first n elements of the given list.)
 
-(constrain take (\ r (with-vars (et a b) (`(function (,a (list ,et) buffer ,b) (list ,et))r)r)))
+(constrain take (\ r (with-vars (et a b) (`(function (,a (list ,et) region ,b) (list ,et))r)r)))
 
 (function take (n l r handler)
   (substitute (.. r handler)

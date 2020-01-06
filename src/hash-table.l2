@@ -20,16 +20,16 @@
 
   (function ht-values (l r) [property #32 #8 (\ r (with-vars (a b c) (`(@ (ref (list (values ,a ,b))) (hash-table ,a ,b))r)r)) l r])
 
-(constrain ht-create (\ r (with-vars (a b c d e) (`(function ((function (,a) ,d) (function (,a ,a) ,e) buffer ,c) (hash-table ,a ,b))r)r)))
+(constrain ht-create (\ r (with-vars (a b c d e) (`(function ((function (,a) ,d) (function (,a ,a) ,e) region ,c) (hash-table ,a ,b))r)r)))
 
 (function ht-create (hash-func equals-func buf hdl)
   (substitute (.. buf hdl)
-    (let (ht [buffer-alloc (hash-table-struct) ..]) (do
+    (let (ht [region-alloc (hash-table-struct) ..]) (do
       (setf ht-bucket-count ht (ht-initial-bucket-count))
       (setf ht-element-count ht #0)
       (setf ht-hash-func ht hash-func)
       (setf ht-equals-func ht equals-func)
-      (setf ht-values ht [buffer-alloc [*(ht-initial-bucket-count)(unit)] ..])
+      (setf ht-values ht [region-alloc [*(ht-initial-bucket-count)(unit)] ..])
       (until (i #0) [= i (ht-initial-bucket-count)] [+ i #1] [set (loc(unit)i (@ ht-values ht)) nil])
       ht))))
 
@@ -38,13 +38,13 @@
   factor and if so, scales the number of uckets in the hash table by the
   resize factor.)
 
-(constrain ht-resize (\ r (with-vars (a b c d) (`(function ((hash-table ,a ,b) buffer ,c) ,d)r)r)))
+(constrain ht-resize (\ r (with-vars (a b c d) (`(function ((hash-table ,a ,b) region ,c) ,d)r)r)))
 
 (function ht-resize (ht buf hdl)
   (substitute (.. buf hdl)
     (if [> [* (@ ht-element-count ht) (ht-load-factor-den)] [* (@ ht-bucket-count ht) (ht-load-factor-num)]]
       (let (new-bucket-count [* (@ ht-bucket-count ht) (ht-resize-factor)])
-      (let (new-values [buffer-alloc [* new-bucket-count(unit)] ..]) (do
+      (let (new-values [region-alloc [* new-bucket-count(unit)] ..]) (do
         (until (i #0) [= i new-bucket-count] [+ i #1] [set (loc(unit)i new-values) nil])
         (until (i #0) [= i (@ ht-bucket-count ht)] [+ i #1]
           (let (bucket ($(loc(unit)i(@ ht-values ht))))
@@ -60,13 +60,13 @@
         (setf ht-bucket-count ht new-bucket-count)
         (setf ht-values ht new-values)))) (ignore))))
 
-(constrain ht-put (\ r (with-vars (a b c) (`(function (,a ,b (hash-table ,a ,b) buffer ,c) (hash-table ,a ,b))r)r)))
+(constrain ht-put (\ r (with-vars (a b c) (`(function (,a ,b (hash-table ,a ,b) region ,c) (hash-table ,a ,b))r)r)))
 
 (function ht-put (key value ht buf hdl)
   (substitute (.. buf hdl)
     (let (bucket-idx [rem [(@ ht-hash-func ht) key] (@ ht-bucket-count ht)])
     (let (bucket (loc(unit)bucket-idx(@ ht-values ht))) (do
-    [prepend (values (buffer-storage ..) key value) bucket ..]
+    [prepend (values (region-storage ..) key value) bucket ..]
     [set+ (& ht-element-count ht) #1]
     [ht-resize ht ..]
     ht)))))
@@ -95,7 +95,7 @@
         v
         {find-end [@cdr bucket]}))))))
 
-(constrain ht-getall (\ r (with-vars (a b c) (`(function (,a (hash-table ,a ,b) buffer ,c) (list ,b))r)r)))
+(constrain ht-getall (\ r (with-vars (a b c) (`(function (,a (hash-table ,a ,b) region ,c) (list ,b))r)r)))
 
 (function ht-getall (key ht buf hdl)
   (substitute (.. buf hdl)

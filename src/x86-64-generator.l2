@@ -177,18 +177,19 @@
 
 (constrain initializer->function
   (\ r (with-vars (b c d) (`(function (initializer)
-    (function (expr ,b (list initializer) (values ,b reg-use-vec) buffer ,d) ,c))r)r)))
+    (function (expr ,b (list initializer) (values ,b reg-use-vec) region ,d) ,c))r)r)))
 
 (function initializer->function (x) [cast x])
 
 (constrain function->initializer
   (\ r (with-vars (b c d) (`(function
-    ((function (expr ,b (list initializer) (values ,b reg-use-vec) buffer ,d) ,c)) initializer)r)r)))
+    ((function (expr ,b (list initializer) (values ,b reg-use-vec) region ,d) ,c)) initializer)r)r)))
 
 (function function->initializer (x) [cast x])
 
 (constrain initialize-expressions
-  (\ r (with-vars (a b c d) (`(function ((list expr) (list bndg-aug) ,a reg-use-vec ,c (list initializer) ,b buffer ,d) (values ,a reg-use-vec))r)r)))
+  (\ r (with-vars (a b c d)
+    (`(function ((list expr) (list bndg-aug) ,a reg-use-vec ,c (list initializer) ,b region ,d) (values ,a reg-use-vec))r)r)))
 
 (function initialize-expressions (exprs bndgs offset mask depth inits ret-val buf hdl)
   (let (sub-expr-offset [- offset [* [+ [length exprs] [length bndgs]] (word-size)]])
@@ -229,7 +230,7 @@
   (values (use-storage ret-val) bottom-offset in-use)))))))))
 
 (constrain generate-function
-  (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
+  (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) region ,a) ,b)r)r)))
 
 (function generate-function (n c relocs r handler)
   (substitute (.. r handler) (let
@@ -292,7 +293,8 @@
     [prepend (make-instrN(x86-ret)()..) c ..]
     [prepend [make-label after-binding ..] c ..]))))
 
-(constrain initialize-function (\ r (with-vars (b c d) (`(function (expr ,b (list initializer) (values ,b reg-use-vec) buffer ,d) ,c)r)r)))
+(constrain initialize-function
+  (\ r (with-vars (b c d) (`(function (expr ,b (list initializer) (values ,b reg-use-vec) region ,d) ,c)r)r)))
 
 (function initialize-function (n offset inits ret-val buf hdl)
   (and [= (@ expr-type n) (-function-)] (do
@@ -325,7 +327,7 @@
     (values (use-storage ret-val) offset (hex 0000000000000800))
     (true))))
 
-(constrain generate-store-continuation (\ r (with-vars (a) (`(function (expr (ref (list instr)) (ref (list reloc)) buffer ,a) ())r)r)))
+(constrain generate-store-continuation (\ r (with-vars (a) (`(function (expr (ref (list instr)) (ref (list reloc)) region ,a) ())r)r)))
 
 (function generate-store-continuation (n c relocs r handler)
   (substitute (.. r handler) (let
@@ -341,7 +343,7 @@
     [prepend (make-instrN (x86-mov) ([make-mem-op(word-size)(r11)(none)#0(cont-rbp)#4 ..] [make-reg-op (rbp) ..]) ..) c ..]))))
 
 (constrain generate-continuation
-  (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
+  (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) region ,a) ,b)r)r)))
 
 (function generate-continuation (n c relocs r handler)
   (substitute (.. r handler) (let
@@ -358,7 +360,8 @@
     [generate-expression (@ expr-expression n) c relocs ..]
     [prepend [make-label after-binding ..] c ..]))))
 
-(constrain initialize-continuation (\ r (with-vars (b c d) (`(function (expr ,b (list initializer) (values ,b reg-use-vec) buffer ,d) ,c)r)r)))
+(constrain initialize-continuation
+  (\ r (with-vars (b c d) (`(function (expr ,b (list initializer) (values ,b reg-use-vec) region ,d) ,c)r)r)))
 
 (function initialize-continuation (n offset inits ret-val buf hdl)
   (and [= (@ expr-type n) (-continuation-)] (do
@@ -369,7 +372,7 @@
     (true))))
 
 (constrain generate-with
-  (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
+  (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) region ,a) ,b)r)r)))
 
 (function generate-with (n c relocs r handler)
   (substitute (.. r handler) (let
@@ -389,7 +392,7 @@
         [generate-bndg-bndg-move expr-val-bndg param-val-bndg (r11) c relocs ..]
         [prepend [make-label end-instr-binding ..] c ..]))))))
 
-(constrain initialize-with (\ r (with-vars (b c d) (`(function (expr ,b (list initializer) (values ,b reg-use-vec) buffer ,d) ,c)r)r)))
+(constrain initialize-with (\ r (with-vars (b c d) (`(function (expr ,b (list initializer) (values ,b reg-use-vec) region ,d) ,c)r)r)))
 
 (function initialize-with (n offset inits ret-val buf hdl)
   (and (or [= (@ expr-type n) (-with-)]) (do
@@ -415,7 +418,7 @@
     (true))))
 
 (constrain generate-storage
-  (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
+  (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) region ,a) ,b)r)r)))
 
 (function generate-storage (n c relocs r handler)
   (substitute (.. r handler) (let
@@ -425,7 +428,7 @@
     [prepend(make-instrN(x86-lea)
       ([bndg->op expr-val-bndg relocs ..][bndg->op storage-val-bndg relocs ..][make-reg-op(r11) ..])..) c ..]))))
 
-(constrain initialize-storage (\ r (with-vars (b c d) (`(function (expr ,b (list initializer) (values ,b reg-use-vec) buffer ,d) ,c)r)r)))
+(constrain initialize-storage (\ r (with-vars (b c d) (`(function (expr ,b (list initializer) (values ,b reg-use-vec) region ,d) ,c)r)r)))
 
 (function initialize-storage (n offset inits ret-val buf hdl)
   (and [= (@ expr-type n) (-storage-)] (do
@@ -435,7 +438,7 @@
     (true))))
 
 (constrain generate-buffer-to-dest
-  (\ r (with-vars (a b) (`(function (expr register ,a (ref (list instr)) (ref (list reloc)) buffer ,b) ())r)r)))
+  (\ r (with-vars (a b) (`(function (expr register ,a (ref (list instr)) (ref (list reloc)) region ,b) ())r)r)))
 
 (function generate-buffer-to-dest (n dest-reg offset c relocs r handler)
   (substitute (.. r handler)
@@ -447,7 +450,7 @@
         [set+ dest-offset (word-size)]))))))
 
 (constrain generate-load-continuation
-  (\ r (with-vars (a) (`(function (register (ref (list instr)) (ref (list reloc)) buffer ,a) ())r)r)))
+  (\ r (with-vars (a) (`(function (register (ref (list instr)) (ref (list reloc)) region ,a) ())r)r)))
 
 (function generate-load-continuation (src-reg c relocs r handler)
   (substitute (.. r handler) (do
@@ -461,7 +464,7 @@
     [prepend (make-instrN(x86-jmp)([make-reg-op (r11) ..])..) c ..])))
 
 (constrain generate-jump
-  (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
+  (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) region ,a) ,b)r)r)))
 
 (function generate-jump (n c relocs r handler)
   (substitute (.. r handler) (do
@@ -507,7 +510,7 @@
         [generate-buffer-to-dest n (r10) (cont-size) c relocs ..]
         [generate-load-continuation (r10) c relocs ..]))))))))
 
-(constrain initialize-jump (\ r (with-vars (b c d) (`(function (expr ,b (list initializer) (values ,b reg-use-vec) buffer ,d) ,c)r)r)))
+(constrain initialize-jump (\ r (with-vars (b c d) (`(function (expr ,b (list initializer) (values ,b reg-use-vec) region ,d) ,c)r)r)))
 
 (function initialize-jump (n offset inits ret-val buf hdl)
   (and [= (@ expr-type n) (-jump-)] (do
@@ -529,7 +532,7 @@
     (true))))
 
 (constrain generate-invoke
-  (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
+  (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) region ,a) ,b)r)r)))
 
 (function generate-invoke (n c relocs r handler)
   (substitute (.. r handler) (let
@@ -571,7 +574,7 @@
         [prepend (make-instrN(x86-add)([make-reg-op (rsp) ..] [make-imm-op #4 drop ..])..) c ..])
       (ignore))))))
 
-(constrain initialize-invoke (\ r (with-vars (b c d) (`(function (expr ,b (list initializer) (values ,b reg-use-vec) buffer ,d) ,c)r)r)))
+(constrain initialize-invoke (\ r (with-vars (b c d) (`(function (expr ,b (list initializer) (values ,b reg-use-vec) region ,d) ,c)r)r)))
 
 (function initialize-invoke (n offset inits ret-val buf hdl)
   (and [= (@ expr-type n) (-invoke-)] (do
@@ -602,7 +605,7 @@
     (ignore)))
 
 (constrain generate-if
-  (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
+  (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) region ,a) ,b)r)r)))
 
 (function generate-if (n c relocs r handler)
   (substitute (.. r handler)
@@ -665,11 +668,11 @@
       [generate-bndg-bndg-move expr-val-bndg alternate-val-bndg (r11) c relocs ..]
       [prepend [make-label end-instr-binding ..] c ..]))))
 
-(constrain initialize-if (\ r (with-vars (b c d) (`(function (expr ,b (list initializer) (values ,b reg-use-vec) buffer ,d) ,c)r)r)))
+(constrain initialize-if (\ r (with-vars (b c d) (`(function (expr ,b (list initializer) (values ,b reg-use-vec) region ,d) ,c)r)r)))
 
 (function initialize-if (n offset inits ret-val buf hdl)
   (substitute (.. buf hdl)
-    (and [= (@ expr-type n) (-if-)] (with-buffer buf
+    (and [= (@ expr-type n) (-if-)] (with-region buf
       (let (conds (loop gen-cond (sub-if (@ expr-condition n)) (conds nil)
         (if (or [not= (@ expr-type sub-if) (-if-)] (not (or [= (@ expr-type (@ expr-consequent sub-if)) (-literal-)] [= (@ expr-type (@ expr-alternate sub-if)) (-literal-)])))
           (do
@@ -699,7 +702,7 @@
       (true)))))))
 
 (constrain generate-constrain
-  (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
+  (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) region ,a) ,b)r)r)))
 
 (function generate-constrain (n c relocs r handler)
   (substitute (.. r handler)
@@ -709,7 +712,8 @@
       [generate-expression (@ expr-expression n) c relocs ..]
       [generate-bndg-bndg-move expr-val-bndg body-val-bndg (r11) c relocs ..]))))
 
-(constrain initialize-constrain (\ r (with-vars (b c d) (`(function (expr ,b (list initializer) (values ,b reg-use-vec) buffer ,d) ,c)r)r)))
+(constrain initialize-constrain
+  (\ r (with-vars (b c d) (`(function (expr ,b (list initializer) (values ,b reg-use-vec) region ,d) ,c)r)r)))
 
 (function initialize-constrain (n offset inits ret-val buf hdl)
   (and [= (@ expr-type n) (-constrain-)] (do
@@ -733,7 +737,7 @@
     [= (@ bndg-storage (@ expr-reference n)) (absolute-storage)]))
 
 (constrain generate-symbol
-  (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
+  (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) region ,a) ,b)r)r)))
 
 (function generate-symbol (n c relocs r handler)
   (substitute (.. r handler)
@@ -744,7 +748,7 @@
         [prepend (make-instrN(x86-lea)
           ([bndg->op expr-val-bndg relocs ..][bndg->op symbol-val-bndg relocs ..][make-reg-op(r11)..])..) c ..])))))
 
-(constrain initialize-symbol (\ r (with-vars (b c d) (`(function (expr ,b (list initializer) (values ,b reg-use-vec) buffer ,d) ,c)r)r)))
+(constrain initialize-symbol (\ r (with-vars (b c d) (`(function (expr ,b (list initializer) (values ,b reg-use-vec) region ,d) ,c)r)r)))
 
 (function initialize-symbol (n offset inits ret-val buf hdl)
   (and [= (@ expr-type n) (-symbol-)] (do
@@ -754,13 +758,13 @@
     (true))))
 
 (constrain generate-literal
-  (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
+  (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) region ,a) ,b)r)r)))
 
 (function generate-literal (n c relocs r handler) (substitute (.. r handler)
   (let (expr-val-bndg (@ expr-binding-aug n)) (do
     [prepend(make-instrN(x86-mov)([bndg->op expr-val-bndg relocs ..][make-imm-op #8 (@ expr-value n)..][make-reg-op (r11)..])..) c ..]))))
 
-(constrain initialize-literal (\ r (with-vars (b c d) (`(function (expr ,b (list initializer) (values ,b reg-use-vec) buffer ,d) ,c)r)r)))
+(constrain initialize-literal (\ r (with-vars (b c d) (`(function (expr ,b (list initializer) (values ,b reg-use-vec) region ,d) ,c)r)r)))
 
 (function initialize-literal (n offset inits ret-val buf hdl)
   (and [= (@ expr-type n) (-literal-)] (do
@@ -769,7 +773,7 @@
     (values (use-storage ret-val) offset (hex 0000000000000800))
     (true))))
 
-(constrain initialize-expression (\ r (with-vars (b c d) (`(function (expr ,b (list initializer) ,c buffer ,d) (values ,b reg-use-vec))r)r)))
+(constrain initialize-expression (\ r (with-vars (b c d) (`(function (expr ,b (list initializer) ,c region ,d) (values ,b reg-use-vec))r)r)))
 
 (function initialize-expression (n offset inits ret-val buf hdl)
   (substitute (.. buf hdl) (do (or
@@ -788,18 +792,18 @@
 
 (constrain generator->function
   (\ r (with-vars (a b) (`(function (generator)
-    (function (expr (ref (list instr)) (ref (list reloc)) buffer ,a) ,b))r)r)))
+    (function (expr (ref (list instr)) (ref (list reloc)) region ,a) ,b))r)r)))
 
 (function generator->function (x) [cast x])
 
 (constrain function->generator
   (\ r (with-vars (a b) (`(function
-    ((function (expr (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)) generator)r)r)))
+    ((function (expr (ref (list instr)) (ref (list reloc)) region ,a) ,b)) generator)r)r)))
 
 (function function->generator (x) [cast x])
 
 (constrain make-absolute-relocation-immediate
-  (\ r (with-vars (a b c) (`(function (,a ,b bndg-aug (ref (list reloc)) buffer ,c) operand)r)r)))
+  (\ r (with-vars (a b c) (`(function (,a ,b bndg-aug (ref (list reloc)) region ,c) operand)r)r)))
 
 (function make-absolute-relocation-immediate (size addend bndg relocs r handler)
   (substitute (.. r handler)
@@ -815,7 +819,7 @@
       op))))
 
 (constrain make-relative-relocation-immediate
-  (\ r (with-vars (a b) (`(function (,a bndg-aug (ref (list reloc)) buffer ,b) operand)r)r)))
+  (\ r (with-vars (a b) (`(function (,a bndg-aug (ref (list reloc)) region ,b) operand)r)r)))
 
 (function make-relative-relocation-immediate (size bndg relocs r handler)
   (substitute (.. r handler)
@@ -831,7 +835,7 @@
           [- ofst [+ instr-pos instr-size]]) ..] relocs ..]
       op))))
 
-(constrain make-label (\ r (with-vars (a) (`(function (bndg-aug buffer ,a) instr)r)r)))
+(constrain make-label (\ r (with-vars (a) (`(function (bndg-aug region ,a) instr)r)r)))
 
 (function make-label (bndg r handler)
   (substitute (.. r handler)
@@ -839,7 +843,7 @@
       (setf instr-binding lbl bndg)
       lbl))))
 
-(constrain bndg->partial-op (\ r (with-vars (a b) (`(function (,b bndg-aug (ref (list reloc)) buffer ,a) operand)r)r)))
+(constrain bndg->partial-op (\ r (with-vars (a b) (`(function (,b bndg-aug (ref (list reloc)) region ,a) operand)r)r)))
 
 (function bndg->partial-op (op-size bndg relocs buf handler)
   (substitute (.. buf handler)
@@ -867,7 +871,7 @@
     
       (ignore)))))))
 
-(constrain bndg->op (\ r (with-vars (a) (`(function (bndg-aug (ref (list reloc)) buffer ,a) operand)r)r)))
+(constrain bndg->op (\ r (with-vars (a) (`(function (bndg-aug (ref (list reloc)) region ,a) operand)r)r)))
 
 (function bndg->op (bndg relocs buf handler)
   [bndg->partial-op (@ bndg-size bndg) bndg relocs buf handler])
@@ -880,7 +884,7 @@
     [= (@ bndg-size a) (@ bndg-size b)]))
 
 (constrain generate-bndg-bndg-move
-  (\ r (with-vars (a b) (`(function (bndg-aug bndg-aug register (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
+  (\ r (with-vars (a b) (`(function (bndg-aug bndg-aug register (ref (list instr)) (ref (list reloc)) region ,a) ,b)r)r)))
 
 (function generate-bndg-bndg-move (dst src tmp c relocs r handler)
   (substitute (.. r handler)
@@ -889,7 +893,7 @@
       [prepend (make-instrN(x86-mov)([bndg->op dst relocs ..][bndg->op src relocs ..][make-reg-op tmp ..])..) c ..])))
 
 (constrain generate-register-bndg-move
-  (\ r (with-vars (a b) (`(function (register bndg-aug (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
+  (\ r (with-vars (a b) (`(function (register bndg-aug (ref (list instr)) (ref (list reloc)) region ,a) ,b)r)r)))
 
 (function generate-register-bndg-move (dst src c relocs r handler)
   (substitute (.. r handler)
@@ -898,7 +902,7 @@
       [prepend (make-instrN(x86-mov)([make-reg-op dst ..][bndg->op src relocs ..])..) c ..])))
 
 (constrain generate-bndg-register-move
-  (\ r (with-vars (a b) (`(function (bndg-aug register (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
+  (\ r (with-vars (a b) (`(function (bndg-aug register (ref (list instr)) (ref (list reloc)) region ,a) ,b)r)r)))
 
 (function generate-bndg-register-move (dst src c relocs r handler)
   (substitute (.. r handler)
@@ -907,14 +911,14 @@
       [prepend (make-instrN(x86-mov)([bndg->op dst relocs ..][make-reg-op src ..])..) c ..])))
 
 (constrain generate-expression
-  (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) buffer ,a) ,b)r)r)))
+  (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) region ,a) ,b)r)r)))
 
 (function generate-expression (n c relocs r handler)
   (substitute (.. r handler)
     [[generator->function (@ expr-generator n)] n c relocs ..]))
 
 (constrain generate-program
-  (\ r (with-vars (a b) (`(function ((list expr) ,b buffer ,a)
+  (\ r (with-vars (a b) (`(function ((list expr) ,b region ,a)
     (values (list instr) (list reloc) (list (values string (list instr) (list reloc)))))r)r)))
 
 (function generate-program (exprs outs r handler)
@@ -925,6 +929,6 @@
           [generate-expression expr c relocs ..]
           (let (c (storage _ nil)) (relocs (storage _ nil)) (do
             [generate-expression expr c relocs ..]
-            [append (values (buffer-storage ..) (@ bndg-name (@ expr-reference expr)) [reverse $c ..] $relocs) func-secs ..]))))
+            [append (values (region-storage ..) (@ bndg-name (@ expr-reference expr)) [reverse $c ..] $relocs) func-secs ..]))))
       (values (use-storage outs) [reverse $c ..] $relocs $func-secs)))))
 

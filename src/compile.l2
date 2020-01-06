@@ -3,7 +3,7 @@
   list into which the augmented bindings of the generated code will be put.)
 
 (constrain compile-program
-  (\ r (with-vars (a b) (`(function ((list expr) (list initializer) ,b buffer buffer ,a)
+  (\ r (with-vars (a b) (`(function ((list expr) (list initializer) ,b region region ,a)
     (values (list instr) (list reloc) (list (values string (list instr) (list reloc))) (hash-table string bndg-aug) (list bndg-aug)))r)r)))
 
 (function compile-program (exprs inits outs buf :b handler)
@@ -34,14 +34,14 @@
 
 (ignore
   Loads a program into memory and returns a handle to it. program is a program expression.
-  expr-buf is the buffer into which the results of compilation will be put. obj-buf is the
-  buffer into which the object code will be put. Return value is an object.)
+  expr-buf is the region into which the results of compilation will be put. obj-buf is the
+  region into which the object code will be put. Return value is an object.)
 
-(constrain load-program (\ r (with-vars (a) (`(function ((list expr) (list initializer) buffer buffer ,a) obj)r)r)))
+(constrain load-program (\ r (with-vars (a) (`(function ((list expr) (list initializer) region region ,a) obj)r)r)))
 
 (function load-program (exprs inits buf :b handler)
   (substitute (.. buf handler)
-    (with-buffer :b
+    (with-region :b
       (bind (asms relocs func-secs undefined-bindings static-bindings) [compile-program exprs inits bind :b buf handler]
       (bind (objdest objdest-sz) [write-elf asms relocs func-secs undefined-bindings static-bindings bind :b buf handler]
       (let (obj [load objdest objdest-sz buf handler]) (do
@@ -52,15 +52,15 @@
   Behavior is the same as load-program, but with the following addition: bndgs is a list
   of object bindings, and after the loading is done, the undefined bindings of the loaded
   program will take on the addresses supplied in the list. The handler continuation is
-  followed, and the error buffer referenced by err set to the pair (undefined-symbol-error,
+  followed, and the error region referenced by err set to the pair (undefined-symbol-error,
   <missing binding name>) if there is an undefined binding in the program that is not defined
   in bndgs.)
 
 (constrain load-program-and-mutate
-  (\ r (with-vars (a) (`(function ((list expr) (list initializer) (hash-table string bndg-aug) buffer buffer ,a) obj)r)r)))
+  (\ r (with-vars (a) (`(function ((list expr) (list initializer) (hash-table string bndg-aug) region region ,a) obj)r)r)))
 
 (function load-program-and-mutate (exprs inits bndgs buf :b handler)
-  (with-buffer :b
+  (with-region :b
     (let (obj [load-program exprs inits buf :b handler])
     (let (ms [mutable-bindings obj [ht-create hash-str str= :b handler] :b handler]) (do
       (ht-foreach (d-name d ms)
@@ -69,14 +69,14 @@
       [mutate-bindings obj bndgs]
       obj)))))
 
-(constrain read-to-buffer (\ r (with-vars (a b c d) (`(function (string ,a buffer ,b) (values ,c ,d))r)r)))
+(constrain read-to-buffer (\ r (with-vars (a b c d) (`(function (string ,a region ,b) (values ,c ,d))r)r)))
 
 (function read-to-buffer (fn outs buf handler)
   (let (fd [open fn handler])
     (fallthrough
       (do
         (let (size-out [size fd close-file])
-        (let (src-buf [buffer-alloc size-out buf close-file]) (do
+        (let (src-buf [region-alloc size-out buf close-file]) (do
         [read fd src-buf size-out close-file]
         (storage _ no-error src-buf size-out)))))
         
@@ -86,14 +86,14 @@
 
 (ignore
   Reads a list of expressions from a given file. fn is a string containing the filename.
-  buf is the buffer into which the constructed expressions will be put. Return value is a
+  buf is the region into which the constructed expressions will be put. Return value is a
   list of expressions.)
 
-(constrain read-expressions (\ r (with-vars (a) (`(function (string buffer buffer ,a) (list expr))r)r)))
+(constrain read-expressions (\ r (with-vars (a) (`(function (string region region ,a) (list expr))r)r)))
 
 (function read-expressions (fn buf :b handler)
   (substitute (.. buf handler)
-    (with-buffer :b
+    (with-region :b
       (bind (src-buf src-sz) [read-to-buffer fn bind :b handler]
       (let (pos (storage _ #0))
       (let (exprs-start (storage _ nil))
@@ -110,7 +110,7 @@
   bindings.)
 
 (constrain evaluate-files
-  (\ r (with-vars (a) (`(function ((list string) (list string) (list string) (hash-table string bndg-aug) buffer buffer ,a) ())r)r)))
+  (\ r (with-vars (a) (`(function ((list string) (list string) (list string) (hash-table string bndg-aug) region region ,a) ())r)r)))
 
 (function evaluate-files (source-fns object-fns intrinsic-fns bindings buf :b handler)
   (substitute (.. buf handler)
@@ -137,11 +137,11 @@
     
     (foreach (obj objects3) [mutate-bindings obj bindings])))))))
 
-(constrain compile-program-to-elf (\ r (with-vars (a) (`(function ((list expr) (list initializer) string buffer buffer ,a) ())r)r)))
+(constrain compile-program-to-elf (\ r (with-vars (a) (`(function ((list expr) (list initializer) string region region ,a) ())r)r)))
 
 (function compile-program-to-elf (exprs inits outfn buf :b handler)
   (substitute (.. buf handler)
-    (with-buffer :b
+    (with-region :b
       (bind (asms relocs func-secs undefined-bindings static-bindings) [compile-program exprs inits bind :b buf handler]
       (bind (objdest objdest-sz) [write-elf asms relocs func-secs undefined-bindings static-bindings bind :b buf handler]
       (let (fd [create outfn handler]) (do
@@ -152,13 +152,13 @@
   Takes a list of L2 source files and compiles them into object files. programs is a
   list of strings containing paths to L2 source files. bndgs is a list of bindings
   pointing to the macros to be used during the meta-expression expansions. buf is the
-  buffer into which constructed expressions and object code will be put.)
+  region into which constructed expressions and object code will be put.)
 
-(constrain compile-files (\ r (with-vars (a) (`(function ((list string) (list string) (hash-table string bndg-aug) buffer buffer ,a) ())r)r)))
+(constrain compile-files (\ r (with-vars (a) (`(function ((list string) (list string) (hash-table string bndg-aug) region region ,a) ())r)r)))
 
 (function compile-files (file-names intrinsic-fns bndgs buf :b handler)
   (substitute (.. buf handler)
-    (with-buffer :b
+    (with-region :b
       (let (inits (reverse-map (intrinsic-fn intrinsic-fns)
         (switch str= intrinsic-fn
           ((" arithmetic) [function->initializer initialize-arithmetic-intrinsics])
@@ -195,7 +195,7 @@
   prints out the error messages if there are any.)
 
 (fallthrough
-    (let (buf [create-buffer #0 exit-cont]) (:b [create-buffer #0 exit-cont])
+    (let (buf [create-region #0 exit-cont]) (:b [create-region #0 exit-cont])
     (fallthrough
         (do
           (let (source-fns (storage _ [@cdr[argv buf handler]]))
@@ -339,7 +339,7 @@
             
           err)))
   
-        (cleanup err (do [destroy-buffer buf exit-cont] err))))
+        (cleanup err (do [destroy-region buf exit-cont] err))))
   
   (exit-cont err [exit (if [= (@0 err) no-error] #0 #1)]))
 

@@ -22,10 +22,10 @@
 
 (function vbl->frag (x) [cast x])
 
-(constrain vbl (\ r (with-vars (a) (`(function (buffer ,a) vbl)r)r)))
+(constrain vbl (\ r (with-vars (a) (`(function (region ,a) vbl)r)r)))
 
 (function vbl (r handler)
-  (let (l [buffer-alloc (list-struct) r handler]) (do
+  (let (l [region-alloc (list-struct) r handler]) (do
     (setf car l [cast l])
     (setf cdr l l)
     [frag->vbl [list->fragment l]])))
@@ -57,7 +57,7 @@
           {next next-val}))
       val)))
 
-(constrain recursive-evaluate (\ r (with-vars (a) (`(function (frag buffer ,a) frag)r)r)))
+(constrain recursive-evaluate (\ r (with-vars (a) (`(function (frag region ,a) frag)r)r)))
 
 (function recursive-evaluate (frag r handler)
   (substitute (.. r handler)
@@ -115,10 +115,10 @@
 
 (ignore
   Builds a token from a given C-string. str is the C-string that the constructed token
-  will be based on. r is the buffer in which the token will be constructed. Return value
+  will be based on. r is the region in which the token will be constructed. Return value
   is the constructed token.)
 
-(constrain build-token (\ r (with-vars (c) (`(function (string buffer ,c) (list tchar))r)r)))
+(constrain build-token (\ r (with-vars (c) (`(function (string region ,c) (list tchar))r)r)))
 
 (function build-token (str r handler)
   (let (sexprs-start (storage _ nil))
@@ -146,7 +146,7 @@
   <token>) where token is the token starting at the current position in the
   buffer. sigil is a string. l2src is a reference to the start of a buffer
   containing characters. l2src-sz is the size of the buffer. pos is a reference
-  to the current index in the buffer. r is the buffer into which the token
+  to the current index in the buffer. r is the region into which the token
   should be put. Return value is the constructed token.)
 
 (constrain build-sigilled-token (\ r (with-vars (a b c d e f) (`(function (,a ,b ,c ,d ,e ,f) frag)r)r)))
@@ -166,7 +166,7 @@
   primitive is a string. delimiter is an ascii character. For rest of parameters,
   see above.)
 
-(constrain build-fragment-list (\ r (with-vars (a b c d e) (`(function (string ,a ,b ,c ,d buffer ,e) (list frag))r)r)))
+(constrain build-fragment-list (\ r (with-vars (a b c d e) (`(function (string ,a ,b ,c ,d region ,e) (list frag))r)r)))
 
 (function build-fragment-list (primitive delimeter l2src l2src-sz pos r handler)
   (substitute (.. r handler)
@@ -233,13 +233,13 @@
 
 (ignore
   Converts the given token into an ASCII string. d is the token that is to be converted.
-  r is the buffer into which the string should be put. The return value is the constructed
+  r is the region into which the string should be put. The return value is the constructed
   string.)
 
-(constrain to-string (\ r (with-vars (a) (`(function ((list tchar) buffer ,a) string)r)r)))
+(constrain to-string (\ r (with-vars (a) (`(function ((list tchar) region ,a) string)r)r)))
 
 (function to-string (d r handler)
-  (let (str [buffer-alloc [+ [length d] #1] r handler])
+  (let (str [region-alloc [+ [length d] #1] r handler])
     (loop put-char (d d) (i #0)
       (if [nil? d]
         (do
@@ -250,11 +250,11 @@
           {put-char [@cdr d] [+ i #1]})))))
 
 (ignore
-  Copies the given fragment into the given buffer. l is the fragment that is to
-  be copied. r is the buffer into which the fragment should be copied. The return
+  Copies the given fragment into the given region. l is the fragment that is to
+  be copied. r is the region into which the fragment should be copied. The return
   value is the copied fragment.)
 
-(constrain copy-fragment (\ r (with-vars (b) (`(function (frag (ref (list vbl)) (ref (list vbl)) buffer ,b) frag)r)r)))
+(constrain copy-fragment (\ r (with-vars (b) (`(function (frag (ref (list vbl)) (ref (list vbl)) region ,b) frag)r)r)))
 
 (function copy-fragment (l old-vars new-vars r handler)
   (substitute (.. r handler)

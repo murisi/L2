@@ -34,7 +34,7 @@
   Replaces symbols with the literal or the symbol they are defined by in the cases in
   which it is possible.)
 
-(constrain vpropagate-expressions (\ r (with-vars (a) (`(function (expr (values buffer ,a)) expr)r)r)))
+(constrain vpropagate-expressions (\ r (with-vars (a) (`(function (expr (values region ,a)) expr)r)r)))
 
 (function vpropagate-expressions (e ctx)
   (bind (:a handler) ctx
@@ -204,7 +204,7 @@
     
     (ignore)))
 
-(constrain global-binding-augs-of (\ r (with-vars (a) (`(function ((list expr) buffer ,a) (hash-table string bndg-aug))r)r)))
+(constrain global-binding-augs-of (\ r (with-vars (a) (`(function ((list expr) region ,a) (hash-table string bndg-aug))r)r)))
 
 (function global-binding-augs-of (exprs r handler)
   (substitute (.. r handler)
@@ -220,11 +220,11 @@
               {add-binding [@cdr exprs]})
             {add-binding [@cdr exprs]})))))))
 
-(constrain vunlink-symbols (\ r (with-vars (a) (`(function (expr (values (hash-table string bndg-aug) buffer ,a)) expr)r)r)))
+(constrain vunlink-symbols (\ r (with-vars (a) (`(function (expr (values (hash-table string bndg-aug) region ,a)) expr)r)r)))
 
 (function vunlink-symbols (s ctx)
   (bind (blacklist buf hdl) ctx
-    (with-buffer buf
+    (with-region buf
       (if (and [= (@ expr-type s) (-symbol-)] [not= (@ expr-reference s) null-binding]
           [contains (@ expr-reference s) [ht-getall (@ bndg-name (@ expr-reference s)) blacklist buf hdl]])
         (do (setf expr-reference s null-binding) s)
@@ -238,7 +238,8 @@
     (false)))
 
 (constrain link-symbols
-  (\ r (with-vars (a b) (`(function (expr ,a (hash-table string bndg-aug) (hash-table string bndg-aug) (hash-table string bndg-aug) buffer ,b) ())r)r)))
+  (\ r (with-vars (a b)
+    (`(function (expr ,a (hash-table string bndg-aug) (hash-table string bndg-aug) (hash-table string bndg-aug) region ,b) ())r)r)))
 
 (function link-symbols (s static-storage undefined-bindings static-bindings dynamic-bindings r handler)
   (substitute (.. r handler)
@@ -289,7 +290,7 @@
       
       (ignore)))))
 
-(constrain escape-analysis (\ r (with-vars (a b) (`(function (expr ,a buffer ,b) ())r)r)))
+(constrain escape-analysis (\ r (with-vars (a b) (`(function (expr ,a region ,b) ())r)r)))
 
 (function escape-analysis (s escaping r handler)
   (substitute (.. r handler)
@@ -338,7 +339,7 @@
       
       (ignore))))
 
-(constrain vfind-dependencies (\ r (with-vars (a) (`(function (expr (values buffer ,a)) expr)r)r)))
+(constrain vfind-dependencies (\ r (with-vars (a) (`(function (expr (values region ,a)) expr)r)r)))
 
 (function vfind-dependencies (s ctx)
   (bind (r handler) ctx (substitute (.. r handler) (do
@@ -370,7 +371,7 @@
       (ignore))
     s))))
 
-(constrain construct-sccs (\ r (with-vars (a b) (`(function (expr ,a (ref (list expr)) (ref (list (list expr))) buffer ,b) ())r)r)))
+(constrain construct-sccs (\ r (with-vars (a b) (`(function (expr ,a (ref (list expr)) (ref (list (list expr))) region ,b) ())r)r)))
 
 (function construct-sccs (s preorder stack sccs r handler)
   (substitute (.. r handler)
@@ -430,7 +431,7 @@
             {do-unify [@cdr xl] [@cdr yl]})))
         (false))))))))))
 
-(constrain scoped-signature (\ r (with-vars (a) (`(function (expr (list expr) buffer ,a) frag)r)r)))
+(constrain scoped-signature (\ r (with-vars (a) (`(function (expr (list expr) region ,a) frag)r)r)))
 
 (function scoped-signature (e scc r handler)
   (if (not [nil? (find (x scc) [= x e])])
@@ -438,7 +439,7 @@
     [copy-fragment [expr-signature e] (storage _ nil) (storage _ nil) r handler]))
 
 (constrain generate-equations
-  (\ r (with-vars (a) (`(function (expr (list expr) frag frag buffer ,a) (list (values frag frag)))r)r)))
+  (\ r (with-vars (a) (`(function (expr (list expr) frag frag region ,a) (list (values frag frag)))r)r)))
 
 (function generate-equations (e scc function-token continuation-token buf handler)
   (substitute (.. buf handler)
@@ -446,53 +447,53 @@
       ((-function-)
         (let (params-signature [list->fragment (map (x (@ expr-parameters e)) (@ bndg-signature x) ..)])
         (list
-          ((values (buffer-storage ..) [expr-signature e] [list->fragment [cons function-token [cons params-signature
+          ((values (region-storage ..) [expr-signature e] [list->fragment [cons function-token [cons params-signature
             [cons [expr-signature (@ expr-expression e)] nil ..] ..] ..]])
-          (values (buffer-storage ..) [expr-signature e] (@ bndg-signature (@ expr-reference e)))) ..)))
+          (values (region-storage ..) [expr-signature e] (@ bndg-signature (@ expr-reference e)))) ..)))
       
       ((-continuation-)
         (let (params-signature [list->fragment (map (x (@ expr-parameters e)) (@ bndg-signature x) ..)])
         (list
-          ((values (buffer-storage ..) [expr-signature e] [list->fragment [cons continuation-token
+          ((values (region-storage ..) [expr-signature e] [list->fragment [cons continuation-token
             [cons params-signature nil ..] ..]])
-          (values (buffer-storage ..) [expr-signature e] (@ bndg-signature (@ expr-reference e)))) ..)))
+          (values (region-storage ..) [expr-signature e] (@ bndg-signature (@ expr-reference e)))) ..)))
       
       ((-constrain-)
-        (list ((values (buffer-storage ..) [expr-signature e] [expr-signature (@ expr-expression e)])) ..))
+        (list ((values (region-storage ..) [expr-signature e] [expr-signature (@ expr-expression e)])) ..))
       
       ((-invoke-)
         (let (params-signature [list->fragment (map (arg (@ expr-arguments e)) [scoped-signature arg scc ..] ..)])
         (list
-          ((values (buffer-storage ..) [scoped-signature (@ expr-target e) scc ..]
+          ((values (region-storage ..) [scoped-signature (@ expr-target e) scc ..]
             [list->fragment [cons function-token [cons params-signature [cons [expr-signature e] nil ..] ..] ..]])) ..)))
       
       ((-jump-)
         (let (params-signature [list->fragment (map (arg (@ expr-arguments e)) [scoped-signature arg scc ..] ..)])
         (list
-          ((values (buffer-storage ..) [scoped-signature (@ expr-target e) scc ..]
+          ((values (region-storage ..) [scoped-signature (@ expr-target e) scc ..]
             [list->fragment [cons continuation-token [cons params-signature nil ..] ..]])) ..)))
       
       ((-with-)
         (let (params-signature [list->fragment [cons [expr-signature e] nil ..]])
         (list
-          ((values (buffer-storage ..) (@ bndg-signature (@ expr-reference e))
+          ((values (region-storage ..) (@ bndg-signature (@ expr-reference e))
             [list->fragment [cons continuation-token [cons params-signature nil ..] ..]])
-          (values (buffer-storage ..) [expr-signature e] [expr-signature (@ expr-expression e)])) ..)))
+          (values (region-storage ..) [expr-signature e] [expr-signature (@ expr-expression e)])) ..)))
       
       ((-if-)
         (let (consequent-sig [scoped-signature (@ expr-consequent e) scc ..])
         (let (alternate-sig [scoped-signature (@ expr-alternate e) scc ..])
-        (list ((values (buffer-storage ..) consequent-sig alternate-sig)
-          (values (buffer-storage ..) [expr-signature e] consequent-sig)) ..))))
+        (list ((values (region-storage ..) consequent-sig alternate-sig)
+          (values (region-storage ..) [expr-signature e] consequent-sig)) ..))))
       
       ((-symbol-)
-        (list ((values (buffer-storage ..) [expr-signature e] (@ bndg-signature (@ expr-reference e)))) ..))
+        (list ((values (region-storage ..) [expr-signature e] (@ bndg-signature (@ expr-reference e)))) ..))
       
       nil)))
 
 (storage unification-error (ignore))
 
-(constrain infer-types (\ r (with-vars (a) (`(function ((list expr) buffer ,a) ())r)r)))
+(constrain infer-types (\ r (with-vars (a) (`(function ((list expr) region ,a) ())r)r)))
 
 (function infer-types (exprs buf handler)
   (substitute (.. buf handler) (do
@@ -621,7 +622,7 @@
   
   (setf bndg-other (@ expr-binding-aug n) (true))))
 
-(constrain append-static-binding (\ r (with-vars (a b) (`(function (bndg-aug (ref (list bndg-aug)) buffer ,a) ,b)r)r)))
+(constrain append-static-binding (\ r (with-vars (a b) (`(function (bndg-aug (ref (list bndg-aug)) region ,a) ,b)r)r)))
 
 (function append-static-binding (bndg binding-augs r handler)
   (substitute (.. r handler)
@@ -629,7 +630,7 @@
       (do (setf bndg-other bndg (false)) [append bndg binding-augs ..])
       (ignore))))
 
-(constrain collect-static-bindings (\ r (with-vars (a b) (`(function (expr (ref (list bndg-aug)) buffer ,a) ,b)r)r)))
+(constrain collect-static-bindings (\ r (with-vars (a b) (`(function (expr (ref (list bndg-aug)) region ,a) ,b)r)r)))
 
 (function collect-static-bindings (n binding-augs r handler)
   (substitute (.. r handler) (do
@@ -664,7 +665,7 @@
 (storage undefined-symbol-error (ignore))
 
 (constrain preprocessed-expression-address
-  (\ r (with-vars (a b) (`(function (expr (list initializer) (hash-table string bndg-aug) buffer buffer ,a) ,b)r)r)))
+  (\ r (with-vars (a b) (`(function (expr (list initializer) (hash-table string bndg-aug) region region ,a) ,b)r)r)))
 
 (function preprocessed-expression-address (s inits bindings buf :b handler)
   (substitute (.. buf handler)
@@ -690,7 +691,7 @@
   to the result of evaluating a signature builder.)
 
 (constrain vgenerate-metas
-  (\ r (with-vars (a) (`(function (expr (values (list initializer) (hash-table string bndg-aug) buffer buffer ,a)) expr)r)r)))
+  (\ r (with-vars (a) (`(function (expr (values (list initializer) (hash-table string bndg-aug) region region ,a)) expr)r)r)))
 
 (function vgenerate-metas (s ctx)
   (bind (inits bindings buf :b handler) ctx
@@ -706,7 +707,7 @@
       s)))
 
 (constrain init-function
-  (\ r (with-vars (a b) (`(function (expr (list initializer) (hash-table string bndg-aug) buffer buffer ,a (ref ,b)) ,b)r)r)))
+  (\ r (with-vars (a b) (`(function (expr (list initializer) (hash-table string bndg-aug) region region ,a (ref ,b)) ,b)r)r)))
 
 (function init-function (function-expr inits bindings buf :b handler cache)
   (substitute (.. buf handler)
@@ -726,12 +727,12 @@
   expanded only when they are first called.)
 
 (constrain generate-metaprogram
-  (\ r (with-vars (a) (`(function ((list expr) (list initializer) (hash-table string bndg-aug) buffer buffer ,a) (list expr))r)r)))
+  (\ r (with-vars (a) (`(function ((list expr) (list initializer) (hash-table string bndg-aug) region region ,a) (list expr))r)r)))
 
 (function generate-metaprogram (exprs inits bindings buf :b handler)
   (substitute (.. buf handler)
     [reverse (fold (c nil) (s exprs)
-      (let (cache [buffer-alloc (unit) buf handler]) (do
+      (let (cache [region-alloc (unit) buf handler]) (do
         [set cache null-cache]
         
         (if [= (@ expr-type s) (-function-)]
