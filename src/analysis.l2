@@ -446,45 +446,45 @@
     (switch = (@ expr-type e)
       ((-function-)
         (let (params-signature [list->fragment (map (x (@ expr-parameters e)) (@ bndg-signature x) ..)]) (do
-          [append [expr-signature e] [append [expr-signature e] lhss ..] ..]
-          [append [list->fragment [cons function-token [cons params-signature
-            [cons [expr-signature (@ expr-expression e)] nil ..] ..] ..]] [append (@ bndg-signature (@ expr-reference e)) rhss ..] ..])))
+          [prepend [expr-signature e] [prepend [expr-signature e] lhss ..] ..]
+          [prepend [list->fragment [cons function-token [cons params-signature
+            [cons [expr-signature (@ expr-expression e)] nil ..] ..] ..]] [prepend (@ bndg-signature (@ expr-reference e)) rhss ..] ..])))
       
       ((-continuation-)
         (let (params-signature [list->fragment (map (x (@ expr-parameters e)) (@ bndg-signature x) ..)]) (do
-          [append [expr-signature e] [append [expr-signature e] lhss ..] ..]
-          [append [list->fragment [cons continuation-token [cons params-signature nil ..] ..]]
-            [append (@ bndg-signature (@ expr-reference e)) rhss ..] ..])))
+          [prepend [expr-signature e] [prepend [expr-signature e] lhss ..] ..]
+          [prepend [list->fragment [cons continuation-token [cons params-signature nil ..] ..]]
+            [prepend (@ bndg-signature (@ expr-reference e)) rhss ..] ..])))
       
       ((-constrain-) (do
-        [append [expr-signature e] lhss ..]
-        [append [expr-signature (@ expr-expression e)] rhss ..]))
+        [prepend [expr-signature e] lhss ..]
+        [prepend [expr-signature (@ expr-expression e)] rhss ..]))
       
       ((-invoke-)
         (let (params-signature [list->fragment (map (arg (@ expr-arguments e)) [scoped-signature arg scc ..] ..)]) (do
-          [append [scoped-signature (@ expr-target e) scc ..] lhss ..]
-          [append [list->fragment [cons function-token [cons params-signature [cons [expr-signature e] nil ..] ..] ..]] rhss ..])))
+          [prepend [scoped-signature (@ expr-target e) scc ..] lhss ..]
+          [prepend [list->fragment [cons function-token [cons params-signature [cons [expr-signature e] nil ..] ..] ..]] rhss ..])))
       
       ((-jump-)
         (let (params-signature [list->fragment (map (arg (@ expr-arguments e)) [scoped-signature arg scc ..] ..)]) (do
-          [append [scoped-signature (@ expr-target e) scc ..] lhss ..]
-          [append [list->fragment [cons continuation-token [cons params-signature nil ..] ..]] rhss ..])))
+          [prepend [scoped-signature (@ expr-target e) scc ..] lhss ..]
+          [prepend [list->fragment [cons continuation-token [cons params-signature nil ..] ..]] rhss ..])))
       
       ((-with-)
         (let (params-signature [list->fragment [cons [expr-signature e] nil ..]]) (do
-          [append (@ bndg-signature (@ expr-reference e)) [append [expr-signature e] lhss ..] ..]
-          [append [list->fragment [cons continuation-token [cons params-signature nil ..] ..]]
-            [append [expr-signature (@ expr-expression e)] rhss ..] ..])))
+          [prepend (@ bndg-signature (@ expr-reference e)) [prepend [expr-signature e] lhss ..] ..]
+          [prepend [list->fragment [cons continuation-token [cons params-signature nil ..] ..]]
+            [prepend [expr-signature (@ expr-expression e)] rhss ..] ..])))
       
       ((-if-)
         (let (consequent-sig [scoped-signature (@ expr-consequent e) scc ..])
         (let (alternate-sig [scoped-signature (@ expr-alternate e) scc ..]) (do
-          [append consequent-sig [append [expr-signature e] lhss ..] ..]
-          [append alternate-sig [append consequent-sig rhss ..] ..]))))
+          [prepend consequent-sig [prepend [expr-signature e] lhss ..] ..]
+          [prepend alternate-sig [prepend consequent-sig rhss ..] ..]))))
       
       ((-symbol-) (do
-        [append [expr-signature e] lhss ..]
-        [append (@ bndg-signature (@ expr-reference e)) rhss ..]))
+        [prepend [expr-signature e] lhss ..]
+        [prepend (@ bndg-signature (@ expr-reference e)) rhss ..]))
       
       (ignore))))
 

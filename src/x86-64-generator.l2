@@ -327,7 +327,7 @@
     (values (use-storage ret-val) offset (hex 0000000000000800))
     (true))))
 
-(constrain generate-store-continuation (\ r (with-vars (a) (`(function (expr (ref (list instr)) (ref (list reloc)) region ,a) ())r)r)))
+(constrain generate-store-continuation (\ r (with-vars (a) (`(function (expr (ref (list instr)) (ref (list reloc)) region ,a) (ref (list instr)))r)r)))
 
 (function generate-store-continuation (n c relocs r handler)
   (substitute (.. r handler) (let
@@ -343,7 +343,7 @@
     [prepend (make-instrN (x86-mov) ([make-mem-op(word-size)(r11)(none)#0(cont-rbp)#4 ..] [make-reg-op (rbp) ..]) ..) c ..]))))
 
 (constrain generate-continuation
-  (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) region ,a) ,b)r)r)))
+  (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) region ,a) (ref (list instr)))r)r)))
 
 (function generate-continuation (n c relocs r handler)
   (substitute (.. r handler) (let
@@ -450,7 +450,7 @@
         [set+ dest-offset (word-size)]))))))
 
 (constrain generate-load-continuation
-  (\ r (with-vars (a) (`(function (register (ref (list instr)) (ref (list reloc)) region ,a) ())r)r)))
+  (\ r (with-vars (a) (`(function (register (ref (list instr)) (ref (list reloc)) region ,a) (ref (list instr)))r)r)))
 
 (function generate-load-continuation (src-reg c relocs r handler)
   (substitute (.. r handler) (do
