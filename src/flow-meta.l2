@@ -154,9 +154,35 @@
 
 (function fallthrough (l r)
   (loop do-layer (acc [@fst l]) (exprs [@rst l])
-      (if [emt? exprs]
-        acc
-        {do-layer (`(let ((,[@frfst exprs]) (with (,[@ffst exprs]) ,acc)) (,[@frrfst exprs]))r) [@rst exprs]})))
+    (if [emt? exprs]
+      acc
+      {do-layer (`(let ((,[@frfst exprs]) (with (,[@ffst exprs]) ,acc)) (,[@frrfst exprs]))r) [@rst exprs]})))
+
+(ignore
+  Syntactic sugar for continuation passing style. The next continuations is always bound.
+  Transformation is as follows:
+  (cps expr (conts (args ...) exprs) ...)
+  ->
+  (with cps:return
+    (let (cont1 (continuation cont1 (arg11 arg12 ...)
+        (let (cont2 (continuation cont2 (arg21 arg22 ...)
+            ...
+                (let (contN-1 (continuation contN-1 (argN-11 argN-12 ...)
+                    (let (contN (continuation contN (argN1 argN2 ...)
+                        {cps:return exprN}))
+                      {cps:return exprN-1})))
+                  {cps:return exprN-2})
+              ...))
+          {cps:return expr1})))
+      {cps:return expr})))
+
+(function cps (l r) (`(with cps:return
+  (,[(function cps-aux (body rem-exprs r)
+      (if [emt? rem-exprs]
+        body
+        (let (cont-name [@ffst rem-exprs]) (cont-args [@frfst rem-exprs]) (cont-expr [@frrfst rem-exprs])
+          (`(let (,cont-name (continuation ,cont-name ,cont-args {cps:return ,cont-expr}))
+              ,body)r)))) [@fst l] [@rst l] r]))r))
 
 (ignore
   The following function implements variable binding by do the following transformation:
