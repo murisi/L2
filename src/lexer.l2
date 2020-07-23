@@ -38,33 +38,25 @@
 
 (function vbl= (a b) [= a b])
 
-(constrain set-val (\ r (`(function (vbl frag) ())r)))
+(constrain evaluate (\ r (`(function (frag (hash-table vbl frag)) frag)r)))
 
-(function set-val (vbl val) (let (t [frag->list [vbl->frag vbl]]) (setf car t val)))
-
-(constrain get-val (\ r (`(function (vbl) frag)r)))
-
-(function get-val (vbl) (let (t [frag->list [vbl->frag vbl]]) (@ car t)))
-
-(constrain evaluate (\ r (`(function (frag) frag)r)))
-
-(function evaluate (val)
+(function evaluate (val assigns)
   (loop next (val val)
     (if [vbl? val]
-      (let (next-val [get-val [frag->vbl val]])
-        (if [= val next-val]
-          next-val
-          {next next-val}))
+      (let (next-val (storage _(ignore)))
+        (if [ht-contains [frag->vbl val] assigns next-val]
+          {next $next-val}
+          val))
       val)))
 
-(constrain recursive-evaluate (\ r (with-vars (a) (`(function (frag region ,a) frag)r)r)))
+(constrain recursive-evaluate (\ r (with-vars (a) (`(function (frag (hash-table vbl frag) region ,a) frag)r)r)))
 
-(function recursive-evaluate (frag r handler)
+(function recursive-evaluate (frag assigns r handler)
   (substitute (.. r handler)
-    (let (d [evaluate frag])
+    (let (d [evaluate frag assigns])
       (if (or [vbl? d] [i/f:token? d])
         d
-        [list->fragment (map (x [frag->list d]) [recursive-evaluate x ..] ..)]))))
+        [list->fragment (map (x [frag->list d]) [recursive-evaluate x assigns ..] ..)]))))
 
 (ignore
   What follows is a struct for representing fragment characters. It is conceptually in
