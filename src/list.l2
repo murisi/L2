@@ -324,13 +324,26 @@
 
 (function @cadddddr (l) [@car [@cdddddr l]])
 
-(constrain nil (\ r (with-vars (et) (`(list ,et)r)r)))
+(ignore Initialize the given buffer so that it satisfies the nil predicate.)
 
-(storage nil nil nil)
+(constrain init-nil (\ r (with-vars (a) (`(function ((list ,a)) (list ,a))r)r)))
+
+(function init-nil (buf) (do
+  (setf car buf [cast init-nil])
+  (setf cdr buf buf)
+  buf))
 
 (constrain nil? (\ r (with-vars (a b) (`(function ((list ,a)) ,b)r)r)))
 
-(function nil? (l) [= l nil])
+(function nil? (l) (and [= (@ cdr l) l] [= (@ car l) [cast init-nil]]))
+
+(ignore Declare and initialize a global nil value using init-nil.)
+
+(constrain nil (\ r (with-vars (et) (`(list ,et)r)r)))
+
+(storage nil (ignore) (ignore))
+
+[init-nil nil]
 
 (ignore
   Appends an item to the given list. data is the data that is to be appended. l is a
