@@ -213,14 +213,14 @@
 (constrain i/f:token= (\ r (with-vars (a) (`(function ((list tchar) (list tchar)) ,a)r)r)))
 
 (function i/f:token= (a b)
-  (if (not [= [length a] [length b]])
-    (false)
-    (loop check-car (a a) (b b)
-      (if [nil? a]
-        (true)
-      (if (not [= (@ cs-character [@car a]) (@ cs-character [@car b])])
-        (false)
-        {check-car [@cdr a] [@cdr b]})))))
+  (loop check-car (a a) (b b)
+    (if (and [nil? a] [nil? b])
+      (true)
+    (if (or [nil? a] [nil? b])
+      (false)
+    (if [= (@ cs-character [@car a]) (@ cs-character [@car b])]
+      {check-car [@cdr a] [@cdr b]}
+      (false))))))
 
 (ignore
   Converts the given token into an ASCII string. d is the token that is to be converted.
@@ -257,6 +257,30 @@
     (if [i/f:token? l]
       [token->fragment (map (s [fragment->token l]) (tkn-char (@ cs-character s)) ..)]
       [list->fragment (map (s [frag->list l]) [copy-fragment s var-map ..] ..)]))))
+
+(ignore Checks whether two fragments are equal modulo variable identity.)
+
+(constrain fragment= (\ r (with-vars (a b) (`(function (frag frag (hash-table vbl vbl) region ,a) ,b)r)r)))
+
+(function fragment= (frag1 frag2 var-map r handler)
+  (substitute (.. r handler)
+    (if (and [vbl? frag1] [vbl? frag2])
+      (let (vbl1 [frag->vbl frag1]) (vbl2 [frag->vbl frag2])
+        (bind-if [ht-contains vbl1 var-map val]
+          (val) [= $val vbl2]
+          [ht-put vbl1 vbl2 var-map ..]))
+    (if (or [vbl? frag1] [vbl? frag2])
+      (false)
+    (if (and [i/f:token? frag1] [i/f:token? frag2])
+      [i/f:token= [fragment->token frag1] [fragment->token frag2]]
+    (if (or [i/f:token? frag1] [i/f:token? frag2])
+      (false)
+    (loop elt= (l1 [frag->list frag1]) (l2 [frag->list frag2])
+      (if (and [nil? l1] [nil? l2]) (true)
+      (if (or [nil? l1] [nil? l2]) (false)
+      (if [fragment= [@car l1] [@car l2] var-map ..]
+        {elt= [@cdr l1] [@cdr l2]}
+        (false)))))))))))
 
 (ignore Prints the given fragment out to standard output. d is the fragment that is to be printed.)
 
