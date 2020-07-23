@@ -43,10 +43,9 @@
 (function evaluate (val assigns)
   (loop next (val val)
     (if [vbl? val]
-      (let (next-val (storage _(ignore)))
-        (if [ht-contains [frag->vbl val] assigns next-val]
-          {next $next-val}
-          val))
+      (bind-if [ht-contains [frag->vbl val] assigns next-val]
+        (next-val) {next $next-val}
+        val)
       val)))
 
 (constrain recursive-evaluate (\ r (with-vars (a) (`(function (frag (hash-table vbl frag) region ,a) frag)r)r)))
@@ -246,19 +245,18 @@
   be copied. r is the region into which the fragment should be copied. The return
   value is the copied fragment.)
 
-(constrain copy-fragment (\ r (with-vars (b) (`(function (frag (ref (list vbl)) (ref (list vbl)) region ,b) frag)r)r)))
+(constrain copy-fragment (\ r (with-vars (b) (`(function (frag (hash-table vbl vbl) region ,b) frag)r)r)))
 
-(function copy-fragment (l old-vars new-vars r handler)
+(function copy-fragment (l var-map r handler)
   (substitute (.. r handler)
     (if [vbl? l]
       (let (l [frag->vbl l])
-        [vbl->frag (loop find-var (ovs $old-vars) (nvs $new-vars)
-          (if [nil? ovs]
-            (do [prepend l old-vars ..] [prepend [vbl ..] new-vars ..] [@car $new-vars])
-          (if [vbl= [@car ovs] l] [@car nvs] {find-var [@cdr ovs] [@cdr nvs]})))])
+        [vbl->frag (bind-if [ht-contains l var-map new-l]
+          (new-l) $new-l
+          (let (new-l [vbl ..]) (do [ht-put l new-l var-map ..] new-l)))])
     (if [i/f:token? l]
       [token->fragment (map (s [fragment->token l]) (tkn-char (@ cs-character s)) ..)]
-      [list->fragment (map (s [frag->list l]) [copy-fragment s old-vars new-vars ..] ..)]))))
+      [list->fragment (map (s [frag->list l]) [copy-fragment s var-map ..] ..)]))))
 
 (ignore Prints the given fragment out to standard output. d is the fragment that is to be printed.)
 

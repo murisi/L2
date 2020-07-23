@@ -449,9 +449,11 @@
 (constrain scoped-signature (\ r (with-vars (a) (`(function (expr (list expr) region ,a) frag)r)r)))
 
 (function scoped-signature (e scc r handler)
-  (if (not [nil? (find (x scc) [= x e])])
-    [expr-signature e]
-    [copy-fragment [expr-signature e] (storage _ nil) (storage _ nil) r handler]))
+  (substitute (.. r handler)
+    (if (not [nil? (find (x scc) [= x e])])
+      [expr-signature e]
+      (let (var-map [ht-create hash-ptr = ..])
+        [copy-fragment [expr-signature e] var-map ..]))))
 
 (constrain generate-equations
   (\ r (with-vars (a b) (`(function (expr (list expr) frag frag (ref (list frag)) (ref (list frag)) region ,a) ,b)r)r)))
