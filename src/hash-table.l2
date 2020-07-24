@@ -109,7 +109,7 @@
             {find-end [@cdr bucket] [cons v vals ..]}
             {find-end [@cdr bucket] vals}))))))))
 
-(constrain ht-remove (\ r (with-vars (a b c d) (`(function (,a (hash-table ,a ,b)) ,d)r)r)))
+(constrain ht-remove (\ r (with-vars (a b d) (`(function (,a (hash-table ,a ,b)) ,d)r)r)))
 
 (function ht-remove (key ht)
   (let (bucket-idx [rem [(@ ht-hash-func ht) key] (@ ht-bucket-count ht)])
@@ -121,6 +121,13 @@
         (if [(@ ht-equals-func ht) key k]
           (do [set bucket [@cdr $bucket]] [set- (& ht-element-count ht) #1])
           {find-end (& cdr $bucket)})))))))
+
+(constrain ht-removeall (\ r (with-vars (a b d) (`(function ((hash-table ,a ,b)) ,d)r)r)))
+
+(function ht-removeall (ht)
+  (until (bucket-idx #0) [= bucket-idx (@ ht-bucket-count ht)] [+ bucket-idx #1] (do
+    (let (bucket (loc(unit)bucket-idx(@ ht-values ht))) [set bucket nil])
+    [set (& ht-element-count ht) #0])))
 
 (ignore
   Iterates through the entries in the hash-table. Does the following

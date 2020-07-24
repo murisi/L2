@@ -518,6 +518,7 @@
     
     (let (assigns [ht-create hash-ptr = ..])
     (let (expr-sigs [ht-create hash-ptr = ..])
+    (let (compare-map [ht-create hash-ptr = ..])
     (let (function-token [token->fragment [build-token [rstrcpy (" function) ..] ..]])
     (let (continuation-token [token->fragment [build-token [rstrcpy (" continuation) ..] ..]])
     (foreach (scc [reverse $sccs ..])
@@ -528,15 +529,17 @@
                 [unify [list->fragment $lhss] [list->fragment $rhss] assigns iter ..]
                 $has-solution?)
               (iter (next) (do
-                (foreach (e scc)
+                (foreach (e scc) (do
                   (let (new-sig [recursive-evaluate [expr-signature e] assigns ..])
-                    (if (ht-find (old-sig e expr-sigs) [fragment= new-sig old-sig [ht-create hash-ptr = ..] ..]) (ignore)
-                      [ht-put e new-sig expr-sigs ..])))
+                  (if (ht-find (old-sig e expr-sigs) [fragment= new-sig old-sig compare-map ..])
+                    (ignore)
+                    [ht-put e new-sig expr-sigs ..]))
+                  [ht-removeall compare-map]))
                 [set has-solution? (true)]
                 {next}))))
           (ignore)
           {handler (storage _ unification-error)})
-        (foreach (e scc) (setf bndg-signature (@ expr-binding-aug e) [ht-get e expr-sigs])))))))))))))))
+        (foreach (e scc) (setf bndg-signature (@ expr-binding-aug e) [ht-get e expr-sigs]))))))))))))))))
 
 (constrain visit-expressions (\ r (with-vars (a) (`(function ((function (expr ,a) expr) (ref expr) ,a) ())r)r)))
 
