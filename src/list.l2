@@ -91,14 +91,14 @@
   (let (map:start (storage _ nil))
     (loop map:loop (map:l l) (map:end map:start)
       (if [nil? map:l]
-        $map:start
+        (do [set map:end [cast map:l]] $map:start)
         {map:loop [@cdr map:l] [append (let (x [@car map:l]) expr) map:end ctx ...]}))))
 
 (function map (l r)
   (`(let (map:start (storage _ nil))
       (loop map:loop (map:l (,[@frfst l])) (map:end map:start)
         (if [nil? map:l]
-          $map:start
+          (do [set map:end [cast map:l]] $map:start)
           {map:loop [@cdr map:l]
             (,[llllst (` invoke r) (` append r) (`(let ((,[@ffst l]) [@car map:l]) (,[@frst l]))r) (` map:end r) [@rrst l] r])})))r))
 
@@ -356,11 +356,11 @@
   (loop next (l l)
     (if (not [nil? $l])
       {next (& cdr $l)}
-      (do
+      (let (end $l) (do
         [set l [region-alloc (list-struct) r handler]]
         (setf car $l data)
-        (setf cdr $l nil)
-        (& cdr $l)))))
+        (setf cdr $l end)
+        (& cdr $l))))))
 
 (ignore
   Makes a new list with the given head and tail. data is what is going to be put at the
@@ -374,6 +374,12 @@
     (setf car l data)
     (setf cdr l rest)
     l)))
+
+(constrain ccons (\ r (with-vars (et a) (`(function (,et ,et (list ,et) region ,a) (list ,et))r)r)))
+
+(function ccons (data1 data2 rest r handler)
+  (substitute (.. r handler)
+    [cons data1 [cons data2 rest ..] ..]))
 
 (ignore
   Appends the second list onto the first list. fst-ref is a reference to the list that

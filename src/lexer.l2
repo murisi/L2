@@ -1,93 +1,111 @@
-(constrain frag->list (\ r (`(function (frag) (list frag))r)))
+(ignore Casts to/from fragment and its various subtypes.)
 
-(function frag->list (x) [cast x])
+  (constrain frag->list (\ r (`(function (frag) (list frag))r)))
 
-(constrain list->fragment (\ r (`(function ((list frag)) frag)r)))
+  (function frag->list (x) [cast x])
 
-(function list->fragment (x) [cast x])
+  (constrain list->fragment (\ r (`(function ((list frag)) frag)r)))
 
-(constrain token->fragment (\ r (`(function ((list tchar)) frag)r)))
+  (function list->fragment (x) [cast x])
 
-(function token->fragment (x) [cast x])
+  (constrain token->fragment (\ r (`(function ((list tchar)) frag)r)))
 
-(constrain fragment->token (\ r (`(function (frag) (list tchar))r)))
+  (function token->fragment (x) [cast x])
 
-(function fragment->token (x) [cast x])
+  (constrain fragment->token (\ r (`(function (frag) (list tchar))r)))
 
-(constrain frag->vbl (\ r (`(function (frag) vbl)r)))
+  (function fragment->token (x) [cast x])
 
-(function frag->vbl (x) [cast x])
+  (constrain frag->vbl (\ r (`(function (frag) vbl)r)))
 
-(constrain vbl->frag (\ r (`(function (vbl) frag)r)))
+  (function frag->vbl (x) [cast x])
 
-(function vbl->frag (x) [cast x])
+  (constrain vbl->frag (\ r (`(function (vbl) frag)r)))
 
-(constrain vbl (\ r (with-vars (a) (`(function (region ,a) vbl)r)r)))
+  (function vbl->frag (x) [cast x])
 
-(function vbl (r handler)
-  (let (l [region-alloc (list-struct) r handler]) (do
-    (setf car l [cast vbl])
-    (setf cdr l l)
-    [frag->vbl [list->fragment l]])))
+(ignore Declaration of emt and emt? which is used by macros being compiled.)
 
-(constrain vbl? (\ r (with-vars (a) (`(function (frag) ,a)r)r)))
+  (constrain emt! (\ r (with-vars (et) (`(list ,et)r)r)))
 
-(function vbl? (s) (let (t [frag->list s]) (and [= (@ cdr t) t] [= (@ car t) [cast vbl]])))
+  (storage emt! (ignore)(ignore))
 
-(constrain vbl= (\ r (with-vars (a) (`(function (vbl vbl) ,a)r)r)))
+  [init-nil emt!]
 
-(function vbl= (a b) [= a b])
+  (constrain emt?! (\ r (with-vars (et a) (`(function ((list ,et)) ,a)r)r)))
+  
+  (function emt?! (x) [= x emt!])
 
-(constrain evaluate (\ r (`(function (frag (hash-table vbl frag)) frag)r)))
+(ignore Functions to create variables and evaluate fragments containing variables.)
 
-(function evaluate (val assigns)
-  (loop next (val val)
-    (if [vbl? val]
-      (bind-if [ht-contains [frag->vbl val] assigns next-val]
-        (next-val) {next $next-val}
-        val)
-      val)))
+  (constrain vbl (\ r (with-vars (a) (`(function (region ,a) vbl)r)r)))
 
-(constrain recursive-evaluate (\ r (with-vars (a) (`(function (frag (hash-table vbl frag) region ,a) frag)r)r)))
+  (function vbl (r handler)
+    (let (l [region-alloc (list-struct) r handler]) (do
+      (setf car l [cast vbl])
+      (setf cdr l l)
+      [frag->vbl [list->fragment l]])))
 
-(function recursive-evaluate (frag assigns r handler)
-  (substitute (.. r handler)
-    (let (d [evaluate frag assigns])
-      (if (or [vbl? d] [i/f:token? d])
-        d
-        [list->fragment (map (x [frag->list d]) [recursive-evaluate x assigns ..] ..)]))))
+  (constrain vbl? (\ r (with-vars (a) (`(function (frag) ,a)r)r)))
+
+  (function vbl? (s) (let (t [frag->list s]) (and [= (@ cdr t) t] [= (@ car t) [cast vbl]])))
+
+  (constrain vbl= (\ r (with-vars (a) (`(function (vbl vbl) ,a)r)r)))
+
+  (function vbl= (a b) [= a b])
+
+  (constrain evaluate (\ r (`(function (frag (hash-table vbl frag)) frag)r)))
+
+  (function evaluate (val assigns)
+    (loop next (val val)
+      (if [vbl? val]
+        (bind-if [ht-contains [frag->vbl val] assigns next-val]
+          (next-val) {next $next-val}
+          val)
+        val)))
+
+  (constrain recursive-evaluate (\ r (with-vars (a) (`(function (frag (hash-table vbl frag) region ,a) frag)r)r)))
+
+  (function recursive-evaluate (frag assigns r handler)
+    (substitute (.. r handler)
+      (let (d [evaluate frag assigns])
+        (if (or [vbl? d] [i/f:token? d])
+          d
+          [list->fragment (map (x [frag->list d]) [recursive-evaluate x assigns ..] ..)]))))
 
 (ignore
   What follows is a struct for representing fragment characters. It is conceptually in
   union with the list-struct.)
 
-(function character-struct (l r) [=# #16 r])
+  (function character-struct (l r) [=# #16 r])
 
-(ignore
-  This field should be set to character-flag to indicate that a given reference is a
-  character rather than a list.)
-  
-(function cs-flag (l r) [property #8 #8 (\ r (`(@ (,[var r]) (,[var r]))r)) l r])
+  (ignore
+    This field should be set to character-flag to indicate that a given reference is a
+    character rather than a list.)
+    
+  (function cs-flag (l r) [property #8 #8 (\ r (`(@ (,[var r]) (,[var r]))r)) l r])
 
-(ignore This field contains the ASCII character represented by the this fragment character.)
-  
-(function cs-character (l r) [property #0 #8 (\ r (`(@ (,[var r]) (,[var r]))r)) l r])
+  (ignore This field contains the ASCII character represented by the this fragment character.)
+    
+  (function cs-character (l r) [property #0 #8 (\ r (`(@ (,[var r]) (,[var r]))r)) l r])
 
-(ignore Returns a reference to a fragment character representing the supplied ASCII character.)
+(ignore Functions for creating, accessing, and comparing characters.)
 
-(function char-init (s r) (`(storage _ (char (,[@fst s])) character-flag)r))
+  (ignore Returns a reference to a fragment character representing the supplied ASCII character.)
 
-(ignore Returns the fragment character representing the supplied ASCII character.)
+  (function char-init (s r) (`(storage _ (char (,[@fst s])) character-flag)r))
 
-(function tkn-char (s r) (`(constrain ($(loc (unit) (,[@fst s]) characters)) (\ r (` tchar r)))r))
+  (ignore Returns the fragment character representing the supplied ASCII character.)
 
-(storage null-fragment (ignore))
+  (function tkn-char (s r) (`(constrain ($(loc (unit) (,[@fst s]) characters)) (\ r (` tchar r)))r))
 
-(ignore
-  Checks if two fragment characters are equal. a is a fragment character. b is a fragment
-  character. Return value is (true) if they are equal and (false) otherwise.)
+  (storage null-fragment (ignore))
 
-(function i/f:char= (a b) [= (@ cs-character a) (@ cs-character b)])
+  (ignore
+    Checks if two fragment characters are equal. a is a fragment character. b is a fragment
+    character. Return value is (true) if they are equal and (false) otherwise.)
+
+  (function i/f:char= (a b) [= (@ cs-character a) (@ cs-character b)])
 
 (ignore Following array is used to lookup fragment character corresponding to ASCII character.)
 
@@ -112,7 +130,7 @@
 (constrain build-token (\ r (with-vars (c) (`(function (string region ,c) (list tchar))r)r)))
 
 (function build-token (str r handler)
-  (let (sexprs-start (storage _ nil))
+  (let (sexprs-start (storage _ emt!))
     (loop cons-char (sexprs-end sexprs-start) (strptr str)
       (if [getb strptr]
         {cons-char [append (tkn-char [getb strptr]) sexprs-end r handler] [+ strptr #1]}
@@ -149,7 +167,7 @@
       (let (d [getb [+ l2src $pos]])
         (if (or [isspace d] [= d (rparen)] [= d (rbrace)] [= d (rbracket)] [= d (lparen)] [= d (lbrace)] [= d (lbracket)])
           [token->fragment [build-token sigil ..]]
-          [list->fragment (list ([token->fragment [build-token sigil ..]] [build-fragment l2src l2src-sz pos ..]) ..)])))))
+          [list->fragment [ccons [token->fragment [build-token sigil ..]] [build-fragment l2src l2src-sz pos ..] emt! ..]])))))
 
 (ignore
   Builds a fragment list starting at the current position in the buffer and ending
@@ -161,7 +179,7 @@
 
 (function build-fragment-list (primitive delimeter l2src l2src-sz pos r handler)
   (substitute (.. r handler)
-    (let (sexprs-start (storage _ nil))
+    (let (sexprs-start (storage _ emt!))
       (loop cons-frag (sexprs-end [append [token->fragment [build-token primitive ..]] sexprs-start ..])
         (let (rem [after-leading-space l2src l2src-sz pos])
           (if (and rem [= [getb [+ l2src $pos]] delimeter])
@@ -192,7 +210,7 @@
             ((char `) [build-sigilled-token (" `) l2src l2src-sz pos ..])
             
             [token->fragment
-              (let (ls (storage _ nil))
+              (let (ls (storage _ emt!))
               (loop cons-char (le ls) (c c)
                 (let (le [append (tkn-char c) le ..])
                 (if [= $pos l2src-sz] $ls
