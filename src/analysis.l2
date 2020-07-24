@@ -415,6 +415,8 @@
         (stop () [ht-remove var assigns]))
       (ignore))))
 
+(constrain unify-or (\ r (with-vars (a b c d) (`(function ((list frag) frag ,d (hash-table vbl frag) ,b region ,c) ,a)r)r)))
+
 (function unify-or (x y rev assigns succ buf hdl)
   (substitute (.. buf hdl)
     (loop try-next (x x)
@@ -424,6 +426,8 @@
             [unify y [@car x] assigns succ ..]
             [unify [@car x] y assigns succ ..])
           {try-next [@cdr x]})))))
+
+(constrain unify-and (\ r (with-vars (a b c d) (`(function ((list frag) frag ,d (hash-table vbl frag) ,b region ,c) ,a)r)r)))
 
 (function unify-and (x y rev assigns succ buf hdl)
   (substitute (.. buf hdl)
@@ -569,7 +573,11 @@
                 {next}))))
           (ignore)
           {handler (storage _ unification-error)})
-        (foreach (e scc) (setf bndg-signature (@ expr-binding-aug e) [ht-get e expr-sigs]))))))))))))))))
+        (foreach (e scc)
+          (let (sig-opts (storage _[ht-getall e expr-sigs ..])) (do
+            (ignore Turn the list of possible types into an or type.)
+            [append-list sig-opts or!]
+            (setf bndg-signature (@ expr-binding-aug e) [list->fragment $sig-opts]))))))))))))))))))
 
 (constrain visit-expressions (\ r (with-vars (a) (`(function ((function (expr ,a) expr) (ref expr) ,a) ())r)r)))
 
