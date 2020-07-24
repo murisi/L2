@@ -1,6 +1,6 @@
 (constrain defined-str= (\ r (with-vars (a) (`(function (string string) ,a)r)r)))
 
-(function defined-str= (a b) (and [getb a] [getb b] [str= a b]))
+(function defined-str= (a b) (cand [getb a] [getb b] [str= a b]))
 
 (constrain bndg-name= (\ r (with-vars (a) (`(function (bndg-aug bndg-aug) ,a)r)r)))
 
@@ -38,18 +38,18 @@
 
 (function vpropagate-expressions (e ctx)
   (bind (:a handler) ctx
-    (if (and [= (@ expr-type e) (-continuation-)] (not (@ expr-escapes e)) [= [length (@ expr-jumps e)] #1])
+    (if (cand [= (@ expr-type e) (-continuation-)] (not (@ expr-escapes e)) [= [length (@ expr-jumps e)] #1])
       (do
         (let (jmp [@car (@ expr-jumps e)])
           (foreach (u (@ expr-parameters e)) (v (@ expr-arguments jmp))
             (setf bndg-propagate u v)))
         e)
-    (if (and [= (@ expr-type e) (-symbol-)] [not= (@ bndg-propagate (@ expr-reference e)) null-expr]
+    (if (cand [= (@ expr-type e) (-symbol-)] [not= (@ bndg-propagate (@ expr-reference e)) null-expr]
         [= (@ expr-type (@ bndg-propagate (@ expr-reference e))) (-symbol-)])
       (do
         (setf expr-reference e (@ expr-reference (@ bndg-propagate (@ expr-reference e))))
         e)
-    (if (and [= (@ expr-type e) (-symbol-)] [not= (@ bndg-propagate (@ expr-reference e)) null-expr]
+    (if (cand [= (@ expr-type e) (-symbol-)] [not= (@ bndg-propagate (@ expr-reference e)) null-expr]
         [= (@ expr-type (@ bndg-propagate (@ expr-reference e))) (-literal-)])
       (do
         [make-literal (@ expr-value (@ bndg-propagate (@ expr-reference e))) null-fragment null-expr :a handler])
@@ -78,7 +78,7 @@
           (expr-alternate (%(match-property
             (expr-type (%[= (-literal-)]))
             (expr-value (%[variable alt-val])))))))
-        (and (or $cons-val $alt-val) (not (and $cons-val $alt-val))))))
+        (cand (or $cons-val $alt-val) (not (cand $cons-val $alt-val))))))
       (expr-consequent (%[variable consequent]))
       (expr-alternate (%[variable alternate])) e)
     (cond cons-val alt-val consequent alternate) (do
@@ -225,7 +225,7 @@
 (function vunlink-symbols (s ctx)
   (bind (blacklist buf hdl) ctx
     (with-region buf
-      (if (and [= (@ expr-type s) (-symbol-)] [not= (@ expr-reference s) null-binding]
+      (if (cand [= (@ expr-type s) (-symbol-)] [not= (@ expr-reference s) null-binding]
           [contains (@ expr-reference s) [ht-getall (@ bndg-name (@ expr-reference s)) blacklist buf hdl]])
         (do (setf expr-reference s null-binding) s)
         s))))
@@ -267,7 +267,7 @@
         [ht-remove (@ bndg-name (@ expr-reference s)) bindings]))
       
       ((-symbol-)
-        (if (and [= (@ expr-reference s) null-binding] (not (if static-storage (false) [assign-binding s dynamic-bindings]))
+        (if (cand [= (@ expr-reference s) null-binding] (not (if static-storage (false) [assign-binding s dynamic-bindings]))
             (not [assign-binding s static-bindings]) (not [assign-binding s undefined-bindings]))
           (let (bndg [make-undefined-binding (@ expr-name s) ..]) (do
             (setf expr-reference s bndg)
@@ -297,7 +297,7 @@
     (switch = (@ expr-type s)
       ((-symbol-)
         (let (target-expr (@ bndg-expression (@ expr-reference s)))
-          (if (and escaping (or [= (@ expr-type target-expr) (-continuation-)] [= (@ expr-type target-expr) (-with-)])
+          (if (cand escaping (or [= (@ expr-type target-expr) (-continuation-)] [= (@ expr-type target-expr) (-with-)])
               [= (@ expr-reference target-expr) (@ expr-reference s)])
             (setf expr-escapes target-expr escaping)
             (ignore))))
@@ -308,7 +308,7 @@
         [escape-analysis (@ expr-alternate s) (true) ..]))
       
       ((-function-) (-continuation-) (-with-) (do
-        (if (and escaping [= (@ expr-type s) (-continuation-)])
+        (if (cand escaping [= (@ expr-type s) (-continuation-)])
           (setf expr-escapes s escaping)
           (ignore))
         [escape-analysis (@ expr-expression s) (true) ..]))
@@ -319,7 +319,7 @@
       ((-jump-) (do
         (if [= (@ expr-type (@ expr-target s)) (-symbol-)]
           (let (target-expr (@ bndg-expression (@ expr-reference (@ expr-target s))))
-          (if (and (or [= (@ expr-type target-expr) (-continuation-)] [= (@ expr-type target-expr) (-with-)])
+          (if (cand (or [= (@ expr-type target-expr) (-continuation-)] [= (@ expr-type target-expr) (-with-)])
               [= (@ expr-reference target-expr) (@ expr-reference (@ expr-target s))]) (do
             [prepend s (& expr-jumps target-expr) ..]
             (setf expr-short-circuit s target-expr))
@@ -420,11 +420,11 @@
 (function unify (x y assigns succ buf hdl)
   (substitute (.. buf hdl)
     (let (xl [evaluate x assigns]) (yl [evaluate y assigns])
-      (if (and [vbl? xl] [vbl? yl] [vbl= [frag->vbl xl] [frag->vbl yl]])
+      (if (cand [vbl? xl] [vbl? yl] [vbl= [frag->vbl xl] [frag->vbl yl]])
         (cps {succ stop} (stop () (ignore)))
       (if [vbl? xl] [unify-var [frag->vbl xl] yl assigns succ ..]
       (if [vbl? yl] [unify-var [frag->vbl yl] xl assigns succ ..]
-      (if (and [i/f:token? xl] [i/f:token? yl])
+      (if (cand [i/f:token? xl] [i/f:token? yl])
         (if [i/f:token= [fragment->token xl] [fragment->token yl]]
           (cps {succ stop} (stop () (ignore)))
           (ignore))
@@ -653,7 +653,7 @@
 
 (function append-static-binding (bndg binding-augs r handler)
   (substitute (.. r handler)
-    (if (and [= (@ bndg-storage bndg) (absolute-storage)] (@ bndg-other bndg))
+    (if (cand [= (@ bndg-storage bndg) (absolute-storage)] (@ bndg-other bndg))
       (do (setf bndg-other bndg (false)) [append bndg binding-augs ..])
       (ignore))))
 

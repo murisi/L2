@@ -137,7 +137,7 @@
 
 (function open (path handler)
   (let (ret [syscall (sys-open) path (o-rdonly) (ignore) (ignore) (ignore) (ignore)])
-    (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
+    (if (cand [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
       {handler (storage _ file-access-error path)}
       ret)))
 
@@ -145,7 +145,7 @@
 
 (function create (path handler)
   (let (ret [syscall (sys-open) path [bor (o-wronly) (o-creat)] [bor (s-irwxu) [bor (s-irwxg) (s-irwxo)]]  (ignore) (ignore) (ignore)])
-    (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
+    (if (cand [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
       {handler (storage _ file-access-error path)}
       ret)))
 
@@ -153,7 +153,7 @@
 
 (function print (fd d len handler)
   (let (ret [syscall (sys-write) fd d len (ignore) (ignore) (ignore)])
-    (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
+    (if (cand [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
       {handler (storage _ file-access-error empty-string)}
       ret)))
 
@@ -228,7 +228,7 @@
 
 (function read (fd buf cnt handler)
   (let (ret [syscall (sys-read) fd buf cnt (ignore) (ignore) (ignore)])
-    (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
+    (if (cand [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
       {handler (storage _ file-access-error empty-string)}
       ret)))
 
@@ -236,7 +236,7 @@
 
 (function close (fd handler)
   (let (ret [syscall (sys-close) fd (ignore) (ignore) (ignore) (ignore) (ignore)])
-    (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
+    (if (cand [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
       {handler (storage _ file-access-error empty-string)}
       ret)))
 
@@ -246,7 +246,7 @@
   (let (statbuf (storage _ (ignore)(ignore)(ignore)(ignore)(ignore)(ignore)(ignore)(ignore)(ignore)
     (ignore)(ignore)(ignore)(ignore)(ignore)(ignore)(ignore)(ignore)(ignore)))
   (let (ret [syscall (sys-fstat) fd statbuf (ignore) (ignore) (ignore) (ignore)])
-    (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
+    (if (cand [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
       {handler (storage _ file-access-error empty-string)}
       [get [+ statbuf #48]]))))
 
@@ -256,7 +256,7 @@
 
 (function mmap (len handler)
   (let (ret [syscall (sys-mmap) #0 len [bor (prot-read) (prot-write)] [bor (map-private) [bor (map-anonymous) (map-32bit)]] [bnot #0] #0])
-    (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
+    (if (cand [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
       {handler (storage _ memory-access-error)}
       ret)))
 
@@ -266,7 +266,7 @@
 
 (function munmap (ptr len handler)
   (let (ret [syscall (sys-munmap) ptr len (ignore) (ignore) (ignore) (ignore)])
-    (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
+    (if (cand [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
       {handler (storage _ memory-access-error)}
       ret)))
 
@@ -341,7 +341,7 @@
 
 (function region-free (ref reg handler)
   (loop do-free (last-elt (@ reg-last-elt reg))
-    (if (and [<= [+ last-elt (region-element)] ref] [<= ref (@ reg-end-pos last-elt)])
+    (if (cand [<= [+ last-elt (region-element)] ref] [<= ref (@ reg-end-pos last-elt)])
       (do
         (setf reg-curr-pos last-elt ref)
         (setf reg-last-elt reg last-elt))
@@ -409,7 +409,7 @@
 (function clock-gettime (handler)
   (let (t (storage _ (ignore)(ignore)))
     (let (ret [syscall (sys-clock-gettime) (clock-process-cputime-id) t (ignore) (ignore) (ignore) (ignore)])
-      (if (and [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
+      (if (cand [<= [- #0 #4095] ret] [<= ret [- #0 #1]])
         {handler (storage _ time-error)}
         [+ [* $t #1000000000] ($[+ t (unit)])]))))
 

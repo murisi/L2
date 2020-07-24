@@ -48,7 +48,7 @@
 
   (constrain vbl? (\ r (with-vars (a) (`(function (frag) ,a)r)r)))
 
-  (function vbl? (s) (let (t [frag->list s]) (and [= (@ cdr t) t] [= (@ car t) [cast vbl]])))
+  (function vbl? (s) (let (t [frag->list s]) (cand [= (@ cdr t) t] [= (@ car t) [cast vbl]])))
 
   (constrain vbl= (\ r (with-vars (a) (`(function (vbl vbl) ,a)r)r)))
 
@@ -145,7 +145,7 @@
 
 (function after-leading-space (l2src l2src-sz pos)
   (loop find-space
-    (if (and [< $pos l2src-sz] [isspace [getb[+ l2src $pos]]])
+    (if (cand [< $pos l2src-sz] [isspace [getb[+ l2src $pos]]])
       (do [set+ pos #1] {find-space})
       [- l2src-sz $pos])))
 
@@ -182,7 +182,7 @@
     (let (sexprs-start (storage _ emt!))
       (loop cons-frag (sexprs-end [append [token->fragment [build-token primitive ..]] sexprs-start ..])
         (let (rem [after-leading-space l2src l2src-sz pos])
-          (if (and rem [= [getb [+ l2src $pos]] delimeter])
+          (if (cand rem [= [getb [+ l2src $pos]] delimeter])
             (do [set+ pos #1] $sexprs-start)
             {cons-frag [append [build-fragment l2src l2src-sz pos ..] sexprs-end ..]}))))))
 
@@ -226,13 +226,13 @@
 
 (function i/f:token? (e)
   (let (d [fragment->token e])
-    (and (not [vbl? e]) [length d] [= (@ cs-flag[@car d]) character-flag])))
+    (cand (not [vbl? e]) [length d] [= (@ cs-flag[@car d]) character-flag])))
 
 (constrain i/f:token= (\ r (with-vars (a) (`(function ((list tchar) (list tchar)) ,a)r)r)))
 
 (function i/f:token= (a b)
   (loop check-car (a a) (b b)
-    (if (and [nil? a] [nil? b])
+    (if (cand [nil? a] [nil? b])
       (true)
     (if (or [nil? a] [nil? b])
       (false)
@@ -282,19 +282,19 @@
 
 (function fragment= (frag1 frag2 var-map r handler)
   (substitute (.. r handler)
-    (if (and [vbl? frag1] [vbl? frag2])
+    (if (cand [vbl? frag1] [vbl? frag2])
       (let (vbl1 [frag->vbl frag1]) (vbl2 [frag->vbl frag2])
         (bind-if [ht-contains vbl1 var-map val]
           (val) [= $val vbl2]
           [ht-put vbl1 vbl2 var-map ..]))
     (if (or [vbl? frag1] [vbl? frag2])
       (false)
-    (if (and [i/f:token? frag1] [i/f:token? frag2])
+    (if (cand [i/f:token? frag1] [i/f:token? frag2])
       [i/f:token= [fragment->token frag1] [fragment->token frag2]]
     (if (or [i/f:token? frag1] [i/f:token? frag2])
       (false)
     (loop elt= (l1 [frag->list frag1]) (l2 [frag->list frag2])
-      (if (and [nil? l1] [nil? l2]) (true)
+      (if (cand [nil? l1] [nil? l2]) (true)
       (if (or [nil? l1] [nil? l2]) (false)
       (if [fragment= [@car l1] [@car l2] var-map ..]
         {elt= [@cdr l1] [@cdr l2]}
