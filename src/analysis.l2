@@ -528,7 +528,10 @@
                 [unify [list->fragment $lhss] [list->fragment $rhss] assigns iter ..]
                 $has-solution?)
               (iter (next) (do
-                (foreach (e scc) [ht-put e [recursive-evaluate [expr-signature e] assigns ..] expr-sigs ..])
+                (foreach (e scc)
+                  (let (new-sig [recursive-evaluate [expr-signature e] assigns ..])
+                    (if (ht-find (old-sig e expr-sigs) [fragment= new-sig old-sig [ht-create hash-ptr = ..] ..]) (ignore)
+                      [ht-put e new-sig expr-sigs ..])))
                 [set has-solution? (true)]
                 {next}))))
           (ignore)

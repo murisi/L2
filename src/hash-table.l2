@@ -151,6 +151,33 @@
     (if [emt? rem] expr
       {build-expr [lllllst (` invoke r) (` ht-put r) [@ffst rem] [@frfst rem] expr [@rfst l] r] [@rst rem]})))
 
+(ignore
+  Find a value under the given key in the given hash table satisfying the given predicate:
+  (ht-find (value key ht) expr)
+  ->
+  (let (ht-find:key key) (ht-find:ht ht)
+  (let (ht-find:bucket-idx [rem [(@ ht-hash-func ht-find:ht) ht-find:key] (@ ht-bucket-count ht-find:ht)])
+  (let (ht-find:bucket ($(loc(unit)ht-find:bucket-idx(@ ht-values ht-find:ht))))
+  (loop ht-find:find-end (ht-find:bucket ht-find:bucket)
+    (if [nil? ht-find:bucket]
+      (false)
+      (bind (ht-find:k value) [@car ht-find:bucket]
+        (if (and [(@ ht-equals-func ht) ht-find:key ht-find:k] expr)
+          (true)
+          {ht-find:find-end [@cdr ht-find:bucket]}))))))))
+
+(function ht-find (l r)
+  (`(let (ht-find:key (,[@frfst l])) (ht-find:ht (,[@frrfst l]))
+    (let (ht-find:bucket-idx [rem [(@ ht-hash-func ht-find:ht) ht-find:key] (@ ht-bucket-count ht-find:ht)])
+    (let (ht-find:bucket ($(loc(unit)ht-find:bucket-idx(@ ht-values ht-find:ht))))
+    (loop ht-find:find-end (ht-find:bucket ht-find:bucket)
+      (if [nil? ht-find:bucket]
+        (false)
+        (bind (ht-find:k (,[@ffst l])) [@car ht-find:bucket]
+          (if (and [(@ ht-equals-func ht-find:ht) ht-find:key ht-find:k] (,[@frst l]))
+            (true)
+            {ht-find:find-end [@cdr ht-find:bucket]})))))))r))
+
 (constrain hash-str (\ r (with-vars (a) (`(function (string) ,a)r)r)))
 
 (function hash-str (str)
