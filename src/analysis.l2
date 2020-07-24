@@ -78,7 +78,7 @@
           (expr-alternate (%(match-property
             (expr-type (%[= (-literal-)]))
             (expr-value (%[variable alt-val])))))))
-        (cand (or $cons-val $alt-val) (not (cand $cons-val $alt-val))))))
+        (cand (cor $cons-val $alt-val) (not (cand $cons-val $alt-val))))))
       (expr-consequent (%[variable consequent]))
       (expr-alternate (%[variable alternate])) e)
     (cond cons-val alt-val consequent alternate) (do
@@ -213,7 +213,7 @@
       (if [nil? exprs]
         binding-augs
         (let (t [@car exprs])
-          (if (or [= (@ expr-type t) (-function-)] [= (@ expr-type t) (-storage-)])
+          (if (cor [= (@ expr-type t) (-function-)] [= (@ expr-type t) (-storage-)])
             (do
               (setf bndg-scope (@ expr-reference t) (global-scope))
               [ht-put (@ bndg-name (@ expr-reference t)) (@ expr-reference t) binding-augs ..]
@@ -297,7 +297,7 @@
     (switch = (@ expr-type s)
       ((-symbol-)
         (let (target-expr (@ bndg-expression (@ expr-reference s)))
-          (if (cand escaping (or [= (@ expr-type target-expr) (-continuation-)] [= (@ expr-type target-expr) (-with-)])
+          (if (cand escaping (cor [= (@ expr-type target-expr) (-continuation-)] [= (@ expr-type target-expr) (-with-)])
               [= (@ expr-reference target-expr) (@ expr-reference s)])
             (setf expr-escapes target-expr escaping)
             (ignore))))
@@ -319,7 +319,7 @@
       ((-jump-) (do
         (if [= (@ expr-type (@ expr-target s)) (-symbol-)]
           (let (target-expr (@ bndg-expression (@ expr-reference (@ expr-target s))))
-          (if (cand (or [= (@ expr-type target-expr) (-continuation-)] [= (@ expr-type target-expr) (-with-)])
+          (if (cand (cor [= (@ expr-type target-expr) (-continuation-)] [= (@ expr-type target-expr) (-with-)])
               [= (@ expr-reference target-expr) (@ expr-reference (@ expr-target s))]) (do
             [prepend s (& expr-jumps target-expr) ..]
             (setf expr-short-circuit s target-expr))
@@ -428,7 +428,7 @@
         (if [i/f:token= [fragment->token xl] [fragment->token yl]]
           (cps {succ stop} (stop () (ignore)))
           (ignore))
-      (if (or [i/f:token? xl] [i/f:token? yl]) (ignore)
+      (if (cor [i/f:token? xl] [i/f:token? yl]) (ignore)
       (let (xl [frag->list xl]) (yl [frag->list yl])
         (if [= [length xl] [length yl]]
           [(function unify-aux (xl yl assigns succ buf hdl)

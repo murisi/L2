@@ -26,7 +26,7 @@
 (function do-relocations (obj handler)
   (until (sec-idx #0) [= sec-idx (@ e-shnum(@ obj-ehdr obj))] [+ sec-idx #1]
     (let (shdr-buf (loc (elf64-shdr) sec-idx (@ obj-shdrs obj)))
-    (if (or [= (@ sh-type shdr-buf) (sht-rela)] [= (@ sh-type shdr-buf) (sht-rel)])
+    (if (cor [= (@ sh-type shdr-buf) (sht-rela)] [= (@ sh-type shdr-buf) (sht-rel)])
       (let (relanum [/ (@ sh-size shdr-buf) (@ sh-entsize shdr-buf)])
       (let (relas-buf ($(loc (unit) sec-idx (@ obj-relas obj))))
       (let (addends-buf ($(loc (unit) sec-idx (@ obj-addends obj))))
@@ -82,7 +82,7 @@
 (function offsets-to-addresses (obj)
   (until (sec-idx #0) [= sec-idx (@ e-shnum(@ obj-ehdr obj))] [+ sec-idx #1]
     (let (shdr-buf (loc (elf64-shdr) sec-idx (@ obj-shdrs obj)))
-    (if (or [= (@ sh-type shdr-buf) (sht-rela)] [= (@ sh-type shdr-buf) (sht-rel)])
+    (if (cor [= (@ sh-type shdr-buf) (sht-rela)] [= (@ sh-type shdr-buf) (sht-rel)])
       (let (relanum [/ (@ sh-size shdr-buf) (@ sh-entsize shdr-buf)])
       (let (relas-buf ($(loc (unit) sec-idx (@ obj-relas obj))))
       (until (rela-idx #0) [= rela-idx relanum] [+ rela-idx #1]
@@ -140,7 +140,7 @@
         [memcpy (loc (elf64-sym) sym-idx $syms-buf) (loc (@ sh-entsize shdr-buf) sym-idx $seg-buf)
           (elf64-sym)]))))
           
-    (if (or [= (@ sh-type shdr-buf) (sht-rela)] [= (@ sh-type shdr-buf) (sht-rel)])
+    (if (cor [= (@ sh-type shdr-buf) (sht-rela)] [= (@ sh-type shdr-buf) (sht-rel)])
       (let (relanum [/ (@ sh-size shdr-buf) (@ sh-entsize shdr-buf)])
       (let (relas-buf (loc (unit) sec-idx (@ obj-relas obj))) (do
       (ignore Following code copies recognized information from the relocations into (@ obj-relas obj))
@@ -204,8 +204,8 @@
       (until (sym-idx #1) [= sym-idx symnum] [+ sym-idx #1]
         (let (sym (loc (elf64-sym) sym-idx syms-buf))
         (bind-if (cand [ht-contains [name-of obj shdr-buf sym] updates bndg]
-            (or [= (@ st-shndx sym) (shn-undef)] [= (@ st-shndx sym) (shn-common)])
-            (or [= (elf64-st-bind (@ st-info sym)) (stb-global)]
+            (cor [= (@ st-shndx sym) (shn-undef)] [= (@ st-shndx sym) (shn-common)])
+            (cor [= (elf64-st-bind (@ st-info sym)) (stb-global)]
               [= (elf64-st-bind (@ st-info sym)) (stb-weak)]))
           (bndg) (setf st-value sym (@ bndg-offset $bndg)) (ignore)))))) (ignore))))
   (ignore If obj was created using load, the following invocation cannot produce an error; hence the unspecified handler arguments.)
@@ -223,8 +223,8 @@
       (let (syms-buf ($(loc (unit) sec-idx (@ obj-syms obj))))
       (until (sym-idx #1) [= sym-idx symnum] [+ sym-idx #1]
         (let (sym (loc (elf64-sym) sym-idx syms-buf))
-        (if (cand [= (not(not(or [= (@ st-shndx sym) (shn-undef)] [= (@ st-shndx sym) (shn-common)]))) flag]
-            (or [= (elf64-st-bind (@ st-info sym)) (stb-global)]
+        (if (cand [= (not(not(cor [= (@ st-shndx sym) (shn-undef)] [= (@ st-shndx sym) (shn-common)]))) flag]
+            (cor [= (elf64-st-bind (@ st-info sym)) (stb-global)]
               [= (elf64-st-bind (@ st-info sym)) (stb-weak)]))
           [ht-put [name-of obj shdr-buf sym] [make-binding [name-of obj shdr-buf sym] (@ st-value sym) reg handler] ht
             reg handler] (ignore)))))) (ignore))))

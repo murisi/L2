@@ -428,7 +428,7 @@
         (setf expr-generator n [function->generator generate-binary-right-imm-arithmetic-operators])
         (true))))
       
-      ((" bor) (" bxor) (" band) (" +) (" -) (cand (or [sbyte? $arg2] [sword? $arg2]) (do
+      ((" bor) (" bxor) (" band) (" +) (" -) (cand (cor [sbyte? $arg2] [sword? $arg2]) (do
         [initialize-expressions (storage-cons [coalesce-expr-bndg $arg1] nil)
           nil offset (hex FFFFFFFFFFFF0C30) (@ expr-depth n) inits ret-val buf hdl]
         (setf bndg-condition-jump (@ expr-binding-aug n) (x86-jnz))
@@ -436,7 +436,7 @@
         (setf expr-generator n [function->generator generate-binary-right-imm-arithmetic-operators])
         (true))))
       
-      ((" =) (cand (or [sbyte? $arg2] [sword? $arg2]) (do
+      ((" =) (cand (cor [sbyte? $arg2] [sword? $arg2]) (do
         [initialize-expressions (storage-cons [coalesce-expr-bndg $arg1] nil)
           nil offset (hex FFFFFFFFFFFF0C30) (@ expr-depth n) inits ret-val buf hdl]
         (setf bndg-condition-jump (@ expr-binding-aug n) (x86-je))
@@ -444,7 +444,7 @@
         (setf expr-generator n [function->generator generate-binary-right-imm-arithmetic-operators])
         (true))))
       
-      ((" <) (cand (or [sbyte? $arg2] [sword? $arg2]) (do
+      ((" <) (cand (cor [sbyte? $arg2] [sword? $arg2]) (do
         [initialize-expressions (storage-cons [coalesce-expr-bndg $arg1] nil)
           nil offset (hex FFFFFFFFFFFF0C30) (@ expr-depth n) inits ret-val buf hdl]
         (setf bndg-condition-jump (@ expr-binding-aug n) (x86-jb))
@@ -452,7 +452,7 @@
         (setf expr-generator n [function->generator generate-binary-right-imm-arithmetic-operators])
         (true))))
       
-      ((" >) (cand (or [sbyte? $arg2] [sword? $arg2]) (do
+      ((" >) (cand (cor [sbyte? $arg2] [sword? $arg2]) (do
         [initialize-expressions (storage-cons [coalesce-expr-bndg $arg1] nil)
           nil offset (hex FFFFFFFFFFFF0C30) (@ expr-depth n) inits ret-val buf hdl]
         (setf bndg-condition-jump (@ expr-binding-aug n) (x86-ja))
@@ -575,10 +575,10 @@
       (ignore))))
 
 (function sbyte? (val)
-  (or [= val [band val (hex 000000000000007F)]] [= val [bor val (hex FFFFFFFFFFFFFF80)]]))
+  (cor [= val [band val (hex 000000000000007F)]] [= val [bor val (hex FFFFFFFFFFFFFF80)]]))
 
 (function sword? (val)
-  (or [= val [band val (hex 000000007FFFFFFF)]] [= val [bor val (hex FFFFFFFF80000000)]]))
+  (cor [= val [band val (hex 000000007FFFFFFF)]] [= val [bor val (hex FFFFFFFF80000000)]]))
 
 (function match-get-base+offset (name base offset n)
   (bind-if (match-property
@@ -596,7 +596,7 @@
                   (%(match-list
                       (%[variable addr-part1])
                       (%[variable addr-part2])))
-                  (or
+                  (cor
                     [= (@ expr-type $addr-part1) (-literal-)]
                     [= (@ expr-type $addr-part2) (-literal-)]))))))))) n)
     (addr-part1 addr-part2)
@@ -677,7 +677,7 @@
                   (%(match-list
                       (%[variable addr-part1])
                       (%[variable addr-part2])))
-                  (or
+                  (cor
                     [= (@ expr-type $addr-part1) (-literal-)]
                     [= (@ expr-type $addr-part2) (-literal-)]))))))
         (%[variable value])))) n)
@@ -753,7 +753,7 @@
   (\ r (with-vars (b c d) (`(function (expr ,b (list initializer) (values ,b reg-use-vec) region ,d) ,c)r)r)))
 
 (function initialize-arithmetic-intrinsics (n offset inits ret-val buf hdl)
-  (substitute (.. buf hdl) (or
+  (substitute (.. buf hdl) (cor
     [initialize-get-base+offset n offset inits ret-val ..]
     [initialize-set-base+offset n offset inits ret-val ..]
     [initialize-unary-arithmetic-operators n offset inits ret-val ..]

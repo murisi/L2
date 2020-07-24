@@ -554,7 +554,7 @@
         [print-str (stdout) (" *) handler]
         [print-uint (stdout) (@ op-scale op) handler])
         (ignore))
-      (if (cand (or [not= (@ op-base op) (none)] [not= (@ op-index op) (none)])
+      (if (cand (cor [not= (@ op-base op) (none)] [not= (@ op-index op) (none)])
           [not= (@ op-disp-size op) #0])
         [print-str (stdout) ("(space)+(space)) handler]
         (ignore))
@@ -601,16 +601,16 @@
     (let (opcode [+ opcode
       (if [= (@ op-type opcode.reg-op) (register-operand)] [band (@ op-register opcode.reg-op) #7] #0)])
     
-    (let (has-modrm? (or [not= (@ op-type modrm.reg-op) (none-operand)] [not= (@ op-type modrm.rm-op) (none-operand)]))
+    (let (has-modrm? (cor [not= (@ op-type modrm.reg-op) (none-operand)] [not= (@ op-type modrm.rm-op) (none-operand)]))
     
     (let (modrm.mod
       (if [= (@ op-type modrm.rm-op) (register-operand)] #3
-      (if (or [= (@ op-disp-size modrm.rm-op) #0] [= (@ op-base modrm.rm-op) (none)] [= (@ op-base modrm.rm-op) (rip)]) #0
+      (if (cor [= (@ op-disp-size modrm.rm-op) #0] [= (@ op-base modrm.rm-op) (none)] [= (@ op-base modrm.rm-op) (rip)]) #0
       (if [= (@ op-disp-size modrm.rm-op) #1] #1
       (if [= (@ op-disp-size modrm.rm-op) #4] #2 (ignore))))))
     
     (let (has-sib? (cand [= (@ op-type modrm.rm-op) (memory-operand)]
-      (or [not= (@ op-index modrm.rm-op) (none)] [= modrm.rm-op-code [band (rsp) #7]]
+      (cor [not= (@ op-index modrm.rm-op) (none)] [= modrm.rm-op-code [band (rsp) #7]]
         (cand [= modrm.rm-op-code [band (rbp) #7]] [= (@ op-disp-size modrm.rm-op) #0]))))
     
     (let (modrm.rm
@@ -626,29 +626,29 @@
     
     (let (sib.index (if [= (@ op-index modrm.rm-op) (none)] #4 (@ op-index modrm.rm-op)))
     
-    (let (sib.base (if (or [= (@ op-base modrm.rm-op) (none)]) #5 modrm.rm-op-code))
+    (let (sib.base (if (cor [= (@ op-base modrm.rm-op) (none)]) #5 modrm.rm-op-code))
     
-    (let (has-rex? (or [band [bor (@ op-register modrm.reg-op) [bor (@ op-register modrm.rm-op) (@ op-register opcode.reg-op)]] (w/rex)]
-      (cand [= (@ op-type modrm.rm-op) (memory-operand)] (or
+    (let (has-rex? (cor [band [bor (@ op-register modrm.reg-op) [bor (@ op-register modrm.rm-op) (@ op-register opcode.reg-op)]] (w/rex)]
+      (cand [= (@ op-type modrm.rm-op) (memory-operand)] (cor
         (cand [not= (@ op-base modrm.rm-op) (none)] [= [register-size (@ op-base modrm.rm-op)] #8])
         (cand [not= (@ op-index modrm.rm-op) (none)] [= [register-size (@ op-index modrm.rm-op)] #8])
         [= (@ op-disp-size modrm.rm-op) #8]))))
     
-    (let (rex.w (if (or [= (@ op-size modrm.reg-op) #8] [= (@ op-size modrm.rm-op) #8] [= (@ op-size opcode.reg-op) #8]) #1 #0))
+    (let (rex.w (if (cor [= (@ op-size modrm.reg-op) #8] [= (@ op-size modrm.rm-op) #8] [= (@ op-size opcode.reg-op) #8]) #1 #0))
     
     (let (rex.r (if (cand [= (@ op-type modrm.reg-op) (register-operand)] [band (@ op-register modrm.reg-op) #8]) #1 #0))
     
     (let (rex.x (if (cand [= (@ op-type modrm.rm-op) (memory-operand)] [not= (@ op-index modrm.rm-op) (none)]
       [band (@ op-index modrm.rm-op) #8]) #1 #0))
     
-    (let (rex.b (if (or (cand [= (@ op-type modrm.rm-op) (memory-operand)] [not= (@ op-base modrm.rm-op) (none)]
+    (let (rex.b (if (cor (cand [= (@ op-type modrm.rm-op) (memory-operand)] [not= (@ op-base modrm.rm-op) (none)]
       [band (@ op-base modrm.rm-op) #8]) (cand [= (@ op-type modrm.rm-op) (register-operand)] [not= (@ op-register modrm.rm-op) (none)]
       [band (@ op-register modrm.rm-op) #8]) (cand [= (@ op-type opcode.reg-op) (register-operand)]
       [not= (@ op-register opcode.reg-op) (none)] [band (@ op-register opcode.reg-op) #8])) #1 #0))
     
     (let (has-oso? [= [max (@ op-size modrm.reg-op) (@ op-size modrm.rm-op)] #2])
     
-    (let (has-aso? (cand [= (@ op-type modrm.rm-op) (memory-operand)] (or
+    (let (has-aso? (cand [= (@ op-type modrm.rm-op) (memory-operand)] (cor
         (cand [not= (@ op-base modrm.rm-op) (none)] [= [register-size (@ op-base modrm.rm-op)] #2])
         (cand [not= (@ op-index modrm.rm-op) (none)] [= [register-size (@ op-index modrm.rm-op)] #2])
         [= (@ op-disp-size modrm.rm-op) #2])))
@@ -923,103 +923,103 @@
         ((label) (ignore))
         ((x86-nop)
           [write-instr bin pos (hex 90) #1 [make-none-op ..] [make-none-op ..] [make-none-op ..] [make-none-op ..] ..])
-        ((x86-push) (or
+        ((x86-push) (cor
           [write-m-instr (hex 1E) (ignore) (hex FF) (hex FF) (hex FF) [make-reg-op (x86-/6) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-pop) (or
+        ((x86-pop) (cor
           [write-m-instr (hex 1E) (ignore) (hex 8F) (hex 8F) (hex 8F) [make-reg-op (x86-/0) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-xor) (or
+        ((x86-xor) (cor
           [write-mi-instr (hex 1F) (hex 80) (hex 81) (hex 81) (hex 81) [make-reg-op (x86-/6) ..] n bin pos ..]
           [write-mr-instr (hex 1F) (hex 30) (hex 31) (hex 31) (hex 31) n bin pos ..]
           [write-rm-instr (hex 1F) (hex 32) (hex 33) (hex 33) (hex 33) n bin pos ..]
           [write-mm-instr (hex 1F) (hex 30) (hex 31) (hex 31) (hex 31) n bin pos ..]
           [write-mi8-instr (hex 1F) (hex 80) (hex 83) (hex 83) (hex 83) [make-reg-op (x86-/6) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-setz) (or
+        ((x86-setz) (cor
           [write-m-instr (hex 21) (hex 940F) (ignore) (ignore) (ignore) [make-none-op ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-setc) (or
+        ((x86-setc) (cor
           [write-m-instr (hex 21) (hex 920F) (ignore) (ignore) (ignore) [make-none-op ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-seta) (or
+        ((x86-seta) (cor
           [write-m-instr (hex 21) (hex 970F) (ignore) (ignore) (ignore) [make-none-op ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-mul) (or
+        ((x86-mul) (cor
           [write-m-instr (hex 1F) (hex F6) (hex F7) (hex F7) (hex F7) [make-reg-op (x86-/4) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-div) (or
+        ((x86-div) (cor
           [write-m-instr (hex 1F) (hex F6) (hex F7) (hex F7) (hex F7) [make-reg-op (x86-/6) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-jmp) (or
+        ((x86-jmp) (cor
           [write-m-instr (hex 1E) (ignore) (hex FF) (hex FF) (hex FF) [make-reg-op (x86-/4) ..] n bin pos ..]
           [write-d-instr (hex 17) (hex EB) (hex E9) (hex E9) (ignore) n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-sub) (or
+        ((x86-sub) (cor
           [write-rm-instr (hex 1F) (hex 2A) (hex 2B) (hex 2B) (hex 2B) n bin pos ..]
           [write-mr-instr (hex 1F) (hex 28) (hex 29) (hex 29) (hex 29) n bin pos ..]
           [write-mi-instr (hex 1F) (hex 80) (hex 81) (hex 81) (hex 81) [make-reg-op (x86-/5) ..] n bin pos ..]
           [write-mm-instr (hex 1F) (hex 28) (hex 29) (hex 29) (hex 29) n bin pos ..]
           [write-mi8-instr (hex 1E) (ignore) (hex 83) (hex 83) (hex 83) [make-reg-op (x86-/5) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-cmp) (or
+        ((x86-cmp) (cor
           [write-rm-instr (hex 1F) (hex 3A) (hex 3B) (hex 3B) (hex 3B) n bin pos ..]
           [write-mr-instr (hex 1F) (hex 38) (hex 39) (hex 39) (hex 39) n bin pos ..]
           [write-mi-instr (hex 1F) (hex 80) (hex 81) (hex 81) (hex 81) [make-reg-op (x86-/7) ..] n bin pos ..]
           [write-mm-instr (hex 1F) (hex 38) (hex 39) (hex 39) (hex 39) n bin pos ..]
           [write-mi8-instr (hex 1E) (ignore) (hex 83) (hex 83) (hex 83) [make-reg-op (x86-/7) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-add) (or
+        ((x86-add) (cor
           [write-rm-instr (hex 1F) (hex 02) (hex 03) (hex 03) (hex 03) n bin pos ..]
           [write-mr-instr (hex 1F) (hex 00) (hex 01) (hex 01) (hex 01) n bin pos ..]
           [write-mi-instr (hex 1F) (hex 80) (hex 81) (hex 81) (hex 81) [make-reg-op (x86-/0) ..] n bin pos ..]
           [write-mm-instr (hex 1F) (hex 00) (hex 01) (hex 01) (hex 01) n bin pos ..]
           [write-mi8-instr (hex 1E) (ignore) (hex 83) (hex 83) (hex 83) [make-reg-op (x86-/0) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-or) (or
+        ((x86-or) (cor
           [write-rm-instr (hex 1F) (hex 0A) (hex 0B) (hex 0B) (hex 0B) n bin pos ..]
           [write-mr-instr (hex 1F) (hex 08) (hex 09) (hex 09) (hex 09) n bin pos ..]
           [write-mm-instr (hex 1F) (hex 08) (hex 09) (hex 09) (hex 09) n bin pos ..]
           [write-mi-instr (hex 1F) (hex 80) (hex 81) (hex 81) (hex 81) [make-reg-op (x86-/1) ..] n bin pos ..]
           [write-mi8-instr (hex 1F) (hex 80) (hex 83) (hex 83) (hex 83) [make-reg-op (x86-/1) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-and) (or
+        ((x86-and) (cor
           [write-rm-instr (hex 1F) (hex 22) (hex 23) (hex 23) (hex 23) n bin pos ..]
           [write-mr-instr (hex 1F) (hex 20) (hex 21) (hex 21) (hex 21) n bin pos ..]
           [write-mm-instr (hex 1F) (hex 20) (hex 21) (hex 21) (hex 21) n bin pos ..]
           [write-mi-instr (hex 1F) (hex 80) (hex 81) (hex 81) (hex 81) [make-reg-op (x86-/4) ..] n bin pos ..]
           [write-mi8-instr (hex 1F) (hex 80) (hex 83) (hex 83) (hex 83) [make-reg-op (x86-/4) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-not) (or
+        ((x86-not) (cor
           [write-m-instr (hex 1F) (hex F6) (hex F7) (hex F7) (hex F7) [make-reg-op (x86-/2) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-call) (or
+        ((x86-call) (cor
           [write-m-instr (hex 1E) (ignore) (hex FF) (hex FF) (hex FF) [make-reg-op (x86-/2) ..] n bin pos ..]
           [write-d-instr (hex 16) (ignore) (hex E8) (hex E8) (ignore) n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-je) (x86-jz) (or
+        ((x86-je) (x86-jz) (cor
           [write-d-instr (hex 24) (ignore) (ignore) (hex 840F) (ignore) n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-jnz) (x86-jne) (or
+        ((x86-jnz) (x86-jne) (cor
           [write-d-instr (hex 24) (ignore) (ignore) (hex 850F) (ignore) n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-jnc) (x86-jnb) (x86-jae) (or
+        ((x86-jnc) (x86-jnb) (x86-jae) (cor
           [write-d-instr (hex 24) (ignore) (ignore) (hex 830F) (ignore) n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-jbe) (x86-jna) (or
+        ((x86-jbe) (x86-jna) (cor
           [write-d-instr (hex 24) (ignore) (ignore) (hex 860F) (ignore) n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-jnbe) (x86-ja) (or
+        ((x86-jnbe) (x86-ja) (cor
           [write-d-instr (hex 24) (ignore) (ignore) (hex 870F) (ignore) n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-jnae) (x86-jb) (x86-jc) (or
+        ((x86-jnae) (x86-jb) (x86-jc) (cor
           [write-d-instr (hex 24) (ignore) (ignore) (hex 820F) (ignore) n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-shl) (or
+        ((x86-shl) (cor
           [write-mc-instr (hex 1F) (hex D2) (hex D3) (hex D3) (hex D3) [make-reg-op (x86-/4) ..] n bin pos ..]
           [write-mi8-instr (hex 1F) (hex C0) (hex C1) (hex C1) (hex C1) [make-reg-op (x86-/4) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-shr) (or
+        ((x86-shr) (cor
           [write-mc-instr (hex 1F) (hex D2) (hex D3) (hex D3) (hex D3) [make-reg-op (x86-/5) ..] n bin pos ..]
           [write-mi8-instr (hex 1F) (hex C0) (hex C1) (hex C1) (hex C1) [make-reg-op (x86-/5) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
@@ -1028,7 +1028,7 @@
         ((x86-ret)
           [write-instr bin pos (hex C3) #1 [make-none-op ..] [make-none-op ..] [make-none-op ..] [make-none-op ..] ..])
         
-        ((x86-movzx) (or
+        ((x86-movzx) (cor
           (bind-if (match-list-prefix
               (%(match-and
                 (%[variable op1])
@@ -1080,7 +1080,7 @@
                 (false))))))) (false))
           {handler (storage _ unsupported-instruction-error n)}))
         
-        ((x86-mov) (or
+        ((x86-mov) (cor
           [write-nm-instr n bin pos ..]
           [write-mr-instr (hex 1F) (hex 88) (hex 89) (hex 89) (hex 89) n bin pos ..]
           [write-rm-instr (hex 1F) (hex 8A) (hex 8B) (hex 8B) (hex 8B) n bin pos ..]
@@ -1100,7 +1100,7 @@
               [write-instr bin pos (hex 89) #1 [make-none-op ..] $op3 $op1 [make-none-op ..] ..]) (false)) (false))
           {handler (storage _ unsupported-instruction-error n)}))
         
-        ((x86-lea) (or
+        ((x86-lea) (cor
           [write-nm-instr n bin pos ..]
           (bind-if (match-list-prefix
               (%(match-and
@@ -1221,7 +1221,7 @@
     val {handler (storage _ object-error)}))
 
 (function assert-sbyte (val handler)
-  (if (or [= val [band val (hex 000000000000007F)]] [= val [bor val (hex FFFFFFFFFFFFFF80)]])
+  (if (cor [= val [band val (hex 000000000000007F)]] [= val [bor val (hex FFFFFFFFFFFFFF80)]])
     val {handler (storage _ object-error)}))
 
 (function assert-half (val handler)
@@ -1229,7 +1229,7 @@
     val {handler (storage _ object-error)}))
 
 (function assert-shalf (val handler)
-  (if (or [= val [band val (hex 0000000000007FFF)]] [= val [bor val (hex FFFFFFFFFFFF8000)]])
+  (if (cor [= val [band val (hex 0000000000007FFF)]] [= val [bor val (hex FFFFFFFFFFFF8000)]])
     val {handler (storage _ object-error)}))
 
 (function assert-word (val handler)
@@ -1237,7 +1237,7 @@
     val {handler (storage _ object-error)}))
 
 (function assert-sword (val handler)
-  (if (or [= val [band val (hex 000000007FFFFFFF)]] [= val [bor val (hex FFFFFFFF80000000)]])
+  (if (cor [= val [band val (hex 000000007FFFFFFF)]] [= val [bor val (hex FFFFFFFF80000000)]])
     val {handler (storage _ object-error)}))
 
 (constrain do-relocation (\ r (with-vars (a b c d) (`(function (,d elf64-rela elf64-sym ,a ,b) ,c)r)r)))
@@ -1485,7 +1485,7 @@
     (foreach (sec (@ lkde-sh lkd-ehdr))
       (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-symtab)]
         (filter (sym (& lkdsh-symtab sec))
-          (or
+          (cor
             (@ lkdst-other sym)
             [not= (elf64-st-bind (@ st-info (@ lkdst-raw sym))) (stb-local)])) (ignore)))
     

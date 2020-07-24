@@ -69,7 +69,7 @@
   (function recursive-evaluate (frag assigns r handler)
     (substitute (.. r handler)
       (let (d [evaluate frag assigns])
-        (if (or [vbl? d] [i/f:token? d])
+        (if (cor [vbl? d] [i/f:token? d])
           d
           [list->fragment (map (x [frag->list d]) [recursive-evaluate x assigns ..] ..)]))))
 
@@ -165,7 +165,7 @@
     (if [= l2src-sz $pos]
       [token->fragment [build-token sigil ..]]
       (let (d [getb [+ l2src $pos]])
-        (if (or [isspace d] [= d (rparen)] [= d (rbrace)] [= d (rbracket)] [= d (lparen)] [= d (lbrace)] [= d (lbracket)])
+        (if (cor [isspace d] [= d (rparen)] [= d (rbrace)] [= d (rbracket)] [= d (lparen)] [= d (lbrace)] [= d (lbracket)])
           [token->fragment [build-token sigil ..]]
           [list->fragment [ccons [token->fragment [build-token sigil ..]] [build-fragment l2src l2src-sz pos ..] emt! ..]])))))
 
@@ -196,7 +196,7 @@
   (substitute (.. r handler) (if [= l2src-sz $pos]
     {handler (storage _ unexpected-char-error #0 $pos)}
     (let (c [getb [+ l2src $pos]])
-      (if (or [isspace c] [= c (rparen)] [= c (rbrace)] [= c (rbracket)])
+      (if (cor [isspace c] [= c (rparen)] [= c (rbrace)] [= c (rbracket)])
         {handler (storage _ unexpected-char-error c $pos)}
         (do
           [set+ pos #1]
@@ -215,7 +215,7 @@
                 (let (le [append (tkn-char c) le ..])
                 (if [= $pos l2src-sz] $ls
                   (let (c [getb [+ l2src $pos]])
-                  (if (or [isspace c] (switch = c ((lparen)(rparen)(lbrace)(rbrace)(lbracket)(rbracket) (true)) (false))) $ls
+                  (if (cor [isspace c] (switch = c ((lparen)(rparen)(lbrace)(rbrace)(lbracket)(rbracket) (true)) (false))) $ls
                     (do [set+ pos #1] {cons-char le c})))))))])))))))
 
 (storage character-flag (ignore))
@@ -234,7 +234,7 @@
   (loop check-car (a a) (b b)
     (if (cand [nil? a] [nil? b])
       (true)
-    (if (or [nil? a] [nil? b])
+    (if (cor [nil? a] [nil? b])
       (false)
     (if [= (@ cs-character [@car a]) (@ cs-character [@car b])]
       {check-car [@cdr a] [@cdr b]}
@@ -287,15 +287,15 @@
         (bind-if [ht-contains vbl1 var-map val]
           (val) [= $val vbl2]
           [ht-put vbl1 vbl2 var-map ..]))
-    (if (or [vbl? frag1] [vbl? frag2])
+    (if (cor [vbl? frag1] [vbl? frag2])
       (false)
     (if (cand [i/f:token? frag1] [i/f:token? frag2])
       [i/f:token= [fragment->token frag1] [fragment->token frag2]]
-    (if (or [i/f:token? frag1] [i/f:token? frag2])
+    (if (cor [i/f:token? frag1] [i/f:token? frag2])
       (false)
     (loop elt= (l1 [frag->list frag1]) (l2 [frag->list frag2])
       (if (cand [nil? l1] [nil? l2]) (true)
-      (if (or [nil? l1] [nil? l2]) (false)
+      (if (cor [nil? l1] [nil? l2]) (false)
       (if [fragment= [@car l1] [@car l2] var-map ..]
         {elt= [@cdr l1] [@cdr l2]}
         (false)))))))))))
