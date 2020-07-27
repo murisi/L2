@@ -490,3 +490,23 @@
   (loop measure (l l) (len #0)
     (if [emt? l] len {measure [@rst l] [+ len #1]})))
 
+(ignore
+  Creates a signature for a list that contains the N given signatures in its first
+  M positions where M is fixed at compile time. Useful for asserting that an object
+  is in a particular state.
+  
+  (sig-contains sig1 sig2 ... sigN)
+  ->
+  (((sig1 , !0) (!1 sig1 , !0) (!2 !1 sig1 , !0) ... (!M ... !2 !1 sig1 , !0), or)
+  ((sig2 , !0) (!1 sig2 , !0) (!2 !1 sig2 , !0) ... (!M ... !2 !1 sig2 , !0), or)
+  ...
+  ((sigN , !0) (!1 sigN , !0) (!2 !1 sigN , !0) ... (!M ... !2 !1 sigN , !0), or), and))
+
+(function sig-contains (l r)
+  (loop layer-sig (l l) (acc and)
+    (if [emt? l] acc
+      (let (sig [@fst l])
+        {layer-sig [@rst l] (with-vars (a b c d e f g h i j)
+          (`(((,sig , j) (,i ,sig , j) (,h ,i ,sig , j) (,g ,h ,i ,sig , j) (,f ,g ,h ,i ,sig , j)
+            (,e ,f ,g ,h ,i ,sig , j) (,d ,e ,f ,g ,h ,i ,sig , j) (,c ,d ,e ,f ,g ,h ,i ,sig , j)
+            (,b ,c ,d ,e ,f ,g ,h ,i ,sig , j) (,a ,b ,c ,d ,e ,f ,g ,h ,i ,sig , j), or), acc)r)r)}))))

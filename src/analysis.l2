@@ -401,9 +401,10 @@
   (let (eval [evaluate val assigns])
     (if [vbl? eval]
       [vbl= var [frag->vbl eval]]
-    (if [i/f:token? eval]
+    (if (cor [i/f:token? eval] [nil? [frag->list eval]])
       (false)
-      (not [nil? (find (a [frag->list eval]) [occurs-in? var a assigns])])))))
+      (let (a [frag->list eval])
+        (cor [occurs-in? var [@car a] assigns] [occurs-in? var [list->fragment [@cdr a]] assigns]))))))
 
 (constrain unify-var (\ r (with-vars (a b c) (`(function (vbl frag (hash-table vbl frag) ,b region ,c) ,a)r)r)))
 
@@ -817,3 +818,9 @@
           [cons thunk c ..]))))
         
           c)))) ..]))
+
+(ignore(constrain fun (\ r (`(function ((a dude , [var r])) ())r)))
+
+(function fun (arg) (ignore))
+
+[fun (constrain (ignore) (\ r (`(a dude)r)))])
