@@ -468,16 +468,15 @@
       (if [vbl? yl] [unify-var [frag->vbl yl] xl assigns succ ..]
       (if (cor [i/f:token? xl] [i/f:token? yl]) (ignore)
       (let (xl [frag->list xl]) (yl [frag->list yl])
-        [(function unify-aux (xl yl assigns succ buf hdl)
-          (cps
-            (if (cand [nil? xl] [nil? yl])
-              (cps {succ stop} (stop () (ignore)))
-            (if (cor [nil? xl] [nil? yl])
-              (ignore)
-              [unify [@car xl] [@car yl] assigns iter ..]))
-            (iter (next) (do
-              [unify-aux [@cdr xl] [@cdr yl] assigns succ ..]
-              {next})))) xl yl assigns succ ..])))))))))))))
+        (cps
+          (if (cand [nil? xl] [nil? yl])
+            (cps {succ stop} (stop () (ignore)))
+          (if (cor [nil? xl] [nil? yl])
+            (ignore)
+            [unify [@car xl] [@car yl] assigns iter ..]))
+          (iter (next) (do
+            [unify [list->fragment [@cdr xl]] [list->fragment [@cdr yl]] assigns succ ..]
+            {next}))))))))))))))))
 
 (ignore
   The same function may be called with different type parameters in the same strongly connected
