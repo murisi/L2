@@ -276,3 +276,16 @@
                     {make-clause [@rst cast-binding-types]
                       [lst [meta:concat [meta:map2 [@fst cast-binding-types] r unq r] cast-binding-types-unquoted r] clauses r]}))))r)r))),
             [meta:concat value-bindings value-casts-repeated r]}), [@fst all-groups]})r)))))))))))))
+
+(ignore
+  A lighter version of group-case for when the groups are singletons. Does the
+  following transformation:
+  (case val (a1 a2 ... aN) expr)
+  ->
+  (group-case (val)(a1)(a2)...(aN) expr))
+
+(function case (l r)
+  (let (body [@fst [meta:reverse l r]])
+  (let (val [lst [@fst l] emt r])
+  (let (binds [meta:map2 [@frst l] r (function _(elt r) [lst elt emt r]) r])
+    (`(group-case ,[lst val [meta:reverse [lst body binds r] r] r])r)))))
