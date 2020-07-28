@@ -66,33 +66,60 @@
 
 (constrain set (\ r (with-vars (a) (`(function ((ref ,a) ,a) ())r)r)))
 
+(function meta:lookup-var (key map)
+  (with return
+    {(continuation lookup (map)
+      (if [emt? map]
+        {return emt}
+      (if [var= key [@ffst map]]
+        {return [@fst map]}
+        {lookup [@rst map]}))) map}))
+
+(function meta:bind1 (tuple fun)
+  [fun [@fst tuple]])
+
+(function meta:bind5 (tuple fun)
+  [fun [@fst tuple] [@frst tuple] [@frrst tuple] [@frrrst tuple] [@frrrrst tuple]])
+
+(function meta:bind6 (tuple fun)
+  [fun [@fst tuple] [@frst tuple] [@frrst tuple] [@frrrst tuple] [@frrrrst tuple] [@frrrrrst tuple]])
+
+(function meta:bind7 (tuple fun)
+  [fun [@fst tuple] [@frst tuple] [@frrst tuple] [@frrrst tuple] [@frrrrst tuple] [@frrrrrst tuple] [@frrrrrrst tuple]])
+
 (ignore
   The following function generates the L2 code to generate a fragment corresponding to the
   supplied fragment. Known as backquote in other languages.)
 
 (function ` (l r)
-  [(function aux (s t r)
-    (if [emt? s] [lllst -e- -m- -t- emt r]
+  [@fst [(function aux (s t map state r)
+    (if [emt? s] [lllllst [lllst -e- -m- -t- emt r] t map state r emt r]
     
     (if (if [emt? s] #0 (if [token? s] #0 (if [token? [@fst s]]
       (if [char= [@ffst s] -`-] [emt? [@rfst s]] #0) #0)))
-          [aux [aux [@frst s] [@frrst s] r] t r]
+          [meta:bind6 [lst t [aux [@frst s] [@frrst s] map state r] r]
+            (function _(outer-t s t map state r) [aux s outer-t map state r])]
     
     (if (if [emt? s] #0 (if [token? s] #0 (if [token? [@fst s]]
       (if [char= [@ffst s] -,-] [emt? [@rfst s]] #0) #0)))
-          [@frst s]
+          [lllllst [@frst s] t map state r emt r]
     
     (if (if [emt? s] #0 (if [token? s] #0 (if [token? [@fst s]]
       (if [char= [@ffst s] -;-] [emt? [@rfst s]] #0) #0)))
-          [llllst [llllllst -i- -n- -v- -o- -k- -e- emt r]
-            [@frst s] [aux [@rrst s] t r] t emt r]
+          [meta:bind6 [lst s [aux [@rrst s] t map state r] r]
+            (function _(outer-s s t map state r)
+              [lllllst [llllst [llllllst -i- -n- -v- -o- -k- -e- emt r]
+                [@frst outer-s] s t emt r] t map state r emt r])]
 
-    [lllllst [llllllst -i- -n- -v- -o- -k- -e- emt r]
-      [lllst -l- -s- -t- emt r]
-        (if [token? s]
-            [lllst --- [@fst s] --- emt r]
-            [aux [@fst s] t r])
-          [aux [@rst s] t r] t emt r]))))) [@fst l] [@frst l] r])
+    [meta:bind6
+      [lst s (if [token? s]
+        [lllllst [lllst --- [@fst s] --- emt r] t map state r emt r]
+        [aux [@fst s] t map state r]) r]
+      (function _(s inner-s t map state r)
+        [meta:bind7 [llst s inner-s [aux [@rst s] t map state r] r]
+          (function _(s inner-s inner-s2 t map state r)
+            [lllllst [lllllst [llllllst -i- -n- -v- -o- -k- -e- emt r]
+              [lllst -l- -s- -t- emt r] inner-s inner-s2 t emt r] t map state r emt r])])]))))) [@fst l] [@frst l] emt [llllllst -q- -u- -o- -t- -e- -:- emt r] r]])
 
 (ignore
   The following function generates code to create variables and bind them. It does the
