@@ -451,12 +451,6 @@
 (function unify (x y assigns succ buf hdl)
   (substitute (.. buf hdl)
     (let (xl [evaluate x assigns]) (yl [evaluate y assigns])
-      (if (cand [vbl? xl] [vbl? yl] [vbl= [frag->vbl xl] [frag->vbl yl]])
-        (cps {succ stop} (stop () (ignore)))
-      (if (cand [i/f:token? xl] [i/f:token? yl])
-        (if [i/f:token= [fragment->token xl] [fragment->token yl]]
-          (cps {succ stop} (stop () (ignore)))
-          (ignore))
       (if (cand [lst? xl] [or?! [nil-of [frag->list xl]]])
         [unify-or [frag->list xl] yl (false) assigns succ ..]
       (if (cand [lst? yl] [or?! [nil-of [frag->list yl]]])
@@ -465,19 +459,26 @@
         [unify-and [frag->list xl] yl (false) assigns succ ..]
       (if (cand [lst? yl] [and?! [nil-of [frag->list yl]]])
         [unify-and [frag->list yl] xl (true) assigns succ ..]
-      (if [vbl? xl] [unify-var [frag->vbl xl] yl assigns succ ..]
-      (if [vbl? yl] [unify-var [frag->vbl yl] xl assigns succ ..]
-      (if (cor [i/f:token? xl] [i/f:token? yl]) (ignore)
-      (let (xl [frag->list xl]) (yl [frag->list yl])
-        (cps
-          (if (cand [emt?! xl] [emt?! yl])
+      [(function unify-aux (xl yl assigns succ buf hdl)
+        (if (cand [vbl? xl] [vbl? yl] [vbl= [frag->vbl xl] [frag->vbl yl]])
+          (cps {succ stop} (stop () (ignore)))
+        (if (cand [i/f:token? xl] [i/f:token? yl])
+          (if [i/f:token= [fragment->token xl] [fragment->token yl]]
             (cps {succ stop} (stop () (ignore)))
-          (if (cor [emt?! xl] [emt?! yl])
-            (ignore)
-            [unify [@car xl] [@car yl] assigns iter ..]))
-          (iter (next) (do
-            [unify [list->fragment [@cdr xl]] [list->fragment [@cdr yl]] assigns succ ..]
-            {next}))))))))))))))))
+            (ignore))
+        (if [vbl? xl] [unify-var [frag->vbl xl] yl assigns succ ..]
+        (if [vbl? yl] [unify-var [frag->vbl yl] xl assigns succ ..]
+        (if (cor [i/f:token? xl] [i/f:token? yl]) (ignore)
+        (let (xl [frag->list xl]) (yl [frag->list yl])
+          (cps
+            (if (cand [emt?! xl] [emt?! yl])
+              (cps {succ stop} (stop () (ignore)))
+            (if (cor [emt?! xl] [emt?! yl])
+              (ignore)
+              [unify [@car xl] [@car yl] assigns iter ..]))
+            (iter (next) (do
+              [unify-aux [list->fragment [@cdr xl]] [list->fragment [@cdr yl]] assigns succ ..]
+              {next})))))))))) xl yl assigns succ buf hdl])))))))
 
 (ignore
   The same function may be called with different type parameters in the same strongly connected
