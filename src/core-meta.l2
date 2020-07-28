@@ -80,7 +80,7 @@
     {(continuation extract (map values)
       (if [emt? map]
         {return values}
-        {extract [@rst map] [lst [@frfst values] values r]})) map emt}))
+        {extract [@rst map] [lst [@frfst map] values r]})) map emt}))
 
 (function meta:bind1 (tuple fun)
   [fun [@fst tuple]])
@@ -257,9 +257,9 @@
 
 (function &-aux (l r)
   (`(with &-aux:ret
-      (let (@-aux:obj (,[@frrrrrst l]))
+      (let (@-aux:obj (,[@frrrrrrst l]))
         {(constrain (continuation @-aux:cont (pseudo prop-ref obj) {&-aux:ret prop-ref})
-            (\ s (with-vars (a b) (`(continuation (((,[(,[@frrrrst l]) s]) (@ ,a ,b), and) (ref ,a) ,b))s)s)))
+            (\ s (with-vars (a b) (`(continuation (((,(let ((,[@frrrrst l]) s) (,[@frrrrrst l]))) (@ ,a ,b), and) (ref ,a) ,b))s)s)))
           (ignore) [+ @-aux:obj (,[@fst l])] @-aux:obj}))r))
 
 (ignore
@@ -280,9 +280,9 @@
 
 (function @-aux (l r)
   (`(with @-aux:ret
-      (let (@-aux:obj (,[@frrrrrst l]))
+      (let (@-aux:obj (,[@frrrrrrst l]))
         {(constrain (continuation @-aux:cont (pseudo prop obj) {@-aux:ret prop})
-            (\ s (with-vars (a b) (`(continuation (((,[(,[@frrrrst l]) s]) (@ ,a ,b), and) ,a ,b))s)s)))
+            (\ s (with-vars (a b) (`(continuation (((,(let ((,[@frrrrst l]) s) (,[@frrrrrst l]))) (@ ,a ,b), and) ,a ,b))s)s)))
           (ignore) [(,[@frrst l]) [+ @-aux:obj (,[@fst l])]] @-aux:obj}))r))
 
 (ignore
@@ -307,8 +307,8 @@
   (`(with setf-aux:ret
       {(constrain (continuation setf-aux:cont (pseudo prop obj)
             {setf-aux:ret [(,[@frrrst l]) [+ obj (,[@fst l])] prop]})
-          (\ s (with-vars (a b) (`(continuation (((,[(,[@frrrrst l]) s]) (@ ,a ,b), and) ,a ,b))s)s)))
-        (ignore) (,[@frrrrrrst l]) (,[@frrrrrst l])})r))
+          (\ s (with-vars (a b) (`(continuation (((,(let ((,[@frrrrst l]) s) (,[@frrrrrst l]))) (@ ,a ,b), and) ,a ,b))s)s)))
+        (ignore) (,[@frrrrrrrst l]) (,[@frrrrrrst l])})r))
 
 (ignore
   The following function is a helper function for generating the fields of
@@ -317,10 +317,10 @@
   the field in addition to the rest of the fragment l.)
 
 (function property (offset size sig l r)
-  [llllllst [@fst l] [=# offset r] [=# size r]
+  [lllllllst [@fst l] [=# offset r] [=# size r]
     (switch = size (#1 (` get1b r)) (#2 (` get2b r)) (#4 (` get4b r)) (#8 (` get8b r)) (`(ignore)r))
     (switch = size (#1 (` set1b r)) (#2 (` set2b r)) (#4 (` set4b r)) (#8 (` set8b r)) (`(ignore)r))
-    [=# sig r] [@rst l] r])
+    (` property:buf r) [`[llst [sig r] (` property:buf r) emt r]r] [@rst l] r])
 
 (ignore
   The following function provides a method for ignoring L2 code. It is being used for this
