@@ -200,7 +200,9 @@
         [assign-expr-is-reads u]
         [set-expr-is-read u (true)]))))
     
-    ((-symbol-) (setf bndg-is-read (@ expr-reference s) (true)))
+    ((-symbol-) (do
+      (setf bndg-is-read (@ expr-reference s) (true))
+      (ignore)))
     
     (ignore)))
 
@@ -299,7 +301,7 @@
         (let (target-expr (@ bndg-expression (@ expr-reference s)))
           (if (cand escaping (cor [= (@ expr-type target-expr) (-continuation-)] [= (@ expr-type target-expr) (-with-)])
               [= (@ expr-reference target-expr) (@ expr-reference s)])
-            (setf expr-escapes target-expr escaping)
+            (do (setf expr-escapes target-expr escaping) (ignore))
             (ignore))))
       
       ((-if-) (do
