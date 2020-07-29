@@ -2,7 +2,7 @@
   The following function wraps the arithmetic intrinsics so that the addresses of
   functions like + and - can be taken like non-intrinsic functions.)
 
-(constrain wrap-arithmetic-intrinsics (\ r (with-vars (a) (`(function (region ,a) (list expr))r)r)))
+(constrain wrap-arithmetic-intrinsics (\ r (with-vars (a b) (`(function (region ,a) (list (expr ,b)))r)r)))
 
 (function wrap-arithmetic-intrinsics (buf handler)
   (substitute (.. buf handler) (list
@@ -33,13 +33,13 @@
     [make-binary-intrinsic [rstrcpy (" band) ..] ..]
     [make-unary-intrinsic [rstrcpy (" bnot) ..] ..]) ..)))
 
-(constrain undefined-symbol? (\ r (with-vars (a) (`(function (expr) ,a)r)r)))
+(constrain undefined-symbol? (\ r (with-vars (a b) (`(function ((expr ,b)) ,a)r)r)))
 
 (function undefined-symbol? (n)
   (cand [= (@ expr-type n) (-symbol-)]
     [= (@ bndg-state (@ expr-reference n)) (undefined-state)]))
 
-(constrain symbol-name= (\ r (with-vars (a) (`(function (string expr) ,a)r)r)))
+(constrain symbol-name= (\ r (with-vars (a b) (`(function (string (expr ,b)) ,a)r)r)))
 
 (function symbol-name= (str n)
   [str= str (@ bndg-name (@ expr-reference n))])
@@ -48,7 +48,7 @@
 
 (function variable (var val) (do [set var val] (true)))
 
-(constrain match-undefined-unary-invoke (\ r (with-vars (a) (`(function ((ref string) (ref expr) expr) ,a)r)r)))
+(constrain match-undefined-unary-invoke (\ r (with-vars (a b) (`(function ((ref string) (ref (expr ,b)) (expr ,b)) ,a)r)r)))
 
 (function match-undefined-unary-invoke (name arg1 n)
   (match-property
@@ -62,7 +62,7 @@
       (%[variable arg1])))) n))
 
 (constrain initialize-unary-arithmetic-operators
-  (\ r (with-vars (b c d) (`(function (expr ,b (list initializer) (values ,b reg-use-vec) region ,d) ,c)r)r)))
+  (\ r (with-vars (a b c d) (`(function ((expr ,a) ,b (list initializer) (values ,b reg-use-vec) region ,d) ,c)r)r)))
 
 (function initialize-unary-arithmetic-operators (n offset inits ret-val buf hdl)
   (bind-if [match-undefined-unary-invoke name arg1 n] (name arg1)
@@ -104,7 +104,7 @@
   environment.)
 
 (constrain generate-unary-arithmetic-operators
-  (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) region ,a) ,b)r)r)))
+  (\ r (with-vars (a b c) (`(function ((expr ,c) (ref (list instr)) (ref (list reloc)) region ,a) ,b)r)r)))
 
 (function generate-unary-arithmetic-operators (n c relocs r handler)
   (substitute (.. r handler)
@@ -147,7 +147,7 @@
         (ignore)))
       (ignore))))
 
-(constrain match-undefined-binary-invoke (\ r (with-vars (a) (`(function ((ref string) (ref expr) (ref expr) expr) ,a)r)r)))
+(constrain match-undefined-binary-invoke (\ r (with-vars (a b) (`(function ((ref string) (ref (expr ,b)) (ref (expr ,b)) (expr ,b)) ,a)r)r)))
 
 (function match-undefined-binary-invoke (name arg1 arg2 n)
   (match-property
@@ -162,7 +162,7 @@
       (%[variable arg2])))) n))
 
 (constrain initialize-binary-arithmetic-operators
-  (\ r (with-vars (b c d) (`(function (expr ,b (list initializer) (values ,b reg-use-vec) region ,d) ,c)r)r)))
+  (\ r (with-vars (a b c d) (`(function ((expr ,a) ,b (list initializer) (values ,b reg-use-vec) region ,d) ,c)r)r)))
 
 (function initialize-binary-arithmetic-operators (n offset inits ret-val buf hdl)
   (bind-if [match-undefined-binary-invoke name arg1 arg2 n] (name arg1 arg2)
@@ -243,7 +243,7 @@
     (false)))
 
 (constrain generate-binary-arithmetic-operators
-  (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) region ,a) ,b)r)r)))
+  (\ r (with-vars (a b c) (`(function ((expr ,c) (ref (list instr)) (ref (list reloc)) region ,a) ,b)r)r)))
 
 (function generate-binary-arithmetic-operators (n c relocs r handler)
   (substitute (.. r handler)
@@ -392,7 +392,7 @@
         (ignore)))
       (ignore))))
 
-(constrain match-undefined-binary-right-imm-invoke (\ r (with-vars (a b) (`(function ((ref string) (ref expr) (ref ,b) expr) ,a)r)r)))
+(constrain match-undefined-binary-right-imm-invoke (\ r (with-vars (a b c) (`(function ((ref string) (ref (expr ,c)) (ref ,b) (expr ,c)) ,a)r)r)))
 
 (function match-undefined-binary-right-imm-invoke (name arg1 arg2 n)
   (match-property
@@ -409,7 +409,7 @@
         (expr-value (%[variable arg2]))))))) n))
 
 (constrain initialize-binary-right-imm-arithmetic-operators
-  (\ r (with-vars (b c d) (`(function (expr ,b (list initializer) (values ,b reg-use-vec) region ,d) ,c)r)r)))
+  (\ r (with-vars (a b c d) (`(function ((expr ,a) ,b (list initializer) (values ,b reg-use-vec) region ,d) ,c)r)r)))
 
 (function initialize-binary-right-imm-arithmetic-operators (n offset inits ret-val buf hdl)
   (bind-if [match-undefined-binary-right-imm-invoke name arg1 arg2 n] (name arg1 arg2)
@@ -464,7 +464,7 @@
     (false)))
 
 (constrain generate-binary-right-imm-arithmetic-operators
-  (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) region ,a) ,b)r)r)))
+  (\ r (with-vars (a b c) (`(function ((expr ,c) (ref (list instr)) (ref (list reloc)) region ,a) ,b)r)r)))
 
 (function generate-binary-right-imm-arithmetic-operators (n c relocs r handler)
   (substitute (.. r handler)
@@ -606,7 +606,7 @@
     (false)))
 
 (constrain initialize-get-base+offset
-  (\ r (with-vars (b c d) (`(function (expr ,b (list initializer) (values ,b reg-use-vec) region ,d) ,c)r)r)))
+  (\ r (with-vars (a b c d) (`(function ((expr ,a) ,b (list initializer) (values ,b reg-use-vec) region ,d) ,c)r)r)))
 
 (function initialize-get-base+offset (n offset inits ret-val buf hdl)
   (bind-if (cand [match-get-base+offset name base addr-offset n] [sbyte? $addr-offset])
@@ -626,7 +626,7 @@
     (false)))
 
 (constrain generate-get-base+offset
-  (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) region ,a) ,b)r)r)))
+  (\ r (with-vars (a b c) (`(function ((expr ,c) (ref (list instr)) (ref (list reloc)) region ,a) ,b)r)r)))
 
 (function generate-get-base+offset (n c relocs r handler)
   (substitute (.. r handler)
@@ -688,7 +688,7 @@
     (false)))
 
 (constrain initialize-set-base+offset
-  (\ r (with-vars (b c d) (`(function (expr ,b (list initializer) (values ,b reg-use-vec) region ,d) ,c)r)r)))
+  (\ r (with-vars (a b c d) (`(function ((expr ,a) ,b (list initializer) (values ,b reg-use-vec) region ,d) ,c)r)r)))
 
 (function initialize-set-base+offset (n offset inits ret-val buf hdl)
   (bind-if [match-set-base+offset name base addr-offset val n] (name base addr-offset val)
@@ -709,7 +709,7 @@
     (false)))
 
 (constrain generate-set-base+offset
-  (\ r (with-vars (a b) (`(function (expr (ref (list instr)) (ref (list reloc)) region ,a) ,b)r)r)))
+  (\ r (with-vars (a b c) (`(function ((expr ,c) (ref (list instr)) (ref (list reloc)) region ,a) ,b)r)r)))
 
 (function generate-set-base+offset (n c relocs r handler)
   (substitute (.. r handler)
@@ -750,7 +750,7 @@
       (ignore))))
 
 (constrain initialize-arithmetic-intrinsics
-  (\ r (with-vars (b c d) (`(function (expr ,b (list initializer) (values ,b reg-use-vec) region ,d) ,c)r)r)))
+  (\ r (with-vars (a b c d) (`(function ((expr ,a) ,b (list initializer) (values ,b reg-use-vec) region ,d) ,c)r)r)))
 
 (function initialize-arithmetic-intrinsics (n offset inits ret-val buf hdl)
   (substitute (.. buf hdl) (cor
