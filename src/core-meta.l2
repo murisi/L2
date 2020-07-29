@@ -316,15 +316,16 @@
   record with the correct type. Note that fields may have to be initialized
   in a certain order for type checking to pass. This macro does the following
   transformation:
-  (record obj (f1 v1) (f2 v2) ... (fN vN))
+  (record (id obj) (f1 v1) (f2 v2) ... (fN vN))
   ->
-  (setf fN (... (setf f2 (setf f1 obj v1) v2) ...) vN))
+  (let (id obj) (setf fN (... (setf f2 (setf f1 id v1) v2) ...) vN)))
 
 (function record (l r)
-  (loop layer-set (acc [@fst l]) (props [@rst l])
-    (if [emt? props]
-      acc
-      {layer-set (`(setf (,[@ffst props]) ,acc (,[@frfst props]))r) [@rst props]})))
+  (`(let (,[@fst l])
+    (,(loop layer-set (acc [@ffst l]) (props [@rst l])
+        (if [emt? props]
+          acc
+          {layer-set (`(setf (,[@ffst props]) ,acc (,[@frfst props]))r) [@rst props]}))))r))
 
 (ignore
   The following function is a helper function for generating the fields of
