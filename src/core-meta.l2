@@ -312,6 +312,21 @@
           (ignore) (,[@frrrrrrrst l]) setf-aux:obj [cast setf-aux:obj]}))r))
 
 (ignore
+  This function initializes/updates the values of a record and returns the
+  record with the correct type. Note that fields may have to be initialized
+  in a certain order for type checking to pass. This macro does the following
+  transformation:
+  (record obj (f1 v1) (f2 v2) ... (fN vN))
+  ->
+  (setf fN (... (setf f2 (setf f1 obj v1) v2) ...) vN))
+
+(function record (l r)
+  (loop layer-set (acc [@fst l]) (props [@rst l])
+    (if [emt? props]
+      acc
+      {layer-set (`(setf (,[@ffst props]) ,acc (,[@frfst props]))r) [@rst props]})))
+
+(ignore
   The following function is a helper function for generating the fields of
   structs. All that it does is create a macro invocation on the first token
   in the fragment l supplying to it the offset, size, getter, and setter of
