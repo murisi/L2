@@ -1,3 +1,4 @@
+.global get0b
 .global getb
 .global get1b
 .global get2b
@@ -29,6 +30,9 @@
 
 .text
 jmp l2rt_end
+
+get0b:
+ret
 
 get:
 get8b:
