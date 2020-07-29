@@ -257,18 +257,18 @@
 (constrain make-symbol (\ r (with-vars (a b) (`(function (string frag (expr ,a) region ,b) (expr ,a))r)r)))
 
 (function make-symbol (name frag meta reg handler)
-  (substitute (.. reg handler) (let (sym [region-alloc (expression) ..]) (do
-    (setf expr-type sym (-symbol-))
-    (setf expr-fragment sym frag)
-    (setf expr-meta sym meta)
-    (setf expr-lowlink sym #0)
-    (setf expr-dependencies sym nil)
-    (setf expr-binding-aug sym
-      [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
-        (defined-state) empty-string [vbl->frag [vbl ..]] sym ..])
-    (setf expr-name sym name)
-    (setf expr-reference sym null-binding)
-    sym))))
+  (substitute (.. reg handler)
+    (record (sym [region-alloc (expression) ..])
+      (expr-type (-symbol-))
+      (expr-fragment frag)
+      (expr-meta meta)
+      (expr-lowlink #0)
+      (expr-dependencies nil)
+      (expr-binding-aug
+        [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
+          (defined-state) empty-string [vbl->frag [vbl ..]] sym ..])
+      (expr-name name)
+      (expr-reference null-binding))))
 
 (ignore
   Makes an undefined binding with the given name. Internally, a storage expression is made
@@ -280,12 +280,11 @@
 (function make-undefined-binding (name r handler)
   (substitute (.. r handler)
     (let (stg [make-storage name nil null-fragment null-expr ..])
-    (let (bndg (@ expr-reference stg)) (do
-    (setf bndg-context bndg (extra-function-context))
-    (setf bndg-storage bndg (absolute-storage))
-    (setf bndg-scope bndg (global-scope))
-    (setf bndg-state bndg (undefined-state))
-    bndg)))))
+    (record (bndg (@ expr-reference stg))
+      (bndg-context (extra-function-context))
+      (bndg-storage (absolute-storage))
+      (bndg-scope (global-scope))
+      (bndg-state (undefined-state))))))
 
 (constrain expr-signature (\ r (with-vars (a) (`(function ((expr ,a)) frag)r)r)))
 
@@ -294,174 +293,174 @@
 (constrain make-function (\ r (with-vars (a b) (`(function (string (list string) (expr ,a) frag (expr ,a) region ,b) (expr ,a))r)r)))
 
 (function make-function (ref params expr frag meta reg handler)
-  (substitute (.. reg handler) (let (func [region-alloc (expression) ..]) (do
-    (setf expr-type func (-function-))
-    (setf expr-fragment func frag)
-    (setf expr-meta func meta)
-    (setf expr-lowlink func #0)
-    (setf expr-dependencies func nil)
-    (setf expr-binding-aug func
-      [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
-        (defined-state) empty-string [vbl->frag [vbl ..]] func ..])
-    (setf expr-reference func
-      [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope)
-        (defined-state) ref [vbl->frag [vbl ..]] func ..])
-    (setf expr-parameters func
-      (map (param params)
+  (substitute (.. reg handler)
+    (record (func [region-alloc (expression) ..])
+      (expr-type (-function-))
+      (expr-fragment frag)
+      (expr-meta meta)
+      (expr-lowlink #0)
+      (expr-dependencies nil)
+      (expr-binding-aug
         [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
-          (defined-state) param [vbl->frag [vbl ..]] func ..] ..))
-    (setf expr-expression func expr)
-    func))))
+          (defined-state) empty-string [vbl->frag [vbl ..]] func ..])
+      (expr-reference
+        [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope)
+          (defined-state) ref [vbl->frag [vbl ..]] func ..])
+      (expr-parameters
+        (map (param params)
+          [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
+            (defined-state) param [vbl->frag [vbl ..]] func ..] ..))
+      (expr-expression expr))))
 
 (constrain make-continuation (\ r (with-vars (a b) (`(function (string (list string) (expr ,a) frag (expr ,a) region ,b) (expr ,a))r)r)))
 
 (function make-continuation (ref params expr frag meta reg handler)
-  (substitute (.. reg handler) (let (cont [region-alloc (expression) ..]) (do
-    (setf expr-type cont (-continuation-))
-    (setf expr-fragment cont frag)
-    (setf expr-meta cont meta)
-    (setf expr-lowlink cont #0)
-    (setf expr-dependencies cont nil)
-    (setf expr-jumps cont nil)
-    (setf expr-binding-aug cont
-      [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
-        (defined-state) empty-string [vbl->frag [vbl ..]] cont ..])
-    (setf expr-cont-instr-bndg cont
-      [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope)
-        (defined-state) empty-string null-fragment null-expr ..])
-    (setf expr-reference cont
-      [make-binding-aug (reference-mode) (intra-function-context) (nil-storage) (local-scope)
-        (defined-state) ref [vbl->frag [vbl ..]] cont ..])
-    (setf expr-parameters cont
-      (map (param params)
+  (substitute (.. reg handler)
+    (record (cont [region-alloc (expression) ..])
+      (expr-type (-continuation-))
+      (expr-fragment frag)
+      (expr-meta meta)
+      (expr-lowlink #0)
+      (expr-dependencies nil)
+      (expr-jumps nil)
+      (expr-binding-aug
         [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
-          (defined-state) param [vbl->frag [vbl ..]] cont ..] ..))
-    (setf expr-escapes cont (false))
-    (setf expr-expression cont expr)
-    cont))))
+          (defined-state) empty-string [vbl->frag [vbl ..]] cont ..])
+      (expr-cont-instr-bndg
+        [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope)
+          (defined-state) empty-string null-fragment null-expr ..])
+      (expr-reference
+        [make-binding-aug (reference-mode) (intra-function-context) (nil-storage) (local-scope)
+          (defined-state) ref [vbl->frag [vbl ..]] cont ..])
+      (expr-parameters
+        (map (param params)
+          [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
+            (defined-state) param [vbl->frag [vbl ..]] cont ..] ..))
+      (expr-escapes (false))
+      (expr-expression expr))))
 
 (constrain make-with (\ r (with-vars (a b) (`(function (string (expr ,a) frag (expr ,a) region ,b) (expr ,a))r)r)))
 
 (function make-with (ref expr frag meta reg handler)
-  (substitute (.. reg handler) (let (wth [region-alloc (expression) ..]) (do
-    (setf expr-type wth (-with-))
-    (setf expr-fragment wth frag)
-    (setf expr-meta wth meta)
-    (setf expr-lowlink wth #0)
-    (setf expr-dependencies wth nil)
-    (setf expr-jumps wth nil)
-    (setf expr-binding-aug wth
-      [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
-        (defined-state) empty-string [vbl->frag [vbl ..]] wth ..])
-    (setf expr-cont-instr-bndg wth
-      [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope)
-        (defined-state) empty-string null-fragment null-expr ..])
-    (setf expr-reference wth
-      [make-binding-aug (reference-mode) (intra-function-context) (nil-storage) (local-scope)
-        (defined-state) ref [vbl->frag [vbl ..]] wth ..])
-    (setf expr-parameters wth [cons
-      [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
-        (defined-state) empty-string [vbl->frag [vbl ..]] wth ..] nil ..])
-    (setf expr-escapes wth (false))
-    (setf expr-expression wth expr)
-    wth))))
+  (substitute (.. reg handler)
+    (record (wth [region-alloc (expression) ..])
+      (expr-type (-with-))
+      (expr-fragment frag)
+      (expr-meta meta)
+      (expr-lowlink #0)
+      (expr-dependencies nil)
+      (expr-jumps nil)
+      (expr-binding-aug
+        [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
+          (defined-state) empty-string [vbl->frag [vbl ..]] wth ..])
+      (expr-cont-instr-bndg
+        [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope)
+          (defined-state) empty-string null-fragment null-expr ..])
+      (expr-reference
+        [make-binding-aug (reference-mode) (intra-function-context) (nil-storage) (local-scope)
+          (defined-state) ref [vbl->frag [vbl ..]] wth ..])
+      (expr-parameters [cons
+        [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
+          (defined-state) empty-string [vbl->frag [vbl ..]] wth ..] nil ..])
+      (expr-escapes (false))
+      (expr-expression expr))))
 
 (constrain make-jump (\ r (with-vars (a b) (`(function ((expr ,a) (list (expr ,a)) frag (expr ,a) region ,b) (expr ,a))r)r)))
 
 (function make-jump (ref args frag meta reg handler)
-  (substitute (.. reg handler) (let (u [region-alloc (expression) ..]) (do
-    (setf expr-type u (-jump-))
-    (setf expr-fragment u frag)
-    (setf expr-meta u meta)
-    (setf expr-lowlink u #0)
-    (setf expr-dependencies u nil)
-    (setf expr-binding-aug u
-      [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
-        (defined-state) empty-string [vbl->frag [vbl ..]] u ..])
-    (setf expr-short-circuit u null-expr)
-    (setf expr-target u ref)
-    (setf expr-arguments u args)
-    u))))
+  (substitute (.. reg handler)
+    (record (u [region-alloc (expression) ..])
+      (expr-type (-jump-))
+      (expr-fragment frag)
+      (expr-meta meta)
+      (expr-lowlink #0)
+      (expr-dependencies nil)
+      (expr-binding-aug
+        [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
+          (defined-state) empty-string [vbl->frag [vbl ..]] u ..])
+      (expr-short-circuit null-expr)
+      (expr-target ref)
+      (expr-arguments args))))
 
 (constrain make-storage (\ r (with-vars (a b) (`(function (string (list (expr ,a)) frag (expr ,a) region ,b) (expr ,a))r)r)))
 
 (function make-storage (ref args frag meta reg handler)
-  (substitute (.. reg handler) (let (u [region-alloc (expression) ..]) (do
-    (setf expr-type u (-storage-))
-    (setf expr-fragment u frag)
-    (setf expr-meta u meta)
-    (setf expr-lowlink u #0)
-    (setf expr-dependencies u nil)
-    (setf expr-binding-aug u
-      [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
-        (defined-state) empty-string [vbl->frag [vbl ..]] u ..])
-    (setf expr-reference u
-      [make-binding-aug (reference-mode) (intra-function-context) (nil-storage) (local-scope)
-        (defined-state) ref [vbl->frag [vbl ..]] u ..])
-    (setf expr-arguments u args)
-    u))))
+  (substitute (.. reg handler)
+    (record (u [region-alloc (expression) ..])
+      (expr-type (-storage-))
+      (expr-fragment frag)
+      (expr-meta meta)
+      (expr-lowlink #0)
+      (expr-dependencies nil)
+      (expr-binding-aug
+        [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
+          (defined-state) empty-string [vbl->frag [vbl ..]] u ..])
+      (expr-reference
+        [make-binding-aug (reference-mode) (intra-function-context) (nil-storage) (local-scope)
+          (defined-state) ref [vbl->frag [vbl ..]] u ..])
+      (expr-arguments args))))
 
 (constrain make-meta (\ r (with-vars (a b) (`(function ((expr ,a) frag (expr ,a) region ,b) (expr ,a))r)r)))
 
 (function make-meta (ref frag meta reg handler)
-  (substitute (.. reg handler) (let (u [region-alloc (expression) ..]) (do
-    (setf expr-type u (-meta-))
-    (setf expr-meta u meta)
-    (setf expr-lowlink u #0)
-    (setf expr-dependencies u nil)
-    (setf expr-binding-aug u null-binding)
-    (setf expr-target u ref)
-    (setf expr-fragment u frag)
-    u))))
+  (substitute (.. reg handler)
+    (record (u [region-alloc (expression) ..])
+      (expr-type (-meta-))
+      (expr-meta meta)
+      (expr-lowlink #0)
+      (expr-dependencies nil)
+      (expr-binding-aug null-binding)
+      (expr-target ref)
+      (expr-fragment frag))))
 
 (constrain make-constrain (\ r (with-vars (a b) (`(function ((expr ,a) (expr ,a) frag (expr ,a) region ,b) (expr ,a))r)r)))
 
 (function make-constrain (expr ref frag meta reg handler)
-  (substitute (.. reg handler) (let (u [region-alloc (expression) ..]) (do
-    (setf expr-type u (-constrain-))
-    (setf expr-fragment u frag)
-    (setf expr-meta u meta)
-    (setf expr-lowlink u #0)
-    (setf expr-dependencies u nil)
-    (setf expr-binding-aug u
-      [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
-        (defined-state) empty-string [vbl->frag [vbl ..]] u ..])
-    (setf expr-target u ref)
-    (setf expr-expression u expr)
-    u))))
+  (substitute (.. reg handler)
+    (record (u [region-alloc (expression) ..])
+      (expr-type (-constrain-))
+      (expr-fragment frag)
+      (expr-meta meta)
+      (expr-lowlink #0)
+      (expr-dependencies nil)
+      (expr-binding-aug
+        [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
+          (defined-state) empty-string [vbl->frag [vbl ..]] u ..])
+      (expr-target ref)
+      (expr-expression expr))))
 
 (constrain make-if (\ r (with-vars (a b) (`(function ((expr ,a) (expr ,a) (expr ,a) frag (expr ,a) region ,b) (expr ,a))r)r)))
 
 (function make-if (condition consequent alternate frag meta reg handler)
-  (substitute (.. reg handler) (let (u [region-alloc (expression) ..]) (do
-    (setf expr-type u (-if-))
-    (setf expr-fragment u frag)
-    (setf expr-meta u meta)
-    (setf expr-lowlink u #0)
-    (setf expr-dependencies u nil)
-    (setf expr-binding-aug u
-      [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
-        (defined-state) empty-string [vbl->frag [vbl ..]] u ..])
-    (setf expr-condition u condition)
-    (setf expr-consequent u consequent)
-    (setf expr-alternate u alternate)
-    u))))
+  (substitute (.. reg handler)
+    (record (u [region-alloc (expression) ..])
+      (expr-type (-if-))
+      (expr-fragment frag)
+      (expr-meta meta)
+      (expr-lowlink #0)
+      (expr-dependencies nil)
+      (expr-binding-aug
+        [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
+          (defined-state) empty-string [vbl->frag [vbl ..]] u ..])
+      (expr-condition condition)
+      (expr-consequent consequent)
+      (expr-alternate alternate))))
 
 (constrain make-invoke (\ r (with-vars (a b) (`(function ((expr ,a) (list (expr ,a)) frag (expr ,a) region ,b) (expr ,a))r)r)))
 
 (function make-invoke (ref args frag meta reg handler)
-  (substitute (.. reg handler) (let (u [region-alloc (expression) ..]) (do
-    (setf expr-type u (-invoke-))
-    (setf expr-fragment u frag)
-    (setf expr-meta u meta)
-    (setf expr-lowlink u #0)
-    (setf expr-dependencies u nil)
-    (setf expr-binding-aug u
-      [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
-        (defined-state) empty-string [vbl->frag [vbl ..]] u ..])
-    (setf expr-target u ref)
-    (setf expr-arguments u args)
-    u))))
+  (substitute (.. reg handler)
+    (record (u [region-alloc (expression) ..])
+      (expr-type (-invoke-))
+      (expr-fragment frag)
+      (expr-meta meta)
+      (expr-lowlink #0)
+      (expr-dependencies nil)
+      (expr-binding-aug
+        [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
+          (defined-state) empty-string [vbl->frag [vbl ..]] u ..])
+      (expr-target ref)
+      (expr-arguments args))))
 
 (ignore Prints the given expression as it would be written in an L2 source file. s is an expression.)
 
