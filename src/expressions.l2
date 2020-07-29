@@ -241,7 +241,7 @@
 
 (function expr-binding-depth (expr) [bndg-depth (@ expr-binding-aug expr)])
 
-(constrain make-literal (\ r (with-vars (a b c) (`(function (,a frag (expr ,c) region ,b) (expr ,c))r)r)))
+(constrain make-literal (\ r (with-vars (a b c) (`(function (,a frag (expr ,c) region ,b) (expr ()))r)r)))
 
 (function make-literal (value frag meta reg handler)
   (substitute (.. reg handler)
@@ -257,11 +257,12 @@
           (defined-state) empty-string [vbl->frag [vbl ..]] t ..])
       (expr-value value))))
 
-(constrain make-symbol (\ r (with-vars (a b) (`(function (string frag (expr ,a) region ,b) (expr ,a))r)r)))
+(constrain make-symbol (\ r (with-vars (a b) (`(function (string frag (expr ,a) region ,b) (expr ()))r)r)))
 
 (function make-symbol (name frag meta reg handler)
   (substitute (.. reg handler)
     (record (sym [region-alloc (expression) ..])
+      (expr-new (ignore))
       (expr-type (-symbol-))
       (expr-fragment frag)
       (expr-meta meta)
@@ -293,11 +294,12 @@
 
 (function expr-signature (expr) (@ bndg-signature (@ expr-binding-aug expr)))
 
-(constrain make-function (\ r (with-vars (a b) (`(function (string (list string) (expr ,a) frag (expr ,a) region ,b) (expr ,a))r)r)))
+(constrain make-function (\ r (with-vars (a b) (`(function (string (list string) (expr ,a) frag (expr ,a) region ,b) (expr ()))r)r)))
 
 (function make-function (ref params expr frag meta reg handler)
   (substitute (.. reg handler)
     (record (func [region-alloc (expression) ..])
+      (expr-new (ignore))
       (expr-type (-function-))
       (expr-fragment frag)
       (expr-meta meta)
@@ -315,11 +317,12 @@
             (defined-state) param [vbl->frag [vbl ..]] func ..] ..))
       (expr-expression expr))))
 
-(constrain make-continuation (\ r (with-vars (a b) (`(function (string (list string) (expr ,a) frag (expr ,a) region ,b) (expr ,a))r)r)))
+(constrain make-continuation (\ r (with-vars (a b) (`(function (string (list string) (expr ,a) frag (expr ,a) region ,b) (expr ()))r)r)))
 
 (function make-continuation (ref params expr frag meta reg handler)
   (substitute (.. reg handler)
     (record (cont [region-alloc (expression) ..])
+      (expr-new (ignore))
       (expr-type (-continuation-))
       (expr-fragment frag)
       (expr-meta meta)
@@ -342,7 +345,7 @@
       (expr-escapes (false))
       (expr-expression expr))))
 
-(constrain make-with (\ r (with-vars (a b) (`(function (string (expr ,a) frag (expr ,a) region ,b) (expr ,a))r)r)))
+(constrain make-with (\ r (with-vars (a b) (`(function (string (expr ,a) frag (expr ,a) region ,b) (expr ()))r)r)))
 
 (function make-with (ref expr frag meta reg handler)
   (substitute (.. reg handler)
@@ -368,11 +371,12 @@
       (expr-escapes (false))
       (expr-expression expr))))
 
-(constrain make-jump (\ r (with-vars (a b) (`(function ((expr ,a) (list (expr ,a)) frag (expr ,a) region ,b) (expr ,a))r)r)))
+(constrain make-jump (\ r (with-vars (a b) (`(function ((expr ,a) (list (expr ,a)) frag (expr ,a) region ,b) (expr ()))r)r)))
 
 (function make-jump (ref args frag meta reg handler)
   (substitute (.. reg handler)
     (record (u [region-alloc (expression) ..])
+      (expr-new (ignore))
       (expr-type (-jump-))
       (expr-fragment frag)
       (expr-meta meta)
@@ -385,11 +389,12 @@
       (expr-target ref)
       (expr-arguments args))))
 
-(constrain make-storage (\ r (with-vars (a b) (`(function (string (list (expr ,a)) frag (expr ,a) region ,b) (expr ,a))r)r)))
+(constrain make-storage (\ r (with-vars (a b) (`(function (string (list (expr ,a)) frag (expr ,a) region ,b) (expr ()))r)r)))
 
 (function make-storage (ref args frag meta reg handler)
   (substitute (.. reg handler)
     (record (u [region-alloc (expression) ..])
+      (expr-new (ignore))
       (expr-type (-storage-))
       (expr-fragment frag)
       (expr-meta meta)
@@ -403,11 +408,12 @@
           (defined-state) ref [vbl->frag [vbl ..]] u ..])
       (expr-arguments args))))
 
-(constrain make-meta (\ r (with-vars (a b) (`(function ((expr ,a) frag (expr ,a) region ,b) (expr ,a))r)r)))
+(constrain make-meta (\ r (with-vars (a b) (`(function ((expr ,a) frag (expr ,a) region ,b) (expr ()))r)r)))
 
 (function make-meta (ref frag meta reg handler)
   (substitute (.. reg handler)
     (record (u [region-alloc (expression) ..])
+      (expr-new (ignore))
       (expr-type (-meta-))
       (expr-meta meta)
       (expr-lowlink #0)
@@ -416,11 +422,12 @@
       (expr-target ref)
       (expr-fragment frag))))
 
-(constrain make-constrain (\ r (with-vars (a b) (`(function ((expr ,a) (expr ,a) frag (expr ,a) region ,b) (expr ,a))r)r)))
+(constrain make-constrain (\ r (with-vars (a b) (`(function ((expr ,a) (expr ,a) frag (expr ,a) region ,b) (expr ()))r)r)))
 
 (function make-constrain (expr ref frag meta reg handler)
   (substitute (.. reg handler)
     (record (u [region-alloc (expression) ..])
+      (expr-new (ignore))
       (expr-type (-constrain-))
       (expr-fragment frag)
       (expr-meta meta)
@@ -432,11 +439,12 @@
       (expr-target ref)
       (expr-expression expr))))
 
-(constrain make-if (\ r (with-vars (a b) (`(function ((expr ,a) (expr ,a) (expr ,a) frag (expr ,a) region ,b) (expr ,a))r)r)))
+(constrain make-if (\ r (with-vars (a b) (`(function ((expr ,a) (expr ,a) (expr ,a) frag (expr ,a) region ,b) (expr ()))r)r)))
 
 (function make-if (condition consequent alternate frag meta reg handler)
   (substitute (.. reg handler)
     (record (u [region-alloc (expression) ..])
+      (expr-new (ignore))
       (expr-type (-if-))
       (expr-fragment frag)
       (expr-meta meta)
@@ -449,11 +457,12 @@
       (expr-consequent consequent)
       (expr-alternate alternate))))
 
-(constrain make-invoke (\ r (with-vars (a b) (`(function ((expr ,a) (list (expr ,a)) frag (expr ,a) region ,b) (expr ,a))r)r)))
+(constrain make-invoke (\ r (with-vars (a b) (`(function ((expr ,a) (list (expr ,a)) frag (expr ,a) region ,b) (expr ()))r)r)))
 
 (function make-invoke (ref args frag meta reg handler)
   (substitute (.. reg handler)
     (record (u [region-alloc (expression) ..])
+      (expr-new (ignore))
       (expr-type (-invoke-))
       (expr-fragment frag)
       (expr-meta meta)
@@ -569,7 +578,7 @@
   is the constructed expression. The continuation handler will be followed with the
   tuple (special-form-error, ...) in the event of a malformed expression.)
 
-(constrain build-expression (\ r (with-vars (a b) (`(function (frag (expr ,b) region ,a) (expr ,b))r)r)))
+(constrain build-expression (\ r (with-vars (a b) (`(function (frag (expr ,b) region ,a) (expr ()))r)r)))
 
 (function build-expression (frag meta reg handler) (substitute (.. reg handler)
   (if [i/f:token? frag] [make-symbol [to-string [fragment->token frag] ..] frag meta ..]
