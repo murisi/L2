@@ -444,79 +444,72 @@
 
 (function make-lkdstrt (str buf hdl)
   (substitute (.. buf hdl)
-    (let (lkdstrt [region-alloc (linked-elf64-strtab) ..]) (do
-      (setf lkdstrt-raw lkdstrt str)
-      lkdstrt))))
+    (record (lkdstrt [region-alloc (linked-elf64-strtab) ..])
+      (lkdstrt-raw str))))
 
 (constrain make-lkdr (\ r (with-vars (a) (`(function (linked-elf64-sym region ,a) linked-elf64-rela)r)r)))
 
 (function make-lkdr (info-sym buf hdl)
   (substitute (.. buf hdl)
-    (let (lkdr [region-alloc (linked-elf64-rela) ..]) (do
-      (setf lkdr-raw lkdr [region-alloc (elf64-rela) ..])
-      (setf lkdr-info-sym lkdr info-sym)
-      lkdr))))
+    (record (lkdr [region-alloc (linked-elf64-rela) ..])
+      (lkdr-raw [region-alloc (elf64-rela) ..])
+      (lkdr-info-sym info-sym))))
 
 (constrain make-lkdst (\ r (with-vars (a) (`(function (linked-elf64-strtab linked-elf64-sh region ,a) linked-elf64-sym)r)r)))
 
 (function make-lkdst (name sh buf hdl)
   (substitute (.. buf hdl)
-    (let (lkdst [region-alloc (linked-elf64-sym) ..]) (do
-      (setf lkdst-raw lkdst [region-alloc (elf64-sym) ..])
-      (setf lkdst-name lkdst name)
-      (setf lkdst-sh lkdst sh)
-      lkdst))))
+    (record (lkdst [region-alloc (linked-elf64-sym) ..])
+      (lkdst-raw [region-alloc (elf64-sym) ..])
+      (lkdst-name name)
+      (lkdst-sh sh))))
 
 (constrain make-lkdsymtab
   (\ r (with-vars (a) (`(function (linked-elf64-strtab linked-elf64-sh (list linked-elf64-sym) region ,a) linked-elf64-sh)r)r)))
 
 (function make-lkdsymtab (name link symtab buf hdl)
   (substitute (.. buf hdl)
-    (let (lkdsh [region-alloc (linked-elf64-sh) ..]) (do
-      (setf lkdsh-raw lkdsh [region-alloc (elf64-shdr) ..])
-      (setf sh-type (@ lkdsh-raw lkdsh) (sht-symtab))
-      (setf lkdsh-name lkdsh name)
-      (setf lkdsh-link lkdsh link)
-      (setf lkdsh-symtab lkdsh symtab)
-      lkdsh))))
+    (record (lkdsh [region-alloc (linked-elf64-sh) ..])
+      (lkdsh-raw [region-alloc (elf64-shdr) ..])
+      (lkdsh-raw (setf sh-type (@ lkdsh-raw lkdsh) (sht-symtab)))
+      (lkdsh-name name)
+      (lkdsh-link link)
+      (lkdsh-symtab symtab))))
 
 (constrain make-lkdstrtab
   (\ r (with-vars (a) (`(function (linked-elf64-strtab linked-elf64-sh (list linked-elf64-strtab) region ,a) linked-elf64-sh)r)r)))
 
 (function make-lkdstrtab (name link strtab buf hdl)
   (substitute (.. buf hdl)
-    (let (lkdsh [region-alloc (linked-elf64-sh) ..]) (do
-      (setf lkdsh-raw lkdsh [region-alloc (elf64-shdr) ..])
-      (setf sh-type (@ lkdsh-raw lkdsh) (sht-strtab))
-      (setf lkdsh-name lkdsh name)
-      (setf lkdsh-strtab lkdsh strtab)
-      (setf lkdsh-link lkdsh link)
-      lkdsh))))
+    (record (lkdsh [region-alloc (linked-elf64-sh) ..])
+      (lkdsh-raw [region-alloc (elf64-shdr) ..])
+      (lkdsh-raw (setf sh-type (@ lkdsh-raw lkdsh) (sht-strtab)))
+      (lkdsh-name name)
+      (lkdsh-strtab strtab)
+      (lkdsh-link link))))
 
 (constrain make-lkdrela
   (\ r (with-vars (a) (`(function (linked-elf64-strtab linked-elf64-sh linked-elf64-sh (list linked-elf64-rela) region ,a) linked-elf64-sh)r)r)))
 
 (function make-lkdrela (name link info rela buf hdl)
   (substitute (.. buf hdl)
-    (let (lkdsh [region-alloc (linked-elf64-sh) ..]) (do
-      (setf lkdsh-raw lkdsh [region-alloc (elf64-shdr) ..])
-      (setf sh-type (@ lkdsh-raw lkdsh) (sht-rela))
-      (setf lkdsh-name lkdsh name)
-      (setf lkdsh-rela lkdsh rela)
-      (setf lkdsh-link lkdsh link)
-      (setf lkdsh-rela-info lkdsh info)
-      lkdsh))))
+    (record (lkdsh [region-alloc (linked-elf64-sh) ..])
+      (lkdsh-raw [region-alloc (elf64-shdr) ..])
+      (lkdsh-raw (setf sh-type (@ lkdsh-raw lkdsh) (sht-rela)))
+      (lkdsh-name name)
+      (lkdsh-rela rela)
+      (lkdsh-link link)
+      (lkdsh-rela-info info))))
 
 (constrain make-lkds
   (\ r (with-vars (a) (`(function (linked-elf64-strtab linked-elf64-sh region ,a) linked-elf64-sh)r)r)))
 
 (function make-lkds (name link buf hdl)
   (substitute (.. buf hdl)
-    (let (lkdsh [region-alloc (linked-elf64-sh) ..]) (do
-      (setf lkdsh-raw lkdsh [region-alloc (elf64-shdr) ..])
-      (setf lkdsh-name lkdsh name)
-      (setf lkdsh-link lkdsh link)
-      lkdsh))))
+    (record (lkdsh [region-alloc (linked-elf64-sh) ..])
+      (lkdsh-raw [region-alloc (elf64-shdr) ..])
+      (lkdsh-name name)
+      (lkdsh-link link))))
 
 (constrain make-lkde
   (\ r (with-vars (a) (`(function ((list linked-elf64-ph) (list linked-elf64-sh) linked-elf64-sh linked-elf64-sh region ,a)
@@ -524,11 +517,9 @@
 
 (function make-lkde (ph sh undef shstr buf hdl)
   (substitute (.. buf hdl)
-    (let (lkde [region-alloc (linked-elf64-e) ..]) (do
-      (setf lkde-raw lkde [region-alloc (elf64-ehdr) ..])
-      (setf lkde-ph lkde ph)
-      (setf lkde-sh lkde sh)
-      (setf lkde-undef lkde undef)
-      (setf lkde-shstr lkde shstr)
-      lkde))))
-
+    (record (lkde [region-alloc (linked-elf64-e) ..])
+      (lkde-raw [region-alloc (elf64-ehdr) ..])
+      (lkde-ph ph)
+      (lkde-sh sh)
+      (lkde-undef undef)
+      (lkde-shstr shstr))))
