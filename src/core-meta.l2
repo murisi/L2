@@ -407,6 +407,25 @@
                   (,[`[llst unquoted-vars (` bind:r r) emt r]r]) bind:r] emt bind:r] bind:r)))r)
             (` bind:param r) param-parts r])))r)))))))
 
+(function bind-ref (l r)
+  (let (identifiers [@fst l]) (param [@frst l]) (body [@frrst l])
+  (let (bind-storage [llst (` storage r) (` bind r) [meta:map2 identifiers r (\ l r (`(ignore)r)) r] r])
+  (let (vars [meta:label identifiers (` values:var r) r])
+  (let (unquoted-vars [meta:map2 vars r (\ l r [llst [lst -,- emt r] l emt r]) r])
+  (let (param-parts (loop make-set (identifiers identifiers) (offset #0) (params emt)
+      (if [emt? identifiers]
+        [meta:reverse params r]
+        {make-set [@rst identifiers] [+ offset (unit)]
+          [lst (`[+ bind:param (,[=# offset r])]r) params r]})))
+    (`(with bind:return
+        (let (bind:param (let (bind ,bind-storage) ,param))
+          (,[lllst (` jump r) (`(constrain (continuation bind:func (,[lst (` bind:param r) identifiers r])
+                {bind:return ,body})
+              (\ bind:r (with-vars ,vars
+                [llst (` continuation bind:r) [lst [lst (` values bind:r) (,[`[llst unquoted-vars (` bind:r r) emt r]r]) bind:r]
+                  (,[`[llst unquoted-vars (` bind:r r) emt r]r]) bind:r] emt bind:r] bind:r)))r)
+            (` bind:param r) param-parts r])))r)))))))
+
 (ignore
   The following macro implements the following transformation:
   ((use-storage stor) use-stor arg1 arg2 ... argN)
