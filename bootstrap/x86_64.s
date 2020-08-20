@@ -5,6 +5,7 @@
 .global get4b
 .global get8b
 .global get
+.global set0b
 .global setb
 .global set1b
 .global set2b
@@ -53,6 +54,9 @@ ret
 get4b:
 xorq %rax, %rax
 movl 0(%rdi), %eax
+ret
+
+set0b:
 ret
 
 set:

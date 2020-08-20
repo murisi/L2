@@ -550,11 +550,11 @@ union expression *vgenerate_metas(union expression *s, void *ctx) {
   if(s->base.type == meta) {
     list (*macro)(list, region) = preprocessed_expression_address(s->meta.reference, bindings, expr_buf, expr_buf, handler);
     return vgenerate_metas(build_expression(macro(s->meta.fragment->rst, expr_buf), s, expr_buf, handler), ctx);
-  } else if(s->base.type == constrain) {
+  } /*else if(s->base.type == constrain) {
     list (*macro)(region) = preprocessed_expression_address(s->constrain.reference, bindings, expr_buf, expr_buf, handler);
     s->constrain.signature = macro(expr_buf);
     return s;
-  } else {
+  }*/ else {
     return s;
   }
 }

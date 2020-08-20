@@ -2,6 +2,14 @@ bool is_var(list s) {
   return !is_nil(s) && s->rst == s ? true : false;
 }
 
+bool is_and(list s) {
+  return false;
+}
+
+bool is_or(list s) {
+  return false;
+}
+
 bool var_equals(list a, list b) {
   return a == b ? true : false;
 }

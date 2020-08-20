@@ -127,7 +127,7 @@ void compile_files(list file_names, list bndgs, region expr_buf, region obj_buf,
   list global_bindings = global_binding_augs_of(all_exprs, expr_buf);
   union expression *expr;
   {foreach(expr, all_exprs) { link_symbols(expr, true, &undefined_bindings, global_bindings, nil, expr_buf); }}
-  infer_types(all_exprs, expr_buf, handler);
+  //infer_types(all_exprs, expr_buf, handler);
   {foreach(expr, all_exprs) {
     pre_visit_expressions(vunlink_symbols, &expr, global_bindings);
     pre_visit_expressions(vunlink_symbols, &expr, undefined_bindings);
@@ -335,7 +335,11 @@ int main(int argc, char *argv[]) {
     {.name = "char=", .address = char_equals},
     {.name = "var=", .address = var_equals},
     {.name = "var?", .address = is_var},
-    {.name = "var", .address = var}
+    {.name = "var", .address = var},
+    {.name = "and?", .address = is_and},
+    {.name = "and", .address = nil},
+    {.name = "or?", .address = is_or},
+    {.name = "or", .address = nil}
   };
   
   region obj_buf = create_region(0);
