@@ -412,37 +412,32 @@
 
 (function unify-var (var val assigns succ buf hdl)
   (substitute (.. buf hdl)
-    (if (not [occurs-in? var val assigns])
+    (if [occurs-in? var val assigns] (false)
       (cps
         (do [ht-put var val assigns ..] {succ stop})
-        (stop () [ht-remove var assigns]))
-      (ignore))))
+        (stop (res) (do [ht-remove var assigns] res))))))
 
 (constrain unify-or (\ r (with-vars (a b c d) (`(function ((list frag) frag ,d (hash-table vbl frag) ,b region ,c) ,a)r)r)))
 
 (function unify-or (x y rev assigns succ buf hdl)
   (substitute (.. buf hdl)
-    (loop try-next (x x)
-      (if [nil? x] (ignore)
-        (do
-          (if rev
-            [unify y [@car x] assigns succ ..]
-            [unify [@car x] y assigns succ ..])
-          {try-next [@cdr x]})))))
+    (loop try-next (x x) (acc (false))
+      (if [nil? x] acc
+        {try-next [@cdr x] (cor (if rev
+          [unify y [@car x] assigns succ ..]
+          [unify [@car x] y assigns succ ..]) acc)}))))
 
 (constrain unify-and (\ r (with-vars (a b c d) (`(function ((list frag) frag ,d (hash-table vbl frag) ,b region ,c) ,a)r)r)))
 
 (function unify-and (x y rev assigns succ buf hdl)
   (substitute (.. buf hdl)
     (if [nil? x]
-      (cps {succ stop} (stop () (ignore)))
+      (cps {succ stop} (stop (res) res))
       (cps
         (if rev
           [unify y [@car x] assigns iter ..]
           [unify [@car x] y assigns iter ..])
-        (iter (next) (do
-          [unify-and [@cdr x] y rev assigns succ ..]
-          {next}))))))
+        (iter (next) {next [unify-and [@cdr x] y rev assigns succ ..]})))))
 
 (ignore
   AND and OR combinators are not commutative. Process the OR combinator first
@@ -463,24 +458,23 @@
         [unify-and [frag->list yl] xl (true) assigns succ ..]
       [(function unify-aux (xl yl assigns succ buf hdl)
         (if (cand [vbl? xl] [vbl? yl] [vbl= [frag->vbl xl] [frag->vbl yl]])
-          (cps {succ stop} (stop () (ignore)))
+          (cps {succ stop} (stop (res) res))
         (if (cand [i/f:token? xl] [i/f:token? yl])
           (if [i/f:token= [fragment->token xl] [fragment->token yl]]
-            (cps {succ stop} (stop () (ignore)))
-            (ignore))
+            (cps {succ stop} (stop (res) res))
+            (false))
         (if [vbl? xl] [unify-var [frag->vbl xl] yl assigns succ ..]
         (if [vbl? yl] [unify-var [frag->vbl yl] xl assigns succ ..]
-        (if (cor [i/f:token? xl] [i/f:token? yl]) (ignore)
+        (if (cor [i/f:token? xl] [i/f:token? yl]) (false)
         (let (xl [frag->list xl]) (yl [frag->list yl])
           (cps
             (if (cand [emt?! xl] [emt?! yl])
-              (cps {succ stop} (stop () (ignore)))
+              (cps {succ stop} (stop (res) res))
             (if (cor [emt?! xl] [emt?! yl])
-              (ignore)
+              (false)
               [unify [@car xl] [@car yl] assigns iter ..]))
-            (iter (next) (do
-              [unify-aux [list->fragment [@cdr xl]] [list->fragment [@cdr yl]] assigns succ ..]
-              {next})))))))))) xl yl assigns succ buf hdl])))))))
+            (iter (next)
+              {next [unify-aux [list->fragment [@cdr xl]] [list->fragment [@cdr yl]] assigns succ ..]}))))))))) xl yl assigns succ buf hdl])))))))
 
 (ignore
   The same function may be called with different type parameters in the same strongly connected
@@ -565,19 +559,15 @@
     (foreach (scc [reverse $sccs ..])
       (let (lhss (storage _ nil)) (rhss (storage _ nil)) (do
         (foreach (e scc) [generate-equations e scc function-token continuation-token lhss rhss ..])
-        (if (let (has-solution? (storage _ (false)))
-            (cps (do
-                [unify [list->fragment $lhss] [list->fragment $rhss] assigns iter ..]
-                $has-solution?)
-              (iter (next) (do
-                (foreach (e scc) (do
-                  (let (new-sig [recursive-evaluate [expr-signature e] assigns ..])
-                  (if (ht-find (old-sig e expr-sigs) [fragment= new-sig old-sig compare-map ..])
-                    (ignore)
-                    [ht-put e new-sig expr-sigs ..]))
-                  [ht-removeall compare-map]))
-                [set has-solution? (true)]
-                {next}))))
+        (if (cps [unify [list->fragment $lhss] [list->fragment $rhss] assigns iter ..]
+            (iter (next) (do
+              (foreach (e scc) (do
+                (let (new-sig [recursive-evaluate [expr-signature e] assigns ..])
+                (if (ht-find (old-sig e expr-sigs) [fragment= new-sig old-sig compare-map ..])
+                  (ignore)
+                  [ht-put e new-sig expr-sigs ..]))
+                [ht-removeall compare-map]))
+              {next (true)})))
           (ignore)
           {handler (storage _ unification-error)})
         (foreach (e scc)
