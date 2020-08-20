@@ -95,17 +95,6 @@
         v
         {find-end [@cdr bucket]}))))))
 
-(constrain ht-get-ref (\ r (with-vars (a b) (`(function (,a (hash-table ,a ,b)) (ref ,b))r)r)))
-
-(function ht-get-ref (key ht)
-  (let (bucket-idx [rem [(@ ht-hash-func ht) key] (@ ht-bucket-count ht)])
-  (let (bucket ($(loc(unit)bucket-idx(@ ht-values ht))))
-  (loop find-end (bucket bucket)
-    (bind (k v) [@car bucket]
-      (if [(@ ht-equals-func ht) key k]
-        [+[@car bucket](unit)]
-        {find-end [@cdr bucket]}))))))
-
 (constrain ht-getall (\ r (with-vars (a b c) (`(function (,a (hash-table ,a ,b) region ,c) (list ,b))r)r)))
 
 (function ht-getall (key ht buf hdl)
@@ -156,12 +145,6 @@
       (until (ht-foreach:i #0) [= ht-foreach:i (@ ht-bucket-count ht-foreach:ht)] [+ ht-foreach:i #1]
         (foreach (ht-foreach:assoc ($(loc (unit) ht-foreach:i (@ ht-values ht-foreach:ht))))
           (bind ((,[@ffst l]) (,[@frfst l])) ht-foreach:assoc (,[@frst l])))))r))
-
-(function ht-foreach-ref (l r)
-  (`(let (ht-foreach:ht (,[@frrfst l]))
-      (until (ht-foreach:i #0) [= ht-foreach:i (@ ht-bucket-count ht-foreach:ht)] [+ ht-foreach:i #1]
-        (foreach (ht-foreach:assoc ($(loc (unit) ht-foreach:i (@ ht-values ht-foreach:ht))))
-          (let ((,[@ffst l]) ht-foreach:assoc) ((,[@frfst l]) [+ ht-foreach:assoc (unit)]) (,[@frst l])))))r))
 
 (ignore
   Puts all the given associations into the given hash table. Does the following

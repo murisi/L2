@@ -415,86 +415,72 @@
     (if (not [occurs-in? var val assigns])
       (cps
         (do [ht-put var val assigns ..] {succ stop})
-        (stop () (do [ht-remove var assigns] (true))))
-      (false))))
+        (stop () [ht-remove var assigns]))
+      (ignore))))
 
-(constrain unify-or (\ r (with-vars (a b c d e) (`(function ((list frag) frag ,d (hash-table vbl frag) (hash-table ,e (list frag)) ,b region ,c) ,a)r)r)))
+(constrain unify-or (\ r (with-vars (a b c d) (`(function ((list frag) frag ,d (hash-table vbl frag) ,b region ,c) ,a)r)r)))
 
-(function unify-or (x y rev assigns sols succ buf hdl)
+(function unify-or (x y rev assigns succ buf hdl)
   (substitute (.. buf hdl)
-    (loop try-next (x x) (cnt #0)
-      (if (cand [nil? x] [= cnt #0])
-        (false)
-      (if (cand [nil? x] [= cnt #1])
-        (true)
-      (if [nil? x]
-        (do (ht-foreach-ref (k v sols)
-          (let (rst [split-at cnt v]) (do
-            [append-list v or!]
-            [set v [cons [list->fragment $v] rst ..]]))) (true))
-        (let (amt (if rev
-            [unify y [@car x] assigns sols succ ..]
-            [unify [@car x] y assigns sols succ ..]))
-          {try-next [@cdr x] [+ cnt amt]})))))))
+    (loop try-next (x x)
+      (if [nil? x] (ignore)
+        (do
+          (if rev
+            [unify y [@car x] assigns succ ..]
+            [unify [@car x] y assigns succ ..])
+          {try-next [@cdr x]})))))
 
-(constrain unify-and (\ r (with-vars (a b c d e) (`(function ((list frag) frag ,d (hash-table vbl frag) (hash-table ,e (list frag)) ,b region ,c) ,a)r)r)))
+(constrain unify-and (\ r (with-vars (a b c d) (`(function ((list frag) frag ,d (hash-table vbl frag) ,b region ,c) ,a)r)r)))
 
-(function unify-and (x y rev assigns sols succ buf hdl)
+(function unify-and (x y rev assigns succ buf hdl)
   (substitute (.. buf hdl)
-    (loop try-next (x x) (cnt #0)
-      (if (cand [nil? x] [= cnt #0])
-        (false)
-      (if (cand [nil? x] [= cnt #1])
-        (true)
-      (if [nil? x]
-        (do (ht-foreach-ref (k v sols)
-          (let (rst [split-at cnt v]) (do
-            [append-list v and!]
-            [set v [cons [list->fragment $v] rst ..]]))) (true))
-        (if (if rev
-            [unify y [@car x] assigns sols succ ..]
-            [unify [@car x] y assigns sols succ ..])
-          {try-next [@cdr x] [+ cnt #1]}
-          (do (ht-foreach-ref (k v sols)
-            [set v [split-at cnt v]]) (false)))))))))
+    (if [nil? x]
+      (cps {succ stop} (stop () (ignore)))
+      (cps
+        (if rev
+          [unify y [@car x] assigns iter ..]
+          [unify [@car x] y assigns iter ..])
+        (iter (next) (do
+          [unify-and [@cdr x] y rev assigns succ ..]
+          {next}))))))
 
 (ignore
   AND and OR combinators are not commutative. Process the OR combinator first
   so as to get disjunctive normal form.)
 
-(constrain unify (\ r (with-vars (a b c d) (`(function (frag frag (hash-table vbl frag) (hash-table ,d (list frag)) ,b region ,c) ,a)r)r)))
+(constrain unify (\ r (with-vars (a b c) (`(function (frag frag (hash-table vbl frag) ,b region ,c) ,a)r)r)))
 
-(function unify (x y assigns sols succ buf hdl)
+(function unify (x y assigns succ buf hdl)
   (substitute (.. buf hdl)
     (let (xl [evaluate x assigns]) (yl [evaluate y assigns])
       (if (cand [lst? xl] [or?! [nil-of [frag->list xl]]])
-        [unify-or [frag->list xl] yl (false) assigns sols succ ..]
+        [unify-or [frag->list xl] yl (false) assigns succ ..]
       (if (cand [lst? yl] [or?! [nil-of [frag->list yl]]])
-        [unify-or [frag->list yl] xl (true) assigns sols succ ..]
+        [unify-or [frag->list yl] xl (true) assigns succ ..]
       (if (cand [lst? xl] [and?! [nil-of [frag->list xl]]])
-        [unify-and [frag->list xl] yl (false) assigns sols succ ..]
+        [unify-and [frag->list xl] yl (false) assigns succ ..]
       (if (cand [lst? yl] [and?! [nil-of [frag->list yl]]])
-        [unify-and [frag->list yl] xl (true) assigns sols succ ..]
-      [(function unify-aux (xl yl assigns sols succ buf hdl)
+        [unify-and [frag->list yl] xl (true) assigns succ ..]
+      [(function unify-aux (xl yl assigns succ buf hdl)
         (if (cand [vbl? xl] [vbl? yl] [vbl= [frag->vbl xl] [frag->vbl yl]])
-          (cps {succ stop} (stop () (true)))
+          (cps {succ stop} (stop () (ignore)))
         (if (cand [i/f:token? xl] [i/f:token? yl])
           (if [i/f:token= [fragment->token xl] [fragment->token yl]]
-            (cps {succ stop} (stop () (true)))
-            (false))
+            (cps {succ stop} (stop () (ignore)))
+            (ignore))
         (if [vbl? xl] [unify-var [frag->vbl xl] yl assigns succ ..]
         (if [vbl? yl] [unify-var [frag->vbl yl] xl assigns succ ..]
-        (if (cor [i/f:token? xl] [i/f:token? yl]) (false)
+        (if (cor [i/f:token? xl] [i/f:token? yl]) (ignore)
         (let (xl [frag->list xl]) (yl [frag->list yl])
           (cps
             (if (cand [emt?! xl] [emt?! yl])
-              (cps {succ stop} (stop () (true)))
+              (cps {succ stop} (stop () (ignore)))
             (if (cor [emt?! xl] [emt?! yl])
-              (false)
-              [unify [@car xl] [@car yl] assigns sols iter ..]))
+              (ignore)
+              [unify [@car xl] [@car yl] assigns iter ..]))
             (iter (next) (do
-              [unify-aux [list->fragment [@cdr xl]] [list->fragment [@cdr yl]] assigns sols succ ..]
-              {next})))))))))) xl yl assigns sols succ buf hdl])))))))
+              [unify-aux [list->fragment [@cdr xl]] [list->fragment [@cdr yl]] assigns succ ..]
+              {next})))))))))) xl yl assigns succ buf hdl])))))))
 
 (ignore
   The same function may be called with different type parameters in the same strongly connected
@@ -571,32 +557,34 @@
     (foreach (expr exprs) [visit-expressions vfind-dependencies (storage _ expr) (values storage ..)])
     (foreach (expr exprs) [construct-sccs expr #1 stack sccs ..])
     
+    (let (assigns [ht-create hash-ptr = ..])
+    (let (expr-sigs [ht-create hash-ptr = ..])
+    (let (compare-map [ht-create hash-ptr = ..])
     (let (function-token [token->fragment [build-token [rstrcpy (" function) ..] ..]])
     (let (continuation-token [token->fragment [build-token [rstrcpy (" continuation) ..] ..]])
     (foreach (scc [reverse $sccs ..])
-      (let (lhss (storage _ nil)) (rhss (storage _ nil)) (expr-sigs [ht-create hash-ptr = ..]) (assigns [ht-create hash-ptr = ..]) (do
-        (foreach (e scc) (do
-          [generate-equations e scc function-token continuation-token lhss rhss ..]
-          [ht-put e nil expr-sigs ..]))
-        (if (cps
-            [unify [list->fragment $lhss] [list->fragment $rhss] assigns expr-sigs iter ..]
-            (iter (next) (do
-              (foreach (e scc)
-                (let (perm-sig (if [nil? [ht-get e expr-sigs]]
-                    [expr-signature e]
-                    (if (let (compare-map [ht-create hash-ptr = ..])
-                        [fragment= [expr-signature e] [@car [ht-get e expr-sigs]] assigns compare-map ..])
-                      [@car [ht-get e expr-sigs]]
-                      [expr-signature e])))
-                  [prepend perm-sig [ht-get-ref e expr-sigs] ..]))
-              {next})))
+      (let (lhss (storage _ nil)) (rhss (storage _ nil)) (do
+        (foreach (e scc) [generate-equations e scc function-token continuation-token lhss rhss ..])
+        (if (let (has-solution? (storage _ (false)))
+            (cps (do
+                [unify [list->fragment $lhss] [list->fragment $rhss] assigns iter ..]
+                $has-solution?)
+              (iter (next) (do
+                (foreach (e scc) (do
+                  (let (new-sig [recursive-evaluate [expr-signature e] assigns ..])
+                  (if (ht-find (old-sig e expr-sigs) [fragment= new-sig old-sig compare-map ..])
+                    (ignore)
+                    [ht-put e new-sig expr-sigs ..]))
+                  [ht-removeall compare-map]))
+                [set has-solution? (true)]
+                {next}))))
           (ignore)
           {handler (storage _ unification-error)})
         (foreach (e scc)
-          (let (sig-opts (storage _[ht-get e expr-sigs])) (do
+          (let (sig-opts (storage _[ht-getall e expr-sigs ..])) (do
             (ignore Turn the list of possible types into an or type.)
             [append-list sig-opts or!]
-            (setf bndg-signature (@ expr-binding-aug e) [list->fragment $sig-opts])))))))))))))))
+            (setf bndg-signature (@ expr-binding-aug e) [list->fragment $sig-opts]))))))))))))))))))
 
 (constrain visit-expressions (\ r (with-vars (a b) (`(function ((function ((expr ,b) ,a) (expr ,b)) (ref (expr ,b)) ,a) ())r)r)))
 
