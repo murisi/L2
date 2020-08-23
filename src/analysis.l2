@@ -125,10 +125,10 @@
       [assign-depths (@ expr-consequent e) [+ depth #1]]
       [assign-depths (@ expr-alternate e) [+ depth #1]]))
     ((-invoke-) (-jump-)
-      (foreach (u (storage-cons (@ expr-target e) (@ expr-arguments e)))
+      (for (u (list-iter (storage-cons (@ expr-target e) (@ expr-arguments e)))) (ignore)
         [assign-depths u [+ depth #1]]))
     ((-storage-)
-      (foreach (u (@ expr-arguments e)) [assign-depths u [+ depth #1]]))
+      (for (u (list-iter (@ expr-arguments e))) (ignore) [assign-depths u [+ depth #1]]))
     (ignore))))
 
 (ignore
@@ -189,14 +189,14 @@
     
     ((-storage-) (do
       (setf bndg-is-read (@ expr-reference s) (true))
-      (foreach (u (@ expr-arguments s)) (do
+      (for (u (list-iter (@ expr-arguments s))) (ignore) (do
         [assign-expr-is-reads u]
         [set-expr-is-read u (true)]))))
     
     ((-jump-) (-invoke-) (do
       [assign-expr-is-reads (@ expr-target s)]
       [set-expr-is-read (@ expr-target s) (true)]
-      (foreach (u (@ expr-arguments s)) (do
+      (for (u (list-iter (@ expr-arguments s))) (ignore) (do
         [assign-expr-is-reads u]
         [set-expr-is-read u (true)]))))
     
@@ -251,20 +251,20 @@
       ((-function-) (do
         [ht-put (@ bndg-name(@ expr-reference s)) (@ expr-reference s) static-bindings ..]
         (let (dynamic-bindings [ht-create hash-str str= ..]) (do
-        (foreach (u (@ expr-parameters s)) [ht-put (@ bndg-name u) u dynamic-bindings ..])
+        (for (u (list-iter (@ expr-parameters s))) (ignore) [ht-put (@ bndg-name u) u dynamic-bindings ..])
         [link-symbols (@ expr-expression s) (false) undefined-bindings static-bindings dynamic-bindings ..]))
         [ht-remove (@ bndg-name(@ expr-reference s)) static-bindings]))
       
       ((-with-) (-continuation-) (do
         [ht-put (@ bndg-name(@ expr-reference s)) (@ expr-reference s) bindings ..]
-        (foreach (u (@ expr-parameters s)) [ht-put (@ bndg-name u) u bindings ..])
+        (for (u (list-iter (@ expr-parameters s))) (ignore) [ht-put (@ bndg-name u) u bindings ..])
         [link-symbols (@ expr-expression s) static-storage undefined-bindings static-bindings dynamic-bindings ..]
-        (foreach (u (@ expr-parameters s)) [ht-remove (@ bndg-name u) bindings])
+        (for (u (list-iter (@ expr-parameters s))) (ignore) [ht-remove (@ bndg-name u) bindings])
         [ht-remove (@ bndg-name(@ expr-reference s)) bindings]))
       
       ((-storage-) (do
         [ht-put (@ bndg-name (@ expr-reference s)) (@ expr-reference s) bindings ..]
-        (foreach (u (@ expr-arguments s))
+        (for (u (list-iter (@ expr-arguments s))) (ignore)
           [link-symbols u static-storage undefined-bindings static-bindings dynamic-bindings ..])
         [ht-remove (@ bndg-name (@ expr-reference s)) bindings]))
       
@@ -284,7 +284,7 @@
       
       ((-invoke-) (-jump-) (do
         [link-symbols (@ expr-target s) static-storage undefined-bindings static-bindings dynamic-bindings ..]
-        (foreach (u (@ expr-arguments s))
+        (for (u (list-iter (@ expr-arguments s))) (ignore)
           [link-symbols u static-storage undefined-bindings static-bindings dynamic-bindings ..])))
       
       ((-constrain-)
@@ -316,7 +316,7 @@
         [escape-analysis (@ expr-expression s) (true) ..]))
       
       ((-storage-)
-        (foreach (t (@ expr-arguments s)) [escape-analysis t (true) ..]))
+        (for (t (list-iter (@ expr-arguments s))) (ignore) [escape-analysis t (true) ..]))
       
       ((-jump-) (do
         (if [= (@ expr-type (@ expr-target s)) (-symbol-)]
@@ -331,11 +331,11 @@
           (setf expr-short-circuit s (@ expr-target s)))
           (ignore)))
         [escape-analysis (@ expr-target s) (false) ..]
-        (foreach (t (@ expr-arguments s)) [escape-analysis t (true) ..])))
+        (for (t (list-iter (@ expr-arguments s))) (ignore) [escape-analysis t (true) ..])))
       
       ((-invoke-) (do
         [escape-analysis (@ expr-target s) (true) ..]
-        (foreach (t (@ expr-arguments s)) [escape-analysis t (true) ..])))
+        (for (t (list-iter (@ expr-arguments s))) (ignore) [escape-analysis t (true) ..])))
       
       ((-constrain-) [escape-analysis (@ expr-expression s) (true) ..])
       
@@ -355,11 +355,11 @@
         [prepend (@ expr-expression s) (& expr-dependencies s) ..])
       
       ((-storage-)
-        (foreach (t (@ expr-arguments s)) [prepend t (& expr-dependencies s) ..]))
+        (for (t (list-iter (@ expr-arguments s))) (ignore) [prepend t (& expr-dependencies s) ..]))
       
       ((-jump-) (-invoke-) (do
         [prepend (@ expr-target s) (& expr-dependencies s) ..]
-        (foreach (t (@ expr-arguments s)) [prepend t (& expr-dependencies s) ..])))
+        (for (t (list-iter (@ expr-arguments s))) (ignore) [prepend t (& expr-dependencies s) ..])))
       
       ((-symbol-)
         (let (target-expr (@ bndg-expression (@ expr-reference s))) (do
@@ -380,7 +380,7 @@
     (if [= (@ expr-lowlink s) #0]
       (let (marker $stack) (do
       (setf expr-lowlink s preorder)
-      (foreach (t (@ expr-dependencies s)) (do
+      (for (t (list-iter (@ expr-dependencies s))) (ignore) (do
         [construct-sccs t [+ preorder #1] stack sccs ..]
         (if [< (@ expr-lowlink t) (@ expr-lowlink s)]
           (setf expr-lowlink s (@ expr-lowlink t))
@@ -548,20 +548,20 @@
     (ignore Type inferencing is done on strongly connected components)
     (let (stack (storage _ nil))
     (let (sccs (storage _ nil)) (do
-    (foreach (expr exprs) [visit-expressions vfind-dependencies (storage _ expr) (values storage ..)])
-    (foreach (expr exprs) [construct-sccs expr #1 stack sccs ..])
+    (for (expr (list-iter exprs)) (ignore) [visit-expressions vfind-dependencies (storage _ expr) (values storage ..)])
+    (for (expr (list-iter exprs)) (ignore) [construct-sccs expr #1 stack sccs ..])
     
     (let (assigns [ht-create hash-ptr = ..])
     (let (expr-sigs [ht-create hash-ptr = ..])
     (let (compare-map [ht-create hash-ptr = ..])
     (let (function-token [token->fragment [build-token [rstrcpy (" function) ..] ..]])
     (let (continuation-token [token->fragment [build-token [rstrcpy (" continuation) ..] ..]])
-    (foreach (scc [reverse $sccs ..])
+    (for (scc (list-iter [reverse $sccs ..])) (ignore)
       (let (lhss (storage _ nil)) (rhss (storage _ nil)) (do
-        (foreach (e scc) [generate-equations e scc function-token continuation-token lhss rhss ..])
+        (for (e (list-iter scc)) (ignore) [generate-equations e scc function-token continuation-token lhss rhss ..])
         (if (cps [unify [list->fragment $lhss] [list->fragment $rhss] assigns iter ..]
             (iter (next) (do
-              (foreach (e scc) (do
+              (for (e (list-iter scc)) (ignore) (do
                 (let (new-sig [recursive-evaluate [expr-signature e] assigns ..])
                 (if (ht-find (old-sig e expr-sigs) [fragment= new-sig old-sig compare-map ..])
                   (ignore)
@@ -570,11 +570,12 @@
               {next (true)})))
           (ignore)
           {handler (storage _ unification-error)})
-        (foreach (e scc)
+        (for (e (list-iter scc)) (ignore)
           (let (sig-opts (storage _[ht-getall e expr-sigs ..])) (do
             (ignore Turn the list of possible types into an or type.)
             [append-list sig-opts or!]
-            (setf bndg-signature (@ expr-binding-aug e) [list->fragment $sig-opts]))))))))))))))))))
+            (setf bndg-signature (@ expr-binding-aug e) [list->fragment $sig-opts])
+            (ignore))))))))))))))))))
 
 (constrain visit-expressions (\ r (with-vars (a b) (`(function ((function ((expr ,b) ,a) (expr ,b)) (ref (expr ,b)) ,a) ())r)r)))
 
@@ -634,15 +635,15 @@
     
     ((-storage-) (do
       (setf bndg-context (@ expr-reference expr) (extra-function-context))
-      (foreach (t (@ expr-arguments expr)) [classify-program-bindings t])))
+      (for (t (list-iter (@ expr-arguments expr))) (ignore) [classify-program-bindings t])))
     
     ((-jump-) (-invoke-) (do
       [classify-program-bindings (@ expr-target expr)]
-      (foreach (t (@ expr-arguments expr)) [classify-program-bindings t])))
+      (for (t (list-iter (@ expr-arguments expr))) (ignore) [classify-program-bindings t])))
     
     ((-continuation-) (-with-) (do
       (setf bndg-context (@ expr-reference expr) (extra-function-context))
-      (foreach (t (@ expr-parameters expr))
+      (for (t (list-iter (@ expr-parameters expr))) (ignore)
         (setf bndg-context t (extra-function-context)))
       [classify-program-bindings (@ expr-expression expr)]))
     
@@ -661,16 +662,16 @@
       [setup-collect-static-bindings (@ expr-expression n)]
       (if (@ expr-escapes n)
         (setf bndg-other (@ expr-reference n) (true)) (ignore))
-      (foreach (t (@ expr-parameters n))
+      (for (t (list-iter (@ expr-parameters n))) (ignore)
         (setf bndg-other t (true)))))
     
     ((-storage-) (do
       (setf bndg-other (@ expr-reference n) (true))
-      (foreach (u (@ expr-arguments n)) [setup-collect-static-bindings u])))
+      (for (u (list-iter (@ expr-arguments n))) (ignore) [setup-collect-static-bindings u])))
     
     ((-jump-) (-invoke-) (do
       [setup-collect-static-bindings (@ expr-target n)]
-      (foreach (u (@ expr-arguments n)) [setup-collect-static-bindings u])))
+      (for (u (list-iter (@ expr-arguments n))) (ignore) [setup-collect-static-bindings u])))
     
     ((-if-) (do
       [setup-collect-static-bindings (@ expr-condition n)]
@@ -701,16 +702,16 @@
         [collect-static-bindings (@ expr-expression n) binding-augs ..]
         (if (@ expr-escapes n)
           [append-static-binding (@ expr-reference n) binding-augs ..] (ignore))
-        (foreach (t (@ expr-parameters n))
+        (for (t (list-iter (@ expr-parameters n))) (ignore)
           [append-static-binding t binding-augs ..])))
       
       ((-storage-) (do
         [append-static-binding (@ expr-reference n) binding-augs ..]
-        (foreach (u (@ expr-arguments n)) [collect-static-bindings u binding-augs ..])))
+        (for (u (list-iter (@ expr-arguments n))) (ignore) [collect-static-bindings u binding-augs ..])))
       
       ((-jump-) (-invoke-) (do
         [collect-static-bindings (@ expr-target n) binding-augs ..]
-        (foreach (u (@ expr-arguments n)) [collect-static-bindings u binding-augs ..])))
+        (for (u (list-iter (@ expr-arguments n))) (ignore) [collect-static-bindings u binding-augs ..])))
       
       ((-if-) (do
         [collect-static-bindings (@ expr-condition n) binding-augs ..]

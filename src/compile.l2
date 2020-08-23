@@ -22,7 +22,7 @@
             [pre-visit-expressions vpropagate-expressions expr (values storage :b handler)]
             [assign-expr-is-reads $expr]
             [place-perm-bindings $expr storage-offset])))
-        (foreach (expr exprs) (do
+        (for (expr (list-iter exprs)) (ignore) (do
           [assign-depths expr #0]
           [initialize-expressions (storage-cons expr nil) nil [- storage-offset (word-size)]
             #0 #0 inits (values storage (ignore)(ignore)) :b handler]
@@ -131,7 +131,7 @@
             (do [immutable-bindings obj bindings ..] [cons obj objects ..])))
         {handler (storage _ unsupported-intrinsics-error intrinsic-fn)})))
     
-    (foreach (obj objects3) [mutate-bindings obj bindings])))))))
+    (for (obj (list-iter objects3)) (ignore) [mutate-bindings obj bindings])))))))
 
 (constrain compile-program-to-elf (\ r (with-vars (a b) (`(function ((list (expr ,b)) (list initializer) string region region ,a) ())r)r)))
 
@@ -168,15 +168,15 @@
             
       (let (all-exprs [reverse-flatten file-exprss ..])
         (let (undefined-bindings [ht-create hash-str str= ..]) (global-bindings [global-binding-augs-of all-exprs ..]) (do
-          (foreach (expr all-exprs) [link-symbols expr (true) undefined-bindings global-bindings (ignore) ..])
+          (for (expr (list-iter all-exprs)) (ignore) [link-symbols expr (true) undefined-bindings global-bindings (ignore) ..])
           [infer-types all-exprs ..]
-          (foreach (expr all-exprs) [pre-visit-expressions vunlink-symbols (storage _ expr) (values storage global-bindings ..)])
-          (foreach (expr all-exprs) [pre-visit-expressions vunlink-symbols (storage _ expr) (values storage undefined-bindings ..)]))))
+          (for (expr (list-iter all-exprs)) (ignore) [pre-visit-expressions vunlink-symbols (storage _ expr) (values storage global-bindings ..)])
+          (for (expr (list-iter all-exprs)) (ignore) [pre-visit-expressions vunlink-symbols (storage _ expr) (values storage undefined-bindings ..)]))))
         
       (foreach (infn file-names) (exprs file-exprss)
         [compile-program-to-elf exprs inits [rstrcat infn (" .o) :b handler] :b buf handler])
       
-      (foreach (intrinsic-fn intrinsic-fns)
+      (for (intrinsic-fn (list-iter intrinsic-fns)) (ignore)
         (switch str= intrinsic-fn
           ((" arithmetic) [compile-program-to-elf [wrap-arithmetic-intrinsics ..] inits (" arithmetic.o) buf :b handler])
           {handler (storage _ unsupported-intrinsics-error intrinsic-fn)}))))))))
