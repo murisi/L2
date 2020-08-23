@@ -14,7 +14,7 @@
   (switch = (@ expr-type e)
     ((-continuation-) (-function-) (do
       (let (ref-with-params (storage-cons (@ expr-reference e) (@ expr-parameters e)))
-      (until (partial ref-with-params) [nil? partial] [@cdr partial]
+      (for (partial (sublist-iter ref-with-params)) (ignore)
         (if [nil? (find (f [@cdr partial]) [bndg-name= f [@car partial]])] (ignore)
           (let (dup-ref-name (@ bndg-name[@car partial]))
             {handler (storage _ multiple-definition-error dup-ref-name)}))))
@@ -589,13 +589,13 @@
       [visit-expressions visitor (& expr-expression $s) ctx])
     
     ((-storage-)
-      (until (partial (@ expr-arguments $s)) [nil? partial] [@cdr partial]
-        [visit-expressions visitor (& car partial) ctx]))
+      (for (elt (list-ref-iter (@ expr-arguments $s))) (ignore)
+        [visit-expressions visitor elt ctx]))
     
     ((-jump-) (-invoke-) (do
       [visit-expressions visitor (& expr-target $s) ctx]
-      (until (partial (@ expr-arguments $s)) [nil? partial] [@cdr partial]
-        [visit-expressions visitor (& car partial) ctx])))
+      (for (elt (list-ref-iter (@ expr-arguments $s))) (ignore)
+        [visit-expressions visitor elt ctx])))
     
     (ignore))
   [set s [visitor $s ctx]]))
@@ -615,13 +615,13 @@
       [pre-visit-expressions visitor (& expr-expression $s) ctx])
     
     ((-storage-)
-      (until (partial (@ expr-arguments $s)) [nil? partial] [@cdr partial]
-        [pre-visit-expressions visitor (& car partial) ctx]))
+      (for (elt (list-ref-iter (@ expr-arguments $s))) (ignore)
+        [pre-visit-expressions visitor elt ctx]))
     
     ((-jump-) (-invoke-) (do
       [pre-visit-expressions visitor (& expr-target $s) ctx]
-      (until (partial (@ expr-arguments $s)) [nil? partial] [@cdr partial]
-        [pre-visit-expressions visitor (& car partial) ctx])))
+      (for (elt (list-ref-iter (@ expr-arguments $s))) (ignore)
+        [pre-visit-expressions visitor elt ctx])))
     
     (ignore))))
 

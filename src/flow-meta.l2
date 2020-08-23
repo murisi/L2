@@ -124,19 +124,6 @@
         [@rst [meta:reverse [@rrst l] r]] [@fst [meta:reverse l r]]})))r))
 
 (ignore
-  The following macro is roughly analogous to C's for-loop. The difference is
-  that until loops until the condition is true rather than while it is true. The
-  other difference is that this construct updates the loop control varable itself
-  using the update expression - this is different from C where the update part
-  of the loop header must do the mutations itself.)
-
-(function until (l r)
-  (`(with until:return {(continuation until:aux ((,[@ffst l]))
-    (if (,[@frst l])
-      {until:return (ignore)}
-      (do (,[@frrrst l]) {until:aux (,[@frrst l])}))) (,[@frfst l])})r))
-
-(ignore
   The following function implements the following transformation:
   (fallthrough expr (labels args exprs) ...)
   ->
@@ -289,3 +276,84 @@
   (let (val [lst [@fst l] emt r])
   (let (binds [meta:map2 [@frst l] r (function _(elt r) [lst elt emt r]) r])
     (`(group-case ,[lst val [meta:reverse [lst body binds r] r] r])r)))))
+
+(ignore
+  Loops through the given iterator. Performs the following transformation:
+  (for (x iter) def expr)
+  ->
+  (with for:return
+    (let (for:iter iter)
+      {for:iter for:return def
+        (continuation for:cont (for:next for:ctx x)
+          {for:next [cast for:cont] expr})})))
+
+(function for (l r)
+  (`(with for:return
+      (let (for:iter (,[@frfst l]))
+        {for:iter for:return (,[@frst l])
+          (continuation for:cont (for:next for:ctx (,[@ffst l]))
+            {for:next [cast for:cont] (,[@frrst l])})}))r))
+
+(ignore
+  Creates an iterator from from (inclusive) to to (exclusive). Performs the following
+  transformation:
+  (range from to)
+  ->
+  (continuation range:cont (range:end range:ctx range:recv)
+    (let (to to) (from from)
+      (loop range:count (recv range:recv) (idx from) (ctx range:ctx)
+        (if [< idx to]
+          (cps {recv next ctx idx}
+            (next (new-recv new-ctx) {range:count new-recv [+ idx #1] new-ctx}))
+          {range:end ctx})))))
+
+(function range (l r)
+  (`(continuation range:cont (range:end range:ctx range:recv)
+      (let (to (,[@frst l])) (from (,[@fst l]))
+        (loop range:count (recv range:recv) (idx from) (ctx range:ctx)
+          (if [< idx to]
+            (cps {recv next ctx idx}
+              (next (new-recv new-ctx) {range:count [cast new-recv] [+ idx #1] new-ctx}))
+            {range:end ctx}))))r))
+
+(ignore
+  Zips the two given iterators into one that yields pairs of values. Performs
+  the following transformation:
+  (zip-iter iter1 iter2)
+  ->
+  (continuation zip-iter:cont (zip-iter:end zip-iter:ctx zip-iter:recv) (cps
+    {iter1 zip-iter:end zip-iter:ctx zip-iter:init2}
+      
+    (zip-iter:init2 (zip-iter:next1 zip-iter:ctx1 zip-iter:val1)
+      {iter2 zip-iter:end zip-iter:ctx1 body1})
+      
+    (body1 (next2 ctx2 val2)
+      {zip-iter:recv (continuation _(new-recv new-ctx) {body2 zip-iter:next1 next2 new-recv new-ctx}) ctx2 (values storage zip-iter:val1 val2)})
+    
+    (body2 (new-next1 new-next2 new-recv new-ctx)
+      {new-next1 body3 new-ctx})
+    
+    (body3 (next3 ctx3 val3)
+      {new-next2 body4 ctx3})
+    
+    (body4 (next4 ctx4 val4)
+      {new-recv (continuation _(new-recv new-ctx) {body2 next3 next4 new-recv new-ctx}) ctx4 (values storage val3 val4)}))))
+
+(function zip-iter (l r)
+  (`(continuation zip-iter:cont (zip-iter:end zip-iter:ctx zip-iter:recv) (cps
+      {(,[@fst l]) zip-iter:end zip-iter:ctx zip-iter:init2}
+        
+      (zip-iter:init2 (zip-iter:next1 zip-iter:ctx1 zip-iter:val1)
+        {(,[@frst l]) zip-iter:end zip-iter:ctx1 body1})
+        
+      (body1 (next2 ctx2 val2)
+        {zip-iter:recv (continuation _(new-recv new-ctx) {body2 zip-iter:next1 next2 new-recv new-ctx}) ctx2 (values storage zip-iter:val1 val2)})
+      
+      (body2 (new-next1 new-next2 new-recv new-ctx)
+        {new-next1 body3 new-ctx})
+      
+      (body3 (next3 ctx3 val3)
+        {new-next2 body4 ctx3})
+      
+      (body4 (next4 ctx4 val4)
+        {new-recv (continuation _(new-recv new-ctx) {body2 next3 next4 new-recv new-ctx}) ctx4 (values storage val3 val4)})))r))

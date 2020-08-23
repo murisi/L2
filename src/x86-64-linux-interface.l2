@@ -165,24 +165,31 @@
 
 (function print-char (fd ch handler) [print fd (storage _ ch) #1 handler])
 
+(constrain dec->char (\ r (with-vars (a b) (`(function (,a) ,b)r)r)))
+
+(function dec->char (h)
+  (switch = h
+    (#9 (char 9))
+    (#8 (char 8))
+    (#7 (char 7))
+    (#6 (char 6))
+    (#5 (char 5))
+    (#4 (char 4))
+    (#3 (char 3))
+    (#2 (char 2))
+    (#1 (char 1))
+    (char 0)))
+
 (constrain print-uint (\ r (with-vars (a b e) (`(function (fd ,a ,b) ,e)r)r)))
 
 (function print-uint (fd i handler)
   (let (j (storage _ #19))
   (let (str (storage _ (ignore) (ignore) (ignore))) (do
-  (until (i i) [= i #0] [/ i #10] (do
-    [setb [+ str $j] (switch = [rem i #10]
-      (#9 (char 9))
-      (#8 (char 8))
-      (#7 (char 7))
-      (#6 (char 6))
-      (#5 (char 5))
-      (#4 (char 4))
-      (#3 (char 3))
-      (#2 (char 2))
-      (#1 (char 1))
-      (char 0))]
-    [set j [- $j #1]]))
+  (loop next-digit (i i)
+    (if [= i #0] (ignore) (do
+      [setb [+ str $j] [dec->char [rem i #10]]]
+      [set j [- $j #1]]
+      {next-digit [/ i #10]})))
   [print fd [+ str [+ $j #1]] [- #19 $j] handler]))))
 
 (constrain hex->char (\ r (with-vars (a b) (`(function (,a) ,b)r)r)))
@@ -211,9 +218,11 @@
 (function print-hex (fd i handler)
   (let (j (storage _ #16))
   (let (str (storage _ (ignore) (ignore))) (do
-  (until (i i) [= i #0] [/ i #16] (do
-    [setb [+ str $j] [hex->char [rem i #16]]]
-    [set j [- $j #1]]))
+  (loop next-digit (i i)
+    (if [= i #0] (ignore) (do
+      [setb [+ str $j] [hex->char [rem i #16]]]
+      [set j [- $j #1]]
+      {next-digit [/ i #16]})))
   [print fd [+ str [+ $j #1]] [- #16 $j] handler]))))
 
 (constrain print-bool (\ r (with-vars (a b) (`(function (fd ,a ,b) ,a)r)r)))
@@ -234,7 +243,7 @@
   (\ r (with-vars (a b h i) (`(function (fd ,a ,b ,h) ,i)r)r)))
 
 (function print-bytes (fd bs sz handler)
-  (until (i #0) [= i sz] [+ i #1] (do
+  (for (i (range #0 sz)) (ignore) (do
     [print-char fd [hex->char [>> [getb[+ bs i]] #4]] handler]
     [print-char fd [hex->char [band [getb[+ bs i]] (hex 0F)]] handler])))
 

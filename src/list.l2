@@ -11,6 +11,63 @@
       {return [meta:reverse output r]})) emt a b}))
 
 (ignore
+  Creates an iterator that iterates through elements of the given list:
+  (list-iter list)
+  ->
+  (continuation list-iter:cont (list-iter:end list-iter:ctx list-iter:recv)
+    (loop lop (recv list-iter:recv) (ctx list-iter:ctx) (list list)
+      (if [nil? list]
+        {list-iter:end ctx}
+        (cps {recv next ctx [@car list]}
+          (next (new-recv new-ctx) {lop [cast new-recv] new-ctx [@cdr list]}))))))
+
+(function list-iter (s r)
+  (`(continuation list-iter:cont (list-iter:end list-iter:ctx list-iter:recv)
+      (loop lop (recv list-iter:recv) (ctx list-iter:ctx) (list (,[@fst s]))
+        (if [nil? list]
+          {list-iter:end ctx}
+          (cps {recv next ctx [@car list]}
+            (next (new-recv new-ctx) {lop [cast new-recv] new-ctx [@cdr list]})))))r))
+
+(ignore
+  Creates an iterator that iterates through elements of the given list:
+  (sublist-iter list)
+  ->
+  (continuation sublist-iter:cont (sublist-iter:end sublist-iter:ctx sublist-iter:recv)
+    (loop lop (recv sublist-iter:recv) (ctx sublist-iter:ctx) (list list)
+      (if [nil? list]
+        {sublist-iter:end ctx}
+        (cps {recv next ctx list}
+          (next (new-recv new-ctx) {lop [cast new-recv] new-ctx [@cdr list]}))))))
+
+(function sublist-iter (s r)
+  (`(continuation sublist-iter:cont (sublist-iter:end sublist-iter:ctx sublist-iter:recv)
+      (loop lop (recv sublist-iter:recv) (ctx sublist-iter:ctx) (list (,[@fst s]))
+        (if [nil? list]
+          {sublist-iter:end ctx}
+          (cps {recv next ctx list}
+            (next (new-recv new-ctx) {lop [cast new-recv] new-ctx [@cdr list]})))))r))
+
+(ignore
+  Creates an iterator that iterates through references to elements of the given list:
+  (list-ref-iter list)
+  ->
+  (continuation list-ref-iter:cont (list-ref-iter:end list-ref-iter:ctx list-ref-iter:recv)
+    (loop lop (recv list-ref-iter:recv) (ctx list-ref-iter:ctx) (list list)
+      (if [nil? list]
+        {list-ref-iter:end ctx}
+        (cps {recv next ctx (& car list)}
+          (next (new-recv new-ctx) {lop [cast new-recv] new-ctx [@cdr list]}))))))
+
+(function list-ref-iter (s r)
+  (`(continuation list-ref-iter:cont (list-ref-iter:end list-ref-iter:ctx list-ref-iter:recv)
+      (loop lop (recv list-ref-iter:recv) (ctx list-ref-iter:ctx) (list (,[@fst s]))
+        (if [nil? list]
+          {list-ref-iter:end ctx}
+          (cps {recv next ctx (& car list)}
+            (next (new-recv new-ctx) {lop [cast new-recv] new-ctx [@cdr list]})))))r))
+
+(ignore
   A zipped foreach macro. The syntax is as follows:
   (foreach (v1 l1) (v2 l2) ... (vN lN) expr) where l1, l2, ..., lN must have the same size.)
 
