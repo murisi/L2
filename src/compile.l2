@@ -1,7 +1,7 @@
 (ignore Compiles a program into a list of assembly expressions.)
 
 (constrain compile-program
-  (\ r (with-vars (a b c) (`(function ((list (expr ,c)) (list initializer) ,b region region ,a)
+  (\ r (?(a b c) (`(function ((list (expr ,c)) (list initializer) ,b region region ,a)
     (values (list instr) (list reloc) (list (values string (list instr) (list reloc)))
       (hash-table string bndg-aug) (list bndg-aug)))r)r)))
 
@@ -36,7 +36,7 @@
   expr-buf is the region into which the results of compilation will be put. obj-buf is the
   region into which the object code will be put. Return value is an object.)
 
-(constrain load-program (\ r (with-vars (a b) (`(function ((list (expr ,b)) (list initializer) region region ,a) obj)r)r)))
+(constrain load-program (\ r (?(a b) (`(function ((list (expr ,b)) (list initializer) region region ,a) obj)r)r)))
 
 (function load-program (exprs inits buf :b handler)
   (substitute (.. buf handler)
@@ -53,7 +53,7 @@
   program will take on the addresses supplied in the list.)
 
 (constrain load-program-and-mutate
-  (\ r (with-vars (a b) (`(function ((list (expr ,b)) (list initializer) (hash-table string bndg-aug) region region ,a) obj)r)r)))
+  (\ r (?(a b) (`(function ((list (expr ,b)) (list initializer) (hash-table string bndg-aug) region region ,a) obj)r)r)))
 
 (function load-program-and-mutate (exprs inits bndgs buf :b handler)
   (with-region :b
@@ -65,7 +65,7 @@
       [mutate-bindings obj bndgs]
       obj)))))
 
-(constrain read-to-buffer (\ r (with-vars (a b c d) (`(function (string ,a region ,b) (values ,c ,d))r)r)))
+(constrain read-to-buffer (\ r (?(a b c d) (`(function (string ,a region ,b) (values ,c ,d))r)r)))
 
 (function read-to-buffer (fn outs buf handler)
   (let (fd [open fn handler])
@@ -85,7 +85,7 @@
   buf is the region into which the constructed expressions will be put. Return value is a
   list of expressions.)
 
-(constrain read-expressions (\ r (with-vars (a b) (`(function (string region region ,a) (list (expr ,b)))r)r)))
+(constrain read-expressions (\ r (?(a b) (`(function (string region region ,a) (list (expr ,b)))r)r)))
 
 (function read-expressions (fn buf :b handler)
   (substitute (.. buf handler)
@@ -106,7 +106,7 @@
   bindings.)
 
 (constrain evaluate-files
-  (\ r (with-vars (a) (`(function ((list string) (list string) (list string) (hash-table string bndg-aug) region region ,a) ())r)r)))
+  (\ r (?(a) (`(function ((list string) (list string) (list string) (hash-table string bndg-aug) region region ,a) ())r)r)))
 
 (function evaluate-files (source-fns object-fns intrinsic-fns bindings buf :b handler)
   (substitute (.. buf handler)
@@ -133,7 +133,7 @@
     
     (for (obj (list-iter objects3)) (ignore) [mutate-bindings obj bindings])))))))
 
-(constrain compile-program-to-elf (\ r (with-vars (a b) (`(function ((list (expr ,b)) (list initializer) string region region ,a) ())r)r)))
+(constrain compile-program-to-elf (\ r (?(a b) (`(function ((list (expr ,b)) (list initializer) string region region ,a) ())r)r)))
 
 (function compile-program-to-elf (exprs inits outfn buf :b handler)
   (substitute (.. buf handler)
@@ -151,7 +151,7 @@
   region into which constructed expressions and object code will be put.)
 
 (constrain compile-files
-  (\ r (with-vars (a) (`(function ((list string) (list string) (hash-table string bndg-aug) region region ,a) ())r)r)))
+  (\ r (?(a) (`(function ((list string) (list string) (hash-table string bndg-aug) region region ,a) ())r)r)))
 
 (function compile-files (file-names intrinsic-fns bndgs buf :b handler)
   (substitute (.. buf handler)

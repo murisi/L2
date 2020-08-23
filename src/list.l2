@@ -337,20 +337,20 @@
     {(constrain
       (continuation storage-cons:cont (storage-cons:data storage-cons:rest)
         {storage-cons:ret (storage storage-cons:stor storage-cons:data storage-cons:rest)})
-      (\ r (with-vars (et) (`(continuation (,et (list ,et)))r)r))) data rest}))
+      (\ r (?(et) (`(continuation (,et (list ,et)))r)r))) data rest}))
 
 (function storage-cons (l r)
   (`(with storage-cons:ret
     {(constrain
       (continuation storage-cons:cont (storage-cons:data storage-cons:rest)
         {storage-cons:ret (storage storage-cons:stor storage-cons:data storage-cons:rest)})
-      (\ r (with-vars (et) (`(continuation (,et (list ,et)))r)r))) (,[@fst l]) (,[@frst l])})r))
+      (\ r (?(et) (`(continuation (,et (list ,et)))r)r))) (,[@fst l]) (,[@frst l])})r))
 
 (function list-struct (l r) [=# #16 r])
 
-(function car (l r) [property #0 #8 (\ r (with-vars (a) (`(; static~ ,a (list ,a))r)r)) l r])
+(function car (l r) [property #0 #8 (\ r (?(a) (`(; static~ ,a (list ,a))r)r)) l r])
 
-(function cdr (l r) [property #8 #8 (\ r (with-vars (a) (`(; static~ (list ,a) (list ,a))r)r)) l r])
+(function cdr (l r) [property #8 #8 (\ r (?(a) (`(; static~ (list ,a) (list ,a))r)r)) l r])
 
 (ignore
   Convenience functions for accessing elements of program internal lists. Note that the
@@ -383,20 +383,20 @@
 
 (ignore Initialize the given buffer so that it satisfies the nil predicate.)
 
-(constrain init-nil (\ r (with-vars (a) (`(function ((list ,a)) (list ,a))r)r)))
+(constrain init-nil (\ r (?(a) (`(function ((list ,a)) (list ,a))r)r)))
 
 (function init-nil (buf) (do
   (setf car buf [cast init-nil])
   (setf cdr buf buf)
   buf))
 
-(constrain nil? (\ r (with-vars (a b) (`(function ((list ,a)) ,b)r)r)))
+(constrain nil? (\ r (?(a b) (`(function ((list ,a)) ,b)r)r)))
 
 (function nil? (l) (cand [= (@ cdr l) l] [= (@ car l) [cast init-nil]]))
 
 (ignore Declare and initialize a global nil value using init-nil.)
 
-(constrain nil (\ r (with-vars (et) (`(list ,et)r)r)))
+(constrain nil (\ r (?(et) (`(list ,et)r)r)))
 
 (storage nil (ignore) (ignore))
 
@@ -407,7 +407,7 @@
   reference to the list that is to be appended to. r is the region into which the extension
   is being placed.)
 
-(constrain append (\ r (with-vars (et b) (`(function (,et (ref (list ,et)) region ,b) (ref (list ,et)))r)r)))
+(constrain append (\ r (?(et b) (`(function (,et (ref (list ,et)) region ,b) (ref (list ,et)))r)r)))
 
 (function append (data l r handler)
   (loop next (l l)
@@ -424,7 +424,7 @@
   head. rest is the list that will be the tail of the new list. r is the region into which
   the extension is being placed. Return value is the new list.)
 
-(constrain cons (\ r (with-vars (et a) (`(function (,et (list ,et) region ,a) (list ,et))r)r)))
+(constrain cons (\ r (?(et a) (`(function (,et (list ,et) region ,a) (list ,et))r)r)))
 
 (function cons (data rest r handler)
   (let (l [region-alloc (list-struct) r handler]) (do
@@ -432,7 +432,7 @@
     (setf cdr l rest)
     l)))
 
-(constrain ccons (\ r (with-vars (et a) (`(function (,et ,et (list ,et) region ,a) (list ,et))r)r)))
+(constrain ccons (\ r (?(et a) (`(function (,et ,et (list ,et) region ,a) (list ,et))r)r)))
 
 (function ccons (data1 data2 rest r handler)
   (substitute (.. r handler)
@@ -442,7 +442,7 @@
   Appends the second list onto the first list. fst-ref is a reference to the list that
   will be appended to. snd is the list that will be appended.)
 
-(constrain append-list (\ r (with-vars (et) (`(function ((ref (list ,et)) (list ,et)) ())r)r)))
+(constrain append-list (\ r (?(et) (`(function ((ref (list ,et)) (list ,et)) ())r)r)))
 
 (function append-list (fst-ref snd)
   (loop next (fst-ref fst-ref)
@@ -452,7 +452,7 @@
 
 (ignore Analogous to append above.)
 
-(constrain prepend (\ r (with-vars (et a) (`(function (,et (ref (list ,et)) region ,a) (ref (list ,et)))r)r)))
+(constrain prepend (\ r (?(et a) (`(function (,et (ref (list ,et)) region ,a) (ref (list ,et)))r)r)))
 
 (function prepend (data l-ref r handler)
   (let (ret [region-alloc (list-struct) r handler]) (do
@@ -463,7 +463,7 @@
 
 (ignore Computes the length of the given list. l is the list whose length will be computed.)
 
-(constrain length (\ r (with-vars (et nt) (`(function ((list ,et)) ,nt)r)r)))
+(constrain length (\ r (?(et nt) (`(function ((list ,et)) ,nt)r)r)))
 
 (function length (l)
   (loop next (l l) (size #0)
@@ -473,7 +473,7 @@
 
 (ignore Flattens the given list of lists and reverses them.)
 
-(constrain reverse-flatten (\ r (with-vars (a b) (`(function ((list (list ,a)) region ,b) (list ,a))r)r)))
+(constrain reverse-flatten (\ r (?(a b) (`(function ((list (list ,a)) region ,b) (list ,a))r)r)))
 
 (function reverse-flatten (l r handler)
   (substitute (.. r handler)
@@ -484,7 +484,7 @@
   Constructs a reverse of the given list. l is the list that is to be reversed. r is the
   region into which the reversed list should be placed. Return value is the reversed list.)
 
-(constrain reverse (\ r (with-vars (et a) (`(function ((list ,et) region ,a) (list ,et))r)r)))
+(constrain reverse (\ r (?(et a) (`(function ((list ,et) region ,a) (list ,et))r)r)))
 
 (function reverse (l r handler) (reverse-map (x l) x r handler))
 
@@ -492,7 +492,7 @@
   Searches for the given element in the given list and returns (true) if it is found.
   Otherwise returns (false).)
 
-(constrain contains (\ r (with-vars (et a) (`(function (,et (list ,et)) ,a)r)r)))
+(constrain contains (\ r (?(et a) (`(function (,et (list ,et)) ,a)r)r)))
 
 (function contains (data l)
   (loop search (sub l)
@@ -504,7 +504,7 @@
 
 (ignore Makes a new list comprising of the first n elements of the given list.)
 
-(constrain take (\ r (with-vars (et a b) (`(function (,a (list ,et) region ,b) (list ,et))r)r)))
+(constrain take (\ r (?(et a b) (`(function (,a (list ,et) region ,b) (list ,et))r)r)))
 
 (function take (n l r handler)
   (substitute (.. r handler)
@@ -516,7 +516,7 @@
 
 (ignore Because there can be several instances of nil, it makes sense to get a list's nil.)
 
-(constrain nil-of (\ r (with-vars (et) (`(function ((list ,et)) (list ,et))r)r)))
+(constrain nil-of (\ r (?(et) (`(function ((list ,et)) (list ,et))r)r)))
 
 (function nil-of (l)
   (loop find (l l)
@@ -524,7 +524,7 @@
 
 (ignore Prints the given list using the given function to print each element.)
 
-(constrain print-list (\ r (with-vars (et a) (`(function ((function (,et ,a) ()) (list ,et) ,a) ())r)r)))
+(constrain print-list (\ r (?(et a) (`(function ((function (,et ,a) ()) (list ,et) ,a) ())r)r)))
 
 (function print-list (printer l handler) (do
   [print-char (stdout) (lparen) handler]

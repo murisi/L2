@@ -62,9 +62,9 @@
     [lllst -g- -e- -t- emt r]
     var r])
 
-(constrain get (\ r (with-vars (a) (`(function ((ref ,a)) ,a)r)r)))
+(constrain get (\ r (?(a) (`(function ((ref ,a)) ,a)r)r)))
 
-(constrain set (\ r (with-vars (a) (`(function ((ref ,a) ,a) ())r)r)))
+(constrain set (\ r (?(a) (`(function ((ref ,a) ,a) ())r)r)))
 
 (function meta:lookup-var (key map)
   (with return
@@ -155,11 +155,11 @@
   The following function generates code to create variables and bind them. It does the
   following transformation:
   
-  (with-vars (vars ...) expr region)
+  (?(vars ...) expr region)
   ->
   (let (var0 [var region]) ... (varN [var region]) expr))
 
-(function with-vars (l r)
+(function ?(l r)
   (let (bindings [meta:map3 [@fst l] [@frrst l] r (\ e s r (`(,e [var ,s])r)) r])
     [lst (` let r) [meta:reverse [lst [@frst l] [meta:reverse bindings r] r] r] r]))
 
@@ -259,7 +259,7 @@
   (`(with &-aux:ret
       (let (@-aux:obj (,[@frrrrrrst l]))
         {(constrain (continuation @-aux:cont (pseudo prop-ref obj) {&-aux:ret prop-ref})
-            (\ s (with-vars (a b c d) (let ((,[@frrrrst l]) s) (`(continuation (((,(,[@frrrrrst l])) (@ ,a ,c ,d ,b), and) (ref ,a) ,b))s))s)))
+            (\ s (?(a b c d) (let ((,[@frrrrst l]) s) (`(continuation (((,(,[@frrrrrst l])) (@ ,a ,c ,d ,b), and) (ref ,a) ,b))s))s)))
           (ignore) [+ @-aux:obj (,[@fst l])] @-aux:obj}))r))
 
 (ignore
@@ -282,7 +282,7 @@
   (`(with @-aux:ret
       (let (@-aux:obj (,[@frrrrrrst l]))
         {(constrain (continuation @-aux:cont (pseudo prop obj) {@-aux:ret prop})
-            (\ s (with-vars (a b c d) (let ((,[@frrrrst l]) s) (`(continuation (((,(,[@frrrrrst l])) (@ ,a ,c ,d ,b), and) ,a ,b))s))s)))
+            (\ s (?(a b c d) (let ((,[@frrrrst l]) s) (`(continuation (((,(,[@frrrrrst l])) (@ ,a ,c ,d ,b), and) ,a ,b))s))s)))
           (ignore) [(,[@frrst l]) [+ @-aux:obj (,[@fst l])]] @-aux:obj}))r))
 
 (ignore
@@ -308,7 +308,7 @@
       (let (setf-aux:obj (,[@frrrrrrst l]))
         {(constrain (continuation setf-aux:cont (pseudo prop obj obj-casted)
               {setf-aux:ret (do [(,[@frrrst l]) [+ obj (,[@fst l])] prop] obj-casted)})
-            (\ s (with-vars (a b c d) (let ((,[@frrrrst l]) s) (`(continuation (((,(,[@frrrrrst l])) (@ ,a ,b ,c ,d), and) ,a ,b ,c))s))s)))
+            (\ s (?(a b c d) (let ((,[@frrrrst l]) s) (`(continuation (((,(,[@frrrrrst l])) (@ ,a ,b ,c ,d), and) ,a ,b ,c))s))s)))
           (ignore) (,[@frrrrrrrst l]) setf-aux:obj [cast setf-aux:obj]}))r))
 
 (ignore
@@ -377,7 +377,7 @@
         (,[llst (` jump r) [llllst (` continuation r) (` values:eval r) params [lllst (` jump r) (`(constrain
             (continuation values:func (,[lst (` values:storage r) params r])
               {values:return values:storage})
-            (\ values:r (with-vars ,vars
+            (\ values:r (? ,vars
               (`(continuation (,[lst
                   [lst (` values values:r) (,[`[llst unquoted-vars (` values:r r) emt r]r]) values:r]
                   (,[`[llst unquoted-vars (` values:r r) emt r]r]) values:r])) values:r) values:r)))r)
@@ -402,7 +402,7 @@
         (let (bind:param (let (bind ,bind-storage) ,param))
           (,[lllst (` jump r) (`(constrain (continuation bind:func (,[lst (` bind:param r) identifiers r])
                 {bind:return ,body})
-              (\ bind:r (with-vars ,vars
+              (\ bind:r (? ,vars
                 [llst (` continuation bind:r) [lst [lst (` values bind:r) (,[`[llst unquoted-vars (` bind:r r) emt r]r]) bind:r]
                   (,[`[llst unquoted-vars (` bind:r r) emt r]r]) bind:r] emt bind:r] bind:r)))r)
             (` bind:param r) param-parts r])))r)))))))
@@ -451,7 +451,7 @@
   (`(with loc:return
       (let (loc:base (,[@frrst l]))
         {(constrain (continuation loc:cont (base val) {loc:return val})
-            (\ r (with-vars (a) (`(continuation (,a ,a))r)r)))
+            (\ r (?(a) (`(continuation (,a ,a))r)r)))
           loc:base [+ [* (,[@fst l]) (,[@frst l])] loc:base]}))r))
 
 (ignore
@@ -568,24 +568,3 @@
 (function meta:length (l)
   (loop measure (l l) (len #0)
     (if [emt? l] len {measure [@rst l] [+ len #1]})))
-
-(ignore
-  Creates a signature for a list that contains the N given signatures in its first
-  M positions where M is fixed at compile time. Useful for asserting that an object
-  is in a particular state.
-  
-  (sig-contains sig1 sig2 ... sigN)
-  ->
-  (((sig1 , !0) (!1 sig1 , !0) (!2 !1 sig1 , !0) ... (!M ... !2 !1 sig1 , !0), or)
-  ((sig2 , !0) (!1 sig2 , !0) (!2 !1 sig2 , !0) ... (!M ... !2 !1 sig2 , !0), or)
-  ...
-  ((sigN , !0) (!1 sigN , !0) (!2 !1 sigN , !0) ... (!M ... !2 !1 sigN , !0), or), and))
-
-(function sig-contains (l r)
-  (loop layer-sig (l l) (acc and)
-    (if [emt? l] acc
-      (let (sig [@fst l])
-        {layer-sig [@rst l] (with-vars (a b c d e f g h i j)
-          (`(((,sig , j) (,i ,sig , j) (,h ,i ,sig , j) (,g ,h ,i ,sig , j) (,f ,g ,h ,i ,sig , j)
-            (,e ,f ,g ,h ,i ,sig , j) (,d ,e ,f ,g ,h ,i ,sig , j) (,c ,d ,e ,f ,g ,h ,i ,sig , j)
-            (,b ,c ,d ,e ,f ,g ,h ,i ,sig , j) (,a ,b ,c ,d ,e ,f ,g ,h ,i ,sig , j), or), acc)r)r)}))))
