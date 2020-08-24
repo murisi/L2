@@ -115,23 +115,29 @@
         ((" arithmetic) [function->initializer initialize-arithmetic-intrinsics])
         {handler (storage _ unsupported-intrinsics-error intrinsic-fn)}) ..))
     
-    (let (objects1 (fold (objects nil) (src source-fns)
-      (let (obj [load-program [generate-metaprogram [read-expressions src buf :b handler] inits bindings buf :b handler] inits buf :b handler])
-        (do [immutable-bindings obj bindings ..] [cons obj objects ..]))))
-    
-    (let (objects2 (fold (objects objects1) (src object-fns)
+    (let (objects1 (fold (objects nil) (src object-fns)
       (bind (obj-buf obj-sz) [read-to-buffer src bind ..]
       (let (obj [load obj-buf obj-sz ..])
         (do [immutable-bindings obj bindings ..] [cons obj objects ..])))))
     
-    (let (objects3 (fold (objects objects2) (intrinsic-fn intrinsic-fns)
+    (let (objects2 (fold (objects objects1) (intrinsic-fn intrinsic-fns)
       (switch str= intrinsic-fn
         ((" arithmetic)
           (let (obj [load-program [wrap-arithmetic-intrinsics ..] inits buf :b handler])
             (do [immutable-bindings obj bindings ..] [cons obj objects ..])))
         {handler (storage _ unsupported-intrinsics-error intrinsic-fn)})))
     
-    (for (obj (list-iter objects3)) (ignore) [mutate-bindings obj bindings])))))))
+    (let (all-exprs ($(fold (all-exprs (storage _ nil)) (src source-fns) (do
+      [append-list all-exprs [read-expressions src buf :b handler]]
+      all-exprs))))
+    
+    (loop add-bindings (objects objects2) (rem-exprs all-exprs)
+      (if [nil? rem-exprs] (ignore)
+        (let (obj [load-program [generate-metaprogram rem-exprs inits bindings buf :b handler] inits buf :b handler])
+        (let (objects [cons obj objects ..]) (do
+          [immutable-bindings obj bindings ..]
+          (for (obj (list-iter objects)) (ignore) [mutate-bindings obj bindings])
+          {add-bindings objects [try-generate-metas rem-exprs inits bindings buf :b handler]})))))))))))
 
 (constrain compile-program-to-elf (\ r (?(a b) (`(function ((list (expr ,b)) (list initializer) string region region ,a) ())r)r)))
 

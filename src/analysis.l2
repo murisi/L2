@@ -812,3 +812,21 @@
           [cons thunk c ..]))))
         
           c)))) ..]))
+
+(ignore
+  Try to expand the meta-expressions in the given list and return the
+  sucessful expansions.)
+
+(constrain try-generate-metas
+  (\ r (?(a b) (`(function ((list (expr ,b)) (list initializer) (hash-table string bndg-aug) region region ,a) (list (expr ,b)))r)r)))
+
+(function try-generate-metas (exprs inits bindings buf1 buf2 handler)
+  (substitute (.. buf1 handler)
+    (fold-ref (c nil) (s exprs)
+      (if [= (@ expr-type $s) (-meta-)]
+        (cps (do
+            [set s [vgenerate-metas $s (values storage inits bindings buf1 buf2 check-error)]]
+            [cons $s c ..])
+          (check-error (err)
+            (if [= (@0 err) undefined-symbol-error] c {handler err})))
+        c))))

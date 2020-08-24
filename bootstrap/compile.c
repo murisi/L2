@@ -116,7 +116,6 @@ void evaluate_files(list source_fns, list object_fns, list *bindings, region exp
       mutate_bindings(obj, *bindings);
     }}
     
-    list missing_sym_names;
     all_exprs = try_generate_metas(all_exprs, *bindings, expr_buf, obj_buf, handler);
     if(is_nil(all_exprs)) break;
   }
