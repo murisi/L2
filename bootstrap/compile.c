@@ -76,17 +76,17 @@ list read_expressions(unsigned char *src, region expr_buf, jumpbuf *handler) {
 
 void evaluate_files(list source_fns, list object_fns, list *bindings, region expr_buf, region obj_buf, jumpbuf *handler) {
   list objects = nil;
+  list all_exprs = nil;
   char *fn;
   {foreach(fn, source_fns) {
     write_str(STDOUT, "Loading ");
     write_str(STDOUT, fn);
     write_str(STDOUT, "...\n");
     
-    Object *obj = load_program(generate_metaprogram(read_expressions(fn, expr_buf, handler),
-      bindings, expr_buf, obj_buf, handler), expr_buf, obj_buf, handler);
-    append(obj, &objects, obj_buf);
-    append_list(bindings, immutable_bindings(obj, obj_buf));
+    list exprs = read_expressions(fn, expr_buf, handler);
+    append_list(&all_exprs, exprs);
   }}
+  // Load object and add its symbola to global bindings list.
   foreach(fn, object_fns) {
     write_str(STDOUT, "Loading ");
     write_str(STDOUT, fn);
@@ -102,11 +102,24 @@ void evaluate_files(list source_fns, list object_fns, list *bindings, region exp
     append(obj, &objects, obj_buf);
     append_list(bindings, immutable_bindings(obj, obj_buf));
   }
-  
-  Object *obj;
-  {foreach(obj, objects) {
-    mutate_bindings(obj, *bindings);
-  }}
+  // Repeatedly generate thunks for top-level functions, compile them and add their
+  // bindings to global list, resolve bindings in this new context, expand top-level
+  // meta expressions in context of new bindings, and repeat loop in case new top-level
+  // functions were created.
+  for(;;) {
+    Object *new_obj = load_program(generate_metaprogram(all_exprs, bindings, expr_buf, obj_buf, handler), expr_buf, obj_buf, handler);
+    append(new_obj, &objects, obj_buf);
+    append_list(bindings, immutable_bindings(new_obj, obj_buf));
+    
+    Object *obj;
+    {foreach(obj, objects) {
+      mutate_bindings(obj, *bindings);
+    }}
+    
+    list missing_sym_names;
+    all_exprs = try_generate_metas(all_exprs, *bindings, expr_buf, obj_buf, handler);
+    if(is_nil(all_exprs)) break;
+  }
 }
 
 void compile_files(list file_names, list bndgs, region expr_buf, region obj_buf, jumpbuf *handler) {

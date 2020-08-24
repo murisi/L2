@@ -333,11 +333,21 @@
   in the fragment l supplying to it the offset, size, getter, and setter of
   the field in addition to the rest of the fragment l.)
 
-(function property (offset size sig l r)
+(function property-aux (l r offset size sig)
   [lllllllst [@fst l] [=# offset r] [=# size r]
     (switch = size (#0 (` get0b r)) (#1 (` get1b r)) (#2 (` get2b r)) (#4 (` get4b r)) (#8 (` get8b r)) (`(ignore)r))
     (switch = size (#0 (` set0b r)) (#1 (` set1b r)) (#2 (` set2b r)) (#4 (` set4b r)) (#8 (` set8b r)) (`(ignore)r))
-    (` property:buf r) [`[llst [sig r] (` property:buf r) emt r]r] [@rst l] r])
+    (` property-aux:buf r) [`[llst [sig r] (` property-aux:buf r) emt r]r] [@rst l] r])
+
+(ignore
+  The following function is another helper function for creating properties.
+  Performs the following transformation:
+  (property name args ...)
+  ->
+  (function name (property:l property:r) [property-aux property:l property:r args ...]))
+
+(function property (l r)
+  (`(function (,[@fst l]) (property:l property:r) [property-aux property:l property:r , [@rst l]])r))
 
 (ignore A basic property's getter and setter operate on exactly the same type.)
 
