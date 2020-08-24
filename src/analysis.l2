@@ -408,73 +408,29 @@
       (let (a [frag->list eval])
         (cor [occurs-in? var [@car a] assigns] [occurs-in? var [list->fragment [@cdr a]] assigns]))))))
 
-(constrain unify-var (\ r (?(a b c) (`(function (vbl frag (hash-table vbl frag) ,b region ,c) ,a)r)r)))
+(constrain unify-var (\ r (?(a c) (`(function (vbl frag (hash-table vbl frag) region ,c) ,a)r)r)))
 
-(function unify-var (var val assigns succ buf hdl)
+(function unify-var (var val assigns buf hdl)
   (substitute (.. buf hdl)
     (if [occurs-in? var val assigns] (false)
-      (cps
-        (do [ht-put var val assigns ..] {succ stop})
-        (stop (res) (do [ht-remove var assigns] res))))))
+      (do [ht-put var val assigns ..] (true)))))
 
-(constrain unify-or (\ r (?(a b c d) (`(function ((list frag) frag ,d (hash-table vbl frag) ,b region ,c) ,a)r)r)))
+(constrain unify (\ r (?(a c) (`(function (frag frag (hash-table vbl frag) region ,c) ,a)r)r)))
 
-(function unify-or (x y rev assigns succ buf hdl)
-  (substitute (.. buf hdl)
-    (loop try-next (x x) (acc (false))
-      (if [nil? x] acc
-        {try-next [@cdr x] (cor (if rev
-          [unify y [@car x] assigns succ ..]
-          [unify [@car x] y assigns succ ..]) acc)}))))
-
-(constrain unify-and (\ r (?(a b c d) (`(function ((list frag) frag ,d (hash-table vbl frag) ,b region ,c) ,a)r)r)))
-
-(function unify-and (x y rev assigns succ buf hdl)
-  (substitute (.. buf hdl)
-    (if [nil? x]
-      (cps {succ stop} (stop (res) res))
-      (cps
-        (if rev
-          [unify y [@car x] assigns iter ..]
-          [unify [@car x] y assigns iter ..])
-        (iter (next) {next [unify-and [@cdr x] y rev assigns succ ..]})))))
-
-(ignore
-  AND and OR combinators are not commutative. Process the OR combinator first
-  so as to get disjunctive normal form.)
-
-(constrain unify (\ r (?(a b c) (`(function (frag frag (hash-table vbl frag) ,b region ,c) ,a)r)r)))
-
-(function unify (x y assigns succ buf hdl)
+(function unify (x y assigns buf hdl)
   (substitute (.. buf hdl)
     (let (xl [evaluate x assigns]) (yl [evaluate y assigns])
-      (if (cand [lst? xl] [or?! [nil-of [frag->list xl]]])
-        [unify-or [frag->list xl] yl (false) assigns succ ..]
-      (if (cand [lst? yl] [or?! [nil-of [frag->list yl]]])
-        [unify-or [frag->list yl] xl (true) assigns succ ..]
-      (if (cand [lst? xl] [and?! [nil-of [frag->list xl]]])
-        [unify-and [frag->list xl] yl (false) assigns succ ..]
-      (if (cand [lst? yl] [and?! [nil-of [frag->list yl]]])
-        [unify-and [frag->list yl] xl (true) assigns succ ..]
-      [(function unify-aux (xl yl assigns succ buf hdl)
-        (if (cand [vbl? xl] [vbl? yl] [vbl= [frag->vbl xl] [frag->vbl yl]])
-          (cps {succ stop} (stop (res) res))
-        (if (cand [i/f:token? xl] [i/f:token? yl])
-          (if [i/f:token= [fragment->token xl] [fragment->token yl]]
-            (cps {succ stop} (stop (res) res))
-            (false))
-        (if [vbl? xl] [unify-var [frag->vbl xl] yl assigns succ ..]
-        (if [vbl? yl] [unify-var [frag->vbl yl] xl assigns succ ..]
-        (if (cor [i/f:token? xl] [i/f:token? yl]) (false)
-        (let (xl [frag->list xl]) (yl [frag->list yl])
-          (cps
-            (if (cand [emt?! xl] [emt?! yl])
-              (cps {succ stop} (stop (res) res))
-            (if (cor [emt?! xl] [emt?! yl])
-              (false)
-              [unify [@car xl] [@car yl] assigns iter ..]))
-            (iter (next)
-              {next [unify-aux [list->fragment [@cdr xl]] [list->fragment [@cdr yl]] assigns succ ..]}))))))))) xl yl assigns succ buf hdl])))))))
+      (if (cand [vbl? xl] [vbl? yl] [vbl= [frag->vbl xl] [frag->vbl yl]]) (true)
+      (if [vbl? xl] [unify-var [frag->vbl xl] yl assigns ..]
+      (if [vbl? yl] [unify-var [frag->vbl yl] xl assigns ..]
+      (if (cand [i/f:token? xl] [i/f:token? yl])
+        [i/f:token= [fragment->token xl] [fragment->token yl]]
+      (if (cor [i/f:token? xl] [i/f:token? yl]) (false)
+      (let (xl [frag->list xl]) (yl [frag->list yl])
+        (if (cand [emt?! xl] [emt?! yl]) (true)
+        (if (cor [emt?! xl] [emt?! yl]) (false)
+          (cand [unify [@car xl] [@car yl] assigns ..]
+            [unify [list->fragment [@cdr xl]] [list->fragment [@cdr yl]] assigns ..]))))))))))))
 
 (ignore
   The same function may be called with different type parameters in the same strongly connected
@@ -552,30 +508,16 @@
     (for (expr (list-iter exprs)) (ignore) [construct-sccs expr #1 stack sccs ..])
     
     (let (assigns [ht-create hash-ptr = ..])
-    (let (expr-sigs [ht-create hash-ptr = ..])
-    (let (compare-map [ht-create hash-ptr = ..])
     (let (function-token [token->fragment [build-token [rstrcpy (" function) ..] ..]])
     (let (continuation-token [token->fragment [build-token [rstrcpy (" continuation) ..] ..]])
     (for (scc (list-iter [reverse $sccs ..])) (ignore)
       (let (lhss (storage _ nil)) (rhss (storage _ nil)) (do
         (for (e (list-iter scc)) (ignore) [generate-equations e scc function-token continuation-token lhss rhss ..])
-        (if (cps [unify [list->fragment $lhss] [list->fragment $rhss] assigns iter ..]
-            (iter (next) (do
-              (for (e (list-iter scc)) (ignore) (do
-                (let (new-sig [recursive-evaluate [expr-signature e] assigns ..])
-                (if (ht-find (old-sig e expr-sigs) [fragment= new-sig old-sig compare-map ..])
-                  (ignore)
-                  [ht-put e new-sig expr-sigs ..]))
-                [ht-removeall compare-map]))
-              {next (true)})))
-          (ignore)
+        (if [unify [list->fragment $lhss] [list->fragment $rhss] assigns ..] (ignore)
           {handler (storage _ unification-error)})
-        (for (e (list-iter scc)) (ignore)
-          (let (sig-opts (storage _[ht-getall e expr-sigs ..])) (do
-            (ignore Turn the list of possible types into an or type.)
-            [append-list sig-opts or!]
-            (setf bndg-signature (@ expr-binding-aug e) [list->fragment $sig-opts])
-            (ignore))))))))))))))))))
+        (for (e (list-iter scc)) (ignore) (do
+          (setf bndg-signature (@ expr-binding-aug e) [recursive-evaluate [expr-signature e] assigns ..])
+          (ignore)))))))))))))))
 
 (constrain visit-expressions (\ r (?(a b) (`(function ((function ((expr ,b) ,a) (expr ,b)) (ref (expr ,b)) ,a) ())r)r)))
 
@@ -795,23 +737,20 @@
 (function generate-metaprogram (exprs inits bindings buf :b handler)
   (substitute (.. buf handler)
     [reverse (fold (c nil) (s exprs)
-      (let (cache [region-alloc (unit) buf handler]) (do
+      (if [not= (@ expr-type s) (-function-)] c
+        (let (cache [region-alloc (unit) buf handler])
+        (let (params (reverse-map (_ (@ expr-parameters s)) empty-string ..))
+        (let (args (reverse-map (_ (@ expr-parameters s)) [make-symbol empty-string null-fragment null-expr ..] ..))
+        (let (thunk [make-function (@ bndg-name (@ expr-reference s)) params
+          [make-invoke (make-invokeN [make-literal init-function null-fragment null-expr ..]
+          ([make-literal s null-fragment null-expr ..] [make-literal inits null-fragment null-expr ..]
+          [make-literal bindings null-fragment null-expr ..] [make-literal buf null-fragment null-expr ..]
+          [make-literal :b null-fragment null-expr ..] [make-literal handler null-fragment null-expr ..]
+          [make-literal cache null-fragment null-expr ..]) null-fragment null-expr ..) args null-fragment null-expr ..]
+          null-fragment null-expr ..]) (do
         [set cache null-cache]
-        
-        (if [= (@ expr-type s) (-function-)]
-          (let (params (reverse-map (_ (@ expr-parameters s)) empty-string ..))
-          (let (args (reverse-map (_ (@ expr-parameters s)) [make-symbol empty-string null-fragment null-expr ..] ..))
-          (let (thunk [make-function (@ bndg-name (@ expr-reference s)) params
-            [make-invoke (make-invokeN [make-literal init-function null-fragment null-expr ..]
-            ([make-literal s null-fragment null-expr ..] [make-literal inits null-fragment null-expr ..]
-            [make-literal bindings null-fragment null-expr ..] [make-literal buf null-fragment null-expr ..]
-            [make-literal :b null-fragment null-expr ..] [make-literal handler null-fragment null-expr ..]
-            [make-literal cache null-fragment null-expr ..]) null-fragment null-expr ..) args null-fragment null-expr ..]
-            null-fragment null-expr ..]) (do
-          (foreach (a (@ expr-parameters thunk)) (t args) (setf expr-reference t a))
-          [cons thunk c ..]))))
-        
-          c)))) ..]))
+        (foreach (a (@ expr-parameters thunk)) (t args) (setf expr-reference t a))
+        [cons thunk c ..]))))))) ..]))
 
 (ignore
   Try to expand the meta-expressions in the given list and return the

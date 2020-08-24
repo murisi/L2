@@ -101,10 +101,6 @@
 (function quote-aux (s t map state r)
   (if [emt? s] [lllllst [lllst -e- -m- -t- emt r] t map state r emt r]
   
-  (if [and? s] [lllllst [lllst -a- -n- -d- emt r] t map state r emt r]
-  
-  (if [or? s] [lllllst [llst -o- -r- emt r] t map state r emt r]
-  
   (if [var? s]
     [meta:bind6 [llllllst [meta:lookup-var s map] s t map state r emt r] (function _(res s t map state r)
       (if [emt? res]
@@ -135,7 +131,7 @@
       [meta:bind7 [llst s inner-s [quote-aux [@rst s] t map state r] r]
         (function _(s inner-s inner-s2 t map state r)
           [lllllst [lllllst [llllllst -i- -n- -v- -o- -k- -e- emt r]
-            [lllst -l- -s- -t- emt r] inner-s inner-s2 t emt r] t map state r emt r])])]))))))))
+            [lllst -l- -s- -t- emt r] inner-s inner-s2 t emt r] t map state r emt r])])]))))))
 
 (ignore Quote macro that only works for fragments not containing variables.)
 
@@ -258,8 +254,9 @@
 (function &-aux (l r)
   (`(with &-aux:ret
       (let (@-aux:obj (,[@frrrrrrst l]))
-        {(constrain (continuation @-aux:cont (pseudo prop-ref obj) {&-aux:ret prop-ref})
-            (\ s (?(a b c d) (let ((,[@frrrrst l]) s) (`(continuation (((,(,[@frrrrrst l])) (@ ,a ,c ,d ,b), and) (ref ,a) ,b))s))s)))
+        {(constrain (constrain (continuation @-aux:cont (pseudo prop-ref obj) {&-aux:ret prop-ref})
+            (\ s (?(a b) (let ((,[@frrrrst l]) s) (`(continuation ((,(,[@frrrrrst l])) ,a ,b))s))s)))
+            (\ s (?(a b c d) (`(continuation ((@ ,a ,c ,d ,b) (ref ,a) ,b))s)s)))
           (ignore) [+ @-aux:obj (,[@fst l])] @-aux:obj}))r))
 
 (ignore
@@ -281,8 +278,9 @@
 (function @-aux (l r)
   (`(with @-aux:ret
       (let (@-aux:obj (,[@frrrrrrst l]))
-        {(constrain (continuation @-aux:cont (pseudo prop obj) {@-aux:ret prop})
-            (\ s (?(a b c d) (let ((,[@frrrrst l]) s) (`(continuation (((,(,[@frrrrrst l])) (@ ,a ,c ,d ,b), and) ,a ,b))s))s)))
+        {(constrain (constrain (continuation @-aux:cont (pseudo prop obj) {@-aux:ret prop})
+            (\ s (?(a b) (let ((,[@frrrrst l]) s) (`(continuation ((,(,[@frrrrrst l])) ,a ,b))s))s)))
+            (\ s (?(a b c d) (`(continuation ((@ ,a ,c ,d ,b) ,a ,b))s)s)))
           (ignore) [(,[@frrst l]) [+ @-aux:obj (,[@fst l])]] @-aux:obj}))r))
 
 (ignore
@@ -303,12 +301,21 @@
   (the fifth item in the fragment l) and a value (the sixth item in the
   fragment l).)
 
-(function setf-aux (l r)
+(ignore(function setf-aux (l r)
   (`(with setf-aux:ret
       (let (setf-aux:obj (,[@frrrrrrst l]))
         {(constrain (continuation setf-aux:cont (pseudo prop obj obj-casted)
               {setf-aux:ret (do [(,[@frrrst l]) [+ obj (,[@fst l])] prop] obj-casted)})
             (\ s (?(a b c d) (let ((,[@frrrrst l]) s) (`(continuation (((,(,[@frrrrrst l])) (@ ,a ,b ,c ,d), and) ,a ,b ,c))s))s)))
+          (ignore) (,[@frrrrrrrst l]) setf-aux:obj [cast setf-aux:obj]}))r)))
+
+(function setf-aux (l r)
+  (`(with setf-aux:ret
+      (let (setf-aux:obj (,[@frrrrrrst l]))
+        {(constrain (constrain (continuation setf-aux:cont (pseudo prop obj obj-casted)
+              {setf-aux:ret (do [(,[@frrrst l]) [+ obj (,[@fst l])] prop] obj-casted)})
+            (\ setf-aux:s (?(setf-aux:a setf-aux:b setf-aux:c d) (let ((,[@frrrrst l]) setf-aux:s) (`(continuation (,d ,setf-aux:a ,setf-aux:b ,setf-aux:c))setf-aux:s))setf-aux:s)))
+            (\ s (?(a b c d) (`(continuation ((@ ,a ,b ,c ,d) ,a ,b ,c))s)s)))
           (ignore) (,[@frrrrrrrst l]) setf-aux:obj [cast setf-aux:obj]}))r))
 
 (ignore
