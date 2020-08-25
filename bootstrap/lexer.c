@@ -80,7 +80,7 @@ bool read_token(list *out, char *l2src, int l2src_sz, int *pos, region r, jumpbu
     return false;
   } else {
     char c = l2src[*pos];
-    if(isspace(c) || c == ',' || c == '$' || c == '(' || c == ')' || c == '{' || c == '}' || c == '[' || c == ']' || c == ':') {
+    if(isspace(c) || c == ',' || c == '(' || c == ')' || c == '{' || c == '}' || c == '[' || c == ']' || c == ':') {
       return false;
     } else {
       (*pos) ++;
@@ -105,7 +105,7 @@ bool read_sigilled_token(list *out, char *l2src, int l2src_sz, int *pos, region 
     return false;
   } else {
     char d = l2src[*pos];
-    if(d == ',' || d == '$') {
+    if(d == ',') {
       (*pos)++;
       char sigilc[] = {d, '\0'};
       list tmp, sigill = build_token(sigilc, r);

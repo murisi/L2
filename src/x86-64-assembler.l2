@@ -579,10 +579,10 @@
 (constrain mem-write (\ r (?(a b c d) (`(function (,a (ref ,b) ,c ,d) ())r)r)))
 
 (function mem-write (mem idx bytes cnt)
-  (let (end [+ $idx cnt])
+  (let (end [+ $:idx cnt])
   (loop write-bytes (bytes bytes)
-    (if [= $idx end] (ignore) (do
-      [setb [+ mem $idx] [getb bytes]]
+    (if [= $:idx end] (ignore) (do
+      [setb [+ mem $:idx] [getb bytes]]
       [set+ idx #:1]
       {write-bytes [+ bytes #:1]})))))
 
@@ -652,7 +652,7 @@
         (cand [not= (@ op-index modrm.rm-op) (none)] [= [register-size (@ op-index modrm.rm-op)] #:2])
         [= (@ op-disp-size modrm.rm-op) #:2])))
     
-    (let (instr-start-pos $pos) (do
+    (let (instr-start-pos $:pos) (do
     
     (if has-oso? [mem-write bin pos (storage _ (hex 66)) #:1] (ignore))
     
@@ -685,19 +685,19 @@
             
       (ignore))
     
-    (let (disp-pos $pos) (do
+    (let (disp-pos $:pos) (do
     
     (if [= (@ op-type modrm.rm-op) (memory-operand)]
       [mem-write bin pos (storage _ (@ op-disp modrm.rm-op)) (@ op-disp-size modrm.rm-op)]
       (ignore))
     
-    (let (imm-pos $pos) (do
+    (let (imm-pos $:pos) (do
     
     (if [= (@ op-type imm-op) (immediate-operand)]
       [mem-write bin pos (storage _ (@ op-immediate imm-op)) (@ op-size imm-op)]
       (ignore))
     
-    (let (instr-size [- $pos instr-start-pos]) (do
+    (let (instr-size [- $:pos instr-start-pos]) (do
     
     (if [= (@ op-type modrm.rm-op) (memory-operand)]
       [prepend (values (region-storage ..) disp-pos (@ op-disp-size modrm.rm-op) instr-start-pos instr-size)
@@ -730,14 +730,14 @@
           (%[variable op2])
           (%(match-property (op-type (%[= (register-operand)])))))) (@ instr-operands n))
       (op1 op2)
-        (if (cand [band mask #:1] [= (@ op-size $op1) #:1] [= (@ op-size $op2) #:1])
-          [write-instr bin pos opcode-8 [>> mask #:4] [make-none-op ..] $op2 $op1 [make-none-op ..] ..]
-        (if (cand [band mask #:2] [= (@ op-size $op1) #:2] [= (@ op-size $op2) #:2])
-          [write-instr bin pos opcode-16 [>> mask #:4] [make-none-op ..] $op2 $op1 [make-none-op ..] ..]
-        (if (cand [band mask #:4] [= (@ op-size $op1) #:4] [= (@ op-size $op2) #:4])
-          [write-instr bin pos opcode-32 [>> mask #:4] [make-none-op ..] $op2 $op1 [make-none-op ..] ..]
-        (if (cand [band mask #:8] [= (@ op-size $op1) #:8] [= (@ op-size $op2) #:8])
-          [write-instr bin pos opcode-64 [>> mask #:4] [make-none-op ..] $op2 $op1 [make-none-op ..] ..]
+        (if (cand [band mask #:1] [= (@ op-size $:op1) #:1] [= (@ op-size $:op2) #:1])
+          [write-instr bin pos opcode-8 [>> mask #:4] [make-none-op ..] $:op2 $:op1 [make-none-op ..] ..]
+        (if (cand [band mask #:2] [= (@ op-size $:op1) #:2] [= (@ op-size $:op2) #:2])
+          [write-instr bin pos opcode-16 [>> mask #:4] [make-none-op ..] $:op2 $:op1 [make-none-op ..] ..]
+        (if (cand [band mask #:4] [= (@ op-size $:op1) #:4] [= (@ op-size $:op2) #:4])
+          [write-instr bin pos opcode-32 [>> mask #:4] [make-none-op ..] $:op2 $:op1 [make-none-op ..] ..]
+        (if (cand [band mask #:8] [= (@ op-size $:op1) #:8] [= (@ op-size $:op2) #:8])
+          [write-instr bin pos opcode-64 [>> mask #:4] [make-none-op ..] $:op2 $:op1 [make-none-op ..] ..]
           (false)))))
       (false))))
 
@@ -753,14 +753,14 @@
           (%[variable op2])
           (%(match-property (op-type (%(match-or (%[= (memory-operand)]) (%[= (register-operand)])))))))) (@ instr-operands n))
       (op1 op2)
-        (if (cand [band mask #:1] [= (@ op-size $op1) #:1] [= (@ op-size $op2) #:1])
-          [write-instr bin pos opcode-8 [>> mask #:4] [make-none-op ..] $op1 $op2 [make-none-op ..] ..]
-        (if (cand [band mask #:2] [= (@ op-size $op1) #:2] [= (@ op-size $op2) #:2])
-          [write-instr bin pos opcode-16 [>> mask #:4] [make-none-op ..] $op1 $op2 [make-none-op ..] ..]
-        (if (cand [band mask #:4] [= (@ op-size $op1) #:4] [= (@ op-size $op2) #:4])
-          [write-instr bin pos opcode-32 [>> mask #:4] [make-none-op ..] $op1 $op2 [make-none-op ..] ..]
-        (if (cand [band mask #:8] [= (@ op-size $op1) #:8] [= (@ op-size $op2) #:8])
-          [write-instr bin pos opcode-64 [>> mask #:4] [make-none-op ..] $op1 $op2 [make-none-op ..] ..]
+        (if (cand [band mask #:1] [= (@ op-size $:op1) #:1] [= (@ op-size $:op2) #:1])
+          [write-instr bin pos opcode-8 [>> mask #:4] [make-none-op ..] $:op1 $:op2 [make-none-op ..] ..]
+        (if (cand [band mask #:2] [= (@ op-size $:op1) #:2] [= (@ op-size $:op2) #:2])
+          [write-instr bin pos opcode-16 [>> mask #:4] [make-none-op ..] $:op1 $:op2 [make-none-op ..] ..]
+        (if (cand [band mask #:4] [= (@ op-size $:op1) #:4] [= (@ op-size $:op2) #:4])
+          [write-instr bin pos opcode-32 [>> mask #:4] [make-none-op ..] $:op1 $:op2 [make-none-op ..] ..]
+        (if (cand [band mask #:8] [= (@ op-size $:op1) #:8] [= (@ op-size $:op2) #:8])
+          [write-instr bin pos opcode-64 [>> mask #:4] [make-none-op ..] $:op1 $:op2 [make-none-op ..] ..]
           (false)))))
       (false))))
 
@@ -776,14 +776,14 @@
           (%[variable op2])
           (%(match-property (op-type (%[= (immediate-operand)])))))) (@ instr-operands n))
       (op1 op2)
-        (if (cand [= (@ op-size $op1) #:1] [= (@ op-size $op2) #:1])
-          [write-instr bin pos opcode-8 [>> mask #:4] [make-none-op ..] opcode.reg-op $op1 $op2 ..]
-        (if (cand [= (@ op-size $op1) #:2] [= (@ op-size $op2) #:2])
-          [write-instr bin pos opcode-16 [>> mask #:4] [make-none-op ..] opcode.reg-op $op1 $op2 ..]
-        (if (cand [= (@ op-size $op1) #:4] [= (@ op-size $op2) #:4])
-          [write-instr bin pos opcode-32 [>> mask #:4] [make-none-op ..] opcode.reg-op $op1 $op2 ..]
-        (if (cand [= (@ op-size $op1) #:8] [= (@ op-size $op2) #:4])
-          [write-instr bin pos opcode-64 [>> mask #:4] [make-none-op ..] opcode.reg-op $op1 $op2 ..]
+        (if (cand [= (@ op-size $:op1) #:1] [= (@ op-size $:op2) #:1])
+          [write-instr bin pos opcode-8 [>> mask #:4] [make-none-op ..] opcode.reg-op $:op1 $:op2 ..]
+        (if (cand [= (@ op-size $:op1) #:2] [= (@ op-size $:op2) #:2])
+          [write-instr bin pos opcode-16 [>> mask #:4] [make-none-op ..] opcode.reg-op $:op1 $:op2 ..]
+        (if (cand [= (@ op-size $:op1) #:4] [= (@ op-size $:op2) #:4])
+          [write-instr bin pos opcode-32 [>> mask #:4] [make-none-op ..] opcode.reg-op $:op1 $:op2 ..]
+        (if (cand [= (@ op-size $:op1) #:8] [= (@ op-size $:op2) #:4])
+          [write-instr bin pos opcode-64 [>> mask #:4] [make-none-op ..] opcode.reg-op $:op1 $:op2 ..]
           (false)))))
       (false))))
 
@@ -799,14 +799,14 @@
           (%[variable op2])
           (%(match-property (op-type (%[= (immediate-operand)])))))) (@ instr-operands n))
       (op1 op2)
-        (if (cand [band mask #:1] [= (@ op-size $op1) #:1] [= (@ op-size $op2) #:1])
-          [write-instr bin pos opcode-8 [>> mask #:4] [make-none-op ..] opcode.reg-op $op1 $op2 ..]
-        (if (cand [band mask #:2] [= (@ op-size $op1) #:2] [= (@ op-size $op2) #:1])
-          [write-instr bin pos opcode-16 [>> mask #:4] [make-none-op ..] opcode.reg-op $op1 $op2 ..]
-        (if (cand [band mask #:4] [= (@ op-size $op1) #:4] [= (@ op-size $op2) #:1])
-          [write-instr bin pos opcode-32 [>> mask #:4] [make-none-op ..] opcode.reg-op $op1 $op2 ..]
-        (if (cand [band mask #:8] [= (@ op-size $op1) #:8] [= (@ op-size $op2) #:1])
-          [write-instr bin pos opcode-64 [>> mask #:4] [make-none-op ..] opcode.reg-op $op1 $op2 ..]
+        (if (cand [band mask #:1] [= (@ op-size $:op1) #:1] [= (@ op-size $:op2) #:1])
+          [write-instr bin pos opcode-8 [>> mask #:4] [make-none-op ..] opcode.reg-op $:op1 $:op2 ..]
+        (if (cand [band mask #:2] [= (@ op-size $:op1) #:2] [= (@ op-size $:op2) #:1])
+          [write-instr bin pos opcode-16 [>> mask #:4] [make-none-op ..] opcode.reg-op $:op1 $:op2 ..]
+        (if (cand [band mask #:4] [= (@ op-size $:op1) #:4] [= (@ op-size $:op2) #:1])
+          [write-instr bin pos opcode-32 [>> mask #:4] [make-none-op ..] opcode.reg-op $:op1 $:op2 ..]
+        (if (cand [band mask #:8] [= (@ op-size $:op1) #:8] [= (@ op-size $:op2) #:1])
+          [write-instr bin pos opcode-64 [>> mask #:4] [make-none-op ..] opcode.reg-op $:op1 $:op2 ..]
           (false)))))
       (false))))
 
@@ -823,18 +823,18 @@
           (%(match-property (op-type (%[= (memory-operand)]))))))
         (%[variable op3]) (@ instr-operands n))
       (op1 op2 op3)
-        (if (cand [band mask #:1] [= (@ op-size $op1) #:1] [= (@ op-size $op2) #:1]) (do
-          [write-instr bin pos (hex 8A) #:1 [make-none-op ..] $op3 $op2 [make-none-op ..] ..]
-          [write-instr bin pos opcode-8 [>> mask #:4] [make-none-op ..] $op3 $op1 [make-none-op ..] ..])
-        (if (cand [band mask #:2] [= (@ op-size $op1) #:2] [= (@ op-size $op2) #:2]) (do
-          [write-instr bin pos (hex 8B) #:1 [make-none-op ..] $op3 $op2 [make-none-op ..] ..]
-          [write-instr bin pos opcode-16 [>> mask #:4] [make-none-op ..] $op3 $op1 [make-none-op ..] ..])
-        (if (cand [band mask #:4] [= (@ op-size $op1) #:4] [= (@ op-size $op2) #:4]) (do
-          [write-instr bin pos (hex 8B) #:1 [make-none-op ..] $op3 $op2 [make-none-op ..] ..]
-          [write-instr bin pos opcode-32 [>> mask #:4] [make-none-op ..] $op3 $op1 [make-none-op ..] ..])
-        (if (cand [band mask #:8] [= (@ op-size $op1) #:8] [= (@ op-size $op2) #:8]) (do
-          [write-instr bin pos (hex 8B) #:1 [make-none-op ..] $op3 $op2 [make-none-op ..] ..]
-          [write-instr bin pos opcode-64 [>> mask #:4] [make-none-op ..] $op3 $op1 [make-none-op ..] ..])
+        (if (cand [band mask #:1] [= (@ op-size $:op1) #:1] [= (@ op-size $:op2) #:1]) (do
+          [write-instr bin pos (hex 8A) #:1 [make-none-op ..] $:op3 $:op2 [make-none-op ..] ..]
+          [write-instr bin pos opcode-8 [>> mask #:4] [make-none-op ..] $:op3 $:op1 [make-none-op ..] ..])
+        (if (cand [band mask #:2] [= (@ op-size $:op1) #:2] [= (@ op-size $:op2) #:2]) (do
+          [write-instr bin pos (hex 8B) #:1 [make-none-op ..] $:op3 $:op2 [make-none-op ..] ..]
+          [write-instr bin pos opcode-16 [>> mask #:4] [make-none-op ..] $:op3 $:op1 [make-none-op ..] ..])
+        (if (cand [band mask #:4] [= (@ op-size $:op1) #:4] [= (@ op-size $:op2) #:4]) (do
+          [write-instr bin pos (hex 8B) #:1 [make-none-op ..] $:op3 $:op2 [make-none-op ..] ..]
+          [write-instr bin pos opcode-32 [>> mask #:4] [make-none-op ..] $:op3 $:op1 [make-none-op ..] ..])
+        (if (cand [band mask #:8] [= (@ op-size $:op1) #:8] [= (@ op-size $:op2) #:8]) (do
+          [write-instr bin pos (hex 8B) #:1 [make-none-op ..] $:op3 $:op2 [make-none-op ..] ..]
+          [write-instr bin pos opcode-64 [>> mask #:4] [make-none-op ..] $:op3 $:op1 [make-none-op ..] ..])
           (false)))))
       (false))))
 
@@ -847,14 +847,14 @@
           (%[variable op1])
           (%(match-property (op-type (%(match-or (%[= (memory-operand)]) (%[= (register-operand)])))))))) (@ instr-operands n))
       (op1)
-        (if (cand [band mask #:1] [= (@ op-size $op1) #:1])
-          [write-instr bin pos opcode-8 [>> mask #:4] [make-none-op ..] opcode.reg-op $op1 [make-none-op ..] ..]
-        (if (cand [band mask #:2] [= (@ op-size $op1) #:2])
-          [write-instr bin pos opcode-16 [>> mask #:4] [make-none-op ..] opcode.reg-op $op1 [make-none-op ..] ..]
-        (if (cand [band mask #:4] [= (@ op-size $op1) #:4])
-          [write-instr bin pos opcode-32 [>> mask #:4] [make-none-op ..] opcode.reg-op $op1 [make-none-op ..] ..]
-        (if (cand [band mask #:8] [= (@ op-size $op1) #:8])
-          [write-instr bin pos opcode-64 [>> mask #:4] [make-none-op ..] opcode.reg-op $op1 [make-none-op ..] ..]
+        (if (cand [band mask #:1] [= (@ op-size $:op1) #:1])
+          [write-instr bin pos opcode-8 [>> mask #:4] [make-none-op ..] opcode.reg-op $:op1 [make-none-op ..] ..]
+        (if (cand [band mask #:2] [= (@ op-size $:op1) #:2])
+          [write-instr bin pos opcode-16 [>> mask #:4] [make-none-op ..] opcode.reg-op $:op1 [make-none-op ..] ..]
+        (if (cand [band mask #:4] [= (@ op-size $:op1) #:4])
+          [write-instr bin pos opcode-32 [>> mask #:4] [make-none-op ..] opcode.reg-op $:op1 [make-none-op ..] ..]
+        (if (cand [band mask #:8] [= (@ op-size $:op1) #:8])
+          [write-instr bin pos opcode-64 [>> mask #:4] [make-none-op ..] opcode.reg-op $:op1 [make-none-op ..] ..]
           (false)))))
       (false))))
 
@@ -867,14 +867,14 @@
           (%[variable op1])
           (%(match-property (op-type (%[= (immediate-operand)])))))) (@ instr-operands n))
       (op1)
-        (if (cand [band mask #:1] [= (@ op-size $op1) #:1])
-          [write-instr bin pos opcode-8 [>> mask #:4] [make-none-op ..] [make-none-op ..] [make-none-op ..] $op1 ..]
-        (if (cand [band mask #:2] [= (@ op-size $op1) #:2])
-          [write-instr bin pos opcode-16 [>> mask #:4] [make-none-op ..] [make-none-op ..] [make-none-op ..] $op1 ..]
-        (if (cand [band mask #:4] [= (@ op-size $op1) #:4])
-          [write-instr bin pos opcode-32 [>> mask #:4] [make-none-op ..] [make-none-op ..] [make-none-op ..] $op1 ..]
-        (if (cand [band mask #:8] [= (@ op-size $op1) #:8])
-          [write-instr bin pos opcode-64 [>> mask #:4] [make-none-op ..] [make-none-op ..] [make-none-op ..] $op1 ..]
+        (if (cand [band mask #:1] [= (@ op-size $:op1) #:1])
+          [write-instr bin pos opcode-8 [>> mask #:4] [make-none-op ..] [make-none-op ..] [make-none-op ..] $:op1 ..]
+        (if (cand [band mask #:2] [= (@ op-size $:op1) #:2])
+          [write-instr bin pos opcode-16 [>> mask #:4] [make-none-op ..] [make-none-op ..] [make-none-op ..] $:op1 ..]
+        (if (cand [band mask #:4] [= (@ op-size $:op1) #:4])
+          [write-instr bin pos opcode-32 [>> mask #:4] [make-none-op ..] [make-none-op ..] [make-none-op ..] $:op1 ..]
+        (if (cand [band mask #:8] [= (@ op-size $:op1) #:8])
+          [write-instr bin pos opcode-64 [>> mask #:4] [make-none-op ..] [make-none-op ..] [make-none-op ..] $:op1 ..]
           (false)))))
       (false))))
 
@@ -890,14 +890,14 @@
           (op-type (%[= (register-operand)]))
           (op-register (%[= (cl)])))) (@ instr-operands n))
       (op1)
-        (if (cand [band mask #:1] [= (@ op-size $op1) #:1])
-          [write-instr bin pos opcode-8 [>> mask #:4] [make-none-op ..] opcode.reg-op $op1 [make-none-op ..] ..]
-        (if (cand [band mask #:2] [= (@ op-size $op1) #:2])
-          [write-instr bin pos opcode-16 [>> mask #:4] [make-none-op ..] opcode.reg-op $op1 [make-none-op ..] ..]
-        (if (cand [band mask #:4] [= (@ op-size $op1) #:4])
-          [write-instr bin pos opcode-32 [>> mask #:4] [make-none-op ..] opcode.reg-op $op1 [make-none-op ..] ..]
-        (if (cand [band mask #:8] [= (@ op-size $op1) #:8])
-          [write-instr bin pos opcode-64 [>> mask #:4] [make-none-op ..] opcode.reg-op $op1 [make-none-op ..] ..]
+        (if (cand [band mask #:1] [= (@ op-size $:op1) #:1])
+          [write-instr bin pos opcode-8 [>> mask #:4] [make-none-op ..] opcode.reg-op $:op1 [make-none-op ..] ..]
+        (if (cand [band mask #:2] [= (@ op-size $:op1) #:2])
+          [write-instr bin pos opcode-16 [>> mask #:4] [make-none-op ..] opcode.reg-op $:op1 [make-none-op ..] ..]
+        (if (cand [band mask #:4] [= (@ op-size $:op1) #:4])
+          [write-instr bin pos opcode-32 [>> mask #:4] [make-none-op ..] opcode.reg-op $:op1 [make-none-op ..] ..]
+        (if (cand [band mask #:8] [= (@ op-size $:op1) #:8])
+          [write-instr bin pos opcode-64 [>> mask #:4] [make-none-op ..] opcode.reg-op $:op1 [make-none-op ..] ..]
           (false)))))
       (false))))
 
@@ -914,8 +914,8 @@
       (let (instr-bndg (@ instr-binding n))
         (if [not= instr-bndg null-binding] (do
           (setf bndg-storage instr-bndg (absolute-storage))
-          (setf bndg-offset instr-bndg $pos)
-          (setf st-value (@ lkdst-raw (@ bndg-other instr-bndg)) $pos))
+          (setf bndg-offset instr-bndg $:pos)
+          (setf st-value (@ lkdst-raw (@ bndg-other instr-bndg)) $:pos))
           (ignore)))
       
       (switch = (@ instr-code n)
@@ -1036,18 +1036,18 @@
                 (%[variable op2])
                 (%(match-property (op-type (%(match-or (%[= (memory-operand)]) (%[= (register-operand)])))))))) (@ instr-operands n))
             (op1 op2)
-              (if (cand [= (@ op-size $op1) #:2] [= (@ op-size $op2) #:1])
-                [write-instr bin pos (hex B60F) #:2 [make-none-op ..] $op1 $op2 [make-none-op ..] ..]
-              (if (cand [= (@ op-size $op1) #:4] [= (@ op-size $op2) #:1])
-                [write-instr bin pos (hex B60F) #:2 [make-none-op ..] $op1 $op2 [make-none-op ..] ..]
-              (if (cand [= (@ op-size $op1) #:8] [= (@ op-size $op2) #:1])
-                [write-instr bin pos (hex B60F) #:2 [make-none-op ..] $op1 $op2 [make-none-op ..] ..]
-              (if (cand [= (@ op-size $op1) #:4] [= (@ op-size $op2) #:2])
-                [write-instr bin pos (hex B70F) #:2 [make-none-op ..] $op1 $op2 [make-none-op ..] ..]
-              (if (cand [= (@ op-size $op1) #:8] [= (@ op-size $op2) #:2])
-                [write-instr bin pos (hex B70F) #:2 [make-none-op ..] $op1 $op2 [make-none-op ..] ..]
-              (if (cand [= (@ op-size $op1) #:8] [= (@ op-size $op2) #:4])
-                [write-instr bin pos (hex 8B) #:1 [make-none-op ..] [op-lower-32 $op1 ..] $op2 [make-none-op ..] ..]
+              (if (cand [= (@ op-size $:op1) #:2] [= (@ op-size $:op2) #:1])
+                [write-instr bin pos (hex B60F) #:2 [make-none-op ..] $:op1 $:op2 [make-none-op ..] ..]
+              (if (cand [= (@ op-size $:op1) #:4] [= (@ op-size $:op2) #:1])
+                [write-instr bin pos (hex B60F) #:2 [make-none-op ..] $:op1 $:op2 [make-none-op ..] ..]
+              (if (cand [= (@ op-size $:op1) #:8] [= (@ op-size $:op2) #:1])
+                [write-instr bin pos (hex B60F) #:2 [make-none-op ..] $:op1 $:op2 [make-none-op ..] ..]
+              (if (cand [= (@ op-size $:op1) #:4] [= (@ op-size $:op2) #:2])
+                [write-instr bin pos (hex B70F) #:2 [make-none-op ..] $:op1 $:op2 [make-none-op ..] ..]
+              (if (cand [= (@ op-size $:op1) #:8] [= (@ op-size $:op2) #:2])
+                [write-instr bin pos (hex B70F) #:2 [make-none-op ..] $:op1 $:op2 [make-none-op ..] ..]
+              (if (cand [= (@ op-size $:op1) #:8] [= (@ op-size $:op2) #:4])
+                [write-instr bin pos (hex 8B) #:1 [make-none-op ..] [op-lower-32 $:op1 ..] $:op2 [make-none-op ..] ..]
                 (false))))))) (false))
           (bind-if (match-list-prefix
               (%(match-and
@@ -1058,24 +1058,24 @@
                 (%(match-property (op-type (%(match-or (%[= (memory-operand)]) (%[= (register-operand)]))))))))
               (%[variable op3]) (@ instr-operands n))
             (op1 op2 op3)
-              (if (cand [= (@ op-size $op1) #:2] [= (@ op-size $op2) #:1]) (do
-                [write-instr bin pos (hex B60F) #:2 [make-none-op ..] $op3 $op2 [make-none-op ..] ..]
-                [write-instr bin pos (hex 89) #:1 [make-none-op ..] $op3 $op1 [make-none-op ..] ..])
-              (if (cand [= (@ op-size $op1) #:4] [= (@ op-size $op2) #:1]) (do
-                [write-instr bin pos (hex B60F) #:2 [make-none-op ..] $op3 $op2 [make-none-op ..] ..]
-                [write-instr bin pos (hex 89) #:1 [make-none-op ..] $op3 $op1 [make-none-op ..] ..])
-              (if (cand [= (@ op-size $op1) #:8] [= (@ op-size $op2) #:1]) (do
-                [write-instr bin pos (hex B60F) #:2 [make-none-op ..] $op3 $op2 [make-none-op ..] ..]
-                [write-instr bin pos (hex 89) #:1 [make-none-op ..] $op3 $op1 [make-none-op ..] ..])
-              (if (cand [= (@ op-size $op1) #:4] [= (@ op-size $op2) #:2]) (do
-                [write-instr bin pos (hex B70F) #:2 [make-none-op ..] $op3 $op2 [make-none-op ..] ..]
-                [write-instr bin pos (hex 89) #:1 [make-none-op ..] $op3 $op1 [make-none-op ..] ..])
-              (if (cand [= (@ op-size $op1) #:8] [= (@ op-size $op2) #:2]) (do
-                [write-instr bin pos (hex B70F) #:2 [make-none-op ..] $op3 $op2 [make-none-op ..] ..]
-                [write-instr bin pos (hex 89) #:1 [make-none-op ..] $op3 $op1 [make-none-op ..] ..])
-              (if (cand [= (@ op-size $op1) #:8] [= (@ op-size $op2) #:4]) (do
-                [write-instr bin pos (hex 8B) #:1 [make-none-op ..] [op-lower-32 $op3 ..] $op2 [make-none-op ..] ..]
-                [write-instr bin pos (hex 89) #:1 [make-none-op ..] $op3 $op1 [make-none-op ..] ..])
+              (if (cand [= (@ op-size $:op1) #:2] [= (@ op-size $:op2) #:1]) (do
+                [write-instr bin pos (hex B60F) #:2 [make-none-op ..] $:op3 $:op2 [make-none-op ..] ..]
+                [write-instr bin pos (hex 89) #:1 [make-none-op ..] $:op3 $:op1 [make-none-op ..] ..])
+              (if (cand [= (@ op-size $:op1) #:4] [= (@ op-size $:op2) #:1]) (do
+                [write-instr bin pos (hex B60F) #:2 [make-none-op ..] $:op3 $:op2 [make-none-op ..] ..]
+                [write-instr bin pos (hex 89) #:1 [make-none-op ..] $:op3 $:op1 [make-none-op ..] ..])
+              (if (cand [= (@ op-size $:op1) #:8] [= (@ op-size $:op2) #:1]) (do
+                [write-instr bin pos (hex B60F) #:2 [make-none-op ..] $:op3 $:op2 [make-none-op ..] ..]
+                [write-instr bin pos (hex 89) #:1 [make-none-op ..] $:op3 $:op1 [make-none-op ..] ..])
+              (if (cand [= (@ op-size $:op1) #:4] [= (@ op-size $:op2) #:2]) (do
+                [write-instr bin pos (hex B70F) #:2 [make-none-op ..] $:op3 $:op2 [make-none-op ..] ..]
+                [write-instr bin pos (hex 89) #:1 [make-none-op ..] $:op3 $:op1 [make-none-op ..] ..])
+              (if (cand [= (@ op-size $:op1) #:8] [= (@ op-size $:op2) #:2]) (do
+                [write-instr bin pos (hex B70F) #:2 [make-none-op ..] $:op3 $:op2 [make-none-op ..] ..]
+                [write-instr bin pos (hex 89) #:1 [make-none-op ..] $:op3 $:op1 [make-none-op ..] ..])
+              (if (cand [= (@ op-size $:op1) #:8] [= (@ op-size $:op2) #:4]) (do
+                [write-instr bin pos (hex 8B) #:1 [make-none-op ..] [op-lower-32 $:op3 ..] $:op2 [make-none-op ..] ..]
+                [write-instr bin pos (hex 89) #:1 [make-none-op ..] $:op3 $:op1 [make-none-op ..] ..])
                 (false))))))) (false))
           {handler (storage _ unsupported-instruction-error n)}))
         
@@ -1088,15 +1088,15 @@
           (bind-if (match-list-prefix
               (%(match-and (%[variable op1]) (%(match-property (op-type (%[= (register-operand)]))))))
               (%(match-and (%[variable op2]) (%(match-property (op-type (%[= (immediate-operand)])))))) (@ instr-operands n))
-            (op1 op2) (if (cand [= (@ op-size $op1) #:8] [= (@ op-size $op2) #:8])
-              [write-instr bin pos (hex B8) #:1 $op1 [make-none-op ..] [make-none-op ..] $op2 ..] (false)) (false))
+            (op1 op2) (if (cand [= (@ op-size $:op1) #:8] [= (@ op-size $:op2) #:8])
+              [write-instr bin pos (hex B8) #:1 $:op1 [make-none-op ..] [make-none-op ..] $:op2 ..] (false)) (false))
           (bind-if (match-list-prefix
               (%(match-and (%[variable op1]) (%(match-property (op-type (%[= (memory-operand)]))))))
               (%(match-and (%[variable op2]) (%(match-property (op-type (%[= (immediate-operand)]))))))
               (%[variable op3]) (@ instr-operands n))
-            (op1 op2 op3) (if (cand [= (@ op-size $op1) #:8] [= (@ op-size $op2) #:8]) (do
-              [write-instr bin pos (hex B8) #:1 $op3 [make-none-op ..] [make-none-op ..] $op2 ..]
-              [write-instr bin pos (hex 89) #:1 [make-none-op ..] $op3 $op1 [make-none-op ..] ..]) (false)) (false))
+            (op1 op2 op3) (if (cand [= (@ op-size $:op1) #:8] [= (@ op-size $:op2) #:8]) (do
+              [write-instr bin pos (hex B8) #:1 $:op3 [make-none-op ..] [make-none-op ..] $:op2 ..]
+              [write-instr bin pos (hex 89) #:1 [make-none-op ..] $:op3 $:op1 [make-none-op ..] ..]) (false)) (false))
           {handler (storage _ unsupported-instruction-error n)}))
         
         ((x86-lea) (cor
@@ -1109,12 +1109,12 @@
                 (%[variable op2])
                 (%(match-property (op-type (%[= (memory-operand)])))))) (@ instr-operands n))
             (op1 op2)
-              (if (cand [= (@ op-size $op1) #:2])
-                [write-instr bin pos (hex 8D) #:1 [make-none-op ..] $op1 $op2 [make-none-op ..] ..]
-              (if (cand [= (@ op-size $op1) #:4])
-                [write-instr bin pos (hex 8D) #:1 [make-none-op ..] $op1 $op2 [make-none-op ..] ..]
-              (if (cand [= (@ op-size $op1) #:8])
-                [write-instr bin pos (hex 8D) #:1 [make-none-op ..] $op1 $op2 [make-none-op ..] ..]
+              (if (cand [= (@ op-size $:op1) #:2])
+                [write-instr bin pos (hex 8D) #:1 [make-none-op ..] $:op1 $:op2 [make-none-op ..] ..]
+              (if (cand [= (@ op-size $:op1) #:4])
+                [write-instr bin pos (hex 8D) #:1 [make-none-op ..] $:op1 $:op2 [make-none-op ..] ..]
+              (if (cand [= (@ op-size $:op1) #:8])
+                [write-instr bin pos (hex 8D) #:1 [make-none-op ..] $:op1 $:op2 [make-none-op ..] ..]
                 (false)))) (false))
           (bind-if (match-list-prefix
               (%(match-and
@@ -1125,20 +1125,20 @@
                 (%(match-property (op-type (%[= (memory-operand)]))))))
               (%[variable op3]) (@ instr-operands n))
             (op1 op2 op3)
-              (if (cand [= (@ op-size $op1) #:2]) (do
-                [write-instr bin pos (hex 8D) #:1 [make-none-op ..] $op3 $op2 [make-none-op ..] ..]
-                [write-instr bin pos (hex 89) #:1 [make-none-op ..] $op3 $op1 [make-none-op ..] ..])
-              (if (cand [= (@ op-size $op1) #:4]) (do
-                [write-instr bin pos (hex 8D) #:1 [make-none-op ..] $op3 $op2 [make-none-op ..] ..]
-                [write-instr bin pos (hex 89) #:1 [make-none-op ..] $op3 $op1 [make-none-op ..] ..])
-              (if (cand [= (@ op-size $op1) #:8]) (do
-                [write-instr bin pos (hex 8D) #:1 [make-none-op ..] $op3 $op2 [make-none-op ..] ..]
-                [write-instr bin pos (hex 89) #:1 [make-none-op ..] $op3 $op1 [make-none-op ..] ..])
+              (if (cand [= (@ op-size $:op1) #:2]) (do
+                [write-instr bin pos (hex 8D) #:1 [make-none-op ..] $:op3 $:op2 [make-none-op ..] ..]
+                [write-instr bin pos (hex 89) #:1 [make-none-op ..] $:op3 $:op1 [make-none-op ..] ..])
+              (if (cand [= (@ op-size $:op1) #:4]) (do
+                [write-instr bin pos (hex 8D) #:1 [make-none-op ..] $:op3 $:op2 [make-none-op ..] ..]
+                [write-instr bin pos (hex 89) #:1 [make-none-op ..] $:op3 $:op1 [make-none-op ..] ..])
+              (if (cand [= (@ op-size $:op1) #:8]) (do
+                [write-instr bin pos (hex 8D) #:1 [make-none-op ..] $:op3 $:op2 [make-none-op ..] ..]
+                [write-instr bin pos (hex 89) #:1 [make-none-op ..] $:op3 $:op1 [make-none-op ..] ..])
                 (false)))) (false))
           {handler (storage _ unsupported-instruction-error n)}))
         
         {handler (storage _ unsupported-instruction-error n)})))
-    (values (use-storage ret-val) bin $pos)))))))
+    (values (use-storage ret-val) bin $:pos)))))))
 
 (constrain make-function-text-section
   (\ r (?(a) (`(function ((list instr) string linked-elf64-e linked-elf64-sh linked-elf64-sh region ,a) linked-elf64-sh)r)r)))
@@ -1594,9 +1594,9 @@
             [mem-write bin pos (@ lkdstrt-raw str) [+ [strlen (@ lkdstrt-raw str)] #:1]]))
         ((sht-nobits) (ignore))
         [mem-write bin pos (@ lkdsh-offset sec) (@ sh-size (@ lkdsh-raw sec))])
-      [set pos [pad-size $pos (write-elf-alignment)]]))
+      [set pos [pad-size $:pos (write-elf-alignment)]]))
     
-    (values (use-storage outs) bin $pos)))))))))))))))))))))))))))))))))))))))))
+    (values (use-storage outs) bin $:pos)))))))))))))))))))))))))))))))))))))))))
 
 (ignore
   Converts the offsets of the static bindings associated with L2 source code that has now

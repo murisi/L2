@@ -78,14 +78,14 @@
           (expr-alternate (%(match-property
             (expr-type (%[= (-literal-)]))
             (expr-value (%[variable alt-val])))))))
-        (cand (cor $cons-val $alt-val) (not (cand $cons-val $alt-val))))))
+        (cand (cor $:cons-val $:alt-val) (not (cand $:cons-val $:alt-val))))))
       (expr-consequent (%[variable consequent]))
       (expr-alternate (%[variable alternate])) e)
     (cond cons-val alt-val consequent alternate) (do
-      (setf expr-condition e $cond)
-      (if $alt-val (do
-        (setf expr-consequent e $alternate)
-        (setf expr-alternate e $consequent)) (ignore))
+      (setf expr-condition e $:cond)
+      (if $:alt-val (do
+        (setf expr-consequent e $:alternate)
+        (setf expr-alternate e $:consequent)) (ignore))
       e)
     e))
 
@@ -236,7 +236,7 @@
 
 (function assign-binding (s bindings)
   (bind-if [ht-contains (@ expr-name s) bindings bndg]
-    (bndg) (do (setf expr-reference s $bndg) (true))
+    (bndg) (do (setf expr-reference s $:bndg) (true))
     (false)))
 
 (constrain link-symbols
@@ -378,7 +378,7 @@
 (function construct-sccs (s preorder stack sccs r handler)
   (substitute (.. r handler)
     (if [= (@ expr-lowlink s) #:0]
-      (let (marker $stack) (do
+      (let (marker $:stack) (do
       (setf expr-lowlink s preorder)
       (for (t (list-iter (@ expr-dependencies s))) (ignore) (do
         [construct-sccs t [+ preorder #:1] stack sccs ..]
@@ -388,7 +388,7 @@
       [prepend s stack ..]
       
       (if [= (@ expr-lowlink s) preorder] (do
-        [prepend (loop add (t $stack) (scc nil)
+        [prepend (loop add (t $:stack) (scc nil)
           (if [= t marker] scc
             (let (u [@car t]) (do
             (setf expr-lowlink u [- #:0 #:1])
@@ -510,10 +510,10 @@
     (let (assigns [ht-create hash-ptr = ..])
     (let (function-token [token->fragment [build-token [rstrcpy (" function) ..] ..]])
     (let (continuation-token [token->fragment [build-token [rstrcpy (" continuation) ..] ..]])
-    (for (scc (list-iter [reverse $sccs ..])) (ignore)
+    (for (scc (list-iter [reverse $:sccs ..])) (ignore)
       (let (lhss (storage _ nil)) (rhss (storage _ nil)) (do
         (for (e (list-iter scc)) (ignore) [generate-equations e scc function-token continuation-token lhss rhss ..])
-        (if [unify [list->fragment $lhss] [list->fragment $rhss] assigns ..] (ignore)
+        (if [unify [list->fragment $:lhss] [list->fragment $:rhss] assigns ..] (ignore)
           {handler (storage _ unification-error)})
         (for (e (list-iter scc)) (ignore) (do
           (setf bndg-signature (@ expr-binding-aug e) [recursive-evaluate [expr-signature e] assigns ..])
@@ -522,48 +522,48 @@
 (constrain visit-expressions (\ r (?(a b) (`(function ((function ((expr ,b) ,a) (expr ,b)) (ref (expr ,b)) ,a) ())r)r)))
 
 (function visit-expressions (visitor s ctx) (do
-  (switch = (@ expr-type $s)
+  (switch = (@ expr-type $:s)
     ((-if-) (do
-      [visit-expressions visitor (& expr-condition $s) ctx]
-      [visit-expressions visitor (& expr-consequent $s) ctx]
-      [visit-expressions visitor (& expr-alternate $s) ctx]))
+      [visit-expressions visitor (& expr-condition $:s) ctx]
+      [visit-expressions visitor (& expr-consequent $:s) ctx]
+      [visit-expressions visitor (& expr-alternate $:s) ctx]))
     
     ((-function-) (-continuation-) (-with-) (-constrain-)
-      [visit-expressions visitor (& expr-expression $s) ctx])
+      [visit-expressions visitor (& expr-expression $:s) ctx])
     
     ((-storage-)
-      (for (elt (list-ref-iter (@ expr-arguments $s))) (ignore)
+      (for (elt (list-ref-iter (@ expr-arguments $:s))) (ignore)
         [visit-expressions visitor elt ctx]))
     
     ((-jump-) (-invoke-) (do
-      [visit-expressions visitor (& expr-target $s) ctx]
-      (for (elt (list-ref-iter (@ expr-arguments $s))) (ignore)
+      [visit-expressions visitor (& expr-target $:s) ctx]
+      (for (elt (list-ref-iter (@ expr-arguments $:s))) (ignore)
         [visit-expressions visitor elt ctx])))
     
     (ignore))
-  [set s [visitor $s ctx]]))
+  [set s [visitor $:s ctx]]))
 
 (constrain pre-visit-expressions (\ r (?(a b) (`(function ((function ((expr ,b) ,a) (expr ,b)) (ref (expr ,b)) ,a) ())r)r)))
 
 (function pre-visit-expressions (visitor s ctx) (do
-  [set s [visitor $s ctx]]
+  [set s [visitor $:s ctx]]
   
-  (switch = (@ expr-type $s)
+  (switch = (@ expr-type $:s)
     ((-if-) (do
-      [pre-visit-expressions visitor (& expr-condition $s) ctx]
-      [pre-visit-expressions visitor (& expr-consequent $s) ctx]
-      [pre-visit-expressions visitor (& expr-alternate $s) ctx]))
+      [pre-visit-expressions visitor (& expr-condition $:s) ctx]
+      [pre-visit-expressions visitor (& expr-consequent $:s) ctx]
+      [pre-visit-expressions visitor (& expr-alternate $:s) ctx]))
     
     ((-function-) (-continuation-) (-with-) (-constrain-)
-      [pre-visit-expressions visitor (& expr-expression $s) ctx])
+      [pre-visit-expressions visitor (& expr-expression $:s) ctx])
     
     ((-storage-)
-      (for (elt (list-ref-iter (@ expr-arguments $s))) (ignore)
+      (for (elt (list-ref-iter (@ expr-arguments $:s))) (ignore)
         [pre-visit-expressions visitor elt ctx]))
     
     ((-jump-) (-invoke-) (do
-      [pre-visit-expressions visitor (& expr-target $s) ctx]
-      (for (elt (list-ref-iter (@ expr-arguments $s))) (ignore)
+      [pre-visit-expressions visitor (& expr-target $:s) ctx]
+      (for (elt (list-ref-iter (@ expr-arguments $:s))) (ignore)
         [pre-visit-expressions visitor elt ctx])))
     
     (ignore))))
@@ -681,7 +681,7 @@
           the bindings list instead of preprocessing, compiling, and then evaluating
           the expression.)
         (bind-if [ht-contains (@ expr-name s) bindings bndg]
-          (bndg) (@ bndg-offset $bndg)
+          (bndg) (@ bndg-offset $:bndg)
           {handler (storage _ undefined-symbol-error (@ expr-name s))}))
       (do
         (let (expr-container [make-function empty-string nil s null-fragment null-expr ..])
@@ -716,13 +716,13 @@
 
 (function init-function (function-expr inits bindings buf buf2 handler cache)
   (substitute (.. buf handler)
-    (if [not= $cache null-cache]
-      $cache
+    (if [not= $:cache null-cache]
+      $:cache
       (let (function-expr-ref (storage _ function-expr)) (do
         [pre-visit-expressions vgenerate-metas function-expr-ref (values storage inits bindings buf buf2 handler)]
-        [load-program-and-mutate [cons $function-expr-ref nil ..] inits bindings buf buf2 handler]
-        [set cache (@ bndg-offset (@ expr-reference $function-expr-ref))]
-        $cache)))))
+        [load-program-and-mutate [cons $:function-expr-ref nil ..] inits bindings buf buf2 handler]
+        [set cache (@ bndg-offset (@ expr-reference $:function-expr-ref))]
+        $:cache)))))
 
 (storage null-cache (ignore))
 
@@ -762,10 +762,10 @@
 (function try-generate-metas (exprs inits bindings buf1 buf2 handler)
   (substitute (.. buf1 handler)
     (fold-ref (c nil) (s exprs)
-      (if [= (@ expr-type $s) (-meta-)]
+      (if [= (@ expr-type $:s) (-meta-)]
         (cps (do
-            [set s [vgenerate-metas $s (values storage inits bindings buf1 buf2 check-error)]]
-            [cons $s c ..])
+            [set s [vgenerate-metas $:s (values storage inits bindings buf1 buf2 check-error)]]
+            [cons $:s c ..])
           (check-error (err)
             (if [= (@0 err) undefined-symbol-error] c {handler err})))
         c))))

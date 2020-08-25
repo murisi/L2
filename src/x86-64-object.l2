@@ -55,7 +55,7 @@
       [set addends-buf [region-alloc [* relanum (elf64-sxword)] reg handler]]
       (for (rela-idx (range #:0 relanum)) (ignore)
         (let (rela (loc (elf64-rela) rela-idx relas-buf))
-          [set8b (loc (elf64-sxword) rela-idx $addends-buf) (@ r-addend rela)]))))))
+          [set8b (loc (elf64-sxword) rela-idx $:addends-buf) (@ r-addend rela)]))))))
           
     (if [= (@ sh-type shdr-buf) (sht-rel)]
       (let (relanum [/ (@ sh-size shdr-buf) (@ sh-entsize shdr-buf)])
@@ -69,7 +69,7 @@
               ((r-x86-64-pc32) set4b) ((r-x86-64-32) set4b) ((r-x86-64-32s) set4b) ((r-x86-64-size32) set4b)
               ((r-x86-64-64) set8b) ((r-x86-64-size64) set8b) ((r-x86-64-glob-dat) set8b)
               ((r-x86-64-jump-slot) set8b) {handler (storage _ object-error)})
-            (loc (elf64-sxword) rela-idx $addends-buf) (@ r-offset rela)]))))))
+            (loc (elf64-sxword) rela-idx $:addends-buf) (@ r-offset rela)]))))))
             
     (ignore))))))
 
@@ -131,7 +131,7 @@
     [set seg-buf [region-alloc (@ sh-size shdr-buf) reg handler]]
     
     (if [= (@ sh-type shdr-buf) (sht-nobits)] (ignore)
-      [memcpy $seg-buf [+ objsrc (@ sh-offset shdr-buf)] (@ sh-size shdr-buf)])
+      [memcpy $:seg-buf [+ objsrc (@ sh-offset shdr-buf)] (@ sh-size shdr-buf)])
       
     (if [= (@ sh-type shdr-buf) (sht-symtab)]
       (let (symnum [/ (@ sh-size shdr-buf) (@ sh-entsize shdr-buf)])
@@ -139,7 +139,7 @@
       (ignore Following code copies recognized information from the symbol table into (@ obj-syms obj))
       [set syms-buf [region-alloc [* symnum (elf64-sym)] reg handler]]
       (for (sym-idx (range #:0 symnum)) (ignore)
-        [memcpy (loc (elf64-sym) sym-idx $syms-buf) (loc (@ sh-entsize shdr-buf) sym-idx $seg-buf)
+        [memcpy (loc (elf64-sym) sym-idx $:syms-buf) (loc (@ sh-entsize shdr-buf) sym-idx $:seg-buf)
           (elf64-sym)]))))
           
     (if (cor [= (@ sh-type shdr-buf) (sht-rela)] [= (@ sh-type shdr-buf) (sht-rel)])
@@ -148,7 +148,7 @@
       (ignore Following code copies recognized information from the relocations into (@ obj-relas obj))
       [set relas-buf [region-alloc [* relanum (elf64-rela)] reg handler]]
       (for (rela-idx (range #:0 relanum)) (ignore)
-        [memcpy (loc (elf64-rela) rela-idx $relas-buf) (loc (@ sh-entsize shdr-buf) rela-idx $seg-buf)
+        [memcpy (loc (elf64-rela) rela-idx $:relas-buf) (loc (@ sh-entsize shdr-buf) rela-idx $:seg-buf)
           (if [= (@ sh-type shdr-buf) (sht-rela)] (elf64-rela) (elf64-rel))]))))
           
     (ignore)))))))
@@ -209,7 +209,7 @@
             (cor [= (@ st-shndx sym) (shn-undef)] [= (@ st-shndx sym) (shn-common)])
             (cor [= (elf64-st-bind (@ st-info sym)) (stb-global)]
               [= (elf64-st-bind (@ st-info sym)) (stb-weak)]))
-          (bndg) (setf st-value sym (@ bndg-offset $bndg)) (ignore)))))) (ignore))))
+          (bndg) (setf st-value sym (@ bndg-offset $:bndg)) (ignore)))))) (ignore))))
   (ignore If obj was created using load, the following invocation cannot produce an error; hence the unspecified handler arguments.)
   [do-relocations obj (ignore)]))
 

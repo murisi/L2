@@ -89,23 +89,23 @@
   ->
   (let (filter.l l)
     (loop filter.loop (filter.m filter.l)
-      (if [nil? $filter.m]
+      (if [nil? $:filter.m]
         filter.l
-        (if (let (x [@car $filter.m]) expr)
-          {filter.loop (& cdr $filter.m)}
+        (if (let (x [@car $:filter.m]) expr)
+          {filter.loop (& cdr $:filter.m)}
           (do
-            [set filter.m [@cdr $filter.m]]
+            [set filter.m [@cdr $:filter.m]]
             {filter.loop filter.m}))))))
 
 (function filter (l r)
   (`(let (filter.l (,[@frfst l]))
       (loop filter.loop (filter.m filter.l)
-        (if [nil? $filter.m]
+        (if [nil? $:filter.m]
           filter.l
-          (if (let ((,[@ffst l]) [@car $filter.m]) (,[@frst l]))
-            {filter.loop (& cdr $filter.m)}
+          (if (let ((,[@ffst l]) [@car $:filter.m]) (,[@frst l]))
+            {filter.loop (& cdr $:filter.m)}
             (do
-              [set filter.m [@cdr $filter.m]]
+              [set filter.m [@cdr $:filter.m]]
               {filter.loop filter.m})))))r))
 
 (ignore
@@ -148,14 +148,14 @@
   (let (map.start (storage _ nil))
     (loop map.loop (map.l l) (map.end map.start)
       (if [nil? map.l]
-        (do [set map.end [cast map.l]] $map.start)
+        (do [set map.end [cast map.l]] $:map.start)
         {map.loop [@cdr map.l] [append (let (x [@car map.l]) expr) map.end ctx ...]}))))
 
 (function map (l r)
   (`(let (map.start (storage _ nil))
       (loop map.loop (map.l (,[@frfst l])) (map.end map.start)
         (if [nil? map.l]
-          (do [set map.end [cast map.l]] $map.start)
+          (do [set map.end [cast map.l]] $:map.start)
           {map.loop [@cdr map.l]
             (,[llllst (` invoke r) (` append r) (`(let ((,[@ffst l]) [@car map.l]) (,[@frst l]))r) (` map.end r) [@rrst l] r])})))r))
 
@@ -244,19 +244,19 @@
   (locate (x l-ref) expr)
   ->
   (loop locate.loop (locate.l-ref l-ref)
-    (if [nil? $locate.l-ref]
+    (if [nil? $:locate.l-ref]
       locate.l-ref
-      (if (let (x [@car $locate.l-ref]) expr)
+      (if (let (x [@car $:locate.l-ref]) expr)
         locate.l-ref
-        {locate.loop (& cdr $locate.l-ref)}))))
+        {locate.loop (& cdr $:locate.l-ref)}))))
 
 (function locate (l r)
   (`(loop locate.loop (locate.l-ref (,[@frfst l]))
-      (if [nil? $locate.l-ref]
+      (if [nil? $:locate.l-ref]
         locate.l-ref
-        (if (let ((,[@ffst l]) [@car $locate.l-ref]) (,[@frst l]))
+        (if (let ((,[@ffst l]) [@car $:locate.l-ref]) (,[@frst l]))
           locate.l-ref
-          {locate.loop (& cdr $locate.l-ref)})))r))
+          {locate.loop (& cdr $:locate.l-ref)})))r))
 
 (ignore
   The following macro matches a list by using the matchers given for its constituents.
@@ -411,13 +411,13 @@
 
 (function append (data l r handler)
   (loop next (l l)
-    (if (not [nil? $l])
-      {next (& cdr $l)}
-      (let (end $l) (do
+    (if (not [nil? $:l])
+      {next (& cdr $:l)}
+      (let (end $:l) (do
         [set l [region-alloc (list-struct) r handler]]
-        (setf car $l data)
-        (setf cdr $l end)
-        (& cdr $l))))))
+        (setf car $:l data)
+        (setf cdr $:l end)
+        (& cdr $:l))))))
 
 (ignore
   Makes a new list with the given head and tail. data is what is going to be put at the
@@ -446,9 +446,9 @@
 
 (function append-list (fst-ref snd)
   (loop next (fst-ref fst-ref)
-    (if [nil? $fst-ref]
+    (if [nil? $:fst-ref]
       [set fst-ref snd]
-      {next (& cdr $fst-ref)})))
+      {next (& cdr $:fst-ref)})))
 
 (ignore Analogous to append above.)
 
@@ -457,7 +457,7 @@
 (function prepend (data l-ref r handler)
   (let (ret [region-alloc (list-struct) r handler]) (do
     (setf car ret data)
-    (setf cdr ret $l-ref)
+    (setf cdr ret $:l-ref)
     [set l-ref ret]
     l-ref)))
 
@@ -511,7 +511,7 @@
     (let (res-start (storage _ nil))
     (loop build (res-end res-start) (l l) (n n)
       (if [= n #:0]
-        $res-start
+        $:res-start
         {build [append [@car l] res-end ..] [@cdr l] [- n #:1]})))))
 
 (ignore Because there can be several instances of nil, it makes sense to get a list's nil.)

@@ -15,13 +15,13 @@
             [visit-expressions veliminate-constrain expr (ignore)]
             [visit-expressions vswap-branches expr (ignore)]
             [visit-expressions vdominate-jumps expr (ignore)]
-            [classify-program-bindings $expr]
-            [link-symbols $expr (true) undefined-bindings global-bindings (ignore) ..]
-            (ignore[infer-types $expr ..])
-            [escape-analysis $expr (true) ..]
+            [classify-program-bindings $:expr]
+            [link-symbols $:expr (true) undefined-bindings global-bindings (ignore) ..]
+            (ignore[infer-types $:expr ..])
+            [escape-analysis $:expr (true) ..]
             [pre-visit-expressions vpropagate-expressions expr (values storage buf2 handler)]
-            [assign-expr-is-reads $expr]
-            [place-perm-bindings $expr storage-offset])))
+            [assign-expr-is-reads $:expr]
+            [place-perm-bindings $:expr storage-offset])))
         (for (expr (list-iter exprs)) (ignore) (do
           [assign-depths expr #:0]
           [initialize-expressions (storage-cons expr nil) nil [- storage-offset (word-size)]
@@ -29,7 +29,7 @@
           [setup-collect-static-bindings expr]
           [collect-static-bindings expr static-bindings ..])))
       (bind (instrs relocs func-secs) [generate-program exprs bind ..]
-        (values (use-storage outs) instrs relocs func-secs undefined-bindings $static-bindings))))))
+        (values (use-storage outs) instrs relocs func-secs undefined-bindings $:static-bindings))))))
 
 (ignore
   Loads a program into memory and returns a handle to it. program is a program expression.
@@ -96,7 +96,7 @@
       (loop cons-expr (exprs-end exprs-start)
         (if [after-leading-space src-buf src-sz pos]
           {cons-expr [append [build-expression [build-fragment src-buf src-sz pos ..] null-expr ..] exprs-end ..]}
-          $exprs-start))))))))
+          $:exprs-start))))))))
 
 (storage unsupported-intrinsics-error (ignore))
 
@@ -170,7 +170,7 @@
       (let (file-exprss (map (infn file-names)
         (map (e [read-expressions infn buf buf2 handler])
           (let (f (storage _ e))
-            (do [pre-visit-expressions vgenerate-metas f (values storage inits bndgs buf buf2 handler)] $f)) ..) ..)) (do
+            (do [pre-visit-expressions vgenerate-metas f (values storage inits bndgs buf buf2 handler)] $:f)) ..) ..)) (do
             
       (let (all-exprs [reverse-flatten file-exprss ..])
         (let (undefined-bindings [ht-create hash-str str= ..]) (global-bindings [global-binding-augs-of all-exprs ..]) (do
@@ -203,11 +203,11 @@
         (do
           (let (source-fns (storage _ [@cdr[argv buf handler]]))
           (let (first-dash-ref (locate (arg source-fns) [str= arg (" -)]))
-          (if [nil? $first-dash-ref] {handler (storage _ arguments-error)}
-          (let (intrinsic-fns (storage _ [@cdr $first-dash-ref]))
+          (if [nil? $:first-dash-ref] {handler (storage _ arguments-error)}
+          (let (intrinsic-fns (storage _ [@cdr $:first-dash-ref]))
           (let (second-dash-ref (locate (arg intrinsic-fns) [str= arg (" -)]))
-          (if [nil? $second-dash-ref] {handler (storage _ arguments-error)}
-          (let (object-fns (storage _ [@cdr $second-dash-ref])) (do
+          (if [nil? $:second-dash-ref] {handler (storage _ arguments-error)}
+          (let (object-fns (storage _ [@cdr $:second-dash-ref])) (do
           (ignore Cut the source filenames and object filenames list short.)
           [set first-dash-ref nil]
           [set second-dash-ref nil]
@@ -265,9 +265,9 @@
             ((" var=)[make-binding (" var=) vbl= ..]) ((" var?)[make-binding (" var?) vbl? ..])
             ((" var)[make-binding (" var) vbl ..])))) (do
           (ignore Evaluate the metaprogram)
-          [evaluate-files $source-fns $object-fns $intrinsic-fns bndgs buf buf2 handler]
+          [evaluate-files $:source-fns $:object-fns $:intrinsic-fns bndgs buf buf2 handler]
           (ignore Compile the program in the metaprogram's environment)
-          [compile-files $source-fns $intrinsic-fns bndgs buf buf2 handler]
+          [compile-files $:source-fns $:intrinsic-fns bndgs buf buf2 handler]
           (storage _ no-error))))))))))))
         
         (handler err (substitute (.. cleanup) (do

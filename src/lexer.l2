@@ -59,7 +59,7 @@
     (loop next (val val)
       (if [vbl? val]
         (bind-if [ht-contains [frag->vbl val] assigns next-val]
-          (next-val) {next $next-val}
+          (next-val) {next $:next-val}
           val)
         val)))
 
@@ -139,7 +139,7 @@
     (loop cons-char (sexprs-end sexprs-start) (strptr str)
       (if [getb strptr]
         {cons-char [append (tkn-char [getb strptr]) sexprs-end r handler] [+ strptr #:1]}
-        $sexprs-start))))
+        $:sexprs-start))))
 
 (ignore
   Moves the supplied index forward to the first non-space character. l2src is a
@@ -150,9 +150,9 @@
 
 (function after-leading-space (l2src l2src-sz pos)
   (loop find-space
-    (if (cand [< $pos l2src-sz] [isspace [getb[+ l2src $pos]]])
+    (if (cand [< $:pos l2src-sz] [isspace [getb[+ l2src $:pos]]])
       (do [set+ pos #:1] {find-space})
-      [- l2src-sz $pos])))
+      [- l2src-sz $:pos])))
 
 (ignore
   If there is a space at the current position in the buffer, then build a token
@@ -167,9 +167,9 @@
 
 (function build-sigilled-token (sigil l2src l2src-sz pos r handler)
   (substitute (.. r handler)
-    (if [= l2src-sz $pos]
+    (if [= l2src-sz $:pos]
       [token->fragment [build-token sigil ..]]
-      (let (d [getb [+ l2src $pos]])
+      (let (d [getb [+ l2src $:pos]])
         (if (cor [isspace d] [= d (rparen)] [= d (rbrace)] [= d (rbracket)] [= d (lparen)] [= d (lbrace)] [= d (lbracket)])
           [token->fragment [build-token sigil ..]]
           [list->fragment [ccons [token->fragment [build-token sigil ..]] [build-fragment l2src l2src-sz pos ..] emt! ..]])))))
@@ -187,8 +187,8 @@
     (let (sexprs-start (storage _ emt!))
       (loop cons-frag (sexprs-end [append [token->fragment [build-token primitive ..]] sexprs-start ..])
         (let (rem [after-leading-space l2src l2src-sz pos])
-          (if (cand rem [= [getb [+ l2src $pos]] delimeter])
-            (do [set+ pos #:1] $sexprs-start)
+          (if (cand rem [= [getb [+ l2src $:pos]] delimeter])
+            (do [set+ pos #:1] $:sexprs-start)
             {cons-frag [append [build-fragment l2src l2src-sz pos ..] sexprs-end ..]}))))))
 
 (storage unexpected-char-error (ignore))
@@ -198,11 +198,11 @@
 (constrain build-fragment (\ r (?(a b c d e) (`(function (,a ,b ,c ,d ,e) frag)r)r)))
 
 (function build-fragment (l2src l2src-sz pos r handler)
-  (substitute (.. r handler) (if [= l2src-sz $pos]
-    {handler (storage _ unexpected-char-error #:0 $pos)}
-    (let (c [getb [+ l2src $pos]])
+  (substitute (.. r handler) (if [= l2src-sz $:pos]
+    {handler (storage _ unexpected-char-error #:0 $:pos)}
+    (let (c [getb [+ l2src $:pos]])
       (if (cor [isspace c] [= c (rparen)] [= c (rbrace)] [= c (rbracket)])
-        {handler (storage _ unexpected-char-error c $pos)}
+        {handler (storage _ unexpected-char-error c $:pos)}
         (do
           [set+ pos #:1]
           (switch = c
@@ -218,9 +218,9 @@
               (let (ls (storage _ emt!))
               (loop cons-char (le ls) (c c)
                 (let (le [append (tkn-char c) le ..])
-                (if [= $pos l2src-sz] $ls
-                  (let (c [getb [+ l2src $pos]])
-                  (if (cor [isspace c] (switch = c ((lparen)(rparen)(lbrace)(rbrace)(lbracket)(rbracket) (true)) (false))) $ls
+                (if [= $:pos l2src-sz] $:ls
+                  (let (c [getb [+ l2src $:pos]])
+                  (if (cor [isspace c] (switch = c ((lparen)(rparen)(lbrace)(rbrace)(lbracket)(rbracket) (true)) (false))) $:ls
                     (do [set+ pos #:1] {cons-char le c})))))))])))))))
 
 (storage character-flag (ignore))
@@ -275,7 +275,7 @@
     (if [vbl? l]
       (let (l [frag->vbl l])
         [vbl->frag (bind-if [ht-contains l var-map new-l]
-          (new-l) $new-l
+          (new-l) $:new-l
           (let (new-l [vbl ..]) (do [ht-put l new-l var-map ..] new-l)))])
     (if [i/f.token? l]
       [token->fragment (map (s [fragment->token l]) (tkn-char (@ cs-character s)) ..)]
@@ -290,7 +290,7 @@
     (if (cand [vbl? frag1] [vbl? frag2])
       (let (vbl1 [frag->vbl frag1]) (vbl2 [frag->vbl frag2])
         (bind-if [ht-contains vbl1 var-map val]
-          (val) [= $val vbl2]
+          (val) [= $:val vbl2]
           [ht-put vbl1 vbl2 var-map ..]))
     (if (cor [vbl? frag1] [vbl? frag2])
       (false)

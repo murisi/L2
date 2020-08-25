@@ -65,7 +65,7 @@
           (let (offset-ref (storage _ offset))
           (for (t (list-iter (@ expr-parameters n))) (ignore) (do
             (setf bndg-preferred-storage t [context->memory-storage (@ bndg-context t)])
-            (setf bndg-preferred-offset t $offset-ref)
+            (setf bndg-preferred-offset t $:offset-ref)
             (setf bndg-size t (word-size))
             [set+ offset-ref (word-size)])))
           (let (cont-bndg (@ expr-reference n)) (offset [- offset (cont-size)]) (do
@@ -88,7 +88,7 @@
       (let (offset-ref (storage _ offset))
       (for (u (list-iter (@ expr-arguments n))) (ignore) (do
         (setf bndg-size (@ expr-binding-aug u) (word-size))
-        (setf bndg-preferred-offset (@ expr-binding-aug u) $offset-ref)
+        (setf bndg-preferred-offset (@ expr-binding-aug u) $:offset-ref)
         (setf bndg-preferred-storage (@ expr-binding-aug u) [context->memory-storage (@ bndg-context (@ expr-binding-aug u))])
         [set+ offset-ref (word-size)])))
       (fold (offset offset) (u (@ expr-arguments n)) [place-perm-bindings u offset])))))
@@ -446,7 +446,7 @@
       (for (t (list-iter (@ expr-arguments n))) (ignore) (let
           (arg-val-bndg (@ expr-binding-aug t)) (do
         [prepend (make-instrN (x86-mov)
-          ([make-mem-op(word-size)dest-reg(none)#:0 $dest-offset #:4 ..][bndg->op arg-val-bndg relocs ..][make-reg-op(r11)..]) ..) c ..]
+          ([make-mem-op(word-size)dest-reg(none)#:0 $:dest-offset #:4 ..][bndg->op arg-val-bndg relocs ..][make-reg-op(r11)..]) ..) c ..]
         [set+ dest-offset (word-size)]))))))
 
 (constrain generate-load-continuation
@@ -487,7 +487,7 @@
           {enter with-expr (@ expr-expression (@ expr-target current))}
           (false)))))
       (dest)
-        (let (dest-bndg (@ expr-binding-aug (@ expr-expression $dest)))
+        (let (dest-bndg (@ expr-binding-aug (@ expr-expression $:dest)))
             (src-bndg (@ expr-binding-aug [@car (@ expr-arguments n)])) (do
           [generate-expression [@car (@ expr-arguments n)] c relocs ..]
           [generate-bndg-bndg-move dest-bndg src-bndg (r11) c relocs ..]))
@@ -972,6 +972,6 @@
           [generate-expression expr c relocs ..]
           (let (c (storage _ nil)) (relocs (storage _ nil)) (do
             [generate-expression expr c relocs ..]
-            [append (values (region-storage ..) (@ bndg-name (@ expr-reference expr)) [reverse $c ..] $relocs) func-secs ..]))))
-      (values (use-storage outs) [reverse $c ..] $relocs $func-secs)))))
+            [append (values (region-storage ..) (@ bndg-name (@ expr-reference expr)) [reverse $:c ..] $:relocs) func-secs ..]))))
+      (values (use-storage outs) [reverse $:c ..] $:relocs $:func-secs)))))
 
