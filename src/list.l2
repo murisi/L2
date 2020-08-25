@@ -4,28 +4,28 @@
   is the list from which the first elements of the zip will come from. b is the list from
   which the second elements of the zip will come from.)
 
-(function meta:zip (a b r) (with return
+(function meta.zip (a b r) (with return
   {(continuation aux (output a b)
     (if (not [emt? a])
       {aux [lst [llst [@fst a] [@fst b] emt r] output r] [@rst a] [@rst b]}
-      {return [meta:reverse output r]})) emt a b}))
+      {return [meta.reverse output r]})) emt a b}))
 
 (ignore
   Creates an iterator that iterates through elements of the given list:
   (list-iter list)
   ->
-  (continuation list-iter:cont (list-iter:end list-iter:ctx list-iter:recv)
-    (loop lop (recv list-iter:recv) (ctx list-iter:ctx) (list list)
+  (continuation list-iter.cont (list-iter.end list-iter.ctx list-iter.recv)
+    (loop lop (recv list-iter.recv) (ctx list-iter.ctx) (list list)
       (if [nil? list]
-        {list-iter:end ctx}
+        {list-iter.end ctx}
         (cps {recv next ctx [@car list]}
           (next (new-recv new-ctx) {lop [cast new-recv] new-ctx [@cdr list]}))))))
 
 (function list-iter (s r)
-  (`(continuation list-iter:cont (list-iter:end list-iter:ctx list-iter:recv)
-      (loop lop (recv list-iter:recv) (ctx list-iter:ctx) (list (,[@fst s]))
+  (`(continuation list-iter.cont (list-iter.end list-iter.ctx list-iter.recv)
+      (loop lop (recv list-iter.recv) (ctx list-iter.ctx) (list (,[@fst s]))
         (if [nil? list]
-          {list-iter:end ctx}
+          {list-iter.end ctx}
           (cps {recv next ctx [@car list]}
             (next (new-recv new-ctx) {lop [cast new-recv] new-ctx [@cdr list]})))))r))
 
@@ -33,18 +33,18 @@
   Creates an iterator that iterates through sublists of the given list:
   (sublist-iter list)
   ->
-  (continuation sublist-iter:cont (sublist-iter:end sublist-iter:ctx sublist-iter:recv)
-    (loop lop (recv sublist-iter:recv) (ctx sublist-iter:ctx) (list list)
+  (continuation sublist-iter.cont (sublist-iter.end sublist-iter.ctx sublist-iter.recv)
+    (loop lop (recv sublist-iter.recv) (ctx sublist-iter.ctx) (list list)
       (if [nil? list]
-        {sublist-iter:end ctx}
+        {sublist-iter.end ctx}
         (cps {recv next ctx list}
           (next (new-recv new-ctx) {lop [cast new-recv] new-ctx [@cdr list]}))))))
 
 (function sublist-iter (s r)
-  (`(continuation sublist-iter:cont (sublist-iter:end sublist-iter:ctx sublist-iter:recv)
-      (loop lop (recv sublist-iter:recv) (ctx sublist-iter:ctx) (list (,[@fst s]))
+  (`(continuation sublist-iter.cont (sublist-iter.end sublist-iter.ctx sublist-iter.recv)
+      (loop lop (recv sublist-iter.recv) (ctx sublist-iter.ctx) (list (,[@fst s]))
         (if [nil? list]
-          {sublist-iter:end ctx}
+          {sublist-iter.end ctx}
           (cps {recv next ctx list}
             (next (new-recv new-ctx) {lop [cast new-recv] new-ctx [@cdr list]})))))r))
 
@@ -52,18 +52,18 @@
   Creates an iterator that iterates through references to elements of the given list:
   (list-ref-iter list)
   ->
-  (continuation list-ref-iter:cont (list-ref-iter:end list-ref-iter:ctx list-ref-iter:recv)
-    (loop lop (recv list-ref-iter:recv) (ctx list-ref-iter:ctx) (list list)
+  (continuation list-ref-iter.cont (list-ref-iter.end list-ref-iter.ctx list-ref-iter.recv)
+    (loop lop (recv list-ref-iter.recv) (ctx list-ref-iter.ctx) (list list)
       (if [nil? list]
-        {list-ref-iter:end ctx}
+        {list-ref-iter.end ctx}
         (cps {recv next ctx (& car list)}
           (next (new-recv new-ctx) {lop [cast new-recv] new-ctx [@cdr list]}))))))
 
 (function list-ref-iter (s r)
-  (`(continuation list-ref-iter:cont (list-ref-iter:end list-ref-iter:ctx list-ref-iter:recv)
-      (loop lop (recv list-ref-iter:recv) (ctx list-ref-iter:ctx) (list (,[@fst s]))
+  (`(continuation list-ref-iter.cont (list-ref-iter.end list-ref-iter.ctx list-ref-iter.recv)
+      (loop lop (recv list-ref-iter.recv) (ctx list-ref-iter.ctx) (list (,[@fst s]))
         (if [nil? list]
-          {list-ref-iter:end ctx}
+          {list-ref-iter.end ctx}
           (cps {recv next ctx (& car list)}
             (next (new-recv new-ctx) {lop [cast new-recv] new-ctx [@cdr list]})))))r))
 
@@ -72,41 +72,41 @@
   (foreach (v1 l1) (v2 l2) ... (vN lN) expr) where l1, l2, ..., lN must have the same size.)
 
 (function foreach (s r)
-  (let (bindings [meta:reverse [@rst [meta:reverse s r]] r]) (body [@fst [meta:reverse s r]])
-  (let (labels [meta:label bindings (` foreach:v r) r])
-    (`(with foreach:return (,[llst (` jump r)
-      [llllst (` continuation r) (` foreach:loop r) labels
-        (`(if (not [nil? foreach:v])
+  (let (bindings [meta.reverse [@rst [meta.reverse s r]] r]) (body [@fst [meta.reverse s r]])
+  (let (labels [meta.label bindings (` foreach.v r) r])
+    (`(with foreach.return (,[llst (` jump r)
+      [llllst (` continuation r) (` foreach.loop r) labels
+        (`(if (not [nil? foreach.v])
           (,[lllst (` do r)
-            [lst (` let r) [meta:reverse [lst body [meta:map2 [meta:zip [meta:map bindings @fst r] labels r]
+            [lst (` let r) [meta.reverse [lst body [meta.map2 [meta.zip [meta.map bindings @fst r] labels r]
                 r (function make-binding (a r) (`((,[@fst a]) [@car (,[@frst a])])r))r]r]r]r]
-            [llst (` jump r) (` foreach:loop r) [meta:map2 labels r (function make-update (a r) (`[@cdr ,a]r))r] r] emt r])
-          {foreach:return (ignore)})r) emt r] [meta:map bindings @frst r]r]))r))))
+            [llst (` jump r) (` foreach.loop r) [meta.map2 labels r (function make-update (a r) (`[@cdr ,a]r))r] r] emt r])
+          {foreach.return (ignore)})r) emt r] [meta.map bindings @frst r]r]))r))))
 
 (ignore
   Does an in-place filter over a list. Does the following transformation:
   (filter (x l) expr)
   ->
-  (let (filter:l l)
-    (loop filter:loop (filter:m filter:l)
-      (if [nil? $filter:m]
-        filter:l
-        (if (let (x [@car $filter:m]) expr)
-          {filter:loop (& cdr $filter:m)}
+  (let (filter.l l)
+    (loop filter.loop (filter.m filter.l)
+      (if [nil? $filter.m]
+        filter.l
+        (if (let (x [@car $filter.m]) expr)
+          {filter.loop (& cdr $filter.m)}
           (do
-            [set filter:m [@cdr $filter:m]]
-            {filter:loop filter:m}))))))
+            [set filter.m [@cdr $filter.m]]
+            {filter.loop filter.m}))))))
 
 (function filter (l r)
-  (`(let (filter:l (,[@frfst l]))
-      (loop filter:loop (filter:m filter:l)
-        (if [nil? $filter:m]
-          filter:l
-          (if (let ((,[@ffst l]) [@car $filter:m]) (,[@frst l]))
-            {filter:loop (& cdr $filter:m)}
+  (`(let (filter.l (,[@frfst l]))
+      (loop filter.loop (filter.m filter.l)
+        (if [nil? $filter.m]
+          filter.l
+          (if (let ((,[@ffst l]) [@car $filter.m]) (,[@frst l]))
+            {filter.loop (& cdr $filter.m)}
             (do
-              [set filter:m [@cdr $filter:m]]
-              {filter:loop filter:m})))))r))
+              [set filter.m [@cdr $filter.m]]
+              {filter.loop filter.m})))))r))
 
 (ignore
   Like a C-array initializer, but for lists. Does the following transformation:
@@ -115,7 +115,7 @@
   [cons expr1 [cons expr2 [... [cons exprN nil ..] ...] ..] ..])
 
 (function list (l r)
-  (loop add-item (out (` nil r)) (in [meta:reverse [@fst l] r])
+  (loop add-item (out (` nil r)) (in [meta.reverse [@fst l] r])
     (if [emt? in]
       out
       {add-item [llllst (` invoke r) (` cons r) [@fst in] out [@rst l] r] [@rst in]})))
@@ -124,20 +124,20 @@
   A macro to do a reverse map. Does the following transformation:
   (reverse-map (x l) expr ctx ...)
   ->
-  (loop reverse-map:loop (reverse-map:l l) (reverse-map:acc nil)
-    (if [nil? reverse-map:l]
-      reverse-map:acc
-      {reverse-map:loop
-        [@cdr reverse-map:l]
-        [cons (let (x [@car reverse-map:l]) expr) reverse-map:acc ctx ...]})))
+  (loop reverse-map.loop (reverse-map.l l) (reverse-map.acc nil)
+    (if [nil? reverse-map.l]
+      reverse-map.acc
+      {reverse-map.loop
+        [@cdr reverse-map.l]
+        [cons (let (x [@car reverse-map.l]) expr) reverse-map.acc ctx ...]})))
 
 (function reverse-map (l r)
-  (`(loop reverse-map:loop (reverse-map:l (,[@frfst l])) (reverse-map:acc nil)
-      (if [nil? reverse-map:l]
-        reverse-map:acc
-        {reverse-map:loop
-          [@cdr reverse-map:l]
-          (,[llllst (` invoke r) (` cons r) (`(let ((,[@ffst l]) [@car reverse-map:l]) (,[@frst l]))r) (` reverse-map:acc r)
+  (`(loop reverse-map.loop (reverse-map.l (,[@frfst l])) (reverse-map.acc nil)
+      (if [nil? reverse-map.l]
+        reverse-map.acc
+        {reverse-map.loop
+          [@cdr reverse-map.l]
+          (,[llllst (` invoke r) (` cons r) (`(let ((,[@ffst l]) [@car reverse-map.l]) (,[@frst l]))r) (` reverse-map.acc r)
             [@rrst l] r])}))r))
 
 (ignore
@@ -145,205 +145,205 @@
   construction. Does the following transformation:
   (map (x l) expr ctx ...)
   ->
-  (let (map:start (storage _ nil))
-    (loop map:loop (map:l l) (map:end map:start)
-      (if [nil? map:l]
-        (do [set map:end [cast map:l]] $map:start)
-        {map:loop [@cdr map:l] [append (let (x [@car map:l]) expr) map:end ctx ...]}))))
+  (let (map.start (storage _ nil))
+    (loop map.loop (map.l l) (map.end map.start)
+      (if [nil? map.l]
+        (do [set map.end [cast map.l]] $map.start)
+        {map.loop [@cdr map.l] [append (let (x [@car map.l]) expr) map.end ctx ...]}))))
 
 (function map (l r)
-  (`(let (map:start (storage _ nil))
-      (loop map:loop (map:l (,[@frfst l])) (map:end map:start)
-        (if [nil? map:l]
-          (do [set map:end [cast map:l]] $map:start)
-          {map:loop [@cdr map:l]
-            (,[llllst (` invoke r) (` append r) (`(let ((,[@ffst l]) [@car map:l]) (,[@frst l]))r) (` map:end r) [@rrst l] r])})))r))
+  (`(let (map.start (storage _ nil))
+      (loop map.loop (map.l (,[@frfst l])) (map.end map.start)
+        (if [nil? map.l]
+          (do [set map.end [cast map.l]] $map.start)
+          {map.loop [@cdr map.l]
+            (,[llllst (` invoke r) (` append r) (`(let ((,[@ffst l]) [@car map.l]) (,[@frst l]))r) (` map.end r) [@rrst l] r])})))r))
 
 (ignore
   A macro to do a reverse filter. Does the following transformation:
   (reverse-filter (x l) expr ctx ...)
   ->
-  (loop reverse-filter:loop (reverse-filter:l l) (reverse-filter:acc nil)
-    (if [nil? reverse-filter:l]
-      reverse-filter:acc
-      {reverse-filter:loop
-        [@cdr reverse-filter:l]
-        (if (let (x [@car reverse-filter:l]) expr)
-          [cons [@car reverse-filter:l] reverse-filter:acc ctx ...]
-          reverse-filter:acc)})))
+  (loop reverse-filter.loop (reverse-filter.l l) (reverse-filter.acc nil)
+    (if [nil? reverse-filter.l]
+      reverse-filter.acc
+      {reverse-filter.loop
+        [@cdr reverse-filter.l]
+        (if (let (x [@car reverse-filter.l]) expr)
+          [cons [@car reverse-filter.l] reverse-filter.acc ctx ...]
+          reverse-filter.acc)})))
 
 (function reverse-filter (l r)
-  (`(loop reverse-filter:loop (reverse-filter:l (,[@frfst l])) (reverse-filter:acc nil)
-      (if [nil? reverse-filter:l]
-        reverse-filter:acc
-        {reverse-filter:loop
-          [@cdr reverse-filter:l]
-          (if (let ((,[@ffst l]) [@car reverse-filter:l]) (,[@frst l]))
-            (,[llllst (` invoke r) (` cons r) (`[@car reverse-filter:l]r) (` reverse-filter:acc r) [@rrst l] r])
-            reverse-filter:acc)}))r))
+  (`(loop reverse-filter.loop (reverse-filter.l (,[@frfst l])) (reverse-filter.acc nil)
+      (if [nil? reverse-filter.l]
+        reverse-filter.acc
+        {reverse-filter.loop
+          [@cdr reverse-filter.l]
+          (if (let ((,[@ffst l]) [@car reverse-filter.l]) (,[@frst l]))
+            (,[llllst (` invoke r) (` cons r) (`[@car reverse-filter.l]r) (` reverse-filter.acc r) [@rrst l] r])
+            reverse-filter.acc)}))r))
 
 (ignore
   A macro to do a fold. Does the following transformation:
   (fold (y acc) (x l) expr)
   ->
-  (loop fold:loop (fold:acc acc) (fold:l l)
-    (if [nil? fold:l]
-      fold:acc
-      {fold:loop
-        (let (y fold:acc) (x [@car fold:l]) expr)
-        [@cdr fold:l]})))
+  (loop fold.loop (fold.acc acc) (fold.l l)
+    (if [nil? fold.l]
+      fold.acc
+      {fold.loop
+        (let (y fold.acc) (x [@car fold.l]) expr)
+        [@cdr fold.l]})))
 
 (function fold (l r)
-  (`(loop fold:loop (fold:acc (,[@frfst l])) (fold:l (,[@frfrst l]))
-      (if [nil? fold:l]
-        fold:acc
-        {fold:loop
-          (let ((,[@ffst l]) fold:acc) ((,[@ffrst l]) [@car fold:l]) (,[@frrst l]))
-          [@cdr fold:l]}))r))
+  (`(loop fold.loop (fold.acc (,[@frfst l])) (fold.l (,[@frfrst l]))
+      (if [nil? fold.l]
+        fold.acc
+        {fold.loop
+          (let ((,[@ffst l]) fold.acc) ((,[@ffrst l]) [@car fold.l]) (,[@frrst l]))
+          [@cdr fold.l]}))r))
 
 (ignore
   A macro to do a mutating fold. Does the following transformation:
   (fold-ref (y acc) (x l) expr)
   ->
-  (loop fold-ref:loop (fold-ref:acc acc) (fold-ref:l l)
-    (if [nil? fold-ref:l]
-      fold-ref:acc
-      {fold-ref:loop
-        (let (y fold-ref:acc) (x (& car fold-ref:l)) expr)
-        [@cdr fold-ref:l]})))
+  (loop fold-ref.loop (fold-ref.acc acc) (fold-ref.l l)
+    (if [nil? fold-ref.l]
+      fold-ref.acc
+      {fold-ref.loop
+        (let (y fold-ref.acc) (x (& car fold-ref.l)) expr)
+        [@cdr fold-ref.l]})))
 
 (function fold-ref (l r)
-  (`(loop fold-ref:loop (fold-ref:acc (,[@frfst l])) (fold-ref:l (,[@frfrst l]))
-      (if [nil? fold-ref:l]
-        fold-ref:acc
-        {fold-ref:loop
-          (let ((,[@ffst l]) fold-ref:acc) ((,[@ffrst l]) (& car fold-ref:l)) (,[@frrst l]))
-          [@cdr fold-ref:l]}))r))
+  (`(loop fold-ref.loop (fold-ref.acc (,[@frfst l])) (fold-ref.l (,[@frfrst l]))
+      (if [nil? fold-ref.l]
+        fold-ref.acc
+        {fold-ref.loop
+          (let ((,[@ffst l]) fold-ref.acc) ((,[@ffrst l]) (& car fold-ref.l)) (,[@frrst l]))
+          [@cdr fold-ref.l]}))r))
 
 (ignore
   A macro to do a find. Does the following transformation:
   (find (x l) expr)
   ->
-  (loop find:loop (find:l l)
-    (if [nil? find:l]
+  (loop find.loop (find.l l)
+    (if [nil? find.l]
       nil
-      (if (let (x [@car find:l]) expr)
-        find:l
-        {find:loop [@cdr find:l]}))))
+      (if (let (x [@car find.l]) expr)
+        find.l
+        {find.loop [@cdr find.l]}))))
 
 (function find (l r)
-  (`(loop find:loop (find:l (,[@frfst l]))
-      (if [nil? find:l]
+  (`(loop find.loop (find.l (,[@frfst l]))
+      (if [nil? find.l]
         nil
-        (if (let ((,[@ffst l]) [@car find:l]) (,[@frst l]))
-          find:l
-          {find:loop [@cdr find:l]})))r))
+        (if (let ((,[@ffst l]) [@car find.l]) (,[@frst l]))
+          find.l
+          {find.loop [@cdr find.l]})))r))
 
 (ignore
   A macro to do a locate. Does the following transformation:
   (locate (x l-ref) expr)
   ->
-  (loop locate:loop (locate:l-ref l-ref)
-    (if [nil? $locate:l-ref]
-      locate:l-ref
-      (if (let (x [@car $locate:l-ref]) expr)
-        locate:l-ref
-        {locate:loop (& cdr $locate:l-ref)}))))
+  (loop locate.loop (locate.l-ref l-ref)
+    (if [nil? $locate.l-ref]
+      locate.l-ref
+      (if (let (x [@car $locate.l-ref]) expr)
+        locate.l-ref
+        {locate.loop (& cdr $locate.l-ref)}))))
 
 (function locate (l r)
-  (`(loop locate:loop (locate:l-ref (,[@frfst l]))
-      (if [nil? $locate:l-ref]
-        locate:l-ref
-        (if (let ((,[@ffst l]) [@car $locate:l-ref]) (,[@frst l]))
-          locate:l-ref
-          {locate:loop (& cdr $locate:l-ref)})))r))
+  (`(loop locate.loop (locate.l-ref (,[@frfst l]))
+      (if [nil? $locate.l-ref]
+        locate.l-ref
+        (if (let ((,[@ffst l]) [@car $locate.l-ref]) (,[@frst l]))
+          locate.l-ref
+          {locate.loop (& cdr $locate.l-ref)})))r))
 
 (ignore
   The following macro matches a list by using the matchers given for its constituents.
   (match-list matcher1 matcher2 matcher3 ... matcherN obj)
   ->
-  (let (match-list:temp obj)
-    (if [nil? match-list:temp]
+  (let (match-list.temp obj)
+    (if [nil? match-list.temp]
       (false)
       (cand
-        (let (match-list:temp [@cdr match-list:temp])
-          (if [nil? match-list:temp]
+        (let (match-list.temp [@cdr match-list.temp])
+          (if [nil? match-list.temp]
             (false)
             (cand
-              (let (match-list:temp [@cdr match-list:temp])
-                (if [nil? match-list:temp]
+              (let (match-list.temp [@cdr match-list.temp])
+                (if [nil? match-list.temp]
                   (false)
                   (cand
-                    (let (match-list:temp [@cdr match-list:temp])
+                    (let (match-list.temp [@cdr match-list.temp])
                       ...)
-                    (matcher3 [@car match-list:temp]))))
-              (matcher2 [@car match-list:temp]))))
-        (matcher1 [@car match-list:temp])))))
+                    (matcher3 [@car match-list.temp]))))
+              (matcher2 [@car match-list.temp]))))
+        (matcher1 [@car match-list.temp])))))
 
 (function match-list (l r)
-  (let (obj [@fst [meta:reverse l r]])
-    (`(let (match-list:temp ,obj)
-        (,(loop build (expr (`[nil? match-list:temp]r)) (parts [@rst [meta:reverse l r]])
+  (let (obj [@fst [meta.reverse l r]])
+    (`(let (match-list.temp ,obj)
+        (,(loop build (expr (`[nil? match-list.temp]r)) (parts [@rst [meta.reverse l r]])
             (if [emt? parts]
               expr
               {build
-                (`(if [nil? match-list:temp]
+                (`(if [nil? match-list.temp]
                     (false)
                     (cand
-                      (let (match-list:temp [@cdr match-list:temp]) ,expr)
-                      ((,[@fst parts]) [@car match-list:temp])))r) [@rst parts]}))))r)))
+                      (let (match-list.temp [@cdr match-list.temp]) ,expr)
+                      ((,[@fst parts]) [@car match-list.temp])))r) [@rst parts]}))))r)))
 
 (ignore
   The following macro matches a list by using the matchers given for its constituents.
   (match-list-prefix matcher1 matcher2 matcher3 ... matcherN obj)
   ->
-  (let (match-list-prefix:temp obj)
-    (if [nil? match-list-prefix:temp]
+  (let (match-list-prefix.temp obj)
+    (if [nil? match-list-prefix.temp]
       (false)
       (cand
-        (let (match-list-prefix:temp [@cdr match-list-prefix:temp])
-          (if [nil? match-list-prefix:temp]
+        (let (match-list-prefix.temp [@cdr match-list-prefix.temp])
+          (if [nil? match-list-prefix.temp]
             (false)
             (cand
-              (let (match-list-prefix:temp [@cdr match-list-prefix:temp])
-                (if [nil? match-list-prefix:temp]
+              (let (match-list-prefix.temp [@cdr match-list-prefix.temp])
+                (if [nil? match-list-prefix.temp]
                   (false)
                   (cand
-                    (let (match-list-prefix:temp [@cdr match-list-prefix:temp])
+                    (let (match-list-prefix.temp [@cdr match-list-prefix.temp])
                       ...)
-                    (matcher3 [@car match-list-prefix:temp]))))
-              (matcher2 [@car match-list-prefix:temp]))))
-        (matcher1 [@car match-list-prefix:temp])))))
+                    (matcher3 [@car match-list-prefix.temp]))))
+              (matcher2 [@car match-list-prefix.temp]))))
+        (matcher1 [@car match-list-prefix.temp])))))
 
 (function match-list-prefix (l r)
-  (let (obj [@fst [meta:reverse l r]])
-    (`(let (match-list-prefix:temp ,obj)
-        (,(loop build (expr (`(true)r)) (parts [@rst [meta:reverse l r]])
+  (let (obj [@fst [meta.reverse l r]])
+    (`(let (match-list-prefix.temp ,obj)
+        (,(loop build (expr (`(true)r)) (parts [@rst [meta.reverse l r]])
             (if [emt? parts]
               expr
               {build
-                (`(if [nil? match-list-prefix:temp]
+                (`(if [nil? match-list-prefix.temp]
                     (false)
                     (cand
-                      (let (match-list-prefix:temp [@cdr match-list-prefix:temp]) ,expr)
-                      ((,[@fst parts]) [@car match-list-prefix:temp])))r) [@rst parts]}))))r)))
+                      (let (match-list-prefix.temp [@cdr match-list-prefix.temp]) ,expr)
+                      ((,[@fst parts]) [@car match-list-prefix.temp])))r) [@rst parts]}))))r)))
 
 (ignore
   The following macro does the same thing as cons except that it uses the stack instead of
   the heap. It does the following transformation:
   (storage-cons data rest)
   ->
-  (with storage-cons:ret
+  (with storage-cons.ret
     {(constrain
-      (continuation storage-cons:cont (storage-cons:data storage-cons:rest)
-        {storage-cons:ret (storage storage-cons:stor storage-cons:data storage-cons:rest)})
+      (continuation storage-cons.cont (storage-cons.data storage-cons.rest)
+        {storage-cons.ret (storage storage-cons.stor storage-cons.data storage-cons.rest)})
       (\ r (?(et) (`(continuation (,et (list ,et)))r)r))) data rest}))
 
 (function storage-cons (l r)
-  (`(with storage-cons:ret
+  (`(with storage-cons.ret
     {(constrain
-      (continuation storage-cons:cont (storage-cons:data storage-cons:rest)
-        {storage-cons:ret (storage storage-cons:stor storage-cons:data storage-cons:rest)})
+      (continuation storage-cons.cont (storage-cons.data storage-cons.rest)
+        {storage-cons.ret (storage storage-cons.stor storage-cons.data storage-cons.rest)})
       (\ r (?(et) (`(continuation (,et (list ,et)))r)r))) (,[@fst l]) (,[@frst l])})r))
 
 (function list-struct (l r) [=# #16 r])

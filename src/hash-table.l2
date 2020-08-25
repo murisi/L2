@@ -135,16 +135,16 @@
   
   (ht-foreach (key value ht) expr)
   ->
-  (let (ht-foreach:ht ht)
-    (for (ht-foreach:i (range #0 (@ ht-bucket-count ht-foreach:ht))) (ignore)
-      (foreach (ht-foreach:assoc ($(loc (unit) ht-foreach:i (@ ht-values ht-foreach:ht))))
-        (bind (key value) ht-foreach:assoc expr)))))
+  (let (ht-foreach.ht ht)
+    (for (ht-foreach.i (range #0 (@ ht-bucket-count ht-foreach.ht))) (ignore)
+      (foreach (ht-foreach.assoc ($(loc (unit) ht-foreach.i (@ ht-values ht-foreach.ht))))
+        (bind (key value) ht-foreach.assoc expr)))))
 
 (function ht-foreach (l r)
-  (`(let (ht-foreach:ht (,[@frrfst l]))
-      (for (ht-foreach:i (range #0 (@ ht-bucket-count ht-foreach:ht))) (ignore)
-        (foreach (ht-foreach:assoc ($(loc (unit) ht-foreach:i (@ ht-values ht-foreach:ht))))
-          (bind ((,[@ffst l]) (,[@frfst l])) ht-foreach:assoc (,[@frst l])))))r))
+  (`(let (ht-foreach.ht (,[@frrfst l]))
+      (for (ht-foreach.i (range #0 (@ ht-bucket-count ht-foreach.ht))) (ignore)
+        (foreach (ht-foreach.assoc ($(loc (unit) ht-foreach.i (@ ht-values ht-foreach.ht))))
+          (bind ((,[@ffst l]) (,[@frfst l])) ht-foreach.assoc (,[@frst l])))))r))
 
 (ignore
   Puts all the given associations into the given hash table. Does the following
@@ -162,28 +162,28 @@
   Find a value under the given key in the given hash table satisfying the given predicate:
   (ht-find (value key ht) expr)
   ->
-  (let (ht-find:key key) (ht-find:ht ht)
-  (let (ht-find:bucket-idx [rem [(@ ht-hash-func ht-find:ht) ht-find:key] (@ ht-bucket-count ht-find:ht)])
-  (let (ht-find:bucket ($(loc(unit)ht-find:bucket-idx(@ ht-values ht-find:ht))))
-  (loop ht-find:find-end (ht-find:bucket ht-find:bucket)
-    (if [nil? ht-find:bucket]
+  (let (ht-find.key key) (ht-find.ht ht)
+  (let (ht-find.bucket-idx [rem [(@ ht-hash-func ht-find.ht) ht-find.key] (@ ht-bucket-count ht-find.ht)])
+  (let (ht-find.bucket ($(loc(unit)ht-find.bucket-idx(@ ht-values ht-find.ht))))
+  (loop ht-find.find-end (ht-find.bucket ht-find.bucket)
+    (if [nil? ht-find.bucket]
       (false)
-      (bind (ht-find:k value) [@car ht-find:bucket]
-        (if (cand [(@ ht-equals-func ht) ht-find:key ht-find:k] expr)
+      (bind (ht-find.k value) [@car ht-find.bucket]
+        (if (cand [(@ ht-equals-func ht) ht-find.key ht-find.k] expr)
           (true)
-          {ht-find:find-end [@cdr ht-find:bucket]}))))))))
+          {ht-find.find-end [@cdr ht-find.bucket]}))))))))
 
 (function ht-find (l r)
-  (`(let (ht-find:key (,[@frfst l])) (ht-find:ht (,[@frrfst l]))
-    (let (ht-find:bucket-idx [rem [(@ ht-hash-func ht-find:ht) ht-find:key] (@ ht-bucket-count ht-find:ht)])
-    (let (ht-find:bucket ($(loc(unit)ht-find:bucket-idx(@ ht-values ht-find:ht))))
-    (loop ht-find:find-end (ht-find:bucket ht-find:bucket)
-      (if [nil? ht-find:bucket]
+  (`(let (ht-find.key (,[@frfst l])) (ht-find.ht (,[@frrfst l]))
+    (let (ht-find.bucket-idx [rem [(@ ht-hash-func ht-find.ht) ht-find.key] (@ ht-bucket-count ht-find.ht)])
+    (let (ht-find.bucket ($(loc(unit)ht-find.bucket-idx(@ ht-values ht-find.ht))))
+    (loop ht-find.find-end (ht-find.bucket ht-find.bucket)
+      (if [nil? ht-find.bucket]
         (false)
-        (bind (ht-find:k (,[@ffst l])) [@car ht-find:bucket]
-          (if (cand [(@ ht-equals-func ht-find:ht) ht-find:key ht-find:k] (,[@frst l]))
+        (bind (ht-find.k (,[@ffst l])) [@car ht-find.bucket]
+          (if (cand [(@ ht-equals-func ht-find.ht) ht-find.key ht-find.k] (,[@frst l]))
             (true)
-            {ht-find:find-end [@cdr ht-find:bucket]})))))))r))
+            {ht-find.find-end [@cdr ht-find.bucket]})))))))r))
 
 (constrain hash-str (\ r (?(a) (`(function (string) ,a)r)r)))
 

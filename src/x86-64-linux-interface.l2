@@ -231,14 +231,6 @@
   [print-str fd (if i (" T) (" F)) handler]
   i))
 
-(constrain trace-bool (\ r (?(a b) (`(function (fd string ,a ,b) ,a)r)r)))
-
-(function trace-bool (fd label i handler) (do
-  [print-str fd label handler]
-  [print-str fd (" :(space)) handler]
-  [print-bool fd i handler]
-  i))
-
 (constrain print-bytes
   (\ r (?(a b h i) (`(function (fd ,a ,b ,h) ,i)r)r)))
 
@@ -345,17 +337,17 @@
     [set [+ buf-storage [* #(N-1)(unit)]] argN]
     buf-storage)))
 
-(function region-storage (region-storage:l region-storage:r)
-  (`(function region-storage:temp (l r)
-      (`(let ((,[@fst l]) [region-alloc [* (,[=# [- [meta:length l] #1] r]) (unit)]
-            (,(,[`[llst [@fst region-storage:l] (` r region-storage:r) emt region-storage:r] region-storage:r]))
-            (,(,[`[llst [@frst region-storage:l] (` r region-storage:r) emt region-storage:r] region-storage:r]))])
-          (,[lst (` do r) [meta:reverse [lst [@fst l]
+(function region-storage (region-storage.l region-storage.r)
+  (`(function region-storage.temp (l r)
+      (`(let ((,[@fst l]) [region-alloc [* (,[=# [- [meta.length l] #1] r]) (unit)]
+            (,(,[`[llst [@fst region-storage.l] (` r region-storage.r) emt region-storage.r] region-storage.r]))
+            (,(,[`[llst [@frst region-storage.l] (` r region-storage.r) emt region-storage.r] region-storage.r]))])
+          (,[lst (` do r) [meta.reverse [lst [@fst l]
             (loop make-set (identifiers [@rst l]) (idx #0) (sets emt)
               (if [emt? identifiers]
                 sets
                 {make-set [@rst identifiers] [+ idx #1]
-                  [lst (`[set [+ (,[@fst l]) [* (,[=# idx r]) (unit)]] (,[@fst identifiers])]r) sets r]})) r] r] r]))r))region-storage:r))
+                  [lst (`[set [+ (,[@fst l]) [* (,[=# idx r]) (unit)]] (,[@fst identifiers])]r) sets r]})) r] r] r]))r))region-storage.r))
 
 (ignore
   Frees the given reference and everything allocated afterwards in the given region.)
@@ -378,17 +370,17 @@
   position to the saved value. It is implemented by the following transformation:
   (with-region buf expr)
   ->
-  (let (with-region:position [region-alloc #0 buf (ignore)])
-    (let (with-region:val expr) (do
-      [region-free with-region:position buf (ignore)]
-      with-region:val))))
+  (let (with-region.position [region-alloc #0 buf (ignore)])
+    (let (with-region.val expr) (do
+      [region-free with-region.position buf (ignore)]
+      with-region.val))))
 
 (function with-region (l r)
-  (`(let (with-region:region (,[@car l]))
-      (let (with-region:position [region-alloc #0 with-region:region (ignore)])
-        (let (with-region:val (,[@cadr l])) (do
-          [region-free with-region:position with-region:region (ignore)]
-          with-region:val))))r))
+  (`(let (with-region.region (,[@car l]))
+      (let (with-region.position [region-alloc #0 with-region.region (ignore)])
+        (let (with-region.val (,[@cadr l])) (do
+          [region-free with-region.position with-region.region (ignore)]
+          with-region.val))))r))
 
 (ignore
   Releases the memory associated with the region reg. After a call to this function, it is
@@ -443,15 +435,15 @@
   
   (time acc expr handler)
   ->
-  (let (time:handler handler)
-    (let (time:start [clock-gettime time:handler])
-      (let (time:val expr) (do
-        [set+ acc [- [clock-gettime time:handler] time:start]]
-        time:val)))))
+  (let (time.handler handler)
+    (let (time.start [clock-gettime time.handler])
+      (let (time.val expr) (do
+        [set+ acc [- [clock-gettime time.handler] time.start]]
+        time.val)))))
 
 (function time (l r)
-  (`(let (time:handler (,[@frrst l]))
-      (let (time:start [clock-gettime time:handler])
-        (let (time:val (,[@frst l])) (do
-          [set+ (,[@fst l]) [- [clock-gettime time:handler] time:start]]
-          time:val))))r))
+  (`(let (time.handler (,[@frrst l]))
+      (let (time.start [clock-gettime time.handler])
+        (let (time.val (,[@frst l])) (do
+          [set+ (,[@fst l]) [- [clock-gettime time.handler] time.start]]
+          time.val))))r))

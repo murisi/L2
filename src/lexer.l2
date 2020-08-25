@@ -68,7 +68,7 @@
   (function recursive-evaluate (frag assigns r handler)
     (substitute (.. r handler)
       (let (d [evaluate frag assigns])
-        (if (cor [vbl? d] [i/f:token? d] [nil? [frag->list d]])
+        (if (cor [vbl? d] [i/f.token? d] [nil? [frag->list d]])
           d
           (let (pair [frag->list d])
             [list->fragment [cons [recursive-evaluate [@car pair] assigns ..] [frag->list [recursive-evaluate [list->fragment [@cdr pair]] assigns ..]] ..]])))))
@@ -105,11 +105,11 @@
     Checks if two fragment characters are equal. a is a fragment character. b is a fragment
     character. Return value is (true) if they are equal and (false) otherwise.)
 
-  (function i/f:char= (a b) [= (@ cs-character a) (@ cs-character b)])
+  (function i/f.char= (a b) [= (@ cs-character a) (@ cs-character b)])
 
 (ignore If a fragment is neither a variable nor a token, then it's a list of fragments.)
 
-(function lst? (frag) (not (cor [i/f:token? frag] [vbl? frag])))
+(function lst? (frag) (not (cor [i/f.token? frag] [vbl? frag])))
 
 (ignore Following array is used to lookup fragment character corresponding to ASCII character.)
 
@@ -117,7 +117,7 @@
   #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 (char-init !) (char-init ")
   (char-init #) (char-init $) (char-init %) (char-init &) (char-init ') #0 #0 (char-init *) (char-init +) (char-init ,)
   (char-init -) (char-init .) (char-init /) (char-init 0) (char-init 1) (char-init 2) (char-init 3) (char-init 4) (char-init 5)
-  (char-init 6) (char-init 7) (char-init 8) (char-init 9) (char-init :) (char-init ;) (char-init <) (char-init =) (char-init >)
+  (char-init 6) (char-init 7) (char-init 8) (char-init 9) (char-init ;) (char-init <) (char-init =) (char-init >)
   (char-init ?) (char-init @) (char-init A) (char-init B) (char-init C) (char-init D) (char-init E) (char-init F) (char-init G)
   (char-init H) (char-init I) (char-init J) (char-init K) (char-init L) (char-init M) (char-init N) (char-init O) (char-init P)
   (char-init Q) (char-init R) (char-init S) (char-init T) (char-init U) (char-init V) (char-init W) (char-init X) (char-init Y)
@@ -226,15 +226,15 @@
 
 (ignore Checks if the fragment d is a token. A token is a non-empty list of characters.)
 
-(constrain i/f:token? (\ r (?(a) (`(function (frag) ,a)r)r)))
+(constrain i/f.token? (\ r (?(a) (`(function (frag) ,a)r)r)))
 
-(function i/f:token? (e)
+(function i/f.token? (e)
   (let (d [fragment->token e])
     (cand (not [nil? d]) [= (@ cs-flag[@car d]) character-flag])))
 
-(constrain i/f:token= (\ r (?(a) (`(function ((list tchar) (list tchar)) ,a)r)r)))
+(constrain i/f.token= (\ r (?(a) (`(function ((list tchar) (list tchar)) ,a)r)r)))
 
-(function i/f:token= (a b)
+(function i/f.token= (a b)
   (loop check-car (a a) (b b)
     (if (cand [nil? a] [nil? b])
       (true)
@@ -276,7 +276,7 @@
         [vbl->frag (bind-if [ht-contains l var-map new-l]
           (new-l) $new-l
           (let (new-l [vbl ..]) (do [ht-put l new-l var-map ..] new-l)))])
-    (if [i/f:token? l]
+    (if [i/f.token? l]
       [token->fragment (map (s [fragment->token l]) (tkn-char (@ cs-character s)) ..)]
       [list->fragment (map (s [frag->list l]) [copy-fragment s var-map ..] ..)]))))
 
@@ -293,9 +293,9 @@
           [ht-put vbl1 vbl2 var-map ..]))
     (if (cor [vbl? frag1] [vbl? frag2])
       (false)
-    (if (cand [i/f:token? frag1] [i/f:token? frag2])
-      [i/f:token= [fragment->token frag1] [fragment->token frag2]]
-    (if (cor [i/f:token? frag1] [i/f:token? frag2])
+    (if (cand [i/f.token? frag1] [i/f.token? frag2])
+      [i/f.token= [fragment->token frag1] [fragment->token frag2]]
+    (if (cor [i/f.token? frag1] [i/f.token? frag2])
       (false)
     (loop elt= (l1 [frag->list frag1]) (l2 [frag->list frag2])
       (if (cand [nil? l1] [nil? l2]) (true)
@@ -313,7 +313,7 @@
     (do
       [print-char (stdout) (char !) hdl]
       [print-uint (stdout) [rem d #8192] hdl])
-  (if [i/f:token? d]
+  (if [i/f.token? d]
     (for (t (list-iter [fragment->token d])) (ignore) [print-char (stdout) (@ cs-character t) hdl])
     (do
       [print-char (stdout) (lparen) hdl]

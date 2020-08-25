@@ -1,9 +1,9 @@
 (ignore The following function maps character s-expressions to ASCII codes.)
 
-(function meta:char-aux (l) (switch char= l
+(function meta.char-aux (l) (switch char= l
   (-!- #33) (-"- #34) (-#- #35) (-$- #36) (-%- #37) (-&- #38) (-'- #39) (-*- #42)
   (-+- #43) (-,- #44) (--- #45) (-.- #46) (-/- #47) (-0- #48) (-1- #49) (-2- #50)
-  (-3- #51) (-4- #52) (-5- #53) (-6- #54) (-7- #55) (-8- #56) (-9- #57) (-:- #58)
+  (-3- #51) (-4- #52) (-5- #53) (-6- #54) (-7- #55) (-8- #56) (-9- #57)
   (-;- #59) (-<- #60) (-=- #61) (->- #62) (-?- #63) (-@- #64) (-A- #65) (-B- #66)
   (-C- #67) (-D- #68) (-E- #69) (-F- #70) (-G- #71) (-H- #72) (-I- #73) (-J- #74)
   (-K- #75) (-L- #76) (-M- #77) (-N- #78) (-O- #79) (-P- #80) (-Q- #81) (-R- #82)
@@ -18,7 +18,7 @@
   The following function maps character s-expressions to literals of ASCII codes. So
   for example, the L2 expression (char A) is equivalent to the C literal 'A'.)
 
-(function char (l r) [=# [meta:char-aux [@ffst l]] r])
+(function char (l r) [=# [meta.char-aux [@ffst l]] r])
 
 (ignore
   The following function turns text in the form of a list of tokens into code that
@@ -32,8 +32,8 @@
       (let (sub-index [rem index (unit)])
         (if [emt? str] (do
           [setb [+ buf sub-index] (nul)]
-          (`(let (dquote:str (,[llst (` storage r) (` dquote:tmp r) [meta:reverse [lst [=# $buf r] exprs r] r] r]))
-              (,[lst (` do r) [meta:reverse [lst (`(constrain dquote:str (\ k (` string k)))r) instrs r]r]r]))r))
+          (`(let (dquote.str (,[llst (` storage r) (` dquote.tmp r) [meta.reverse [lst [=# $buf r] exprs r] r] r]))
+              (,[lst (` do r) [meta.reverse [lst (`(constrain dquote.str (\ k (` string k)))r) instrs r]r]r]))r))
         
         (if (cand [emt? [@fst str]] [emt? [@rst str]]) {add-word [@rst str] index exprs instrs}
             
@@ -44,11 +44,11 @@
         (if [emt? [@fst str]] {add-word [@rst str] index exprs instrs}
         
         (if [token? [@fst str]] (do
-          [setb [+ buf sub-index] [meta:char-aux [@ffst str]]]
+          [setb [+ buf sub-index] [meta.char-aux [@ffst str]]]
           {add-word [lst [@rfst str] [@rst str] r] [+ index #1] (if [= sub-index #7] [lst [=# $buf r] exprs r] exprs) instrs})
           
           {add-word [@rst str] [+ index #1] (if [= sub-index #7] [lst [=# $buf r] exprs r] exprs)
-            [lst (`[setb [+ dquote:str (,[=# index r])] (,[@fst str])]r) instrs r]})))))))))
+            [lst (`[setb [+ dquote.str (,[=# index r])] (,[@fst str])]r) instrs r]})))))))))
 
 (ignore
   The following functions implement ASCII control characters. These can be embedded into
@@ -84,6 +84,8 @@
 (function rbracket (l r) [=# #93 r])
 
 (function space (l r) [=# #32 r])
+
+(function colon (l r) [=# #58 r])
 
 (constrain empty-string (\ r (` string r)))
 
