@@ -10,7 +10,7 @@
     (let (static-bindings (storage _ nil)) (undefined-bindings [ht-create hash-str str= ..])
         (global-bindings [global-binding-augs-of exprs ..]) (do
       (let (storage-offset
-          (fold-ref (storage-offset [- #0 (word-size)]) (expr exprs) (do
+          (fold-ref (storage-offset [- #:0 (word-size)]) (expr exprs) (do
             [visit-expressions vfind-multiple-definitions expr handler]
             [visit-expressions veliminate-constrain expr (ignore)]
             [visit-expressions vswap-branches expr (ignore)]
@@ -23,9 +23,9 @@
             [assign-expr-is-reads $expr]
             [place-perm-bindings $expr storage-offset])))
         (for (expr (list-iter exprs)) (ignore) (do
-          [assign-depths expr #0]
+          [assign-depths expr #:0]
           [initialize-expressions (storage-cons expr nil) nil [- storage-offset (word-size)]
-            #0 #0 inits (values storage (ignore)(ignore)) buf2 handler]
+            #:0 #:0 inits (values storage (ignore)(ignore)) buf2 handler]
           [setup-collect-static-bindings expr]
           [collect-static-bindings expr static-bindings ..])))
       (bind (instrs relocs func-secs) [generate-program exprs bind ..]
@@ -91,7 +91,7 @@
   (substitute (.. buf handler)
     (with-region buf2
       (bind (src-buf src-sz) [read-to-buffer fn bind buf2 handler]
-      (let (pos (storage _ #0))
+      (let (pos (storage _ #:0))
       (let (exprs-start (storage _ nil))
       (loop cons-expr (exprs-end exprs-start)
         (if [after-leading-space src-buf src-sz pos]
@@ -198,7 +198,7 @@
   prints out the error messages if there are any.)
 
 (fallthrough
-    (let (buf [create-region #0 exit-cont]) (buf2 [create-region #0 exit-cont])
+    (let (buf [create-region #:0 exit-cont]) (buf2 [create-region #:0 exit-cont])
     (fallthrough
         (do
           (let (source-fns (storage _ [@cdr[argv buf handler]]))
@@ -337,5 +337,5 @@
   
         (cleanup err (do [destroy-region buf exit-cont] err))))
   
-  (exit-cont err [exit (if [= (@0 err) no-error] #0 #1)]))
+  (exit-cont err [exit (if [= (@0 err) no-error] #:0 #:1)]))
 

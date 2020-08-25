@@ -38,7 +38,7 @@
 
 (function vpropagate-expressions (e ctx)
   (bind (buf handler) ctx
-    (if (cand [= (@ expr-type e) (-continuation-)] (not (@ expr-escapes e)) [= [length (@ expr-jumps e)] #1])
+    (if (cand [= (@ expr-type e) (-continuation-)] (not (@ expr-escapes e)) [= [length (@ expr-jumps e)] #:1])
       (do
         (let (jmp [@car (@ expr-jumps e)])
           (foreach (u (@ expr-parameters e)) (v (@ expr-arguments jmp))
@@ -119,16 +119,16 @@
   (setf expr-depth e depth)
   (switch = (@ expr-type e)
     ((-function-) (-continuation-) (-with-) (-constrain-)
-      [assign-depths (@ expr-expression e) [+ depth #1]])
+      [assign-depths (@ expr-expression e) [+ depth #:1]])
     ((-if-) (do
-      [assign-depths (@ expr-condition e) [+ depth #1]]
-      [assign-depths (@ expr-consequent e) [+ depth #1]]
-      [assign-depths (@ expr-alternate e) [+ depth #1]]))
+      [assign-depths (@ expr-condition e) [+ depth #:1]]
+      [assign-depths (@ expr-consequent e) [+ depth #:1]]
+      [assign-depths (@ expr-alternate e) [+ depth #:1]]))
     ((-invoke-) (-jump-)
       (for (u (list-iter (storage-cons (@ expr-target e) (@ expr-arguments e)))) (ignore)
-        [assign-depths u [+ depth #1]]))
+        [assign-depths u [+ depth #:1]]))
     ((-storage-)
-      (for (u (list-iter (@ expr-arguments e))) (ignore) [assign-depths u [+ depth #1]]))
+      (for (u (list-iter (@ expr-arguments e))) (ignore) [assign-depths u [+ depth #:1]]))
     (ignore))))
 
 (ignore
@@ -377,11 +377,11 @@
 
 (function construct-sccs (s preorder stack sccs r handler)
   (substitute (.. r handler)
-    (if [= (@ expr-lowlink s) #0]
+    (if [= (@ expr-lowlink s) #:0]
       (let (marker $stack) (do
       (setf expr-lowlink s preorder)
       (for (t (list-iter (@ expr-dependencies s))) (ignore) (do
-        [construct-sccs t [+ preorder #1] stack sccs ..]
+        [construct-sccs t [+ preorder #:1] stack sccs ..]
         (if [< (@ expr-lowlink t) (@ expr-lowlink s)]
           (setf expr-lowlink s (@ expr-lowlink t))
           (ignore))))
@@ -391,7 +391,7 @@
         [prepend (loop add (t $stack) (scc nil)
           (if [= t marker] scc
             (let (u [@car t]) (do
-            (setf expr-lowlink u [- #0 #1])
+            (setf expr-lowlink u [- #:0 #:1])
             {add [@cdr t] [cons u scc ..]})))) sccs ..]
         [set stack marker])
         (ignore))))
@@ -505,7 +505,7 @@
     (let (stack (storage _ nil))
     (let (sccs (storage _ nil)) (do
     (for (expr (list-iter exprs)) (ignore) [visit-expressions vfind-dependencies (storage _ expr) (values storage ..)])
-    (for (expr (list-iter exprs)) (ignore) [construct-sccs expr #1 stack sccs ..])
+    (for (expr (list-iter exprs)) (ignore) [construct-sccs expr #:1 stack sccs ..])
     
     (let (assigns [ht-create hash-ptr = ..])
     (let (function-token [token->fragment [build-token [rstrcpy (" function) ..] ..]])

@@ -1,20 +1,20 @@
 (ignore The constants and fields to be used in x86-64-object.l2)
 
-(function object (l r) (`[* #6(unit)]r))
+(function object (l r) (`[* #:6(unit)]r))
 
-(property obj-ehdr #0 #8 (\ r (`(; static~ (,[var r]) obj)r)))
+(property obj-ehdr #:0 #:8 (\ r (`(; static~ (,[var r]) obj)r)))
 
-(property obj-shdrs #8 #8 (\ r (`(; static~ (,[var r]) obj)r)))
+(property obj-shdrs #:8 #:8 (\ r (`(; static~ (,[var r]) obj)r)))
 
-(property obj-syms #16 #8 (\ r (`(; static~ (,[var r]) obj)r)))
+(property obj-syms #:16 #:8 (\ r (`(; static~ (,[var r]) obj)r)))
 
-(property obj-relas #24 #8 (\ r (`(; static~ (,[var r]) obj)r)))
+(property obj-relas #:24 #:8 (\ r (`(; static~ (,[var r]) obj)r)))
 
-(property obj-addends #32 #8 (\ r (`(; static~ (,[var r]) obj)r)))
+(property obj-addends #:32 #:8 (\ r (`(; static~ (,[var r]) obj)r)))
 
-(property obj-segs #40 #8 (\ r (`(; static~ (,[var r]) obj)r)))
+(property obj-segs #:40 #:8 (\ r (`(; static~ (,[var r]) obj)r)))
 
-(function binding (l r) (`[* #2(unit)]r))
+(function binding (l r) (`[* #:2(unit)]r))
 
 (ignore
   Does the relocations specified in the object file in light of the current binding
@@ -24,13 +24,13 @@
 (constrain do-relocations (\ r (?(a) (`(function (obj ,a) ())r)r)))
 
 (function do-relocations (obj handler)
-  (for (sec-idx (range #0 (@ e-shnum(@ obj-ehdr obj)))) (ignore)
+  (for (sec-idx (range #:0 (@ e-shnum(@ obj-ehdr obj)))) (ignore)
     (let (shdr-buf (loc (elf64-shdr) sec-idx (@ obj-shdrs obj)))
     (if (cor [= (@ sh-type shdr-buf) (sht-rela)] [= (@ sh-type shdr-buf) (sht-rel)])
       (let (relanum [/ (@ sh-size shdr-buf) (@ sh-entsize shdr-buf)])
       (let (relas-buf ($(loc (unit) sec-idx (@ obj-relas obj))))
       (let (addends-buf ($(loc (unit) sec-idx (@ obj-addends obj))))
-      (for (rela-idx (range #0 relanum)) (ignore)
+      (for (rela-idx (range #:0 relanum)) (ignore)
         (let (syms-buf ($(loc (unit) (@ sh-link shdr-buf) (@ obj-syms obj))))
         (let (rela (loc (elf64-rela) rela-idx relas-buf))
         (let (addend ($(loc (elf64-sxword) rela-idx addends-buf)))
@@ -46,14 +46,14 @@
 (constrain store-addends (\ r (?(a) (`(function (obj region ,a) ())r)r)))
 
 (function store-addends (obj reg handler)
-  (for (sec-idx (range #0 (@ e-shnum(@ obj-ehdr obj)))) (ignore)
+  (for (sec-idx (range #:0 (@ e-shnum(@ obj-ehdr obj)))) (ignore)
     (let (shdr-buf (loc (elf64-shdr) sec-idx (@ obj-shdrs obj)))
     (if [= (@ sh-type shdr-buf) (sht-rela)]
       (let (relanum [/ (@ sh-size shdr-buf) (@ sh-entsize shdr-buf)])
       (let (relas-buf ($(loc (unit) sec-idx (@ obj-relas obj))))
       (let (addends-buf (loc (unit) sec-idx (@ obj-addends obj))) (do
       [set addends-buf [region-alloc [* relanum (elf64-sxword)] reg handler]]
-      (for (rela-idx (range #0 relanum)) (ignore)
+      (for (rela-idx (range #:0 relanum)) (ignore)
         (let (rela (loc (elf64-rela) rela-idx relas-buf))
           [set8b (loc (elf64-sxword) rela-idx $addends-buf) (@ r-addend rela)]))))))
           
@@ -62,7 +62,7 @@
       (let (relas-buf ($(loc (unit) sec-idx (@ obj-relas obj))))
       (let (addends-buf (loc (unit) sec-idx (@ obj-addends obj))) (do
       [set addends-buf [region-alloc [* relanum (elf64-sxword)] reg handler]]
-      (for (rela-idx (range #0 relanum)) (ignore)
+      (for (rela-idx (range #:0 relanum)) (ignore)
         (let (rela (loc (elf64-rela) rela-idx relas-buf))
           [(switch = (elf64-r-type (@ r-info rela))
               ((r-x86-64-8) set1b) ((r-x86-64-pc8) set1b) ((r-x86-64-16) set2b) ((r-x86-64-pc16) set2b)
@@ -80,12 +80,12 @@
 (constrain offsets-to-addresses (\ r (`(function (obj) ())r)))
 
 (function offsets-to-addresses (obj)
-  (for (sec-idx (range #0 (@ e-shnum(@ obj-ehdr obj)))) (ignore)
+  (for (sec-idx (range #:0 (@ e-shnum(@ obj-ehdr obj)))) (ignore)
     (let (shdr-buf (loc (elf64-shdr) sec-idx (@ obj-shdrs obj)))
     (if (cor [= (@ sh-type shdr-buf) (sht-rela)] [= (@ sh-type shdr-buf) (sht-rel)])
       (let (relanum [/ (@ sh-size shdr-buf) (@ sh-entsize shdr-buf)])
       (let (relas-buf ($(loc (unit) sec-idx (@ obj-relas obj))))
-      (for (rela-idx (range #0 relanum)) (ignore)
+      (for (rela-idx (range #:0 relanum)) (ignore)
         (let (rela (loc (elf64-rela) rela-idx relas-buf))
         (let (target-seg-addr ($(loc (unit) (@ sh-info shdr-buf) (@ obj-segs obj)))) (do
         (setf r-offset rela [+ target-seg-addr (@ r-offset rela)])
@@ -94,12 +94,12 @@
     (if [= (@ sh-type shdr-buf) (sht-symtab)]
       (let (symnum [/ (@ sh-size shdr-buf) (@ sh-entsize shdr-buf)])
       (let (syms-buf ($(loc (unit) sec-idx (@ obj-syms obj))))
-      (for (sym-idx (range #0 symnum)) (ignore)
+      (for (sym-idx (range #:0 symnum)) (ignore)
         (let (sym (loc (elf64-sym) sym-idx syms-buf)) (do
         (setf st-value sym (switch = (@ st-shndx sym)
           ((shn-abs) (@ st-value sym))
-          ((shn-common) #0)
-          ((shn-undef) #0)
+          ((shn-common) #:0)
+          ((shn-undef) #:0)
           (let (base-seg-addr ($(loc (unit) (@ st-shndx sym) (@ obj-segs obj))))
             [+ base-seg-addr (@ st-value sym)])))
         (ignore))))))
@@ -124,7 +124,7 @@
   (setf obj-addends obj [region-alloc [* (@ e-shnum(@ obj-ehdr obj)) (unit)] reg handler])
   (setf obj-segs obj [region-alloc [* (@ e-shnum(@ obj-ehdr obj)) (unit)] reg handler])
   
-  (for (sec-idx (range #0 (@ e-shnum(@ obj-ehdr obj)))) (ignore)
+  (for (sec-idx (range #:0 (@ e-shnum(@ obj-ehdr obj)))) (ignore)
     (let (shdr-buf (loc (elf64-shdr) sec-idx (@ obj-shdrs obj)))
     (let (seg-buf (loc (unit) sec-idx (@ obj-segs obj))) (do
     [memcpy shdr-buf [+ objsrc (loc (@ e-shentsize(@ obj-ehdr obj)) sec-idx (@ e-shoff(@ obj-ehdr obj)))] (elf64-shdr)]
@@ -138,7 +138,7 @@
       (let (syms-buf (loc (unit) sec-idx (@ obj-syms obj))) (do
       (ignore Following code copies recognized information from the symbol table into (@ obj-syms obj))
       [set syms-buf [region-alloc [* symnum (elf64-sym)] reg handler]]
-      (for (sym-idx (range #0 symnum)) (ignore)
+      (for (sym-idx (range #:0 symnum)) (ignore)
         [memcpy (loc (elf64-sym) sym-idx $syms-buf) (loc (@ sh-entsize shdr-buf) sym-idx $seg-buf)
           (elf64-sym)]))))
           
@@ -147,7 +147,7 @@
       (let (relas-buf (loc (unit) sec-idx (@ obj-relas obj))) (do
       (ignore Following code copies recognized information from the relocations into (@ obj-relas obj))
       [set relas-buf [region-alloc [* relanum (elf64-rela)] reg handler]]
-      (for (rela-idx (range #0 relanum)) (ignore)
+      (for (rela-idx (range #:0 relanum)) (ignore)
         [memcpy (loc (elf64-rela) rela-idx $relas-buf) (loc (@ sh-entsize shdr-buf) rela-idx $seg-buf)
           (if [= (@ sh-type shdr-buf) (sht-rela)] (elf64-rela) (elf64-rel))]))))
           
@@ -198,12 +198,12 @@
 (constrain mutate-bindings (\ r (`(function (obj (hash-table string bndg-aug)) ())r)))
 
 (function mutate-bindings (obj updates) (do
-  (for (sec-idx (range #0 (@ e-shnum(@ obj-ehdr obj)))) (ignore)
+  (for (sec-idx (range #:0 (@ e-shnum(@ obj-ehdr obj)))) (ignore)
     (let (shdr-buf (loc (elf64-shdr) sec-idx (@ obj-shdrs obj)))
     (if [= (@ sh-type shdr-buf) (sht-symtab)]
       (let (symnum [/ (@ sh-size shdr-buf) (@ sh-entsize shdr-buf)])
       (let (syms-buf ($(loc (unit) sec-idx (@ obj-syms obj))))
-      (for (sym-idx (range #1 symnum)) (ignore)
+      (for (sym-idx (range #:1 symnum)) (ignore)
         (let (sym (loc (elf64-sym) sym-idx syms-buf))
         (bind-if (cand [ht-contains [name-of obj shdr-buf sym] updates bndg]
             (cor [= (@ st-shndx sym) (shn-undef)] [= (@ st-shndx sym) (shn-common)])
@@ -218,12 +218,12 @@
 (constrain bindings (\ r (?(a b) (`(function (,a obj (hash-table string bndg-aug) region ,b) (hash-table string bndg-aug))r)r)))
 
 (function bindings (flag obj ht reg handler) (do
-  (for (sec-idx (range #0 (@ e-shnum(@ obj-ehdr obj)))) (ignore)
+  (for (sec-idx (range #:0 (@ e-shnum(@ obj-ehdr obj)))) (ignore)
     (let (shdr-buf (loc (elf64-shdr) sec-idx (@ obj-shdrs obj)))
     (if [= (@ sh-type shdr-buf) (sht-symtab)]
       (let (symnum [/ (@ sh-size shdr-buf) (@ sh-entsize shdr-buf)])
       (let (syms-buf ($(loc (unit) sec-idx (@ obj-syms obj))))
-      (for (sym-idx (range #1 symnum)) (ignore)
+      (for (sym-idx (range #:1 symnum)) (ignore)
         (let (sym (loc (elf64-sym) sym-idx syms-buf))
         (if (cand [= (not(not(cor [= (@ st-shndx sym) (shn-undef)] [= (@ st-shndx sym) (shn-common)]))) flag]
             (cor [= (elf64-st-bind (@ st-info sym)) (stb-global)]
@@ -240,14 +240,14 @@
 (constrain mutable-bindings
   (\ r (?(b) (`(function (obj (hash-table string bndg-aug) region ,b) (hash-table string bndg-aug))r)r)))
 
-(function mutable-bindings (obj ht reg handler) [bindings #1 obj ht reg handler])
+(function mutable-bindings (obj ht reg handler) [bindings #:1 obj ht reg handler])
 
 (ignore Analogous to above.)
 
 (constrain immutable-bindings
   (\ r (?(b) (`(function (obj (hash-table string bndg-aug) region ,b) (hash-table string bndg-aug))r)r)))
 
-(function immutable-bindings (obj ht reg handler) [bindings #0 obj ht reg handler])
+(function immutable-bindings (obj ht reg handler) [bindings #:0 obj ht reg handler])
 
 (ignore
   Returns the address of the segment of the given object that has a particular name. obj
@@ -259,8 +259,8 @@
 (function segment (obj name) (with return
   (if [= (@ e-shstrndx(@ obj-ehdr obj)) (shn-undef)] (ignore)
     (let (shstrseg-buf ($(loc (unit) (@ e-shstrndx(@ obj-ehdr obj)) (@ obj-segs obj))))
-    (for (sec-idx (range #0 (@ e-shnum(@ obj-ehdr obj)))) (ignore)
+    (for (sec-idx (range #:0 (@ e-shnum(@ obj-ehdr obj)))) (ignore)
       (let (shdr-buf (loc (elf64-shdr) sec-idx (@ obj-shdrs obj)))
-      (if [strcmp (loc #1 (@ sh-name shdr-buf) shstrseg-buf) name] (ignore)
+      (if [strcmp (loc #:1 (@ sh-name shdr-buf) shstrseg-buf) name] (ignore)
         {return ($(loc (unit) sec-idx (@ obj-segs obj)))})))))))
 
