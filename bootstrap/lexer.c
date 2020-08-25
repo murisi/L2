@@ -58,6 +58,21 @@ int after_leading_space(char *l2src, int l2src_sz, int *pos) {
   return l2src_sz - *pos;
 }
 
+/*
+ * Grammar being lexed:
+ * program = <space> (<fragment> <space>)*
+ * fragment = <fragment2> | <sublist>
+ * sublist = <fragment2> (<space> ':' <space> <fragment2>)+
+ * fragment2 = <fragment1> | <subsublist>
+ * subsublist = <fragment1> (<space> ';' <space> <fragment1>)+
+ * fragment1 = <stoken> | <token> | <list> | <clist> | <slist>
+ * list = '(' <space> (<fragment> <space>)* ')'
+ * clist = '{' <space> (<fragment> <space>)* '}'
+ * slist = '[' <space> (<fragment> <space>)* ']'
+ * stoken = (',' | '$') (token | stoken)?
+ * token = <character>+
+ */
+
 bool read_fragment(list *out, char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler);
 
 bool read_token(list *out, char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
@@ -65,7 +80,7 @@ bool read_token(list *out, char *l2src, int l2src_sz, int *pos, region r, jumpbu
     return false;
   } else {
     char c = l2src[*pos];
-    if(isspace(c) || c == ',' || c == '$' || c == '#' || c == '`' || c == '(' || c == ')' || c == '{' || c == '}' || c == '[' || c == ']' || c == ':') {
+    if(isspace(c) || c == ',' || c == '$' || c == '(' || c == ')' || c == '{' || c == '}' || c == '[' || c == ']' || c == ':') {
       return false;
     } else {
       (*pos) ++;
@@ -90,7 +105,7 @@ bool read_sigilled_token(list *out, char *l2src, int l2src_sz, int *pos, region 
     return false;
   } else {
     char d = l2src[*pos];
-    if(d == ',' || d == '$' || d == '#' || d == '`') {
+    if(d == ',' || d == '$') {
       (*pos)++;
       char sigilc[] = {d, '\0'};
       list tmp, sigill = build_token(sigilc, r);
