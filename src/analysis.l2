@@ -1,14 +1,14 @@
-(constrain defined-str= (\ r (?(a) (`(function (string string) ,a)r)r)))
+(constrain defined-str= (\ r (?(a) (`(function (string string) ,:a)r)r)))
 
 (function defined-str= (a b) (cand [getb a] [getb b] [str= a b]))
 
-(constrain bndg-name= (\ r (?(a) (`(function (bndg-aug bndg-aug) ,a)r)r)))
+(constrain bndg-name= (\ r (?(a) (`(function (bndg-aug bndg-aug) ,:a)r)r)))
 
 (function bndg-name= (a b) [defined-str= (@ bndg-name a) (@ bndg-name b)])
 
 (storage multiple-definition-error (ignore))
 
-(constrain vfind-multiple-definitions (\ r (?(a b) (`(function ((expr ,b) ,a) (expr ,b))r)r)))
+(constrain vfind-multiple-definitions (\ r (?(a b) (`(function ((expr ,:b) ,:a) (expr ,:b))r)r)))
 
 (function vfind-multiple-definitions (e handler)
   (switch = (@ expr-type e)
@@ -25,7 +25,7 @@
   A visitor to remove constrain expressions. This is a harmless operation providing that
   type-checking has been completed.)
 
-(constrain veliminate-constrain (\ r (?(a) (`(function ((expr ,a) ()) (expr ,a))r)r)))
+(constrain veliminate-constrain (\ r (?(a) (`(function ((expr ,:a) ()) (expr ,:a))r)r)))
 
 (function veliminate-constrain (e ctx)
   (if [= (@ expr-type e) (-constrain-)] (@ expr-expression e) e))
@@ -34,7 +34,7 @@
   Replaces symbols with the literal or the symbol they are defined by in the cases in
   which it is possible.)
 
-(constrain vpropagate-expressions (\ r (?(a b) (`(function ((expr ,b) (values region ,a)) (expr ,b))r)r)))
+(constrain vpropagate-expressions (\ r (?(a b) (`(function ((expr ,:b) (values region ,:a)) (expr ,:b))r)r)))
 
 (function vpropagate-expressions (e ctx)
   (bind (buf handler) ctx
@@ -64,7 +64,7 @@
   ->
   (if cond <consequent> <alternate>))
 
-(constrain vswap-branches (\ r (?(a) (`(function ((expr ,a) ()) (expr ,a))r)r)))
+(constrain vswap-branches (\ r (?(a) (`(function ((expr ,:a) ()) (expr ,:a))r)r)))
 
 (function vswap-branches (e ctx)
   (bind-if (match-property
@@ -94,7 +94,7 @@
   {... {expr1 ... exprN} ...} -> {expr1 ... exprN}
   (if {expr1 ... exprN} cons alt) -> {expr1 ... exprN})
 
-(constrain vdominate-jumps (\ r (?(a) (`(function ((expr ,a) ()) (expr ,a))r)r)))
+(constrain vdominate-jumps (\ r (?(a) (`(function ((expr ,:a) ()) (expr ,:a))r)r)))
 
 (function vdominate-jumps (e ctx)
   (switch = (@ expr-type e)
@@ -113,7 +113,7 @@
 
 (ignore Assigns depths to the given expression and its descendents.)
 
-(constrain assign-depths (\ r (?(a b) (`(function ((expr ,b) ,a) ())r)r)))
+(constrain assign-depths (\ r (?(a b) (`(function ((expr ,:b) ,:a) ())r)r)))
 
 (function assign-depths (e depth) (do
   (setf expr-depth e depth)
@@ -135,7 +135,7 @@
   A visitor that replaces all occurences of the first binding in function/continuation
   /with parameters, symbol references, and expression bindings with the second binding.)
 
-(constrain vreplace-value-bindings (\ r (?(a) (`(function ((expr ,a) (values bndg-aug bndg-aug)) (expr ,a))r)r)))
+(constrain vreplace-value-bindings (\ r (?(a) (`(function ((expr ,:a) (values bndg-aug bndg-aug)) (expr ,:a))r)r)))
 
 (function vreplace-value-bindings (e ctx)
   (bind (repl-target replacement) ctx (do
@@ -155,7 +155,7 @@
           e))
       e))))
 
-(constrain assign-expr-is-reads (\ r (?(a) (`(function ((expr ,a)) ())r)r)))
+(constrain assign-expr-is-reads (\ r (?(a) (`(function ((expr ,:a)) ())r)r)))
 
 (function assign-expr-is-reads (s)
   (switch = (@ expr-type s)
@@ -206,7 +206,7 @@
     
     (ignore)))
 
-(constrain global-binding-augs-of (\ r (?(a b) (`(function ((list (expr ,b)) region ,a) (hash-table string bndg-aug))r)r)))
+(constrain global-binding-augs-of (\ r (?(a b) (`(function ((list (expr ,:b)) region ,:a) (hash-table string bndg-aug))r)r)))
 
 (function global-binding-augs-of (exprs r handler)
   (substitute (.. r handler)
@@ -222,7 +222,7 @@
             {add-binding [@cdr exprs]})
           {add-binding [@cdr exprs]})))))))
 
-(constrain vunlink-symbols (\ r (?(a b) (`(function ((expr ,b) (values (hash-table string bndg-aug) region ,a)) (expr ,b))r)r)))
+(constrain vunlink-symbols (\ r (?(a b) (`(function ((expr ,:b) (values (hash-table string bndg-aug) region ,:a)) (expr ,:b))r)r)))
 
 (function vunlink-symbols (s ctx)
   (bind (blacklist buf hdl) ctx
@@ -232,7 +232,7 @@
         (do (setf expr-reference s null-binding) s)
         s))))
 
-(constrain assign-binding (\ r (?(a b) (`(function ((expr ,b) (hash-table string bndg-aug)) ,a)r)r)))
+(constrain assign-binding (\ r (?(a b) (`(function ((expr ,:b) (hash-table string bndg-aug)) ,:a)r)r)))
 
 (function assign-binding (s bindings)
   (bind-if [ht-contains (@ expr-name s) bindings bndg]
@@ -241,7 +241,7 @@
 
 (constrain link-symbols
   (\ r (?(a b c)
-    (`(function ((expr ,c) ,a (hash-table string bndg-aug) (hash-table string bndg-aug) (hash-table string bndg-aug) region ,b) ())r)r)))
+    (`(function ((expr ,:c) ,:a (hash-table string bndg-aug) (hash-table string bndg-aug) (hash-table string bndg-aug) region ,:b) ())r)r)))
 
 (function link-symbols (s static-storage undefined-bindings static-bindings dynamic-bindings r handler)
   (substitute (.. r handler)
@@ -292,7 +292,7 @@
       
       (ignore)))))
 
-(constrain escape-analysis (\ r (?(a b c) (`(function ((expr ,c) ,a region ,b) ())r)r)))
+(constrain escape-analysis (\ r (?(a b c) (`(function ((expr ,:c) ,:a region ,:b) ())r)r)))
 
 (function escape-analysis (s escaping r handler)
   (substitute (.. r handler)
@@ -341,7 +341,7 @@
       
       (ignore))))
 
-(constrain vfind-dependencies (\ r (?(a b) (`(function ((expr ,b) (values region ,a)) (expr ,b))r)r)))
+(constrain vfind-dependencies (\ r (?(a b) (`(function ((expr ,:b) (values region ,:a)) (expr ,:b))r)r)))
 
 (function vfind-dependencies (s ctx)
   (bind (r handler) ctx (substitute (.. r handler) (do
@@ -373,7 +373,7 @@
       (ignore))
     s))))
 
-(constrain construct-sccs (\ r (?(a b c) (`(function ((expr ,c) ,a (ref (list (expr ,c))) (ref (list (list (expr ,c)))) region ,b) ())r)r)))
+(constrain construct-sccs (\ r (?(a b c) (`(function ((expr ,:c) ,:a (ref (list (expr ,:c))) (ref (list (list (expr ,:c)))) region ,:b) ())r)r)))
 
 (function construct-sccs (s preorder stack sccs r handler)
   (substitute (.. r handler)
@@ -397,7 +397,7 @@
         (ignore))))
       (ignore))))
 
-(constrain occurs-in? (\ r (?(a) (`(function (vbl frag (hash-table vbl frag)) ,a)r)r)))
+(constrain occurs-in? (\ r (?(a) (`(function (vbl frag (hash-table vbl frag)) ,:a)r)r)))
 
 (function occurs-in? (var val assigns)
   (let (eval [evaluate val assigns])
@@ -408,14 +408,14 @@
       (let (a [frag->list eval])
         (cor [occurs-in? var [@car a] assigns] [occurs-in? var [list->fragment [@cdr a]] assigns]))))))
 
-(constrain unify-var (\ r (?(a c) (`(function (vbl frag (hash-table vbl frag) region ,c) ,a)r)r)))
+(constrain unify-var (\ r (?(a c) (`(function (vbl frag (hash-table vbl frag) region ,:c) ,:a)r)r)))
 
 (function unify-var (var val assigns buf hdl)
   (substitute (.. buf hdl)
     (if [occurs-in? var val assigns] (false)
       (do [ht-put var val assigns ..] (true)))))
 
-(constrain unify (\ r (?(a c) (`(function (frag frag (hash-table vbl frag) region ,c) ,a)r)r)))
+(constrain unify (\ r (?(a c) (`(function (frag frag (hash-table vbl frag) region ,:c) ,:a)r)r)))
 
 (function unify (x y assigns buf hdl)
   (substitute (.. buf hdl)
@@ -436,7 +436,7 @@
   The same function may be called with different type parameters in the same strongly connected
   component, hence we need to make sure that each equation has its own fresh type variables.)
 
-(constrain scoped-signature (\ r (?(a b) (`(function ((expr ,b) (list (expr ,b)) region ,a) frag)r)r)))
+(constrain scoped-signature (\ r (?(a b) (`(function ((expr ,:b) (list (expr ,:b)) region ,:a) frag)r)r)))
 
 (function scoped-signature (e scc r handler)
   (substitute (.. r handler)
@@ -446,7 +446,7 @@
         [copy-fragment [expr-signature e] var-map ..]))))
 
 (constrain generate-equations
-  (\ r (?(a b c) (`(function ((expr ,c) (list (expr ,c)) frag frag (ref (list frag)) (ref (list frag)) region ,a) ,b)r)r)))
+  (\ r (?(a b c) (`(function ((expr ,:c) (list (expr ,:c)) frag frag (ref (list frag)) (ref (list frag)) region ,:a) ,:b)r)r)))
 
 (function generate-equations (e scc function-token continuation-token lhss rhss buf handler)
   (substitute (.. buf handler)
@@ -497,7 +497,7 @@
 
 (storage unification-error (ignore))
 
-(constrain infer-types (\ r (?(a b) (`(function ((list (expr ,b)) region ,a) ())r)r)))
+(constrain infer-types (\ r (?(a b) (`(function ((list (expr ,:b)) region ,:a) ())r)r)))
 
 (function infer-types (exprs buf handler)
   (substitute (.. buf handler) (do
@@ -519,7 +519,7 @@
           (setf bndg-signature (@ expr-binding-aug e) [recursive-evaluate [expr-signature e] assigns ..])
           (ignore)))))))))))))))
 
-(constrain visit-expressions (\ r (?(a b) (`(function ((function ((expr ,b) ,a) (expr ,b)) (ref (expr ,b)) ,a) ())r)r)))
+(constrain visit-expressions (\ r (?(a b) (`(function ((function ((expr ,:b) ,:a) (expr ,:b)) (ref (expr ,:b)) ,:a) ())r)r)))
 
 (function visit-expressions (visitor s ctx) (do
   (switch = (@ expr-type $:s)
@@ -543,7 +543,7 @@
     (ignore))
   [set s [visitor $:s ctx]]))
 
-(constrain pre-visit-expressions (\ r (?(a b) (`(function ((function ((expr ,b) ,a) (expr ,b)) (ref (expr ,b)) ,a) ())r)r)))
+(constrain pre-visit-expressions (\ r (?(a b) (`(function ((function ((expr ,:b) ,:a) (expr ,:b)) (ref (expr ,:b)) ,:a) ())r)r)))
 
 (function pre-visit-expressions (visitor s ctx) (do
   [set s [visitor $:s ctx]]
@@ -568,7 +568,7 @@
     
     (ignore))))
 
-(constrain classify-program-bindings (\ r (?(a) (`(function ((expr ,a)) ())r)r)))
+(constrain classify-program-bindings (\ r (?(a) (`(function ((expr ,:a)) ())r)r)))
 
 (function classify-program-bindings (expr) (do
   (setf bndg-context (@ expr-binding-aug expr) (extra-function-context))
@@ -596,7 +596,7 @@
     
     (ignore))))
 
-(constrain setup-collect-static-bindings (\ r (?(a b) (`(function ((expr ,a)) ,b)r)r)))
+(constrain setup-collect-static-bindings (\ r (?(a b) (`(function ((expr ,:a)) ,:b)r)r)))
 
 (function setup-collect-static-bindings (n) (do
   (switch = (@ expr-type n)
@@ -627,7 +627,7 @@
   
   (setf bndg-other (@ expr-binding-aug n) (true))))
 
-(constrain append-static-binding (\ r (?(a b) (`(function (bndg-aug (ref (list bndg-aug)) region ,a) ,b)r)r)))
+(constrain append-static-binding (\ r (?(a b) (`(function (bndg-aug (ref (list bndg-aug)) region ,:a) ,:b)r)r)))
 
 (function append-static-binding (bndg binding-augs r handler)
   (substitute (.. r handler)
@@ -635,7 +635,7 @@
       (do (setf bndg-other bndg (false)) [append bndg binding-augs ..])
       (ignore))))
 
-(constrain collect-static-bindings (\ r (?(a b c) (`(function ((expr ,c) (ref (list bndg-aug)) region ,a) ,b)r)r)))
+(constrain collect-static-bindings (\ r (?(a b c) (`(function ((expr ,:c) (ref (list bndg-aug)) region ,:a) ,:b)r)r)))
 
 (function collect-static-bindings (n binding-augs r handler)
   (substitute (.. r handler) (do
@@ -670,7 +670,7 @@
 (storage undefined-symbol-error (ignore))
 
 (constrain preprocessed-expression-address
-  (\ r (?(a b c) (`(function ((expr ,c) (list initializer) (hash-table string bndg-aug) region region ,a) ,b)r)r)))
+  (\ r (?(a b c) (`(function ((expr ,:c) (list initializer) (hash-table string bndg-aug) region region ,:a) ,:b)r)r)))
 
 (function preprocessed-expression-address (s inits bindings buf buf2 handler)
   (substitute (.. buf handler)
@@ -696,7 +696,7 @@
   to the result of evaluating a signature builder.)
 
 (constrain vgenerate-metas
-  (\ r (?(a b) (`(function ((expr ,b) (values (list initializer) (hash-table string bndg-aug) region region ,a)) (expr ,b))r)r)))
+  (\ r (?(a b) (`(function ((expr ,:b) (values (list initializer) (hash-table string bndg-aug) region region ,:a)) (expr ,:b))r)r)))
 
 (function vgenerate-metas (s ctx)
   (bind (inits bindings buf buf2 handler) ctx
@@ -712,7 +712,7 @@
       s)))
 
 (constrain init-function
-  (\ r (?(a b c) (`(function ((expr ,c) (list initializer) (hash-table string bndg-aug) region region ,a (ref ,b)) ,b)r)r)))
+  (\ r (?(a b c) (`(function ((expr ,:c) (list initializer) (hash-table string bndg-aug) region region ,:a (ref ,:b)) ,:b)r)r)))
 
 (function init-function (function-expr inits bindings buf buf2 handler cache)
   (substitute (.. buf handler)
@@ -732,7 +732,7 @@
   expanded only when they are first called.)
 
 (constrain generate-metaprogram
-  (\ r (?(a b) (`(function ((list (expr ,b)) (list initializer) (hash-table string bndg-aug) region region ,a) (list (expr ,b)))r)r)))
+  (\ r (?(a b) (`(function ((list (expr ,:b)) (list initializer) (hash-table string bndg-aug) region region ,:a) (list (expr ,:b)))r)r)))
 
 (function generate-metaprogram (exprs inits bindings buf buf2 handler)
   (substitute (.. buf handler)
@@ -757,7 +757,7 @@
   sucessful expansions.)
 
 (constrain try-generate-metas
-  (\ r (?(a b) (`(function ((list (expr ,b)) (list initializer) (hash-table string bndg-aug) region region ,a) (list (expr ,b)))r)r)))
+  (\ r (?(a b) (`(function ((list (expr ,:b)) (list initializer) (hash-table string bndg-aug) region region ,:a) (list (expr ,:b)))r)r)))
 
 (function try-generate-metas (exprs inits bindings buf1 buf2 handler)
   (substitute (.. buf1 handler)

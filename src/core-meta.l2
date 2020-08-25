@@ -62,9 +62,9 @@
     [lllst -g- -e- -t- emt r]
     var r])
 
-(constrain get (\ r (?(a) (`(function ((ref ,a)) ,a)r)r)))
+(constrain get (\ r (?(a) (`(function ((ref ,:a)) ,:a)r)r)))
 
-(constrain set (\ r (?(a) (`(function ((ref ,a) ,a) ())r)r)))
+(constrain set (\ r (?(a) (`(function ((ref ,:a) ,:a) ())r)r)))
 
 (function meta.lookup-var (key map)
   (with return
@@ -144,8 +144,8 @@
   [meta.bind5 [quote-aux [@fst l] [@frst l] emt (quote quote. r) r]
     (function _(s t map state r)
       (quote(with quote.return
-        {(continuation quote.cont (,[meta.map-values map r]) {quote.return ,s}),
-          [meta.map3 map t r (function _(elt t r) (quote[var ,t]r)) r]})r))])
+        {(continuation quote.cont (,[meta.map-values map r]) {quote.return ,:s}),
+          [meta.map3 map t r (function _(elt t r) (quote[var ,:t]r)) r]})r))])
 
 (ignore
   The following function generates code to create variables and bind them. It does the
@@ -156,7 +156,7 @@
   (let (var0 [var region]) ... (varN [var region]) expr))
 
 (function ?(l r)
-  (let (bindings [meta.map3 [@fst l] [@frrst l] r (\ e s r (`(,e [var ,s])r)) r])
+  (let (bindings [meta.map3 [@fst l] [@frrst l] r (\ e s r (`(,:e [var ,:s])r)) r])
     [lst (` let r) [meta.reverse [lst [@frst l] [meta.reverse bindings r] r] r] r]))
 
 (ignore The following function checks if the tokens a and b are equal.)
@@ -255,8 +255,8 @@
   (`(with &-aux.ret
       (let (@-aux.obj (,[@frrrrrrst l]))
         {(constrain (constrain (continuation @-aux.cont (pseudo prop-ref obj) {&-aux.ret prop-ref})
-            (\ &-aux.s (?(a b) (let ((,[@frrrrst l]) &-aux.s) (`(continuation ((,(,[@frrrrrst l])) ,a ,b))&-aux.s))&-aux.s)))
-            (\ s (?(a b c d) (`(continuation ((@ ,a ,c ,d ,b) (ref ,a) ,b))s)s)))
+            (\ &-aux.s (?(a b) (let ((,[@frrrrst l]) &-aux.s) (`(continuation ((,(,[@frrrrrst l])) ,:a ,:b))&-aux.s))&-aux.s)))
+            (\ s (?(a b c d) (`(continuation ((@ ,:a ,:c ,:d ,:b) (ref ,:a) ,:b))s)s)))
           (ignore) [+ @-aux.obj (,[@fst l])] @-aux.obj}))r))
 
 (ignore
@@ -279,8 +279,8 @@
   (`(with @-aux.ret
       (let (@-aux.obj (,[@frrrrrrst l]))
         {(constrain (constrain (continuation @-aux.cont (pseudo prop obj) {@-aux.ret prop})
-            (\ @-aux.s (?(a b) (let ((,[@frrrrst l]) @-aux.s) (`(continuation ((,(,[@frrrrrst l])) ,a ,b))@-aux.s))@-aux.s)))
-            (\ s (?(a b c d) (`(continuation ((@ ,a ,c ,d ,b) ,a ,b))s)s)))
+            (\ @-aux.s (?(a b) (let ((,[@frrrrst l]) @-aux.s) (`(continuation ((,(,[@frrrrrst l])) ,:a ,:b))@-aux.s))@-aux.s)))
+            (\ s (?(a b c d) (`(continuation ((@ ,:a ,:c ,:d ,:b) ,:a ,:b))s)s)))
           (ignore) [(,[@frrst l]) [+ @-aux.obj (,[@fst l])]] @-aux.obj}))r))
 
 (ignore
@@ -306,8 +306,8 @@
       (let (setf-aux.obj (,[@frrrrrrst l]))
         {(constrain (constrain (continuation setf-aux.cont (pseudo prop obj obj-casted)
               {setf-aux.ret (do [(,[@frrrst l]) [+ obj (,[@fst l])] prop] obj-casted)})
-            (\ setf-aux.s (?(setf-aux.a setf-aux.b setf-aux.c) (let ((,[@frrrrst l]) setf-aux.s) (`(continuation ((,(,[@frrrrrst l])) ,setf-aux.a ,setf-aux.b ,setf-aux.c))setf-aux.s))setf-aux.s)))
-            (\ s (?(a b c d) (`(continuation ((@ ,a ,b ,c ,d) ,a ,b ,c))s)s)))
+            (\ setf-aux.s (?(setf-aux.a setf-aux.b setf-aux.c) (let ((,[@frrrrst l]) setf-aux.s) (`(continuation ((,(,[@frrrrrst l])) ,:setf-aux.a ,:setf-aux.b ,:setf-aux.c))setf-aux.s))setf-aux.s)))
+            (\ s (?(a b c d) (`(continuation ((@ ,:a ,:b ,:c ,:d) ,:a ,:b ,:c))s)s)))
           (ignore) (,[@frrrrrrrst l]) setf-aux.obj [cast setf-aux.obj]}))r))
 
 (ignore
@@ -324,7 +324,7 @@
     (,(loop layer-set (acc [@ffst l]) (props [@rst l])
         (if [emt? props]
           acc
-          {layer-set (`(setf (,[@ffst props]) ,acc (,[@frfst props]))r) [@rst props]}))))r))
+          {layer-set (`(setf (,[@ffst props]) ,:acc (,[@frfst props]))r) [@rst props]}))))r))
 
 (ignore
   The following function is a helper function for generating the fields of
@@ -386,7 +386,7 @@
         (,[llst (` jump r) [llllst (` continuation r) (` values.eval r) params [lllst (` jump r) (`(constrain
             (continuation values.func (,[lst (` values.storage r) params r])
               {values.return values.storage})
-            (\ values.r (? ,vars
+            (\ values.r (? ,:vars
               (`(continuation (,[lst
                   [lst (` values values.r) (,[`[llst unquoted-vars (` values.r r) emt r]r]) values.r]
                   (,[`[llst unquoted-vars (` values.r r) emt r]r]) values.r])) values.r) values.r)))r)
@@ -408,10 +408,10 @@
         {make-set [@rst identifiers] [+ offset (unit)]
           [lst (`[get [+ bind.param (,[=# offset r])]]r) params r]})))
     (`(with bind.return
-        (let (bind.param (let (bind ,bind-storage) ,param))
+        (let (bind.param (let (bind ,:bind-storage) ,:param))
           (,[lllst (` jump r) (`(constrain (continuation bind.func (,[lst (` bind.param r) identifiers r])
-                {bind.return ,body})
-              (\ bind.r (? ,vars
+                {bind.return ,:body})
+              (\ bind.r (? ,:vars
                 [llst (` continuation bind.r) [lst [lst (` values bind.r) (,[`[llst unquoted-vars (` bind.r r) emt r]r]) bind.r]
                   (,[`[llst unquoted-vars (` bind.r r) emt r]r]) bind.r] emt bind.r] bind.r)))r)
             (` bind.param r) param-parts r])))r)))))))
@@ -460,7 +460,7 @@
   (`(with loc.return
       (let (loc.base (,[@frrst l]))
         {(constrain (continuation loc.cont (base val) {loc.return val})
-            (\ r (?(a) (`(continuation (,a ,a))r)r)))
+            (\ r (?(a) (`(continuation (,:a ,:a))r)r)))
           loc.base [+ [* (,[@fst l]) (,[@frst l])] loc.base]}))r))
 
 (ignore
@@ -486,13 +486,13 @@
 
 (function match-property (l r)
   (let (obj [@fst [meta.reverse l r]])
-    (`(let (match-property.obj ,obj)
+    (`(let (match-property.obj ,:obj)
         (,[lst (` cand r)
           (loop build (conds emt) (parts [@rst [meta.reverse l r]])
             (if [emt? parts]
               conds
               (let (matcher [@frfst parts]) (prop [@ffst parts])
-                {build [lst (`(,matcher (@ ,prop match-property.obj))r) conds r]
+                {build [lst (`(,:matcher (@ ,:prop match-property.obj))r) conds r]
                   [@cdr parts]}))) r]))r)))
 
 (ignore
@@ -508,13 +508,13 @@
 
 (function match-or (l r)
   (let (obj [@fst [meta.reverse l r]])
-    (`(let (match-or.obj ,obj)
+    (`(let (match-or.obj ,:obj)
         (,[lst (` cor r)
           (loop build (conds emt) (parts [@rst [meta.reverse l r]])
             (if [emt? parts]
               conds
               (let (matcher [@fst parts])
-                {build [lst (`(,matcher match-or.obj)r) conds r] [@cdr parts]}))) r]))r)))
+                {build [lst (`(,:matcher match-or.obj)r) conds r] [@cdr parts]}))) r]))r)))
 
 (ignore
   A macro for matching objects to at least one of the given matchers. The macro does the
@@ -529,13 +529,13 @@
 
 (function match-and (l r)
   (let (obj [@fst [meta.reverse l r]])
-    (`(let (match-and.obj ,obj)
+    (`(let (match-and.obj ,:obj)
         (,[lst (` cand r)
           (loop build (conds emt) (parts [@rst [meta.reverse l r]])
             (if [emt? parts]
               conds
               (let (matcher [@fst parts])
-                {build [lst (`(,matcher match-and.obj)r) conds r] [@cdr parts]}))) r]))r)))
+                {build [lst (`(,:matcher match-and.obj)r) conds r] [@cdr parts]}))) r]))r)))
 
 (ignore
   (guard-match matcher guard obj)
@@ -566,11 +566,11 @@
 (function bind-if (l r)
   (let (cond [@fst l]) (params [@frst l]) (consequent [@frrst l]) (alternate [@frrrst l])
   (let (bindings [meta.map2 params r
-      (function _ (elt r) (`(,elt (storage bind-if.temp (ignore)))r)) r])
+      (function _ (elt r) (`(,:elt (storage bind-if.temp (ignore)))r)) r])
     (`(with bind-if.return (do
         (,[lst (` let r)
-            [meta.reverse [lst (`(if ,cond {bind-if.return ,consequent} (ignore))r) bindings r] r] r])
-        ,alternate))r))))
+            [meta.reverse [lst (`(if ,:cond {bind-if.return ,:consequent} (ignore))r) bindings r] r] r])
+        ,:alternate))r))))
 
 (ignore The following function measures the length of the list given as its argument.)
 

@@ -21,7 +21,7 @@
   addresses. The continuation handler is followed with the singleton (object-error) if
   relocation type is unrecognized.)
 
-(constrain do-relocations (\ r (?(a) (`(function (obj ,a) ())r)r)))
+(constrain do-relocations (\ r (?(a) (`(function (obj ,:a) ())r)r)))
 
 (function do-relocations (obj handler)
   (for (sec-idx (range #:0 (@ e-shnum(@ obj-ehdr obj)))) (ignore)
@@ -43,7 +43,7 @@
   the contents of the addend field may be overwritten by a relocation, which is a problem
   because the future relocations may depend on the value of the addend.)
 
-(constrain store-addends (\ r (?(a) (`(function (obj region ,a) ())r)r)))
+(constrain store-addends (\ r (?(a) (`(function (obj region ,:a) ())r)r)))
 
 (function store-addends (obj reg handler)
   (for (sec-idx (range #:0 (@ e-shnum(@ obj-ehdr obj)))) (ignore)
@@ -111,7 +111,7 @@
   and updating. Constructs an object containing everything of interest in the object code
   in the region reg and returns it.)
 
-(constrain read-object (\ r (?(c d e) (`(function (,c ,d region ,e) obj)r)r)))
+(constrain read-object (\ r (?(c d e) (`(function (,:c ,:d region ,:e) obj)r)r)))
 
 (function read-object (objsrc objsrc-sz reg handler)
   (let (obj [region-alloc (object) reg handler]) (do
@@ -162,7 +162,7 @@
   containing the object code. objsrc-sz is the size of the buffer. reg is the region in
   which our handle will be constructed. Return value is a handle to the object.)
 
-(constrain load (\ r (?(c d e) (`(function (,c ,d region ,e) obj)r)r)))
+(constrain load (\ r (?(c d e) (`(function (,:c ,:d region ,:e) obj)r)r)))
 
 (function load (objsrc objsrc-sz reg handler)
   (let (obj [read-object objsrc objsrc-sz reg handler]) (do
@@ -182,7 +182,7 @@
   the binding. address is the address of the binding. reg is the region in which the
   binding should be constructed. Return value is the constructed binding.)
 
-(constrain make-binding (\ r (?(a b) (`(function (string ,a region ,b) bndg-aug)r)r)))
+(constrain make-binding (\ r (?(a b) (`(function (string ,:a region ,:b) bndg-aug)r)r)))
 
 (function make-binding (name address reg handler)
   (let (sym [region-alloc (binding) reg handler]) (do
@@ -215,7 +215,7 @@
 
 (ignore Returns the bindings in the given object.)
 
-(constrain bindings (\ r (?(a b) (`(function (,a obj (hash-table string bndg-aug) region ,b) (hash-table string bndg-aug))r)r)))
+(constrain bindings (\ r (?(a b) (`(function (,:a obj (hash-table string bndg-aug) region ,:b) (hash-table string bndg-aug))r)r)))
 
 (function bindings (flag obj ht reg handler) (do
   (for (sec-idx (range #:0 (@ e-shnum(@ obj-ehdr obj)))) (ignore)
@@ -238,14 +238,14 @@
   bindings will be constructed. Return value is the list of mutable bindings.)
 
 (constrain mutable-bindings
-  (\ r (?(b) (`(function (obj (hash-table string bndg-aug) region ,b) (hash-table string bndg-aug))r)r)))
+  (\ r (?(b) (`(function (obj (hash-table string bndg-aug) region ,:b) (hash-table string bndg-aug))r)r)))
 
 (function mutable-bindings (obj ht reg handler) [bindings #:1 obj ht reg handler])
 
 (ignore Analogous to above.)
 
 (constrain immutable-bindings
-  (\ r (?(b) (`(function (obj (hash-table string bndg-aug) region ,b) (hash-table string bndg-aug))r)r)))
+  (\ r (?(b) (`(function (obj (hash-table string bndg-aug) region ,:b) (hash-table string bndg-aug))r)r)))
 
 (function immutable-bindings (obj ht reg handler) [bindings #:0 obj ht reg handler])
 
@@ -254,7 +254,7 @@
   is the object whose segment addresses is being queried. name is the name of the segment
   that is to be found.)
 
-(constrain segment (\ r (?(a) (`(function (obj string) ,a)r)r)))
+(constrain segment (\ r (?(a) (`(function (obj string) ,:a)r)r)))
 
 (function segment (obj name) (with return
   (if [= (@ e-shstrndx(@ obj-ehdr obj)) (shn-undef)] (ignore)

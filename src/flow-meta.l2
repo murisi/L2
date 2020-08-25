@@ -120,7 +120,7 @@
           {aux [@rst remaining]
             (`(if (,[lst (` cor r) [meta.map2 [@rst [meta.reverse [@fst remaining] r]] r
                 (function _ (e r) [llllst (` invoke r) (` switch.= r) (` switch.val r) e emt r]) r] r])
-              (,[@fst [meta.reverse [@fst remaining] r]]) ,else-clause) r)}))
+              (,[@fst [meta.reverse [@fst remaining] r]]) ,:else-clause) r)}))
         [@rst [meta.reverse [@rrst l] r]] [@fst [meta.reverse l r]]})))r))
 
 (ignore
@@ -143,7 +143,7 @@
   (loop do-layer (acc [@fst l]) (exprs [@rst l])
     (if [emt? exprs]
       acc
-      {do-layer (`(let ((,[@frfst exprs]) (with (,[@ffst exprs]) ,acc)) (,[@frrfst exprs]))r) [@rst exprs]})))
+      {do-layer (`(let ((,[@frfst exprs]) (with (,[@ffst exprs]) ,:acc)) (,[@frrfst exprs]))r) [@rst exprs]})))
 
 (ignore
   Syntactic sugar for continuation passing style. The next continuations is always bound.
@@ -168,9 +168,9 @@
       (if [emt? rem-exprs]
         body
         (let (cont-name [@ffst rem-exprs]) (cont-args [@frfst rem-exprs]) (cont-expr [@frrfst rem-exprs])
-          (`(let (,cont-name (continuation ,cont-name ,cont-args
+          (`(let (,:cont-name (continuation ,:cont-name ,:cont-args
                 {cps.return (,[cps-aux cont-expr [@rst rem-exprs] r])}))
-              ,body)r)))) [@fst l] [@rst l] r]))r))
+              ,:body)r)))) [@fst l] [@rst l] r]))r))
 
 (ignore
   The following function implements variable binding by do the following transformation:
@@ -209,7 +209,7 @@
     (,(loop make-do (acc (`{do.return do.arg}r)) (exprs [meta.reverse l r])
         (if [emt? exprs]
           acc
-          {make-do (`{(continuation do.cont (do.arg) ,acc) (,[@fst exprs])}r) [@rst exprs]}))))r))
+          {make-do (`{(continuation do.cont (do.arg) ,:acc) (,[@fst exprs])}r) [@rst exprs]}))))r))
 
 (ignore
   Takes a list of lists and make a list containing their concatenation in the given
@@ -220,62 +220,6 @@
     (if [emt? lsts]
       acc
       {flatten [meta.concat acc [@fst lsts] r] [@rst lsts]})))
-
-(ignore
-  Takes a group of expressions followed by equally lengthed groups of identifiers.
-  Binds the groups of identifiers to the values of the expressions in the first
-  group and then executes the body expr in this environment. The types of the bound
-  identifiers are determined by their usage in expr, not by their definitions in
-  the first group. Also, the type of the group of expressions is constrained to
-  be that of at least one of the following groups of identifiers. Think unions
-  or untagged case statements.
-  
-  (group-case (expr1 expr2 ... exprN) (b1 b2 ... bN) ... (z1 z2 ... zN) expr)
-  ->
-  (with group-case.with
-    {(continuation group-case.eval (a1 a2 ... aN)
-      {(constrain (continuation group-case.cont (a1 a2 ... aN b1 b2 ... bN ... z1 z2 ... zN) {group-case.with expr})
-        (\ r (?(tb1 tb2 ... tbN ... tz1 tz2 ... tzN) (`(continuation (
-          (,tb1 ,tb2 ... ,tbN ,tb1 ,tb2 ... ,tbN ... ,tz1 ,tz2 ... ,tzN)
-          ...
-          (,tz1 ,tz2 ... ,tzN ,tb1 ,tb2 ... ,tbN ... ,tz1 ,tz2 ... ,tzN), or))r)r)))
-        a1 a2 ... aN [cast a1] [cast a2] ... [cast aN] ... [cast a1] [cast a2] ... [cast aN]}) expr1 expr2 ... exprN}))
-
-(function group-case (l r)
-  (let (unq (function _(elt r) [llst [lst -,- emt r] elt emt r]))
-  (let (body [@fst [meta.reverse l r]])
-  (let (all-groups [meta.reverse [@rst [meta.reverse l r]] r])
-  (let (value-bindings [meta.label [@fst all-groups] (` group-case.id r) r])
-  (let (cast-bindings [@rst all-groups])
-  (let (all-bindings [lst value-bindings cast-bindings r])
-  (let (value-casts [meta.map2 value-bindings r (function _(elt r) (`[cast ,elt]r)) r])
-  (let (value-casts-repeated [meta.flatten [meta.map2 cast-bindings value-casts (function _(elt ctx1) ctx1) r] r])
-  (let (cast-bindings-zipped [meta.zip [meta.label cast-bindings (` group-case.type r) r] cast-bindings r])
-  (let (cast-binding-types [meta.map2 cast-bindings-zipped r (function _(elt r) [meta.label [@frst elt] [meta.reverse[meta.concat(` group-case.subtype r)[meta.reverse[@fst elt]r]r]r] r]) r])
-  (let (cast-binding-types-unquoted [meta.map2 [meta.flatten cast-binding-types r] r unq r])
-    (`(with group-case.with
-        {(continuation group-case.eval ,value-bindings
-          {(constrain (continuation group-case.cont (,[meta.flatten all-bindings r]) {group-case.with ,body})
-            (\ r (?(,[meta.flatten cast-binding-types r]) ((,[lst -`- emt r]) (continuation (,
-              (loop make-clause (cast-binding-types cast-binding-types) (clauses [llst [lst -,- emt r] [llst -o- -r- emt r] emt r])
-                  (if [emt? cast-binding-types]
-                    clauses
-                    {make-clause [@rst cast-binding-types]
-                      [lst [meta.concat [meta.map2 [@fst cast-binding-types] r unq r] cast-binding-types-unquoted r] clauses r]}))))r)r))),
-            [meta.concat value-bindings value-casts-repeated r]}), [@fst all-groups]})r)))))))))))))
-
-(ignore
-  A lighter version of group-case for when the groups are singletons. Does the
-  following transformation:
-  (case val (a1 a2 ... aN) expr)
-  ->
-  (group-case (val)(a1)(a2)...(aN) expr))
-
-(function case (l r)
-  (let (body [@fst [meta.reverse l r]])
-  (let (val [lst [@fst l] emt r])
-  (let (binds [meta.map2 [@frst l] r (function _(elt r) [lst elt emt r]) r])
-    (`(group-case ,[lst val [meta.reverse [lst body binds r] r] r])r)))))
 
 (ignore
   Loops through the given iterator. Performs the following transformation:

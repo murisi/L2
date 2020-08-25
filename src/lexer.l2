@@ -26,30 +26,30 @@
 
 (ignore Declaration of emt and emt? which is used by macros being compiled.)
 
-  (constrain emt! (\ r (?(et) (`(list ,et)r)r)))
+  (constrain emt! (\ r (?(et) (`(list ,:et)r)r)))
 
   (storage emt! (ignore)(ignore))
 
   [init-nil emt!]
 
-  (constrain emt?! (\ r (?(et a) (`(function ((list ,et)) ,a)r)r)))
+  (constrain emt?! (\ r (?(et a) (`(function ((list ,:et)) ,:a)r)r)))
   
   (function emt?! (x) [= x emt!])
 
 (ignore Functions to create variables and evaluate fragments containing variables.)
 
-  (constrain vbl (\ r (?(a) (`(function (region ,a) vbl)r)r)))
+  (constrain vbl (\ r (?(a) (`(function (region ,:a) vbl)r)r)))
 
   (function vbl (r handler)
     (let (l [region-alloc (list-struct) r handler]) (do
       [init-nil l]
       [frag->vbl [list->fragment l]])))
 
-  (constrain vbl? (\ r (?(a) (`(function (frag) ,a)r)r)))
+  (constrain vbl? (\ r (?(a) (`(function (frag) ,:a)r)r)))
 
   (function vbl? (s) (let (t [frag->list s]) (cand [nil? t] [not= t emt!])))
 
-  (constrain vbl= (\ r (?(a) (`(function (vbl vbl) ,a)r)r)))
+  (constrain vbl= (\ r (?(a) (`(function (vbl vbl) ,:a)r)r)))
 
   (function vbl= (a b) [= a b])
 
@@ -63,7 +63,7 @@
           val)
         val)))
 
-  (constrain recursive-evaluate (\ r (?(a) (`(function (frag (hash-table vbl frag) region ,a) frag)r)r)))
+  (constrain recursive-evaluate (\ r (?(a) (`(function (frag (hash-table vbl frag) region ,:a) frag)r)r)))
 
   (function recursive-evaluate (frag assigns r handler)
     (substitute (.. r handler)
@@ -132,7 +132,7 @@
   will be based on. r is the region in which the token will be constructed. Return value
   is the constructed token.)
 
-(constrain build-token (\ r (?(c) (`(function (string region ,c) (list tchar))r)r)))
+(constrain build-token (\ r (?(c) (`(function (string region ,:c) (list tchar))r)r)))
 
 (function build-token (str r handler)
   (let (sexprs-start (storage _ emt!))
@@ -163,7 +163,7 @@
   to the current index in the buffer. r is the region into which the token
   should be put. Return value is the constructed token.)
 
-(constrain build-sigilled-token (\ r (?(a b c d e f) (`(function (,a ,b ,c ,d ,e ,f) frag)r)r)))
+(constrain build-sigilled-token (\ r (?(a b c d e f) (`(function (,:a ,:b ,:c ,:d ,:e ,:f) frag)r)r)))
 
 (function build-sigilled-token (sigil l2src l2src-sz pos r handler)
   (substitute (.. r handler)
@@ -180,7 +180,7 @@
   primitive is a string. delimiter is an ascii character. For rest of parameters,
   see above.)
 
-(constrain build-fragment-list (\ r (?(a b c d e) (`(function (string ,a ,b ,c ,d region ,e) (list frag))r)r)))
+(constrain build-fragment-list (\ r (?(a b c d e) (`(function (string ,:a ,:b ,:c ,:d region ,:e) (list frag))r)r)))
 
 (function build-fragment-list (primitive delimeter l2src l2src-sz pos r handler)
   (substitute (.. r handler)
@@ -195,7 +195,7 @@
 
 (ignore Builds a fragment starting at the current position in the buffer. For parameters, see above.)
 
-(constrain build-fragment (\ r (?(a b c d e) (`(function (,a ,b ,c ,d ,e) frag)r)r)))
+(constrain build-fragment (\ r (?(a b c d e) (`(function (,:a ,:b ,:c ,:d ,:e) frag)r)r)))
 
 (function build-fragment (l2src l2src-sz pos r handler)
   (substitute (.. r handler) (if [= l2src-sz $:pos]
@@ -227,13 +227,13 @@
 
 (ignore Checks if the fragment d is a token. A token is a non-empty list of characters.)
 
-(constrain i/f.token? (\ r (?(a) (`(function (frag) ,a)r)r)))
+(constrain i/f.token? (\ r (?(a) (`(function (frag) ,:a)r)r)))
 
 (function i/f.token? (e)
   (let (d [fragment->token e])
     (cand (not [nil? d]) [= (@ cs-flag[@car d]) character-flag])))
 
-(constrain i/f.token= (\ r (?(a) (`(function ((list tchar) (list tchar)) ,a)r)r)))
+(constrain i/f.token= (\ r (?(a) (`(function ((list tchar) (list tchar)) ,:a)r)r)))
 
 (function i/f.token= (a b)
   (loop check-car (a a) (b b)
@@ -250,7 +250,7 @@
   r is the region into which the string should be put. The return value is the constructed
   string.)
 
-(constrain to-string (\ r (?(a) (`(function ((list tchar) region ,a) string)r)r)))
+(constrain to-string (\ r (?(a) (`(function ((list tchar) region ,:a) string)r)r)))
 
 (function to-string (d r handler)
   (let (str [region-alloc [+ [length d] #:1] r handler])
@@ -268,7 +268,7 @@
   be copied. r is the region into which the fragment should be copied. The return
   value is the copied fragment.)
 
-(constrain copy-fragment (\ r (?(b) (`(function (frag (hash-table vbl vbl) region ,b) frag)r)r)))
+(constrain copy-fragment (\ r (?(b) (`(function (frag (hash-table vbl vbl) region ,:b) frag)r)r)))
 
 (function copy-fragment (l var-map r handler)
   (substitute (.. r handler)
@@ -283,7 +283,7 @@
 
 (ignore Checks whether two fragments are equal modulo variable identity.)
 
-(constrain fragment= (\ r (?(a b) (`(function (frag frag (hash-table vbl vbl) region ,a) ,b)r)r)))
+(constrain fragment= (\ r (?(a b) (`(function (frag frag (hash-table vbl vbl) region ,:a) ,:b)r)r)))
 
 (function fragment= (frag1 frag2 var-map r handler)
   (substitute (.. r handler)
@@ -307,7 +307,7 @@
 
 (ignore Prints the given fragment out to standard output. d is the fragment that is to be printed.)
 
-(constrain print-fragment (\ r (?(b) (`(function (frag ,b) ())r)r)))
+(constrain print-fragment (\ r (?(b) (`(function (frag ,:b) ())r)r)))
 
 (function print-fragment (d hdl)
   (if [vbl? d]

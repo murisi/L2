@@ -91,13 +91,13 @@
 
 (storage empty-string #:0)
 
-(constrain strlen (\ r (?(a) (`(function (string) ,a)r)r)))
+(constrain strlen (\ r (?(a) (`(function (string) ,:a)r)r)))
 
 (function strlen (str)
   (loop do-count (i #:0)
     (if [getb [+ str i]] {do-count [+ i #:1]} i)))
 
-(constrain strcmp (\ r (?(a) (`(function (string string) ,a)r)r)))
+(constrain strcmp (\ r (?(a) (`(function (string string) ,:a)r)r)))
 
 (function strcmp (s1 s2)
   (loop do-cmp (s1 s1) (s2 s2)
@@ -105,7 +105,7 @@
       {do-cmp [+ s1 #:1] [+ s2 #:1]}
       [- [getb s1] [getb s2]])))
 
-(constrain str= (\ r (?(a) (`(function (string string) ,a)r)r)))
+(constrain str= (\ r (?(a) (`(function (string string) ,:a)r)r)))
 
 (function str= (s1 s2) (not [strcmp s1 s2]))
 
@@ -122,14 +122,14 @@
   Returns a C-string that is a copy of the one at src. The returned string and its
   dependencies will all reside in the region reg.)
 
-(constrain rstrcpy (\ r (?(a) (`(function (string region ,a) string)r)r)))
+(constrain rstrcpy (\ r (?(a) (`(function (string region ,:a) string)r)r)))
 
 (function rstrcpy (src reg handler)
   (let (dest [region-alloc [+[strlen src]#:1] reg handler]) (do
     [strcpy dest src]
     dest)))
 
-(constrain rstrcat (\ r (?(a) (`(function (string string region ,a) string)r)r)))
+(constrain rstrcat (\ r (?(a) (`(function (string string region ,:a) string)r)r)))
 
 (function rstrcat (str1 str2 reg handler)
   (let (dest [region-alloc [+[strlen str1][+[strlen str2]#:1]] reg handler]) (do

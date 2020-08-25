@@ -102,7 +102,7 @@
 
 (ignore Defined in assembly file that will be linked with this file.)
 
-(constrain syscall (\ r (?(a b c d e f g) (`(function (syscall-num ,a ,b ,c ,d ,e ,f) ,g)r)r)))
+(constrain syscall (\ r (?(a b c d e f g) (`(function (syscall-num ,:a ,:b ,:c ,:d ,:e ,:f) ,:g)r)r)))
 
 (function exit (code) [syscall (sys-exit) code (ignore) (ignore) (ignore) (ignore) (ignore)])
 
@@ -133,7 +133,7 @@
 
 (storage file-access-error (ignore))
 
-(constrain open (\ r (?(b) (`(function (string ,b) fd)r)r)))
+(constrain open (\ r (?(b) (`(function (string ,:b) fd)r)r)))
 
 (function open (path handler)
   (let (ret [syscall (sys-open) path (o-rdonly) (ignore) (ignore) (ignore) (ignore)])
@@ -141,7 +141,7 @@
       {handler (storage _ file-access-error path)}
       ret)))
 
-(constrain create (\ r (?(b) (`(function (string ,b) fd)r)r)))
+(constrain create (\ r (?(b) (`(function (string ,:b) fd)r)r)))
 
 (function create (path handler)
   (let (ret [syscall (sys-open) path [bor (o-wronly) (o-creat)] [bor (s-irwxu) [bor (s-irwxg) (s-irwxo)]]  (ignore) (ignore) (ignore)])
@@ -149,7 +149,7 @@
       {handler (storage _ file-access-error path)}
       ret)))
 
-(constrain print (\ r (?(a b c e) (`(function (fd ,a ,b ,c) ,e)r)r)))
+(constrain print (\ r (?(a b c e) (`(function (fd ,:a ,:b ,:c) ,:e)r)r)))
 
 (function print (fd d len handler)
   (let (ret [syscall (sys-write) fd d len (ignore) (ignore) (ignore)])
@@ -157,15 +157,15 @@
       {handler (storage _ file-access-error empty-string)}
       ret)))
 
-(constrain print-str (\ r (?(b e) (`(function (fd string ,b) ,e)r)r)))
+(constrain print-str (\ r (?(b e) (`(function (fd string ,:b) ,:e)r)r)))
 
 (function print-str (fd str handler) [print fd str [strlen str] handler])
 
-(constrain print-char (\ r (?(a b e) (`(function (fd ,a ,b) ,e)r)r)))
+(constrain print-char (\ r (?(a b e) (`(function (fd ,:a ,:b) ,:e)r)r)))
 
 (function print-char (fd ch handler) [print fd (storage _ ch) #:1 handler])
 
-(constrain dec->char (\ r (?(a b) (`(function (,a) ,b)r)r)))
+(constrain dec->char (\ r (?(a b) (`(function (,:a) ,:b)r)r)))
 
 (function dec->char (h)
   (switch = h
@@ -180,7 +180,7 @@
     (#:1 (char 1))
     (char 0)))
 
-(constrain print-uint (\ r (?(a b e) (`(function (fd ,a ,b) ,e)r)r)))
+(constrain print-uint (\ r (?(a b e) (`(function (fd ,:a ,:b) ,:e)r)r)))
 
 (function print-uint (fd i handler)
   (let (j (storage _ #:19))
@@ -192,7 +192,7 @@
       {next-digit [/ i #:10]})))
   [print fd [+ str [+ $:j #:1]] [- #:19 $:j] handler]))))
 
-(constrain hex->char (\ r (?(a b) (`(function (,a) ,b)r)r)))
+(constrain hex->char (\ r (?(a b) (`(function (,:a) ,:b)r)r)))
 
 (function hex->char (h)
   (switch = h
@@ -213,7 +213,7 @@
     ((hex 1) (char 1))
     (char 0)))
 
-(constrain print-hex (\ r (?(a b e) (`(function (fd ,a ,b) ,e)r)r)))
+(constrain print-hex (\ r (?(a b e) (`(function (fd ,:a ,:b) ,:e)r)r)))
 
 (function print-hex (fd i handler)
   (let (j (storage _ #:16))
@@ -225,21 +225,21 @@
       {next-digit [/ i #:16]})))
   [print fd [+ str [+ $:j #:1]] [- #:16 $:j] handler]))))
 
-(constrain print-bool (\ r (?(a b) (`(function (fd ,a ,b) ,a)r)r)))
+(constrain print-bool (\ r (?(a b) (`(function (fd ,:a ,:b) ,:a)r)r)))
 
 (function print-bool (fd i handler) (do
   [print-str fd (if i (" T) (" F)) handler]
   i))
 
 (constrain print-bytes
-  (\ r (?(a b h i) (`(function (fd ,a ,b ,h) ,i)r)r)))
+  (\ r (?(a b h i) (`(function (fd ,:a ,:b ,:h) ,:i)r)r)))
 
 (function print-bytes (fd bs sz handler)
   (for (i (range #:0 sz)) (ignore) (do
     [print-char fd [hex->char [>> [getb[+ bs i]] #:4]] handler]
     [print-char fd [hex->char [band [getb[+ bs i]] (hex 0F)]] handler])))
 
-(constrain read (\ r (?(a b c e) (`(function (fd ,a ,b ,c) ,e)r)r)))
+(constrain read (\ r (?(a b c e) (`(function (fd ,:a ,:b ,:c) ,:e)r)r)))
 
 (function read (fd buf cnt handler)
   (let (ret [syscall (sys-read) fd buf cnt (ignore) (ignore) (ignore)])
@@ -247,7 +247,7 @@
       {handler (storage _ file-access-error empty-string)}
       ret)))
 
-(constrain close (\ r (?(a c) (`(function (fd ,a) ,c)r)r)))
+(constrain close (\ r (?(a c) (`(function (fd ,:a) ,:c)r)r)))
 
 (function close (fd handler)
   (let (ret [syscall (sys-close) fd (ignore) (ignore) (ignore) (ignore) (ignore)])
@@ -255,7 +255,7 @@
       {handler (storage _ file-access-error empty-string)}
       ret)))
 
-(constrain size (\ r (?(a c) (`(function (fd ,a) ,c)r)r)))
+(constrain size (\ r (?(a c) (`(function (fd ,:a) ,:c)r)r)))
 
 (function size (fd handler)
   (let (statbuf (storage _ (ignore)(ignore)(ignore)(ignore)(ignore)(ignore)(ignore)(ignore)(ignore)
@@ -294,7 +294,7 @@
 (ignore Creates a new region with a minimum capacity in bytes given by the value at
   min-capacity.)
 
-(constrain create-region (\ r (?(a b) (`(function (,a ,b) region)r)r)))
+(constrain create-region (\ r (?(a b) (`(function (,:a ,:b) region)r)r)))
 
 (function create-region (min-capacity handler)
   (let (len [pad-size [+ min-capacity (region-element)] (page-size)])
@@ -310,7 +310,7 @@
 (ignore
   Allocates memory in the region at reg of an amount in bytes equal to the integer at len.)
 
-(constrain region-alloc (\ r (?(a b d) (`(function (,a region ,b) ,d)r)r)))
+(constrain region-alloc (\ r (?(a b d) (`(function (,:a region ,:b) ,:d)r)r)))
 
 (function region-alloc (len reg handler)
   (let (len [pad-size len (alloc-alignment)])
@@ -352,7 +352,7 @@
 (ignore
   Frees the given reference and everything allocated afterwards in the given region.)
 
-(constrain region-free (\ r (?(a b d) (`(function (,a region ,b) ,d)r)r)))
+(constrain region-free (\ r (?(a b d) (`(function (,:a region ,:b) ,:d)r)r)))
 
 (function region-free (ref reg handler)
   (loop do-free (last-elt (@ reg-last-elt reg))
@@ -386,7 +386,7 @@
   Releases the memory associated with the region reg. After a call to this function, it is
   invalid to read or write data to the memory allocated on this region.)
 
-(constrain destroy-region (\ r (?(b) (`(function (region ,b) ())r)r)))
+(constrain destroy-region (\ r (?(b) (`(function (region ,:b) ())r)r)))
 
 (function destroy-region (reg handler)
   (loop do-destroy (reg reg)
@@ -400,7 +400,7 @@
   Returns a list containing the the command line arguments. The returned list and its
   dependencies will all reside in the region reg.)
 
-(constrain argv (\ r (?(a) (`(function (region ,a) (list string))r)r)))
+(constrain argv (\ r (?(a) (`(function (region ,:a) (list string))r)r)))
 
 (function argv (reg handler)
   (let (f [open (" /proc/self/cmdline) handler])
@@ -419,7 +419,7 @@
 
 (storage time-error (ignore))
 
-(constrain clock-gettime (\ r (?(a b) (`(function (,a) ,b)r)r)))
+(constrain clock-gettime (\ r (?(a b) (`(function (,:a) ,:b)r)r)))
 
 (function clock-gettime (handler)
   (let (t (storage _ (ignore)(ignore)))

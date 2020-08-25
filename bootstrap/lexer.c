@@ -65,11 +65,10 @@ int after_leading_space(char *l2src, int l2src_sz, int *pos) {
  * sublist = <fragment2> (<space> ':' <space> <fragment2>)+
  * fragment2 = <fragment1> | <subsublist>
  * subsublist = <fragment1> (<space> ';' <space> <fragment1>)+
- * fragment1 = <stoken> | <token> | <list> | <clist> | <slist>
+ * fragment1 = <token> | <list> | <clist> | <slist>
  * list = '(' <space> (<fragment> <space>)* ')'
  * clist = '{' <space> (<fragment> <space>)* '}'
  * slist = '[' <space> (<fragment> <space>)* ']'
- * stoken = (',' | '$') (token | stoken)?
  * token = <character>+
  */
 
@@ -80,7 +79,7 @@ bool read_token(list *out, char *l2src, int l2src_sz, int *pos, region r, jumpbu
     return false;
   } else {
     char c = l2src[*pos];
-    if(isspace(c) || c == ',' || c == '(' || c == ')' || c == '{' || c == '}' || c == '[' || c == ']' || c == ':') {
+    if(isspace(c) || c == '(' || c == ')' || c == '{' || c == '}' || c == '[' || c == ']' || c == ':') {
       return false;
     } else {
       (*pos) ++;
@@ -96,37 +95,6 @@ bool read_token(list *out, char *l2src, int l2src_sz, int *pos, region r, jumpbu
       (*pos)--;
       *out = l;
       return true;
-    }
-  }
-}
-
-bool read_sigilled_token(list *out, char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
-  if(l2src_sz == *pos) {
-    return false;
-  } else {
-    char d = l2src[*pos];
-    if(d == ',') {
-      (*pos)++;
-      char sigilc[] = {d, '\0'};
-      list tmp, sigill = build_token(sigilc, r);
-      if(read_sigilled_token(&tmp, l2src, l2src_sz, pos, r, handler)) {
-        list sexprs = nil;
-        append(build_token(sigilc, r), &sexprs, r);
-        append(tmp, &sexprs, r);
-        *out = sexprs;
-        return true;
-      } else if(read_token(&tmp, l2src, l2src_sz, pos, r, handler)) {
-        list sexprs = nil;
-        append(build_token(sigilc, r), &sexprs, r);
-        append(tmp, &sexprs, r);
-        *out = sexprs;
-        return true;
-      } else {
-        *out = sigill;
-        return true;
-      }
-    } else {
-      return false;
     }
   }
 }
@@ -172,8 +140,6 @@ bool read_list(list *out, char *l2src, int l2src_sz, int *pos, region r, jumpbuf
 
 bool read_fragment1(list *out, char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
   if(read_list(out, l2src, l2src_sz, pos, r, handler)) {
-    return true;
-  } else if(read_sigilled_token(out, l2src, l2src_sz, pos, r, handler)) {
     return true;
   } else if(read_token(out, l2src, l2src_sz, pos, r, handler)) {
     return true;
