@@ -154,42 +154,85 @@
       (do [set+ pos #:1] {find-space})
       [- l2src-sz $:pos])))
 
-(ignore
-  If there is a space at the current position in the buffer, then build a token
-  containing solely the sigil. Otherwise build a token of the form (<sigil>
-  <token>) where token is the token starting at the current position in the
-  buffer. sigil is a string. l2src is a reference to the start of a buffer
-  containing characters. l2src-sz is the size of the buffer. pos is a reference
-  to the current index in the buffer. r is the region into which the token
-  should be put. Return value is the constructed token.)
+(constrain read-token (\ r (?(a b c d e) (`(function (,:a ,:b ,:c ,:d ,:e) frag)r)r)))
 
-(constrain build-sigilled-token (\ r (?(a b c d e f) (`(function (,:a ,:b ,:c ,:d ,:e ,:f) frag)r)r)))
-
-(function build-sigilled-token (sigil l2src l2src-sz pos r handler)
+(function read-token (l2src l2src-sz pos r handler)
   (substitute (.. r handler)
-    (if [= l2src-sz $:pos]
-      [token->fragment [build-token sigil ..]]
-      (let (d [getb [+ l2src $:pos]])
-        (if (cor [isspace d] [= d (rparen)] [= d (rbrace)] [= d (rbracket)] [= d (lparen)] [= d (lbrace)] [= d (lbracket)])
-          [token->fragment [build-token sigil ..]]
-          [list->fragment [ccons [token->fragment [build-token sigil ..]] [build-fragment l2src l2src-sz pos ..] emt! ..]])))))
+    (if [= $:pos l2src-sz]
+      {handler (storage _ unexpected-char-error (nul) $:pos)}
+      (let (c [getb [+ l2src $:pos]])
+        (if (cor [isspace c] (switch = c ((lparen)(rparen)(lbrace)(rbrace)(lbracket)(rbracket)(colon) (true)) (false)))
+          {handler (storage _ unexpected-char-error c $:pos)}
+          (do
+            [set+ pos #:1]
+            [token->fragment (let (ls (storage _ emt!))
+              (loop cons-char (le ls) (c c)
+                (let (le [append (tkn-char c) le ..])
+                (if [= $:pos l2src-sz] $:ls
+                  (let (c [getb [+ l2src $:pos]])
+                  (if (cor [isspace c] (switch = c ((lparen)(rparen)(lbrace)(rbrace)(lbracket)(rbracket)(colon) (true)) (false))) $:ls
+                    (do [set+ pos #:1] {cons-char le c})))))))]))))))
 
-(ignore
-  Builds a fragment list starting at the current position in the buffer and ending
-  at the specified delimiter and then prefixes it with the given primitive.
-  primitive is a string. delimiter is an ascii character. For rest of parameters,
-  see above.)
+(constrain read-list (\ r (?(a b c d e) (`(function (,:a ,:b ,:c ,:d ,:e) frag)r)r)))
 
-(constrain build-fragment-list (\ r (?(a b c d e) (`(function (string ,:a ,:b ,:c ,:d region ,:e) (list frag))r)r)))
-
-(function build-fragment-list (primitive delimeter l2src l2src-sz pos r handler)
+(function read-list (l2src l2src-sz pos r handler)
   (substitute (.. r handler)
-    (let (sexprs-start (storage _ emt!))
-      (loop cons-frag (sexprs-end [append [token->fragment [build-token primitive ..]] sexprs-start ..])
-        (let (rem [after-leading-space l2src l2src-sz pos])
-          (if (cand rem [= [getb [+ l2src $:pos]] delimeter])
-            (do [set+ pos #:1] $:sexprs-start)
-            {cons-frag [append [build-fragment l2src l2src-sz pos ..] sexprs-end ..]}))))))
+    (if [= $:pos l2src-sz]
+      {handler (storage _ unexpected-char-error $:pos)}
+      (let (c [getb [+ l2src $:pos]])
+        (if (switch = c ((lparen)(lbrace)(lbracket) (false)) (true))
+          {handler (storage _ unexpected-char-error c $:pos)}
+          (let (sexprs-start (storage _ emt!)) (do
+            [set+ pos #:1]
+            (let (delimiter
+              (if [= c (lbrace)] (do
+                [append [token->fragment [build-token (" jump) ..]] sexprs-start ..]
+                (rbrace))
+              (if [= c (lbracket)] (do
+                [append [token->fragment [build-token (" invoke) ..]] sexprs-start ..]
+                (rbracket))
+                (rparen))))
+            (loop cons-frag (sexprs-end sexprs-start)
+              (if (cand [after-leading-space l2src l2src-sz pos] [= [getb [+ l2src $:pos]] delimiter])
+                (do [set+ pos #:1] [list->fragment $:sexprs-start])
+                {cons-frag [append [read-fragment l2src l2src-sz pos ..] sexprs-end ..]}))))))))))
+
+(constrain read-fragment1 (\ r (?(a b c d e) (`(function (,:a ,:b ,:c ,:d ,:e) frag)r)r)))
+
+(function read-fragment1 (l2src l2src-sz pos r handler)
+  (substitute (.. r handler)
+    (if [= $:pos l2src-sz]
+      {handler (storage _ unexpected-char-error (nul))}
+      (let (c [getb [+ l2src $:pos]])
+        (if (switch = c ((lparen)(lbrace)(lbracket) (true)) (false))
+          [read-list l2src l2src-sz pos ..]
+          [read-token l2src l2src-sz pos ..])))))
+
+(constrain read-fragment2 (\ r (?(a b c d e) (`(function (,:a ,:b ,:c ,:d ,:e) frag)r)r)))
+
+(function read-fragment2 (l2src l2src-sz pos r handler)
+  [read-fragment1 l2src l2src-sz pos r handler])
+
+(constrain read-fragment (\ r (?(a b c d e) (`(function (,:a ,:b ,:c ,:d ,:e) frag)r)r)))
+
+(function read-fragment (l2src l2src-sz pos r handler)
+  (substitute (.. r handler)
+    (let (sexprs-start (storage _ nil))
+    (let (sexprs-end [append [read-fragment2 l2src l2src-sz pos ..] sexprs-start ..]) (do
+    (loop cons-frag (sexprs-end sexprs-end)
+      (if (not [after-leading-space l2src l2src-sz pos])
+        (ignore)
+        (let (c [getb [+ l2src $:pos]])
+          (if (not [= c (colon)])
+            (ignore)
+            (do
+              [set+ pos #:1]
+              [after-leading-space l2src l2src-sz pos]
+              {cons-frag [append [read-fragment2 l2src l2src-sz pos ..] sexprs-end ..]})))))
+                
+    (if [> [length $:sexprs-start] #:1]
+      [list->fragment $:sexprs-start]
+      [@car $:sexprs-start]))))))
 
 (storage unexpected-char-error (ignore))
 
@@ -198,30 +241,8 @@
 (constrain build-fragment (\ r (?(a b c d e) (`(function (,:a ,:b ,:c ,:d ,:e) frag)r)r)))
 
 (function build-fragment (l2src l2src-sz pos r handler)
-  (substitute (.. r handler) (if [= l2src-sz $:pos]
-    {handler (storage _ unexpected-char-error #:0 $:pos)}
-    (let (c [getb [+ l2src $:pos]])
-      (if (cor [isspace c] [= c (rparen)] [= c (rbrace)] [= c (rbracket)])
-        {handler (storage _ unexpected-char-error c $:pos)}
-        (do
-          [set+ pos #:1]
-          (switch = c
-            ((lparen) [list->fragment [@cdr [build-fragment-list (" expression) (rparen) l2src l2src-sz pos ..]]])
-            ((lbrace) [list->fragment [build-fragment-list (" jump) (rbrace) l2src l2src-sz pos ..]])
-            ((lbracket) [list->fragment [build-fragment-list (" invoke) (rbracket) l2src l2src-sz pos ..]])
-            ((char $) [build-sigilled-token (" $) l2src l2src-sz pos ..])
-            ((char #) [build-sigilled-token (" #) l2src l2src-sz pos ..])
-            ((char ,) [build-sigilled-token (" ,) l2src l2src-sz pos ..])
-            ((char `) [build-sigilled-token (" `) l2src l2src-sz pos ..])
-            
-            [token->fragment
-              (let (ls (storage _ emt!))
-              (loop cons-char (le ls) (c c)
-                (let (le [append (tkn-char c) le ..])
-                (if [= $:pos l2src-sz] $:ls
-                  (let (c [getb [+ l2src $:pos]])
-                  (if (cor [isspace c] (switch = c ((lparen)(rparen)(lbrace)(rbrace)(lbracket)(rbracket) (true)) (false))) $:ls
-                    (do [set+ pos #:1] {cons-char le c})))))))])))))))
+  (substitute (.. r handler)
+    [read-fragment l2src l2src-sz pos r handler]))
 
 (storage character-flag (ignore))
 

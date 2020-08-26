@@ -72,38 +72,35 @@ int after_leading_space(char *l2src, int l2src_sz, int *pos) {
  * token = <character>+
  */
 
-bool read_fragment(list *out, char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler);
+list read_fragment(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler);
 
-bool read_token(list *out, char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
+list read_token(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
   if(l2src_sz == *pos) {
-    return false;
+    throw_unexpected_character(0, *pos, handler);
   } else {
     char c = l2src[*pos];
     if(isspace(c) || c == '(' || c == ')' || c == '{' || c == '}' || c == '[' || c == ']' || c == ':') {
-      return false;
+      throw_unexpected_character(c, *pos, handler);
     } else {
       (*pos) ++;
       list l = nil;
       do {
         append(_char(c), &l, r);
         if(*pos == l2src_sz) {
-          *out = l;
-          return true;
+          return l;
         }
         c = l2src[(*pos)++];
       } while(!isspace(c) && c != '(' && c != ')' && c != '{' && c != '}' && c != '[' && c != ']' && c != ':');
       (*pos)--;
-      *out = l;
-      return true;
+      return l;
     }
   }
 }
 
-bool read_list(list *out, char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
+list read_list(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
   if(l2src_sz == *pos) {
-    return false;
+    throw_unexpected_character(0, *pos, handler);
   } else {
-    int recovery = *pos;
     char c = l2src[*pos];
     if(c == '(' || c == '{' || c == '[') {
       (*pos) ++;
@@ -121,99 +118,55 @@ bool read_list(list *out, char *l2src, int l2src_sz, int *pos, region r, jumpbuf
       for(;;) {
         if(after_leading_space(l2src, l2src_sz, pos) && l2src[*pos] == delimiter) {
           (*pos) ++;
-          *out = sexprs;
-          return true;
+          return sexprs;
         }
-        list tmp;
-        if(read_fragment(&tmp, l2src, l2src_sz, pos, r, handler)) {
-          append(tmp, &sexprs, r);
-        } else {
-          *pos = recovery;
-          return false;
-        }
+        append(read_fragment(l2src, l2src_sz, pos, r, handler), &sexprs, r);
       }
     } else {
-      return false;
+      throw_unexpected_character(c, *pos, handler);
     }
   }
 }
 
-bool read_fragment1(list *out, char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
-  if(read_list(out, l2src, l2src_sz, pos, r, handler)) {
-    return true;
-  } else if(read_token(out, l2src, l2src_sz, pos, r, handler)) {
-    return true;
+list read_fragment1(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
+  if(*pos == l2src_sz) {
+    throw_unexpected_character(0, *pos, handler);
   } else {
-    return false;
+    char c = l2src[*pos];
+    if(c == '(' || c == '{' || c == '[') {
+      return read_list(l2src, l2src_sz, pos, r, handler);
+    } else {
+      return read_token(l2src, l2src_sz, pos, r, handler);
+    }
   }
 }
 
-bool read_fragment2(list *out, char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
-  if(read_fragment1(out, l2src, l2src_sz, pos, r, handler)) {
-    return true;
-  } else {
-    return false;
-  }
+list read_fragment2(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
+  return read_fragment1(l2src, l2src_sz, pos, r, handler);
 }
 
-bool read_sublist(list *out, char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
+list read_fragment(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
   list sexprs = nil;
-  list tmp;
-  int recovery = *pos;
-  if(read_fragment2(&tmp, l2src, l2src_sz, pos, r, handler)) {
-    recovery = *pos;
-    append(tmp, &sexprs, r);
-    while(after_leading_space(l2src, l2src_sz, pos)) {
-      char c = l2src[*pos];
-      if(c == ':') {
-        (*pos) ++;
-        if(after_leading_space(l2src, l2src_sz, pos) && read_fragment2(&tmp, l2src, l2src_sz, pos, r, handler)) {
-          recovery = *pos;
-          append(tmp, &sexprs, r);
-        } else {
-          goto done;
-        }
-      } else {
-        goto done;
-      }
+  append(read_fragment2(l2src, l2src_sz, pos, r, handler), &sexprs, r);
+  while(after_leading_space(l2src, l2src_sz, pos)) {
+    char c = l2src[*pos];
+    if(c == ':') {
+      (*pos) ++;
+      after_leading_space(l2src, l2src_sz, pos);
+      append(read_fragment2(l2src, l2src_sz, pos, r, handler), &sexprs, r);
+    } else {
+      break;
     }
-    done:
-      if(length(sexprs) > 1) {
-        *pos = recovery;
-        *out = sexprs;
-        return true;
-      } else {
-        *pos = recovery;
-        *out = sexprs;
-        return false;
-      }
-  } else {
-    *pos = recovery;
-    *out = NULL;
-    return false;
   }
-}
-
-bool read_fragment(list *out, char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
-  if(read_sublist(out, l2src, l2src_sz, pos, r, handler)) {
-    return true;
-  } else if(*out && length(*out) == 1) {
-    // This condition should be read_fragment2(out, l2src, l2src_sz, pos, r, handler),
-    // but we'll just cheat and reuse parsing work already done.
-    *out = (*out)->fst;
-    return true;
+  if(length(sexprs) > 1) {
+    return sexprs;
   } else {
-    return false;
+    return sexprs->fst;
   }
 }
 
 list build_fragment(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
-  list out;
-  if(read_fragment(&out, l2src, l2src_sz, pos, r, handler)) {
-    return out;
-  } else {
-    throw_unexpected_character(l2src[*pos], *pos, handler);
-  }
+  return read_fragment(l2src, l2src_sz, pos, r, handler);
 }
 
 bool is_token(list d) {
