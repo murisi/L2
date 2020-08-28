@@ -158,15 +158,11 @@ list read_fragment(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handl
       break;
     }
   }
-  if(length(sexprs) > 1) {
-    return sexprs;
-  } else {
+  if(is_nil(sexprs->rst)) {
     return sexprs->fst;
+  } else {
+    return sexprs;
   }
-}
-
-list build_fragment(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
-  return read_fragment(l2src, l2src_sz, pos, r, handler);
 }
 
 bool is_token(list d) {

@@ -213,6 +213,8 @@
 (function read-fragment2 (l2src l2src-sz pos r handler)
   [read-fragment1 l2src l2src-sz pos r handler])
 
+(ignore Builds a fragment starting at the current position in the buffer. For parameters, see above.)
+
 (constrain read-fragment (\ r (?(a b c d e) (`(function (,:a ,:b ,:c ,:d ,:e) frag)r)r)))
 
 (function read-fragment (l2src l2src-sz pos r handler)
@@ -230,19 +232,11 @@
               [after-leading-space l2src l2src-sz pos]
               {cons-frag [append [read-fragment2 l2src l2src-sz pos ..] sexprs-end ..]})))))
                 
-    (if [> [length $:sexprs-start] #:1]
-      [list->fragment $:sexprs-start]
-      [@car $:sexprs-start]))))))
+    (if [emt?! [@cdr $:sexprs-start]]
+      [@car $:sexprs-start]
+      [list->fragment $:sexprs-start]))))))
 
 (storage unexpected-char-error (ignore))
-
-(ignore Builds a fragment starting at the current position in the buffer. For parameters, see above.)
-
-(constrain build-fragment (\ r (?(a b c d e) (`(function (,:a ,:b ,:c ,:d ,:e) frag)r)r)))
-
-(function build-fragment (l2src l2src-sz pos r handler)
-  (substitute (.. r handler)
-    [read-fragment l2src l2src-sz pos r handler]))
 
 (storage character-flag (ignore))
 
