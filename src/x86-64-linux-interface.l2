@@ -297,7 +297,7 @@
 (constrain create-region (\ r (?(a b) (`(function (,:a ,:b) region)r)r)))
 
 (function create-region (min-capacity handler)
-  (let (len [pad-size [+ min-capacity (region-element)] (page-size)])
+  (let (len [pad-size [max [+ min-capacity (region-element)] #:1048576] (page-size)])
     (let (reg [mmap len handler]) (do
       (setf reg-next-elt reg null-element)
       (setf reg-prev-elt reg null-element)
@@ -317,7 +317,7 @@
   (let (new-last-elt
     (let (curr-last-elt (@ reg-last-elt reg))
     (if [> [+(@ reg-curr-pos curr-last-elt)len] (@ reg-end-pos curr-last-elt)]
-      (let (new-last-elt [create-region [+ len [* #:2[-(@ reg-end-pos curr-last-elt) curr-last-elt]]] handler]) (do
+      (let (new-last-elt [create-region len handler]) (do
         (setf reg-next-elt curr-last-elt new-last-elt)
         (setf reg-last-elt reg new-last-elt)
         (setf reg-prev-elt new-last-elt curr-last-elt)
@@ -359,7 +359,8 @@
     (if (and [<= [+ last-elt (region-element)] ref] [<= ref (@ reg-end-pos last-elt)])
       (do
         (setf reg-curr-pos last-elt ref)
-        (setf reg-last-elt reg last-elt))
+        (setf reg-last-elt reg last-elt)
+        (setf reg-next-elt last-elt null-element))
       (let (prev-elt (@ reg-prev-elt last-elt)) (do
         [munmap last-elt [- (@ reg-end-pos last-elt) last-elt] handler]
         {do-free prev-elt})))))
