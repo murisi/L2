@@ -53,7 +53,7 @@ list build_token(char *str, region r) {
   return sexprs;
 }
 
-int after_leading_space(char *l2src, int l2src_sz, int *pos) {
+int read_whitespace(char *l2src, int l2src_sz, int *pos) {
   for(; *pos < l2src_sz && isspace(l2src[*pos]); (*pos)++);
   return l2src_sz - *pos;
 }
@@ -116,7 +116,7 @@ list read_list(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) 
         delimiter = ')';
       }
       for(;;) {
-        if(after_leading_space(l2src, l2src_sz, pos) && l2src[*pos] == delimiter) {
+        if(read_whitespace(l2src, l2src_sz, pos) && l2src[*pos] == delimiter) {
           (*pos) ++;
           return sexprs;
         }
@@ -148,11 +148,11 @@ list read_fragment2(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *hand
 list read_fragment(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
   list sexprs = nil;
   append(read_fragment2(l2src, l2src_sz, pos, r, handler), &sexprs, r);
-  while(after_leading_space(l2src, l2src_sz, pos)) {
+  while(read_whitespace(l2src, l2src_sz, pos)) {
     char c = l2src[*pos];
     if(c == ':') {
       (*pos) ++;
-      after_leading_space(l2src, l2src_sz, pos);
+      read_whitespace(l2src, l2src_sz, pos);
       append(read_fragment2(l2src, l2src_sz, pos, r, handler), &sexprs, r);
     } else {
       break;

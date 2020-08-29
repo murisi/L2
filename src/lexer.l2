@@ -148,7 +148,7 @@
   will be increased. Return value is the number of remaining characters in the
   buffer.)
 
-(function after-leading-space (l2src l2src-sz pos)
+(function read-whitespace (l2src l2src-sz pos)
   (loop find-space
     (if (cand [< $:pos l2src-sz] [isspace [getb[+ l2src $:pos]]])
       (do [set+ pos #:1] {find-space})
@@ -193,7 +193,7 @@
                 (rbracket))
                 (rparen))))
             (loop cons-frag (sexprs-end sexprs-start)
-              (if (cand [after-leading-space l2src l2src-sz pos] [= [getb [+ l2src $:pos]] delimiter])
+              (if (cand [read-whitespace l2src l2src-sz pos] [= [getb [+ l2src $:pos]] delimiter])
                 (do [set+ pos #:1] [list->fragment $:sexprs-start])
                 {cons-frag [append [read-fragment l2src l2src-sz pos ..] sexprs-end ..]}))))))))))
 
@@ -222,14 +222,14 @@
     (let (sexprs-start (storage _ emt!))
     (let (sexprs-end [append [read-fragment2 l2src l2src-sz pos ..] sexprs-start ..]) (do
     (loop cons-frag (sexprs-end sexprs-end)
-      (if (not [after-leading-space l2src l2src-sz pos])
+      (if (not [read-whitespace l2src l2src-sz pos])
         (ignore)
         (let (c [getb [+ l2src $:pos]])
           (if (not [= c (colon)])
             (ignore)
             (do
               [set+ pos #:1]
-              [after-leading-space l2src l2src-sz pos]
+              [read-whitespace l2src l2src-sz pos]
               {cons-frag [append [read-fragment2 l2src l2src-sz pos ..] sexprs-end ..]})))))
                 
     (if [emt?! [@cdr $:sexprs-start]]
