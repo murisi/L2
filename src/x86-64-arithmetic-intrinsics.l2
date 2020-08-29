@@ -37,7 +37,7 @@
 (constrain undefined-symbol? (\ r (?(a b) (`(function ((expr ,:b)) ,:a)r)r)))
 
 (function undefined-symbol? (n)
-  (cand [= (@ expr-type n) (-symbol-)]
+  (and [= (@ expr-type n) (-symbol-)]
     [= (@ bndg-state (@ expr-reference n)) (undefined-state)]))
 
 (constrain symbol-name= (\ r (?(a b) (`(function (string (expr ,:b)) ,:a)r)r)))
@@ -429,14 +429,14 @@
         (setf expr-generator n [function->generator generate-binary-right-imm-arithmetic-operators])
         (true)))
         
-      ((" set8b) (" set) (cand [sword? $:arg2] (do
+      ((" set8b) (" set) (and [sword? $:arg2] (do
         [initialize-expressions (storage-cons [coalesce-expr-bndg $:arg1] nil)
           nil offset 0x:FFFFFFFFFFFF0C30 (@ expr-depth n) inits ret-val buf hdl]
         (setf bndg-size (@ expr-binding-aug n) (word-size))
         (setf expr-generator n [function->generator generate-binary-right-imm-arithmetic-operators])
         (true))))
       
-      ((" bor) (" bxor) (" band) (" +) (" -) (cand (cor [sbyte? $:arg2] [sword? $:arg2]) (do
+      ((" bor) (" bxor) (" band) (" +) (" -) (and (or [sbyte? $:arg2] [sword? $:arg2]) (do
         [initialize-expressions (storage-cons [coalesce-expr-bndg $:arg1] nil)
           nil offset 0x:FFFFFFFFFFFF0C30 (@ expr-depth n) inits ret-val buf hdl]
         (setf bndg-condition-jump (@ expr-binding-aug n) (x86-jnz))
@@ -444,7 +444,7 @@
         (setf expr-generator n [function->generator generate-binary-right-imm-arithmetic-operators])
         (true))))
       
-      ((" =) (cand (cor [sbyte? $:arg2] [sword? $:arg2]) (do
+      ((" =) (and (or [sbyte? $:arg2] [sword? $:arg2]) (do
         [initialize-expressions (storage-cons [coalesce-expr-bndg $:arg1] nil)
           nil offset 0x:FFFFFFFFFFFF0C30 (@ expr-depth n) inits ret-val buf hdl]
         (setf bndg-condition-jump (@ expr-binding-aug n) (x86-je))
@@ -452,7 +452,7 @@
         (setf expr-generator n [function->generator generate-binary-right-imm-arithmetic-operators])
         (true))))
       
-      ((" <) (cand (cor [sbyte? $:arg2] [sword? $:arg2]) (do
+      ((" <) (and (or [sbyte? $:arg2] [sword? $:arg2]) (do
         [initialize-expressions (storage-cons [coalesce-expr-bndg $:arg1] nil)
           nil offset 0x:FFFFFFFFFFFF0C30 (@ expr-depth n) inits ret-val buf hdl]
         (setf bndg-condition-jump (@ expr-binding-aug n) (x86-jb))
@@ -460,7 +460,7 @@
         (setf expr-generator n [function->generator generate-binary-right-imm-arithmetic-operators])
         (true))))
       
-      ((" >) (cand (cor [sbyte? $:arg2] [sword? $:arg2]) (do
+      ((" >) (and (or [sbyte? $:arg2] [sword? $:arg2]) (do
         [initialize-expressions (storage-cons [coalesce-expr-bndg $:arg1] nil)
           nil offset 0x:FFFFFFFFFFFF0C30 (@ expr-depth n) inits ret-val buf hdl]
         (setf bndg-condition-jump (@ expr-binding-aug n) (x86-ja))
@@ -504,7 +504,7 @@
             [prepend (make-instrN (x86-mov)
               ([make-mem-op #:4 arg1-reg (none)#:0 #:0 #:4 ..][make-imm-op #:4 $:arg2 ..][make-reg-op(r11d)..]) ..) c ..])))
         
-        ((" set8b) (" set) (cand [sword? $:arg2] (do
+        ((" set8b) (" set) (and [sword? $:arg2] (do
           [generate-expression $:arg1 c relocs ..]
           (let (arg1-reg [generate-move-to-register (r10) arg1-val-bndg c relocs ..])
             [prepend (make-instrN (x86-mov)
@@ -586,10 +586,10 @@
       (ignore))))
 
 (function sbyte? (val)
-  (cor [= val [band val 0x:000000000000007F]] [= val [bor val 0x:FFFFFFFFFFFFFF80]]))
+  (or [= val [band val 0x:000000000000007F]] [= val [bor val 0x:FFFFFFFFFFFFFF80]]))
 
 (function sword? (val)
-  (cor [= val [band val 0x:000000007FFFFFFF]] [= val [bor val 0x:FFFFFFFF80000000]]))
+  (or [= val [band val 0x:000000007FFFFFFF]] [= val [bor val 0x:FFFFFFFF80000000]]))
 
 (function match-get-base+offset (name base offset n)
   (bind-if (match-property
@@ -607,7 +607,7 @@
                   (%(match-list
                       (%[variable addr-part1])
                       (%[variable addr-part2])))
-                  (cor
+                  (or
                     [= (@ expr-type $:addr-part1) (-literal-)]
                     [= (@ expr-type $:addr-part2) (-literal-)]))))))))) n)
     (addr-part1 addr-part2)
@@ -620,7 +620,7 @@
   (\ r (?(a b c d) (`(function ((expr ,:a) ,:b (list initializer) (values ,:b reg-use-vec) region ,:d) ,:c)r)r)))
 
 (function initialize-get-base+offset (n offset inits ret-val buf hdl)
-  (bind-if (cand [match-get-base+offset name base addr-offset n] [sbyte? $:addr-offset])
+  (bind-if (and [match-get-base+offset name base addr-offset n] [sbyte? $:addr-offset])
     (name base addr-offset)
       (let
           (base-val-bndg (@ expr-binding-aug $:base))
@@ -691,7 +691,7 @@
                   (%(match-list
                       (%[variable addr-part1])
                       (%[variable addr-part2])))
-                  (cor
+                  (or
                     [= (@ expr-type $:addr-part1) (-literal-)]
                     [= (@ expr-type $:addr-part2) (-literal-)]))))))
         (%[variable value])))) n)
@@ -771,7 +771,7 @@
   (\ r (?(a b c d) (`(function ((expr ,:a) ,:b (list initializer) (values ,:b reg-use-vec) region ,:d) ,:c)r)r)))
 
 (function initialize-arithmetic-intrinsics (n offset inits ret-val buf hdl)
-  (substitute (.. buf hdl) (cor
+  (substitute (.. buf hdl) (or
     [initialize-get-base+offset n offset inits ret-val ..]
     [initialize-set-base+offset n offset inits ret-val ..]
     [initialize-unary-arithmetic-operators n offset inits ret-val ..]

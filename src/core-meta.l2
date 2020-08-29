@@ -159,9 +159,9 @@
 
 (function token= (a b)
   (loop check (a a) (b b)
-    (if (cand [emt? a] [emt? b])
+    (if (and [emt? a] [emt? b])
       (true)
-    (if (cor [emt? a] [emt? b])
+    (if (or [emt? a] [emt? b])
       (false)
     (if [char= [@fst a] [@fst b]]
       {check [@rst a] [@rst b]}
@@ -187,9 +187,9 @@
 
 (function substitute (l r)
   [(function aux (frag fnd repl r)
-      (if (cor [token? frag] [emt? frag])
+      (if (or [token? frag] [emt? frag])
         frag
-        (if (cand [token? [@fst frag]] [token= [@fst frag] fnd])
+        (if (and [token? [@fst frag]] [token= [@fst frag] fnd])
           [meta.concat repl [@rst frag] r]
           [lst [aux [@fst frag] fnd repl r] [aux [@rst frag] fnd repl r] r])))
     [@frst l] [@ffst l] [@rfst l] r])
@@ -474,7 +474,7 @@
   transformation:
   (match-property (prop1 matcher1) (prop2 matcher2) ... (propN matcherN) obj)
   ->
-  (let (match-property.obj obj) (cand
+  (let (match-property.obj obj) (and
     (matcher1 (@ prop1 match-property.obj))
     (matcher2 (@ prop2 match-property.obj))
     ...
@@ -483,7 +483,7 @@
 (function match-property (l r)
   (let (obj [@fst [meta.reverse l r]])
     (`(let (match-property.obj ,:obj)
-        (,[lst (` cand r)
+        (,[lst (` and r)
           (loop build (conds emt) (parts [@rst [meta.reverse l r]])
             (if [emt? parts]
               conds
@@ -496,7 +496,7 @@
   following transformation:
   (match-or matcher1 matcher2 ... matcherN obj)
   ->
-  (let (match-or.obj obj) (cor
+  (let (match-or.obj obj) (or
     (matcher1 match-or.obj)
     (matcher2 match-or.obj)
     ...
@@ -505,7 +505,7 @@
 (function match-or (l r)
   (let (obj [@fst [meta.reverse l r]])
     (`(let (match-or.obj ,:obj)
-        (,[lst (` cor r)
+        (,[lst (` or r)
           (loop build (conds emt) (parts [@rst [meta.reverse l r]])
             (if [emt? parts]
               conds
@@ -517,7 +517,7 @@
   following transformation:
   (match-and matcher1 matcher2 ... matcherN obj)
   ->
-  (let (match-and.obj obj) (cand
+  (let (match-and.obj obj) (and
     (matcher1 match-and.obj)
     (matcher2 match-and.obj)
     ...
@@ -526,7 +526,7 @@
 (function match-and (l r)
   (let (obj [@fst [meta.reverse l r]])
     (`(let (match-and.obj ,:obj)
-        (,[lst (` cand r)
+        (,[lst (` and r)
           (loop build (conds emt) (parts [@rst [meta.reverse l r]])
             (if [emt? parts]
               conds
@@ -536,9 +536,9 @@
 (ignore
   (guard-match matcher guard obj)
   ->
-  (cand (matcher1 obj) guard))
+  (and (matcher1 obj) guard))
 
-(function guard-match (l r) (`(cand ((,[@fst l]) (,[@frrst l])) (,[@frst l]))r))
+(function guard-match (l r) (`(and ((,[@fst l]) (,[@frrst l])) (,[@frst l]))r))
 
 (ignore
   A variant of the if-expression where the condition and the consequent are evaluated in
