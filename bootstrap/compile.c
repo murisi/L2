@@ -273,8 +273,6 @@ int main(int argc, char *argv[]) {
     {.name = "-7-", .address = _char('7')},
     {.name = "-8-", .address = _char('8')},
     {.name = "-9-", .address = _char('9')},
-    {.name = "-:-", .address = _char(':')},
-    {.name = "-;-", .address = _char(';')},
     {.name = "-<-", .address = _char('<')},
     {.name = "-=-", .address = _char('=')},
     {.name = "->-", .address = _char('>')},

@@ -31,7 +31,7 @@ struct character chars[][1] = {
   char_init('"'), char_init('#'), char_init('$'), char_init('%'), char_init('&'), char_init('\''), {0}, {0}, char_init('*'),
   char_init('+'), char_init(','), char_init('-'), char_init('.'), char_init('/'), char_init('0'), char_init('1'),
   char_init('2'), char_init('3'), char_init('4'), char_init('5'), char_init('6'), char_init('7'), char_init('8'),
-  char_init('9'), {0}, char_init(';'), char_init('<'), char_init('='), char_init('>'), char_init('?'),
+  char_init('9'), {0}, {0}, char_init('<'), char_init('='), char_init('>'), char_init('?'),
   char_init('@'), char_init('A'), char_init('B'), char_init('C'), char_init('D'), char_init('E'), char_init('F'),
   char_init('G'), char_init('H'), char_init('I'), char_init('J'), char_init('K'), char_init('L'), char_init('M'),
   char_init('N'), char_init('O'), char_init('P'), char_init('Q'), char_init('R'), char_init('S'), char_init('T'),
@@ -79,7 +79,7 @@ list read_token(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler)
     throw_unexpected_character(0, *pos, handler);
   } else {
     char c = l2src[*pos];
-    if(isspace(c) || c == '(' || c == ')' || c == '{' || c == '}' || c == '[' || c == ']' || c == ':') {
+    if(isspace(c) || c == '(' || c == ')' || c == '{' || c == '}' || c == '[' || c == ']' || c == ':' || c == ';') {
       throw_unexpected_character(c, *pos, handler);
     } else {
       (*pos) ++;
@@ -90,7 +90,7 @@ list read_token(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler)
           return l;
         }
         c = l2src[(*pos)++];
-      } while(!isspace(c) && c != '(' && c != ')' && c != '{' && c != '}' && c != '[' && c != ']' && c != ':');
+      } while(!isspace(c) && c != '(' && c != ')' && c != '{' && c != '}' && c != '[' && c != ']' && c != ':' && c != ';');
       (*pos)--;
       return l;
     }
@@ -142,7 +142,23 @@ list read_fragment1(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *hand
 }
 
 list read_fragment2(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
-  return read_fragment1(l2src, l2src_sz, pos, r, handler);
+  list sexprs = nil;
+  append(read_fragment1(l2src, l2src_sz, pos, r, handler), &sexprs, r);
+  while(read_whitespace(l2src, l2src_sz, pos)) {
+    char c = l2src[*pos];
+    if(c == ';') {
+      (*pos) ++;
+      read_whitespace(l2src, l2src_sz, pos);
+      append(read_fragment1(l2src, l2src_sz, pos, r, handler), &sexprs, r);
+    } else {
+      break;
+    }
+  }
+  if(is_nil(sexprs->rst)) {
+    return sexprs->fst;
+  } else {
+    return sexprs;
+  }
 }
 
 list read_fragment(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {

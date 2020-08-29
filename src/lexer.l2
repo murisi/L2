@@ -117,7 +117,7 @@
   #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0
   #:0 #:0 (char-init !) (char-init ") (char-init #) (char-init $) (char-init %) (char-init &) (char-init ') #:0 #:0
   (char-init *) (char-init +) (char-init ,) (char-init -) (char-init .) (char-init /) (char-init 0) (char-init 1) (char-init 2)
-  (char-init 3) (char-init 4) (char-init 5) (char-init 6) (char-init 7) (char-init 8) (char-init 9) #:0 (char-init ;)
+  (char-init 3) (char-init 4) (char-init 5) (char-init 6) (char-init 7) (char-init 8) (char-init 9) #:0 #:0
   (char-init <) (char-init =) (char-init >) (char-init ?) (char-init @) (char-init A) (char-init B) (char-init C) (char-init D)
   (char-init E) (char-init F) (char-init G) (char-init H) (char-init I) (char-init J) (char-init K) (char-init L) (char-init M)
   (char-init N) (char-init O) (char-init P) (char-init Q) (char-init R) (char-init S) (char-init T) (char-init U) (char-init V)
@@ -142,6 +142,19 @@
         $:sexprs-start))))
 
 (ignore
+ Grammar being lexed:
+ program = <space> (<fragment> <space>)*
+ fragment = <fragment2> | <sublist>
+ sublist = <fragment2> (<space> ':' <space> <fragment2>)+
+ fragment2 = <fragment1> | <subsublist>
+ subsublist = <fragment1> (<space> ';' <space> <fragment1>)+
+ fragment1 = <token> | <list> | <clist> | <slist>
+ list = '(' <space> (<fragment> <space>)* ')'
+ clist = '{' <space> (<fragment> <space>)* '}'
+ slist = '[' <space> (<fragment> <space>)* ']'
+ token = <character>+)
+
+(ignore
   Moves the supplied index forward to the first non-space character. l2src is a
   reference to the beginning of a buffer containing characters. l2src-sz contains
   the size in bytes of the buffer. pos is the reference to an index integer that
@@ -161,7 +174,7 @@
     (if [= $:pos l2src-sz]
       {handler (storage _ unexpected-char-error (nul) $:pos)}
       (let (c [getb [+ l2src $:pos]])
-        (if (cor [isspace c] (switch = c ((lparen)(rparen)(lbrace)(rbrace)(lbracket)(rbracket)(colon) (true)) (false)))
+        (if (cor [isspace c] (switch = c ((lparen)(rparen)(lbrace)(rbrace)(lbracket)(rbracket)(colon)(scolon) (true)) (false)))
           {handler (storage _ unexpected-char-error c $:pos)}
           (do
             [set+ pos #:1]
@@ -170,7 +183,7 @@
                 (let (le [append (tkn-char c) le ..])
                 (if [= $:pos l2src-sz] $:ls
                   (let (c [getb [+ l2src $:pos]])
-                  (if (cor [isspace c] (switch = c ((lparen)(rparen)(lbrace)(rbrace)(lbracket)(rbracket)(colon) (true)) (false))) $:ls
+                  (if (cor [isspace c] (switch = c ((lparen)(rparen)(lbrace)(rbrace)(lbracket)(rbracket)(colon)(scolon) (true)) (false))) $:ls
                     (do [set+ pos #:1] {cons-char le c})))))))]))))))
 
 (constrain read-list (\ r (?(a b c d e) (`(function (,:a ,:b ,:c ,:d ,:e) frag)r)r)))
@@ -211,7 +224,23 @@
 (constrain read-fragment2 (\ r (?(a b c d e) (`(function (,:a ,:b ,:c ,:d ,:e) frag)r)r)))
 
 (function read-fragment2 (l2src l2src-sz pos r handler)
-  [read-fragment1 l2src l2src-sz pos r handler])
+  (substitute (.. r handler)
+    (let (sexprs-start (storage _ emt!))
+    (let (sexprs-end [append [read-fragment1 l2src l2src-sz pos ..] sexprs-start ..]) (do
+    (loop cons-frag (sexprs-end sexprs-end)
+      (if (not [read-whitespace l2src l2src-sz pos])
+        (ignore)
+        (let (c [getb [+ l2src $:pos]])
+          (if (not [= c (scolon)])
+            (ignore)
+            (do
+              [set+ pos #:1]
+              [read-whitespace l2src l2src-sz pos]
+              {cons-frag [append [read-fragment1 l2src l2src-sz pos ..] sexprs-end ..]})))))
+                
+    (if [emt?! [@cdr $:sexprs-start]]
+      [@car $:sexprs-start]
+      [list->fragment $:sexprs-start]))))))
 
 (ignore Builds a fragment starting at the current position in the buffer. For parameters, see above.)
 
