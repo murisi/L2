@@ -550,10 +550,10 @@ char *vgenerate_metas_no_throw(union expression **out, union expression *s, void
   list bindings = ((void **) ctx)[0];
   
   if(s->base.type == meta) {
-    list (*macro)(list, region);
+    list (*macro)(list, region, void *);
     char *missing_sym_name = preprocessed_expression_address((void **) &macro, s->meta.reference, bindings, expr_buf, expr_buf, handler);
     if(missing_sym_name) return missing_sym_name;
-    return vgenerate_metas_no_throw(out, build_expression(macro(s->meta.fragment->rst, expr_buf), s, expr_buf, handler), ctx);
+    return vgenerate_metas_no_throw(out, build_expression(macro(s->meta.fragment->rst, expr_buf, 0), s, expr_buf, handler), ctx);
   } else if(s->base.type == constrain) {
     list (*macro)(region);
     char *missing_sym_name = preprocessed_expression_address((void **) &macro, s->constrain.reference, bindings, expr_buf, expr_buf, handler);
