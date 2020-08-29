@@ -73,7 +73,7 @@
       (switch str= $:name
         ((" get0b) (" getb) (" get1b) (" get2b) (" get4b) (" get8b) (" get) (" bnot) (do
           [initialize-expressions (storage-cons [coalesce-expr-bndg $:arg1] nil) nil offset
-            (hex FFFFFFFFFFFF0830) (@ expr-depth n) inits ret-val buf hdl]
+            0x:FFFFFFFFFFFF0830 (@ expr-depth n) inits ret-val buf hdl]
           (setf bndg-size (@ expr-binding-aug n) (word-size))
           (setf expr-generator n [function->generator generate-unary-arithmetic-operators])
           (true)))
@@ -177,7 +177,7 @@
     (switch str= $:name
       ((" bor) (" bxor) (" band) (" +) (" -) (do
         [initialize-expressions (storage-cons [coalesce-expr-bndg $:arg1] (storage-cons [coalesce-expr-bndg $:arg2] nil))
-          nil offset (hex FFFFFFFFFFFF0C30) (@ expr-depth n) inits ret-val buf hdl]
+          nil offset 0x:FFFFFFFFFFFF0C30 (@ expr-depth n) inits ret-val buf hdl]
         (setf bndg-condition-jump (@ expr-binding-aug n) (x86-jnz))
         (setf bndg-size (@ expr-binding-aug n) (word-size))
         (setf expr-generator n [function->generator generate-binary-arithmetic-operators])
@@ -185,7 +185,7 @@
       
       ((" =) (do
         [initialize-expressions (storage-cons [coalesce-expr-bndg $:arg1] (storage-cons [coalesce-expr-bndg $:arg2] nil))
-          nil offset (hex FFFFFFFFFFFF0C30) (@ expr-depth n) inits ret-val buf hdl]
+          nil offset 0x:FFFFFFFFFFFF0C30 (@ expr-depth n) inits ret-val buf hdl]
         (setf bndg-condition-jump (@ expr-binding-aug n) (x86-je))
         (setf bndg-size (@ expr-binding-aug n) (word-size))
         (setf expr-generator n [function->generator generate-binary-arithmetic-operators])
@@ -193,7 +193,7 @@
       
       ((" <) (do
         [initialize-expressions (storage-cons [coalesce-expr-bndg $:arg1] (storage-cons [coalesce-expr-bndg $:arg2] nil))
-          nil offset (hex FFFFFFFFFFFF0C30) (@ expr-depth n) inits ret-val buf hdl]
+          nil offset 0x:FFFFFFFFFFFF0C30 (@ expr-depth n) inits ret-val buf hdl]
         (setf bndg-condition-jump (@ expr-binding-aug n) (x86-jb))
         (setf bndg-size (@ expr-binding-aug n) (word-size))
         (setf expr-generator n [function->generator generate-binary-arithmetic-operators])
@@ -201,7 +201,7 @@
       
       ((" >) (do
         [initialize-expressions (storage-cons [coalesce-expr-bndg $:arg1] (storage-cons [coalesce-expr-bndg $:arg2] nil))
-          nil offset (hex FFFFFFFFFFFF0C30) (@ expr-depth n) inits ret-val buf hdl]
+          nil offset 0x:FFFFFFFFFFFF0C30 (@ expr-depth n) inits ret-val buf hdl]
         (setf bndg-condition-jump (@ expr-binding-aug n) (x86-ja))
         (setf bndg-size (@ expr-binding-aug n) (word-size))
         (setf expr-generator n [function->generator generate-binary-arithmetic-operators])
@@ -209,7 +209,7 @@
       
       ((" set0b) (" setb) (" set1b) (" set2b) (" set4b) (" set8b) (" set) (do
         [initialize-expressions (storage-cons [coalesce-expr-bndg $:arg1] (storage-cons [coalesce-expr-bndg $:arg2] nil))
-          nil offset (hex FFFFFFFFFFFF0C30) (@ expr-depth n) inits ret-val buf hdl]
+          nil offset 0x:FFFFFFFFFFFF0C30 (@ expr-depth n) inits ret-val buf hdl]
         (setf bndg-size (@ expr-binding-aug n) (word-size))
         (setf expr-generator n [function->generator generate-binary-arithmetic-operators])
         (true)))
@@ -218,7 +218,7 @@
         (setf bndg-preferred-storage arg1-val-bndg (register-storage))
         (setf bndg-preferred-offset arg1-val-bndg (rax))
         [initialize-expressions (storage-cons $:arg1 (storage-cons $:arg2 nil)) nil offset
-          (hex FFFFFFFFFFFF0034) (@ expr-depth n) inits ret-val buf hdl]
+          0x:FFFFFFFFFFFF0034 (@ expr-depth n) inits ret-val buf hdl]
         (setf bndg-size (@ expr-binding-aug n) (word-size))
         (setf expr-generator n [function->generator generate-binary-arithmetic-operators])
         (true)))
@@ -228,17 +228,17 @@
         (setf bndg-preferred-offset arg1-val-bndg (rax))
         (bind (bottom-offset in-use)
           [initialize-expressions (storage-cons $:arg1 (storage-cons $:arg2 nil)) nil offset
-            (hex FFFFFFFFFFFF0030) (@ expr-depth n) inits bind buf hdl] (do
+            0x:FFFFFFFFFFFF0030 (@ expr-depth n) inits bind buf hdl] (do
         (setf bndg-size (@ expr-binding-aug n) (word-size))
         (setf expr-generator n [function->generator generate-binary-arithmetic-operators])
-        (values (use-storage ret-val) bottom-offset [bor in-use (hex 0000000000000004)])
+        (values (use-storage ret-val) bottom-offset [bor in-use 0x:0000000000000004])
         (true)))))
       
       ((" <<) (" >>) (do
         (setf bndg-preferred-storage arg2-val-bndg (register-storage))
         (setf bndg-preferred-offset arg2-val-bndg (rcx))
         [initialize-expressions (storage-cons $:arg1 (storage-cons $:arg2 nil)) nil offset
-          (hex FFFFFFFFFFFF0830) (@ expr-depth n) inits ret-val buf hdl]
+          0x:FFFFFFFFFFFF0830 (@ expr-depth n) inits ret-val buf hdl]
         (setf bndg-size (@ expr-binding-aug n) (word-size))
         (setf expr-generator n [function->generator generate-binary-arithmetic-operators])
         (true)))
@@ -424,21 +424,21 @@
     (switch str= $:name
       ((" set0b) (" setb) (" set1b) (" set2b) (" set4b) (" <<) (" >>) (do
         [initialize-expressions (storage-cons [coalesce-expr-bndg $:arg1] nil)
-          nil offset (hex FFFFFFFFFFFF0C30) (@ expr-depth n) inits ret-val buf hdl]
+          nil offset 0x:FFFFFFFFFFFF0C30 (@ expr-depth n) inits ret-val buf hdl]
         (setf bndg-size (@ expr-binding-aug n) (word-size))
         (setf expr-generator n [function->generator generate-binary-right-imm-arithmetic-operators])
         (true)))
         
       ((" set8b) (" set) (cand [sword? $:arg2] (do
         [initialize-expressions (storage-cons [coalesce-expr-bndg $:arg1] nil)
-          nil offset (hex FFFFFFFFFFFF0C30) (@ expr-depth n) inits ret-val buf hdl]
+          nil offset 0x:FFFFFFFFFFFF0C30 (@ expr-depth n) inits ret-val buf hdl]
         (setf bndg-size (@ expr-binding-aug n) (word-size))
         (setf expr-generator n [function->generator generate-binary-right-imm-arithmetic-operators])
         (true))))
       
       ((" bor) (" bxor) (" band) (" +) (" -) (cand (cor [sbyte? $:arg2] [sword? $:arg2]) (do
         [initialize-expressions (storage-cons [coalesce-expr-bndg $:arg1] nil)
-          nil offset (hex FFFFFFFFFFFF0C30) (@ expr-depth n) inits ret-val buf hdl]
+          nil offset 0x:FFFFFFFFFFFF0C30 (@ expr-depth n) inits ret-val buf hdl]
         (setf bndg-condition-jump (@ expr-binding-aug n) (x86-jnz))
         (setf bndg-size (@ expr-binding-aug n) (word-size))
         (setf expr-generator n [function->generator generate-binary-right-imm-arithmetic-operators])
@@ -446,7 +446,7 @@
       
       ((" =) (cand (cor [sbyte? $:arg2] [sword? $:arg2]) (do
         [initialize-expressions (storage-cons [coalesce-expr-bndg $:arg1] nil)
-          nil offset (hex FFFFFFFFFFFF0C30) (@ expr-depth n) inits ret-val buf hdl]
+          nil offset 0x:FFFFFFFFFFFF0C30 (@ expr-depth n) inits ret-val buf hdl]
         (setf bndg-condition-jump (@ expr-binding-aug n) (x86-je))
         (setf bndg-size (@ expr-binding-aug n) (word-size))
         (setf expr-generator n [function->generator generate-binary-right-imm-arithmetic-operators])
@@ -454,7 +454,7 @@
       
       ((" <) (cand (cor [sbyte? $:arg2] [sword? $:arg2]) (do
         [initialize-expressions (storage-cons [coalesce-expr-bndg $:arg1] nil)
-          nil offset (hex FFFFFFFFFFFF0C30) (@ expr-depth n) inits ret-val buf hdl]
+          nil offset 0x:FFFFFFFFFFFF0C30 (@ expr-depth n) inits ret-val buf hdl]
         (setf bndg-condition-jump (@ expr-binding-aug n) (x86-jb))
         (setf bndg-size (@ expr-binding-aug n) (word-size))
         (setf expr-generator n [function->generator generate-binary-right-imm-arithmetic-operators])
@@ -462,7 +462,7 @@
       
       ((" >) (cand (cor [sbyte? $:arg2] [sword? $:arg2]) (do
         [initialize-expressions (storage-cons [coalesce-expr-bndg $:arg1] nil)
-          nil offset (hex FFFFFFFFFFFF0C30) (@ expr-depth n) inits ret-val buf hdl]
+          nil offset 0x:FFFFFFFFFFFF0C30 (@ expr-depth n) inits ret-val buf hdl]
         (setf bndg-condition-jump (@ expr-binding-aug n) (x86-ja))
         (setf bndg-size (@ expr-binding-aug n) (word-size))
         (setf expr-generator n [function->generator generate-binary-right-imm-arithmetic-operators])
@@ -586,10 +586,10 @@
       (ignore))))
 
 (function sbyte? (val)
-  (cor [= val [band val (hex 000000000000007F)]] [= val [bor val (hex FFFFFFFFFFFFFF80)]]))
+  (cor [= val [band val 0x:000000000000007F]] [= val [bor val 0x:FFFFFFFFFFFFFF80]]))
 
 (function sword? (val)
-  (cor [= val [band val (hex 000000007FFFFFFF)]] [= val [bor val (hex FFFFFFFF80000000)]]))
+  (cor [= val [band val 0x:000000007FFFFFFF]] [= val [bor val 0x:FFFFFFFF80000000]]))
 
 (function match-get-base+offset (name base offset n)
   (bind-if (match-property
@@ -628,7 +628,7 @@
         (switch str= $:name
           ((" get0b) (" getb) (" get1b) (" get2b) (" get4b) (" get8b) (" get) (do
             [initialize-expressions (storage-cons [coalesce-expr-bndg $:base] nil) nil offset
-              (hex FFFFFFFFFFFF0830) (@ expr-depth n) inits ret-val buf hdl]
+              0x:FFFFFFFFFFFF0830 (@ expr-depth n) inits ret-val buf hdl]
             (setf bndg-size (@ expr-binding-aug n) (word-size))
             (setf expr-generator n [function->generator generate-get-base+offset])
             (true)))
@@ -714,7 +714,7 @@
     (switch str= $:name
       ((" set0b) (" setb) (" set1b) (" set2b) (" set4b) (" set8b) (" set) (do
         [initialize-expressions (storage-cons [coalesce-expr-bndg $:base] (storage-cons [coalesce-expr-bndg $:val] nil))
-          nil offset (hex FFFFFFFFFFFF0C30) (@ expr-depth n) inits ret-val buf hdl]
+          nil offset 0x:FFFFFFFFFFFF0C30 (@ expr-depth n) inits ret-val buf hdl]
         (setf bndg-size (@ expr-binding-aug n) (word-size))
         (setf expr-generator n [function->generator generate-set-base+offset])
         (true)))

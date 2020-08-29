@@ -102,7 +102,7 @@
 (constrain register-in-use? \:r:(`(function (register reg-use-vec) ())r))
 
 (function register-in-use? (reg reg-use-vec)
-  (let (reg-idx [band reg (hex F)])
+  (let (reg-idx [band reg 0x:F])
   (if [band [<< #:1 reg-idx] reg-use-vec] (true) (false))))
 
 (ignore
@@ -121,7 +121,7 @@
       
     ((register-storage)
       (let (reg (@ bndg-preferred-offset bndg))
-      (let (reg-idx [band reg (hex F)])
+      (let (reg-idx [band reg 0x:F])
       (let (reg-occupied? [band [<< #:1 reg-idx] in-use])
       (if (cor reg-occupied? [= reg (none)])
         in-use
@@ -146,7 +146,7 @@
 (constrain binding-to-register/memory \:r:(?(a) (`(function (bndg-aug ,:a reg-use-vec) reg-use-vec)r)r))
 
 (function binding-to-register/memory (bndg offset in-use)
-  (if [= in-use (hex FFFFFFFFFFFFFFFF)]
+  (if [= in-use 0x:FFFFFFFFFFFFFFFF]
     (do
       (setf bndg-size bndg (word-size))
       (setf bndg-storage bndg [context->memory-storage (@ bndg-context bndg)])
@@ -159,7 +159,7 @@
         (loop search (i #:0)
           (let (test-reg ($(loc (unit) i binding-to-register/memory-prefs)))
             (if [register-in-use? test-reg in-use] {search [+ i #:1]} test-reg))))
-      (let (new-in-use [bor in-use [<< #:1 [band free-register (hex 0F)]]]) (do
+      (let (new-in-use [bor in-use [<< #:1 [band free-register 0x:0F]]]) (do
       (setf bndg-offset bndg free-register)
       new-in-use))))))
 
@@ -318,13 +318,13 @@
     
     (bind (frame-size in-use)
       [initialize-expressions (storage-cons (@ expr-expression n) nil) (@ expr-parameters n)
-        (@ expr-frame-size n) (hex FFFFFFFFFFFF0830) (@ expr-depth n) inits ret-val buf hdl] (do
+        (@ expr-frame-size n) 0x:FFFFFFFFFFFF0830 (@ expr-depth n) inits ret-val buf hdl] (do
     (setf expr-registers-used n in-use)
     (setf expr-frame-size n frame-size)
     (for (t (list-iter (@ expr-parameters n))) (ignore) (setf bndg-size t (word-size)))))
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (setf expr-generator n [function->generator generate-function])
-    (values (use-storage ret-val) offset (hex 0000000000000800))
+    (values (use-storage ret-val) offset 0x:0000000000000800)
     (true))))
 
 (constrain generate-store-continuation \:r:(?(a b) `:(function ((expr ,:b) (ref (list instr)) (ref (list reloc)) region ,:a) (ref (list instr))):r r))
@@ -366,7 +366,7 @@
 (function initialize-continuation (n offset inits ret-val buf hdl)
   (cand [= (@ expr-type n) (-continuation-)] (do
     [initialize-expressions (storage-cons (@ expr-expression n) nil) (@ expr-parameters n)
-      offset (hex FFFFFFFFFFFF0C38) (@ expr-depth n) inits ret-val buf hdl]
+      offset 0x:FFFFFFFFFFFF0C38 (@ expr-depth n) inits ret-val buf hdl]
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (setf expr-generator n [function->generator generate-continuation])
     (true))))
@@ -411,7 +411,7 @@
             {search [@cdr rem-jumps]}))))
     
     [initialize-expressions (storage-cons (@ expr-expression n) nil) (@ expr-parameters n)
-      offset (hex FFFFFFFFFFFF0C38) (@ expr-depth n) inits ret-val buf hdl]
+      offset 0x:FFFFFFFFFFFF0C38 (@ expr-depth n) inits ret-val buf hdl]
     
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (setf expr-generator n [function->generator generate-with])
@@ -432,7 +432,7 @@
 
 (function initialize-storage (n offset inits ret-val buf hdl)
   (cand [= (@ expr-type n) (-storage-)] (do
-    [initialize-expressions (@ expr-arguments n) nil offset (hex FFFFFFFFFFFF0C38) (@ expr-depth n) inits ret-val buf hdl]
+    [initialize-expressions (@ expr-arguments n) nil offset 0x:FFFFFFFFFFFF0C38 (@ expr-depth n) inits ret-val buf hdl]
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (setf expr-generator n [function->generator generate-storage])
     (true))))
@@ -519,14 +519,14 @@
         (foreach (u (@ expr-arguments n)) (v (@ expr-parameters (@ expr-target n)))
           (setf expr-binding-aug u v))
         [initialize-expressions (storage-cons (@ expr-expression (@ expr-target n)) (@ expr-arguments n))
-          nil offset (hex FFFFFFFFFFFF0C38) (@ expr-depth n) inits ret-val buf hdl])
+          nil offset 0x:FFFFFFFFFFFF0C38 (@ expr-depth n) inits ret-val buf hdl])
     (if (cand [not= (@ expr-short-circuit n) null-expr] [= [length (@ expr-parameters (@ expr-short-circuit n))] #:1])
       (do
         (setf expr-binding-aug [@car (@ expr-arguments n)] [@car (@ expr-parameters (@ expr-short-circuit n))])
         [initialize-expressions (storage-cons (@ expr-target n) (@ expr-arguments n)) nil offset
-          (hex FFFFFFFFFFFF0C30) (@ expr-depth n) inits ret-val buf hdl])
+          0x:FFFFFFFFFFFF0C30 (@ expr-depth n) inits ret-val buf hdl])
       [initialize-expressions (storage-cons (@ expr-target n) (@ expr-arguments n)) nil offset
-        (hex FFFFFFFFFFFF0C30) (@ expr-depth n) inits ret-val buf hdl]))
+        0x:FFFFFFFFFFFF0C30 (@ expr-depth n) inits ret-val buf hdl]))
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (setf expr-generator n [function->generator generate-jump])
     (true))))
@@ -586,10 +586,10 @@
           {set-prefs [@cdr rem-args] [+ i #:1]}))))
     (bind (bottom-offset in-use)
       [initialize-expressions (storage-cons (@ expr-target n) (@ expr-arguments n)) nil offset
-        (hex FFFFFFFFFFFF0031) (@ expr-depth n) inits ret-val buf hdl] (do
+        0x:FFFFFFFFFFFF0031 (@ expr-depth n) inits ret-val buf hdl] (do
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (setf expr-generator n [function->generator generate-invoke])
-    (values (use-storage ret-val) bottom-offset [bor in-use (hex FFFFFFFFFFFF0FF7)])
+    (values (use-storage ret-val) bottom-offset [bor in-use 0x:FFFFFFFFFFFF0FF7])
     (true))))))
 
 (constrain generate-if
@@ -630,7 +630,7 @@
       (setf expr-binding-aug (@ expr-alternate n) (@ expr-binding-aug n))
       [initialize-expressions
         (storage-cons (@ expr-consequent n) (storage-cons (@ expr-alternate n) (storage-cons (@ expr-condition n) nil)))
-        nil offset (hex FFFFFFFFFFFF0830) (@ expr-depth n) inits ret-val buf hdl]
+        nil offset 0x:FFFFFFFFFFFF0830 (@ expr-depth n) inits ret-val buf hdl]
       (setf expr-generator n [function->generator generate-if])
       (setf bndg-size (@ expr-binding-aug n) (word-size))
       (true))))))
@@ -739,7 +739,7 @@
       (setf expr-binding-aug (@ expr-alternate n) (@ expr-binding-aug n))
       [initialize-expressions
         (storage-cons (@ expr-consequent n) (storage-cons (@ expr-alternate n) conds))
-        nil offset (hex FFFFFFFFFFFF0830) (@ expr-depth n) inits ret-val buf hdl]
+        nil offset 0x:FFFFFFFFFFFF0830 (@ expr-depth n) inits ret-val buf hdl]
       (setf expr-generator n [function->generator generate-optimized-if])
       (setf bndg-size (@ expr-binding-aug n) (word-size))
       (true)))))))
@@ -762,7 +762,7 @@
   (cand [= (@ expr-type n) (-constrain-)] (do
     (setf expr-binding-aug (@ expr-expression n) (@ expr-binding-aug n))
     [initialize-expressions (storage-cons (@ expr-expression n) nil) nil offset
-      (hex FFFFFFFFFFFF0830) (@ expr-depth n) inits ret-val buf hdl]
+      0x:FFFFFFFFFFFF0830 (@ expr-depth n) inits ret-val buf hdl]
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (setf expr-generator n [function->generator generate-constrain])
     (true))))
@@ -797,7 +797,7 @@
   (cand [= (@ expr-type n) (-symbol-)] (do
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (setf expr-generator n [function->generator generate-symbol])
-    (values (use-storage ret-val) offset (hex 0000000000000800))
+    (values (use-storage ret-val) offset 0x:0000000000000800)
     (true))))
 
 (constrain generate-literal
@@ -813,7 +813,7 @@
   (cand [= (@ expr-type n) (-literal-)] (do
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (setf expr-generator n [function->generator generate-literal])
-    (values (use-storage ret-val) offset (hex 0000000000000800))
+    (values (use-storage ret-val) offset 0x:0000000000000800)
     (true))))
 
 (constrain initialize-expression \:r:(?(a b c d) `:(function ((expr ,:a) ,:b (list initializer) ,:c region ,:d) (values ,:b reg-use-vec)):r r))
