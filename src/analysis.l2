@@ -67,25 +67,25 @@
 (constrain vswap-branches (\ r (?(a) (`(function ((expr ,:a) ()) (expr ,:a))r)r)))
 
 (function vswap-branches (e ctx)
-  (bind-if (match-property
-      (expr-type (%[= (-if-)]))
-      (expr-condition (%(guard-match (%(match-property
-          (expr-type (%[= (-if-)]))
-          (expr-condition (%[variable cond]))
-          (expr-consequent (%(match-property
-            (expr-type (%[= (-literal-)]))
-            (expr-value (%[variable cons-val])))))
-          (expr-alternate (%(match-property
-            (expr-type (%[= (-literal-)]))
-            (expr-value (%[variable alt-val])))))))
-        (and (or $:cons-val $:alt-val) (not (and $:cons-val $:alt-val))))))
-      (expr-consequent (%[variable consequent]))
-      (expr-alternate (%[variable alternate])) e)
-    (cond cons-val alt-val consequent alternate) (do
-      (setf expr-condition e $:cond)
-      (if $:alt-val (do
-        (setf expr-consequent e $:alternate)
-        (setf expr-alternate e $:consequent)) (ignore))
+  ((match-property*
+      (expr-type (%*[= (-if-)]))
+      (expr-condition (guard-match* (match-property*
+          (expr-type (%*[= (-if-)]))
+          (expr-condition _:cond)
+          (expr-consequent (match-property*
+            (expr-type (%*[= (-literal-)]))
+            (expr-value _:cons-val)))
+          (expr-alternate (match-property*
+            (expr-type (%*[= (-literal-)]))
+            (expr-value _:alt-val))))
+        (and (or cons-val alt-val) (not (and cons-val alt-val)))))
+      (expr-consequent _:consequent)
+      (expr-alternate _:alternate)) e
+    (do
+      (setf expr-condition e cond)
+      (if alt-val (do
+        (setf expr-consequent e alternate)
+        (setf expr-alternate e consequent)) (ignore))
       e)
     e))
 
