@@ -603,15 +603,17 @@
           (expr-target (%*[undefined-symbol?]))
           (expr-target (%*[symbol-name= (" +)]))
           (expr-arguments
-            (guard-match*
-              (match-list* _:addr-part1 _:addr-part2)
-              (or
-                [= (@ expr-type addr-part1) (-literal-)]
-                [= (@ expr-type addr-part2) (-literal-)]))))))) n
-      (if [= (@ expr-type addr-part1) (-literal-)]
-        (do [set base addr-part2] [set offset (@ expr-value addr-part1)] (true))
-        (do [set base addr-part1] [set offset (@ expr-value addr-part2)] (true)))
-    (false)))
+            (match-or*
+              (match-list*
+                (match-property*
+                  (expr-type (%*[= (-literal-)]))
+                  (expr-value (%*[variable offset])))
+                (%*[variable base]))
+              (match-list*
+                (%*[variable base])
+                (match-property*
+                  (expr-type (%*[= (-literal-)]))
+                  (expr-value (%*[variable offset])))))))))) n (true) (false)))
 
 (constrain initialize-get-base+offset
   (\ r (?(a b c d) (`(function ((expr ,:a) ,:b (list initializer) (values ,:b reg-use-vec) region ,:d) ,:c)r)r)))
