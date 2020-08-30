@@ -522,15 +522,16 @@ Object *load_program_and_mutate(list exprs, list bindings, region expr_buf, regi
 
 list generate_metaprogram(list exprs, list *bindings, region expr_buf, region obj_buf, jumpbuf *handler);
 
-void *preprocessed_expression_address(union expression *s, list bindings, region expr_buf, region obj_buf, jumpbuf *handler) {
+char *preprocessed_expression_address(void **addr, union expression *s, list bindings, region expr_buf, region obj_buf, jumpbuf *handler) {
   if(s->base.type == symbol) {
     struct binding *bndg;
     foreach(bndg, bindings) {
       if(!strcmp(bndg->name, s->symbol.name)) {
-        return bndg->address;
+        *addr = bndg->address;
+        return NULL;
       }
     }
-    throw_undefined_symbol(s->symbol.name, handler);
+    return s->symbol.name;
   } else {
     union expression *expr_container = make_function(make_symbol(NULL, NULL, NULL, expr_buf), nil, s, NULL, NULL, expr_buf);
     list exprs_preprocessed = generate_metaprogram(lst(expr_container, nil, expr_buf),
@@ -538,24 +539,42 @@ void *preprocessed_expression_address(union expression *s, list bindings, region
     load_program_and_mutate(exprs_preprocessed, bindings, expr_buf, obj_buf, handler);
     union expression *expr_container_preprocessed = exprs_preprocessed->fst;
     void* (*container_addr)() = (void *) expr_container_preprocessed->function.reference->symbol.binding_aug->offset;
-    return container_addr();
+    *addr = container_addr();
+    return NULL;
   }
 }
 
-union expression *vgenerate_metas(union expression *s, void *ctx) {
+char *vgenerate_metas_no_throw(union expression **out, union expression *s, void *ctx) {
   jumpbuf *handler = ((void **) ctx)[2];
   region expr_buf = ((void **) ctx)[1];
   list bindings = ((void **) ctx)[0];
   
   if(s->base.type == meta) {
-    list (*macro)(list, region) = preprocessed_expression_address(s->meta.reference, bindings, expr_buf, expr_buf, handler);
-    return vgenerate_metas(build_expression(macro(s->meta.fragment->rst, expr_buf), s, expr_buf, handler), ctx);
+    list (*macro)(list, region, void *);
+    char *missing_sym_name = preprocessed_expression_address((void **) &macro, s->meta.reference, bindings, expr_buf, expr_buf, handler);
+    if(missing_sym_name) return missing_sym_name;
+    return vgenerate_metas_no_throw(out, build_expression(macro(s->meta.fragment->rst, expr_buf, 0), s, expr_buf, handler), ctx);
   } else if(s->base.type == constrain) {
-    list (*macro)(region) = preprocessed_expression_address(s->constrain.reference, bindings, expr_buf, expr_buf, handler);
+    list (*macro)(region);
+    char *missing_sym_name = preprocessed_expression_address((void **) &macro, s->constrain.reference, bindings, expr_buf, expr_buf, handler);
+    if(missing_sym_name) return missing_sym_name;
     s->constrain.signature = macro(expr_buf);
-    return s;
+    *out = s;
+    return NULL;
   } else {
-    return s;
+    *out = s;
+    return NULL;
+  }
+}
+
+union expression *vgenerate_metas(union expression *s, void *ctx) {
+  jumpbuf *handler = ((void **) ctx)[2];
+  union expression *out;
+  char *missing_sym_name = vgenerate_metas_no_throw(&out, s, ctx);
+  if(missing_sym_name) {
+    throw_undefined_symbol(missing_sym_name, handler);
+  } else {
+    return out;
   }
 }
 
@@ -570,13 +589,15 @@ void *init_function(union expression *function_expr, list *bindings, region expr
   }
 }
 
+// Loop through list of expresssions and replace functions with thunks that will compile the bodies in-time.
+
 list generate_metaprogram(list exprs, list *bindings, region expr_buf, region obj_buf, jumpbuf *handler) {
   union expression *s;
   list c = nil;
   foreach(s, exprs) {
-    void **cache = region_alloc(obj_buf, sizeof(void *));
-    *cache = NULL;
     if(s->base.type == function) {
+      void **cache = region_alloc(obj_buf, sizeof(void *));
+      *cache = NULL;
       list params = nil, args = nil;
       int i;
       for(i = 0; i < length(s->function.parameters); i++) {
@@ -598,3 +619,20 @@ list generate_metaprogram(list exprs, list *bindings, region expr_buf, region ob
   return c;
 }
 
+// Loop through list of expressions and try to expand meta-expressions. Return the newly created expressions.
+
+list try_generate_metas(list exprs, list bindings, region expr_buf, region obj_buf, jumpbuf *handler) {
+  list extension = nil;
+  union expression **s;
+  foreachaddress(s, exprs) {
+    if((*s)->base.type == meta) {
+      union expression *out_expr;
+      char *missing_sym_name = vgenerate_metas_no_throw(&out_expr, *s, (void * []) {bindings, expr_buf, handler});
+      if(!missing_sym_name) {
+        *s = out_expr;
+        prepend(out_expr, &extension, expr_buf);
+      }
+    }
+  }
+  return extension;
+}

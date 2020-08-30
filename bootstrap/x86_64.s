@@ -1,9 +1,11 @@
+.global get0b
 .global getb
 .global get1b
 .global get2b
 .global get4b
 .global get8b
 .global get
+.global set0b
 .global setb
 .global set1b
 .global set2b
@@ -30,6 +32,9 @@
 .text
 jmp l2rt_end
 
+get0b:
+ret
+
 get:
 get8b:
 movq 0(%rdi), %rax
@@ -49,6 +54,9 @@ ret
 get4b:
 xorq %rax, %rax
 movl 0(%rdi), %eax
+ret
+
+set0b:
 ret
 
 set:

@@ -1,36 +1,36 @@
-(constrain = (\ r (with-vars (a b) (`(function (,a ,a) ,b)r)r)))
+(constrain = (\ r (?(a b) (`(function (,:a ,:a) ,:b)r)r)))
 
-(constrain < (\ r (with-vars (a b) (`(function (,a ,a) ,b)r)r)))
+(constrain < (\ r (?(a b) (`(function (,:a ,:a) ,:b)r)r)))
 
-(constrain > (\ r (with-vars (a b) (`(function (,a ,a) ,b)r)r)))
+(constrain > (\ r (?(a b) (`(function (,:a ,:a) ,:b)r)r)))
 
-(constrain <= (\ r (with-vars (a b) (`(function (,a ,a) ,b)r)r)))
+(constrain <= (\ r (?(a b) (`(function (,:a ,:a) ,:b)r)r)))
 
 (function <= (a b) (not [> a b]))
 
-(constrain >= (\ r (with-vars (a b) (`(function (,a ,a) ,b)r)r)))
+(constrain >= (\ r (?(a b) (`(function (,:a ,:a) ,:b)r)r)))
 
 (function >= (a b) (not [< a b]))
 
-(constrain not= (\ r (with-vars (a b) (`(function (,a ,a) ,b)r)r)))
+(constrain not= (\ r (?(a b) (`(function (,:a ,:a) ,:b)r)r)))
 
 (function not= (a b) (not [= a b]))
 
-(constrain max (\ r (with-vars (a) (`(function (,a ,a) ,a)r)r)))
+(constrain max (\ r (?(a) (`(function (,:a ,:a) ,:a)r)r)))
 
 (function max (a b) (if [> a b] a b))
 
-(constrain min (\ r (with-vars (a) (`(function (,a ,a) ,a)r)r)))
+(constrain min (\ r (?(a) (`(function (,:a ,:a) ,:a)r)r)))
 
 (function min (a b) (if [< a b] a b))
 
-(constrain set+ (\ r (with-vars (a b) (`(function ((ref ,a) ,b) ())r)r)))
+(constrain set+ (\ r (?(a b) (`(function ((ref ,:a) ,:b) ())r)r)))
 
-(function set+ (r inc) [set r [+ $r inc]])
+(function set+ (r inc) [set r [+ $:r inc]])
 
-(constrain set- (\ r (with-vars (a b) (`(function ((ref ,a) ,b) ())r)r)))
+(constrain set- (\ r (?(a b) (`(function ((ref ,:a) ,:b) ())r)r)))
 
-(function set- (r inc) [set r [- $r inc]])
+(function set- (r inc) [set r [- $:r inc]])
 
 (ignore Turns an 8-byte value into a literal-expression representation of it.)
 
@@ -49,6 +49,8 @@
 (ignore Makes a constant that is constrained to the given signature from the given value.)
 
 (function =## (value sig r) (`(constrain (,[=# value r]) (,[=# sig r]))r))
+
+(function constant (l r) `:(function ,:[@fst l] (constant.l constant.r) [=## ,:[@frst l] ,:[@frrst l] constant.r]):r)
 
 (ignore Turns the base-10 fragment input into a literal expression.)
 
@@ -71,7 +73,7 @@
 
 (ignore Turns the base-16 fragment input into a literal expression. Only capital letters are valid.)
 
-(function hex (l r) [=#
+(function 0x (l r) [=#
   (with return {(continuation read (in out)
     (if [emt? in]
       {return out}

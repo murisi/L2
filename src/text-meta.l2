@@ -1,24 +1,23 @@
 (ignore The following function maps character s-expressions to ASCII codes.)
 
-(function meta:char-aux (l) (switch char= l
-  (-!- #33) (-"- #34) (-#- #35) (-$- #36) (-%- #37) (-&- #38) (-'- #39) (-*- #42)
-  (-+- #43) (-,- #44) (--- #45) (-.- #46) (-/- #47) (-0- #48) (-1- #49) (-2- #50)
-  (-3- #51) (-4- #52) (-5- #53) (-6- #54) (-7- #55) (-8- #56) (-9- #57) (-:- #58)
-  (-;- #59) (-<- #60) (-=- #61) (->- #62) (-?- #63) (-@- #64) (-A- #65) (-B- #66)
-  (-C- #67) (-D- #68) (-E- #69) (-F- #70) (-G- #71) (-H- #72) (-I- #73) (-J- #74)
-  (-K- #75) (-L- #76) (-M- #77) (-N- #78) (-O- #79) (-P- #80) (-Q- #81) (-R- #82)
-  (-S- #83) (-T- #84) (-U- #85) (-V- #86) (-W- #87) (-X- #88) (-Y- #89) (-Z- #90)
-  (-\- #92) (-^- #94) (-_- #95) (-`- #96) (-a- #97) (-b- #98) (-c- #99) (-d- #100)
-  (-e- #101) (-f- #102) (-g- #103) (-h- #104) (-i- #105) (-j- #106) (-k- #107) (-l- #108)
-  (-m- #109) (-n- #110) (-o- #111) (-p- #112) (-q- #113) (-r- #114) (-s- #115) (-t- #116)
-  (-u- #117) (-v- #118) (-w- #119) (-x- #120) (-y- #121) (-z- #122) (-|- #124) (-~- #126)
-  #0))
+(function meta.char-aux (l) (switch char= l
+  (-!- #:33) (-"- #:34) (-#- #:35) (-$- #:36) (-%- #:37) (-&- #:38) (-'- #:39) (-*- #:42)
+  (-+- #:43) (-,- #:44) (--- #:45) (-.- #:46) (-/- #:47) (-0- #:48) (-1- #:49) (-2- #:50)
+  (-3- #:51) (-4- #:52) (-5- #:53) (-6- #:54) (-7- #:55) (-8- #:56) (-9- #:57) (-<- #:60)
+  (-=- #:61) (->- #:62) (-?- #:63) (-@- #:64) (-A- #:65) (-B- #:66) (-C- #:67) (-D- #:68)
+  (-E- #:69) (-F- #:70) (-G- #:71) (-H- #:72) (-I- #:73) (-J- #:74) (-K- #:75) (-L- #:76)
+  (-M- #:77) (-N- #:78) (-O- #:79) (-P- #:80) (-Q- #:81) (-R- #:82) (-S- #:83) (-T- #:84)
+  (-U- #:85) (-V- #:86) (-W- #:87) (-X- #:88) (-Y- #:89) (-Z- #:90) (-\- #:92) (-^- #:94)
+  (-_- #:95) (-`- #:96) (-a- #:97) (-b- #:98) (-c- #:99) (-d- #:100) (-e- #:101) (-f- #:102)
+  (-g- #:103) (-h- #:104) (-i- #:105) (-j- #:106) (-k- #:107) (-l- #:108) (-m- #:109) (-n- #:110)
+  (-o- #:111) (-p- #:112) (-q- #:113) (-r- #:114) (-s- #:115) (-t- #:116) (-u- #:117) (-v- #:118)
+  (-w- #:119) (-x- #:120) (-y- #:121) (-z- #:122) (-|- #:124) (-~- #:126) #:0))
 
 (ignore
   The following function maps character s-expressions to literals of ASCII codes. So
   for example, the L2 expression (char A) is equivalent to the C literal 'A'.)
 
-(function char (l r) [=# [meta:char-aux [@ffst l]] r])
+(function char (l r) [=# [meta.char-aux [@ffst l]] r])
 
 (ignore
   The following function turns text in the form of a list of tokens into code that
@@ -28,82 +27,86 @@
 
 (function " (l r)
   (let (buf (storage _ (ignore)))
-    (loop add-word (str l) (index #0) (exprs emt) (instrs emt)
+    (loop add-word (str l) (index #:0) (exprs emt) (instrs emt)
       (let (sub-index [rem index (unit)])
         (if [emt? str] (do
           [setb [+ buf sub-index] (nul)]
-          (`(let (dquote:str (,[llst (` storage r) (` dquote:tmp r) [meta:reverse [lst [=# $buf r] exprs r] r] r]))
-              (,[lst (` do r) [meta:reverse [lst (`(constrain dquote:str (\ k (` string k)))r) instrs r]r]r]))r))
+          (`(let (dquote.str (,[llst (` storage r) (` dquote.tmp r) [meta.reverse [lst [=# $:buf r] exprs r] r] r]))
+              (,[lst (` do r) [meta.reverse [lst (`(constrain dquote.str (\ k (` string k)))r) instrs r]r]r]))r))
         
         (if (and [emt? [@fst str]] [emt? [@rst str]]) {add-word [@rst str] index exprs instrs}
             
         (if (and [emt? [@fst str]] [token? [@frst str]]) (do
           [setb [+ buf sub-index] (space)]
-          {add-word [@rst str] [+ index #1] (if [= sub-index #7] [lst [=# $buf r] exprs r] exprs) instrs})
+          {add-word [@rst str] [+ index #:1] (if [= sub-index #:7] [lst [=# $:buf r] exprs r] exprs) instrs})
         
         (if [emt? [@fst str]] {add-word [@rst str] index exprs instrs}
         
         (if [token? [@fst str]] (do
-          [setb [+ buf sub-index] [meta:char-aux [@ffst str]]]
-          {add-word [lst [@rfst str] [@rst str] r] [+ index #1] (if [= sub-index #7] [lst [=# $buf r] exprs r] exprs) instrs})
+          [setb [+ buf sub-index] [meta.char-aux [@ffst str]]]
+          {add-word [lst [@rfst str] [@rst str] r] [+ index #:1] (if [= sub-index #:7] [lst [=# $:buf r] exprs r] exprs) instrs})
           
-          {add-word [@rst str] [+ index #1] (if [= sub-index #7] [lst [=# $buf r] exprs r] exprs)
-            [lst (`[setb [+ dquote:str (,[=# index r])] (,[@fst str])]r) instrs r]})))))))))
+          {add-word [@rst str] [+ index #:1] (if [= sub-index #:7] [lst [=# $:buf r] exprs r] exprs)
+            [lst (`[setb [+ dquote.str (,[=# index r])] (,[@fst str])]r) instrs r]})))))))))
 
 (ignore
   The following functions implement ASCII control characters. These can be embedded into
   uses of the quote function above. So for example, the L2 expression (" Hello(lf)Bye) is
   equivalent to the C literal "Hello\nBye".)
 
-(function nul (l r) [=# #0 r])
+(constant nul #:0 \:r:[var r])
 
-(function bel (l r) [=# #7 r])
+(constant bel #:7 \:r:[var r])
 
-(function bs (l r) [=# #8 r])
+(constant bs #:8 \:r:[var r])
 
-(function ht (l r) [=# #9 r])
+(constant ht #:9 \:r:[var r])
 
-(function lf (l r) [=# #10 r])
+(constant lf #:10 \:r:[var r])
 
-(function cr (l r) [=# #13 r])
+(constant cr #:13 \:r:[var r])
 
-(function vt (l r) [=# #11 r])
+(constant vt #:11 \:r:[var r])
 
-(function ff (l r) [=# #12 r])
+(constant ff #:12 \:r:[var r])
 
-(function lparen (l r) [=# #40 r])
+(constant lparen #:40 \:r:[var r])
 
-(function rparen (l r) [=# #41 r])
+(constant rparen #:41 \:r:[var r])
 
-(function lbrace (l r) [=# #123 r])
+(constant lbrace #:123 \:r:[var r])
 
-(function rbrace (l r) [=# #125 r])
+(constant rbrace #:125 \:r:[var r])
 
-(function lbracket (l r) [=# #91 r])
+(constant lbracket #:91 \:r:[var r])
 
-(function rbracket (l r) [=# #93 r])
+(constant rbracket #:93 \:r:[var r])
 
-(function space (l r) [=# #32 r])
+(constant space #:32 \:r:[var r])
+
+(constant colon #:58 \:r:[var r])
+
+(constant scolon #:59 \:r:[var r])
 
 (constrain empty-string (\ r (` string r)))
 
-(storage empty-string #0)
+(storage empty-string #:0)
 
-(constrain strlen (\ r (with-vars (a) (`(function (string) ,a)r)r)))
+(constrain strlen (\ r (?(a) (`(function (string) ,:a)r)r)))
 
 (function strlen (str)
-  (loop do-count (i #0)
-    (if [getb [+ str i]] {do-count [+ i #1]} i)))
+  (loop do-count (i #:0)
+    (if [getb [+ str i]] {do-count [+ i #:1]} i)))
 
-(constrain strcmp (\ r (with-vars (a) (`(function (string string) ,a)r)r)))
+(constrain strcmp (\ r (?(a) (`(function (string string) ,:a)r)r)))
 
 (function strcmp (s1 s2)
   (loop do-cmp (s1 s1) (s2 s2)
     (if (and [getb s1] [getb s2] [= [getb s1] [getb s2]])
-      {do-cmp [+ s1 #1] [+ s2 #1]}
+      {do-cmp [+ s1 #:1] [+ s2 #:1]}
       [- [getb s1] [getb s2]])))
 
-(constrain str= (\ r (with-vars (a) (`(function (string string) ,a)r)r)))
+(constrain str= (\ r (?(a) (`(function (string string) ,:a)r)r)))
 
 (function str= (s1 s2) (not [strcmp s1 s2]))
 
@@ -113,23 +116,71 @@
   (loop do-cpy (dest dest) (src src) (do
     [setb dest [getb src]]
     (if [getb dest]
-      {do-cpy [+ dest #1] [+ src #1]}
+      {do-cpy [+ dest #:1] [+ src #:1]}
       dest))))
 
 (ignore
   Returns a C-string that is a copy of the one at src. The returned string and its
   dependencies will all reside in the region reg.)
 
-(constrain rstrcpy (\ r (with-vars (a) (`(function (string region ,a) string)r)r)))
+(constrain rstrcpy (\ r (?(a) (`(function (string region ,:a) string)r)r)))
 
 (function rstrcpy (src reg handler)
-  (let (dest [region-alloc [+[strlen src]#1] reg handler]) (do
+  (let (dest [region-alloc [+[strlen src]#:1] reg handler]) (do
     [strcpy dest src]
     dest)))
 
-(constrain rstrcat (\ r (with-vars (a) (`(function (string string region ,a) string)r)r)))
+(constrain rstrcat (\ r (?(a) (`(function (string string region ,:a) string)r)r)))
 
 (function rstrcat (str1 str2 reg handler)
-  (let (dest [region-alloc [+[strlen str1][+[strlen str2]#1]] reg handler]) (do
+  (let (dest [region-alloc [+[strlen str1][+[strlen str2]#:1]] reg handler]) (do
     [strcpy [strcpy dest str1] str2]
     dest)))
+
+(constrain dec->str (\ r (?(a) (`(function (,:a string) string)r)r)))
+
+(function dec->str (i str)
+  (let (j (storage _ #:19)) (do
+  [setb [+ str #:20] (nul)]
+  (loop next-digit (i i)
+    (if [= i #:0] (ignore) (do
+      [setb [+ str $:j] [dec->char [rem i #:10]]]
+      [set j [- $:j #:1]]
+      {next-digit [/ i #:10]})))
+  [+ str [+ $:j #:1]])))
+
+(constrain hex->char (\ r (?(a b) (`(function (,:a) ,:b)r)r)))
+
+(function hex->char (h)
+  (switch = h
+    (0x:F (char F))
+    (0x:E (char E))
+    (0x:D (char D))
+    (0x:C (char C))
+    (0x:B (char B))
+    (0x:A (char A))
+    (0x:9 (char 9))
+    (0x:8 (char 8))
+    (0x:7 (char 7))
+    (0x:6 (char 6))
+    (0x:5 (char 5))
+    (0x:4 (char 4))
+    (0x:3 (char 3))
+    (0x:2 (char 2))
+    (0x:1 (char 1))
+    (char 0)))
+
+(constrain dec->char (\ r (?(a b) (`(function (,:a) ,:b)r)r)))
+
+(function dec->char (h)
+  (switch = h
+    (#:9 (char 9))
+    (#:8 (char 8))
+    (#:7 (char 7))
+    (#:6 (char 6))
+    (#:5 (char 5))
+    (#:4 (char 4))
+    (#:3 (char 3))
+    (#:2 (char 2))
+    (#:1 (char 1))
+    (char 0)))

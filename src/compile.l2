@@ -1,76 +1,71 @@
-(ignore
-  Compiles a program into a list of assembly expressions. bindings is a reference to a
-  list into which the augmented bindings of the generated code will be put.)
+(ignore Compiles a program into a list of assembly expressions.)
 
 (constrain compile-program
-  (\ r (with-vars (a b) (`(function ((list expr) (list initializer) ,b region region ,a)
+  (\ r (?(a b c) (`(function ((list (expr ,:c)) (list initializer) ,:b region region ,:a)
     (values (list instr) (list reloc) (list (values string (list instr) (list reloc)))
       (hash-table string bndg-aug) (list bndg-aug)))r)r)))
 
-(function compile-program (exprs inits outs buf :b handler)
+(function compile-program (exprs inits outs buf buf2 handler)
   (substitute (.. buf handler)
     (let (static-bindings (storage _ nil)) (undefined-bindings [ht-create hash-str str= ..])
         (global-bindings [global-binding-augs-of exprs ..]) (do
       (let (storage-offset
-          (fold-ref (storage-offset [- #0 (word-size)]) (expr exprs) (do
+          (fold-ref (storage-offset [- #:0 (word-size)]) (expr exprs) (do
             [visit-expressions vfind-multiple-definitions expr handler]
             [visit-expressions veliminate-constrain expr (ignore)]
             [visit-expressions vswap-branches expr (ignore)]
             [visit-expressions vdominate-jumps expr (ignore)]
-            [classify-program-bindings $expr]
-            [link-symbols $expr (true) undefined-bindings global-bindings (ignore) ..]
-            (ignore[infer-types $expr ..])
-            [escape-analysis $expr (true) ..]
-            [pre-visit-expressions vpropagate-expressions expr (values storage :b handler)]
-            [assign-expr-is-reads $expr]
-            [place-perm-bindings $expr storage-offset])))
-        (foreach (expr exprs) (do
-          [assign-depths expr #0]
+            [classify-program-bindings $:expr]
+            [link-symbols $:expr (true) undefined-bindings global-bindings (ignore) ..]
+            (ignore[infer-types $:expr ..])
+            [escape-analysis $:expr (true) ..]
+            [pre-visit-expressions vpropagate-expressions expr (values storage buf2 handler)]
+            [assign-expr-is-reads $:expr]
+            [place-perm-bindings $:expr storage-offset])))
+        (for (expr (list-iter exprs)) (ignore) (do
+          [assign-depths expr #:0]
           [initialize-expressions (storage-cons expr nil) nil [- storage-offset (word-size)]
-            #0 #0 inits (values storage (ignore)(ignore)) :b handler]
+            #:0 #:0 inits (values storage (ignore)(ignore)) buf2 handler]
           [setup-collect-static-bindings expr]
           [collect-static-bindings expr static-bindings ..])))
       (bind (instrs relocs func-secs) [generate-program exprs bind ..]
-        (values (use-storage outs) instrs relocs func-secs undefined-bindings $static-bindings))))))
+        (values (use-storage outs) instrs relocs func-secs undefined-bindings $:static-bindings))))))
 
 (ignore
   Loads a program into memory and returns a handle to it. program is a program expression.
   expr-buf is the region into which the results of compilation will be put. obj-buf is the
   region into which the object code will be put. Return value is an object.)
 
-(constrain load-program (\ r (with-vars (a) (`(function ((list expr) (list initializer) region region ,a) obj)r)r)))
+(constrain load-program (\ r (?(a b) (`(function ((list (expr ,:b)) (list initializer) region region ,:a) obj)r)r)))
 
-(function load-program (exprs inits buf :b handler)
+(function load-program (exprs inits buf buf2 handler)
   (substitute (.. buf handler)
-    (with-region :b
-      (bind (asms relocs func-secs undefined-bindings static-bindings) [compile-program exprs inits bind :b buf handler]
-      (bind (objdest objdest-sz) [write-elf asms relocs func-secs undefined-bindings static-bindings bind :b buf handler]
+    (with-region buf2
+      (bind (asms relocs func-secs undefined-bindings static-bindings) [compile-program exprs inits bind buf2 buf handler]
+      (bind (objdest objdest-sz) [write-elf asms relocs func-secs undefined-bindings static-bindings bind buf2 buf handler]
       (let (obj [load objdest objdest-sz buf handler]) (do
       [binding-offsets-to-addresses asms func-secs static-bindings obj buf handler]
       obj)))))))
 
 (ignore
-  Behavior is the same as load-program, but with the following addition: bndgs is a list
+  Behavior is the same as load-program, but with the following addition: bndgs is a map
   of object bindings, and after the loading is done, the undefined bindings of the loaded
-  program will take on the addresses supplied in the list. The handler continuation is
-  followed, and the error region referenced by err set to the pair (undefined-symbol-error,
-  <missing binding name>) if there is an undefined binding in the program that is not defined
-  in bndgs.)
+  program will take on the addresses supplied in the list.)
 
 (constrain load-program-and-mutate
-  (\ r (with-vars (a) (`(function ((list expr) (list initializer) (hash-table string bndg-aug) region region ,a) obj)r)r)))
+  (\ r (?(a b) (`(function ((list (expr ,:b)) (list initializer) (hash-table string bndg-aug) region region ,:a) obj)r)r)))
 
-(function load-program-and-mutate (exprs inits bndgs buf :b handler)
-  (with-region :b
-    (let (obj [load-program exprs inits buf :b handler])
-    (let (ms [mutable-bindings obj [ht-create hash-str str= :b handler] :b handler]) (do
+(function load-program-and-mutate (exprs inits bndgs buf buf2 handler)
+  (with-region buf2
+    (let (obj [load-program exprs inits buf buf2 handler])
+    (let (ms [mutable-bindings obj [ht-create hash-str str= buf2 handler] buf2 handler]) (do
       (ht-foreach (d-name d ms)
         (if [ht-contains d-name bndgs (storage _ (ignore))] (ignore)
           {handler (storage _ undefined-symbol-error d-name)}))
       [mutate-bindings obj bndgs]
       obj)))))
 
-(constrain read-to-buffer (\ r (with-vars (a b c d) (`(function (string ,a region ,b) (values ,c ,d))r)r)))
+(constrain read-to-buffer (\ r (?(a b c d) (`(function (string ,:a region ,:b) (values ,:c ,:d))r)r)))
 
 (function read-to-buffer (fn outs buf handler)
   (let (fd [open fn handler])
@@ -90,18 +85,18 @@
   buf is the region into which the constructed expressions will be put. Return value is a
   list of expressions.)
 
-(constrain read-expressions (\ r (with-vars (a) (`(function (string region region ,a) (list expr))r)r)))
+(constrain read-expressions (\ r (?(a b) (`(function (string region region ,:a) (list (expr ,:b)))r)r)))
 
-(function read-expressions (fn buf :b handler)
+(function read-expressions (fn buf buf2 handler)
   (substitute (.. buf handler)
-    (with-region :b
-      (bind (src-buf src-sz) [read-to-buffer fn bind :b handler]
-      (let (pos (storage _ #0))
+    (with-region buf2
+      (bind (src-buf src-sz) [read-to-buffer fn bind buf2 handler]
+      (let (pos (storage _ #:0))
       (let (exprs-start (storage _ nil))
       (loop cons-expr (exprs-end exprs-start)
-        (if [after-leading-space src-buf src-sz pos]
-          {cons-expr [append [build-expression [build-fragment src-buf src-sz pos ..] null-expr ..] exprs-end ..]}
-          $exprs-start))))))))
+        (if [read-whitespace src-buf src-sz pos]
+          {cons-expr [append [build-expression [read-fragment src-buf src-sz pos ..] null-expr ..] exprs-end ..]}
+          $:exprs-start))))))))
 
 (storage unsupported-intrinsics-error (ignore))
 
@@ -111,40 +106,46 @@
   bindings.)
 
 (constrain evaluate-files
-  (\ r (with-vars (a) (`(function ((list string) (list string) (list string) (hash-table string bndg-aug) region region ,a) ())r)r)))
+  (\ r (?(a) (`(function ((list string) (list string) (list string) (hash-table string bndg-aug) region region ,:a) ())r)r)))
 
-(function evaluate-files (source-fns object-fns intrinsic-fns bindings buf :b handler)
+(function evaluate-files (source-fns object-fns intrinsic-fns bindings buf buf2 handler)
   (substitute (.. buf handler)
     (let (inits (reverse-map (intrinsic-fn intrinsic-fns)
       (switch str= intrinsic-fn
         ((" arithmetic) [function->initializer initialize-arithmetic-intrinsics])
         {handler (storage _ unsupported-intrinsics-error intrinsic-fn)}) ..))
     
-    (let (objects1 (fold (objects nil) (src source-fns)
-      (let (obj [load-program [generate-metaprogram [read-expressions src buf :b handler] inits bindings buf :b handler] inits buf :b handler])
-        (do [immutable-bindings obj bindings ..] [cons obj objects ..]))))
-    
-    (let (objects2 (fold (objects objects1) (src object-fns)
+    (let (objects1 (fold (objects nil) (src object-fns)
       (bind (obj-buf obj-sz) [read-to-buffer src bind ..]
       (let (obj [load obj-buf obj-sz ..])
         (do [immutable-bindings obj bindings ..] [cons obj objects ..])))))
     
-    (let (objects3 (fold (objects objects2) (intrinsic-fn intrinsic-fns)
+    (let (objects2 (fold (objects objects1) (intrinsic-fn intrinsic-fns)
       (switch str= intrinsic-fn
         ((" arithmetic)
-          (let (obj [load-program [wrap-arithmetic-intrinsics ..] inits buf :b handler])
+          (let (obj [load-program [wrap-arithmetic-intrinsics ..] inits buf buf2 handler])
             (do [immutable-bindings obj bindings ..] [cons obj objects ..])))
         {handler (storage _ unsupported-intrinsics-error intrinsic-fn)})))
     
-    (foreach (obj objects3) [mutate-bindings obj bindings])))))))
+    (let (all-exprs ($(fold (all-exprs (storage _ nil)) (src source-fns) (do
+      [append-list all-exprs [read-expressions src buf buf2 handler]]
+      all-exprs))))
+    
+    (loop add-bindings (objects objects2) (rem-exprs all-exprs)
+      (if [nil? rem-exprs] (ignore)
+        (let (obj [load-program [generate-metaprogram rem-exprs inits bindings buf buf2 handler] inits buf buf2 handler])
+        (let (objects [cons obj objects ..]) (do
+          [immutable-bindings obj bindings ..]
+          (for (obj (list-iter objects)) (ignore) [mutate-bindings obj bindings])
+          {add-bindings objects [try-generate-metas rem-exprs inits bindings buf buf2 handler]})))))))))))
 
-(constrain compile-program-to-elf (\ r (with-vars (a) (`(function ((list expr) (list initializer) string region region ,a) ())r)r)))
+(constrain compile-program-to-elf (\ r (?(a b) (`(function ((list (expr ,:b)) (list initializer) string region region ,:a) ())r)r)))
 
-(function compile-program-to-elf (exprs inits outfn buf :b handler)
+(function compile-program-to-elf (exprs inits outfn buf buf2 handler)
   (substitute (.. buf handler)
-    (with-region :b
-      (bind (asms relocs func-secs undefined-bindings static-bindings) [compile-program exprs inits bind :b buf handler]
-      (bind (objdest objdest-sz) [write-elf asms relocs func-secs undefined-bindings static-bindings bind :b buf handler]
+    (with-region buf2
+      (bind (asms relocs func-secs undefined-bindings static-bindings) [compile-program exprs inits bind buf2 buf handler]
+      (bind (objdest objdest-sz) [write-elf asms relocs func-secs undefined-bindings static-bindings bind buf2 buf handler]
       (let (fd [create outfn handler]) (do
       [print fd objdest objdest-sz handler]
       [close fd handler])))))))
@@ -156,34 +157,34 @@
   region into which constructed expressions and object code will be put.)
 
 (constrain compile-files
-  (\ r (with-vars (a) (`(function ((list string) (list string) (hash-table string bndg-aug) region region ,a) ())r)r)))
+  (\ r (?(a) (`(function ((list string) (list string) (hash-table string bndg-aug) region region ,:a) ())r)r)))
 
-(function compile-files (file-names intrinsic-fns bndgs buf :b handler)
+(function compile-files (file-names intrinsic-fns bndgs buf buf2 handler)
   (substitute (.. buf handler)
-    (with-region :b
+    (with-region buf2
       (let (inits (reverse-map (intrinsic-fn intrinsic-fns)
         (switch str= intrinsic-fn
           ((" arithmetic) [function->initializer initialize-arithmetic-intrinsics])
           {handler (storage _ unsupported-intrinsics-error intrinsic-fn)}) ..))
           
       (let (file-exprss (map (infn file-names)
-        (map (e [read-expressions infn buf :b handler])
+        (map (e [read-expressions infn buf buf2 handler])
           (let (f (storage _ e))
-            (do [pre-visit-expressions vgenerate-metas f (values storage inits bndgs buf :b handler)] $f)) ..) ..)) (do
+            (do [pre-visit-expressions vgenerate-metas f (values storage inits bndgs buf buf2 handler)] $:f)) ..) ..)) (do
             
       (let (all-exprs [reverse-flatten file-exprss ..])
         (let (undefined-bindings [ht-create hash-str str= ..]) (global-bindings [global-binding-augs-of all-exprs ..]) (do
-          (foreach (expr all-exprs) [link-symbols expr (true) undefined-bindings global-bindings (ignore) ..])
+          (for (expr (list-iter all-exprs)) (ignore) [link-symbols expr (true) undefined-bindings global-bindings (ignore) ..])
           [infer-types all-exprs ..]
-          (foreach (expr all-exprs) [pre-visit-expressions vunlink-symbols (storage _ expr) (values storage global-bindings ..)])
-          (foreach (expr all-exprs) [pre-visit-expressions vunlink-symbols (storage _ expr) (values storage undefined-bindings ..)]))))
+          (for (expr (list-iter all-exprs)) (ignore) [pre-visit-expressions vunlink-symbols (storage _ expr) (values storage global-bindings ..)])
+          (for (expr (list-iter all-exprs)) (ignore) [pre-visit-expressions vunlink-symbols (storage _ expr) (values storage undefined-bindings ..)]))))
         
       (foreach (infn file-names) (exprs file-exprss)
-        [compile-program-to-elf exprs inits [rstrcat infn (" .o) :b handler] :b buf handler])
+        [compile-program-to-elf exprs inits [rstrcat infn (" .o) buf2 handler] buf2 buf handler])
       
-      (foreach (intrinsic-fn intrinsic-fns)
+      (for (intrinsic-fn (list-iter intrinsic-fns)) (ignore)
         (switch str= intrinsic-fn
-          ((" arithmetic) [compile-program-to-elf [wrap-arithmetic-intrinsics ..] inits (" arithmetic.o) buf :b handler])
+          ((" arithmetic) [compile-program-to-elf [wrap-arithmetic-intrinsics ..] inits (" arithmetic.o) buf buf2 handler])
           {handler (storage _ unsupported-intrinsics-error intrinsic-fn)}))))))))
 
 (storage arguments-error (ignore))
@@ -197,16 +198,16 @@
   prints out the error messages if there are any.)
 
 (fallthrough
-    (let (buf [create-region #0 exit-cont]) (:b [create-region #0 exit-cont])
+    (let (buf [create-region #:0 exit-cont]) (buf2 [create-region #:0 exit-cont])
     (fallthrough
         (do
           (let (source-fns (storage _ [@cdr[argv buf handler]]))
           (let (first-dash-ref (locate (arg source-fns) [str= arg (" -)]))
-          (if [nil? $first-dash-ref] {handler (storage _ arguments-error)}
-          (let (intrinsic-fns (storage _ [@cdr $first-dash-ref]))
+          (if [nil? $:first-dash-ref] {handler (storage _ arguments-error)}
+          (let (intrinsic-fns (storage _ [@cdr $:first-dash-ref]))
           (let (second-dash-ref (locate (arg intrinsic-fns) [str= arg (" -)]))
-          (if [nil? $second-dash-ref] {handler (storage _ arguments-error)}
-          (let (object-fns (storage _ [@cdr $second-dash-ref])) (do
+          (if [nil? $:second-dash-ref] {handler (storage _ arguments-error)}
+          (let (object-fns (storage _ [@cdr $:second-dash-ref])) (do
           (ignore Cut the source filenames and object filenames list short.)
           [set first-dash-ref nil]
           [set second-dash-ref nil]
@@ -225,7 +226,6 @@
             ((" -4-)[make-binding (" -4-)(tkn-char(char 4))..]) ((" -5-)[make-binding (" -5-)(tkn-char(char 5))..])
             ((" -6-)[make-binding (" -6-)(tkn-char(char 6))..]) ((" -7-)[make-binding (" -7-)(tkn-char(char 7))..])
             ((" -8-)[make-binding (" -8-)(tkn-char(char 8))..]) ((" -9-)[make-binding (" -9-)(tkn-char(char 9))..])
-            ((" -:-)[make-binding (" -:-)(tkn-char(char :))..]) ((" -;-)[make-binding (" -;-)(tkn-char(char ;))..])
             ((" -<-)[make-binding (" -<-)(tkn-char(char <))..]) ((" -=-)[make-binding (" -=-)(tkn-char(char =))..])
             ((" ->-)[make-binding (" ->-)(tkn-char(char >))..]) ((" -?-)[make-binding (" -?-)(tkn-char(char ?))..])
             ((" -@-)[make-binding (" -@-)(tkn-char(char @))..]) ((" -A-)[make-binding (" -A-)(tkn-char(char A))..])
@@ -259,14 +259,14 @@
             ((" -z-)[make-binding (" -z-)(tkn-char(char z))..]) ((" -|-)[make-binding (" -|-)(tkn-char(char |))..])
             ((" -~-)[make-binding (" -~-)(tkn-char(char ~))..]) ((" @fst)[make-binding (" @fst) @car ..])
             ((" @rst)[make-binding (" @rst) @cdr ..]) ((" lst)[make-binding (" lst) cons ..])
-            ((" token?)[make-binding (" token?) i/f:token? ..]) ((" emt?)[make-binding (" emt?) nil? ..])
-            ((" emt)[make-binding (" emt) nil ..]) ((" char=)[make-binding (" char=) i/f:char= ..])
+            ((" token?)[make-binding (" token?) i/f.token? ..]) ((" emt?)[make-binding (" emt?) emt?! ..])
+            ((" emt)[make-binding (" emt) emt! ..]) ((" char=)[make-binding (" char=) i/f.char= ..])
             ((" var=)[make-binding (" var=) vbl= ..]) ((" var?)[make-binding (" var?) vbl? ..])
-            ((" var)[make-binding (" var) vbl ..])))) (do
+            ((" var)[make-binding (" var) vbl ..]) ((" gentok)[make-binding (" gentok) i/f.gentok ..])))) (do
           (ignore Evaluate the metaprogram)
-          [evaluate-files $source-fns $object-fns $intrinsic-fns bndgs buf :b handler]
+          [evaluate-files $:source-fns $:object-fns $:intrinsic-fns bndgs buf buf2 handler]
           (ignore Compile the program in the metaprogram's environment)
-          [compile-files $source-fns $intrinsic-fns bndgs buf :b handler]
+          [compile-files $:source-fns $:intrinsic-fns bndgs buf buf2 handler]
           (storage _ no-error))))))))))))
         
         (handler err (substitute (.. cleanup) (do
@@ -277,7 +277,7 @@
               [print-str (stdout) (" (space)erroneously occured multiple times.(lf)) ..]))
               
             (undefined-symbol-error (do
-              [print-str (stdout) (" Undefined symbol:(space)) ..]
+              [print-str (stdout) (" Undefined symbol(colon)(space)) ..]
               [print-str (stdout) (@1 err) ..]
               [print-str (stdout) (" .(lf)) ..]))
             
@@ -302,39 +302,40 @@
             
             (file-access-error (if [getb (@1 err)]
               (do
-                [print-str (stdout) (" Inaccessable file:(space)) ..]
+                [print-str (stdout) (" Inaccessable file(colon)(space)) ..]
                 [print-str (stdout) (@1 err) ..]
                 [print-str (stdout) (" .(lf)) ..])
               [print-str (stdout) (" Inaccessable file.) ..]))
             
             (arguments-error [print-str (stdout)
               (" Bad command line arguments.(lf)
-                 Usage: l2evaluate src1.l2 ... - intr1.o ... - obj1.o ...(lf)
-                 Outcome: Loads the functions in the source files, intrinsic objects, and object files into memory,(lf)
+                 Usage(colon)(space)l2evaluate src1.l2 ... - intr1.o ... - obj1.o ...(lf)
+                 Outcome(colon)(space)Loads the functions in the source files, intrinsic objects, and object files into memory,(lf)
                  then preprocesses the source files using the functions in memory, then compiles the source files(lf)
                  into object files, and then writes out the intrinsic object files.(lf)) ..])
             
-            (memory-access-error [print-str (stdout) (" Memory access error.(lf)) ..])
+            (memory-access-error (do
+              [print-str (stdout) (" Memory access error with code(colon)(space)) ..]
+              [print-uint (stdout) (@1 err) ..]
+              [print-str (stdout) (" .(lf)) ..]))
             
             (object-error [print-str (stdout) (" Bad object file supplied.(lf)) ..])
             
-            (unification-error (do
-              [print-str (stdout) (" Cannot solve the following equation:(lf)) ..]
-              [print-fragment (@1 err) ..]
-              [print-str (stdout) (" (space)=(space)) ..]
-              [print-fragment (@2 err) ..]
-              [print-str (stdout) (" (lf)The above equation was generated from the following expression:(lf)) ..]
-              [print-expression (@3 err) ..]
-              [print-str (stdout) (" (lf)) ..]))
+            (unification-error [print-str (stdout) (" Type equations have no solution.(lf)) ..])
             
             (unsupported-intrinsics-error (do
-              [print-str (stdout) (" Compiler does not support the intrinsics library:(space)) ..]
+              [print-str (stdout) (" Compiler does not support the intrinsics library(colon)(space)) ..]
               [print-str (stdout) (@1 err) ..]
               [print-str (stdout) (" .(lf)) ..]))
             
             (unsupported-instruction-error (do
-              [print-str (stdout) (" Assembler does not support the following instruction:(lf)) ..]
+              [print-str (stdout) (" Assembler does not support the following instruction(colon)(lf)) ..]
               [print-instr (@1 err) ..]
+              [print-str (stdout) (" .(lf)) ..]))
+            
+            (meta-expr-error (do
+              [print-str (stdout) (" Meta-expression threw the following error(colon)(lf)) ..]
+              [print-fragment (@1 err) ..]
               [print-str (stdout) (" .(lf)) ..]))
             
             (ignore))
@@ -343,5 +344,5 @@
   
         (cleanup err (do [destroy-region buf exit-cont] err))))
   
-  (exit-cont err [exit (if [= (@0 err) no-error] #0 #1)]))
+  (exit-cont err [exit (if [= (@0 err) no-error] #:0 #:1)]))
 

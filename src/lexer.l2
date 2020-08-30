@@ -1,131 +1,158 @@
-(constrain frag->list (\ r (`(function (frag) (list frag))r)))
+(ignore Casts to/from fragment and its various subtypes.)
 
-(function frag->list (x) [cast x])
+  (constrain frag->list (\ r (`(function (frag) (list frag))r)))
 
-(constrain list->fragment (\ r (`(function ((list frag)) frag)r)))
+  (function frag->list (x) [cast x])
 
-(function list->fragment (x) [cast x])
+  (constrain list->fragment (\ r (`(function ((list frag)) frag)r)))
 
-(constrain token->fragment (\ r (`(function ((list tchar)) frag)r)))
+  (function list->fragment (x) [cast x])
 
-(function token->fragment (x) [cast x])
+  (constrain token->fragment (\ r (`(function ((list tchar)) frag)r)))
 
-(constrain fragment->token (\ r (`(function (frag) (list tchar))r)))
+  (function token->fragment (x) [cast x])
 
-(function fragment->token (x) [cast x])
+  (constrain fragment->token (\ r (`(function (frag) (list tchar))r)))
 
-(constrain frag->vbl (\ r (`(function (frag) vbl)r)))
+  (function fragment->token (x) [cast x])
 
-(function frag->vbl (x) [cast x])
+  (constrain frag->vbl (\ r (`(function (frag) vbl)r)))
 
-(constrain vbl->frag (\ r (`(function (vbl) frag)r)))
+  (function frag->vbl (x) [cast x])
 
-(function vbl->frag (x) [cast x])
+  (constrain vbl->frag (\ r (`(function (vbl) frag)r)))
 
-(constrain vbl (\ r (with-vars (a) (`(function (region ,a) vbl)r)r)))
+  (function vbl->frag (x) [cast x])
 
-(function vbl (r handler)
-  (let (l [region-alloc (list-struct) r handler]) (do
-    (setf car l [cast l])
-    (setf cdr l l)
-    [frag->vbl [list->fragment l]])))
+(ignore Declaration of emt and emt? which is used by macros being compiled.)
 
-(constrain vbl? (\ r (with-vars (a) (`(function (frag) ,a)r)r)))
+  (constrain emt! (\ r (?(et) (`(list ,:et)r)r)))
 
-(function vbl? (s) (let (t [frag->list s]) (and (not [= t nil]) [= (@ cdr t) t])))
+  (storage emt! (ignore)(ignore))
 
-(constrain vbl= (\ r (with-vars (a) (`(function (vbl vbl) ,a)r)r)))
+  [init-nil emt!]
 
-(function vbl= (a b) [= a b])
+  (constrain emt?! (\ r (?(et a) (`(function ((list ,:et)) ,:a)r)r)))
+  
+  (function emt?! (x) [= x emt!])
 
-(constrain set-val (\ r (`(function (vbl frag) ())r)))
+(ignore Functions to create variables and evaluate fragments containing variables.)
 
-(function set-val (vbl val) (let (t [frag->list [vbl->frag vbl]]) (setf car t val)))
+  (constrain vbl (\ r (?(a) (`(function (region ,:a) vbl)r)r)))
 
-(constrain get-val (\ r (`(function (vbl) frag)r)))
+  (function vbl (r handler)
+    (let (l [region-alloc (list-struct) r handler]) (do
+      [init-nil l]
+      [frag->vbl [list->fragment l]])))
 
-(function get-val (vbl) (let (t [frag->list [vbl->frag vbl]]) (@ car t)))
+  (constrain vbl? (\ r (?(a) (`(function (frag) ,:a)r)r)))
 
-(constrain evaluate (\ r (`(function (frag) frag)r)))
+  (function vbl? (s) (let (t [frag->list s]) (and [nil? t] [not= t emt!])))
 
-(function evaluate (val)
-  (loop next (val val)
-    (if [vbl? val]
-      (let (next-val [get-val [frag->vbl val]])
-        (if [= val next-val]
-          next-val
-          {next next-val}))
-      val)))
+  (constrain vbl= (\ r (?(a) (`(function (vbl vbl) ,:a)r)r)))
 
-(constrain recursive-evaluate (\ r (with-vars (a) (`(function (frag region ,a) frag)r)r)))
+  (function vbl= (a b) [= a b])
 
-(function recursive-evaluate (frag r handler)
-  (substitute (.. r handler)
-    (let (d [evaluate frag])
-      (if (or [vbl? d] [i/f:token? d])
-        d
-        [list->fragment (map (x [frag->list d]) [recursive-evaluate x ..] ..)]))))
+  (constrain evaluate (\ r (`(function (frag (hash-table vbl frag)) frag)r)))
+
+  (function evaluate (val assigns)
+    (loop next (val val)
+      (if [vbl? val]
+        (bind-if [ht-contains [frag->vbl val] assigns next-val]
+          (next-val) {next $:next-val}
+          val)
+        val)))
+
+  (constrain recursive-evaluate (\ r (?(a) (`(function (frag (hash-table vbl frag) region ,:a) frag)r)r)))
+
+  (function recursive-evaluate (frag assigns r handler)
+    (substitute (.. r handler)
+      (let (d [evaluate frag assigns])
+        (if (or [vbl? d] [i/f.token? d] [nil? [frag->list d]])
+          d
+          (let (pair [frag->list d])
+            [list->fragment [cons [recursive-evaluate [@car pair] assigns ..] [frag->list [recursive-evaluate [list->fragment [@cdr pair]] assigns ..]] ..]])))))
 
 (ignore
   What follows is a struct for representing fragment characters. It is conceptually in
   union with the list-struct.)
 
-(function character-struct (l r) [=# #16 r])
+  (constant character-struct #:16 \:r:[var r])
 
-(ignore
-  This field should be set to character-flag to indicate that a given reference is a
-  character rather than a list.)
-  
-(function cs-flag (l r) [property #8 #8 (\ r (`(@ (,[var r]) (,[var r]))r)) l r])
+  (ignore
+    This field should be set to character-flag to indicate that a given reference is a
+    character rather than a list.)
+    
+  (property cs-flag #:8 #:8 (\ r (`(! static~ (,[var r]) (,[var r]))r)))
 
-(ignore This field contains the ASCII character represented by the this fragment character.)
-  
-(function cs-character (l r) [property #0 #8 (\ r (`(@ (,[var r]) (,[var r]))r)) l r])
+  (ignore This field contains the ASCII character represented by the this fragment character.)
+    
+  (property cs-character #:0 #:8 (\ r (`(! static~ (,[var r]) (,[var r]))r)))
 
-(ignore Returns a reference to a fragment character representing the supplied ASCII character.)
+(ignore Functions for creating, accessing, and comparing characters.)
 
-(function char-init (s r) (`(storage _ (char (,[@fst s])) character-flag)r))
+  (ignore Returns a reference to a fragment character representing the supplied ASCII character.)
 
-(ignore Returns the fragment character representing the supplied ASCII character.)
+  (function char-init (s r) (`(storage _ (char (,[@fst s])) character-flag)r))
 
-(function tkn-char (s r) (`(constrain ($(loc (unit) (,[@fst s]) characters)) (\ r (` tchar r)))r))
+  (ignore Returns the fragment character representing the supplied ASCII character.)
 
-(storage null-fragment (ignore))
+  (function tkn-char (s r) (`(constrain ($(loc (unit) (,[@fst s]) characters)) (\ r (` tchar r)))r))
 
-(ignore
-  Checks if two fragment characters are equal. a is a fragment character. b is a fragment
-  character. Return value is (true) if they are equal and (false) otherwise.)
+  (storage null-fragment (ignore))
 
-(function i/f:char= (a b) [= (@ cs-character a) (@ cs-character b)])
+  (ignore
+    Checks if two fragment characters are equal. a is a fragment character. b is a fragment
+    character. Return value is (true) if they are equal and (false) otherwise.)
+
+  (function i/f.char= (a b) [= (@ cs-character a) (@ cs-character b)])
+
+(ignore If a fragment is neither a variable nor a token, then it's a list of fragments.)
+
+(function lst? (frag) (not (or [i/f.token? frag] [vbl? frag])))
 
 (ignore Following array is used to lookup fragment character corresponding to ASCII character.)
 
 (storage characters
-  #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 #0 (char-init !) (char-init ")
-  (char-init #) (char-init $) (char-init %) (char-init &) (char-init ') #0 #0 (char-init *) (char-init +) (char-init ,)
-  (char-init -) (char-init .) (char-init /) (char-init 0) (char-init 1) (char-init 2) (char-init 3) (char-init 4) (char-init 5)
-  (char-init 6) (char-init 7) (char-init 8) (char-init 9) (char-init :) (char-init ;) (char-init <) (char-init =) (char-init >)
-  (char-init ?) (char-init @) (char-init A) (char-init B) (char-init C) (char-init D) (char-init E) (char-init F) (char-init G)
-  (char-init H) (char-init I) (char-init J) (char-init K) (char-init L) (char-init M) (char-init N) (char-init O) (char-init P)
-  (char-init Q) (char-init R) (char-init S) (char-init T) (char-init U) (char-init V) (char-init W) (char-init X) (char-init Y)
-  (char-init Z) #0 (char-init \) #0 (char-init ^) (char-init _) (char-init `) (char-init a) (char-init b) (char-init c)
-  (char-init d) (char-init e) (char-init f) (char-init g) (char-init h) (char-init i) (char-init j) (char-init k) (char-init l)
-  (char-init m) (char-init n) (char-init o) (char-init p) (char-init q) (char-init r) (char-init s) (char-init t) (char-init u)
-  (char-init v) (char-init w) (char-init x) (char-init y) (char-init z) #0 (char-init |) #0 (char-init ~) #0)
+  #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0
+  #:0 #:0 (char-init !) (char-init ") (char-init #) (char-init $) (char-init %) (char-init &) (char-init ') #:0 #:0
+  (char-init *) (char-init +) (char-init ,) (char-init -) (char-init .) (char-init /) (char-init 0) (char-init 1) (char-init 2)
+  (char-init 3) (char-init 4) (char-init 5) (char-init 6) (char-init 7) (char-init 8) (char-init 9) #:0 #:0
+  (char-init <) (char-init =) (char-init >) (char-init ?) (char-init @) (char-init A) (char-init B) (char-init C) (char-init D)
+  (char-init E) (char-init F) (char-init G) (char-init H) (char-init I) (char-init J) (char-init K) (char-init L) (char-init M)
+  (char-init N) (char-init O) (char-init P) (char-init Q) (char-init R) (char-init S) (char-init T) (char-init U) (char-init V)
+  (char-init W) (char-init X) (char-init Y) (char-init Z) #:0 (char-init \) #:0 (char-init ^) (char-init _) (char-init `)
+  (char-init a) (char-init b) (char-init c) (char-init d) (char-init e) (char-init f) (char-init g) (char-init h) (char-init i)
+  (char-init j) (char-init k) (char-init l) (char-init m) (char-init n) (char-init o) (char-init p) (char-init q) (char-init r)
+  (char-init s) (char-init t) (char-init u) (char-init v) (char-init w) (char-init x) (char-init y) (char-init z) #:0
+  (char-init |) #:0 (char-init ~) #:0)
 
 (ignore
   Builds a token from a given C-string. str is the C-string that the constructed token
   will be based on. r is the region in which the token will be constructed. Return value
   is the constructed token.)
 
-(constrain build-token (\ r (with-vars (c) (`(function (string region ,c) (list tchar))r)r)))
+(constrain build-token (\ r (?(c) (`(function (string region ,:c) (list tchar))r)r)))
 
 (function build-token (str r handler)
-  (let (sexprs-start (storage _ nil))
+  (let (sexprs-start (storage _ emt!))
     (loop cons-char (sexprs-end sexprs-start) (strptr str)
       (if [getb strptr]
-        {cons-char [append (tkn-char [getb strptr]) sexprs-end r handler] [+ strptr #1]}
-        $sexprs-start))))
+        {cons-char [append (tkn-char [getb strptr]) sexprs-end r handler] [+ strptr #:1]}
+        $:sexprs-start))))
+
+(ignore
+ Grammar being lexed:
+ program = <space> (<fragment> <space>)*
+ fragment = <fragment2> | <sublist>
+ sublist = <fragment2> (<space> ':' <space> <fragment2>)+
+ fragment2 = <fragment1> | <subsublist>
+ subsublist = <fragment1> (<space> ';' <space> <fragment1>)+
+ fragment1 = <token> | <list> | <clist> | <slist>
+ list = '(' <space> (<fragment> <space>)* ')'
+ clist = '{' <space> (<fragment> <space>)* '}'
+ slist = '[' <space> (<fragment> <space>)* ']'
+ token = <character>+)
 
 (ignore
   Moves the supplied index forward to the first non-space character. l2src is a
@@ -134,154 +161,217 @@
   will be increased. Return value is the number of remaining characters in the
   buffer.)
 
-(function after-leading-space (l2src l2src-sz pos)
+(function read-whitespace (l2src l2src-sz pos)
   (loop find-space
-    (if (and [< $pos l2src-sz] [isspace [getb[+ l2src $pos]]])
-      (do [set+ pos #1] {find-space})
-      [- l2src-sz $pos])))
+    (if (and [< $:pos l2src-sz] [isspace [getb[+ l2src $:pos]]])
+      (do [set+ pos #:1] {find-space})
+      [- l2src-sz $:pos])))
 
-(ignore
-  If there is a space at the current position in the buffer, then build a token
-  containing solely the sigil. Otherwise build a token of the form (<sigil>
-  <token>) where token is the token starting at the current position in the
-  buffer. sigil is a string. l2src is a reference to the start of a buffer
-  containing characters. l2src-sz is the size of the buffer. pos is a reference
-  to the current index in the buffer. r is the region into which the token
-  should be put. Return value is the constructed token.)
+(constrain read-token (\ r (?(a b c d e) (`(function (,:a ,:b ,:c ,:d ,:e) frag)r)r)))
 
-(constrain build-sigilled-token (\ r (with-vars (a b c d e f) (`(function (,a ,b ,c ,d ,e ,f) frag)r)r)))
-
-(function build-sigilled-token (sigil l2src l2src-sz pos r handler)
+(function read-token (l2src l2src-sz pos r handler)
   (substitute (.. r handler)
-    (if [= l2src-sz $pos]
-      [token->fragment [build-token sigil ..]]
-      (let (d [getb [+ l2src $pos]])
-        (if (or [isspace d] [= d (rparen)] [= d (rbrace)] [= d (rbracket)] [= d (lparen)] [= d (lbrace)] [= d (lbracket)])
-          [token->fragment [build-token sigil ..]]
-          [list->fragment (list ([token->fragment [build-token sigil ..]] [build-fragment l2src l2src-sz pos ..]) ..)])))))
+    (if [= $:pos l2src-sz]
+      {handler (storage _ unexpected-char-error (nul) $:pos)}
+      (let (c [getb [+ l2src $:pos]])
+        (if (or [isspace c] (switch = c ((lparen)(rparen)(lbrace)(rbrace)(lbracket)(rbracket)(colon)(scolon) (true)) (false)))
+          {handler (storage _ unexpected-char-error c $:pos)}
+          (do
+            [set+ pos #:1]
+            [token->fragment (let (ls (storage _ emt!))
+              (loop cons-char (le ls) (c c)
+                (let (le [append (tkn-char c) le ..])
+                (if [= $:pos l2src-sz] $:ls
+                  (let (c [getb [+ l2src $:pos]])
+                  (if (or [isspace c] (switch = c ((lparen)(rparen)(lbrace)(rbrace)(lbracket)(rbracket)(colon)(scolon) (true)) (false))) $:ls
+                    (do [set+ pos #:1] {cons-char le c})))))))]))))))
 
-(ignore
-  Builds a fragment list starting at the current position in the buffer and ending
-  at the specified delimiter and then prefixes it with the given primitive.
-  primitive is a string. delimiter is an ascii character. For rest of parameters,
-  see above.)
+(constrain read-list (\ r (?(a b c d e) (`(function (,:a ,:b ,:c ,:d ,:e) frag)r)r)))
 
-(constrain build-fragment-list (\ r (with-vars (a b c d e) (`(function (string ,a ,b ,c ,d region ,e) (list frag))r)r)))
-
-(function build-fragment-list (primitive delimeter l2src l2src-sz pos r handler)
+(function read-list (l2src l2src-sz pos r handler)
   (substitute (.. r handler)
-    (let (sexprs-start (storage _ nil))
-      (loop cons-frag (sexprs-end [append [token->fragment [build-token primitive ..]] sexprs-start ..])
-        (let (rem [after-leading-space l2src l2src-sz pos])
-          (if (and rem [= [getb [+ l2src $pos]] delimeter])
-            (do [set+ pos #1] $sexprs-start)
-            {cons-frag [append [build-fragment l2src l2src-sz pos ..] sexprs-end ..]}))))))
+    (if [= $:pos l2src-sz]
+      {handler (storage _ unexpected-char-error $:pos)}
+      (let (c [getb [+ l2src $:pos]])
+        (if (switch = c ((lparen)(lbrace)(lbracket) (false)) (true))
+          {handler (storage _ unexpected-char-error c $:pos)}
+          (let (sexprs-start (storage _ emt!)) (do
+            [set+ pos #:1]
+            (let (delimiter
+              (if [= c (lbrace)] (do
+                [append [token->fragment [build-token (" jump) ..]] sexprs-start ..]
+                (rbrace))
+              (if [= c (lbracket)] (do
+                [append [token->fragment [build-token (" invoke) ..]] sexprs-start ..]
+                (rbracket))
+                (rparen))))
+            (loop cons-frag (sexprs-end sexprs-start)
+              (if (and [read-whitespace l2src l2src-sz pos] [= [getb [+ l2src $:pos]] delimiter])
+                (do [set+ pos #:1] [list->fragment $:sexprs-start])
+                {cons-frag [append [read-fragment l2src l2src-sz pos ..] sexprs-end ..]}))))))))))
 
-(storage unexpected-char-error (ignore))
+(constrain read-fragment1 (\ r (?(a b c d e) (`(function (,:a ,:b ,:c ,:d ,:e) frag)r)r)))
+
+(function read-fragment1 (l2src l2src-sz pos r handler)
+  (substitute (.. r handler)
+    (if [= $:pos l2src-sz]
+      {handler (storage _ unexpected-char-error (nul))}
+      (let (c [getb [+ l2src $:pos]])
+        (if (switch = c ((lparen)(lbrace)(lbracket) (true)) (false))
+          [read-list l2src l2src-sz pos ..]
+          [read-token l2src l2src-sz pos ..])))))
+
+(constrain read-fragment2 (\ r (?(a b c d e) (`(function (,:a ,:b ,:c ,:d ,:e) frag)r)r)))
+
+(function read-fragment2 (l2src l2src-sz pos r handler)
+  (substitute (.. r handler)
+    (let (sexprs-start (storage _ emt!))
+    (let (sexprs-end [append [read-fragment1 l2src l2src-sz pos ..] sexprs-start ..]) (do
+    (loop cons-frag (sexprs-end sexprs-end)
+      (if (not [read-whitespace l2src l2src-sz pos])
+        (ignore)
+        (let (c [getb [+ l2src $:pos]])
+          (if (not [= c (scolon)])
+            (ignore)
+            (do
+              [set+ pos #:1]
+              [read-whitespace l2src l2src-sz pos]
+              {cons-frag [append [read-fragment1 l2src l2src-sz pos ..] sexprs-end ..]})))))
+                
+    (if [emt?! [@cdr $:sexprs-start]]
+      [@car $:sexprs-start]
+      [list->fragment $:sexprs-start]))))))
 
 (ignore Builds a fragment starting at the current position in the buffer. For parameters, see above.)
 
-(constrain build-fragment (\ r (with-vars (a b c d e) (`(function (,a ,b ,c ,d ,e) frag)r)r)))
+(constrain read-fragment (\ r (?(a b c d e) (`(function (,:a ,:b ,:c ,:d ,:e) frag)r)r)))
 
-(function build-fragment (l2src l2src-sz pos r handler)
-  (substitute (.. r handler) (if [= l2src-sz $pos]
-    {handler (storage _ unexpected-char-error #0 $pos)}
-    (let (c [getb [+ l2src $pos]])
-      (if (or [isspace c] [= c (rparen)] [= c (rbrace)] [= c (rbracket)])
-        {handler (storage _ unexpected-char-error c $pos)}
-        (do
-          [set+ pos #1]
-          (switch = c
-            ((lparen) [list->fragment [@cdr [build-fragment-list (" expression) (rparen) l2src l2src-sz pos ..]]])
-            ((lbrace) [list->fragment [build-fragment-list (" jump) (rbrace) l2src l2src-sz pos ..]])
-            ((lbracket) [list->fragment [build-fragment-list (" invoke) (rbracket) l2src l2src-sz pos ..]])
-            ((char $) [build-sigilled-token (" $) l2src l2src-sz pos ..])
-            ((char #) [build-sigilled-token (" #) l2src l2src-sz pos ..])
-            ((char ,) [build-sigilled-token (" ,) l2src l2src-sz pos ..])
-            ((char `) [build-sigilled-token (" `) l2src l2src-sz pos ..])
-            
-            [token->fragment
-              (let (ls (storage _ nil))
-              (loop cons-char (le ls) (c c)
-                (let (le [append (tkn-char c) le ..])
-                (if [= $pos l2src-sz] $ls
-                  (let (c [getb [+ l2src $pos]])
-                  (if (or [isspace c] (switch = c ((lparen)(rparen)(lbrace)(rbrace)(lbracket)(rbracket) (true)) (false))) $ls
-                    (do [set+ pos #1] {cons-char le c})))))))])))))))
+(function read-fragment (l2src l2src-sz pos r handler)
+  (substitute (.. r handler)
+    (let (sexprs-start (storage _ emt!))
+    (let (sexprs-end [append [read-fragment2 l2src l2src-sz pos ..] sexprs-start ..]) (do
+    (loop cons-frag (sexprs-end sexprs-end)
+      (if (not [read-whitespace l2src l2src-sz pos])
+        (ignore)
+        (let (c [getb [+ l2src $:pos]])
+          (if (not [= c (colon)])
+            (ignore)
+            (do
+              [set+ pos #:1]
+              [read-whitespace l2src l2src-sz pos]
+              {cons-frag [append [read-fragment2 l2src l2src-sz pos ..] sexprs-end ..]})))))
+                
+    (if [emt?! [@cdr $:sexprs-start]]
+      [@car $:sexprs-start]
+      [list->fragment $:sexprs-start]))))))
+
+(storage unexpected-char-error (ignore))
 
 (storage character-flag (ignore))
 
 (ignore Checks if the fragment d is a token. A token is a non-empty list of characters.)
 
-(constrain i/f:token? (\ r (with-vars (a) (`(function (frag) ,a)r)r)))
+(constrain i/f.token? (\ r (?(a) (`(function (frag) ,:a)r)r)))
 
-(function i/f:token? (e)
+(function i/f.token? (e)
   (let (d [fragment->token e])
-    (and (not [vbl? e]) [length d] [= (@ cs-flag[@car d]) character-flag])))
+    (and (not [nil? d]) [= (@ cs-flag[@car d]) character-flag])))
 
-(constrain i/f:token= (\ r (with-vars (a) (`(function ((list tchar) (list tchar)) ,a)r)r)))
+(storage gentok-counter #:0)
 
-(function i/f:token= (a b)
-  (if (not [= [length a] [length b]])
-    (false)
-    (loop check-car (a a) (b b)
-      (if [nil? a]
-        (true)
-      (if (not [= (@ cs-character [@car a]) (@ cs-character [@car b])])
-        (false)
-        {check-car [@cdr a] [@cdr b]})))))
+(constrain i/f.gentok (\ r (`(function (region) frag)r)))
+
+(function i/f.gentok (r)
+  (let (str (storage _ (ignore) (ignore) (ignore))) (do
+    [set+ gentok-counter #:1]
+    [token->fragment [build-token [dec->str $:gentok-counter str] r (ignore)]])))
+
+(constrain i/f.token= (\ r (?(a) (`(function ((list tchar) (list tchar)) ,:a)r)r)))
+
+(function i/f.token= (a b)
+  (loop check-car (a a) (b b)
+    (if (and [nil? a] [nil? b])
+      (true)
+    (if (or [nil? a] [nil? b])
+      (false)
+    (if [= (@ cs-character [@car a]) (@ cs-character [@car b])]
+      {check-car [@cdr a] [@cdr b]}
+      (false))))))
 
 (ignore
   Converts the given token into an ASCII string. d is the token that is to be converted.
   r is the region into which the string should be put. The return value is the constructed
   string.)
 
-(constrain to-string (\ r (with-vars (a) (`(function ((list tchar) region ,a) string)r)r)))
+(constrain to-string (\ r (?(a) (`(function ((list tchar) region ,:a) string)r)r)))
 
 (function to-string (d r handler)
-  (let (str [region-alloc [+ [length d] #1] r handler])
-    (loop put-char (d d) (i #0)
+  (let (str [region-alloc [+ [length d] #:1] r handler])
+    (loop put-char (d d) (i #:0)
       (if [nil? d]
         (do
           [setb [+ str i] (nul)]
           str)
         (do
           [setb [+ str i] (@ cs-character [@car d])]
-          {put-char [@cdr d] [+ i #1]})))))
+          {put-char [@cdr d] [+ i #:1]})))))
 
 (ignore
   Copies the given fragment into the given region. l is the fragment that is to
   be copied. r is the region into which the fragment should be copied. The return
   value is the copied fragment.)
 
-(constrain copy-fragment (\ r (with-vars (b) (`(function (frag (ref (list vbl)) (ref (list vbl)) region ,b) frag)r)r)))
+(constrain copy-fragment (\ r (?(b) (`(function (frag (hash-table vbl vbl) region ,:b) frag)r)r)))
 
-(function copy-fragment (l old-vars new-vars r handler)
+(function copy-fragment (l var-map r handler)
   (substitute (.. r handler)
     (if [vbl? l]
       (let (l [frag->vbl l])
-        [vbl->frag (loop find-var (ovs $old-vars) (nvs $new-vars)
-          (if [nil? ovs]
-            (do [prepend l old-vars ..] [prepend [vbl ..] new-vars ..] [@car $new-vars])
-          (if [vbl= [@car ovs] l] [@car nvs] {find-var [@cdr ovs] [@cdr nvs]})))])
-    (if [i/f:token? l]
+        [vbl->frag (bind-if [ht-contains l var-map new-l]
+          (new-l) $:new-l
+          (let (new-l [vbl ..]) (do [ht-put l new-l var-map ..] new-l)))])
+    (if [i/f.token? l]
       [token->fragment (map (s [fragment->token l]) (tkn-char (@ cs-character s)) ..)]
-      [list->fragment (map (s [frag->list l]) [copy-fragment s old-vars new-vars ..] ..)]))))
+      [list->fragment (map (s [frag->list l]) [copy-fragment s var-map ..] ..)]))))
+
+(ignore Checks whether two fragments are equal modulo variable identity.)
+
+(constrain fragment= (\ r (?(a b) (`(function (frag frag (hash-table vbl vbl) region ,:a) ,:b)r)r)))
+
+(function fragment= (frag1 frag2 var-map r handler)
+  (substitute (.. r handler)
+    (if (and [vbl? frag1] [vbl? frag2])
+      (let (vbl1 [frag->vbl frag1]) (vbl2 [frag->vbl frag2])
+        (bind-if [ht-contains vbl1 var-map val]
+          (val) [= $:val vbl2]
+          [ht-put vbl1 vbl2 var-map ..]))
+    (if (or [vbl? frag1] [vbl? frag2])
+      (false)
+    (if (and [i/f.token? frag1] [i/f.token? frag2])
+      [i/f.token= [fragment->token frag1] [fragment->token frag2]]
+    (if (or [i/f.token? frag1] [i/f.token? frag2])
+      (false)
+    (loop elt= (l1 [frag->list frag1]) (l2 [frag->list frag2])
+      (if (and [nil? l1] [nil? l2]) (true)
+      (if (or [nil? l1] [nil? l2]) (false)
+      (if [fragment= [@car l1] [@car l2] var-map ..]
+        {elt= [@cdr l1] [@cdr l2]}
+        (false)))))))))))
 
 (ignore Prints the given fragment out to standard output. d is the fragment that is to be printed.)
 
-(constrain print-fragment (\ r (with-vars (b) (`(function (frag ,b) ())r)r)))
+(constrain print-fragment (\ r (?(b) (`(function (frag ,:b) ())r)r)))
 
 (function print-fragment (d hdl)
   (if [vbl? d]
     (do
       [print-char (stdout) (char !) hdl]
-      [print-uint (stdout) [rem d #8192] hdl])
-  (if [i/f:token? d]
-    (foreach (t [fragment->token d]) [print-char (stdout) (@ cs-character t) hdl])
+      [print-uint (stdout) [rem d #:8192] hdl])
+  (if [i/f.token? d]
+    (for (t (list-iter [fragment->token d])) (ignore) [print-char (stdout) (@ cs-character t) hdl])
     (do
       [print-char (stdout) (lparen) hdl]
-      (foreach (fl [frag->list d]) (do
+      (for (fl (list-iter [frag->list d])) (ignore) (do
         [print-fragment fl hdl]
         [print-str (stdout) ("(space)) hdl]))
       [print-char (stdout) (rparen) hdl]))))

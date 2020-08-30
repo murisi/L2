@@ -2,9 +2,9 @@
 
 (ignore This is false.)
 
-(function false (l r) [=# #0 r])
+(function false (l r) [=# #:0 r])
 
-(function true (l r) [=# #1 r])
+(function true (l r) [=# #:1 r])
 
 (ignore
   The following macro iterates through its arguments in order and returns (true) upon
@@ -12,7 +12,7 @@
   then it returns (false).)
 
 (function or (l r)
-  (loop prepend-or (l [meta:reverse l r]) (sexpr (`(false)r))
+  (loop prepend-or (l [meta.reverse l r]) (sexpr (`(false)r))
     (if [emt? l]
       sexpr
       {prepend-or [@rst l] (`(if (,[@fst l]) (true) (, sexpr r))r)})))
@@ -23,7 +23,7 @@
   then it returns (true).)
 
 (function and (l r)
-  (loop prepend-and (l [meta:reverse l r]) (sexpr (`(true)r))
+  (loop prepend-and (l [meta.reverse l r]) (sexpr (`(true)r))
     (if [emt? l]
       sexpr
       {prepend-and [@rst l] (`(if (,[@fst l]) (, sexpr r) (false))r)})))
@@ -38,7 +38,7 @@
   Reverses the given list. l is the list to be reversed. r is the region into which the
   reversed list will be put. Return value is the reversed list.)
 
-(function meta:reverse (l r)
+(function meta.reverse (l r)
   (with return
     {(continuation _ (l reversed)
       (if [emt? l]
@@ -53,49 +53,49 @@
   position of another list. r is the region into which the list being constructed
   will be put. Return value is the mapped list.)
 
-(function meta:map (l mapper r)
+(function meta.map (l mapper r)
   (with return
     {(continuation aux (in out)
       (if [emt? in]
-        {return [meta:reverse out r]}
+        {return [meta.reverse out r]}
         {aux [@rst in] [lst [mapper [@fst in]] out r]})) l emt}))
 
-(function meta:map2 (l ctx mapper r)
+(function meta.map2 (l ctx mapper r)
   (with return
     {(continuation aux (in out)
       (if [emt? in]
-        {return [meta:reverse out r]}
+        {return [meta.reverse out r]}
         {aux [@rst in] [lst [mapper [@fst in] ctx] out r]})) l emt}))
 
-(function meta:map3 (l ctx1 ctx2 mapper r)
+(function meta.map3 (l ctx1 ctx2 mapper r)
   (with return
     {(continuation aux (in out)
       (if [emt? in]
-        {return [meta:reverse out r]}
+        {return [meta.reverse out r]}
         {aux [@rst in] [lst [mapper [@fst in] ctx1 ctx2] out r]})) l emt}))
 
 (ignore
   The following function implements variable binding by do the following transformation:
   (let (params vals) ... expr0)
   ->
-  (with let:return
-    {(continuation let:aux (params ...)
-      {let:return expr0}) vals ...}))
+  (with let.return
+    {(continuation let.aux (params ...)
+      {let.return expr0}) vals ...}))
 
 (function let (l r)
-  (`(with let:return
-    (,[llst (` jump r) (`(continuation let:aux (,[meta:map [@rst [meta:reverse l r]] @fst r])
-      {let:return (,[@fst [meta:reverse l r]])}) r) [meta:map [@rst [meta:reverse l r]] @frst r] r])) r))
+  (`(with let.return
+    (,[llst (` jump r) (`(continuation let.aux (,[meta.map [@rst [meta.reverse l r]] @fst r])
+      {let.return (,[@fst [meta.reverse l r]])}) r) [meta.map [@rst [meta.reverse l r]] @frst r] r])) r))
 
 (ignore
   The following function implements variable binding by do the following transformation:
   (where expr0 (params vals) ...)
   ->
-  (with let:return
-    {(continuation let:aux (params ...)
-      {let:return expr0}) vals ...}))
+  (with let.return
+    {(continuation let.aux (params ...)
+      {let.return expr0}) vals ...}))
 
-(function where (l r) [let [meta:reverse l r] r])
+(function where (l r) [let [meta.reverse l r] r])
 
 (ignore
   The following function implements the switch expression by doing the following transformation:
@@ -112,29 +112,16 @@
             expr0)))))
 
 (function switch (l r)
-  (`(let (switch:= (,[@fst l])) (switch:val (,[@frst l]))
+  (`(let (switch.= (,[@fst l])) (switch.val (,[@frst l]))
     (,(with return
       {(continuation aux (remaining else-clause)
         (if [emt? remaining]
           {return else-clause}
           {aux [@rst remaining]
-            (`(if (,[lst (` or r) [meta:map2 [@rst [meta:reverse [@fst remaining] r]] r
-                (function _ (e r) [llllst (` invoke r) (` switch:= r) (` switch:val r) e emt r]) r] r])
-              (,[@fst [meta:reverse [@fst remaining] r]]) ,else-clause) r)}))
-        [@rst [meta:reverse [@rrst l] r]] [@fst [meta:reverse l r]]})))r))
-
-(ignore
-  The following macro is roughly analogous to C's for-loop. The difference is
-  that until loops until the condition is true rather than while it is true. The
-  other difference is that this construct updates the loop control varable itself
-  using the update expression - this is different from C where the update part
-  of the loop header must do the mutations itself.)
-
-(function until (l r)
-  (`(with until:return {(continuation until:aux ((,[@ffst l]))
-    (if (,[@frst l])
-      {until:return (ignore)}
-      (do (,[@frrrst l]) {until:aux (,[@frrst l])}))) (,[@frfst l])})r))
+            (`(if (,[lst (` or r) [meta.map2 [@rst [meta.reverse [@fst remaining] r]] r
+                (function _ (e r) [llllst (` invoke r) (` switch.= r) (` switch.val r) e emt r]) r] r])
+              (,[@fst [meta.reverse [@fst remaining] r]]) ,:else-clause) r)}))
+        [@rst [meta.reverse [@rrst l] r]] [@fst [meta.reverse l r]]})))r))
 
 (ignore
   The following function implements the following transformation:
@@ -154,46 +141,163 @@
 
 (function fallthrough (l r)
   (loop do-layer (acc [@fst l]) (exprs [@rst l])
-      (if [emt? exprs]
-        acc
-        {do-layer (`(let ((,[@frfst exprs]) (with (,[@ffst exprs]) ,acc)) (,[@frrfst exprs]))r) [@rst exprs]})))
+    (if [emt? exprs]
+      acc
+      {do-layer (`(let ((,[@frfst exprs]) (with (,[@ffst exprs]) ,:acc)) (,[@frrfst exprs]))r) [@rst exprs]})))
+
+(ignore
+  Syntactic sugar for continuation passing style. The next continuations is always bound.
+  Transformation is as follows:
+  (cps expr (conts (args ...) exprs) ...)
+  ->
+  (with cps.return
+    (let (cont1 (continuation cont1 (arg11 arg12 ...) {cps.return
+        (let (cont2 (continuation cont2 (arg21 arg22 ...) {cps.return
+            ...
+                (let (contN-1 (continuation contN-1 (argN-11 argN-12 ...) {cps.return
+                    (let (contN (continuation contN (argN1 argN2 ...) {cps.return
+                        exprN}))
+                      exprN-1)}))
+                  exprN-2)
+              ...}))
+          expr1)}))
+      expr)))
+
+(function cps (l r) (`(with cps.return
+  (,[(function cps-aux (body rem-exprs r)
+      (if [emt? rem-exprs]
+        body
+        (let (cont-name [@ffst rem-exprs]) (cont-args [@frfst rem-exprs]) (cont-expr [@frrfst rem-exprs])
+          (`(let (,:cont-name (continuation ,:cont-name ,:cont-args
+                {cps.return (,[cps-aux cont-expr [@rst rem-exprs] r])}))
+              ,:body)r)))) [@fst l] [@rst l] r]))r))
 
 (ignore
   The following function implements variable binding by do the following transformation:
   (loop cont (params args) ... expr0)
   ->
-  (with loop:return
+  (with loop.return
     {(continuation cont (params ...)
-      {loop:return expr0}) vals ...}))
+      {loop.return expr0}) vals ...}))
 
 (function loop (l r)
-  (let (bindings [meta:reverse [@rst [meta:reverse [@rst l] r]] r])
-    (`(with loop:return
-      (,[llst (` jump r) (`(continuation (,[@fst l]) (,[meta:map bindings @fst r])
-        {loop:return (,[@fst [meta:reverse l r]])}) r) [meta:map bindings @frst r] r])) r)))
+  (let (bindings [meta.reverse [@rst [meta.reverse [@rst l] r]] r])
+    (`(with loop.return
+      (,[llst (` jump r) (`(continuation (,[@fst l]) (,[meta.map bindings @fst r])
+        {loop.return (,[@fst [meta.reverse l r]])}) r) [meta.map bindings @frst r] r])) r)))
 
 (ignore
   The following function implements an anonymous function using the following transformation:
   (\ params ... body)
   ->
-  (function \:self (params ...) body))
+  (function \.self (params ...) body))
 
-(function \ (l r) (`(function \:self (,[meta:reverse [@rst [meta:reverse l r]]r]) (,[@fst [meta:reverse l r]]))r))
+(function \ (l r) (`(function \.self (,[meta.reverse [@rst [meta.reverse l r]]r]) (,[@fst [meta.reverse l r]]))r))
 
 (ignore
   The following function implements sequencing by doing the following transformation:
   (do expr1 expr2 ... exprN)
   ->
-  (with do:return
-    {(continuation do:cont (do:arg)
-      {(continuation do:cont (do:arg)
+  (with do.return
+    {(continuation do.cont (do.arg)
+      {(continuation do.cont (do.arg)
         {...
-          {(continuation do:cont (do:arg) {do:return do:arg}) exprN}...}) expr2}) expr1}))
+          {(continuation do.cont (do.arg) {do.return do.arg}) exprN}...}) expr2}) expr1}))
 
 (function do (l r)
-  (`(with do:return
-    (,(loop make-do (acc (`{do:return do:arg}r)) (exprs [meta:reverse l r])
+  (`(with do.return
+    (,(loop make-do (acc (`{do.return do.arg}r)) (exprs [meta.reverse l r])
         (if [emt? exprs]
           acc
-          {make-do (`{(continuation do:cont (do:arg) ,acc) (,[@fst exprs])}r) [@rst exprs]}))))r))
+          {make-do (`{(continuation do.cont (do.arg) ,:acc) (,[@fst exprs])}r) [@rst exprs]}))))r))
 
+(ignore
+  Takes a list of lists and make a list containing their concatenation in the given
+  buffer.)
+
+(function meta.flatten (lsts r)
+  (loop flatten (acc emt) (lsts lsts)
+    (if [emt? lsts]
+      acc
+      {flatten [meta.concat acc [@fst lsts] r] [@rst lsts]})))
+
+(ignore
+  Loops through the given iterator. Performs the following transformation:
+  (for (x iter) def expr)
+  ->
+  (with for.return
+    (let (for.iter iter)
+      {for.iter for.return def
+        (continuation for.cont (for.next for.ctx x)
+          {for.next [cast for.cont] expr})})))
+
+(function for (l r)
+  (`(with for.return
+      (let (for.iter (,[@frfst l]))
+        {for.iter for.return (,[@frst l])
+          (continuation for.cont (for.next for.ctx (,[@ffst l]))
+            {for.next [cast for.cont] (,[@frrst l])})}))r))
+
+(ignore
+  Creates an iterator from from (inclusive) to to (exclusive). Performs the following
+  transformation:
+  (range from to)
+  ->
+  (continuation range.cont (range.end range.ctx range.recv)
+    (let (to to) (from from)
+      (loop range.count (recv range.recv) (idx from) (ctx range.ctx)
+        (if [< idx to]
+          (cps {recv next ctx idx}
+            (next (new-recv new-ctx) {range.count new-recv [+ idx #:1] new-ctx}))
+          {range.end ctx})))))
+
+(function range (l r)
+  (`(continuation range.cont (range.end range.ctx range.recv)
+      (let (to (,[@frst l])) (from (,[@fst l]))
+        (loop range.count (recv range.recv) (idx from) (ctx range.ctx)
+          (if [< idx to]
+            (cps {recv next ctx idx}
+              (next (new-recv new-ctx) {range.count [cast new-recv] [+ idx #:1] new-ctx}))
+            {range.end ctx}))))r))
+
+(ignore
+  Zips the two given iterators into one that yields pairs of values. Performs
+  the following transformation:
+  (zip-iter iter1 iter2)
+  ->
+  (continuation zip-iter.cont (zip-iter.end zip-iter.ctx zip-iter.recv) (cps
+    {iter1 zip-iter.end zip-iter.ctx zip-iter.init2}
+      
+    (zip-iter.init2 (zip-iter.next1 zip-iter.ctx1 zip-iter.val1)
+      {iter2 zip-iter.end zip-iter.ctx1 body1})
+      
+    (body1 (next2 ctx2 val2)
+      {zip-iter.recv (continuation _(new-recv new-ctx) {body2 zip-iter.next1 next2 new-recv new-ctx}) ctx2 (tuple zip-iter.val1 val2)})
+    
+    (body2 (new-next1 new-next2 new-recv new-ctx)
+      {new-next1 body3 new-ctx})
+    
+    (body3 (next3 ctx3 val3)
+      {new-next2 body4 ctx3})
+    
+    (body4 (next4 ctx4 val4)
+      {new-recv (continuation _(new-recv new-ctx) {[cast body2] next3 next4 new-recv new-ctx}) ctx4 (tuple val3 val4)}))))
+
+(function zip-iter (l r)
+  (`(continuation zip-iter.cont (zip-iter.end zip-iter.ctx zip-iter.recv) (cps
+      {(,[@fst l]) zip-iter.end zip-iter.ctx zip-iter.init2}
+        
+      (zip-iter.init2 (zip-iter.next1 zip-iter.ctx1 zip-iter.val1)
+        {(,[@frst l]) zip-iter.end zip-iter.ctx1 body1})
+        
+      (body1 (next2 ctx2 val2)
+        {zip-iter.recv (continuation _(new-recv new-ctx) {body2 zip-iter.next1 next2 new-recv new-ctx}) ctx2 (tuple zip-iter.val1 val2)})
+      
+      (body2 (new-next1 new-next2 new-recv new-ctx)
+        {new-next1 body3 new-ctx})
+      
+      (body3 (next3 ctx3 val3)
+        {new-next2 body4 ctx3})
+      
+      (body4 (next4 ctx4 val4)
+        {new-recv (continuation _(new-recv new-ctx) {[cast body2] next3 next4 new-recv new-ctx}) ctx4 (tuple val3 val4)})))r))
