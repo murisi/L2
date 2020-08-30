@@ -53,11 +53,11 @@ list build_token(char *str, region r) {
   return sexprs;
 }
 
-unsigned long gentok_counter = 1;
+unsigned long gentok_counter = 0;
 
 list gentok(region r) {
   char buf[21];
-  return build_token(ulong_to_str(gentok_counter++, buf), r);
+  return build_token(ulong_to_str(++gentok_counter, buf), r);
 }
 
 int read_whitespace(char *l2src, int l2src_sz, int *pos) {

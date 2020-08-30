@@ -165,53 +165,11 @@
 
 (function print-char (fd ch handler) [print fd (storage _ ch) #:1 handler])
 
-(constrain dec->char (\ r (?(a b) (`(function (,:a) ,:b)r)r)))
-
-(function dec->char (h)
-  (switch = h
-    (#:9 (char 9))
-    (#:8 (char 8))
-    (#:7 (char 7))
-    (#:6 (char 6))
-    (#:5 (char 5))
-    (#:4 (char 4))
-    (#:3 (char 3))
-    (#:2 (char 2))
-    (#:1 (char 1))
-    (char 0)))
-
 (constrain print-uint (\ r (?(a b e) (`(function (fd ,:a ,:b) ,:e)r)r)))
 
 (function print-uint (fd i handler)
-  (let (j (storage _ #:19))
-  (let (str (storage _ (ignore) (ignore) (ignore))) (do
-  (loop next-digit (i i)
-    (if [= i #:0] (ignore) (do
-      [setb [+ str $:j] [dec->char [rem i #:10]]]
-      [set j [- $:j #:1]]
-      {next-digit [/ i #:10]})))
-  [print fd [+ str [+ $:j #:1]] [- #:19 $:j] handler]))))
-
-(constrain hex->char (\ r (?(a b) (`(function (,:a) ,:b)r)r)))
-
-(function hex->char (h)
-  (switch = h
-    (0x:F (char F))
-    (0x:E (char E))
-    (0x:D (char D))
-    (0x:C (char C))
-    (0x:B (char B))
-    (0x:A (char A))
-    (0x:9 (char 9))
-    (0x:8 (char 8))
-    (0x:7 (char 7))
-    (0x:6 (char 6))
-    (0x:5 (char 5))
-    (0x:4 (char 4))
-    (0x:3 (char 3))
-    (0x:2 (char 2))
-    (0x:1 (char 1))
-    (char 0)))
+  (let (str (storage _ (ignore) (ignore) (ignore)))
+    [print-str fd [dec->str i str] handler]))
 
 (constrain print-hex (\ r (?(a b e) (`(function (fd ,:a ,:b) ,:e)r)r)))
 

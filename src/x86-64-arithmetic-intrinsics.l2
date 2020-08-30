@@ -592,25 +592,28 @@
   (or [= val [band val 0x:000000007FFFFFFF]] [= val [bor val 0x:FFFFFFFF80000000]]))
 
 (function match-get-base+offset (name base offset n)
-  ((match-property*
-      (expr-type (%*[= (-invoke-)]))
-      (expr-target (%*[undefined-symbol?]))
-      (expr-target (match-property* (expr-reference
-        (match-property* (bndg-name (%*[variable name]))))))
-      (expr-arguments (match-list*
-        (match-property*
-          (expr-type (%*[= (-invoke-)]))
-          (expr-target (%*[undefined-symbol?]))
-          (expr-target (%*[symbol-name= (" +)]))
-          (expr-arguments
-            (guard-match*
-              (match-list* _:addr-part1 _:addr-part2)
-              (or
-                [= (@ expr-type addr-part1) (-literal-)]
-                [= (@ expr-type addr-part2) (-literal-)]))))))) n
-      (if [= (@ expr-type addr-part1) (-literal-)]
-        (do [set base addr-part2] [set offset (@ expr-value addr-part1)] (true))
-        (do [set base addr-part1] [set offset (@ expr-value addr-part2)] (true)))
+  (bind-if (match-property
+      (expr-type (%[= (-invoke-)]))
+      (expr-target (%[undefined-symbol?]))
+      (expr-target (%(match-property (expr-reference
+        (%(match-property (bndg-name (%[variable name]))))))))
+      (expr-arguments (%(match-list
+        (%(match-property
+            (expr-type (%[= (-invoke-)]))
+            (expr-target (%[undefined-symbol?]))
+            (expr-target (%[symbol-name= (" +)]))
+            (expr-arguments
+              (%(guard-match
+                  (%(match-list
+                      (%[variable addr-part1])
+                      (%[variable addr-part2])))
+                  (or
+                    [= (@ expr-type $:addr-part1) (-literal-)]
+                    [= (@ expr-type $:addr-part2) (-literal-)]))))))))) n)
+    (addr-part1 addr-part2)
+      (if [= (@ expr-type $:addr-part1) (-literal-)]
+        (do [set base $:addr-part2] [set offset (@ expr-value $:addr-part1)] (true))
+        (do [set base $:addr-part1] [set offset (@ expr-value $:addr-part2)] (true)))
     (false)))
 
 (constrain initialize-get-base+offset
