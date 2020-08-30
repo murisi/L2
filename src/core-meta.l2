@@ -396,7 +396,7 @@
 (function bind (l r)
   (let (identifiers [@fst l]) (param [@frst l]) (body [@frrst l])
   (let (bind-storage [llst (` storage r) (` bind r) [meta.map2 identifiers r (\ l r (`(ignore)r)) r] r])
-  (let (vars [meta.label identifiers (` values.var r) r])
+  (let (vars [meta.label identifiers `:values.var:r r])
   (let (unquoted-vars [meta.map2 vars r (\ l r [llst [lst -,- emt r] l emt r]) r])
   (let (param-parts (loop make-set (identifiers identifiers) (offset #:0) (params emt)
       (if [emt? identifiers]
@@ -460,14 +460,44 @@
           loc.base [+ [* (,[@fst l]) (,[@frst l])] loc.base]}))r))
 
 (ignore
-  A macro for partial macro application. Does the following transformation:
-  ((%(func arg1 arg2 ... argN)) argN+1 argN+2 ... argM)
+  A macro to create a local tuple. Does the following transformation:
+  (tuple val1 val2 ... valN)
   ->
-  (func arg1 arg2 ... argN argN+1 argN+2 argM))
+  (continuation tuple.cont (tuple.target)
+    {tuple.target val1 val2 ... valN}))
 
-(function % (%.l %.r)
-  (`(function %.temp (l r)
-      [meta.concat (,[`[llst [@fst %.l] (` r %.r) emt %.r] %.r]) l r])%.r))
+(function tuple (l r)
+  (`(continuation tuple.cont (tuple.target)
+      {tuple.target , l})r))
+
+(ignore
+  A macro to match a local tuple. Does the following transformation:
+  ((match-tuple matcher1 matcher2 ... matcherN) obj consequent alternate)
+  ->
+  (with match-tuple.ret
+    {obj (continuation match-tuple.cont (val1 val2 ... valN)
+      {match-tuple.ret
+        (matcher1 val1
+          (matcher2 val2
+            (...
+              (matcherN valN
+                consequent
+                alternate)
+              ...)
+            alternate)
+          alternate)})}))
+
+(function match-tuple (l r)
+  (`(function match-tuple.func (l r)
+      (let (obj [@fst l]) (consequent [@frst l]) (alternate [@frrst l]) (matchers ,:[`[llst l `:r:r emt r]r])
+      (let (vars [meta.label matchers [meta.concat `:match-tuple.var:r [meta.concat [gentok r] `:.:r r] r] r])
+        (`(with match-tuple.ret
+            {,:obj (continuation match-tuple.cont ,:vars
+              {match-tuple.ret
+                (,(loop build (expr consequent) (matchers [meta.reverse matchers r]) (vars [meta.reverse vars r])
+                    (if [emt? matchers]
+                      expr
+                      {build (`(,:[@fst matchers] ,:[@fst vars] ,:expr ,:alternate)r) [@rst matchers] [@rst vars]})))})})r))))r))
 
 (ignore
   A macro to turn a predicate into a branch expression. Does the following transformation:
