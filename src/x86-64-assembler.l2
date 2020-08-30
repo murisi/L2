@@ -814,28 +814,25 @@
 
 (function write-mm-instr (mask opcode-8 opcode-16 opcode-32 opcode-64 n bin pos buf handler)
   (substitute (.. buf handler)
-    (bind-if (match-list-prefix
-        (%(match-and
-          (%[variable op1])
-          (%(match-property (op-type (%[= (memory-operand)]))))))
-        (%(match-and
-          (%[variable op2])
-          (%(match-property (op-type (%[= (memory-operand)]))))))
-        (%[variable op3]) (@ instr-operands n))
-      (op1 op2 op3)
-        (if (and [band mask #:1] [= (@ op-size $:op1) #:1] [= (@ op-size $:op2) #:1]) (do
-          [write-instr bin pos 0x:8A #:1 [make-none-op ..] $:op3 $:op2 [make-none-op ..] ..]
-          [write-instr bin pos opcode-8 [>> mask #:4] [make-none-op ..] $:op3 $:op1 [make-none-op ..] ..])
-        (if (and [band mask #:2] [= (@ op-size $:op1) #:2] [= (@ op-size $:op2) #:2]) (do
-          [write-instr bin pos 0x:8B #:1 [make-none-op ..] $:op3 $:op2 [make-none-op ..] ..]
-          [write-instr bin pos opcode-16 [>> mask #:4] [make-none-op ..] $:op3 $:op1 [make-none-op ..] ..])
-        (if (and [band mask #:4] [= (@ op-size $:op1) #:4] [= (@ op-size $:op2) #:4]) (do
-          [write-instr bin pos 0x:8B #:1 [make-none-op ..] $:op3 $:op2 [make-none-op ..] ..]
-          [write-instr bin pos opcode-32 [>> mask #:4] [make-none-op ..] $:op3 $:op1 [make-none-op ..] ..])
-        (if (and [band mask #:8] [= (@ op-size $:op1) #:8] [= (@ op-size $:op2) #:8]) (do
-          [write-instr bin pos 0x:8B #:1 [make-none-op ..] $:op3 $:op2 [make-none-op ..] ..]
-          [write-instr bin pos opcode-64 [>> mask #:4] [make-none-op ..] $:op3 $:op1 [make-none-op ..] ..])
-          (false)))))
+    ((match-list-prefix*
+        (match-and* _:op1
+          (match-property* (op-type (%*[= (memory-operand)]))))
+        (match-and* _:op2
+          (match-property* (op-type (%*[= (memory-operand)]))))
+        _:op3) (@ instr-operands n)
+      (if (and [band mask #:1] [= (@ op-size op1) #:1] [= (@ op-size op2) #:1]) (do
+        [write-instr bin pos 0x:8A #:1 [make-none-op ..] op3 op2 [make-none-op ..] ..]
+        [write-instr bin pos opcode-8 [>> mask #:4] [make-none-op ..] op3 op1 [make-none-op ..] ..])
+      (if (and [band mask #:2] [= (@ op-size op1) #:2] [= (@ op-size op2) #:2]) (do
+        [write-instr bin pos 0x:8B #:1 [make-none-op ..] op3 op2 [make-none-op ..] ..]
+        [write-instr bin pos opcode-16 [>> mask #:4] [make-none-op ..] op3 op1 [make-none-op ..] ..])
+      (if (and [band mask #:4] [= (@ op-size op1) #:4] [= (@ op-size op2) #:4]) (do
+        [write-instr bin pos 0x:8B #:1 [make-none-op ..] op3 op2 [make-none-op ..] ..]
+        [write-instr bin pos opcode-32 [>> mask #:4] [make-none-op ..] op3 op1 [make-none-op ..] ..])
+      (if (and [band mask #:8] [= (@ op-size op1) #:8] [= (@ op-size op2) #:8]) (do
+        [write-instr bin pos 0x:8B #:1 [make-none-op ..] op3 op2 [make-none-op ..] ..]
+        [write-instr bin pos opcode-64 [>> mask #:4] [make-none-op ..] op3 op1 [make-none-op ..] ..])
+        (false)))))
       (false))))
 
 (constrain write-m-instr (\ r (?(a b c d e f g h i) (`(function (,:a ,:b ,:c ,:d ,:e operand instr ,:f (ref ,:g) region ,:h) ,:i)r)r)))

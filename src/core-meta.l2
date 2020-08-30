@@ -470,15 +470,54 @@
       [meta.concat (,[`[llst [@fst %.l] (` r %.r) emt %.r] %.r]) l r])%.r))
 
 (ignore
+  A macro to turn a predicate into a branch expression. Does the following transformation:
+  ((%* (func arg1 arg2 ... argN)) obj consequent alternate)
+  ->
+  (if (func arg1 arg2 ... argN obj) consequent alternate))
+
+(function %* (l r)
+  (`(function %.func (l r)
+      (let (obj [@fst l]) (consequent [@frst l]) (alternate [@frrst l]) (partial ,:[`[llst [@fst l] `:r:r emt r]r])
+        (let (complete [meta.concat partial [lst obj emt r] r])
+          (`(if ,:complete ,:consequent ,:alternate)r))))r))
+
+(ignore
+  A macro for capturing variables. Does the following transformation:
+  (_:id val consequent alternate)
+  ->
+  (let (id val) consequent))
+
+(function _ (l r)
+  (`(function _.func (l r)
+      (let (id ,:[`[llst [@fst l] `:r:r emt r]r])
+        (`(let (,:id ,:[@fst l]) ,:[@frst l])r)))r))
+
+(ignore
   A macro for matching objects against certain properties. The macro does the following
   transformation:
-  (match-property (prop1 matcher1) (prop2 matcher2) ... (propN matcherN) obj)
+  ((match-property (prop1 matcher1) (prop2 matcher2) ... (propN matcherN)) obj consequent alternate)
   ->
-  (let (match-property.obj obj) (and
-    (matcher1 (@ prop1 match-property.obj))
-    (matcher2 (@ prop2 match-property.obj))
-    ...
-    (matcherN (@ propN match-property.obj)))))
+  (let (match-property.obj obj)
+    (matcher1 (@ prop1 match-property.obj)
+      (matcher2 (@ prop2 match-property.obj)
+        (...
+          (matcherN (@ propN match-property.obj)
+            consequent
+            alternate)
+          ...)
+        alternate)
+      alternate)))
+
+(function match-property* (l r)
+  (`(function match-property.func (l r)
+      (let (obj [@fst l]) (alternate [@frrst l]) (consequent [@frst l])
+        (`(let (match-property.obj ,:obj)
+            (,(loop build (expr consequent) (parts ,:[`[llst l `:r:r emt r]r])
+              (if [emt? parts]
+                expr
+                (let (matcher [@frfst parts]) (prop [@ffst parts])
+                  {build (`(,:matcher (@ ,:prop match-property.obj) ,:expr ,:alternate)r)
+                    [@rst parts]})))))r)))r))
 
 (function match-property (l r)
   (let (obj [@fst [meta.reverse l r]])
@@ -489,18 +528,33 @@
               conds
               (let (matcher [@frfst parts]) (prop [@ffst parts])
                 {build [lst (`(,:matcher (@ ,:prop match-property.obj))r) conds r]
-                  [@cdr parts]}))) r]))r)))
+                  [@rst parts]}))) r]))r)))
 
 (ignore
   A macro for matching objects to at least one of the given matchers. The macro does the
   following transformation:
-  (match-or matcher1 matcher2 ... matcherN obj)
+  (match-or (matcher1 matcher2 ... matcherN) obj consequent alternate)
   ->
-  (let (match-or.obj obj) (or
-    (matcher1 match-or.obj)
-    (matcher2 match-or.obj)
-    ...
-    (matcherN match-or.obj))))
+  (let (match-or.obj obj)
+    (matcher1 match-or.obj
+      consequent
+      (matcher2 match-or.obj
+        consequent
+        (...
+          (matcherN match-or.obj
+            consequent
+            alternate)
+          ...)))))
+
+(function match-or* (l r)
+  (`(function match-or.func (l r)
+      (let (obj [@fst l]) (alternate [@frrst l]) (consequent [@frst l])
+        (`(let (match-or.obj ,:obj)
+            (,(loop build (expr alternate) (parts ,:[`[llst l `:r:r emt r]r])
+              (if [emt? parts]
+                expr
+                (let (matcher [@fst parts])
+                  {build (`(,:matcher match-or.obj ,:consequent ,:expr)r) [@rst parts]})))))r)))r))
 
 (function match-or (l r)
   (let (obj [@fst [meta.reverse l r]])
@@ -510,18 +564,33 @@
             (if [emt? parts]
               conds
               (let (matcher [@fst parts])
-                {build [lst (`(,:matcher match-or.obj)r) conds r] [@cdr parts]}))) r]))r)))
+                {build [lst (`(,:matcher match-or.obj)r) conds r] [@rst parts]}))) r]))r)))
 
 (ignore
   A macro for matching objects to at least one of the given matchers. The macro does the
   following transformation:
-  (match-and matcher1 matcher2 ... matcherN obj)
+  ((match-and matcher1 matcher2 ... matcherN) obj consequent alternate)
   ->
-  (let (match-and.obj obj) (and
-    (matcher1 match-and.obj)
-    (matcher2 match-and.obj)
-    ...
-    (matcherN match-and.obj))))
+  (let (match-and.obj obj)
+    (matcher1 match-and.obj
+      (matcher2 match-and.obj
+        (...
+          (matcherN match-and.obj
+            consequent
+            alternate)
+          ...)
+        alternate)
+      alternate)))
+
+(function match-and* (l r)
+  (`(function match-and.func (l r)
+      (let (obj [@fst l]) (consequent [@frst l]) (alternate [@frrst l])
+        (`(let (match-and.obj ,:obj)
+            (,(loop build (expr consequent) (parts ,:[`[llst l `:r:r emt r]r])
+              (if [emt? parts]
+                expr
+                (let (matcher [@fst parts])
+                  {build (`(,:matcher match-and.obj ,:expr ,:alternate)r) [@rst parts]})))))r)))r))
 
 (function match-and (l r)
   (let (obj [@fst [meta.reverse l r]])
@@ -531,7 +600,7 @@
             (if [emt? parts]
               conds
               (let (matcher [@fst parts])
-                {build [lst (`(,:matcher match-and.obj)r) conds r] [@cdr parts]}))) r]))r)))
+                {build [lst (`(,:matcher match-and.obj)r) conds r] [@rst parts]}))) r]))r)))
 
 (ignore
   (guard-match matcher guard obj)
