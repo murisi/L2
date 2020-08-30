@@ -675,30 +675,29 @@
       (ignore))))
 
 (function match-set-base+offset (name base offset value n)
-  (bind-if (match-property
-      (expr-type (%[= (-invoke-)]))
-      (expr-target (%[undefined-symbol?]))
-      (expr-target (%(match-property (expr-reference
-        (%(match-property (bndg-name (%[variable name]))))))))
-      (expr-arguments (%(match-list
-        (%(match-property
-            (expr-type (%[= (-invoke-)]))
-            (expr-target (%[undefined-symbol?]))
-            (expr-target (%[symbol-name= (" +)]))
+  ((match-property*
+      (expr-type (%*[= (-invoke-)]))
+      (expr-target (%*[undefined-symbol?]))
+      (expr-target (match-property* (expr-reference
+        (match-property* (bndg-name (%*[variable name]))))))
+      (expr-arguments (match-list*
+        (match-property*
+            (expr-type (%*[= (-invoke-)]))
+            (expr-target (%*[undefined-symbol?]))
+            (expr-target (%*[symbol-name= (" +)]))
             (expr-arguments
-              (%(guard-match
-                  (%(match-list
-                      (%[variable addr-part1])
-                      (%[variable addr-part2])))
-                  (or
-                    [= (@ expr-type $:addr-part1) (-literal-)]
-                    [= (@ expr-type $:addr-part2) (-literal-)]))))))
-        (%[variable value])))) n)
-    (addr-part1 addr-part2)
-      (if [= (@ expr-type $:addr-part1) (-literal-)]
-        (do [set base $:addr-part2] [set offset (@ expr-value $:addr-part1)] (true))
-        (do [set base $:addr-part1] [set offset (@ expr-value $:addr-part2)] (true)))
-    (false)))
+              (match-or*
+                  (match-list*
+                    (match-property*
+                      (expr-type (%*[= (-literal-)]))
+                      (expr-value (%*[variable offset])))
+                    (%*[variable base]))
+                  (match-list*
+                    (%*[variable base])
+                    (match-property*
+                      (expr-type (%*[= (-literal-)]))
+                      (expr-value (%*[variable offset])))))))
+        (%*[variable value])))) n (true) (false)))
 
 (constrain initialize-set-base+offset
   (\ r (?(a b c d) (`(function ((expr ,:a) ,:b (list initializer) (values ,:b reg-use-vec) region ,:d) ,:c)r)r)))
