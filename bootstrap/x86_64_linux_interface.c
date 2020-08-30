@@ -131,8 +131,9 @@ void write_char(int fd, char ch) {
   write(fd, &ch, 1);
 }
 
-void write_ulong(int fd, unsigned long i) {
-  char str[20]; int j;
+char *ulong_to_str(unsigned long i, char str[21]) {
+  int j;
+  str[20] = 0;
   for(j = 19; i; j--, i/=10) {
     switch(i % 10) {
       case 0: str[j] = '0'; break;
@@ -147,7 +148,12 @@ void write_ulong(int fd, unsigned long i) {
       case 9: str[j] = '9'; break;
     }
   }
-  write(fd, str+j+1, 19-j);
+  return str+j+1;
+}
+
+void write_ulong(int fd, unsigned long i) {
+  char buf[21];
+  write_str(fd, ulong_to_str(i, buf));
 }
 
 void write_long(int fd, long i) {

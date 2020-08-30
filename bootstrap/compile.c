@@ -345,7 +345,8 @@ int main(int argc, char *argv[]) {
     {.name = "char=", .address = char_equals},
     {.name = "var=", .address = var_equals},
     {.name = "var?", .address = is_var},
-    {.name = "var", .address = var}
+    {.name = "var", .address = var},
+    {.name = "gentok", .address = gentok}
   };
   
   region obj_buf = create_region(0);

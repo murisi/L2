@@ -510,13 +510,13 @@
 
 (function match-property* (l r)
   (`(function match-property.func (l r)
-      (let (obj [@fst l]) (alternate [@frrst l]) (consequent [@frst l])
-        (`(let (match-property.obj ,:obj)
+      (let (obj [@fst l]) (alternate [@frrst l]) (consequent [@frst l]) (obj-sym [meta.concat `:match-property.obj:r [gentok r] r])
+        (`(let (,:obj-sym ,:obj)
             (,(loop build (expr consequent) (parts ,:[`[llst l `:r:r emt r]r])
               (if [emt? parts]
                 expr
                 (let (matcher [@frfst parts]) (prop [@ffst parts])
-                  {build (`(,:matcher (@ ,:prop match-property.obj) ,:expr ,:alternate)r)
+                  {build (`(,:matcher (@ ,:prop ,:obj-sym) ,:expr ,:alternate)r)
                     [@rst parts]})))))r)))r))
 
 (function match-property (l r)
@@ -603,9 +603,15 @@
                 {build [lst (`(,:matcher match-and.obj)r) conds r] [@rst parts]}))) r]))r)))
 
 (ignore
-  (guard-match matcher guard obj)
+  ((guard-match matcher guard) obj consequent alternate)
   ->
-  (and (matcher1 obj) guard))
+  (matcher obj (if guard consequent alternate) alternate))
+
+(function guard-match* (l r)
+  (`(function guard-match.func (l r)
+      (let (consequent [@frst l]) (obj [@fst l]) (alternate [@frrst l])
+          (matcher ,:[`[llst [@fst l] `:r:r emt r]r]) (guard ,:[`[llst [@frst l] `:r:r emt r]r])
+        (`(,:matcher ,:obj (if ,:guard ,:consequent ,:alternate) ,:alternate)r)))r))
 
 (function guard-match (l r) (`(and ((,[@fst l]) (,[@frrst l])) (,[@frst l]))r))
 
