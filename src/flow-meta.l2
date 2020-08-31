@@ -222,6 +222,18 @@
       {flatten [meta.concat acc [@fst lsts] r] [@rst lsts]})))
 
 (ignore
+  An iterator is a continuation that is parameterized by a context and a value type. It takes
+  an exit continuation receiving a context, an initial context, and body continuation which
+  takes a context, a value, and a next continuation. The next continuation in turn receives
+  an updated context and the next body continuation to jump to. The following is a type synonym
+  for iterators. Does the following transformation:
+  (iterator a b) = (continuation ((continuation (b)) b (continuation ((continuation (c b)) b a)))))
+
+(function iterator (l r)
+  (let (a [@fst l]) (b [@frst l])
+    (?(c) (`(continuation ((continuation (,:b)) ,:b (continuation ((continuation (,:c ,:b)) ,:b ,:a))))r)r)))
+
+(ignore
   Loops through the given iterator. Performs the following transformation:
   (for (x iter) def expr)
   ->

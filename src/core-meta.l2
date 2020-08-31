@@ -645,3 +645,14 @@
 (function meta.length (l)
   (loop measure (l l) (len #:0)
     (if [emt? l] len {measure [@rst l] [+ len #:1]})))
+
+(ignore
+  A macro to keep the callee's stack frame alive. Does the following transformation:
+  (':func arg1 arg2 ... argN)
+  ->
+  (with quote.return [func quote.return arg1 arg2 ... argN]))
+
+(function ' (l r)
+  (`(function quote.func (l r)
+      (let (func ,:[`[llst [@fst l] `:r:r emt r]r])
+        (`(with quote.return [,:func quote.return , l])r)))r))

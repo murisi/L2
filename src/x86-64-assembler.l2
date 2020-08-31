@@ -572,7 +572,7 @@
   (if [nil? (@ instr-operands instr)] (ignore) (do
     [print-str (stdout) ("(space)) handler]
     [print-operand [@car (@ instr-operands instr)] handler]
-    (for (op (list-iter [@cdr (@ instr-operands instr)])) (ignore) (do
+    (for (op (':list-iter [@cdr (@ instr-operands instr)])) (ignore) (do
       [print-str (stdout) (" ,(space)) handler]
       [print-operand op handler]))))))
 
@@ -889,7 +889,7 @@
     (let (pos (storage _ #:0))
     (let (max-text-sec-len [pad-size [* (write-elf-max-instr-len) [length instrs]] (write-elf-alignment)])
     (let (bin [region-alloc max-text-sec-len ..]) (do
-    (for (n (list-iter instrs)) (ignore) (do
+    (for (n (':list-iter instrs)) (ignore) (do
       (let (instr-bndg (@ instr-binding n))
         (if [not= instr-bndg null-binding] (do
           (setf bndg-storage instr-bndg (absolute-storage))
@@ -1125,7 +1125,7 @@
   (setf sh-entsize text-shdr #:0)
   [append lkd-text-shdr (& lkde-sh lkd-ehdr) temp-buf cleanup]
   
-  (for (e (list-iter instrs)) (ignore)
+  (for (e (':list-iter instrs)) (ignore)
     (let (instr-bndg (@ instr-binding e))
       (if [not= instr-bndg null-binding]
         (let (sym-name (if [getb (@ bndg-name instr-bndg)]
@@ -1167,8 +1167,8 @@
   (setf sh-entsize rela-shdr (elf64-rela))
   [append lkd-rela-shdr (& lkde-sh lkd-ehdr) temp-buf cleanup]
 
-  (for (reloc (list-iter relocations)) (ignore)
-    (for (loca (list-iter (@ op-locations (@ reloc-operand reloc)))) (ignore)
+  (for (reloc (':list-iter relocations)) (ignore)
+    (for (loca (':list-iter (@ op-locations (@ reloc-operand reloc)))) (ignore)
       (bind (operand-pos operand-size instr-pos instr-size) loca
         (let (lkd-rela [make-lkdr (@ bndg-other(@ reloc-binding reloc)) temp-buf cleanup])
         (let (rela (@ lkdr-raw lkd-rela)) (do
@@ -1360,7 +1360,7 @@
     (setf st-other bss-sym #:0)
     [append lkd-bss-sym (& lkdsh-symtab lkd-symtab-shdr) rgn2 handler]
     
-    (for (bndg (list-iter static-bindings)) (ignore)
+    (for (bndg (':list-iter static-bindings)) (ignore)
       (if [= (@ bndg-state bndg) (defined-state)]
         (let (sym-name (if [getb (@ bndg-name bndg)]
             (let (sym-name [make-lkdstrt (@ bndg-name bndg) rgn2 handler])
@@ -1413,9 +1413,9 @@
     
     (ignore Mark every symbol as false in preparation for the usage analysis.)
     
-    (for (sec (list-iter (@ lkde-sh lkd-ehdr))) (ignore)
+    (for (sec (':list-iter (@ lkde-sh lkd-ehdr))) (ignore)
       (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-symtab)]
-        (for (sym (list-iter (@ lkdsh-symtab sec))) (ignore)
+        (for (sym (':list-iter (@ lkdsh-symtab sec))) (ignore)
           (setf lkdst-other sym (false))) (ignore)))
     
     (ignore
@@ -1423,7 +1423,7 @@
       apply them, and remove them from the relocations list. For the relocations that
       remain, mark the symbols that they refer to.)
     
-    (for (sec (list-iter (@ lkde-sh lkd-ehdr))) (ignore)
+    (for (sec (':list-iter (@ lkde-sh lkd-ehdr))) (ignore)
       (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-rela)]
         (filter (lkd-rela (& lkdsh-rela sec))
           (let (rela (@ lkdr-raw lkd-rela))
@@ -1450,7 +1450,7 @@
     (setf lkdst-other lkd-und-sym (true))
     (setf lkdst-other lkd-bss-sym (true))
     
-    (for (sec (list-iter (@ lkde-sh lkd-ehdr))) (ignore)
+    (for (sec (':list-iter (@ lkde-sh lkd-ehdr))) (ignore)
       (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-symtab)]
         (filter (sym (& lkdsh-symtab sec))
           (or
@@ -1459,7 +1459,7 @@
     
     (ignore Assign the strings in the string table indicies.)
     
-    (for (sec (list-iter (@ lkde-sh lkd-ehdr))) (ignore)
+    (for (sec (':list-iter (@ lkde-sh lkd-ehdr))) (ignore)
       (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-strtab)]
         (fold (acc #:0) (str (@ lkdsh-strtab sec)) (do
           (setf lkdstrt-ndx str acc)
@@ -1472,7 +1472,7 @@
     
     (ignore Substitute into ELF Section sh-names and sh-links, and sh-infos if possible.)
     
-    (for (sec (list-iter (@ lkde-sh lkd-ehdr))) (ignore) (do
+    (for (sec (':list-iter (@ lkde-sh lkd-ehdr))) (ignore) (do
       (setf sh-link (@ lkdsh-raw sec) (@ lkdsh-ndx (@ lkdsh-link sec)))
       (setf sh-name (@ lkdsh-raw sec) (@ lkdstrt-ndx (@ lkdsh-name sec)))
       (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-rela)]
@@ -1487,7 +1487,7 @@
     
     (ignore Assign the symbols in each symbol table consecutive indicies.)
     
-    (for (sec (list-iter (@ lkde-sh lkd-ehdr))) (ignore)
+    (for (sec (':list-iter (@ lkde-sh lkd-ehdr))) (ignore)
       (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-symtab)]
         (let (local-end-idx
             (fold (acc #:0) (sym (@ lkdsh-symtab sec))
@@ -1502,7 +1502,7 @@
     
     (ignore Calculate the sizes of the individual sections.)
     
-    (for (sec (list-iter (@ lkde-sh lkd-ehdr))) (ignore)
+    (for (sec (':list-iter (@ lkde-sh lkd-ehdr))) (ignore)
       (switch = (@ sh-type (@ lkdsh-raw sec))
         ((sht-symtab) (setf sh-size (@ lkdsh-raw sec)
           [* [length (@ lkdsh-symtab sec)] (elf64-sym)]))
@@ -1515,17 +1515,17 @@
     
     (ignore Substitute into symbol table entry shndxs and names.)
     
-    (for (sec (list-iter (@ lkde-sh lkd-ehdr))) (ignore)
+    (for (sec (':list-iter (@ lkde-sh lkd-ehdr))) (ignore)
       (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-symtab)] (do
-        (for (sym (list-iter (@ lkdsh-symtab sec))) (ignore) (do
+        (for (sym (':list-iter (@ lkdsh-symtab sec))) (ignore) (do
           (setf st-shndx (@ lkdst-raw sym) (@ lkdsh-ndx (@ lkdst-sh sym)))
           (setf st-name (@ lkdst-raw sym) (@ lkdstrt-ndx (@ lkdst-name sym)))))) (ignore)))
     
     (ignore Substitute into relocation r-info.syms.)
     
-    (for (sec (list-iter (@ lkde-sh lkd-ehdr))) (ignore)
+    (for (sec (':list-iter (@ lkde-sh lkd-ehdr))) (ignore)
       (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-rela)]
-        (for (rela (list-iter (@ lkdsh-rela sec))) (ignore)
+        (for (rela (':list-iter (@ lkdsh-rela sec))) (ignore)
           (setf r-info (@ lkdr-raw rela) (elf64-r-info
             (@ lkdst-ndx (@ lkdr-info-sym rela))
             (elf64-r-type (@ r-info (@ lkdr-raw rela)))))) (ignore)))
@@ -1544,22 +1544,22 @@
     (let (pos (storage _ #:0))
     (let (bin [region-alloc elf-size rgn1 handler]) (do
     [mem-write bin pos (@ lkde-raw lkd-ehdr) (elf64-ehdr)]
-    (for (sec (list-iter (storage-cons lkd-undef-shdr (@ lkde-sh lkd-ehdr)))) (ignore)
+    (for (sec (':list-iter (storage-cons lkd-undef-shdr (@ lkde-sh lkd-ehdr)))) (ignore)
       [mem-write bin pos (@ lkdsh-raw sec) (elf64-shdr)])
-    (for (sec (list-iter (@ lkde-sh lkd-ehdr))) (ignore) (do
+    (for (sec (':list-iter (@ lkde-sh lkd-ehdr))) (ignore) (do
       (switch = (@ sh-type (@ lkdsh-raw sec))
         ((sht-symtab) (do
-          (for (sym (list-iter (@ lkdsh-symtab sec))) (ignore)
+          (for (sym (':list-iter (@ lkdsh-symtab sec))) (ignore)
             (if [= (elf64-st-bind (@ st-info (@ lkdst-raw sym))) (stb-local)]
               [mem-write bin pos (@ lkdst-raw sym) (elf64-sym)] (ignore)))
-          (for (sym (list-iter (@ lkdsh-symtab sec))) (ignore)
+          (for (sym (':list-iter (@ lkdsh-symtab sec))) (ignore)
             (if [= (elf64-st-bind (@ st-info (@ lkdst-raw sym))) (stb-local)] (ignore)
               [mem-write bin pos (@ lkdst-raw sym) (elf64-sym)]))))
         ((sht-rela)
-          (for (rela (list-iter (@ lkdsh-rela sec))) (ignore)
+          (for (rela (':list-iter (@ lkdsh-rela sec))) (ignore)
             [mem-write bin pos (@ lkdr-raw rela) (elf64-rela)]))
         ((sht-strtab)
-          (for (str (list-iter (@ lkdsh-strtab sec))) (ignore)
+          (for (str (':list-iter (@ lkdsh-strtab sec))) (ignore)
             [mem-write bin pos (@ lkdstrt-raw str) [+ [strlen (@ lkdstrt-raw str)] #:1]]))
         ((sht-nobits) (ignore))
         [mem-write bin pos (@ lkdsh-offset sec) (@ sh-size (@ lkdsh-raw sec))])
@@ -1578,20 +1578,20 @@
 
 (function binding-offsets-to-addresses (asms function-sections static-bindings obj reg hdl)
   (with-region reg (do
-    (for (sym (list-iter static-bindings)) (ignore)
+    (for (sym (':list-iter static-bindings)) (ignore)
       (if (and [= (@ bndg-storage sym) (absolute-storage)] [= (@ bndg-state sym) (defined-state)])
         [set+ (& bndg-offset sym) [segment obj (" .bss)]]
         (ignore)))
     
-    (for (l (list-iter asms)) (ignore)
+    (for (l (':list-iter asms)) (ignore)
       (let (instr-bndg (@ instr-binding l))
         (if [not= instr-bndg null-binding]
           [set+ (& bndg-offset instr-bndg) [segment obj (" .text)]]
           (ignore))))
     
-    (for (func-sec (list-iter function-sections)) (ignore)
+    (for (func-sec (':list-iter function-sections)) (ignore)
       (bind (name instrs relocs) func-sec
-        (for (l (list-iter instrs)) (ignore)
+        (for (l (':list-iter instrs)) (ignore)
           (let (instr-bndg (@ instr-binding l))
             (if [not= instr-bndg null-binding]
               [set+ (& bndg-offset instr-bndg) [segment obj [rstrcat (" .text.) name reg hdl]]]
