@@ -262,19 +262,20 @@
           (next (new-recv new-ctx) {count [cast new-recv] [+ idx #:1] new-ctx}))
         {end ctx})))})
 
-(ignore
-  Zips the two given iterators into one that yields pairs of values. Performs
-  the following transformation:
-  (zip-iter iter1 iter2)
-  ->
-  (continuation zip-iter.cont (zip-iter.end zip-iter.ctx zip-iter.recv) (cps
-    {iter1 zip-iter.end zip-iter.ctx zip-iter.init2}
+(ignore Zips the two given iterators into one that yields pairs of values.)
+
+(constrain zip-iter \:r:(?(a b c d)
+  (`(function ((continuation ((! iterator (continuation ((continuation (,:a ,:d)))) ,:b))) (! iterator ,:a ,:b) (! iterator ,:d ,:b)) ,:c)r)r))
+
+(function zip-iter (ret iter1 iter2)
+  {ret (continuation cont (end ctx recv) (cps
+    {iter1 end ctx zip-iter.init2}
       
-    (zip-iter.init2 (zip-iter.next1 zip-iter.ctx1 zip-iter.val1)
-      {iter2 zip-iter.end zip-iter.ctx1 body1})
+    (zip-iter.init2 (next1 ctx1 val1)
+      {iter2 end ctx1 body1})
       
     (body1 (next2 ctx2 val2)
-      {zip-iter.recv (continuation _(new-recv new-ctx) {body2 zip-iter.next1 next2 new-recv new-ctx}) ctx2 (tuple zip-iter.val1 val2)})
+      {recv (continuation _(new-recv new-ctx) {body2 next1 next2 new-recv new-ctx}) ctx2 (tuple val1 val2)})
     
     (body2 (new-next1 new-next2 new-recv new-ctx)
       {new-next1 body3 new-ctx})
@@ -283,23 +284,4 @@
       {new-next2 body4 ctx3})
     
     (body4 (next4 ctx4 val4)
-      {new-recv (continuation _(new-recv new-ctx) {[cast body2] next3 next4 new-recv new-ctx}) ctx4 (tuple val3 val4)}))))
-
-(function zip-iter (l r)
-  (`(continuation zip-iter.cont (zip-iter.end zip-iter.ctx zip-iter.recv) (cps
-      {(,[@fst l]) zip-iter.end zip-iter.ctx zip-iter.init2}
-        
-      (zip-iter.init2 (zip-iter.next1 zip-iter.ctx1 zip-iter.val1)
-        {(,[@frst l]) zip-iter.end zip-iter.ctx1 body1})
-        
-      (body1 (next2 ctx2 val2)
-        {zip-iter.recv (continuation _(new-recv new-ctx) {body2 zip-iter.next1 next2 new-recv new-ctx}) ctx2 (tuple zip-iter.val1 val2)})
-      
-      (body2 (new-next1 new-next2 new-recv new-ctx)
-        {new-next1 body3 new-ctx})
-      
-      (body3 (next3 ctx3 val3)
-        {new-next2 body4 ctx3})
-      
-      (body4 (next4 ctx4 val4)
-        {new-recv (continuation _(new-recv new-ctx) {[cast body2] next3 next4 new-recv new-ctx}) ctx4 (tuple val3 val4)})))r))
+      {new-recv (continuation _(new-recv new-ctx) {[cast body2] next3 next4 new-recv new-ctx}) ctx4 (tuple val3 val4)})))})
