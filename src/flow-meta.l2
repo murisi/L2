@@ -250,27 +250,17 @@
           (continuation for.cont (for.next for.ctx (,[@ffst l]))
             {for.next [cast for.cont] (,[@frrst l])})}))r))
 
-(ignore
-  Creates an iterator from from (inclusive) to to (exclusive). Performs the following
-  transformation:
-  (range from to)
-  ->
-  (continuation range.cont (range.end range.ctx range.recv)
-    (let (to to) (from from)
-      (loop range.count (recv range.recv) (idx from) (ctx range.ctx)
-        (if [< idx to]
-          (cps {recv next ctx idx}
-            (next (new-recv new-ctx) {range.count new-recv [+ idx #:1] new-ctx}))
-          {range.end ctx})))))
+(ignore Creates an iterator from from (inclusive) to to (exclusive).)
 
-(function range (l r)
-  (`(continuation range.cont (range.end range.ctx range.recv)
-      (let (to (,[@frst l])) (from (,[@fst l]))
-        (loop range.count (recv range.recv) (idx from) (ctx range.ctx)
-          (if [< idx to]
-            (cps {recv next ctx idx}
-              (next (new-recv new-ctx) {range.count [cast new-recv] [+ idx #:1] new-ctx}))
-            {range.end ctx}))))r))
+(constrain range \:r:(?(a b c) (`(function ((continuation ((! iterator ,:a ,:b))) ,:a ,:a) ,:c)r)r))
+
+(function range (ret from to)
+  {ret (continuation cont (end ctx recv)
+    (loop count (recv recv) (idx from) (ctx ctx)
+      (if [< idx to]
+        (cps {recv next ctx idx}
+          (next (new-recv new-ctx) {count [cast new-recv] [+ idx #:1] new-ctx}))
+        {end ctx})))})
 
 (ignore
   Zips the two given iterators into one that yields pairs of values. Performs
