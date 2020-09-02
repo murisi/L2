@@ -303,3 +303,30 @@
     
     (body4 (next4 ctx4 val4)
       {new-recv (continuation _(new-recv new-ctx) {[cast body2] next3 next4 new-recv new-ctx}) ctx4 (tuple val3 val4)})))})
+
+(ignore
+  Takes two lists of the same length and produces a list of pairs of which the first
+  element comes from the first list and the second element comes from the second list. a
+  is the list from which the first elements of the zip will come from. b is the list from
+  which the second elements of the zip will come from.)
+
+(function meta.zip (a b r) (with return
+  {(continuation aux (output a b)
+    (if (not [emt? a])
+      {aux [lst [llst [@fst a] [@fst b] emt r] output r] [@rst a] [@rst b]}
+      {return [meta.reverse output r]})) emt a b}))
+
+(ignore
+  A macro to loop through all the given iterators at the same time. The syntax is as follows:
+  (for-zip (v1 l1) (v2 l2) ... (vN lN) else expr) where l1, l2, ..., lN are iterators.)
+
+(function for-zip (s r)
+  (let (bs [@rrst [meta.reverse s r]]) (body [@fst [meta.reverse s r]]) (else [@frst [meta.reverse s r]])
+    (if [emt? bs]
+      else
+    (if [emt? [@rst bs]]
+      `:(select .:,;[@ffst bs] ,:[@frfst bs] ,:else ,:body):r
+      (loop build (bs [@rrst bs]) (mat `:(tuple? .:,;[@ffst bs] .:,;[@ffrst bs]):r) (ite `:(%:zip ,:[@frfst bs] ,:[@frfrst bs]):r)
+        (if [emt? bs]
+          `:(select ,:mat ,:ite ,:else ,:body):r
+          {build [@rst bs] `:(tuple? .:,;[@ffst bs] ,:mat):r `:(%:zip ,:[@frfst bs] ,:ite):r}))))))

@@ -471,8 +471,7 @@
     (if (and [= (@ expr-type (@ expr-target n)) (-continuation-)] (not (@ expr-escapes (@ expr-target n))))
       (let (cont (@ expr-target n)) (do
         (for (t (%:list-iter (@ expr-arguments n))) (ignore) [generate-expression t c relocs ..])
-        (select (tuple? .:t .:u) (%:zip (%:list-iter(@ expr-arguments n)) (%:list-iter(@ expr-parameters cont)))
-          (ignore)
+        (for-zip (t (%:list-iter(@ expr-arguments n))) (u (%:list-iter(@ expr-parameters cont))) (ignore)
           (let (src-bndg (@ expr-binding-aug t)) (dest-bndg u)
             [generate-bndg-bndg-move dest-bndg src-bndg (r11) c relocs ..]))
         [prepend [make-label (@ expr-cont-instr-bndg cont) ..] c ..]
@@ -499,7 +498,7 @@
           [generate-expression (@ expr-target n) c relocs ..]
           (ignore))
         (for (t (%:list-iter (@ expr-arguments n))) (ignore) [generate-expression t c relocs ..])
-        (foreach (t (@ expr-arguments n)) (u (@ expr-parameters(@ expr-short-circuit n)))
+        (for-zip (t (%:list-iter(@ expr-arguments n))) (u (%:list-iter(@ expr-parameters(@ expr-short-circuit n)))) (ignore)
           (let (src-bndg (@ expr-binding-aug t)) (dest-bndg u)
             [generate-bndg-bndg-move dest-bndg src-bndg (r11) c relocs ..]))
         [prepend (make-instrN (x86-jmp) ([make-relative-relocation-immediate #:4 cont-instr-bndg relocs ..]) ..) c ..]))
@@ -517,7 +516,7 @@
   (and [= (@ expr-type n) (-jump-)] (do
     (if [= (@ expr-type (@ expr-target n)) (-continuation-)]
       (do
-        (foreach (u (@ expr-arguments n)) (v (@ expr-parameters (@ expr-target n)))
+        (for-zip (u (%:list-iter(@ expr-arguments n))) (v (%:list-iter(@ expr-parameters (@ expr-target n)))) (ignore)
           (setf expr-binding-aug u v))
         [initialize-expressions (storage-cons (@ expr-expression (@ expr-target n)) (@ expr-arguments n))
           nil offset 0x:FFFFFFFFFFFF0C38 (@ expr-depth n) inits ret-val buf hdl])
