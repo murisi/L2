@@ -52,14 +52,14 @@
 (constrain match-undefined-unary-invoke (\ r (?(a b) (`(function ((ref string) (ref (expr ,:b)) (expr ,:b)) ,:a)r)r)))
 
 (function match-undefined-unary-invoke (name arg1 n)
-  ((match-property
+  ((property?
     (expr-type (|[= (-invoke-)]))
-    (expr-target (match-property
+    (expr-target (property?
       (expr-type (|[= (-symbol-)]))
-      (expr-reference (match-property
+      (expr-reference (property?
         (bndg-state (|[= (undefined-state)]))
         (bndg-name (|[variable name]))))))
-    (expr-arguments (match-list
+    (expr-arguments (list?
       (|[variable arg1])))) n (true) (false)))
 
 (constrain initialize-unary-arithmetic-operators
@@ -154,14 +154,14 @@
 (constrain match-undefined-binary-invoke (\ r (?(a b) (`(function ((ref string) (ref (expr ,:b)) (ref (expr ,:b)) (expr ,:b)) ,:a)r)r)))
 
 (function match-undefined-binary-invoke (name arg1 arg2 n)
-  ((match-property
+  ((property?
     (expr-type (|[= (-invoke-)]))
-    (expr-target (match-property
+    (expr-target (property?
       (expr-type (|[= (-symbol-)]))
-      (expr-reference (match-property
+      (expr-reference (property?
         (bndg-state (|[= (undefined-state)]))
         (bndg-name (|[variable name]))))))
-    (expr-arguments (match-list
+    (expr-arguments (list?
       (|[variable arg1])
       (|[variable arg2])))) n (true) (false)))
 
@@ -403,16 +403,16 @@
 (constrain match-undefined-binary-right-imm-invoke (\ r (?(a b c) (`(function ((ref string) (ref (expr ,:c)) (ref ,:b) (expr ,:c)) ,:a)r)r)))
 
 (function match-undefined-binary-right-imm-invoke (name arg1 arg2 n)
-  ((match-property
+  ((property?
     (expr-type (|[= (-invoke-)]))
-    (expr-target (match-property
+    (expr-target (property?
       (expr-type (|[= (-symbol-)]))
-      (expr-reference (match-property
+      (expr-reference (property?
         (bndg-state (|[= (undefined-state)]))
         (bndg-name (|[variable name]))))))
-    (expr-arguments (match-list
+    (expr-arguments (list?
       (|[variable arg1])
-      (match-property
+      (property?
         (expr-type (|[= (-literal-)]))
         (expr-value (|[variable arg2])))))) n (true) (false)))
 
@@ -592,26 +592,26 @@
   (or [= val [band val 0x:000000007FFFFFFF]] [= val [bor val 0x:FFFFFFFF80000000]]))
 
 (function match-get-base+offset (name base offset n)
-  ((match-property
+  ((property?
       (expr-type (|[= (-invoke-)]))
       (expr-target (|[undefined-symbol?]))
-      (expr-target (match-property (expr-reference
-        (match-property (bndg-name (|[variable name]))))))
-      (expr-arguments (match-list
-        (match-property
+      (expr-target (property? (expr-reference
+        (property? (bndg-name (|[variable name]))))))
+      (expr-arguments (list?
+        (property?
           (expr-type (|[= (-invoke-)]))
           (expr-target (|[undefined-symbol?]))
           (expr-target (|[symbol-name= (" +)]))
           (expr-arguments
-            (match-or
-              (match-list
-                (match-property
+            (or?
+              (list?
+                (property?
                   (expr-type (|[= (-literal-)]))
                   (expr-value (|[variable offset])))
                 (|[variable base]))
-              (match-list
+              (list?
                 (|[variable base])
-                (match-property
+                (property?
                   (expr-type (|[= (-literal-)]))
                   (expr-value (|[variable offset])))))))))) n (true) (false)))
 
@@ -675,28 +675,28 @@
       (ignore))))
 
 (function match-set-base+offset (name base offset value n)
-  ((match-property
+  ((property?
       (expr-type (|[= (-invoke-)]))
       (expr-target (|[undefined-symbol?]))
-      (expr-target (match-property (expr-reference
-        (match-property (bndg-name (|[variable name]))))))
-      (expr-arguments (match-list
-        (match-property
+      (expr-target (property? (expr-reference
+        (property? (bndg-name (|[variable name]))))))
+      (expr-arguments (list?
+        (property?
             (expr-type (|[= (-invoke-)]))
             (expr-target (|[undefined-symbol?]))
             (expr-target (|[symbol-name= (" +)]))
             (expr-arguments
-              (match-or
-                  (match-list
-                    (match-property
-                      (expr-type (|[= (-literal-)]))
-                      (expr-value (|[variable offset])))
-                    (|[variable base]))
-                  (match-list
-                    (|[variable base])
-                    (match-property
-                      (expr-type (|[= (-literal-)]))
-                      (expr-value (|[variable offset])))))))
+              (or?
+                (list?
+                  (property?
+                    (expr-type (|[= (-literal-)]))
+                    (expr-value (|[variable offset])))
+                  (|[variable base]))
+                (list?
+                  (|[variable base])
+                  (property?
+                    (expr-type (|[= (-literal-)]))
+                    (expr-value (|[variable offset])))))))
         (|[variable value])))) n (true) (false)))
 
 (constrain initialize-set-base+offset

@@ -482,11 +482,11 @@
 
 (ignore
   A macro to match a local tuple. Does the following transformation:
-  ((match-tuple matcher1 matcher2 ... matcherN) obj consequent alternate)
+  ((tuple? matcher1 matcher2 ... matcherN) obj consequent alternate)
   ->
-  (with match-tuple.ret
-    {obj (continuation match-tuple.cont (val1 val2 ... valN)
-      {match-tuple.ret
+  (with tuple?.ret
+    {obj (continuation tuple?.cont (val1 val2 ... valN)
+      {tuple?.ret
         (matcher1 val1
           (matcher2 val2
             (...
@@ -497,13 +497,13 @@
             alternate)
           alternate)})}))
 
-(function match-tuple (l r)
-  (`(function match-tuple.func (l r)
+(function tuple? (l r)
+  (`(function tuple?.func (l r)
       (let (obj [@fst l]) (consequent [@frst l]) (alternate [@frrst l]) (matchers ,:[`[llst l `:r:r emt r]r])
-      (let (vars [meta.label matchers [meta.concat `:match-tuple.var:r [meta.concat [gentok r] `:.:r r] r] r])
-        (`(with match-tuple.ret
-            {,:obj (continuation match-tuple.cont ,:vars
-              {match-tuple.ret
+      (let (vars [meta.label matchers [meta.concat `:tuple?.var:r [meta.concat [gentok r] `:.:r r] r] r])
+        (`(with tuple?.ret
+            {,:obj (continuation tuple?.cont ,:vars
+              {tuple?.ret
                 (,(loop build (expr consequent) (matchers [meta.reverse matchers r]) (vars [meta.reverse vars r])
                     (if [emt? matchers]
                       expr
@@ -535,22 +535,22 @@
 (ignore
   A macro for matching objects against certain properties. The macro does the following
   transformation:
-  ((match-property (prop1 matcher1) (prop2 matcher2) ... (propN matcherN)) obj consequent alternate)
+  ((property? (prop1 matcher1) (prop2 matcher2) ... (propN matcherN)) obj consequent alternate)
   ->
-  (let (match-property.obj obj)
-    (matcher1 (@ prop1 match-property.obj)
-      (matcher2 (@ prop2 match-property.obj)
+  (let (property?.obj obj)
+    (matcher1 (@ prop1 property?.obj)
+      (matcher2 (@ prop2 property?.obj)
         (...
-          (matcherN (@ propN match-property.obj)
+          (matcherN (@ propN property?.obj)
             consequent
             alternate)
           ...)
         alternate)
       alternate)))
 
-(function match-property (l r)
-  (`(function match-property.func (l r)
-      (let (obj [@fst l]) (alternate [@frrst l]) (consequent [@frst l]) (obj-sym [meta.concat `:match-property.obj:r [gentok r] r])
+(function property? (l r)
+  (`(function property?.func (l r)
+      (let (obj [@fst l]) (alternate [@frrst l]) (consequent [@frst l]) (obj-sym [meta.concat `:property?.obj:r [gentok r] r])
         (`(let (,:obj-sym ,:obj)
             (,(loop build (expr consequent) (parts ,:[`[llst [meta.reverse l r] `:r:r emt r]r])
               (if [emt? parts]
@@ -562,62 +562,62 @@
 (ignore
   A macro for matching objects to at least one of the given matchers. The macro does the
   following transformation:
-  (match-or (matcher1 matcher2 ... matcherN) obj consequent alternate)
+  (or? (matcher1 matcher2 ... matcherN) obj consequent alternate)
   ->
-  (let (match-or.obj obj)
-    (matcher1 match-or.obj
+  (let (or?.obj obj)
+    (matcher1 or?.obj
       consequent
-      (matcher2 match-or.obj
+      (matcher2 or?.obj
         consequent
         (...
-          (matcherN match-or.obj
+          (matcherN or?.obj
             consequent
             alternate)
           ...)))))
 
-(function match-or (l r)
-  (`(function match-or.func (l r)
+(function or? (l r)
+  (`(function or?.func (l r)
       (let (obj [@fst l]) (alternate [@frrst l]) (consequent [@frst l])
-        (`(let (match-or.obj ,:obj)
+        (`(let (or?.obj ,:obj)
             (,(loop build (expr alternate) (parts ,:[`[llst [meta.reverse l r] `:r:r emt r]r])
               (if [emt? parts]
                 expr
                 (let (matcher [@fst parts])
-                  {build (`(,:matcher match-or.obj ,:consequent ,:expr)r) [@rst parts]})))))r)))r))
+                  {build (`(,:matcher or?.obj ,:consequent ,:expr)r) [@rst parts]})))))r)))r))
 
 (ignore
   A macro for matching objects to at least one of the given matchers. The macro does the
   following transformation:
-  ((match-and matcher1 matcher2 ... matcherN) obj consequent alternate)
+  ((and? matcher1 matcher2 ... matcherN) obj consequent alternate)
   ->
-  (let (match-and.obj obj)
-    (matcher1 match-and.obj
-      (matcher2 match-and.obj
+  (let (and?.obj obj)
+    (matcher1 and?.obj
+      (matcher2 and?.obj
         (...
-          (matcherN match-and.obj
+          (matcherN and?.obj
             consequent
             alternate)
           ...)
         alternate)
       alternate)))
 
-(function match-and (l r)
-  (`(function match-and.func (l r)
+(function and? (l r)
+  (`(function and?.func (l r)
       (let (obj [@fst l]) (consequent [@frst l]) (alternate [@frrst l])
-        (`(let (match-and.obj ,:obj)
+        (`(let (and?.obj ,:obj)
             (,(loop build (expr consequent) (parts ,:[`[llst [meta.reverse l r] `:r:r emt r]r])
               (if [emt? parts]
                 expr
                 (let (matcher [@fst parts])
-                  {build (`(,:matcher match-and.obj ,:expr ,:alternate)r) [@rst parts]})))))r)))r))
+                  {build (`(,:matcher and?.obj ,:expr ,:alternate)r) [@rst parts]})))))r)))r))
 
 (ignore
-  ((guard-match matcher guard) obj consequent alternate)
+  ((guards? matcher guard) obj consequent alternate)
   ->
   (matcher obj (if guard consequent alternate) alternate))
 
-(function guard-match (l r)
-  (`(function guard-match.func (l r)
+(function guards? (l r)
+  (`(function guards?.func (l r)
       (let (consequent [@frst l]) (obj [@fst l]) (alternate [@frrst l])
           (matcher ,:[`[llst [@fst l] `:r:r emt r]r]) (guard ,:[`[llst [@frst l] `:r:r emt r]r])
         (`(,:matcher ,:obj (if ,:guard ,:consequent ,:alternate) ,:alternate)r)))r))

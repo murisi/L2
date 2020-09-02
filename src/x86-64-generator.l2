@@ -471,7 +471,8 @@
     (if (and [= (@ expr-type (@ expr-target n)) (-continuation-)] (not (@ expr-escapes (@ expr-target n))))
       (let (cont (@ expr-target n)) (do
         (for (t (%:list-iter (@ expr-arguments n))) (ignore) [generate-expression t c relocs ..])
-        (foreach (t (@ expr-arguments n)) (u (@ expr-parameters cont))
+        (select (tuple? .:t .:u) (%:zip (%:list-iter(@ expr-arguments n)) (%:list-iter(@ expr-parameters cont)))
+          (ignore)
           (let (src-bndg (@ expr-binding-aug t)) (dest-bndg u)
             [generate-bndg-bndg-move dest-bndg src-bndg (r11) c relocs ..]))
         [prepend [make-label (@ expr-cont-instr-bndg cont) ..] c ..]
