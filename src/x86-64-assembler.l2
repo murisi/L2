@@ -1322,7 +1322,7 @@
     [append lkd-symtab-shdr (& lkde-sh lkd-ehdr) rgn2 handler]
     
     (let (bss-extent
-      (fold (bss-extent [- #:0 (word-size)]) (bndg static-bindings)
+      (fold (bss-extent [- #:0 (word-size)]) (bndg (%:list-iter static-bindings))
         [min bss-extent (@ bndg-offset bndg)])) (do
     
     (let (bss-name [make-lkdstrt (" .bss) rgn2 handler])
@@ -1459,13 +1459,13 @@
     
     (for (sec (%:list-iter (@ lkde-sh lkd-ehdr))) (ignore)
       (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-strtab)]
-        (fold (acc #:0) (str (@ lkdsh-strtab sec)) (do
+        (fold (acc #:0) (str (%:list-iter (@ lkdsh-strtab sec))) (do
           (setf lkdstrt-ndx str acc)
           [+ acc [+ #:1 [strlen (@ lkdstrt-raw str)]]])) (ignore)))
     
     (ignore Give each section an index.)
     
-    (fold (idx #:0) (sec (storage-cons lkd-undef-shdr (@ lkde-sh lkd-ehdr)))
+    (fold (idx #:0) (sec (%:list-iter (storage-cons lkd-undef-shdr (@ lkde-sh lkd-ehdr))))
       (do (setf lkdsh-ndx sec idx) [+ idx #:1]))
     
     (ignore Substitute into ELF Section sh-names and sh-links, and sh-infos if possible.)
@@ -1488,12 +1488,12 @@
     (for (sec (%:list-iter (@ lkde-sh lkd-ehdr))) (ignore)
       (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-symtab)]
         (let (local-end-idx
-            (fold (acc #:0) (sym (@ lkdsh-symtab sec))
+            (fold (acc #:0) (sym (%:list-iter (@ lkdsh-symtab sec)))
               (if [= (elf64-st-bind (@ st-info (@ lkdst-raw sym))) (stb-local)]
                 (do (setf lkdst-ndx sym acc) [+ acc #:1])
                 acc))) (do
           (setf sh-info (@ lkdsh-raw sec) local-end-idx)
-          (fold (acc local-end-idx) (sym (@ lkdsh-symtab sec))
+          (fold (acc local-end-idx) (sym (%:list-iter (@ lkdsh-symtab sec)))
             (if [= (elf64-st-bind (@ st-info (@ lkdst-raw sym))) (stb-local)]
               acc
               (do (setf lkdst-ndx sym acc) [+ acc #:1]))))) (ignore)))
@@ -1507,7 +1507,7 @@
         ((sht-rela) (setf sh-size (@ lkdsh-raw sec)
           [* [length (@ lkdsh-rela sec)] (elf64-rela)]))
         ((sht-strtab) (setf sh-size (@ lkdsh-raw sec)
-          (fold (acc #:0) (str (@ lkdsh-strtab sec))
+          (fold (acc #:0) (str (%:list-iter (@ lkdsh-strtab sec)))
             [+ acc [+ #:1 [strlen (@ lkdstrt-raw str)]]])))
         (ignore)))
     
@@ -1531,7 +1531,7 @@
     (ignore Assign an offset to each section and record ELF size.)
     
     (let (elf-size [pad-size (fold (offset [+ (elf64-ehdr) [* (elf64-shdr) [+ [length (@ lkde-sh lkd-ehdr)] #:1]]])
-        (sec (@ lkde-sh lkd-ehdr)) (do
+        (sec (%:list-iter (@ lkde-sh lkd-ehdr))) (do
       (setf sh-offset (@ lkdsh-raw sec) offset)
       (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-nobits)]
         offset

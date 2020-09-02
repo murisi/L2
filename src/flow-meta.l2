@@ -251,6 +251,23 @@
             {for.next [cast for.cont] ,:[@frrst l]})})):r)
 
 (ignore
+  Loops through the given iterator. Performs the following transformation:
+  (fold (y acc) (x iter) expr)
+  ->
+  (with fold.return
+    (let (fold.iter iter)
+      {fold.iter fold.return acc
+        (continuation fold.cont (fold.next y x)
+          {fold.next [cast fold.cont] expr})})))
+
+(function fold (l r)
+  `:(with fold.return
+      (let (fold.iter ,:[@frfrst l])
+        {fold.iter fold.return ,:[@frfst l]
+          (continuation fold.cont (fold.next ,:[@ffst l] ,:[@ffrst l])
+            {fold.next [cast fold.cont] ,:[@frrst l]})})):r)
+
+(ignore
   Loops through the given iterator and executes the body for successfully matched
   objects. Performs the following transformation:
   (select matcher iter def expr)

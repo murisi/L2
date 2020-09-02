@@ -51,7 +51,7 @@
     
     ((-invoke-) (-jump-)
       (let (offset [place-perm-bindings (@ expr-target n) offset])
-      (fold (offset offset) (u (@ expr-arguments n)) [place-perm-bindings u offset])))
+      (fold (offset offset) (u (%:list-iter (@ expr-arguments n))) [place-perm-bindings u offset])))
     
     ((-if-)
       (let (offset [place-perm-bindings (@ expr-condition n) offset])
@@ -91,7 +91,7 @@
         (setf bndg-preferred-offset (@ expr-binding-aug u) $:offset-ref)
         (setf bndg-preferred-storage (@ expr-binding-aug u) [context->memory-storage (@ bndg-context (@ expr-binding-aug u))])
         [set+ offset-ref (word-size)])))
-      (fold (offset offset) (u (@ expr-arguments n)) [place-perm-bindings u offset])))))
+      (fold (offset offset) (u (%:list-iter (@ expr-arguments n))) [place-perm-bindings u offset])))))
     
     offset))
 
@@ -201,11 +201,11 @@
           {init-subs [min bottom-offset bottom-offset'] [bor in-use in-use'] [@cdr u]}))) (do
   (for (u (%:list-iter exprs)) (ignore) (setf bndg-storage (@ expr-binding-aug u) (nil-storage)))
   (for (u (%:list-iter bndgs)) (ignore) (setf bndg-storage u (nil-storage)))
-  (let (in-use (fold (in-use in-use) (u exprs)
+  (let (in-use (fold (in-use in-use) (u (%:list-iter exprs))
     (if (and [> [expr-binding-depth u] depth] (@ bndg-is-read (@ expr-binding-aug u)))
       [try-expr-to-preferred-location u in-use]
       in-use)))
-  (let (in-use (fold (in-use in-use) (u bndgs)
+  (let (in-use (fold (in-use in-use) (u (%:list-iter bndgs))
     (if (and [>= [bndg-depth u] depth] (@ bndg-is-read u))
       [try-bndg-to-preferred-location u in-use]
       in-use)))
@@ -271,7 +271,7 @@
     
     (let (rem-offset [* #:2(word-size)])
     (let (rem-params (if [>= [length (@ expr-parameters n)] #:6] [@cddddddr (@ expr-parameters n)] nil))
-    (fold (offset rem-offset) (u rem-params) (do
+    (fold (offset rem-offset) (u (%:list-iter rem-params)) (do
       [prepend (make-instrN(x86-mov)
         ([bndg->op u relocs ..][make-mem-op(word-size)(rbp)(none)#:0 offset #:4 ..][make-reg-op(r11)..])..) c ..]
       [+ offset (word-size)]))))
@@ -820,7 +820,7 @@
 
 (function initialize-expression (n offset inits ret-val buf hdl)
   (substitute (.. buf hdl) (do (or
-    (fold (found? (false)) (init inits) (or found? [[initializer->function init] n offset inits ret-val ..]))
+    (fold (found? (false)) (init (%:list-iter inits)) (or found? [[initializer->function init] n offset inits ret-val ..]))
     [initialize-function n offset inits ret-val ..]
     [initialize-continuation n offset inits ret-val ..]
     [initialize-with n offset inits ret-val ..]

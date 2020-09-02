@@ -98,25 +98,6 @@
             reverse-filter.acc)}))r))
 
 (ignore
-  A macro to do a fold. Does the following transformation:
-  (fold (y acc) (x l) expr)
-  ->
-  (loop fold.loop (fold.acc acc) (fold.l l)
-    (if [nil? fold.l]
-      fold.acc
-      {fold.loop
-        (let (y fold.acc) (x [@car fold.l]) expr)
-        [@cdr fold.l]})))
-
-(function fold (l r)
-  (`(loop fold.loop (fold.acc (,[@frfst l])) (fold.l (,[@frfrst l]))
-      (if [nil? fold.l]
-        fold.acc
-        {fold.loop
-          (let ((,[@ffst l]) fold.acc) ((,[@ffrst l]) [@car fold.l]) (,[@frrst l]))
-          [@cdr fold.l]}))r))
-
-(ignore
   A macro to do a mutating fold. Does the following transformation:
   (fold-ref (y acc) (x l) expr)
   ->
@@ -394,8 +375,8 @@
 
 (function reverse-flatten (l r handler)
   (substitute (.. r handler)
-    (fold (all nil) (s l)
-      (fold (t all) (u s) [cons u t ..] ..) ..)))
+    (fold (all nil) (s (%:list-iter l))
+      (fold (t all) (u (%:list-iter s)) [cons u t ..] ..) ..)))
 
 (ignore
   Constructs a reverse of the given list. l is the list that is to be reversed. r is the

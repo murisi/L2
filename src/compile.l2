@@ -115,19 +115,19 @@
         ((" arithmetic) [function->initializer initialize-arithmetic-intrinsics])
         {handler (storage _ unsupported-intrinsics-error intrinsic-fn)}) ..))
     
-    (let (objects1 (fold (objects nil) (src object-fns)
+    (let (objects1 (fold (objects nil) (src (%:list-iter object-fns))
       (bind (obj-buf obj-sz) [read-to-buffer src bind ..]
       (let (obj [load obj-buf obj-sz ..])
         (do [immutable-bindings obj bindings ..] [cons obj objects ..])))))
     
-    (let (objects2 (fold (objects objects1) (intrinsic-fn intrinsic-fns)
+    (let (objects2 (fold (objects objects1) (intrinsic-fn (%:list-iter intrinsic-fns))
       (switch str= intrinsic-fn
         ((" arithmetic)
           (let (obj [load-program [wrap-arithmetic-intrinsics ..] inits buf buf2 handler])
             (do [immutable-bindings obj bindings ..] [cons obj objects ..])))
         {handler (storage _ unsupported-intrinsics-error intrinsic-fn)})))
     
-    (let (all-exprs ($(fold (all-exprs (storage _ nil)) (src source-fns) (do
+    (let (all-exprs ($(fold (all-exprs (storage _ nil)) (src (%:list-iter source-fns)) (do
       [append-list all-exprs [read-expressions src buf buf2 handler]]
       all-exprs))))
     
