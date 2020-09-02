@@ -30,7 +30,7 @@
       (setf ht-hash-func ht hash-func)
       (setf ht-equals-func ht equals-func)
       (setf ht-values ht [region-alloc [*(ht-initial-bucket-count)(unit)] ..])
-      (for (i (':range #:0 (ht-initial-bucket-count))) (ignore) [set (loc(unit)i (@ ht-values ht)) nil])
+      (for (i (%:range #:0 (ht-initial-bucket-count))) (ignore) [set (loc(unit)i (@ ht-values ht)) nil])
       ht))))
 
 (ignore
@@ -45,8 +45,8 @@
     (if [> [* (@ ht-element-count ht) (ht-load-factor-den)] [* (@ ht-bucket-count ht) (ht-load-factor-num)]]
       (let (new-bucket-count [* (@ ht-bucket-count ht) (ht-resize-factor)])
       (let (new-values [region-alloc [* new-bucket-count(unit)] ..]) (do
-        (for (i (':range #:0 new-bucket-count)) (ignore) [set (loc(unit)i new-values) nil])
-        (for (i (':range #:0 (@ ht-bucket-count ht))) (ignore)
+        (for (i (%:range #:0 new-bucket-count)) (ignore) [set (loc(unit)i new-values) nil])
+        (for (i (%:range #:0 (@ ht-bucket-count ht))) (ignore)
           (let (bucket ($(loc(unit)i(@ ht-values ht))))
           (loop move-node (bucket bucket)
             (if [nil? bucket] (ignore)
@@ -125,7 +125,7 @@
 (constrain ht-removeall (\ r (?(a b d) `:(function ((hash-table ,:a ,:b)) ,:d):r r)))
 
 (function ht-removeall (ht)
-  (for (bucket-idx (':range #:0 (@ ht-bucket-count ht))) (ignore) (do
+  (for (bucket-idx (%:range #:0 (@ ht-bucket-count ht))) (ignore) (do
     (let (bucket (loc(unit)bucket-idx(@ ht-values ht))) [set bucket nil])
     [set (& ht-element-count ht) #:0])))
 
@@ -136,13 +136,13 @@
   (ht-foreach (key value ht) expr)
   ->
   (let (ht-foreach.ht ht)
-    (for (ht-foreach.i (':range #:0 (@ ht-bucket-count ht-foreach.ht))) (ignore)
+    (for (ht-foreach.i (%:range #:0 (@ ht-bucket-count ht-foreach.ht))) (ignore)
       (foreach (ht-foreach.assoc ($(loc (unit) ht-foreach.i (@ ht-values ht-foreach.ht))))
         (bind (key value) ht-foreach.assoc expr)))))
 
 (function ht-foreach (l r)
   (`(let (ht-foreach.ht (,[@frrfst l]))
-      (for (ht-foreach.i (':range #:0 (@ ht-bucket-count ht-foreach.ht))) (ignore)
+      (for (ht-foreach.i (%:range #:0 (@ ht-bucket-count ht-foreach.ht))) (ignore)
         (foreach (ht-foreach.assoc ($(loc (unit) ht-foreach.i (@ ht-values ht-foreach.ht))))
           (bind ((,[@ffst l]) (,[@frfst l])) ht-foreach.assoc (,[@frst l])))))r))
 

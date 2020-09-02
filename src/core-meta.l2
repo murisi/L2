@@ -511,24 +511,24 @@
 
 (ignore
   A macro to turn a predicate into a branch expression. Does the following transformation:
-  ((% (func arg1 arg2 ... argN)) obj consequent alternate)
+  ((| (func arg1 arg2 ... argN)) obj consequent alternate)
   ->
   (if (func arg1 arg2 ... argN obj) consequent alternate))
 
-(function % (l r)
-  (`(function %.func (l r)
+(function | (l r)
+  (`(function |.func (l r)
       (let (obj [@fst l]) (consequent [@frst l]) (alternate [@frrst l]) (partial ,:[`[llst [@fst l] `:r:r emt r]r])
         (let (complete [meta.concat partial [lst obj emt r] r])
           (`(if ,:complete ,:consequent ,:alternate)r))))r))
 
 (ignore
   A macro for capturing variables. Does the following transformation:
-  (_:id val consequent alternate)
+  (.:id val consequent alternate)
   ->
   (let (id val) consequent))
 
-(function _ (l r)
-  (`(function _.func (l r)
+(function . (l r)
+  (`(function dot.func (l r)
       (let (id ,:[`[llst [@fst l] `:r:r emt r]r])
         (`(let (,:id ,:[@fst l]) ,:[@frst l])r)))r))
 
@@ -658,11 +658,11 @@
 
 (ignore
   A macro to keep the callee's stack frame alive. Does the following transformation:
-  (':func arg1 arg2 ... argN)
+  (%:func arg1 arg2 ... argN)
   ->
-  (with quote.return [func quote.return arg1 arg2 ... argN]))
+  (with percent.return [func percent.return arg1 arg2 ... argN]))
 
-(function ' (l r)
-  (`(function quote.func (l r)
+(function % (l r)
+  (`(function percent.func (l r)
       (let (func ,:[`[llst [@fst l] `:r:r emt r]r])
-        (`(with quote.return [,:func quote.return , l])r)))r))
+        (`(with percent.return [,:func percent.return , l])r)))r))
