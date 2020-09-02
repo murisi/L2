@@ -129,22 +129,17 @@
     (let (bucket (loc(unit)bucket-idx(@ ht-values ht))) [set bucket nil])
     [set (& ht-element-count ht) #:0])))
 
-(ignore
-  Iterates through the entries in the hash-table. Does the following
-  transformation:
-  
-  (ht-foreach (key value ht) expr)
-  ->
-  (let (ht-foreach.ht ht)
-    (for (ht-foreach.i (%:range #:0 (@ ht-bucket-count ht-foreach.ht))) (ignore)
-      (for (ht-foreach.assoc (%:list-iter ($(loc (unit) ht-foreach.i (@ ht-values ht-foreach.ht))))) (ignore)
-        (bind (key value) ht-foreach.assoc expr)))))
+(constrain ht-iter \:r:(?(a b c d) (`(function ((continuation ((! iterator (! tuple- ,:a ,:d) ,:b))) (hash-table ,:a ,:d)) ,:c)r)r))
 
-(function ht-foreach (l r)
-  (`(let (ht-foreach.ht (,[@frrfst l]))
-      (for (ht-foreach.i (%:range #:0 (@ ht-bucket-count ht-foreach.ht))) (ignore)
-        (for (ht-foreach.assoc (%:list-iter ($(loc (unit) ht-foreach.i (@ ht-values ht-foreach.ht))))) (ignore)
-          (bind ((,[@ffst l]) (,[@frfst l])) ht-foreach.assoc (,[@frst l])))))r))
+(function ht-iter (ret ht)
+  {ret (continuation cont (end ictx recv)
+    ((tuple? .:recv .:ictx)
+      (fold (ctx (tuple recv ictx)) (i (%:range #:0 (@ ht-bucket-count ht)))
+        (fold (ctx ctx) (assoc (%:list-iter ($(loc (unit) i (@ ht-values ht)))))
+          ((tuple? .:recv .:ictx) ctx
+            (bind (key val) assoc
+              (cps {recv next ictx (tuple key val)}
+                (next (new-recv new-ctx) (tuple [cast new-recv] new-ctx)))) (ignore)))) {end ictx} (ignore)))})
 
 (ignore
   Puts all the given associations into the given hash table. Does the following
