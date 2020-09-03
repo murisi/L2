@@ -36,26 +36,6 @@
       {add-item [llllst (` invoke r) (` cons r) [@fst in] out [@rst l] r] [@rst in]})))
 
 (ignore
-  A macro to do a reverse map. Does the following transformation:
-  (reverse-map (x l) expr ctx ...)
-  ->
-  (loop reverse-map.loop (reverse-map.l l) (reverse-map.acc nil)
-    (if [nil? reverse-map.l]
-      reverse-map.acc
-      {reverse-map.loop
-        [@cdr reverse-map.l]
-        [cons (let (x [@car reverse-map.l]) expr) reverse-map.acc ctx ...]})))
-
-(function reverse-map (l r)
-  (`(loop reverse-map.loop (reverse-map.l (,[@frfst l])) (reverse-map.acc nil)
-      (if [nil? reverse-map.l]
-        reverse-map.acc
-        {reverse-map.loop
-          [@cdr reverse-map.l]
-          (,[llllst (` invoke r) (` cons r) (`(let ((,[@ffst l]) [@car reverse-map.l]) (,[@frst l]))r) (` reverse-map.acc r)
-            [@rrst l] r])}))r))
-
-(ignore
   A macro to do a find. Does the following transformation:
   (find (x l) expr)
   ->
@@ -323,7 +303,9 @@
 
 (constrain reverse (\ r (?(et a) (`(function ((list ,:et) region ,:a) (list ,:et))r)r)))
 
-(function reverse (l r handler) (reverse-map (x l) x r handler))
+(function reverse (l r handler)
+  (substitute (.. r handler)
+    [collect-reverse-list (%:list-iter l) [nil-of l] ..]))
 
 (ignore
   Searches for the given element in the given list and returns (true) if it is found.
@@ -420,8 +402,8 @@
 
 (ignore Collect the values yielded by the iterator into a list of the reverse order.)
 
-(constrain collect-reverse-list \:r:(?(a b c) (`(function ((! iterator ,:a ,:b) region ,:c) (list ,:a))r)r))
+(constrain collect-reverse-list \:r:(?(a b c d) (`(function ((! iterator ,:a ,:b) (list ,:d) region ,:c) (list ,:a))r)r))
 
-(function collect-reverse-list (ite r handler)
+(function collect-reverse-list (ite lnil r handler)
   (substitute (.. r handler)
-    (fold (l nil) (x ite) [cons x l ..])))
+    (fold (l lnil) (x ite) [cons x l ..])))

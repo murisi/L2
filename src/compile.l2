@@ -110,10 +110,10 @@
 
 (function evaluate-files (source-fns object-fns intrinsic-fns bindings buf buf2 handler)
   (substitute (.. buf handler)
-    (let (inits (reverse-map (intrinsic-fn intrinsic-fns)
+    (let (inits [collect-reverse-list (map (intrinsic-fn (%:list-iter intrinsic-fns))
       (switch str= intrinsic-fn
         ((" arithmetic) [function->initializer initialize-arithmetic-intrinsics])
-        {handler (storage _ unsupported-intrinsics-error intrinsic-fn)}) ..))
+        {handler (storage _ unsupported-intrinsics-error intrinsic-fn)})) nil ..])
     
     (let (objects1 (fold (objects nil) (src (%:list-iter object-fns))
       (bind (obj-buf obj-sz) [read-to-buffer src bind ..]
@@ -162,10 +162,10 @@
 (function compile-files (file-names intrinsic-fns bndgs buf buf2 handler)
   (substitute (.. buf handler)
     (with-region buf2
-      (let (inits (reverse-map (intrinsic-fn intrinsic-fns)
+      (let (inits [collect-reverse-list (map (intrinsic-fn (%:list-iter intrinsic-fns))
         (switch str= intrinsic-fn
           ((" arithmetic) [function->initializer initialize-arithmetic-intrinsics])
-          {handler (storage _ unsupported-intrinsics-error intrinsic-fn)}) ..))
+          {handler (storage _ unsupported-intrinsics-error intrinsic-fn)})) nil ..])
           
       (let (file-exprss [collect-list (map (infn (%:list-iter file-names))
         [collect-list (map (e (%:list-iter[read-expressions infn buf buf2 handler]))
