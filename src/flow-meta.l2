@@ -12,10 +12,10 @@
   then it returns (false).)
 
 (function or (l r)
-  (loop prepend-or (l [meta.reverse l r]) (sexpr (`(false)r))
+  (loop prepend-or (l [meta.reverse l r]) (sexpr `:(false):r)
     (if [emt? l]
       sexpr
-      {prepend-or [@rst l] (`(if (,[@fst l]) (true) (, sexpr r))r)})))
+      {prepend-or [@rst l] `:(if ,:[@fst l] (true) ,:sexpr):r})))
 
 (ignore
   The following macro iterates through its arguments in order and returns (false) upon
@@ -23,10 +23,10 @@
   then it returns (true).)
 
 (function and (l r)
-  (loop prepend-and (l [meta.reverse l r]) (sexpr (`(true)r))
+  (loop prepend-and (l [meta.reverse l r]) (sexpr `:(true):r)
     (if [emt? l]
       sexpr
-      {prepend-and [@rst l] (`(if (,[@fst l]) (, sexpr r) (false))r)})))
+      {prepend-and [@rst l] `:(if ,:[@fst l] ,:sexpr (false)):r})))
 
 (ignore
   The following macro returns (false) if the single argument supplied to it is non-zero.
@@ -235,23 +235,6 @@
 
 (ignore
   Loops through the given iterator. Performs the following transformation:
-  (for (x iter) def expr)
-  ->
-  (with for.return
-    (let (for.iter iter)
-      {for.iter for.return def
-        (continuation for.cont (for.next for.ctx x)
-          {for.next [cast for.cont] expr})})))
-
-(function for (l r)
-  `:(with for.return
-      (let (for.iter ,:[@frfst l])
-        {for.iter for.return ,:[@frst l]
-          (continuation for.cont (for.next for.ctx ,:[@ffst l])
-            {for.next [cast for.cont] ,:[@frrst l]})})):r)
-
-(ignore
-  Loops through the given iterator. Performs the following transformation:
   (fold (y acc) (x iter) expr)
   ->
   (with fold.return
@@ -343,9 +326,9 @@
 
 (ignore
   A macro to loop through all the given iterators at the same time. The syntax is as follows:
-  (for-zip (v1 l1) (v2 l2) ... (vN lN) else expr) where l1, l2, ..., lN are iterators.)
+  (for (v1 l1) (v2 l2) ... (vN lN) else expr) where l1, l2, ..., lN are iterators.)
 
-(function for-zip (s r)
+(function for (s r)
   (let (bs [@rrst [meta.reverse s r]]) (body [@fst [meta.reverse s r]]) (else [@frst [meta.reverse s r]])
     (if [emt? bs]
       else
