@@ -62,12 +62,10 @@
     ((-continuation-) (-with-)
       (if (@ expr-escapes n)
         (let (offset [- offset [* [length (@ expr-parameters n)] (word-size)]]) (do
-          (let (offset-ref (storage _ offset))
-          (for (t (%:list-iter (@ expr-parameters n))) (ignore) (do
+          (for-zip (offset (%:range-from offset (word-size))) (t (%:list-iter (@ expr-parameters n))) (ignore) (do
             (setf bndg-preferred-storage t [context->memory-storage (@ bndg-context t)])
-            (setf bndg-preferred-offset t $:offset-ref)
-            (setf bndg-size t (word-size))
-            [set+ offset-ref (word-size)])))
+            (setf bndg-preferred-offset t offset)
+            (setf bndg-size t (word-size))))
           (let (cont-bndg (@ expr-reference n)) (offset [- offset (cont-size)]) (do
           (setf bndg-storage cont-bndg [context->memory-storage (@ bndg-context cont-bndg)])
           (setf bndg-size cont-bndg (cont-size))
@@ -85,12 +83,10 @@
       (setf bndg-size (@ expr-reference n) storage-size)
       (setf bndg-offset (@ expr-reference n) offset)
       (setf bndg-storage (@ expr-reference n) [context->memory-storage (@ bndg-context (@ expr-reference n))])
-      (let (offset-ref (storage _ offset))
-      (for (u (%:list-iter (@ expr-arguments n))) (ignore) (do
+      (for-zip (offset (%:range-from offset (word-size))) (u (%:list-iter (@ expr-arguments n))) (ignore) (do
         (setf bndg-size (@ expr-binding-aug u) (word-size))
-        (setf bndg-preferred-offset (@ expr-binding-aug u) $:offset-ref)
-        (setf bndg-preferred-storage (@ expr-binding-aug u) [context->memory-storage (@ bndg-context (@ expr-binding-aug u))])
-        [set+ offset-ref (word-size)])))
+        (setf bndg-preferred-offset (@ expr-binding-aug u) offset)
+        (setf bndg-preferred-storage (@ expr-binding-aug u) [context->memory-storage (@ bndg-context (@ expr-binding-aug u))])))
       (fold (offset offset) (u (%:list-iter (@ expr-arguments n))) [place-perm-bindings u offset])))))
     
     offset))
@@ -442,12 +438,11 @@
 
 (function generate-buffer-to-dest (n dest-reg offset c relocs r handler)
   (substitute (.. r handler)
-    (let (dest-offset (storage _ offset))
-      (for (t (%:list-iter (@ expr-arguments n))) (ignore) (let
-          (arg-val-bndg (@ expr-binding-aug t)) (do
+    (for-zip (dest-offset (%:range-from offset (word-size))) (t (%:list-iter (@ expr-arguments n))) (ignore)
+      (let (arg-val-bndg (@ expr-binding-aug t)) (do
         [prepend (make-instrN (x86-mov)
-          ([make-mem-op(word-size)dest-reg(none)#:0 $:dest-offset #:4 ..][bndg->op arg-val-bndg relocs ..][make-reg-op(r11)..]) ..) c ..]
-        [set+ dest-offset (word-size)]))))))
+          ([make-mem-op(word-size)dest-reg(none)#:0 dest-offset #:4 ..][bndg->op arg-val-bndg relocs ..][make-reg-op(r11)..]) ..) c ..]
+        (ignore))))))
 
 (constrain generate-load-continuation
   \:r:(?(a) `:(function (register (ref (list instr)) (ref (list reloc)) region ,:a) (ref (list instr))):r r))
