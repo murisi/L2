@@ -95,19 +95,20 @@
         v
         {find-end [@cdr bucket]}))))))
 
-(constrain ht-getall (\ r (?(a b c) `:(function (,:a (hash-table ,:a ,:b) region ,:c) (list ,:b)):r r)))
+(constrain ht-iter-key (\ r (?(a b c d) `:(function ((continuation ((! iterator ,:b ,:c))) ,:a (hash-table ,:a ,:b)) ,:d):r r)))
 
-(function ht-getall (key ht buf hdl)
-  (substitute (.. buf hdl)
+(function ht-iter-key (ret key ht)
+  {ret (continuation cont (end ctx recv)
     (let (bucket-idx [rem [(@ ht-hash-func ht) key] (@ ht-bucket-count ht)])
     (let (bucket ($(loc(unit)bucket-idx(@ ht-values ht))))
-    (loop find-end (bucket bucket) (vals nil)
+    (loop find-end (bucket bucket) (recv recv) (ctx ctx)
       (if [nil? bucket]
-        vals
+        {end ctx}
         (bind (k v) [@car bucket]
           (if [(@ ht-equals-func ht) key k]
-            {find-end [@cdr bucket] [cons v vals ..]}
-            {find-end [@cdr bucket] vals}))))))))
+            (cps {recv next ctx v}
+              (next (new-recv new-ctx) {find-end [@cdr bucket] [cast new-recv] new-ctx}))
+            {find-end [@cdr bucket] recv ctx})))))))})
 
 (constrain ht-remove (\ r (?(a b d) `:(function (,:a (hash-table ,:a ,:b)) ,:d):r r)))
 
