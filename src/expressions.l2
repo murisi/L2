@@ -316,9 +316,9 @@
         [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope)
           (defined-state) ref [vbl->frag [vbl ..]] func ..])
       (expr-parameters
-        (map (param params)
+        [collect-list (map (param (%:list-iter params))
           [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
-            (defined-state) param [vbl->frag [vbl ..]] func ..] ..))
+            (defined-state) param [vbl->frag [vbl ..]] func ..]) nil ..])
       (expr-expression expr))))
 
 (constrain make-continuation (\ r (?(a b) (`(function (string (list string) (expr ,:a) frag (expr ,:a) region ,:b) (expr ()))r)r)))
@@ -343,9 +343,9 @@
         [make-binding-aug (reference-mode) (intra-function-context) (nil-storage) (local-scope)
           (defined-state) ref [vbl->frag [vbl ..]] cont ..])
       (expr-parameters
-        (map (param params)
+        [collect-list (map (param (%:list-iter params))
           [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
-            (defined-state) param [vbl->frag [vbl ..]] cont ..] ..))
+            (defined-state) param [vbl->frag [vbl ..]] cont ..]) nil ..])
       (expr-escapes (false))
       (expr-expression expr))))
 
@@ -609,10 +609,10 @@
           {handler (storage _ special-form-error d [@cadr d])}
         (if [i/f.token? [@caddr d]]
           {handler (storage _ special-form-error d [@caddr d])}
-          (let (parameters (map (v [frag->list [@caddr d]])
+          (let (parameters [collect-list (map (v (%:list-iter [frag->list [@caddr d]]))
               (if [i/f.token? v]
                 [to-string [fragment->token v] ..]
-                {handler (storage _ special-form-error d v)}) ..))
+                {handler (storage _ special-form-error d v)})) nil ..])
                 
             [(switch str= [to-string [fragment->token [@car d]] ..]
                 ((" function) make-function)
@@ -626,7 +626,7 @@
         (if (and [str= [to-string [fragment->token [@car d]] ..] (" storage)] (not [i/f.token? [@cadr d]]))
           {handler (storage _ special-form-error d [@cadr d])}
           [make-storage
-            [to-string [fragment->token [@cadr d]] ..] (map (v [@cddr d]) [build-expression v meta ..] ..) frag meta ..])))
+            [to-string [fragment->token [@cadr d]] ..] [collect-list (map (v (%:list-iter [@cddr d])) [build-expression v meta ..]) nil ..] frag meta ..])))
       
       ((" invoke) (" jump)
         (if [= [length d] #:1]
@@ -637,7 +637,7 @@
               ((" invoke) make-invoke)
               ((" jump) make-jump)
               (ignore))
-            [build-expression [@cadr d] meta ..] (map (v [@cddr d]) [build-expression v meta ..] ..) frag meta ..])))
+            [build-expression [@cadr d] meta ..] [collect-list (map (v (%:list-iter [@cddr d])) [build-expression v meta ..]) nil ..] frag meta ..])))
       
       ((" literal)
         (if (not [= [length d] #:2])

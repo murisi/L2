@@ -347,3 +347,22 @@
         (if [emt? bs]
           `:(select ,:mat ,:ite ,:else ,:body):r
           {build [@rst bs] `:(tuple? .:,;[@ffst bs] ,:mat):r `:(%:zip ,:[@frfst bs] ,:ite):r}))))))
+
+(ignore
+  A macro to map an iterator to another iterator. Does the following transformation:
+  (map (x l) expr)
+  ->
+  (continuation map.cont (map.end map.ictx map.recv)
+    ((tuple? .:map.recv .:map.ictx)
+      (fold (map.acc (tuple map.recv map.ictx)) (x l)
+        ((tuple? .:map.recv .:map.ictx) map.acc
+          (cps {map.recv next map.ictx expr}
+            (next (new-recv new-ctx) (tuple [cast new-recv] new-ctx))) (ignore))) {map.end map.ictx} (ignore))))
+
+(function map (l r)
+  `:(continuation map.cont (map.end map.ictx map.recv)
+    ((tuple? .:map.recv .:map.ictx)
+      (fold (map.acc (tuple map.recv map.ictx)) (,:[@ffst l] ,:[@frfst l])
+        ((tuple? .:map.recv .:map.ictx) map.acc
+          (cps {map.recv next map.ictx ,:[@frst l]}
+            (next (new-recv new-ctx) (tuple [cast new-recv] new-ctx))) (ignore))) {map.end map.ictx} (ignore))):r)

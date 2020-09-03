@@ -452,13 +452,13 @@
   (substitute (.. buf handler)
     (switch = (@ expr-type e)
       ((-function-)
-        (let (params-signature [list->fragment (map (x (@ expr-parameters e)) (@ bndg-signature x) ..)]) (do
+        (let (params-signature [list->fragment [collect-list (map (x (%:list-iter (@ expr-parameters e))) (@ bndg-signature x)) nil ..]]) (do
           [prepend [expr-signature e] [prepend [expr-signature e] lhss ..] ..]
           [prepend [list->fragment [cons function-token [cons params-signature
             [cons [expr-signature (@ expr-expression e)] nil ..] ..] ..]] [prepend (@ bndg-signature (@ expr-reference e)) rhss ..] ..])))
       
       ((-continuation-)
-        (let (params-signature [list->fragment (map (x (@ expr-parameters e)) (@ bndg-signature x) ..)]) (do
+        (let (params-signature [list->fragment [collect-list (map (x (%:list-iter (@ expr-parameters e))) (@ bndg-signature x)) nil ..]]) (do
           [prepend [expr-signature e] [prepend [expr-signature e] lhss ..] ..]
           [prepend [list->fragment [cons continuation-token [cons params-signature nil ..] ..]]
             [prepend (@ bndg-signature (@ expr-reference e)) rhss ..] ..])))
@@ -468,12 +468,12 @@
         [prepend [expr-signature (@ expr-expression e)] rhss ..]))
       
       ((-invoke-)
-        (let (params-signature [list->fragment (map (arg (@ expr-arguments e)) [scoped-signature arg scc ..] ..)]) (do
+        (let (params-signature [list->fragment [collect-list (map (arg (%:list-iter (@ expr-arguments e))) [scoped-signature arg scc ..]) nil ..]]) (do
           [prepend [scoped-signature (@ expr-target e) scc ..] lhss ..]
           [prepend [list->fragment [cons function-token [cons params-signature [cons [expr-signature e] nil ..] ..] ..]] rhss ..])))
       
       ((-jump-)
-        (let (params-signature [list->fragment (map (arg (@ expr-arguments e)) [scoped-signature arg scc ..] ..)]) (do
+        (let (params-signature [list->fragment [collect-list (map (arg (%:list-iter (@ expr-arguments e))) [scoped-signature arg scc ..]) nil ..]]) (do
           [prepend [scoped-signature (@ expr-target e) scc ..] lhss ..]
           [prepend [list->fragment [cons continuation-token [cons params-signature nil ..] ..]] rhss ..])))
       

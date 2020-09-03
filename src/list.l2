@@ -56,25 +56,6 @@
             [@rrst l] r])}))r))
 
 (ignore
-  A macro to do a map. Works by keeping pointer to the end of the list during
-  construction. Does the following transformation:
-  (map (x l) expr ctx ...)
-  ->
-  (let (map.start (storage _ nil))
-    (loop map.loop (map.l l) (map.end map.start)
-      (if [nil? map.l]
-        (do [set map.end [cast map.l]] $:map.start)
-        {map.loop [@cdr map.l] [append (let (x [@car map.l]) expr) map.end ctx ...]}))))
-
-(function map (l r)
-  (`(let (map.start (storage _ nil))
-      (loop map.loop (map.l (,[@frfst l])) (map.end map.start)
-        (if [nil? map.l]
-          (do [set map.end [cast map.l]] $:map.start)
-          {map.loop [@cdr map.l]
-            (,[llllst (` invoke r) (` append r) (`(let ((,[@ffst l]) [@car map.l]) (,[@frst l]))r) (` map.end r) [@rrst l] r])})))r))
-
-(ignore
   A macro to do a find. Does the following transformation:
   (find (x l) expr)
   ->
@@ -426,3 +407,21 @@
         {end ctx}
         (cps {recv next ctx (& car list)}
           (next (new-recv new-ctx) {lop [cast new-recv] new-ctx [@cdr list]})))))})
+
+(ignore Collect the values yielded by the iterator into a list of the same order.)
+
+(constrain collect-list \:r:(?(a b c d) (`(function ((! iterator ,:a ,:b) (list ,:d) region ,:c) (list ,:a))r)r))
+
+(function collect-list (ite lnil r handler)
+  (substitute (.. r handler)
+    (let (start (storage _ lnil)) (do
+      (fold (end start) (x ite) [append x end ..])
+      $:start))))
+
+(ignore Collect the values yielded by the iterator into a list of the reverse order.)
+
+(constrain collect-reverse-list \:r:(?(a b c) (`(function ((! iterator ,:a ,:b) region ,:c) (list ,:a))r)r))
+
+(function collect-reverse-list (ite r handler)
+  (substitute (.. r handler)
+    (fold (l nil) (x ite) [cons x l ..])))
