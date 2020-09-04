@@ -25,15 +25,15 @@
 
 (ignore
   Like a C-array initializer, but for lists. Does the following transformation:
-  (list (expr1 expr2 ... exprN) ..)
+  (list (..) expr1 expr2 ... exprN)
   ->
   [cons expr1 [cons expr2 [... [cons exprN nil ..] ...] ..] ..])
 
 (function list (l r)
-  (loop add-item (out (` nil r)) (in [meta.reverse [@fst l] r])
+  (loop add-item (out (` nil r)) (in [meta.reverse [@rst l] r])
     (if [emt? in]
       out
-      {add-item [llllst (` invoke r) (` cons r) [@fst in] out [@rst l] r] [@rst in]})))
+      {add-item [llllst (` invoke r) (` cons r) [@fst in] out [@fst l] r] [@rst in]})))
 
 (ignore
   A macro to do a find. Does the following transformation:
@@ -320,18 +320,6 @@
     (if [= [@car sub] data]
       (true)
       {search [@cdr sub]}))))
-
-(ignore Makes a new list comprising of the first n elements of the given list.)
-
-(constrain take (\ r (?(et a b) (`(function (,:a (list ,:et) region ,:b) (list ,:et))r)r)))
-
-(function take (n l r handler)
-  (substitute (.. r handler)
-    (let (res-start (storage _ nil))
-    (loop build (res-end res-start) (l l) (n n)
-      (if [= n #:0]
-        $:res-start
-        {build [append [@car l] res-end ..] [@cdr l] [- n #:1]})))))
 
 (ignore Because there can be several instances of nil, it makes sense to get a list's nil.)
 
