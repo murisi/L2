@@ -351,14 +351,21 @@
         [prepend (@ expr-consequent s) (& expr-dependencies s) ..]
         [prepend (@ expr-alternate s) (& expr-dependencies s) ..]))
       
-      ((-function-) (-continuation-) (-with-)
+      ((-function-) (-with-)
         [prepend (@ expr-expression s) (& expr-dependencies s) ..])
+      
+      ((-continuation-) (ignore))
       
       ((-storage-)
         (for (t (%:list-iter (@ expr-arguments s))) (ignore) [prepend t (& expr-dependencies s) ..]))
       
-      ((-jump-) (-invoke-) (do
+      ((-invoke-) (do
         [prepend (@ expr-target s) (& expr-dependencies s) ..]
+        (for (t (%:list-iter (@ expr-arguments s))) (ignore) [prepend t (& expr-dependencies s) ..])))
+      
+      ((-jump-) (do
+        [prepend (@ expr-target s) (& expr-dependencies s) ..]
+        [prepend s (& expr-dependencies (@ expr-target s)) ..]
         (for (t (%:list-iter (@ expr-arguments s))) (ignore) [prepend t (& expr-dependencies s) ..])))
       
       ((-symbol-)

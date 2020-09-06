@@ -224,11 +224,16 @@ union expression *vfind_dependencies(union expression *s, region r) {
       prepend(s->_if.consequent, &s->_if.dependencies, r);
       prepend(s->_if.alternate, &s->_if.dependencies, r);
       break;
-    } case function: case continuation: case with: {
+    } case function: case with: {
       prepend(s->function.expression, &s->function.dependencies, r);
+      break;
+    } case continuation: {
       break;
     } case storage: case jump: case invoke: {
       prepend(s->storage.reference, &s->storage.dependencies, r);
+      if(s->base.type == jump) {
+        prepend(s, &s->jump.reference->base.dependencies, r);
+      }
       union expression *t;
       foreach(t, s->storage.arguments) {
         prepend(t, &s->storage.dependencies, r);
