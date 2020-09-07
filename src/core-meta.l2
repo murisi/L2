@@ -143,6 +143,8 @@
         {(continuation quote.cont (,[meta.map-values map r]) {quote.return ,:s}),
           [meta.map3 map t r (function _(elt t r) (quote[var ,:t]r)) r]})r))])
 
+(function bquote (l r) [` l r])
+
 (ignore
   The following function generates code to create variables and bind them. It does the
   following transformation:
@@ -718,3 +720,27 @@
         (let (body-mod [substitute [meta.reverse [lst ,:[`[llst body `:r:r emt r]r] subs r] r] r])
         (let (rt-params ,:[`[llst rt-params `:r:r emt r]r])
           `:(function bifunction.func ,:rt-params ,:body-mod):r)))):r))
+
+(ignore
+  A functor maps a tuple of modules to a module comprising the given expressions.
+  Does the following transformation:
+  (((functor (params ...)
+    (id1 val1)
+    ...
+    (idN valN)) args ...) expr)
+  ->
+  (use
+      (id1 <val1 with args ... substituted for params ...>)
+      ...
+      (idN <valN with args ... substituted for params ...>)
+    expr))
+
+(function functor (l r)
+  (let (ct-params [@fst l]) (binds [@rst l])
+    `:(function functor.func (l r)
+        (let (binds ,:[`[llst binds `:r:r emt r]r]) (ct-params ,:[`[llst ct-params `:r:r emt r]r])
+        (let (binds-sub [meta.map3 binds [meta.zip ct-params l r] r
+            (function _ (elt subs r) [lst [@fst elt] [substitute [meta.reverse [lst [@rst elt] subs r] r] r] r]) r])
+          `:(function functor.func (l r)
+              (let (binds-sub ,:[bquote[llst binds-sub `:r:r emt r]r])
+                `:(use , [meta.reverse [lst [@fst l] binds-sub r] r]):r)):r))):r))
