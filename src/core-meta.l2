@@ -671,6 +671,30 @@
         (`(with percent.return [,:func percent.return , l])r)))r))
 
 (ignore
+  A macro to define C-style substitution macros. Does the following transformation:
+  ((define id macro) frags ...)
+  ->
+  (macro frags ...))
+
+(function define (l r)
+  `:(function ,:[@fst l] (l r)
+      (let (macro ,:[`[llst [@frst l] `:r:r emt r]r])
+        [lst macro l r])):r)
+
+(ignore
+  A module is a set of bindings. The following macro takes a module and produces
+  a macro to execute an expression in the context of the aforementioned module.
+  Does the following transformation:
+  ((module (id1 val1) ... (idN valN)) expr)
+  ->
+  (use (id1 val1) ... (idN valN) expr))
+
+(function module (l r)
+  `:(function module.func (l r)
+      (let (binds ,:[`[llst l `:r:r emt r]r])
+        `:(use , [meta.reverse [lst [@fst l] binds r] r]):r)):r)
+
+(ignore
   A bifunction takes its first argument set by-name and produces a function taking
   the second argument set by value. The following bifunction macro does the following
   transformation:
