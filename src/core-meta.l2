@@ -179,20 +179,23 @@
 
 (ignore
   The following macro does the following transformation:
-  (substitute (tkn repls ...) frag)
+  (substitute (tkn1 repl1 ...) ... (tknN replN ...) frag)
   ->
-  frag but with the fragments repls inserted in order at all the places that the token tkn
+  frag but with the fragments repl inserted in order at all the places that the token tkn
   occurred. An example usage is when the arguments a group of functions are called with
   have a common sublist.)
 
 (function substitute (l r)
-  [(function aux (frag fnd repl r)
-      (if (or [token? frag] [emt? frag])
-        frag
-        (if (and [token? [@fst frag]] [token= [@fst frag] fnd])
-          [meta.concat repl [@rst frag] r]
-          [lst [aux [@fst frag] fnd repl r] [aux [@rst frag] fnd repl r] r])))
-    [@frst l] [@ffst l] [@rfst l] r])
+  (loop do-sub (subs [@rst [meta.reverse l r]]) (body [@fst [meta.reverse l r]])
+    (if [emt? subs]
+      body
+      {do-sub [@rst subs] [(function aux (frag fnd repl r)
+          (if (or [token? frag] [emt? frag])
+            frag
+            (if (and [token? [@fst frag]] [token= [@fst frag] fnd])
+              [meta.concat repl [@rst frag] r]
+              [lst [aux [@fst frag] fnd repl r] [aux [@rst frag] fnd repl r] r])))
+        body [@ffst subs] [@rfst subs] r]})))
 
 (ignore
   A set of macros to provide struct functionality in L2. The most naive way
