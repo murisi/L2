@@ -669,3 +669,22 @@
   (`(function percent.func (l r)
       (let (func ,:[`[llst [@fst l] `:r:r emt r]r])
         (`(with percent.return [,:func percent.return , l])r)))r))
+
+(ignore
+  A bifunction takes its first argument set by-name and produces a function taking
+  the second argument set by value. The following bifunction macro does the following
+  transformation:
+  ((bifunction bifunction-a (frag-a frag-b ... frag-z) (param-a param-b ... param-z) expr)
+    arg-a arg-b ... arg-z)
+  ->
+  (function bifuncation-a (param-a param-b ... param-z)
+    expr with substitutions
+      frag-a -> arg-a, frag-b -> arg-b, ..., frag-z -> arg-z))
+
+(function bifunction (l r)
+  (let (name [@fst l]) (ct-params [@frst l]) (rt-params [@frrst l]) (body [@frrrst l])
+    `:(function ,:name (l r)
+        (let (subs [meta.zip ,:[`[llst ct-params `:r:r emt r]r] l r])
+        (let (body-mod [substitute [meta.reverse [lst ,:[`[llst body `:r:r emt r]r] subs r] r] r])
+        (let (rt-params ,:[`[llst rt-params `:r:r emt r]r])
+          `:(function bifunction.func ,:rt-params ,:body-mod):r)))):r))
