@@ -151,6 +151,10 @@
 
 (function bquote (l r) [` l r])
 
+(function meta.bq (l buffer r) [`[llst l buffer emt r]r])
+
+(function meta.bqbq (l buffer1 buffer2 r) [meta.bq [meta.bq l buffer1 r] buffer2 r])
+
 (ignore
   The following function generates code to create variables and bind them. It does the
   following transformation:
@@ -750,3 +754,31 @@
           `:(function functor.func (l r)
               (let (binds-sub ,:[bquote[llst binds-sub `:r:r emt r]r])
                 `:(use , [meta.reverse [lst [@fst l] binds-sub r] r]):r)):r))):r))
+
+(ignore
+  A interface exposes and constrains a subset of the functions of a module. The
+  interface macro does the following transformation:
+  (((interface (var-a var-b ... var-z) r
+    (id-a sig-a)
+    (id-b sig-b)
+    ...
+    (id-z sig-z)) module-a) expr)
+  ->
+  (let (interface.cont (constrain (continuation interface.cont (id-a id-b ... id-z) expr)
+      \:r:(let (var-a [var r]) (var-b [var r]) ... (var-z [var r])
+        `:(continuation (,:sig-a ,:sig-b ... ,:sig-z)):r)))
+    (module-a {interface.cont id-a id-b ... id-z})))
+
+(function interface (l r)
+  (let (buffer [@frst l]) (ids [meta.map [@rrst l] @fst r]) (sigs [meta.map [@rrst l] @frst r])
+  (let (var-binds [meta.map3 [@fst l] buffer r (function _(elt buffer r) [llst elt `:[var ,:buffer]:r emt r]) r])
+    `:(function interface.func (l r)
+        (let (module [@fst l])
+          `:(function interface.func (l r)
+              (let (var-binds ,:,;[meta.bqbq var-binds `:r:r `:r:r r]) (buffer ,:,;[meta.bqbq buffer `:r:r `:r:r r]) (ids ,:,;[meta.bqbq ids `:r:r `:r:r r])
+                  (sigs ,:,;[meta.bqbq sigs `:r:r `:r:r r]) (module ,:[meta.bq module `:r:r r]) (expr [@fst l]) (cont-sym [meta.concat `:interface.cont:r [gentok r] r])
+                `:(with interface.ret
+                    (let (,:cont-sym (constrain (continuation ,:cont-sym ,:ids {interface.ret ,:expr})
+                        \:(, buffer):(let (interface.r (, buffer)) (let , [meta.reverse
+                          [lst (` `:(continuation ,:,;[meta.bq sigs buffer r]):interface.r r) var-binds r] r]))))
+                      (,:module {,:cont-sym , ids}))):r)):r)):r)))
