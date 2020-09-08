@@ -94,7 +94,18 @@
   The following function generates the L2 code to generate a fragment corresponding to the
   supplied fragment. Known as backquote in other languages.)
 
-(function quote-aux (s t map state r)
+(function quote-aux-aux (s t level map state r)
+  [meta.bind7
+    [llst level s (if [token? s]
+      [lllllst [lllst --- [@fst s] --- emt r] t map state r emt r]
+      [quote-aux [@fst s] t level map state r]) r]
+    (function _(level s inner-s t map state r)
+      [meta.bind7 [llst s inner-s [quote-aux [@rst s] t level map state r] r]
+        (function _(s inner-s inner-s2 t map state r)
+          [lllllst [lllllst [llllllst -i- -n- -v- -o- -k- -e- emt r]
+            [lllst -l- -s- -t- emt r] inner-s inner-s2 t emt r] t map state r emt r])])])
+
+(function quote-aux (s t level map state r)
   (if [emt? s] [lllllst [lllst -e- -m- -t- emt r] t map state r emt r]
   
   (if [var? s]
@@ -105,8 +116,11 @@
   
   (if (if [emt? s] #:0 (if [token? s] #:0 (if [token? [@fst s]]
     (if [char= [@ffst s] -`-] [emt? [@rfst s]] #:0) #:0)))
-        [meta.bind6 [lst t [quote-aux [@frst s] [@frrst s] map state r] r]
-          (function _(outer-t s t map state r) [quote-aux s outer-t map state r])]
+        [quote-aux-aux s t [+ level #:1] map state r]
+  
+  (if (if [emt? s] #:0 (if [token? s] #:0 (if [token? [@fst s]]
+    (if [char= [@ffst s] -,-] (if [emt? [@rfst s]] level #:0) #:0) #:0)))
+        [quote-aux-aux s t [- level #:1] map state r]
   
   (if (if [emt? s] #:0 (if [token? s] #:0 (if [token? [@fst s]]
     (if [char= [@ffst s] -,-] [emt? [@rfst s]] #:0) #:0)))
@@ -114,30 +128,22 @@
   
   (if (if [emt? s] #:0 (if [token? s] #:0 (if [token? [@fst s]]
     (if [char= [@ffst s] -!-] [emt? [@rfst s]] #:0) #:0)))
-        [meta.bind6 [lst s [quote-aux [@rrst s] t map state r] r]
+        [meta.bind6 [lst s [quote-aux [@rrst s] t level map state r] r]
           (function _(outer-s s t map state r)
             [lllllst [llllst [llllllst -i- -n- -v- -o- -k- -e- emt r]
               [@frst outer-s] s t emt r] t map state r emt r])]
 
-  [meta.bind6
-    [lst s (if [token? s]
-      [lllllst [lllst --- [@fst s] --- emt r] t map state r emt r]
-      [quote-aux [@fst s] t map state r]) r]
-    (function _(s inner-s t map state r)
-      [meta.bind7 [llst s inner-s [quote-aux [@rst s] t map state r] r]
-        (function _(s inner-s inner-s2 t map state r)
-          [lllllst [lllllst [llllllst -i- -n- -v- -o- -k- -e- emt r]
-            [lllst -l- -s- -t- emt r] inner-s inner-s2 t emt r] t map state r emt r])])]))))))
+  [quote-aux-aux s t level map state r])))))))
 
 (ignore Quote macro that only works for fragments not containing variables.)
 
 (function quote (l r)
-  [@fst [quote-aux [@fst l] [@frst l] emt [llllllst -q- -u- -o- -t- -e- -.- emt r] r]])
+  [@fst [quote-aux [@fst l] [@frst l] #:0 emt [llllllst -q- -u- -o- -t- -e- -.- emt r] r]])
 
 (ignore Quote macro that works for fragments containing variables.)
 
 (function ` (l r)
-  [meta.bind5 [quote-aux [@fst l] [@frst l] emt (quote quote. r) r]
+  [meta.bind5 [quote-aux [@fst l] [@frst l] #:0 emt (quote quote. r) r]
     (function _(s t map state r)
       (quote(with quote.return
         {(continuation quote.cont (,[meta.map-values map r]) {quote.return ,:s}),
