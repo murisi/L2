@@ -175,6 +175,19 @@ L2 has exactly 4 pieces of syntactic sugar, the first two of which were already 
 
 Note that `;` has a higher precedence than `:`, so `(a;b:c;d)` would desugar to `(((a b) (c d)))` and `a:b;c:d:e` would desugar to `(a (b c) d e)`. Also note that the latter two pieces of syntactic sugar are provided to enable convenient syntax for quasiquotation, unquote, numerical prefixes, accessing namespaces, and call-by-name expressions.
 
+### Lexical Grammar
+So L2 grammar is essentially S-expressions plus two infix list creation operators. To give a more precise description lexically valid L2 programs, L2's grammar is provided in Backus-Naur form below:
+* `<program> = <space> (<fragment> <space>)*`
+* `<fragment> = <fragment1> | <list1> | <list2>`
+* `<list1> = <fragment1> (<space> ':' <space> <fragment1>)+`
+* `<fragment1> = <fragment2> | <list2>`
+* `<list2> = <fragment2> (<space> ';' <space> <fragment2>)+`
+* `<fragment2> = <token> | <list> | <clist> | <slist>`
+* `<list> = '(' <space> (<fragment> <space>)* ')'`
+* `<clist> = '{' <space> (<fragment> <space>)* '}'`
+* `<slist> = '[' <space> (<fragment> <space>)* ']'`
+* `<token> = <any character that isn't a ; | : | { | [ | ( | ) | } | ] | <space>>+`
+
 ## Internal Representation
 After substituting out the syntactic sugar defined in the [syntactic sugar](#syntactic-sugar) section, we find that all L2 programs are just fragments where a fragment is either a token or a list of fragments. And furthermore, every token can be seen as a list of its characters so that for example `foo` becomes `(f o o)`. The following functions that manipulate these fragments are not part of the L2 language and hence the compiler does not give references to them special treatment during compilation. However, when they are used in an L2 meta-program, undefined references to these functions are to be resolved by the compiler.
 
