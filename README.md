@@ -167,15 +167,16 @@ The expression `(begin (with cutter (jump (continuation cuttee () (begin [bar] [
 Looking at the examples above where the continuation reference does not escape, `(with reference0 expression0)` behaves a lot like the pseudo-assembly `expression0 reference0:` and `(continuation reference0 (...) expression0)` behaves a lot like `reference0: expression0`. To be more precise, when references to a particular continuation only occur as the `continuation0` subexpression of a `jump` statement, we know that the continuation is constrained to the function in which it is declared, and hence there is no need to store or restore `ebp`, `edi`, `esi`, and `ebx`. Continuations, then, are how efficient iteration is achieved in L2.
 
 ## Syntactic Sugar
-### `$a1...aN`
-In what follows, it is assumed that `$a1...aN` is not part of a larger string. If `$a1...aN` is simply a `$`, then it remains unchanged. Otherwise at least a character follows the `$`; in this case `$a1...aN` turns into `($ a1...aN)`.
+L2 has exactly 4 pieces of syntactic sugar, the first two of which were already seen in the [invoke](#invoke) and [jump](#jump) sections. They are detailed below:
+1) `[frag1 frag2 ... fragN]` desugars to `(invoke frag1 frag2 ... fragN)`.
+2) `{frag1 frag2 ... fragN}` desugars to `(jump frag1 frag2 ... fragN)`.
+3) `frag1;frag2;...;fragN` desugars to `(frag1 frag2 ... fragN)`.
+4) `frag1:frag2:...:fragN` desugars to `(frag1 frag2 ... fragN)`.
 
-For example, the expression `$$hello$bye` turns into `($ $hello$bye)` which turns into `($ ($ hello$bye))`
-### `#a1...aN`, `,a1...aN`, `` `a1...aN``
-Analogous transformations to the one for `$a1...aN` happen.
+Note that `;` has a higher precedence than `:`, so `(a;b:c;d)` would desugar to `(((a b) (c d)))` and `a:b;c:d:e` would desugar to `(a (b c) d e)`. Also note that the latter two pieces of syntactic sugar are provided to enable convenient syntax for quasiquotation, unquote, numerical prefixes, accessing namespaces, and call-by-name expressions.
 
 ## Internal Representation
-After substituting out the syntactic sugar defined in the [invoke](#invoke), [jump](#jump), and [syntactic sugar](#syntactic-sugar) sections, we find that all L2 programs are just fragments where a fragment is either a token or a list of fragments. And furthermore, every token can be seen as a list of its characters so that for example `foo` becomes `(f o o)`. The following functions that manipulate these fragments are not part of the L2 language and hence the compiler does not give references to them special treatment during compilation. However, when they are used in an L2 meta-program, undefined references to these functions are to be resolved by the compiler.
+After substituting out the syntactic sugar defined in the [syntactic sugar](#syntactic-sugar) section, we find that all L2 programs are just fragments where a fragment is either a token or a list of fragments. And furthermore, every token can be seen as a list of its characters so that for example `foo` becomes `(f o o)`. The following functions that manipulate these fragments are not part of the L2 language and hence the compiler does not give references to them special treatment during compilation. However, when they are used in an L2 meta-program, undefined references to these functions are to be resolved by the compiler.
 
 ### `[lst x y b]`
 `y` must be a list and `b` a buffer.
