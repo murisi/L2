@@ -857,9 +857,10 @@ Note that the above code simply constrains the signature of the symbol `nil` to 
 ## Constraint System
 L2 has a static constraint system based on Hindley-Milner type inference. Every expression is associated with exactly one fragment. This fragment is called the expression's signature. For a program to compile, its expressions when taken as a whole must pass the constraint check. The constraint check is specified below:
 1. Partition all of the expressions of the program into strongly connected components, where dependency is determined as follows:
-   * An expression is dependent upon its children
+   * Every non-`continuation` expression is dependent upon its children
    * A symbol is mutually dependent with the expression that defines it
-   * A `constrain` expression is depended upon by its child
+   * A `constrain` expression is in addition depended upon by its child
+   * A `jump` expression's target depends upon the `jump` expression's arguments
 2. Now iterate through the strongly connected components in topological order and for each component, do the following:
    1. Generate the constraint equations corresponding to each expression in the manner prescribed below
    2. Execute a unification algorithm on the constrain equations that has just been generated
