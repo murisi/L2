@@ -10,7 +10,7 @@ L2 is a small statically typed programming language. Roughly speaking it looks l
  * [Procedural unhygienic macros](#meta)
  * [Very general control flow](#jump): `break`=`return`=`longjmp`
  * [Exactly 10 language constructs](#expressions)
- * [Exactly 9 builtin functions](#internal-representation) (all of which are for S-expression manipulation.)
+ * [Exactly 10 builtin functions](#internal-representation) (all of which are for S-expression manipulation.)
 
 I recommend that you take a look at [the implementation of a self-hosting compiler for L2 that accompanies this project](src/compile.l2) and compare it to [the compiler for bootstrapping it written in C](bootstrap/compile.c) to get a feeling for what L2 is like.
 
@@ -189,6 +189,12 @@ Say that `a` is the fragment `foo` and `c` is the list `(bar)`. Then `[lst a c b
 Evaluates to the one if `x` is also a token. Otherwise evaluates to zero.
 
 Say that `a` is the fragment `foo`. Then `[token? a]` evaluates to `(literal 0...01)`.
+### `[gentok b]`
+`b` must be a buffer.
+
+Generates in the buffer `b` a token distinct from those previously returned by this function.
+
+Say the token `78sd686` has not previously been returned by `gentok`. Then the call `[gentok b]` might return `78sd686`.
 ### `[@fst x]`
 `x` must be a list.
 
