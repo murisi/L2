@@ -527,16 +527,15 @@ Object *load_program_and_mutate(list exprs, list bindings, region expr_buf, regi
 
 list generate_metaprogram(list exprs, list *bindings, region expr_buf, region obj_buf, jumpbuf *handler);
 
-char *preprocessed_expression_address(void **addr, union expression *s, list bindings, region expr_buf, region obj_buf, jumpbuf *handler) {
+void *preprocessed_expression_address(union expression *s, list bindings, region expr_buf, region obj_buf, jumpbuf *handler) {
   if(s->base.type == symbol) {
     struct binding *bndg;
     foreach(bndg, bindings) {
       if(!strcmp(bndg->name, s->symbol.name)) {
-        *addr = bndg->address;
-        return NULL;
+        return bndg->address;
       }
     }
-    return s->symbol.name;
+    throw_undefined_symbol(s->symbol.name, handler);
   } else {
     union expression *expr_container = make_function(make_symbol(NULL, NULL, NULL, expr_buf), nil, s, NULL, NULL, expr_buf);
     list exprs_preprocessed = generate_metaprogram(lst(expr_container, nil, expr_buf),
@@ -544,42 +543,24 @@ char *preprocessed_expression_address(void **addr, union expression *s, list bin
     load_program_and_mutate(exprs_preprocessed, bindings, expr_buf, obj_buf, handler);
     union expression *expr_container_preprocessed = exprs_preprocessed->fst;
     void* (*container_addr)() = (void *) expr_container_preprocessed->function.reference->symbol.binding_aug->offset;
-    *addr = container_addr();
-    return NULL;
-  }
-}
-
-char *vgenerate_metas_no_throw(union expression **out, union expression *s, void *ctx) {
-  jumpbuf *handler = ((void **) ctx)[2];
-  region expr_buf = ((void **) ctx)[1];
-  list bindings = ((void **) ctx)[0];
-  
-  if(s->base.type == meta) {
-    list (*macro)(list, region, void *);
-    char *missing_sym_name = preprocessed_expression_address((void **) &macro, s->meta.reference, bindings, expr_buf, expr_buf, handler);
-    if(missing_sym_name) return missing_sym_name;
-    return vgenerate_metas_no_throw(out, build_expression(macro(s->meta.fragment->rst, expr_buf, 0), s, expr_buf, handler), ctx);
-  } else if(s->base.type == constrain) {
-    list (*macro)(region);
-    char *missing_sym_name = preprocessed_expression_address((void **) &macro, s->constrain.reference, bindings, expr_buf, expr_buf, handler);
-    if(missing_sym_name) return missing_sym_name;
-    s->constrain.signature = macro(expr_buf);
-    *out = s;
-    return NULL;
-  } else {
-    *out = s;
-    return NULL;
+    return container_addr();
   }
 }
 
 union expression *vgenerate_metas(union expression *s, void *ctx) {
   jumpbuf *handler = ((void **) ctx)[2];
-  union expression *out;
-  char *missing_sym_name = vgenerate_metas_no_throw(&out, s, ctx);
-  if(missing_sym_name) {
-    throw_undefined_symbol(missing_sym_name, handler);
+  region expr_buf = ((void **) ctx)[1];
+  list bindings = ((void **) ctx)[0];
+  
+  if(s->base.type == meta) {
+    list (*macro)(list, region, void *) = preprocessed_expression_address(s->meta.reference, bindings, expr_buf, expr_buf, handler);
+    return vgenerate_metas(build_expression(macro(s->meta.fragment->rst, expr_buf, 0), s, expr_buf, handler), ctx);
+  } else if(s->base.type == constrain) {
+    list (*macro)(region) = preprocessed_expression_address(s->constrain.reference, bindings, expr_buf, expr_buf, handler);
+    s->constrain.signature = macro(expr_buf);
+    return s;
   } else {
-    return out;
+    return s;
   }
 }
 
@@ -631,12 +612,20 @@ list try_generate_metas(list exprs, list bindings, region expr_buf, region obj_b
   union expression **s;
   foreachaddress(s, exprs) {
     if((*s)->base.type == meta) {
-      union expression *out_expr;
-      char *missing_sym_name = vgenerate_metas_no_throw(&out_expr, *s, (void * []) {bindings, expr_buf, handler});
-      if(!missing_sym_name) {
-        *s = out_expr;
-        prepend(out_expr, &extension, expr_buf);
+      jumpbuf generate_handler;
+      generate_handler.ctx = expr_buf;
+      setjump(&generate_handler);
+      if(generate_handler.ctx != expr_buf) {
+        union evaluate_error *err = (union evaluate_error *) generate_handler.ctx;
+        if(err->arguments.type == undefined_symbol) {
+          continue;
+        } else {
+          handler->ctx = generate_handler.ctx;
+          longjump(handler);
+        }
       }
+      union expression *out_expr = vgenerate_metas(*s, (void * []) {bindings, expr_buf, &generate_handler});
+      prepend(out_expr, &extension, expr_buf);
     }
   }
   return extension;
