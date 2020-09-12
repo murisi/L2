@@ -98,18 +98,18 @@
   The following function generates the L2 code to generate a fragment corresponding to the
   supplied fragment. Known as backquote in other languages.)
 
-(function quote-aux-aux (s t level map r)
+(function bq-aux-aux (s t level map r)
   [meta.bind6
     [llst level s (if [token? s]
       [llllst [lllst --- [@fst s] --- emt r] t map r emt r]
-      [quote-aux [@fst s] t level map r]) r]
+      [bq-aux [@fst s] t level map r]) r]
     (function _(level s inner-s t map r)
-      [meta.bind6 [llst s inner-s [quote-aux [@rst s] t level map r] r]
+      [meta.bind6 [llst s inner-s [bq-aux [@rst s] t level map r] r]
         (function _(s inner-s inner-s2 t map r)
           [llllst [lllllst [llllllst -i- -n- -v- -o- -k- -e- emt r]
             [lllst -l- -s- -t- emt r] inner-s inner-s2 t emt r] t map r emt r])])])
 
-(function quote-aux (s t level map r)
+(function bq-aux (s t level map r)
   (if [emt? s] [llllst [lllst -e- -m- -t- emt r] t map r emt r]
   
   (if [var? s]
@@ -121,11 +121,11 @@
   
   (if (if [emt? s] #:0 (if [token? s] #:0 (if [token? [@fst s]]
     (if [char= [@ffst s] -`-] [emt? [@rfst s]] #:0) #:0)))
-        [quote-aux-aux s t [+ level #:1] map r]
+        [bq-aux-aux s t [+ level #:1] map r]
   
   (if (if [emt? s] #:0 (if [token? s] #:0 (if [token? [@fst s]]
     (if [char= [@ffst s] -,-] (if [emt? [@rfst s]] level #:0) #:0) #:0)))
-        [quote-aux-aux s t [- level #:1] map r]
+        [bq-aux-aux s t [- level #:1] map r]
   
   (if (if [emt? s] #:0 (if [token? s] #:0 (if [token? [@fst s]]
     (if [char= [@ffst s] -,-] [emt? [@rfst s]] #:0) #:0)))
@@ -133,28 +133,26 @@
   
   (if (if [emt? s] #:0 (if [token? s] #:0 (if [token? [@fst s]]
     (if [char= [@ffst s] -!-] [emt? [@rfst s]] #:0) #:0)))
-        [meta.bind5 [lst s [quote-aux [@rrst s] t level map r] r]
+        [meta.bind5 [lst s [bq-aux [@rrst s] t level map r] r]
           (function _(outer-s s t map r)
             [llllst [llllst [llllllst -i- -n- -v- -o- -k- -e- emt r]
               [@frst outer-s] s t emt r] t map r emt r])]
 
-  [quote-aux-aux s t level map r])))))))
+  [bq-aux-aux s t level map r])))))))
 
 (ignore Quote macro that only works for fragments not containing variables.)
 
-(function quote (l r)
-  [@fst [quote-aux [@fst l] [@frst l] #:0 emt r]])
+(function bq (l r)
+  [@fst [bq-aux [@fst l] [@frst l] #:0 emt r]])
 
 (ignore Quote macro that works for fragments containing variables.)
 
 (function ` (l r)
-  [meta.bind4 [quote-aux [@fst l] [@frst l] #:0 emt r]
+  [meta.bind4 [bq-aux [@fst l] [@frst l] #:0 emt r]
     (function _(s t map r)
-      (quote(with quote.return
-        {(continuation quote.cont (,[meta.map-values map r]) {quote.return ,:s}),
-          [meta.map3 map t r (function _(elt t r) (quote[var ,:t]r)) r]})r))])
-
-(function bquote (l r) [` l r])
+      bq:(with bq.return
+        {(continuation bq.cont ,:[meta.map-values map r] {bq.return ,:s}),
+          [meta.map3 map t r (function _(elt t r) bq:[var ,:t]:r) r]}):r)])
 
 (function meta.bq (l buffer r) [`[llst l buffer emt r]r])
 
@@ -486,7 +484,7 @@
   ->
   (continuation ((continuation (t1 t2 ... tN)))))
 
-(function tuple- (l r) (`(continuation ((continuation ,:l)))r))
+(function tuple- (l r) `:(continuation ((continuation ,:l))):r)
 
 (ignore
   A macro to create a local tuple. Does the following transformation:
@@ -496,8 +494,8 @@
     {tuple.target val1 val2 ... valN}))
 
 (function tuple (l r)
-  (`(continuation tuple.cont (tuple.target)
-      {tuple.target , l})r))
+  `:(continuation tuple.cont (tuple.target)
+      {tuple.target , l}):r)
 
 (ignore
   A macro to match a local tuple. Does the following transformation:
@@ -517,16 +515,16 @@
           alternate)})}))
 
 (function tuple? (l r)
-  (`(function tuple?.func (l r)
-      (let (obj [@fst l]) (consequent [@frst l]) (alternate [@frrst l]) (matchers ,:[`[llst l `:r:r emt r]r])
+  `:(function tuple?.func (l r)
+      (let (obj [@fst l]) (consequent [@frst l]) (alternate [@frrst l]) (matchers ,:[meta.bq l `:r:r r])
       (let (vars [meta.label matchers [meta.concat `:tuple?.var:r [meta.concat [gentok r] `:.:r r] r] r])
-        (`(with tuple?.ret
+        `:(with tuple?.ret
             {,:obj (continuation tuple?.cont ,:vars
               {tuple?.ret
-                (,(loop build (expr consequent) (matchers [meta.reverse matchers r]) (vars [meta.reverse vars r])
+                ,:(loop build (expr consequent) (matchers [meta.reverse matchers r]) (vars [meta.reverse vars r])
                     (if [emt? matchers]
                       expr
-                      {build (`(,:[@fst matchers] ,:[@fst vars] ,:expr ,:alternate)r) [@rst matchers] [@rst vars]})))})})r))))r))
+                      {build `:(,:[@fst matchers] ,:[@fst vars] ,:expr ,:alternate):r [@rst matchers] [@rst vars]}))})}):r))):r)
 
 (ignore
   A macro to turn a predicate into a branch expression. Does the following transformation:
@@ -535,10 +533,10 @@
   (if (func arg1 arg2 ... argN obj) consequent alternate))
 
 (function | (l r)
-  (`(function |.func (l r)
-      (let (obj [@fst l]) (consequent [@frst l]) (alternate [@frrst l]) (partial ,:[`[llst [@fst l] `:r:r emt r]r])
+  `:(function |.func (l r)
+      (let (obj [@fst l]) (consequent [@frst l]) (alternate [@frrst l]) (partial ,:[meta.bq [@fst l] `:r:r r])
         (let (complete [meta.concat partial [lst obj emt r] r])
-          (`(if ,:complete ,:consequent ,:alternate)r))))r))
+          `:(if ,:complete ,:consequent ,:alternate):r))):r)
 
 (ignore
   A macro for capturing variables. Does the following transformation:
@@ -548,7 +546,7 @@
 
 (function . (l r)
   (`(function dot.func (l r)
-      (let (id ,:[`[llst [@fst l] `:r:r emt r]r])
+      (let (id ,:[meta.bq [@fst l] `:r:r r])
         (`(let (,:id ,:[@fst l]) ,:[@frst l])r)))r))
 
 (ignore
@@ -568,15 +566,15 @@
       alternate)))
 
 (function property? (l r)
-  (`(function property?.func (l r)
+  `:(function property?.func (l r)
       (let (obj [@fst l]) (alternate [@frrst l]) (consequent [@frst l]) (obj-sym [meta.concat `:property?.obj:r [gentok r] r])
-        (`(let (,:obj-sym ,:obj)
-            (,(loop build (expr consequent) (parts ,:[`[llst [meta.reverse l r] `:r:r emt r]r])
+        `:(let (,:obj-sym ,:obj)
+            ,:(loop build (expr consequent) (parts ,:[meta.bq [meta.reverse l r] `:r:r r])
               (if [emt? parts]
                 expr
                 (let (matcher [@frfst parts]) (prop [@ffst parts])
-                  {build (`(,:matcher (@ ,:prop ,:obj-sym) ,:expr ,:alternate)r)
-                    [@rst parts]})))))r)))r))
+                  {build `:(,:matcher (@ ,:prop ,:obj-sym) ,:expr ,:alternate):r
+                    [@rst parts]})))):r)):r)
 
 (ignore
   A macro for matching objects to at least one of the given matchers. The macro does the
@@ -595,14 +593,14 @@
           ...)))))
 
 (function or? (l r)
-  (`(function or?.func (l r)
+  `:(function or?.func (l r)
       (let (obj [@fst l]) (alternate [@frrst l]) (consequent [@frst l])
-        (`(let (or?.obj ,:obj)
-            (,(loop build (expr alternate) (parts ,:[`[llst [meta.reverse l r] `:r:r emt r]r])
+        `:(let (or?.obj ,:obj)
+            ,:(loop build (expr alternate) (parts ,:[meta.bq [meta.reverse l r] `:r:r r])
               (if [emt? parts]
                 expr
                 (let (matcher [@fst parts])
-                  {build (`(,:matcher or?.obj ,:consequent ,:expr)r) [@rst parts]})))))r)))r))
+                  {build `:(,:matcher or?.obj ,:consequent ,:expr):r [@rst parts]})))):r)):r)
 
 (ignore
   A macro for matching objects to at least one of the given matchers. The macro does the
@@ -621,14 +619,14 @@
       alternate)))
 
 (function and? (l r)
-  (`(function and?.func (l r)
+  `:(function and?.func (l r)
       (let (obj [@fst l]) (consequent [@frst l]) (alternate [@frrst l])
-        (`(let (and?.obj ,:obj)
-            (,(loop build (expr consequent) (parts ,:[`[llst [meta.reverse l r] `:r:r emt r]r])
+        `:(let (and?.obj ,:obj)
+            ,:(loop build (expr consequent) (parts ,:[meta.bq [meta.reverse l r] `:r:r r])
               (if [emt? parts]
                 expr
                 (let (matcher [@fst parts])
-                  {build (`(,:matcher and?.obj ,:expr ,:alternate)r) [@rst parts]})))))r)))r))
+                  {build `:(,:matcher and?.obj ,:expr ,:alternate):r [@rst parts]})))):r)):r)
 
 (ignore
   ((guards? matcher guard) obj consequent alternate)
@@ -636,10 +634,10 @@
   (matcher obj (if guard consequent alternate) alternate))
 
 (function guards? (l r)
-  (`(function guards?.func (l r)
+  `:(function guards?.func (l r)
       (let (consequent [@frst l]) (obj [@fst l]) (alternate [@frrst l])
-          (matcher ,:[`[llst [@fst l] `:r:r emt r]r]) (guard ,:[`[llst [@frst l] `:r:r emt r]r])
-        (`(,:matcher ,:obj (if ,:guard ,:consequent ,:alternate) ,:alternate)r)))r))
+          (matcher ,:[meta.bq [@fst l] `:r:r r]) (guard ,:[meta.bq [@frst l] `:r:r r])
+        (`(,:matcher ,:obj (if ,:guard ,:consequent ,:alternate) ,:alternate)r))):r)
 
 (ignore
   A variant of the if-expression where the condition and the consequent are evaluated in
@@ -683,7 +681,7 @@
 
 (function % (l r)
   (`(function percent.func (l r)
-      (let (func ,:[`[llst [@fst l] `:r:r emt r]r])
+      (let (func ,:[meta.bq [@fst l] `:r:r r])
         (`(with percent.return [,:func percent.return , l])r)))r))
 
 (ignore
@@ -694,7 +692,7 @@
 
 (function define (l r)
   `:(function ,:[@fst l] (l r)
-      (let (macro ,:[`[llst [@frst l] `:r:r emt r]r])
+      (let (macro ,:[meta.bq [@frst l] `:r:r r])
         [lst macro l r])):r)
 
 (ignore
@@ -707,7 +705,7 @@
 
 (function module (l r)
   `:(function module.func (l r)
-      (let (binds ,:[`[llst l `:r:r emt r]r])
+      (let (binds ,:[meta.bq l `:r:r r])
         `:(use , [meta.reverse [lst [@fst l] binds r] r]):r)):r)
 
 (ignore
@@ -730,9 +728,9 @@
 (function bifunction (l r)
   (let (name [@fst l]) (ct-params [@frst l]) (rt-params [@frrst l]) (body [@frrrst l])
     `:(function ,:name (l r)
-        (let (subs [meta.zip ,:[`[llst ct-params `:r:r emt r]r] l r])
-        (let (body-mod [substitute [meta.reverse [lst ,:[`[llst body `:r:r emt r]r] subs r] r] r])
-        (let (rt-params ,:[`[llst rt-params `:r:r emt r]r])
+        (let (subs [meta.zip ,:[meta.bq ct-params `:r:r r] l r])
+        (let (body-mod [substitute [meta.reverse [lst ,:[meta.bq body `:r:r r] subs r] r] r])
+        (let (rt-params ,:[meta.bq rt-params `:r:r r])
           `:(function bifunction.func ,:rt-params ,:body-mod):r)))):r))
 
 (ignore
@@ -752,11 +750,11 @@
 (function functor (l r)
   (let (ct-params [@fst l]) (binds [@rst l])
     `:(function functor.func (l r)
-        (let (binds ,:[`[llst binds `:r:r emt r]r]) (ct-params ,:[`[llst ct-params `:r:r emt r]r])
+        (let (binds ,:[meta.bq binds `:r:r r]) (ct-params ,:[meta.bq ct-params `:r:r r])
         (let (binds-sub [meta.map3 binds [meta.zip ct-params l r] r
             (function _ (elt subs r) [lst [@fst elt] [substitute [meta.reverse [lst [@rst elt] subs r] r] r] r]) r])
           `:(function functor.func (l r)
-              (let (binds-sub ,:[bquote[llst binds-sub `:r:r emt r]r])
+              (let (binds-sub ,:[meta.bq binds-sub `:r:r r])
                 `:(use , [meta.reverse [lst [@fst l] binds-sub r] r]):r)):r))):r))
 
 (ignore
