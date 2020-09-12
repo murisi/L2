@@ -50,13 +50,13 @@
           (let (bucket ($(loc(unit)i(@ ht-values ht))))
           (loop move-node (bucket bucket)
             (if [nil? bucket] (ignore)
-              (bind (key value) [@car bucket]
+              ((values? .:key .:value) [@car bucket]
               (let (next [@cdr bucket])
               (let (new-bucket-idx [rem [(@ ht-hash-func ht) key] new-bucket-count])
               (let (new-bucket (loc(unit)new-bucket-idx new-values)) (do
               (setf cdr bucket nil)
               [append-list new-bucket bucket]
-              {move-node next})))))))))
+              {move-node next})))) (ignore))))))
         (setf ht-bucket-count ht new-bucket-count)
         (setf ht-values ht new-values)))) (ignore))))
 
@@ -79,10 +79,10 @@
   (loop find-end (bucket bucket)
     (if [nil? bucket]
       (false)
-      (bind (k v) [@car bucket]
+      ((values? .:k .:v) [@car bucket]
         (if [(@ ht-equals-func ht) key k]
           (do [set out v] (true))
-          {find-end [@cdr bucket]})))))))
+          {find-end [@cdr bucket]}) (ignore)))))))
 
 (constrain ht-get (\ r (?(a b) `:(function (,:a (hash-table ,:a ,:b)) ,:b):r r)))
 
@@ -90,10 +90,10 @@
   (let (bucket-idx [rem [(@ ht-hash-func ht) key] (@ ht-bucket-count ht)])
   (let (bucket ($(loc(unit)bucket-idx(@ ht-values ht))))
   (loop find-end (bucket bucket)
-    (bind (k v) [@car bucket]
+    ((values? .:k .:v) [@car bucket]
       (if [(@ ht-equals-func ht) key k]
         v
-        {find-end [@cdr bucket]}))))))
+        {find-end [@cdr bucket]}) (ignore))))))
 
 (constrain ht-iter-key (\ r (?(a b c d) `:(function ((continuation ((! iterator ,:b ,:c))) ,:a (hash-table ,:a ,:b)) ,:d):r r)))
 
@@ -104,11 +104,11 @@
     (loop find-end (bucket bucket) (recv recv) (ctx ctx)
       (if [nil? bucket]
         {end ctx}
-        (bind (k v) [@car bucket]
+        ((values? .:k .:v) [@car bucket]
           (if [(@ ht-equals-func ht) key k]
             (cps {recv next ctx v}
               (next (new-recv new-ctx) {find-end [@cdr bucket] [cast new-recv] new-ctx}))
-            {find-end [@cdr bucket] recv ctx})))))))})
+            {find-end [@cdr bucket] recv ctx}) (ignore)))))))})
 
 (constrain ht-remove (\ r (?(a b d) `:(function (,:a (hash-table ,:a ,:b)) ,:d):r r)))
 
@@ -118,10 +118,10 @@
   (loop find-end (bucket bucket)
     (if [nil? $:bucket]
       (ignore)
-      (bind (k v) [@car $:bucket]
+      ((values? .:k .:v) [@car $:bucket]
         (if [(@ ht-equals-func ht) key k]
           (do [set bucket [@cdr $:bucket]] [set- (& ht-element-count ht) #:1])
-          {find-end (& cdr $:bucket)})))))))
+          {find-end (& cdr $:bucket)}) (ignore)))))))
 
 (constrain ht-removeall (\ r (?(a b d) `:(function ((hash-table ,:a ,:b)) ,:d):r r)))
 
@@ -138,9 +138,9 @@
       (fold (ctx (tuple recv ictx)) (i (%:range #:0 (@ ht-bucket-count ht)))
         (fold (ctx ctx) (assoc (%:list-iter ($(loc (unit) i (@ ht-values ht)))))
           ((tuple? .:recv .:ictx) ctx
-            (bind (key val) assoc
+            ((values? .:key .:val) assoc
               (cps {recv next ictx (tuple key val)}
-                (next (new-recv new-ctx) (tuple [cast new-recv] new-ctx)))) (ignore)))) {end ictx} (ignore)))})
+                (next (new-recv new-ctx) (tuple [cast new-recv] new-ctx))) (ignore)) (ignore)))) {end ictx} (ignore)))})
 
 (ignore
   Puts all the given associations into the given hash table. Does the following
@@ -164,10 +164,10 @@
   (loop ht-find.find-end (ht-find.bucket ht-find.bucket)
     (if [nil? ht-find.bucket]
       (false)
-      (bind (ht-find.k value) [@car ht-find.bucket]
+      ((values? .:ht-find.k .:value) [@car ht-find.bucket]
         (if (and [(@ ht-equals-func ht) ht-find.key ht-find.k] expr)
           (true)
-          {ht-find.find-end [@cdr ht-find.bucket]}))))))))
+          {ht-find.find-end [@cdr ht-find.bucket]}) (ignore))))))))
 
 (function ht-find (l r)
   (`(let (ht-find.key (,[@frfst l])) (ht-find.ht (,[@frrfst l]))
@@ -176,10 +176,10 @@
     (loop ht-find.find-end (ht-find.bucket ht-find.bucket)
       (if [nil? ht-find.bucket]
         (false)
-        (bind (ht-find.k (,[@ffst l])) [@car ht-find.bucket]
+        ((values? .:ht-find.k .:(,[@ffst l])) [@car ht-find.bucket]
           (if (and [(@ ht-equals-func ht-find.ht) ht-find.key ht-find.k] (,[@frst l]))
             (true)
-            {ht-find.find-end [@cdr ht-find.bucket]})))))))r))
+            {ht-find.find-end [@cdr ht-find.bucket]}) (ignore)))))))r))
 
 (constrain hash-str (\ r (?(a) `:(function (string) ,:a):r r)))
 

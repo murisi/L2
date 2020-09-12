@@ -37,7 +37,7 @@
 (constrain vpropagate-expressions (\ r (?(a b) (`(function ((expr ,:b) (values region ,:a)) (expr ,:b))r)r)))
 
 (function vpropagate-expressions (e ctx)
-  (bind (buf handler) ctx
+  ((values? .:buf .:handler) ctx
     (if (and [= (@ expr-type e) (-continuation-)] (not (@ expr-escapes e)) [= [length (@ expr-jumps e)] #:1])
       (do
         (let (jmp [@car (@ expr-jumps e)])
@@ -53,7 +53,7 @@
         [= (@ expr-type (@ bndg-propagate (@ expr-reference e))) (-literal-)])
       (do
         [make-literal (@ expr-value (@ bndg-propagate (@ expr-reference e))) null-fragment null-expr buf handler])
-      e)))))
+      e))) (ignore)))
 
 (ignore Does the following optimizations:
   (if (if cond <zero literal> <non-zero literal>) <consequent> <alternate>)
@@ -138,7 +138,7 @@
 (constrain vreplace-value-bindings (\ r (?(a) (`(function ((expr ,:a) (values bndg-aug bndg-aug)) (expr ,:a))r)r)))
 
 (function vreplace-value-bindings (e ctx)
-  (bind (repl-target replacement) ctx (do
+  ((values? .:repl-target .:replacement) ctx (do
     (if [= (@ expr-binding-aug e) repl-target]
       (setf expr-binding-aug e replacement)
       (ignore))
@@ -153,7 +153,7 @@
         (if [= (@ expr-reference e) repl-target]
           (do (setf expr-reference e replacement) e)
           e))
-      e))))
+      e)) (ignore)))
 
 (constrain assign-expr-is-reads (\ r (?(a) (`(function ((expr ,:a)) ())r)r)))
 
@@ -225,12 +225,12 @@
 (constrain vunlink-symbols (\ r (?(a b) (`(function ((expr ,:b) (values (hash-table string bndg-aug) region ,:a)) (expr ,:b))r)r)))
 
 (function vunlink-symbols (s ctx)
-  (bind (blacklist buf hdl) ctx
+  ((values? .:blacklist .:buf .:hdl) ctx
     (with-region buf
       (if (and [= (@ expr-type s) (-symbol-)] [not= (@ expr-reference s) null-binding]
           [contains (@ expr-reference s) [collect-list (%:ht-iter-key (@ bndg-name (@ expr-reference s)) blacklist) nil buf hdl]])
         (do (setf expr-reference s null-binding) s)
-        s))))
+        s)) (ignore)))
 
 (constrain assign-binding (\ r (?(a b) (`(function ((expr ,:b) (hash-table string bndg-aug)) ,:a)r)r)))
 
@@ -344,7 +344,7 @@
 (constrain vfind-dependencies (\ r (?(a b) (`(function ((expr ,:b) (values region ,:a)) (expr ,:b))r)r)))
 
 (function vfind-dependencies (s ctx)
-  (bind (r handler) ctx (substitute (.. r handler) (do
+  ((values? .:r .:handler) ctx (substitute (.. r handler) (do
     (switch = (@ expr-type s)
       ((-if-) (do
         [prepend (@ expr-condition s) (& expr-dependencies s) ..]
@@ -378,7 +378,7 @@
         [prepend s (& expr-dependencies (@ expr-expression s)) ..]))
       
       (ignore))
-    s))))
+    s)) (ignore)))
 
 (constrain construct-sccs (\ r (?(a b c) (`(function ((expr ,:c) ,:a (ref (list (expr ,:c))) (ref (list (list (expr ,:c)))) region ,:b) ())r)r)))
 
@@ -710,7 +710,7 @@
   (\ r (?(a b) (`(function ((expr ,:b) (values (list initializer) (hash-table string bndg-aug) region region ,:a)) (expr ,:b))r)r)))
 
 (function vgenerate-metas (s ctx)
-  (bind (inits bindings buf buf2 handler) ctx
+  ((values? .:inits .:bindings .:buf .:buf2 .:handler) ctx
     (switch = (@ expr-type s)
       ((-meta-)
         (let (macro [cast [preprocessed-expression-address (@ expr-target s) inits bindings buf buf2 handler]])
@@ -721,7 +721,7 @@
         (let (macro [cast [preprocessed-expression-address (@ expr-target s) inits bindings buf buf2 handler]])
           (do (setf bndg-signature (@ expr-binding-aug s) [macro buf]) s)))
       
-      s)))
+      s) (ignore)))
 
 (constrain init-function
   (\ r (?(a b c) (`(function ((expr ,:c) (list initializer) (hash-table string bndg-aug) region region ,:a (ref ,:b)) ,:b)r)r)))

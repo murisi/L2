@@ -408,28 +408,33 @@
           [llst storer `:values.stor:r params r] params r] emt r] args r]):r))))
 
 (ignore
-  Binds values bound by values. I.e. evaluating (bind (param1 param2 ...) x expr) where
+  Binds values bound by values. I.e. evaluating ((values? matcher1 matcher2 ... matcherN) x consequent alternate) where
   x is (values storer arg1 arg2 ...) is the same as evaluating expr in an environment where
   paramj is argj for each j.)
 
-(function bind (l r)
-  (let (identifiers [@fst l]) (param [@frst l]) (body [@frrst l])
-  (let (bind-storage [llst (` storage r) (` bind r) [meta.map2 identifiers r (\ l r (`(ignore)r)) r] r])
-  (let (vars [meta.label identifiers `:values.var:r r])
-  (let (unquoted-vars [meta.map2 vars r (\ l r [llst [lst -,- emt r] l emt r]) r])
-  (let (param-parts (loop make-set (identifiers identifiers) (offset #:0) (params emt)
-      (if [emt? identifiers]
-        [meta.reverse params r]
-        {make-set [@rst identifiers] [+ offset (unit)]
-          [lst (`[get [+ bind.param (,[=# offset r])]]r) params r]})))
-    (`(with bind.return
-        (let (bind.param (let (bind ,:bind-storage) ,:param))
-          (,[lllst (` jump r) (`(constrain (continuation bind.func (,[lst (` bind.param r) identifiers r])
-                {bind.return ,:body})
-              (\ bind.r (? ,:vars
-                [llst (` continuation bind.r) [lst [lst (` values bind.r) (,[`[llst unquoted-vars (` bind.r r) emt r]r]) bind.r]
-                  (,[`[llst unquoted-vars (` bind.r r) emt r]r]) bind.r] emt bind.r] bind.r)))r)
-            (` bind.param r) param-parts r])))r)))))))
+(function values? (l r)
+  `:(function values?.func (l r)
+      (let (matchers ,:[meta.bq l `:r:r r]) (param [@fst l]) (consequent [@frst l]) (alternate [@frrst l])
+      (let (bind-storage [llst `:storage:r `:bind:r [meta.map2 matchers r (\ l r `:(ignore):r) r] r])
+      (let (vars [meta.label matchers `:values.var:r r])
+      (let (unquoted-vars [meta.map2 vars r meta.unquote r])
+      (let (param-parts (loop make-set (matchers matchers) (offset #:0) (params emt)
+          (if [emt? matchers]
+            [meta.reverse params r]
+            {make-set [@rst matchers] [+ offset (unit)]
+              [lst `:[get [+ bind.param ,:[=# offset r]]]:r params r]})))
+        `:(with bind.return
+            (let (bind.param (let (bind ,:bind-storage) ,:param))
+              {(constrain (continuation bind.func (bind.param , vars)
+                    {bind.return
+                      ,:(loop build (expr consequent) (matchers [meta.reverse matchers r]) (vars [meta.reverse vars r])
+                          (if [emt? matchers]
+                            expr
+                            {build `:(,:[@fst matchers] ,:[@fst vars] ,:expr ,:alternate):r [@rst matchers] [@rst vars]}))})
+                  (\ bind.r (? ,:vars
+                    `:(continuation ((values , ,:[meta.bq unquoted-vars `:bind.r:r r]) ,
+                      ,:[meta.bq unquoted-vars `:bind.r:r r])):bind.r bind.r)))
+                bind.param , param-parts})):r)))))):r)
 
 (ignore
   The following macro implements the following transformation:

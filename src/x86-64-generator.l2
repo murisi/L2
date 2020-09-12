@@ -189,12 +189,12 @@
 
 (function initialize-expressions (exprs bndgs offset mask depth inits ret-val buf hdl)
   (let (sub-expr-offset [- offset [* [+ [length exprs] [length bndgs]] (word-size)]])
-  (bind (bottom-offset in-use)
+  ((values? .:bottom-offset .:in-use)
     (loop init-subs (bottom-offset sub-expr-offset) (in-use mask) (u exprs)
       (if [nil? u]
         (values (use-storage bind) bottom-offset in-use)
-        (bind (bottom-offset' in-use') [initialize-expression [@car u] sub-expr-offset inits bind buf hdl]
-          {init-subs [min bottom-offset bottom-offset'] [bor in-use in-use'] [@cdr u]}))) (do
+        ((values? .:bottom-offset' .:in-use') [initialize-expression [@car u] sub-expr-offset inits bind buf hdl]
+          {init-subs [min bottom-offset bottom-offset'] [bor in-use in-use'] [@cdr u]} (ignore)))) (do
   (for (u (%:list-iter exprs)) (ignore) (setf bndg-storage (@ expr-binding-aug u) (nil-storage)))
   (for (u (%:list-iter bndgs)) (ignore) (setf bndg-storage u (nil-storage)))
   (let (in-use (fold (in-use in-use) (u (%:list-iter exprs))
@@ -223,7 +223,7 @@
             (if (and [>= [bndg-depth v] depth] (not [bndg-assigned? v]) (@ bndg-is-read v))
               [binding-to-register/memory v offset in-use]
               in-use) [@cdr u]}))))
-  (values (use-storage ret-val) bottom-offset in-use)))))))))
+  (values (use-storage ret-val) bottom-offset in-use)))))) (ignore))))
 
 (constrain generate-function
   \:r:(?(a b c) `:(function ((expr ,:c) (ref (list instr)) (ref (list reloc)) region ,:a) ,:b):r r))
@@ -312,12 +312,12 @@
     (setf bndg-preferred-storage (@ expr-binding-aug (@ expr-expression n)) (register-storage))
     (setf bndg-preferred-offset (@ expr-binding-aug (@ expr-expression n)) (rax))
     
-    (bind (frame-size in-use)
+    ((values? .:frame-size .:in-use)
       [initialize-expressions (storage-cons (@ expr-expression n) nil) (@ expr-parameters n)
         (@ expr-frame-size n) 0x:FFFFFFFFFFFF0830 (@ expr-depth n) inits ret-val buf hdl] (do
     (setf expr-registers-used n in-use)
     (setf expr-frame-size n frame-size)
-    (for (t (%:list-iter (@ expr-parameters n))) (ignore) (setf bndg-size t (word-size)))))
+    (for (t (%:list-iter (@ expr-parameters n))) (ignore) (setf bndg-size t (word-size)))) (ignore))
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (setf expr-generator n [function->generator generate-function])
     (values (use-storage ret-val) offset 0x:0000000000000800)
@@ -579,13 +579,13 @@
           (setf bndg-preferred-storage (@ expr-binding-aug [@car rem-args]) (register-storage))
           (setf bndg-preferred-offset (@ expr-binding-aug [@car rem-args]) ($(loc (unit) i call-regs)))
           {set-prefs [@cdr rem-args] [+ i #:1]}))))
-    (bind (bottom-offset in-use)
+    ((values? .:bottom-offset .:in-use)
       [initialize-expressions (storage-cons (@ expr-target n) (@ expr-arguments n)) nil offset
         0x:FFFFFFFFFFFF0031 (@ expr-depth n) inits ret-val buf hdl] (do
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (setf expr-generator n [function->generator generate-invoke])
     (values (use-storage ret-val) bottom-offset [bor in-use 0x:FFFFFFFFFFFF0FF7])
-    (true))))))
+    (true)) (ignore)))))
 
 (constrain generate-if
   \:r:(?(a b c) `:(function ((expr ,:c) (ref (list instr)) (ref (list reloc)) region ,:a) ,:b):r r))

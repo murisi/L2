@@ -28,8 +28,8 @@
             #:0 #:0 inits (values storage (ignore)(ignore)) buf2 handler]
           [setup-collect-static-bindings expr]
           [collect-static-bindings expr static-bindings ..])))
-      (bind (instrs relocs func-secs) [generate-program exprs bind ..]
-        (values (use-storage outs) instrs relocs func-secs undefined-bindings $:static-bindings))))))
+      ((values? .:instrs .:relocs .:func-secs) [generate-program exprs bind ..]
+        (values (use-storage outs) instrs relocs func-secs undefined-bindings $:static-bindings) (ignore))))))
 
 (ignore
   Loads a program into memory and returns a handle to it. program is a program expression.
@@ -41,11 +41,11 @@
 (function load-program (exprs inits buf buf2 handler)
   (substitute (.. buf handler)
     (with-region buf2
-      (bind (asms relocs func-secs undefined-bindings static-bindings) [compile-program exprs inits bind buf2 buf handler]
-      (bind (objdest objdest-sz) [write-elf asms relocs func-secs undefined-bindings static-bindings bind buf2 buf handler]
+      ((values? .:asms .:relocs .:func-secs .:undefined-bindings .:static-bindings) [compile-program exprs inits bind buf2 buf handler]
+      ((values? .:objdest .:objdest-sz) [write-elf asms relocs func-secs undefined-bindings static-bindings bind buf2 buf handler]
       (let (obj [load objdest objdest-sz buf handler]) (do
       [binding-offsets-to-addresses asms func-secs static-bindings obj buf handler]
-      obj)))))))
+      obj)) (ignore)) (ignore)))))
 
 (ignore
   Behavior is the same as load-program, but with the following addition: bndgs is a map
@@ -90,13 +90,13 @@
 (function read-expressions (fn buf buf2 handler)
   (substitute (.. buf handler)
     (with-region buf2
-      (bind (src-buf src-sz) [read-to-buffer fn bind buf2 handler]
+      ((values? .:src-buf .:src-sz) [read-to-buffer fn bind buf2 handler]
       (let (pos (storage _ #:0))
       (let (exprs-start (storage _ nil))
       (loop cons-expr (exprs-end exprs-start)
         (if [read-whitespace src-buf src-sz pos]
           {cons-expr [append [build-expression [read-fragment src-buf src-sz pos ..] null-expr ..] exprs-end ..]}
-          $:exprs-start))))))))
+          $:exprs-start)))) (ignore)))))
 
 (storage unsupported-intrinsics-error (ignore))
 
@@ -116,9 +116,9 @@
         {handler (storage _ unsupported-intrinsics-error intrinsic-fn)})) nil ..])
     
     (let (objects1 (fold (objects nil) (src (%:list-iter object-fns))
-      (bind (obj-buf obj-sz) [read-to-buffer src bind ..]
+      ((values? .:obj-buf .:obj-sz) [read-to-buffer src bind ..]
       (let (obj [load obj-buf obj-sz ..])
-        (do [immutable-bindings obj bindings ..] [cons obj objects ..])))))
+        (do [immutable-bindings obj bindings ..] [cons obj objects ..])) (ignore))))
     
     (let (objects2 (fold (objects objects1) (intrinsic-fn (%:list-iter intrinsic-fns))
       (switch str= intrinsic-fn
@@ -144,11 +144,11 @@
 (function compile-program-to-elf (exprs inits outfn buf buf2 handler)
   (substitute (.. buf handler)
     (with-region buf2
-      (bind (asms relocs func-secs undefined-bindings static-bindings) [compile-program exprs inits bind buf2 buf handler]
-      (bind (objdest objdest-sz) [write-elf asms relocs func-secs undefined-bindings static-bindings bind buf2 buf handler]
+      ((values? .:asms .:relocs .:func-secs .:undefined-bindings .:static-bindings) [compile-program exprs inits bind buf2 buf handler]
+      ((values? .:objdest .:objdest-sz) [write-elf asms relocs func-secs undefined-bindings static-bindings bind buf2 buf handler]
       (let (fd [create outfn handler]) (do
       [print fd objdest objdest-sz handler]
-      [close fd handler])))))))
+      [close fd handler])) (ignore)) (ignore)))))
 
 (ignore
   Takes a list of L2 source files and compiles them into object files. programs is a

@@ -1135,11 +1135,11 @@
           [append lkd-sym (& lkdsh-symtab lkd-symtab-shdr) temp-buf cleanup]))))
         (ignore))))
         
-  (bind (text text-len) [assemble instrs bind temp-buf cleanup] (do
+  ((values? .:text .:text-len) [assemble instrs bind temp-buf cleanup] (do
   (setf sh-size (@ lkdsh-raw lkd-text-shdr) text-len)
   (setf lkdsh-offset lkd-text-shdr text)
   
-  lkd-text-shdr)))))))
+  lkd-text-shdr) (ignore)))))))
 
 (constrain make-function-relocation-section
   (\ r (?(a) (`(function ((list reloc) string linked-elf64-e linked-elf64-sh linked-elf64-sh region ,:a) linked-elf64-sh)r)r)))
@@ -1158,14 +1158,14 @@
 
   (for (reloc (%:list-iter relocations)) (ignore)
     (for (loca (%:list-iter (@ op-locations (@ reloc-operand reloc)))) (ignore)
-      (bind (operand-pos operand-size instr-pos instr-size) loca
+      ((values? .:operand-pos .:operand-size .:instr-pos .:instr-size) loca
         (let (lkd-rela [make-lkdr (@ bndg-other(@ reloc-binding reloc)) temp-buf cleanup])
         (let (rela (@ lkdr-raw lkd-rela)) (do
         (setf r-offset rela operand-pos)
         (setf r-info rela (elf64-r-info (ignore) (@ reloc-type reloc)))
         (setf r-addend rela
           [(@ reloc-addend-func reloc) (@ reloc-context reloc) operand-pos operand-size instr-pos instr-size])
-        [append lkd-rela (& lkdsh-rela lkd-rela-shdr) temp-buf cleanup]))))))
+        [append lkd-rela (& lkdsh-rela lkd-rela-shdr) temp-buf cleanup]))) (ignore))))
   
   lkd-rela-shdr)))))
 
@@ -1389,16 +1389,16 @@
     (let (main-text-sec [make-function-text-section instrs (" .text) lkd-ehdr lkd-strtab-shdr lkd-symtab-shdr rgn2 handler])
     
     (let (func-text-secs [collect-list (map (func-sec (%:list-iter function-sections))
-      (bind (name instrs relocs) func-sec
+      ((values? .:name .:instrs .:relocs) func-sec
         [make-function-text-section instrs [rstrcat (" .text.) name rgn2 handler]
-          lkd-ehdr lkd-strtab-shdr lkd-symtab-shdr rgn2 handler])) nil rgn2 handler]) (do
+          lkd-ehdr lkd-strtab-shdr lkd-symtab-shdr rgn2 handler] (ignore))) nil rgn2 handler]) (do
     
     [make-function-relocation-section relocations (" .rela.text) lkd-ehdr main-text-sec lkd-symtab-shdr rgn2 handler]
     
     (for (func-sec (%:list-iter function-sections)) (func-text-sec (%:list-iter func-text-secs)) (ignore)
-      (bind (name instrs relocs) func-sec
+      ((values? .:name .:instrs .:relocs) func-sec
         [make-function-relocation-section relocs [rstrcat (" .rela.text.) name rgn2 handler]
-          lkd-ehdr func-text-sec lkd-symtab-shdr rgn2 handler])))))
+          lkd-ehdr func-text-sec lkd-symtab-shdr rgn2 handler] (ignore))))))
     
     (ignore Mark every symbol as false in preparation for the usage analysis.)
     
@@ -1579,9 +1579,9 @@
           (ignore))))
     
     (for (func-sec (%:list-iter function-sections)) (ignore)
-      (bind (name instrs relocs) func-sec
+      ((values? .:name .:instrs .:relocs) func-sec
         (for (l (%:list-iter instrs)) (ignore)
           (let (instr-bndg (@ instr-binding l))
             (if [not= instr-bndg null-binding]
               [set+ (& bndg-offset instr-bndg) [segment obj [rstrcat (" .text.) name reg hdl]]]
-              (ignore)))))))))
+              (ignore)))) (ignore))))))
