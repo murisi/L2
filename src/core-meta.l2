@@ -53,6 +53,22 @@
 (function lllllllllst (a b c d e f g h i j r) [lst a [llllllllst b c d e f g h i j r] r])
 
 (ignore
+  When bootstrapping macros, it is very inconvenient to manually use continuations to
+  bind variables, hence the following transformations.)
+
+(function meta.bind1 (tuple fun)
+  [fun [@fst tuple]])
+
+(function meta.bind4 (tuple fun)
+  [fun [@fst tuple] [@frst tuple] [@frrst tuple] [@frrrst tuple]])
+
+(function meta.bind5 (tuple fun)
+  [fun [@fst tuple] [@frst tuple] [@frrst tuple] [@frrrst tuple] [@frrrrst tuple]])
+
+(function meta.bind6 (tuple fun)
+  [fun [@fst tuple] [@frst tuple] [@frrst tuple] [@frrrst tuple] [@frrrrst tuple] [@frrrrrst tuple]])
+
+(ignore
   The following function provides an abbreviation for getting a value from a memory
   address. It implements the transformation $:a -> [get a].)
 
@@ -78,21 +94,6 @@
         {return values}
         {extract [@rst map] [lst [@frfst map] values r]})) map emt}))
 
-(function meta.bind1 (tuple fun)
-  [fun [@fst tuple]])
-
-(function meta.bind4 (tuple fun)
-  [fun [@fst tuple] [@frst tuple] [@frrst tuple] [@frrrst tuple]])
-
-(function meta.bind5 (tuple fun)
-  [fun [@fst tuple] [@frst tuple] [@frrst tuple] [@frrrst tuple] [@frrrrst tuple]])
-
-(function meta.bind6 (tuple fun)
-  [fun [@fst tuple] [@frst tuple] [@frrst tuple] [@frrrst tuple] [@frrrrst tuple] [@frrrrrst tuple]])
-
-(function meta.bind7 (tuple fun)
-  [fun [@fst tuple] [@frst tuple] [@frrst tuple] [@frrrst tuple] [@frrrrst tuple] [@frrrrrst tuple] [@frrrrrrst tuple]])
-
 (ignore
   The following function generates the L2 code to generate a fragment corresponding to the
   supplied fragment. Known as backquote in other languages.)
@@ -112,10 +113,11 @@
   (if [emt? s] [llllst [lllst -e- -m- -t- emt r] t map r emt r]
   
   (if [var? s]
-    [meta.bind6 [llllllst [llllllst -q- -u- -o- -t- -e- -.- [gentok r] r] [meta.lookup-var s map] s t map r emt r] (function _(state res s t map r)
-      (if [emt? res]
-        [llllst state t [lst [llst s state emt r] map r] r emt r]
-        [llllst [@frst res] t map r emt r]))]
+    [meta.bind6 [llllllst [llllllst -q- -u- -o- -t- -e- -.- [gentok r] r] [meta.lookup-var s map] s t map r emt r]
+      (function _(state res s t map r)
+        (if [emt? res]
+          [llllst state t [lst [llst s state emt r] map r] r emt r]
+          [llllst [@frst res] t map r emt r]))]
   
   (if (if [emt? s] #:0 (if [token? s] #:0 (if [token? [@fst s]]
     (if [char= [@ffst s] -`-] [emt? [@rfst s]] #:0) #:0)))
@@ -376,15 +378,14 @@
 
 (function ignore (l r) [=# 0x:DEADBEEF r])
 
-(ignore Takes a list and produces a list of unique tokens that are prefixed by the given seed.)
+(ignore Takes a list and produces a list of unique tokens that are prefixed by the given prefix.)
 
-(function meta.label (list seed r) (with return
-  {(continuation aux (labels state list)
-    (if (not [emt? list])
-      {aux [lst state labels r]
-        [meta.reverse [lst -1- [meta.reverse state r]r]r]
-        [@rst list]}
-      {return [meta.reverse labels r]})) emt seed list}))
+(function meta.label (list prefix r)
+  (with return
+    {(continuation aux (labels list)
+      (if [emt? list]
+        {return labels}
+        {aux [lst [meta.concat prefix [gentok r] r] labels r] [@rst list]})) emt list}))
 
 (ignore
   Does the transformation (values storer arg1 arg2 ...) -> (storer values.stor arg1 arg2 ...).
@@ -393,8 +394,8 @@
 
 (function values (l r)
   (let (storer [@fst l]) (args [@rst l])
-  (let (params [meta.label args (` values.param r) r])
-        (vars [meta.label args (` values.var r) r])
+  (let (params [meta.label args (` values.param. r) r])
+        (vars [meta.label args (` values.var. r) r])
   (let (unquoted-vars [meta.map2 vars r (\ l r [llst [lst -,- emt r] l emt r]) r])
     (`(with values.return
         (,[llst (` jump r) [llllst (` continuation r) (` values.eval r) params [lllst (` jump r) (`(constrain
