@@ -158,6 +158,8 @@
 
 (function meta.bqbq (l buffer1 buffer2 r) [meta.bq [meta.bq l buffer1 r] buffer2 r])
 
+(function meta.unquote (l r) [llst [lst -,- emt r] l emt r])
+
 (ignore
   The following function generates code to create variables and bind them. It does the
   following transformation:
@@ -392,18 +394,18 @@
 
 (function values (l r)
   (let (storer [@fst l]) (args [@rst l])
-  (let (params [meta.label args (` values.param. r) r])
-        (vars [meta.label args (` values.var. r) r])
-  (let (unquoted-vars [meta.map2 vars r (\ l r [llst [lst -,- emt r] l emt r]) r])
-    (`(with values.return
-        (,[llst (` jump r) [llllst (` continuation r) (` values.eval r) params [lllst (` jump r) (`(constrain
-            (continuation values.func (,[lst (` values.storage r) params r])
+  (let (params [meta.label args `:values.param.:r r])
+        (vars [meta.label args `:values.var.:r r])
+  (let (unquoted-vars [meta.map2 vars r meta.unquote r])
+    `:(with values.return
+        ,:[llst `:jump:r [llllst `:continuation:r `:values.eval:r params [lllst `:jump:r `:(constrain
+            (continuation values.func ,:[lst `:values.storage:r params r]
               {values.return values.storage})
             (\ values.r (? ,:vars
-              (`(continuation (,[lst
-                  [lst (` values values.r) (,[`[llst unquoted-vars (` values.r r) emt r]r]) values.r]
-                  (,[`[llst unquoted-vars (` values.r r) emt r]r]) values.r])) values.r) values.r)))r)
-          [llst storer (` values.stor r) params r] params r] emt r] args r]))r)))))
+              `:(continuation ,:[lst
+                  [lst `:values:values.r ,:[meta.bq unquoted-vars `:values.r:r r] values.r]
+                  ,:[`[llst unquoted-vars `:values.r:r emt r]r] values.r]):values.r values.r))):r
+          [llst storer `:values.stor:r params r] params r] emt r] args r]):r))))
 
 (ignore
   Binds values bound by values. I.e. evaluating (bind (param1 param2 ...) x expr) where
@@ -783,5 +785,5 @@
                 `:(with interface.ret
                     (let (,:cont-sym (constrain (continuation ,:cont-sym ,:ids {interface.ret ,:expr})
                         \:(, buffer):(let (interface.r (, buffer)) (let , [meta.reverse
-                          [lst (` `:(continuation ,:,;[meta.bq sigs buffer r]):interface.r r) var-binds r] r]))))
+                          [lst (` `:(continuation ,:,;[meta.bq [meta.map2 sigs r meta.unquote r] buffer r]):interface.r r) var-binds r] r]))))
                       (,:module {,:cont-sym , ids}))):r)):r)):r)))
