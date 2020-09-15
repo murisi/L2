@@ -41,7 +41,7 @@
     (if (and [= (@ expr-type e) (-continuation-)] (not (@ expr-escapes e)) [= [length (@ expr-jumps e)] #:1])
       (do
         (let (jmp [@car (@ expr-jumps e)])
-          (for (u (%:list-iter(@ expr-parameters e))) (v (%:list-iter(@ expr-arguments jmp))) (ignore)
+          (for (u (%:list-iter(@ expr-parameters e))) (v (%:list-iter(@ expr-jump-arguments jmp))) (ignore)
             (setf bndg-propagate u v)))
         e)
     (if (and [= (@ expr-type e) (-symbol-)] [not= (@ bndg-propagate (@ expr-reference e)) null-expr]
@@ -99,7 +99,7 @@
 (function vdominate-jumps (e ctx)
   (switch = (@ expr-type e)
     ((-invoke-) (-jump-)
-      (loop search (exprs (storage-cons (@ expr-target e) (@ expr-arguments e)))
+      (loop search (exprs (storage-cons (@ expr-target e) $:[expr-arguments e]))
         (if [nil? exprs] e
         (if [= (@ expr-type [@car exprs]) (-jump-)] [@car exprs]
           {search [@cdr exprs]}))))
@@ -125,10 +125,10 @@
       [assign-depths (@ expr-consequent e) [+ depth #:1]]
       [assign-depths (@ expr-alternate e) [+ depth #:1]]))
     ((-invoke-) (-jump-)
-      (for (u (%:list-iter (storage-cons (@ expr-target e) (@ expr-arguments e)))) (ignore)
+      (for (u (%:list-iter (storage-cons (@ expr-target e) $:[expr-arguments e]))) (ignore)
         [assign-depths u [+ depth #:1]]))
     ((-storage-)
-      (for (u (%:list-iter (@ expr-arguments e))) (ignore) [assign-depths u [+ depth #:1]]))
+      (for (u (%:list-iter (@ expr-storage-arguments e))) (ignore) [assign-depths u [+ depth #:1]]))
     (ignore))))
 
 (ignore
@@ -189,14 +189,14 @@
     
     ((-storage-) (do
       (setf bndg-is-read (@ expr-reference s) (true))
-      (for (u (%:list-iter (@ expr-arguments s))) (ignore) (do
+      (for (u (%:list-iter (@ expr-storage-arguments s))) (ignore) (do
         [assign-expr-is-reads u]
         [set-expr-is-read u (true)]))))
     
     ((-jump-) (-invoke-) (do
       [assign-expr-is-reads (@ expr-target s)]
       [set-expr-is-read (@ expr-target s) (true)]
-      (for (u (%:list-iter (@ expr-arguments s))) (ignore) (do
+      (for (u (%:list-iter $:[expr-arguments s])) (ignore) (do
         [assign-expr-is-reads u]
         [set-expr-is-read u (true)]))))
     
@@ -264,7 +264,7 @@
       
       ((-storage-) (do
         [ht-put (@ bndg-name (@ expr-reference s)) (@ expr-reference s) bindings ..]
-        (for (u (%:list-iter (@ expr-arguments s))) (ignore)
+        (for (u (%:list-iter (@ expr-storage-arguments s))) (ignore)
           [link-symbols u static-storage undefined-bindings static-bindings dynamic-bindings ..])
         [ht-remove (@ bndg-name (@ expr-reference s)) bindings]))
       
@@ -284,7 +284,7 @@
       
       ((-invoke-) (-jump-) (do
         [link-symbols (@ expr-target s) static-storage undefined-bindings static-bindings dynamic-bindings ..]
-        (for (u (%:list-iter (@ expr-arguments s))) (ignore)
+        (for (u (%:list-iter $:[expr-arguments s])) (ignore)
           [link-symbols u static-storage undefined-bindings static-bindings dynamic-bindings ..])))
       
       ((-constrain-)
@@ -316,7 +316,7 @@
         [escape-analysis (@ expr-expression s) (true) ..]))
       
       ((-storage-)
-        (for (t (%:list-iter (@ expr-arguments s))) (ignore) [escape-analysis t (true) ..]))
+        (for (t (%:list-iter (@ expr-storage-arguments s))) (ignore) [escape-analysis t (true) ..]))
       
       ((-jump-) (do
         (if [= (@ expr-type (@ expr-target s)) (-symbol-)]
@@ -331,11 +331,11 @@
           (setf expr-short-circuit s (@ expr-target s)))
           (ignore)))
         [escape-analysis (@ expr-target s) (false) ..]
-        (for (t (%:list-iter (@ expr-arguments s))) (ignore) [escape-analysis t (true) ..])))
+        (for (t (%:list-iter (@ expr-jump-arguments s))) (ignore) [escape-analysis t (true) ..])))
       
       ((-invoke-) (do
         [escape-analysis (@ expr-target s) (true) ..]
-        (for (t (%:list-iter (@ expr-arguments s))) (ignore) [escape-analysis t (true) ..])))
+        (for (t (%:list-iter (@ expr-invoke-arguments s))) (ignore) [escape-analysis t (true) ..])))
       
       ((-constrain-) [escape-analysis (@ expr-expression s) (true) ..])
       
@@ -357,16 +357,16 @@
       ((-continuation-) (ignore))
       
       ((-storage-)
-        (for (t (%:list-iter (@ expr-arguments s))) (ignore) [prepend t (& expr-dependencies s) ..]))
+        (for (t (%:list-iter (@ expr-storage-arguments s))) (ignore) [prepend t (& expr-dependencies s) ..]))
       
       ((-invoke-) (do
         [prepend (@ expr-target s) (& expr-dependencies s) ..]
-        (for (t (%:list-iter (@ expr-arguments s))) (ignore) [prepend t (& expr-dependencies s) ..])))
+        (for (t (%:list-iter (@ expr-invoke-arguments s))) (ignore) [prepend t (& expr-dependencies s) ..])))
       
       ((-jump-) (do
         [prepend (@ expr-target s) (& expr-dependencies s) ..]
         [prepend s (& expr-dependencies (@ expr-target s)) ..]
-        (for (t (%:list-iter (@ expr-arguments s))) (ignore) [prepend t (& expr-dependencies s) ..])))
+        (for (t (%:list-iter (@ expr-jump-arguments s))) (ignore) [prepend t (& expr-dependencies s) ..])))
       
       ((-symbol-)
         (let (target-expr (@ bndg-expression (@ expr-reference s))) (do
@@ -475,12 +475,12 @@
         [prepend [expr-signature (@ expr-expression e)] rhss ..]))
       
       ((-invoke-)
-        (let (params-signature [list->fragment [collect-list (map (arg (%:list-iter (@ expr-arguments e))) [scoped-signature arg scc ..]) nil ..]]) (do
+        (let (params-signature [list->fragment [collect-list (map (arg (%:list-iter (@ expr-invoke-arguments e))) [scoped-signature arg scc ..]) nil ..]]) (do
           [prepend [scoped-signature (@ expr-target e) scc ..] lhss ..]
           [prepend [list->fragment [cons function-token [cons params-signature [cons [expr-signature e] nil ..] ..] ..]] rhss ..])))
       
       ((-jump-)
-        (let (params-signature [list->fragment [collect-list (map (arg (%:list-iter (@ expr-arguments e))) [scoped-signature arg scc ..]) nil ..]]) (do
+        (let (params-signature [list->fragment [collect-list (map (arg (%:list-iter (@ expr-jump-arguments e))) [scoped-signature arg scc ..]) nil ..]]) (do
           [prepend [scoped-signature (@ expr-target e) scc ..] lhss ..]
           [prepend [list->fragment [cons continuation-token [cons params-signature nil ..] ..]] rhss ..])))
       
@@ -539,12 +539,12 @@
       [visit-expressions visitor (& expr-expression $:s) ctx])
     
     ((-storage-)
-      (for (elt (%:list-ref-iter (@ expr-arguments $:s))) (ignore)
+      (for (elt (%:list-ref-iter (@ expr-storage-arguments $:s))) (ignore)
         [visit-expressions visitor elt ctx]))
     
     ((-jump-) (-invoke-) (do
       [visit-expressions visitor (& expr-target $:s) ctx]
-      (for (elt (%:list-ref-iter (@ expr-arguments $:s))) (ignore)
+      (for (elt (%:list-ref-iter (@ expr-jump-arguments $:s))) (ignore)
         [visit-expressions visitor elt ctx])))
     
     (ignore))
@@ -565,12 +565,12 @@
       [pre-visit-expressions visitor (& expr-expression $:s) ctx])
     
     ((-storage-)
-      (for (elt (%:list-ref-iter (@ expr-arguments $:s))) (ignore)
+      (for (elt (%:list-ref-iter (@ expr-storage-arguments $:s))) (ignore)
         [pre-visit-expressions visitor elt ctx]))
     
     ((-jump-) (-invoke-) (do
       [pre-visit-expressions visitor (& expr-target $:s) ctx]
-      (for (elt (%:list-ref-iter (@ expr-arguments $:s))) (ignore)
+      (for (elt (%:list-ref-iter $:[expr-arguments $:s])) (ignore)
         [pre-visit-expressions visitor elt ctx])))
     
     (ignore))))
@@ -584,11 +584,11 @@
     
     ((-storage-) (do
       (setf bndg-context (@ expr-reference expr) (extra-function-context))
-      (for (t (%:list-iter (@ expr-arguments expr))) (ignore) [classify-program-bindings t])))
+      (for (t (%:list-iter (@ expr-storage-arguments expr))) (ignore) [classify-program-bindings t])))
     
     ((-jump-) (-invoke-) (do
       [classify-program-bindings (@ expr-target expr)]
-      (for (t (%:list-iter (@ expr-arguments expr))) (ignore) [classify-program-bindings t])))
+      (for (t (%:list-iter $:[expr-arguments expr])) (ignore) [classify-program-bindings t])))
     
     ((-continuation-) (-with-) (do
       (setf bndg-context (@ expr-reference expr) (extra-function-context))
@@ -616,11 +616,11 @@
     
     ((-storage-) (do
       (setf bndg-other (@ expr-reference n) (true))
-      (for (u (%:list-iter (@ expr-arguments n))) (ignore) [setup-collect-static-bindings u])))
+      (for (u (%:list-iter (@ expr-storage-arguments n))) (ignore) [setup-collect-static-bindings u])))
     
     ((-jump-) (-invoke-) (do
       [setup-collect-static-bindings (@ expr-target n)]
-      (for (u (%:list-iter (@ expr-arguments n))) (ignore) [setup-collect-static-bindings u])))
+      (for (u (%:list-iter $:[expr-arguments n])) (ignore) [setup-collect-static-bindings u])))
     
     ((-if-) (do
       [setup-collect-static-bindings (@ expr-condition n)]
@@ -656,11 +656,11 @@
       
       ((-storage-) (do
         [append-static-binding (@ expr-reference n) binding-augs ..]
-        (for (u (%:list-iter (@ expr-arguments n))) (ignore) [collect-static-bindings u binding-augs ..])))
+        (for (u (%:list-iter (@ expr-storage-arguments n))) (ignore) [collect-static-bindings u binding-augs ..])))
       
       ((-jump-) (-invoke-) (do
         [collect-static-bindings (@ expr-target n) binding-augs ..]
-        (for (u (%:list-iter (@ expr-arguments n))) (ignore) [collect-static-bindings u binding-augs ..])))
+        (for (u (%:list-iter $:[expr-arguments n])) (ignore) [collect-static-bindings u binding-augs ..])))
       
       ((-if-) (do
         [collect-static-bindings (@ expr-condition n) binding-augs ..]

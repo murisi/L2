@@ -94,7 +94,18 @@
 
 (ignore Only for type(s) (-storage-) (-invoke-) (-jump-))
 
-  (property expr-arguments #:80 #:8 \:r:(?(a) `:(! static~ (list (expr ,:a)) (expr ,:a)):r r))
+  (function expr-arguments (n)
+    (switch = (@ expr-type n)
+      ((-storage-) (& expr-storage-arguments n))
+      ((-invoke-) (& expr-invoke-arguments n))
+      ((-jump-) (& expr-jump-arguments n))
+      [print-str (stdout) (" expr-arguments called on incorrect type.) (ignore)]))
+  
+  (property expr-storage-arguments #:80 #:8 \:r:(?(a) `:(! static~ (list (expr ,:a)) (expr ,:a)):r r))
+  
+  (property expr-invoke-arguments #:80 #:8 \:r:(?(a) `:(! static~ (list (expr ,:a)) (expr ,:a)):r r))
+  
+  (property expr-jump-arguments #:80 #:8 \:r:(?(a) `:(! static~ (list (expr ,:a)) (expr ,:a)):r r))
 
 (ignore Only for type(s) (-storage-) (-function-) (-continuation-) (-with-) (-symbol-))
 
@@ -389,7 +400,7 @@
           (defined-state) empty-string [vbl->frag [vbl ..]] u ..])
       (expr-short-circuit null-expr)
       (expr-target ref)
-      (expr-arguments args))))
+      (expr-jump-arguments args))))
 
 (constrain make-storage (\ r (?(a b) (`(function (string (list (expr ,:a)) frag (expr ,:a) region ,:b) (expr ()))r)r)))
 
@@ -408,7 +419,7 @@
       (expr-reference
         [make-binding-aug (reference-mode) (intra-function-context) (nil-storage) (local-scope)
           (defined-state) ref [vbl->frag [vbl ..]] u ..])
-      (expr-arguments args))))
+      (expr-storage-arguments args))))
 
 (constrain make-meta (\ r (?(a b) (`(function ((expr ,:a) frag (expr ,:a) region ,:b) (expr ()))r)r)))
 
@@ -474,7 +485,7 @@
         [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
           (defined-state) empty-string [vbl->frag [vbl ..]] u ..])
       (expr-target ref)
-      (expr-arguments args))))
+      (expr-invoke-arguments args))))
 
 (ignore Prints the given expression as it would be written in an L2 source file. s is an expression.)
 
@@ -501,7 +512,7 @@
       [print-str (stdout) (" (lparen)storage(space)) ..]
       [print-binding (@ expr-reference s) ..]
       [print-str (stdout) (" (space)) ..]
-      (for (t (%:list-iter (@ expr-arguments s))) (ignore) (do
+      (for (t (%:list-iter (@ expr-storage-arguments s))) (ignore) (do
         [print-expression t ..]
         [print-str (stdout) (" (space)) ..]))
       [print-str (stdout) (" (bs)) ..]
@@ -517,7 +528,7 @@
         (ignore)) ..]
       [print-expression (@ expr-target s) ..]
       [print-str (stdout) (" (space)) ..]
-      (for (t (%:list-iter (@ expr-arguments s))) (ignore) (do
+      (for (t (%:list-iter $:[expr-arguments s])) (ignore) (do
         [print-expression t ..]
         [print-str (stdout) (" (space)) ..]))
       [print-str (stdout) (" (bs)) ..]
