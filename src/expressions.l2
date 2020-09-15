@@ -130,7 +130,21 @@
 
 (ignore Only for type(s) (-invoke-) (-jump-) (-meta-) (-constrain-))
 
-  (property expr-target #:72 #:8 \:r:(?(a) `:(! static~ (expr ,:a) (expr ,:a)):r r))
+  (function expr-target* (n)
+    (switch = (@ expr-type n)
+      ((-invoke-) (& expr-invoke-target n))
+      ((-jump-) (& expr-jump-target n))
+      ((-meta-) (& expr-meta-target n))
+      ((-constrain-) (& expr-constrain-target n))
+      [print-str (stdout) (" expr-target called on incorrect type.) (ignore)]))
+  
+  (property expr-invoke-target #:72 #:8 \:r:(?(a) `:(! static~ (expr ,:a) (expr ,:a)):r r))
+  
+  (property expr-jump-target #:72 #:8 \:r:(?(a) `:(! static~ (expr ,:a) (expr ,:a)):r r))
+  
+  (property expr-meta-target #:72 #:8 \:r:(?(a) `:(! static~ (expr ,:a) (expr ,:a)):r r))
+  
+  (property expr-constrain-target #:72 #:8 \:r:(?(a) `:(! static~ (expr ,:a) (expr ,:a)):r r))
 
 (ignore Only for type(s) (-jump-))
 
@@ -416,7 +430,7 @@
         [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
           (defined-state) empty-string [vbl->frag [vbl ..]] u ..])
       (expr-short-circuit null-expr)
-      (expr-target ref)
+      (expr-jump-target ref)
       (expr-jump-arguments args))))
 
 (constrain make-storage (\ r (?(a b) (`(function (string (list (expr ,:a)) frag (expr ,:a) region ,:b) (expr ()))r)r)))
@@ -449,7 +463,7 @@
       (expr-lowlink #:0)
       (expr-dependencies nil)
       (expr-binding-aug null-binding)
-      (expr-target ref)
+      (expr-meta-target ref)
       (expr-fragment frag))))
 
 (constrain make-constrain (\ r (?(a b) (`(function ((expr ,:a) (expr ,:a) frag (expr ,:a) region ,:b) (expr ()))r)r)))
@@ -466,7 +480,7 @@
       (expr-binding-aug
         [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
           (defined-state) empty-string [vbl->frag [vbl ..]] u ..])
-      (expr-target ref)
+      (expr-constrain-target ref)
       (expr-expression expr))))
 
 (constrain make-if (\ r (?(a b) (`(function ((expr ,:a) (expr ,:a) (expr ,:a) frag (expr ,:a) region ,:b) (expr ()))r)r)))
@@ -501,7 +515,7 @@
       (expr-binding-aug
         [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
           (defined-state) empty-string [vbl->frag [vbl ..]] u ..])
-      (expr-target ref)
+      (expr-invoke-target ref)
       (expr-invoke-arguments args))))
 
 (ignore Prints the given expression as it would be written in an L2 source file. s is an expression.)
@@ -543,7 +557,7 @@
         ((-invoke-) (" (lbracket)))
         ((-jump-) (" (lbrace)))
         (ignore)) ..]
-      [print-expression (@ expr-target s) ..]
+      [print-expression $:[expr-target* s] ..]
       [print-str (stdout) (" (space)) ..]
       (for (t (%:list-iter $:[expr-arguments s])) (ignore) (do
         [print-expression t ..]
