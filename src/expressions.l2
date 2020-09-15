@@ -109,7 +109,24 @@
 
 (ignore Only for type(s) (-storage-) (-function-) (-continuation-) (-with-) (-symbol-))
 
-  (property expr-reference #:72 #:8 \:r:(?(a) `:(! static~ bndg-aug (expr ,:a)):r r))
+  (function expr-reference (n)
+    (switch = (@ expr-type n)
+      ((-storage-) (& expr-storage-reference n))
+      ((-function-) (& expr-function-reference n))
+      ((-continuation-) (& expr-continuation-reference n))
+      ((-with-) (& expr-with-reference n))
+      ((-symbol-) (& expr-symbol-reference n))
+      [print-str (stdout) (" expr-reference called on incorrect type.) (ignore)]))
+  
+  (property expr-storage-reference #:72 #:8 \:r:(?(a) `:(! static~ bndg-aug (expr ,:a)):r r))
+  
+  (property expr-function-reference #:72 #:8 \:r:(?(a) `:(! static~ bndg-aug (expr ,:a)):r r))
+  
+  (property expr-continuation-reference #:72 #:8 \:r:(?(a) `:(! static~ bndg-aug (expr ,:a)):r r))
+  
+  (property expr-with-reference #:72 #:8 \:r:(?(a) `:(! static~ bndg-aug (expr ,:a)):r r))
+  
+  (property expr-symbol-reference #:72 #:8 \:r:(?(a) `:(! static~ bndg-aug (expr ,:a)):r r))
 
 (ignore Only for type(s) (-invoke-) (-jump-) (-meta-) (-constrain-))
 
@@ -285,7 +302,7 @@
         [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
           (defined-state) empty-string [vbl->frag [vbl ..]] sym ..])
       (expr-name name)
-      (expr-reference null-binding))))
+      (expr-symbol-reference null-binding))))
 
 (ignore
   Makes an undefined binding with the given name. Internally, a storage expression is made
@@ -297,7 +314,7 @@
 (function make-undefined-binding (name r handler)
   (substitute (.. r handler)
     (let (stg [make-storage name nil null-fragment null-expr ..])
-    (record (bndg (@ expr-reference stg))
+    (record (bndg (@ expr-storage-reference stg))
       (bndg-context (extra-function-context))
       (bndg-storage (absolute-storage))
       (bndg-scope (global-scope))
@@ -321,7 +338,7 @@
       (expr-binding-aug
         [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
           (defined-state) empty-string [vbl->frag [vbl ..]] func ..])
-      (expr-reference
+      (expr-function-reference
         [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope)
           (defined-state) ref [vbl->frag [vbl ..]] func ..])
       (expr-parameters
@@ -348,7 +365,7 @@
       (expr-cont-instr-bndg
         [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope)
           (defined-state) empty-string null-fragment null-expr ..])
-      (expr-reference
+      (expr-continuation-reference
         [make-binding-aug (reference-mode) (intra-function-context) (nil-storage) (local-scope)
           (defined-state) ref [vbl->frag [vbl ..]] cont ..])
       (expr-parameters
@@ -375,7 +392,7 @@
       (expr-cont-instr-bndg
         [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope)
           (defined-state) empty-string null-fragment null-expr ..])
-      (expr-reference
+      (expr-with-reference
         [make-binding-aug (reference-mode) (intra-function-context) (nil-storage) (local-scope)
           (defined-state) ref [vbl->frag [vbl ..]] wth ..])
       (expr-parameters [cons
@@ -416,7 +433,7 @@
       (expr-binding-aug
         [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
           (defined-state) empty-string [vbl->frag [vbl ..]] u ..])
-      (expr-reference
+      (expr-storage-reference
         [make-binding-aug (reference-mode) (intra-function-context) (nil-storage) (local-scope)
           (defined-state) ref [vbl->frag [vbl ..]] u ..])
       (expr-storage-arguments args))))
@@ -503,14 +520,14 @@
   (switch = (@ expr-type s)
     ((-with-) (do
       [print-str (stdout) (" (lparen)with(space)) ..]
-      [print-binding (@ expr-reference s) ..]
+      [print-binding (@ expr-with-reference s) ..]
       [print-str (stdout) (" (space)) ..]
       [print-expression (@ expr-expression s) ..]
       [print-str (stdout) (" (rparen)) ..]))
     
     ((-storage-) (do
       [print-str (stdout) (" (lparen)storage(space)) ..]
-      [print-binding (@ expr-reference s) ..]
+      [print-binding (@ expr-storage-reference s) ..]
       [print-str (stdout) (" (space)) ..]
       (for (t (%:list-iter (@ expr-storage-arguments s))) (ignore) (do
         [print-expression t ..]
@@ -544,7 +561,7 @@
         ((-continuation-) (" continuation))
         (ignore)) ..]
       [print-str (stdout) (" (space)) ..]
-      [print-binding (@ expr-reference s) ..]
+      [print-binding $:[expr-reference s] ..]
       [print-str (stdout) (" (space)(lparen)(space)) ..]
       (for (t (%:list-iter (@ expr-parameters s))) (ignore) (do
         [print-binding t ..]
@@ -572,7 +589,7 @@
     ((-symbol-)
       (if [getb (@ expr-name s)]
         [print-str (stdout) (@ expr-name s) ..]
-        [print-binding (@ expr-reference s) ..]))
+        [print-binding (@ expr-symbol-reference s) ..]))
           
     ((-literal-) (do
       [print-str (stdout) (" (lparen)literal(space)) ..]
@@ -683,8 +700,8 @@
         (arg-a [make-symbol empty-string null-fragment null-expr ..])
       (let (func (make-functionN name (empty-string)
           (make-invokeN callee-symbol (arg-a) null-fragment null-expr ..) null-fragment null-expr ..)) (do
-        (setf expr-reference callee-symbol [make-undefined-binding name ..])
-        (setf expr-reference arg-a [@car (@ expr-parameters func)])
+        (setf expr-symbol-reference callee-symbol [make-undefined-binding name ..])
+        (setf expr-symbol-reference arg-a [@car (@ expr-parameters func)])
         func)))))
 
 (ignore Performs actions analogous to make-unary-intrinsic, but for binary functions.)
@@ -698,8 +715,8 @@
         (arg-b [make-symbol empty-string null-fragment null-expr ..])
       (let (func (make-functionN name (empty-string empty-string)
           (make-invokeN callee-symbol (arg-a arg-b) null-fragment null-expr ..) null-fragment null-expr ..)) (do
-        (setf expr-reference callee-symbol [make-undefined-binding name ..])
-        (setf expr-reference arg-a [@car (@ expr-parameters func)])
-        (setf expr-reference arg-b [@cadr (@ expr-parameters func)])
+        (setf expr-symbol-reference callee-symbol [make-undefined-binding name ..])
+        (setf expr-symbol-reference arg-a [@car (@ expr-parameters func)])
+        (setf expr-symbol-reference arg-b [@cadr (@ expr-parameters func)])
         func)))))
 
