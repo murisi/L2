@@ -99,7 +99,7 @@
 (function vdominate-jumps (e ctx)
   (switch = (@ expr-type e)
     ((-invoke-) (-jump-)
-      (loop search (exprs (storage-cons $:[expr-target* e] $:[expr-arguments e]))
+      (loop search (exprs (storage-cons $:[expr-target e] $:[expr-arguments e]))
         (if [nil? exprs] e
         (if [= (@ expr-type [@car exprs]) (-jump-)] [@car exprs]
           {search [@cdr exprs]}))))
@@ -125,7 +125,7 @@
       [assign-depths (@ expr-consequent e) [+ depth #:1]]
       [assign-depths (@ expr-alternate e) [+ depth #:1]]))
     ((-invoke-) (-jump-)
-      (for (u (%:list-iter (storage-cons $:[expr-target* e] $:[expr-arguments e]))) (ignore)
+      (for (u (%:list-iter (storage-cons $:[expr-target e] $:[expr-arguments e]))) (ignore)
         [assign-depths u [+ depth #:1]]))
     ((-storage-)
       (for (u (%:list-iter (@ expr-storage-arguments e))) (ignore) [assign-depths u [+ depth #:1]]))
@@ -194,8 +194,8 @@
         [set-expr-is-read u (true)]))))
     
     ((-jump-) (-invoke-) (do
-      [assign-expr-is-reads $:[expr-target* s]]
-      [set-expr-is-read $:[expr-target* s] (true)]
+      [assign-expr-is-reads $:[expr-target s]]
+      [set-expr-is-read $:[expr-target s] (true)]
       (for (u (%:list-iter $:[expr-arguments s])) (ignore) (do
         [assign-expr-is-reads u]
         [set-expr-is-read u (true)]))))
@@ -283,7 +283,7 @@
         [link-symbols (@ expr-alternate s) static-storage undefined-bindings static-bindings dynamic-bindings ..]))
       
       ((-invoke-) (-jump-) (do
-        [link-symbols $:[expr-target* s] static-storage undefined-bindings static-bindings dynamic-bindings ..]
+        [link-symbols $:[expr-target s] static-storage undefined-bindings static-bindings dynamic-bindings ..]
         (for (u (%:list-iter $:[expr-arguments s])) (ignore)
           [link-symbols u static-storage undefined-bindings static-bindings dynamic-bindings ..])))
       
@@ -543,7 +543,7 @@
         [visit-expressions visitor elt ctx]))
     
     ((-jump-) (-invoke-) (do
-      [visit-expressions visitor [expr-target* $:s] ctx]
+      [visit-expressions visitor [expr-target $:s] ctx]
       (for (elt (%:list-ref-iter (@ expr-jump-arguments $:s))) (ignore)
         [visit-expressions visitor elt ctx])))
     
@@ -569,7 +569,7 @@
         [pre-visit-expressions visitor elt ctx]))
     
     ((-jump-) (-invoke-) (do
-      [pre-visit-expressions visitor [expr-target* $:s] ctx]
+      [pre-visit-expressions visitor [expr-target $:s] ctx]
       (for (elt (%:list-ref-iter $:[expr-arguments $:s])) (ignore)
         [pre-visit-expressions visitor elt ctx])))
     
@@ -587,7 +587,7 @@
       (for (t (%:list-iter (@ expr-storage-arguments expr))) (ignore) [classify-program-bindings t])))
     
     ((-jump-) (-invoke-) (do
-      [classify-program-bindings $:[expr-target* expr]]
+      [classify-program-bindings $:[expr-target expr]]
       (for (t (%:list-iter $:[expr-arguments expr])) (ignore) [classify-program-bindings t])))
     
     ((-continuation-) (-with-) (do
@@ -619,7 +619,7 @@
       (for (u (%:list-iter (@ expr-storage-arguments n))) (ignore) [setup-collect-static-bindings u])))
     
     ((-jump-) (-invoke-) (do
-      [setup-collect-static-bindings $:[expr-target* n]]
+      [setup-collect-static-bindings $:[expr-target n]]
       (for (u (%:list-iter $:[expr-arguments n])) (ignore) [setup-collect-static-bindings u])))
     
     ((-if-) (do
@@ -659,7 +659,7 @@
         (for (u (%:list-iter (@ expr-storage-arguments n))) (ignore) [collect-static-bindings u binding-augs ..])))
       
       ((-jump-) (-invoke-) (do
-        [collect-static-bindings $:[expr-target* n] binding-augs ..]
+        [collect-static-bindings $:[expr-target n] binding-augs ..]
         (for (u (%:list-iter $:[expr-arguments n])) (ignore) [collect-static-bindings u binding-augs ..])))
       
       ((-if-) (do
