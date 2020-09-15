@@ -226,7 +226,7 @@
   (values (use-storage ret-val) bottom-offset in-use)))))) (ignore))))
 
 (constrain generate-function
-  \:r:(?(a b c) `:(function ((expr ,:c) (ref (list instr)) (ref (list reloc)) region ,:a) ,:b):r r))
+  \:r:(?(a b c) `:(function ((expr ,:c) !:Ref:(list instr) !:Ref:(list reloc) region ,:a) ,:b):r r))
 
 (function generate-function (n c relocs r handler)
   (substitute (.. r handler) (let
@@ -323,7 +323,7 @@
     (values (use-storage ret-val) offset 0x:0000000000000800)
     (true))))
 
-(constrain generate-store-continuation \:r:(?(a b) `:(function ((expr ,:b) (ref (list instr)) (ref (list reloc)) region ,:a) (ref (list instr))):r r))
+(constrain generate-store-continuation \:r:(?(a b) `:(function ((expr ,:b) !:Ref:(list instr) !:Ref:(list reloc) region ,:a) !:Ref:(list instr)):r r))
 
 (function generate-store-continuation (n c relocs r handler)
   (substitute (.. r handler) (let
@@ -339,7 +339,7 @@
     [prepend (make-instrN (x86-mov) ([make-mem-op(word-size)(r11)(none)#:0(cont-rbp)#:4 ..] [make-reg-op (rbp) ..]) ..) c ..]))))
 
 (constrain generate-continuation
-  \:r:(?(a b c) `:(function ((expr ,:c) (ref (list instr)) (ref (list reloc)) region ,:a) (ref (list instr))):r r))
+  \:r:(?(a b c) `:(function ((expr ,:c) !:Ref:(list instr) !:Ref:(list reloc) region ,:a) !:Ref:(list instr)):r r))
 
 (function generate-continuation (n c relocs r handler)
   (substitute (.. r handler) (let
@@ -368,7 +368,7 @@
     (true))))
 
 (constrain generate-with
-  \:r:(?(a b c) `:(function ((expr ,:c) (ref (list instr)) (ref (list reloc)) region ,:a) ,:b):r r))
+  \:r:(?(a b c) `:(function ((expr ,:c) !:Ref:(list instr) !:Ref:(list reloc) region ,:a) ,:b):r r))
 
 (function generate-with (n c relocs r handler)
   (substitute (.. r handler) (let
@@ -414,7 +414,7 @@
     (true))))
 
 (constrain generate-storage
-  \:r:(?(a b c) `:(function ((expr ,:c) (ref (list instr)) (ref (list reloc)) region ,:a) ,:b):r r))
+  \:r:(?(a b c) `:(function ((expr ,:c) !:Ref:(list instr) !:Ref:(list reloc) region ,:a) ,:b):r r))
 
 (function generate-storage (n c relocs r handler)
   (substitute (.. r handler) (let
@@ -434,7 +434,7 @@
     (true))))
 
 (constrain generate-buffer-to-dest
-  \:r:(?(a b c) `:(function ((expr ,:c) register ,:a (ref (list instr)) (ref (list reloc)) region ,:b) ()):r r))
+  \:r:(?(a b c) `:(function ((expr ,:c) register ,:a !:Ref:(list instr) !:Ref:(list reloc) region ,:b) ()):r r))
 
 (function generate-buffer-to-dest (n dest-reg offset c relocs r handler)
   (substitute (.. r handler)
@@ -445,7 +445,7 @@
         (ignore))))))
 
 (constrain generate-load-continuation
-  \:r:(?(a) `:(function (register (ref (list instr)) (ref (list reloc)) region ,:a) (ref (list instr))):r r))
+  \:r:(?(a) `:(function (register !:Ref:(list instr) !:Ref:(list reloc) region ,:a) !:Ref:(list instr)):r r))
 
 (function generate-load-continuation (src-reg c relocs r handler)
   (substitute (.. r handler) (do
@@ -459,7 +459,7 @@
     [prepend (make-instrN(x86-jmp)([make-reg-op (r11) ..])..) c ..])))
 
 (constrain generate-jump
-  \:r:(?(a b c) `:(function ((expr ,:c) (ref (list instr)) (ref (list reloc)) region ,:a) ,:b):r r))
+  \:r:(?(a b c) `:(function ((expr ,:c) !:Ref:(list instr) !:Ref:(list reloc) region ,:a) ,:b):r r))
 
 (function generate-jump (n c relocs r handler)
   (substitute (.. r handler) (do
@@ -527,7 +527,7 @@
     (true))))
 
 (constrain generate-invoke
-  \:r:(?(a b c) `:(function ((expr ,:c) (ref (list instr)) (ref (list reloc)) region ,:a) ,:b):r r))
+  \:r:(?(a b c) `:(function ((expr ,:c) !:Ref:(list instr) !:Ref:(list reloc) region ,:a) ,:b):r r))
 
 (function generate-invoke (n c relocs r handler)
   (substitute (.. r handler) (let
@@ -588,7 +588,7 @@
     (true)) (ignore)))))
 
 (constrain generate-if
-  \:r:(?(a b c) `:(function ((expr ,:c) (ref (list instr)) (ref (list reloc)) region ,:a) ,:b):r r))
+  \:r:(?(a b c) `:(function ((expr ,:c) !:Ref:(list instr) !:Ref:(list reloc) region ,:a) ,:b):r r))
 
 (function generate-if (n c relocs r handler)
   (substitute (.. r handler)
@@ -643,7 +643,7 @@
     (ignore)))
 
 (constrain generate-optimized-if
-  \:r:(?(a b c) (`(function ((expr ,:c) (ref (list instr)) (ref (list reloc)) region ,:a) ,:b)r)r))
+  \:r:(?(a b c) (`(function ((expr ,:c) !:Ref:(list instr) !:Ref:(list reloc) region ,:a) ,:b)r)r))
 
 (function generate-optimized-if (n c relocs r handler)
   (substitute (.. r handler)
@@ -740,7 +740,7 @@
       (true)))))))
 
 (constrain generate-constrain
-  \:r:(?(a b c) `:(function ((expr ,:c) (ref (list instr)) (ref (list reloc)) region ,:a) ,:b):r r))
+  \:r:(?(a b c) `:(function ((expr ,:c) !:Ref:(list instr) !:Ref:(list reloc) region ,:a) ,:b):r r))
 
 (function generate-constrain (n c relocs r handler)
   (substitute (.. r handler)
@@ -775,7 +775,7 @@
     [= (@ bndg-storage (@ expr-reference n)) (absolute-storage)]))
 
 (constrain generate-symbol
-  \:r:(?(a b c) `:(function ((expr ,:c) (ref (list instr)) (ref (list reloc)) region ,:a) ,:b):r r))
+  \:r:(?(a b c) `:(function ((expr ,:c) !:Ref:(list instr) !:Ref:(list reloc) region ,:a) ,:b):r r))
 
 (function generate-symbol (n c relocs r handler)
   (substitute (.. r handler)
@@ -796,7 +796,7 @@
     (true))))
 
 (constrain generate-literal
-  \:r:(?(a b c) `:(function ((expr ,:c) (ref (list instr)) (ref (list reloc)) region ,:a) ,:b):r r))
+  \:r:(?(a b c) `:(function ((expr ,:c) !:Ref:(list instr) !:Ref:(list reloc) region ,:a) ,:b):r r))
 
 (function generate-literal (n c relocs r handler) (substitute (.. r handler)
   (let (expr-val-bndg (@ expr-binding-aug n)) (do
@@ -830,18 +830,18 @@
 
 (constrain generator->function
   \:r:(?(a b c) `:(function (generator)
-    (function ((expr ,:c) (ref (list instr)) (ref (list reloc)) region ,:a) ,:b)):r r))
+    (function ((expr ,:c) !:Ref:(list instr) !:Ref:(list reloc) region ,:a) ,:b)):r r))
 
 (function generator->function (x) [cast x])
 
 (constrain function->generator
   \:r:(?(a b c) `:(function
-    ((function ((expr ,:c) (ref (list instr)) (ref (list reloc)) region ,:a) ,:b)) generator):r r))
+    ((function ((expr ,:c) !:Ref:(list instr) !:Ref:(list reloc) region ,:a) ,:b)) generator):r r))
 
 (function function->generator (x) [cast x])
 
 (constrain make-absolute-relocation-immediate
-  \:r:(?(a b c) `:(function (,:a ,:b bndg-aug (ref (list reloc)) region ,:c) operand):r r))
+  \:r:(?(a b c) `:(function (,:a ,:b bndg-aug !:Ref:(list reloc) region ,:c) operand):r r))
 
 (function make-absolute-relocation-immediate (size addend bndg relocs r handler)
   (substitute (.. r handler)
@@ -857,7 +857,7 @@
       op))))
 
 (constrain make-relative-relocation-immediate
-  \:r:(?(a b) `:(function (,:a bndg-aug (ref (list reloc)) region ,:b) operand):r r))
+  \:r:(?(a b) `:(function (,:a bndg-aug !:Ref:(list reloc) region ,:b) operand):r r))
 
 (function make-relative-relocation-immediate (size bndg relocs r handler)
   (substitute (.. r handler)
@@ -881,7 +881,7 @@
       (setf instr-binding lbl bndg)
       lbl))))
 
-(constrain bndg->partial-op \:r:(?(a b) `:(function (,:b bndg-aug (ref (list reloc)) region ,:a) operand):r r))
+(constrain bndg->partial-op \:r:(?(a b) `:(function (,:b bndg-aug !:Ref:(list reloc) region ,:a) operand):r r))
 
 (function bndg->partial-op (op-size bndg relocs buf handler)
   (substitute (.. buf handler)
@@ -909,7 +909,7 @@
     
       (ignore)))))))
 
-(constrain bndg->op \:r:(?(a) `:(function (bndg-aug (ref (list reloc)) region ,:a) operand):r r))
+(constrain bndg->op \:r:(?(a) `:(function (bndg-aug !:Ref:(list reloc) region ,:a) operand):r r))
 
 (function bndg->op (bndg relocs buf handler)
   [bndg->partial-op (@ bndg-size bndg) bndg relocs buf handler])
@@ -922,7 +922,7 @@
     [= (@ bndg-size a) (@ bndg-size b)]))
 
 (constrain generate-bndg-bndg-move
-  \:r:(?(a b) `:(function (bndg-aug bndg-aug register (ref (list instr)) (ref (list reloc)) region ,:a) ,:b):r r))
+  \:r:(?(a b) `:(function (bndg-aug bndg-aug register !:Ref:(list instr) !:Ref:(list reloc) region ,:a) ,:b):r r))
 
 (function generate-bndg-bndg-move (dst src tmp c relocs r handler)
   (substitute (.. r handler)
@@ -931,7 +931,7 @@
       [prepend (make-instrN(x86-mov)([bndg->op dst relocs ..][bndg->op src relocs ..][make-reg-op tmp ..])..) c ..])))
 
 (constrain generate-register-bndg-move
-  \:r:(?(a b) `:(function (register bndg-aug (ref (list instr)) (ref (list reloc)) region ,:a) ,:b):r r))
+  \:r:(?(a b) `:(function (register bndg-aug !:Ref:(list instr) !:Ref:(list reloc) region ,:a) ,:b):r r))
 
 (function generate-register-bndg-move (dst src c relocs r handler)
   (substitute (.. r handler)
@@ -940,7 +940,7 @@
       [prepend (make-instrN(x86-mov)([make-reg-op dst ..][bndg->op src relocs ..])..) c ..])))
 
 (constrain generate-bndg-register-move
-  \:r:(?(a b) `:(function (bndg-aug register (ref (list instr)) (ref (list reloc)) region ,:a) ,:b):r r))
+  \:r:(?(a b) `:(function (bndg-aug register !:Ref:(list instr) !:Ref:(list reloc) region ,:a) ,:b):r r))
 
 (function generate-bndg-register-move (dst src c relocs r handler)
   (substitute (.. r handler)
@@ -949,7 +949,7 @@
       [prepend (make-instrN(x86-mov)([bndg->op dst relocs ..][make-reg-op src ..])..) c ..])))
 
 (constrain generate-expression
-  \:r:(?(a b c) `:(function ((expr ,:c) (ref (list instr)) (ref (list reloc)) region ,:a) ,:b):r r))
+  \:r:(?(a b c) `:(function ((expr ,:c) !:Ref:(list instr) !:Ref:(list reloc) region ,:a) ,:b):r r))
 
 (function generate-expression (n c relocs r handler)
   (substitute (.. r handler)

@@ -10,15 +10,15 @@
 
   (constant hash-table-struct #:40 \:r:[var r])
 
-  (property ht-bucket-count #:0 #:8 (\ r (?(a b c) (`(! static~ ,:c (hash-table ,:a ,:b))r)r)))
+  (property ht-bucket-count #:0 #:8 \:r:(?(a b c) `:(! static~ ,:c (hash-table ,:a ,:b)):r r))
 
-  (property ht-element-count #:8 #:8 (\ r (?(a b c) (`(! static~ ,:c (hash-table ,:a ,:b))r)r)))
+  (property ht-element-count #:8 #:8 \:r:(?(a b c) `:(! static~ ,:c (hash-table ,:a ,:b)):r r))
 
-  (property ht-hash-func #:16 #:8 (\ r (?(a b c) (`(! static~ (function (,:a) ,:c) (hash-table ,:a ,:b))r)r)))
+  (property ht-hash-func #:16 #:8 \:r:(?(a b c) `:(! static~ (function (,:a) ,:c) (hash-table ,:a ,:b)):r r))
 
-  (property ht-equals-func #:24 #:8 (\ r (?(a b c) (`(! static~ (function (,:a ,:a) ,:c) (hash-table ,:a ,:b))r)r)))
+  (property ht-equals-func #:24 #:8 \:r:(?(a b c) `:(! static~ (function (,:a ,:a) ,:c) (hash-table ,:a ,:b)):r r))
 
-  (property ht-values #:32 #:8 (\ r (?(a b c) (`(! static~ (ref (list (values ,:a ,:b))) (hash-table ,:a ,:b))r)r)))
+  (property ht-values #:32 #:8 \:r:(?(a b c) `:(! static~ !:Ref:(list (values ,:a ,:b)) (hash-table ,:a ,:b)):r r))
 
 (constrain ht-create (\ r (?(a b c d e) `:(function ((function (,:a) ,:d) (function (,:a ,:a) ,:e) region ,:c) (hash-table ,:a ,:b)):r r)))
 
@@ -71,7 +71,7 @@
     [ht-resize ht ..]
     ht)))))
 
-(constrain ht-contains (\ r (?(a b d) `:(function (,:a (hash-table ,:a ,:b) (ref ,:b)) ,:d):r r)))
+(constrain ht-contains (\ r (?(a b d) `:(function (,:a (hash-table ,:a ,:b) !:Ref:,;b) ,:d):r r)))
 
 (function ht-contains (key ht out)
   (let (bucket-idx [rem [(@ ht-hash-func ht) key] (@ ht-bucket-count ht)])

@@ -380,7 +380,7 @@
       (ignore))
     s)) (ignore)))
 
-(constrain construct-sccs (\ r (?(a b c) (`(function ((expr ,:c) ,:a (ref (list (expr ,:c))) (ref (list (list (expr ,:c)))) region ,:b) ())r)r)))
+(constrain construct-sccs (\ r (?(a b c) (`(function ((expr ,:c) ,:a !:Ref:(list (expr ,:c)) !:Ref:(list (list (expr ,:c))) region ,:b) ())r)r)))
 
 (function construct-sccs (s preorder stack sccs r handler)
   (substitute (.. r handler)
@@ -453,7 +453,7 @@
         [copy-fragment [expr-signature e] var-map ..]))))
 
 (constrain generate-equations
-  (\ r (?(a b c) (`(function ((expr ,:c) (list (expr ,:c)) frag frag (ref (list frag)) (ref (list frag)) region ,:a) ,:b)r)r)))
+  (\ r (?(a b c) (`(function ((expr ,:c) (list (expr ,:c)) frag frag !:Ref:(list frag) !:Ref:(list frag) region ,:a) ,:b)r)r)))
 
 (function generate-equations (e scc function-token continuation-token lhss rhss buf handler)
   (substitute (.. buf handler)
@@ -526,7 +526,7 @@
           (setf bndg-signature (@ expr-binding-aug e) [recursive-evaluate [expr-signature e] assigns ..])
           (ignore)))))))))))))))
 
-(constrain visit-expressions (\ r (?(a b) (`(function ((function ((expr ,:b) ,:a) (expr ,:b)) (ref (expr ,:b)) ,:a) ())r)r)))
+(constrain visit-expressions (\ r (?(a b) (`(function ((function ((expr ,:b) ,:a) (expr ,:b)) !:Ref:(expr ,:b) ,:a) ())r)r)))
 
 (function visit-expressions (visitor s ctx) (do
   (switch = (@ expr-type $:s)
@@ -550,7 +550,7 @@
     (ignore))
   [set s [visitor $:s ctx]]))
 
-(constrain pre-visit-expressions (\ r (?(a b) (`(function ((function ((expr ,:b) ,:a) (expr ,:b)) (ref (expr ,:b)) ,:a) ())r)r)))
+(constrain pre-visit-expressions (\ r (?(a b) (`(function ((function ((expr ,:b) ,:a) (expr ,:b)) !:Ref:(expr ,:b) ,:a) ())r)r)))
 
 (function pre-visit-expressions (visitor s ctx) (do
   [set s [visitor $:s ctx]]
@@ -634,7 +634,7 @@
   
   (setf bndg-other (@ expr-binding-aug n) (true))))
 
-(constrain append-static-binding (\ r (?(a b) (`(function (bndg-aug (ref (list bndg-aug)) region ,:a) ,:b)r)r)))
+(constrain append-static-binding (\ r (?(a b) (`(function (bndg-aug !:Ref:(list bndg-aug) region ,:a) ,:b)r)r)))
 
 (function append-static-binding (bndg binding-augs r handler)
   (substitute (.. r handler)
@@ -642,7 +642,7 @@
       (do (setf bndg-other bndg (false)) [append bndg binding-augs ..])
       (ignore))))
 
-(constrain collect-static-bindings (\ r (?(a b c) (`(function ((expr ,:c) (ref (list bndg-aug)) region ,:a) ,:b)r)r)))
+(constrain collect-static-bindings (\ r (?(a b c) (`(function ((expr ,:c) !:Ref:(list bndg-aug) region ,:a) ,:b)r)r)))
 
 (function collect-static-bindings (n binding-augs r handler)
   (substitute (.. r handler) (do
@@ -724,7 +724,7 @@
       s) (ignore)))
 
 (constrain init-function
-  (\ r (?(a b c) (`(function ((expr ,:c) (list initializer) (hash-table string bndg-aug) region region ,:a (ref ,:b)) ,:b)r)r)))
+  (\ r (?(a b c) (`(function ((expr ,:c) (list initializer) (hash-table string bndg-aug) region region ,:a !:Ref:,;b) ,:b)r)r)))
 
 (function init-function (function-expr inits bindings buf buf2 handler cache)
   (substitute (.. buf handler)
