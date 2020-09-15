@@ -269,7 +269,7 @@
   item in the fragment l), passing into it offset-aux (the macro that actually
   produces the offset of the field).)
 
-(function offset-of (l r) (`((,[@fst l]) offset-of-aux)r))
+(function offset-of (l r) `:(,:[@fst l] offset-of-aux):r)
 
 (ignore
   This function is not to be called directly. It returns a fragment representing
@@ -277,15 +277,15 @@
   
 (function offset-of-aux (l r) [@fst l])
 
-(function size-of (l r) (`((,[@fst l]) size-of-aux)r))
+(function size-of (l r) `:(,:[@fst l] size-of-aux):r)
 
 (function size-of-aux (l r) [@frst l])
 
-(function getter-of (l r) (`((,[@fst l]) getter-of-aux)r))
+(function getter-of (l r) `:(,:[@fst l] getter-of-aux):r)
 
 (function getter-of-aux (l r) [@frrst l])
 
-(function setter-of (l r) (`((,[@fst l]) setter-of-aux)r))
+(function setter-of (l r) `:(,:[@fst l] setter-of-aux):r)
 
 (function setter-of-aux (l r) [@frrrst l])
 
@@ -296,7 +296,7 @@
   the actual invocation that calculates the address of the field) and the address of
   the struct (the first item in the fragment l).)
 
-(function & (l r) (`((,[@fst l]) &-aux (,[@frst l]))r))
+(function & (l r) `:(,:[@fst l] &-aux ,:[@frst l]):r)
 
 (ignore
   This function is not to be called directly. It generates the actual
@@ -305,12 +305,12 @@
   (the fifth item in the fragment l).)
 
 (function &-aux (l r)
-  (`(with &-aux.ret
-      (let (@-aux.obj (,[@frrrrrrrst l]))
+  `:(with &-aux.ret
+      (let (@-aux.obj ,:[@frrrrrrrst l])
         {(constrain (constrain (continuation @-aux.cont (pseudo prop-ref obj) {&-aux.ret prop-ref})
-            (\ &-aux.s (?(a b) (let ((,[@frrrrst l]) &-aux.s) (`(continuation ((,(,[@frrrrrst l])) ,:a ,:b))&-aux.s))&-aux.s)))
-            (\ &-aux.s (?(a b c d) (let ((,[@frrrrst l]) &-aux.s) (`(continuation ((@ ,:a ,:c ,:d ,:b) (ref (,(,[@frrrrrrst l])) ,:a) ,:b))&-aux.s))&-aux.s)))
-          (ignore) [+ @-aux.obj (,[@fst l])] @-aux.obj}))r))
+            (\ &-aux.s (?(a b) (let (,:[@frrrrst l] &-aux.s) `:(continuation (,:,;[@frrrrrst l] ,:a ,:b)):&-aux.s)&-aux.s)))
+            (\ &-aux.s (?(a b c d) (let (,:[@frrrrst l] &-aux.s) `:(continuation ((@ ,:a ,:c ,:d ,:b) (ref ,:,;[@frrrrrrst l] ,:a) ,:b)):&-aux.s)&-aux.s)))
+          (ignore) [+ @-aux.obj ,:[@fst l]] @-aux.obj})):r)
 
 (ignore
   The following function is a macro for getting the field of a struct. The
@@ -319,7 +319,7 @@
   the actual invocation that gets the field) and the address of the struct (the
   first item in the fragment l).)
   
-(function @ (l r) (`((,[@fst l]) @-aux (,[@frst l]))r))
+(function @ (l r) `:(,:[@fst l] @-aux ,:[@frst l]):r)
 
 (ignore
   This function is not to be called directly. It generates the actual
@@ -329,12 +329,12 @@
   (the fifth item in the fragment l).)
 
 (function @-aux (l r)
-  (`(with @-aux.ret
-      (let (@-aux.obj (,[@frrrrrrrst l]))
+  `:(with @-aux.ret
+      (let (@-aux.obj ,:[@frrrrrrrst l])
         {(constrain (constrain (continuation @-aux.cont (pseudo prop obj) {@-aux.ret prop})
-            (\ @-aux.s (?(a b) (let ((,[@frrrrst l]) @-aux.s) (`(continuation ((,(,[@frrrrrst l])) ,:a ,:b))@-aux.s))@-aux.s)))
-            (\ s (?(a b c d) (`(continuation ((@ ,:a ,:c ,:d ,:b) ,:a ,:b))s)s)))
-          (ignore) [(,[@frrst l]) [+ @-aux.obj (,[@fst l])]] @-aux.obj}))r))
+            (\ @-aux.s (?(a b) (let (,:[@frrrrst l] @-aux.s) `:(continuation (,:,;[@frrrrrst l] ,:a ,:b)):@-aux.s)@-aux.s)))
+            (\ s (?(a b c d) `:(continuation ((@ ,:a ,:c ,:d ,:b) ,:a ,:b)):s s)))
+          (ignore) [(,[@frrst l]) [+ @-aux.obj ,:[@fst l]]] @-aux.obj})):r)
 
 (ignore
   The following function is a macro for setting the field of a struct. The
@@ -344,7 +344,7 @@
   first item in the fragment l), and the new value of the field (the third
   item in the fragment l).)
 
-(function setf (l r) (`((,[@fst l]) setf-aux (,[@frst l]) (,[@frrst l]))r))
+(function setf (l r) `:(,:[@fst l] setf-aux ,:[@frst l] ,:[@frrst l]):r)
 
 (ignore
   This function is not to be called directly. It generates the actual
@@ -355,13 +355,13 @@
   fragment l).)
 
 (function setf-aux (l r)
-  (`(with setf-aux.ret
-      (let (setf-aux.obj (,[@frrrrrrrst l]))
+  `:(with setf-aux.ret
+      (let (setf-aux.obj ,:[@frrrrrrrst l])
         {(constrain (constrain (continuation setf-aux.cont (pseudo prop obj obj-casted)
-              {setf-aux.ret (do [(,[@frrrst l]) [+ obj (,[@fst l])] prop] obj-casted)})
-            (\ setf-aux.s (?(setf-aux.a setf-aux.b setf-aux.c) (let ((,[@frrrrst l]) setf-aux.s) (`(continuation ((,(,[@frrrrrst l])) ,:setf-aux.a ,:setf-aux.b ,:setf-aux.c))setf-aux.s))setf-aux.s)))
-            (\ s (?(a b c d) (`(continuation ((@ ,:a ,:b ,:c ,:d) ,:a ,:b ,:c))s)s)))
-          (ignore) (,[@frrrrrrrrst l]) setf-aux.obj [cast setf-aux.obj]}))r))
+              {setf-aux.ret (do [,:[@frrrst l] [+ obj ,:[@fst l]] prop] obj-casted)})
+            (\ setf-aux.s (?(setf-aux.a setf-aux.b setf-aux.c) (let (,:[@frrrrst l] setf-aux.s) `:(continuation ((,(,[@frrrrrst l])) ,:setf-aux.a ,:setf-aux.b ,:setf-aux.c)):setf-aux.s)setf-aux.s)))
+            (\ s (?(a b c d) `:(continuation ((@ ,:a ,:b ,:c ,:d) ,:a ,:b ,:c)):s s)))
+          (ignore) ,:[@frrrrrrrrst l] setf-aux.obj [cast setf-aux.obj]})):r)
 
 (ignore
   This function initializes/updates the values of a record and returns the
