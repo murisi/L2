@@ -61,8 +61,8 @@
     
     ((-continuation-) (-with-)
       (if (@ expr-escapes n)
-        (let (offset [- offset [* [length $:[expr-parameters* n]] (word-size)]]) (do
-          (for (offset (%:range-from offset (word-size))) (t (%:list-iter $:[expr-parameters* n])) (ignore) (do
+        (let (offset [- offset [* [length $:[expr-parameters n]] (word-size)]]) (do
+          (for (offset (%:range-from offset (word-size))) (t (%:list-iter $:[expr-parameters n])) (ignore) (do
             (setf bndg-preferred-storage t [context->memory-storage (@ bndg-context t)])
             (setf bndg-preferred-offset t offset)
             (setf bndg-size t (word-size))))
@@ -493,7 +493,7 @@
           [generate-expression (@ expr-jump-target n) c relocs ..]
           (ignore))
         (for (t (%:list-iter (@ expr-jump-arguments n))) (ignore) [generate-expression t c relocs ..])
-        (for (t (%:list-iter(@ expr-jump-arguments n))) (u (%:list-iter $:[expr-parameters* (@ expr-short-circuit n)])) (ignore)
+        (for (t (%:list-iter(@ expr-jump-arguments n))) (u (%:list-iter $:[expr-parameters (@ expr-short-circuit n)])) (ignore)
           (let (src-bndg (@ expr-binding-aug t)) (dest-bndg u)
             [generate-bndg-bndg-move dest-bndg src-bndg (r11) c relocs ..]))
         [prepend (make-instrN (x86-jmp) ([make-relative-relocation-immediate #:4 cont-instr-bndg relocs ..]) ..) c ..]))
@@ -515,9 +515,9 @@
           (setf expr-binding-aug u v))
         [initialize-expressions (storage-cons (@ expr-continuation-expression (@ expr-jump-target n)) (@ expr-jump-arguments n))
           nil offset 0x:FFFFFFFFFFFF0C38 (@ expr-depth n) inits ret-val buf hdl])
-    (if (and [not= (@ expr-short-circuit n) null-expr] [= [length $:[expr-parameters* (@ expr-short-circuit n)]] #:1])
+    (if (and [not= (@ expr-short-circuit n) null-expr] [= [length $:[expr-parameters (@ expr-short-circuit n)]] #:1])
       (do
-        (setf expr-binding-aug [@car (@ expr-jump-arguments n)] [@car $:[expr-parameters* (@ expr-short-circuit n)]])
+        (setf expr-binding-aug [@car (@ expr-jump-arguments n)] [@car $:[expr-parameters (@ expr-short-circuit n)]])
         [initialize-expressions (storage-cons (@ expr-jump-target n) (@ expr-jump-arguments n)) nil offset
           0x:FFFFFFFFFFFF0C30 (@ expr-depth n) inits ret-val buf hdl])
       [initialize-expressions (storage-cons (@ expr-jump-target n) (@ expr-jump-arguments n)) nil offset

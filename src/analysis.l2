@@ -13,7 +13,7 @@
 (function vfind-multiple-definitions (e handler)
   (switch = (@ expr-type e)
     ((-continuation-) (-function-) (do
-      (let (ref-with-params (storage-cons $:[expr-reference e] $:[expr-parameters* e]))
+      (let (ref-with-params (storage-cons $:[expr-reference e] $:[expr-parameters e]))
       (for (partial (%:sublist-iter ref-with-params)) (ignore)
         (if [nil? (find (f [@cdr partial]) [bndg-name= f [@car partial]])] (ignore)
           (let (dup-ref-name (@ bndg-name[@car partial]))
@@ -144,7 +144,7 @@
       (ignore))
     (switch = (@ expr-type e)
       ((-continuation-) (-with-) (-function-)
-        (loop replace (rem-params $:[expr-parameters* e])
+        (loop replace (rem-params $:[expr-parameters e])
           (if [nil? rem-params] e
           (if [= [@car rem-params] repl-target]
             (do (setf car rem-params replacement) {replace [@cdr rem-params]})
@@ -257,9 +257,9 @@
       
       ((-with-) (-continuation-) (do
         [ht-put (@ bndg-name $:[expr-reference s]) $:[expr-reference s] bindings ..]
-        (for (u (%:list-iter $:[expr-parameters* s])) (ignore) [ht-put (@ bndg-name u) u bindings ..])
+        (for (u (%:list-iter $:[expr-parameters s])) (ignore) [ht-put (@ bndg-name u) u bindings ..])
         [link-symbols $:[expr-expression s] static-storage undefined-bindings static-bindings dynamic-bindings ..]
-        (for (u (%:list-iter $:[expr-parameters* s])) (ignore) [ht-remove (@ bndg-name u) bindings])
+        (for (u (%:list-iter $:[expr-parameters s])) (ignore) [ht-remove (@ bndg-name u) bindings])
         [ht-remove (@ bndg-name $:[expr-reference s]) bindings]))
       
       ((-storage-) (do
@@ -592,7 +592,7 @@
     
     ((-continuation-) (-with-) (do
       (setf bndg-context $:[expr-reference expr] (extra-function-context))
-      (for (t (%:list-iter $:[expr-parameters* expr])) (ignore)
+      (for (t (%:list-iter $:[expr-parameters expr])) (ignore)
         (setf bndg-context t (extra-function-context)))
       [classify-program-bindings $:[expr-expression expr]]))
     
@@ -611,7 +611,7 @@
       [setup-collect-static-bindings $:[expr-expression n]]
       (if (@ expr-escapes n)
         (setf bndg-other $:[expr-reference n] (true)) (ignore))
-      (for (t (%:list-iter $:[expr-parameters* n])) (ignore)
+      (for (t (%:list-iter $:[expr-parameters n])) (ignore)
         (setf bndg-other t (true)))))
     
     ((-storage-) (do
@@ -651,7 +651,7 @@
         [collect-static-bindings $:[expr-expression n] binding-augs ..]
         (if (@ expr-escapes n)
           [append-static-binding $:[expr-reference n] binding-augs ..] (ignore))
-        (for (t (%:list-iter $:[expr-parameters* n])) (ignore)
+        (for (t (%:list-iter $:[expr-parameters n])) (ignore)
           [append-static-binding t binding-augs ..])))
       
       ((-storage-) (do
