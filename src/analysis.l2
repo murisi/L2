@@ -67,25 +67,23 @@
 (constrain vswap-branches (\ r (?(a) (`(function ((expr ,:a) ()) (expr ,:a))r)r)))
 
 (function vswap-branches (e ctx)
-  ((property?
-      (expr-type (|[= (-if-)]))
-      (expr-condition (guards? (property?
-          (expr-type (|[= (-if-)]))
+  ((if? (property?
+      (expr-condition (guards? (if? (property?
           (expr-condition .:cond)
           (expr-consequent (property?
             (expr-type (|[= (-literal-)]))
             (expr-value .:cons-val)))
           (expr-alternate (property?
             (expr-type (|[= (-literal-)]))
-            (expr-value .:alt-val))))
+            (expr-value .:alt-val)))))
         (and (or cons-val alt-val) (not (and cons-val alt-val)))))
       (expr-consequent .:consequent)
-      (expr-alternate .:alternate)) e
+      (expr-alternate .:alternate))) e
     (do
-      (setf expr-condition e cond)
+      (setf expr-condition (& expr-if e) cond)
       (if alt-val (do
-        (setf expr-consequent e alternate)
-        (setf expr-alternate e consequent)) (ignore))
+        (setf expr-consequent (& expr-if e) alternate)
+        (setf expr-alternate (& expr-if e) consequent)) (ignore))
       e)
     e))
 
@@ -105,8 +103,8 @@
           {search [@cdr exprs]}))))
     
     ((-if-)
-      (if [= (@ expr-type (@ expr-condition e)) (-jump-)]
-        (@ expr-condition e)
+      (if [= (@ expr-type (@ expr-condition (& expr-if e))) (-jump-)]
+        (@ expr-condition (& expr-if e))
         e))
     
     e))
@@ -121,9 +119,9 @@
     ((-function-) (-continuation-) (-with-) (-constrain-)
       [assign-depths $:[expr-expression e] [+ depth #:1]])
     ((-if-) (do
-      [assign-depths (@ expr-condition e) [+ depth #:1]]
-      [assign-depths (@ expr-consequent e) [+ depth #:1]]
-      [assign-depths (@ expr-alternate e) [+ depth #:1]]))
+      [assign-depths (@ expr-condition (& expr-if e)) [+ depth #:1]]
+      [assign-depths (@ expr-consequent (& expr-if e)) [+ depth #:1]]
+      [assign-depths (@ expr-alternate (& expr-if e)) [+ depth #:1]]))
     ((-invoke-) (-jump-)
       (for (u (%:list-iter (storage-cons $:[expr-target e] $:[expr-arguments e]))) (ignore)
         [assign-depths u [+ depth #:1]]))
@@ -160,12 +158,12 @@
 (function assign-expr-is-reads (s)
   (switch = (@ expr-type s)
     ((-if-) (do
-      [assign-expr-is-reads (@ expr-condition s)]
-      [set-expr-is-read (@ expr-condition s) (true)]
-      [assign-expr-is-reads (@ expr-consequent s)]
-      [set-expr-is-read (@ expr-consequent s) (true)]
-      [assign-expr-is-reads (@ expr-alternate s)]
-      [set-expr-is-read (@ expr-alternate s) (true)]))
+      [assign-expr-is-reads (@ expr-condition (& expr-if s))]
+      [set-expr-is-read (@ expr-condition (& expr-if s)) (true)]
+      [assign-expr-is-reads (@ expr-consequent (& expr-if s))]
+      [set-expr-is-read (@ expr-consequent (& expr-if s)) (true)]
+      [assign-expr-is-reads (@ expr-alternate (& expr-if s))]
+      [set-expr-is-read (@ expr-alternate (& expr-if s)) (true)]))
     
     ((-constrain-) (do
       [assign-expr-is-reads (@ expr-constrain-expression s)]
@@ -278,9 +276,9 @@
           (ignore)))
       
       ((-if-) (do
-        [link-symbols (@ expr-condition s) static-storage undefined-bindings static-bindings dynamic-bindings ..]
-        [link-symbols (@ expr-consequent s) static-storage undefined-bindings static-bindings dynamic-bindings ..]
-        [link-symbols (@ expr-alternate s) static-storage undefined-bindings static-bindings dynamic-bindings ..]))
+        [link-symbols (@ expr-condition (& expr-if s)) static-storage undefined-bindings static-bindings dynamic-bindings ..]
+        [link-symbols (@ expr-consequent (& expr-if s)) static-storage undefined-bindings static-bindings dynamic-bindings ..]
+        [link-symbols (@ expr-alternate (& expr-if s)) static-storage undefined-bindings static-bindings dynamic-bindings ..]))
       
       ((-invoke-) (-jump-) (do
         [link-symbols $:[expr-target s] static-storage undefined-bindings static-bindings dynamic-bindings ..]
@@ -305,9 +303,9 @@
             (ignore))))
       
       ((-if-) (do
-        [escape-analysis (@ expr-condition s) (true) ..]
-        [escape-analysis (@ expr-consequent s) (true) ..]
-        [escape-analysis (@ expr-alternate s) (true) ..]))
+        [escape-analysis (@ expr-condition (& expr-if s)) (true) ..]
+        [escape-analysis (@ expr-consequent (& expr-if s)) (true) ..]
+        [escape-analysis (@ expr-alternate (& expr-if s)) (true) ..]))
       
       ((-function-) (-continuation-) (-with-) (do
         (if (and escaping [= (@ expr-type s) (-continuation-)])
@@ -347,9 +345,9 @@
   ((values? .:r .:handler) ctx (substitute (.. r handler) (do
     (switch = (@ expr-type s)
       ((-if-) (do
-        [prepend (@ expr-condition s) (& expr-dependencies s) ..]
-        [prepend (@ expr-consequent s) (& expr-dependencies s) ..]
-        [prepend (@ expr-alternate s) (& expr-dependencies s) ..]))
+        [prepend (@ expr-condition (& expr-if s)) (& expr-dependencies s) ..]
+        [prepend (@ expr-consequent (& expr-if s)) (& expr-dependencies s) ..]
+        [prepend (@ expr-alternate (& expr-if s)) (& expr-dependencies s) ..]))
       
       ((-function-) (-with-)
         [prepend $:[expr-expression s] (& expr-dependencies s) ..])
@@ -491,8 +489,8 @@
             [prepend [expr-signature (@ expr-with-expression (& expr-with e))] rhss ..] ..])))
       
       ((-if-)
-        (let (consequent-sig [scoped-signature (@ expr-consequent e) scc ..])
-        (let (alternate-sig [scoped-signature (@ expr-alternate e) scc ..]) (do
+        (let (consequent-sig [scoped-signature (@ expr-consequent (& expr-if e)) scc ..])
+        (let (alternate-sig [scoped-signature (@ expr-alternate (& expr-if e)) scc ..]) (do
           [prepend consequent-sig [prepend [expr-signature e] lhss ..] ..]
           [prepend alternate-sig [prepend consequent-sig rhss ..] ..]))))
       
@@ -531,9 +529,9 @@
 (function visit-expressions (visitor s ctx) (do
   (switch = (@ expr-type $:s)
     ((-if-) (do
-      [visit-expressions visitor (& expr-condition $:s) ctx]
-      [visit-expressions visitor (& expr-consequent $:s) ctx]
-      [visit-expressions visitor (& expr-alternate $:s) ctx]))
+      [visit-expressions visitor (& expr-condition (& expr-if $:s)) ctx]
+      [visit-expressions visitor (& expr-consequent (& expr-if $:s)) ctx]
+      [visit-expressions visitor (& expr-alternate (& expr-if $:s)) ctx]))
     
     ((-function-) (-continuation-) (-with-) (-constrain-)
       [visit-expressions visitor [expr-expression $:s] ctx])
@@ -557,9 +555,9 @@
   
   (switch = (@ expr-type $:s)
     ((-if-) (do
-      [pre-visit-expressions visitor (& expr-condition $:s) ctx]
-      [pre-visit-expressions visitor (& expr-consequent $:s) ctx]
-      [pre-visit-expressions visitor (& expr-alternate $:s) ctx]))
+      [pre-visit-expressions visitor (& expr-condition (& expr-if $:s)) ctx]
+      [pre-visit-expressions visitor (& expr-consequent (& expr-if $:s)) ctx]
+      [pre-visit-expressions visitor (& expr-alternate (& expr-if $:s)) ctx]))
     
     ((-function-) (-continuation-) (-with-) (-constrain-)
       [pre-visit-expressions visitor [expr-expression $:s] ctx])
@@ -597,9 +595,9 @@
       [classify-program-bindings $:[expr-expression expr]]))
     
     ((-if-) (do
-      [classify-program-bindings (@ expr-condition expr)]
-      [classify-program-bindings (@ expr-consequent expr)]
-      [classify-program-bindings (@ expr-alternate expr)]))
+      [classify-program-bindings (@ expr-condition (& expr-if expr))]
+      [classify-program-bindings (@ expr-consequent (& expr-if expr))]
+      [classify-program-bindings (@ expr-alternate (& expr-if expr))]))
     
     (ignore))))
 
@@ -623,9 +621,9 @@
       (for (u (%:list-iter $:[expr-arguments n])) (ignore) [setup-collect-static-bindings u])))
     
     ((-if-) (do
-      [setup-collect-static-bindings (@ expr-condition n)]
-      [setup-collect-static-bindings (@ expr-consequent n)]
-      [setup-collect-static-bindings (@ expr-alternate n)]))
+      [setup-collect-static-bindings (@ expr-condition (& expr-if n))]
+      [setup-collect-static-bindings (@ expr-consequent (& expr-if n))]
+      [setup-collect-static-bindings (@ expr-alternate (& expr-if n))]))
     
     ((-constrain-)
       [setup-collect-static-bindings (@ expr-constrain-expression n)])
@@ -663,9 +661,9 @@
         (for (u (%:list-iter $:[expr-arguments n])) (ignore) [collect-static-bindings u binding-augs ..])))
       
       ((-if-) (do
-        [collect-static-bindings (@ expr-condition n) binding-augs ..]
-        [collect-static-bindings (@ expr-consequent n) binding-augs ..]
-        [collect-static-bindings (@ expr-alternate n) binding-augs ..]))
+        [collect-static-bindings (@ expr-condition (& expr-if n)) binding-augs ..]
+        [collect-static-bindings (@ expr-consequent (& expr-if n)) binding-augs ..]
+        [collect-static-bindings (@ expr-alternate (& expr-if n)) binding-augs ..]))
       
       ((-constrain-)
         [collect-static-bindings (@ expr-constrain-expression n) binding-augs ..])

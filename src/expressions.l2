@@ -190,11 +190,11 @@
 
 (ignore Properies of (-if-) objects.)
 
-  (property expr-condition #:72 #:8 \:r:(?(a) `:(! static~ (expr ,:a) (expr ,:a)):r r))
+  (property expr-condition #:72 #:8 \:r:(?(a) `:(! static~ (expr ,:a) !:Ref:(expr-if ,:a)):r r))
 
-  (property expr-consequent #:80 #:8 \:r:(?(a) `:(! static~ (expr ,:a) (expr ,:a)):r r))
+  (property expr-consequent #:80 #:8 \:r:(?(a) `:(! static~ (expr ,:a) !:Ref:(expr-if ,:a)):r r))
 
-  (property expr-alternate #:88 #:8 \:r:(?(a) `:(! static~ (expr ,:a) (expr ,:a)):r r))
+  (property expr-alternate #:88 #:8 \:r:(?(a) `:(! static~ (expr ,:a) !:Ref:(expr-if ,:a)):r r))
 
 (ignore Properies of (-literal-) objects.)
 
@@ -577,9 +577,10 @@
       (expr-binding-aug
         [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
           (defined-state) empty-string [vbl->frag [vbl ..]] u ..])
-      (expr-condition condition)
-      (expr-consequent consequent)
-      (expr-alternate alternate))))
+      (phantom (record (_ (& expr-if u))
+        (expr-condition condition)
+        (expr-consequent consequent)
+        (expr-alternate alternate))))))
 
 (constrain make-invoke (\ r (?(a b) (`(function ((expr ,:a) (list (expr ,:a)) frag (expr ,:a) region ,:b) (expr ()))r)r)))
 
@@ -667,11 +668,11 @@
       
     ((-if-) (do
       [print-str (stdout) (" (lparen)if(space)) ..]
-      [print-expression (@ expr-condition s) ..]
+      [print-expression (@ expr-condition (& expr-if s)) ..]
       [print-str (stdout) (" (space)) ..]
-      [print-expression (@ expr-consequent s) ..]
+      [print-expression (@ expr-consequent (& expr-if s)) ..]
       [print-str (stdout) (" (space)) ..]
-      [print-expression (@ expr-alternate s) ..]
+      [print-expression (@ expr-alternate (& expr-if s)) ..]
       [print-str (stdout) (" (rparen)) ..]))
     
     ((-constrain-) (do

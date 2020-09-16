@@ -54,9 +54,9 @@
       (fold (offset offset) (u (%:list-iter $:[expr-arguments n])) [place-perm-bindings u offset])))
     
     ((-if-)
-      (let (offset [place-perm-bindings (@ expr-condition n) offset])
-      (let (offset [place-perm-bindings (@ expr-consequent n) offset])
-      (let (offset [place-perm-bindings (@ expr-alternate n) offset])
+      (let (offset [place-perm-bindings (@ expr-condition (& expr-if n)) offset])
+      (let (offset [place-perm-bindings (@ expr-consequent (& expr-if n)) offset])
+      (let (offset [place-perm-bindings (@ expr-alternate (& expr-if n)) offset])
         offset))))
     
     ((-continuation-) (-with-)
@@ -594,9 +594,9 @@
   (substitute (.. r handler)
     (let
         (expr-val-bndg (@ expr-binding-aug n))
-        (condition-val-bndg (@ expr-binding-aug (@ expr-condition n)))
-        (consequent-val-bndg (@ expr-binding-aug (@ expr-consequent n)))
-        (alternate-val-bndg (@ expr-binding-aug (@ expr-alternate n)))
+        (condition-val-bndg (@ expr-binding-aug (@ expr-condition (& expr-if n))))
+        (consequent-val-bndg (@ expr-binding-aug (@ expr-consequent (& expr-if n))))
+        (alternate-val-bndg (@ expr-binding-aug (@ expr-alternate (& expr-if n))))
         (consequent-instr-bndg
           [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope) (defined-state) empty-string null-fragment null-expr ..])
         (alternate-instr-bndg
@@ -604,15 +604,15 @@
         (end-instr-binding
           [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope) (defined-state) empty-string null-fragment null-expr ..]) (do
       
-      [generate-expression (@ expr-condition n) c relocs ..]
+      [generate-expression (@ expr-condition (& expr-if n)) c relocs ..]
       [prepend (make-instrN(x86-or)([bndg->op condition-val-bndg relocs ..][bndg->op condition-val-bndg relocs ..][make-reg-op(r11)..])..) c ..]
       [prepend (make-instrN (x86-jz) ([make-relative-relocation-immediate #:4 alternate-instr-bndg relocs ..]) ..) c ..]
       [prepend [make-label consequent-instr-bndg ..] c ..]
-      [generate-expression (@ expr-consequent n) c relocs ..]
+      [generate-expression (@ expr-consequent (& expr-if n)) c relocs ..]
       [generate-bndg-bndg-move expr-val-bndg consequent-val-bndg (r11) c relocs ..]
       [prepend (make-instrN (x86-jmp) ([make-relative-relocation-immediate #:4 end-instr-binding relocs ..]) ..) c ..]
       [prepend [make-label alternate-instr-bndg ..] c ..]
-      [generate-expression (@ expr-alternate n) c relocs ..]
+      [generate-expression (@ expr-alternate (& expr-if n)) c relocs ..]
       [generate-bndg-bndg-move expr-val-bndg alternate-val-bndg (r11) c relocs ..]
       [prepend [make-label end-instr-binding ..] c ..]))))
 
@@ -621,10 +621,10 @@
 (function initialize-if (n offset inits ret-val buf hdl)
   (substitute (.. buf hdl)
     (and [= (@ expr-type n) (-if-)] (with-region buf (do
-      (setf expr-binding-aug (@ expr-consequent n) (@ expr-binding-aug n))
-      (setf expr-binding-aug (@ expr-alternate n) (@ expr-binding-aug n))
+      (setf expr-binding-aug (@ expr-consequent (& expr-if n)) (@ expr-binding-aug n))
+      (setf expr-binding-aug (@ expr-alternate (& expr-if n)) (@ expr-binding-aug n))
       [initialize-expressions
-        (storage-cons (@ expr-consequent n) (storage-cons (@ expr-alternate n) (storage-cons (@ expr-condition n) nil)))
+        (storage-cons (@ expr-consequent (& expr-if n)) (storage-cons (@ expr-alternate (& expr-if n)) (storage-cons (@ expr-condition (& expr-if n)) nil)))
         nil offset 0x:FFFFFFFFFFFF0830 (@ expr-depth n) inits ret-val buf hdl]
       (setf expr-generator n [function->generator generate-if])
       (setf bndg-size (@ expr-binding-aug n) (word-size))
@@ -649,9 +649,9 @@
   (substitute (.. r handler)
     (let
         (expr-val-bndg (@ expr-binding-aug n))
-        (condition-val-bndg (@ expr-binding-aug (@ expr-condition n)))
-        (consequent-val-bndg (@ expr-binding-aug (@ expr-consequent n)))
-        (alternate-val-bndg (@ expr-binding-aug (@ expr-alternate n)))
+        (condition-val-bndg (@ expr-binding-aug (@ expr-condition (& expr-if n))))
+        (consequent-val-bndg (@ expr-binding-aug (@ expr-consequent (& expr-if n))))
+        (alternate-val-bndg (@ expr-binding-aug (@ expr-alternate (& expr-if n))))
         (consequent-instr-bndg
           [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope) (defined-state) empty-string null-fragment null-expr ..])
         (alternate-instr-bndg
@@ -659,12 +659,12 @@
         (end-instr-binding
           [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope) (defined-state) empty-string null-fragment null-expr ..]) (do
           
-      (loop gen-cond (sub-if (@ expr-condition n))
+      (loop gen-cond (sub-if (@ expr-condition (& expr-if n)))
         (if (and [= (@ expr-type sub-if) (-literal-)] (@ expr-value sub-if))
           (ignore)
         (if (and [= (@ expr-type sub-if) (-literal-)] (not (@ expr-value sub-if)))
           [prepend (make-instrN (x86-jmp) ([make-relative-relocation-immediate #:4 alternate-instr-bndg relocs ..]) ..) c ..]
-        (if (or [not= (@ expr-type sub-if) (-if-)] (not (or [= (@ expr-type (@ expr-consequent sub-if)) (-literal-)] [= (@ expr-type (@ expr-alternate sub-if)) (-literal-)])))
+        (if (or [not= (@ expr-type sub-if) (-if-)] (not (or [= (@ expr-type (@ expr-consequent (& expr-if sub-if))) (-literal-)] [= (@ expr-type (@ expr-alternate (& expr-if sub-if))) (-literal-)])))
           (do
             [generate-expression sub-if c relocs ..]
             (let (sub-if-bndg (@ expr-binding-aug sub-if))
@@ -673,36 +673,36 @@
                 [prepend (make-instrN(x86-or)([bndg->op sub-if-bndg relocs ..][bndg->op sub-if-bndg relocs ..][make-reg-op(r11)..])..) c ..]
                 [prepend (make-instrN (x86-jz) ([make-relative-relocation-immediate #:4 alternate-instr-bndg relocs ..]) ..) c ..])
               [prepend (make-instrN [negate-jump-condition (@ bndg-condition-jump sub-if-bndg)] ([make-relative-relocation-immediate #:4 alternate-instr-bndg relocs ..]) ..) c ..])))
-          (let (sub-if-val-bndg (@ expr-binding-aug (@ expr-condition sub-if)))
-              (consequent (@ expr-consequent sub-if))
-              (alternate (@ expr-alternate sub-if)) (do
-            [generate-expression (@ expr-condition sub-if) c relocs ..]
-            (let (jmp-instr (if [= (@ bndg-condition-jump (@ expr-binding-aug (@ expr-condition sub-if))) (x86-nop)]
+          (let (sub-if-val-bndg (@ expr-binding-aug (@ expr-condition (& expr-if sub-if))))
+              (consequent (@ expr-consequent (& expr-if sub-if)))
+              (alternate (@ expr-alternate (& expr-if sub-if))) (do
+            [generate-expression (@ expr-condition (& expr-if sub-if)) c relocs ..]
+            (let (jmp-instr (if [= (@ bndg-condition-jump (@ expr-binding-aug (@ expr-condition (& expr-if sub-if)))) (x86-nop)]
               (do
                 [prepend (make-instrN(x86-or)([bndg->op sub-if-val-bndg relocs ..][bndg->op sub-if-val-bndg relocs ..][make-reg-op(r11)..])..) c ..]
                 (x86-jnz))
-              (@ bndg-condition-jump (@ expr-binding-aug (@ expr-condition sub-if)))))
+              (@ bndg-condition-jump (@ expr-binding-aug (@ expr-condition (& expr-if sub-if))))))
             
             (if (and [= (@ expr-type sub-if) (-if-)] [= (@ expr-type consequent) (-literal-)] (@ expr-value consequent)) (do
               [prepend (make-instrN jmp-instr ([make-relative-relocation-immediate #:4 consequent-instr-bndg relocs ..]) ..) c ..]
-              {gen-cond (@ expr-alternate sub-if)})
+              {gen-cond (@ expr-alternate (& expr-if sub-if))})
             (if (and [= (@ expr-type sub-if) (-if-)] [= (@ expr-type consequent) (-literal-)] (not (@ expr-value consequent))) (do
               [prepend (make-instrN jmp-instr ([make-relative-relocation-immediate #:4 alternate-instr-bndg relocs ..]) ..) c ..]
-              {gen-cond (@ expr-alternate sub-if)})
+              {gen-cond (@ expr-alternate (& expr-if sub-if))})
             (if (and [= (@ expr-type sub-if) (-if-)] [= (@ expr-type alternate) (-literal-)] (@ expr-value alternate)) (do
               [prepend (make-instrN [negate-jump-condition jmp-instr] ([make-relative-relocation-immediate #:4 consequent-instr-bndg relocs ..]) ..) c ..]
-              {gen-cond (@ expr-consequent sub-if)})
+              {gen-cond (@ expr-consequent (& expr-if sub-if))})
             (if (and [= (@ expr-type sub-if) (-if-)] [= (@ expr-type alternate) (-literal-)] (not (@ expr-value alternate))) (do
               [prepend (make-instrN [negate-jump-condition jmp-instr] ([make-relative-relocation-immediate #:4 alternate-instr-bndg relocs ..]) ..) c ..]
-              {gen-cond (@ expr-consequent sub-if)})
+              {gen-cond (@ expr-consequent (& expr-if sub-if))})
             (ignore))))))))))))
         
       [prepend [make-label consequent-instr-bndg ..] c ..]
-      [generate-expression (@ expr-consequent n) c relocs ..]
+      [generate-expression (@ expr-consequent (& expr-if n)) c relocs ..]
       [generate-bndg-bndg-move expr-val-bndg consequent-val-bndg (r11) c relocs ..]
       [prepend (make-instrN (x86-jmp) ([make-relative-relocation-immediate #:4 end-instr-binding relocs ..]) ..) c ..]
       [prepend [make-label alternate-instr-bndg ..] c ..]
-      [generate-expression (@ expr-alternate n) c relocs ..]
+      [generate-expression (@ expr-alternate (& expr-if n)) c relocs ..]
       [generate-bndg-bndg-move expr-val-bndg alternate-val-bndg (r11) c relocs ..]
       [prepend [make-label end-instr-binding ..] c ..]))))
 
@@ -711,29 +711,29 @@
 (function initialize-optimized-if (n offset inits ret-val buf hdl)
   (substitute (.. buf hdl)
     (and [= (@ expr-type n) (-if-)] (with-region buf
-      (let (conds (loop gen-cond (sub-if (@ expr-condition n)) (conds nil)
-        (if (or [not= (@ expr-type sub-if) (-if-)] (not (or [= (@ expr-type (@ expr-consequent sub-if)) (-literal-)] [= (@ expr-type (@ expr-alternate sub-if)) (-literal-)])))
+      (let (conds (loop gen-cond (sub-if (@ expr-condition (& expr-if n))) (conds nil)
+        (if (or [not= (@ expr-type sub-if) (-if-)] (not (or [= (@ expr-type (@ expr-consequent (& expr-if sub-if))) (-literal-)] [= (@ expr-type (@ expr-alternate (& expr-if sub-if))) (-literal-)])))
           (do
             (setf bndg-is-condition (@ expr-binding-aug sub-if) (true))
             [cons sub-if conds ..])
-          (let (sub-if-val-bndg (@ expr-binding-aug (@ expr-condition sub-if)))
-              (consequent (@ expr-consequent sub-if))
-              (alternate (@ expr-alternate sub-if)) (do
-            (setf bndg-is-condition (@ expr-binding-aug (@ expr-condition sub-if)) (true))
+          (let (sub-if-val-bndg (@ expr-binding-aug (@ expr-condition (& expr-if sub-if))))
+              (consequent (@ expr-consequent (& expr-if sub-if)))
+              (alternate (@ expr-alternate (& expr-if sub-if))) (do
+            (setf bndg-is-condition (@ expr-binding-aug (@ expr-condition (& expr-if sub-if))) (true))
             (if (and [= (@ expr-type sub-if) (-if-)] [= (@ expr-type consequent) (-literal-)] (@ expr-value consequent)) (do
-              {gen-cond (@ expr-alternate sub-if) [cons (@ expr-condition sub-if) conds ..]})
+              {gen-cond (@ expr-alternate (& expr-if sub-if)) [cons (@ expr-condition (& expr-if sub-if)) conds ..]})
             (if (and [= (@ expr-type sub-if) (-if-)] [= (@ expr-type consequent) (-literal-)] (not (@ expr-value consequent))) (do
-              {gen-cond (@ expr-alternate sub-if) [cons (@ expr-condition sub-if) conds ..]})
+              {gen-cond (@ expr-alternate (& expr-if sub-if)) [cons (@ expr-condition (& expr-if sub-if)) conds ..]})
             (if (and [= (@ expr-type sub-if) (-if-)] [= (@ expr-type alternate) (-literal-)] (@ expr-value alternate)) (do
-              {gen-cond (@ expr-consequent sub-if) [cons (@ expr-condition sub-if) conds ..]})
+              {gen-cond (@ expr-consequent (& expr-if sub-if)) [cons (@ expr-condition (& expr-if sub-if)) conds ..]})
             (if (and [= (@ expr-type sub-if) (-if-)] [= (@ expr-type alternate) (-literal-)] (not (@ expr-value alternate))) (do
-              {gen-cond (@ expr-consequent sub-if) [cons (@ expr-condition sub-if) conds ..]})
+              {gen-cond (@ expr-consequent (& expr-if sub-if)) [cons (@ expr-condition (& expr-if sub-if)) conds ..]})
             (ignore)))))))))) (do
           
-      (setf expr-binding-aug (@ expr-consequent n) (@ expr-binding-aug n))
-      (setf expr-binding-aug (@ expr-alternate n) (@ expr-binding-aug n))
+      (setf expr-binding-aug (@ expr-consequent (& expr-if n)) (@ expr-binding-aug n))
+      (setf expr-binding-aug (@ expr-alternate (& expr-if n)) (@ expr-binding-aug n))
       [initialize-expressions
-        (storage-cons (@ expr-consequent n) (storage-cons (@ expr-alternate n) conds))
+        (storage-cons (@ expr-consequent n) (storage-cons (@ expr-alternate (& expr-if n)) conds))
         nil offset 0x:FFFFFFFFFFFF0830 (@ expr-depth n) inits ret-val buf hdl]
       (setf expr-generator n [function->generator generate-optimized-if])
       (setf bndg-size (@ expr-binding-aug n) (word-size))
