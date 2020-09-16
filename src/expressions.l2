@@ -94,7 +94,7 @@
   
   (property expr-storage #:0 #:48 \:r:(?(b) `:(! static~ (expr-storage ,:b) (expr ,:b)):r r))
   
-  (property expr-literal #:0 #:48 \:r:(?(b) `:(! static~ (expr-literal ,:b) (expr ,:b)):r r))
+  (property expr-literal #:72 #:48 \:r:(?(b) `:(! static~ (expr-literal ,:b) (expr ,:b)):r r))
   
   (property expr-if #:72 #:48 \:r:(?(b) `:(! static~ (expr-if ,:b) (expr ,:b)):r r))
   
@@ -198,7 +198,7 @@
 
 (ignore Properies of (-literal-) objects.)
 
-  (property expr-value #:72 #:8 \:r:(?(a b) `:(! static~ ,:a (expr ,:b)):r r))
+  (property expr-value #:0 #:8 \:r:(?(a b) `:(! static~ ,:a !:Ref:(expr-literal ,:b)):r r))
 
 (ignore Valid values for expr-type.)
 
@@ -375,7 +375,8 @@
       (expr-binding-aug
         [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
           (defined-state) empty-string [vbl->frag [vbl ..]] t ..])
-      (expr-value value))))
+      (phantom (record (_ (& expr-literal t))
+        (expr-value value))))))
 
 (constrain make-symbol (\ r (?(a b) (`(function (string frag (expr ,:a) region ,:b) (expr ()))r)r)))
 
@@ -689,7 +690,7 @@
           
     ((-literal-) (do
       [print-str (stdout) (" (lparen)literal(space)) ..]
-      [print-uint (stdout) (@ expr-value s) ..]
+      [print-uint (stdout) (@ expr-value (& expr-literal s)) ..]
       [print-str (stdout) (" (rparen)) ..]))
     
     ((-meta-) [print-fragment (@ expr-fragment s) ..])

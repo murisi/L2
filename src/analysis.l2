@@ -52,7 +52,7 @@
     (if (and [= (@ expr-type e) (-symbol-)] [not= (@ bndg-propagate (@ expr-symbol-reference e)) null-expr]
         [= (@ expr-type (@ bndg-propagate (@ expr-symbol-reference e))) (-literal-)])
       (do
-        [make-literal (@ expr-value (@ bndg-propagate (@ expr-symbol-reference e))) null-fragment null-expr buf handler])
+        [make-literal (@ expr-value (& expr-literal (@ bndg-propagate (@ expr-symbol-reference e)))) null-fragment null-expr buf handler])
       e))) (ignore)))
 
 (ignore Does the following optimizations:
@@ -70,12 +70,10 @@
   ((if? (property?
       (expr-condition (guards? (if? (property?
           (expr-condition .:cond)
-          (expr-consequent (property?
-            (expr-type (|[= (-literal-)]))
-            (expr-value .:cons-val)))
-          (expr-alternate (property?
-            (expr-type (|[= (-literal-)]))
-            (expr-value .:alt-val)))))
+          (expr-consequent (literal? (property?
+            (expr-value .:cons-val))))
+          (expr-alternate (literal? (property?
+            (expr-value .:alt-val))))))
         (and (or cons-val alt-val) (not (and cons-val alt-val)))))
       (expr-consequent .:consequent)
       (expr-alternate .:alternate))) e

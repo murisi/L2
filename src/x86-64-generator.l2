@@ -660,9 +660,9 @@
           [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope) (defined-state) empty-string null-fragment null-expr ..]) (do
           
       (loop gen-cond (sub-if (@ expr-condition (& expr-if n)))
-        (if (and [= (@ expr-type sub-if) (-literal-)] (@ expr-value sub-if))
+        (if (and [= (@ expr-type sub-if) (-literal-)] (@ expr-value (& expr-literal sub-if)))
           (ignore)
-        (if (and [= (@ expr-type sub-if) (-literal-)] (not (@ expr-value sub-if)))
+        (if (and [= (@ expr-type sub-if) (-literal-)] (not (@ expr-value (& expr-literal sub-if))))
           [prepend (make-instrN (x86-jmp) ([make-relative-relocation-immediate #:4 alternate-instr-bndg relocs ..]) ..) c ..]
         (if (or [not= (@ expr-type sub-if) (-if-)] (not (or [= (@ expr-type (@ expr-consequent (& expr-if sub-if))) (-literal-)] [= (@ expr-type (@ expr-alternate (& expr-if sub-if))) (-literal-)])))
           (do
@@ -683,16 +683,16 @@
                 (x86-jnz))
               (@ bndg-condition-jump (@ expr-binding-aug (@ expr-condition (& expr-if sub-if))))))
             
-            (if (and [= (@ expr-type sub-if) (-if-)] [= (@ expr-type consequent) (-literal-)] (@ expr-value consequent)) (do
+            (if (and [= (@ expr-type sub-if) (-if-)] [= (@ expr-type consequent) (-literal-)] (@ expr-value (& expr-literal consequent))) (do
               [prepend (make-instrN jmp-instr ([make-relative-relocation-immediate #:4 consequent-instr-bndg relocs ..]) ..) c ..]
               {gen-cond (@ expr-alternate (& expr-if sub-if))})
-            (if (and [= (@ expr-type sub-if) (-if-)] [= (@ expr-type consequent) (-literal-)] (not (@ expr-value consequent))) (do
+            (if (and [= (@ expr-type sub-if) (-if-)] [= (@ expr-type consequent) (-literal-)] (not (@ expr-value (& expr-literal consequent)))) (do
               [prepend (make-instrN jmp-instr ([make-relative-relocation-immediate #:4 alternate-instr-bndg relocs ..]) ..) c ..]
               {gen-cond (@ expr-alternate (& expr-if sub-if))})
-            (if (and [= (@ expr-type sub-if) (-if-)] [= (@ expr-type alternate) (-literal-)] (@ expr-value alternate)) (do
+            (if (and [= (@ expr-type sub-if) (-if-)] [= (@ expr-type alternate) (-literal-)] (@ expr-value (& expr-literal alternate))) (do
               [prepend (make-instrN [negate-jump-condition jmp-instr] ([make-relative-relocation-immediate #:4 consequent-instr-bndg relocs ..]) ..) c ..]
               {gen-cond (@ expr-consequent (& expr-if sub-if))})
-            (if (and [= (@ expr-type sub-if) (-if-)] [= (@ expr-type alternate) (-literal-)] (not (@ expr-value alternate))) (do
+            (if (and [= (@ expr-type sub-if) (-if-)] [= (@ expr-type alternate) (-literal-)] (not (@ expr-value (& expr-literal alternate)))) (do
               [prepend (make-instrN [negate-jump-condition jmp-instr] ([make-relative-relocation-immediate #:4 alternate-instr-bndg relocs ..]) ..) c ..]
               {gen-cond (@ expr-consequent (& expr-if sub-if))})
             (ignore))))))))))))
@@ -720,13 +720,13 @@
               (consequent (@ expr-consequent (& expr-if sub-if)))
               (alternate (@ expr-alternate (& expr-if sub-if))) (do
             (setf bndg-is-condition (@ expr-binding-aug (@ expr-condition (& expr-if sub-if))) (true))
-            (if (and [= (@ expr-type sub-if) (-if-)] [= (@ expr-type consequent) (-literal-)] (@ expr-value consequent)) (do
+            (if (and [= (@ expr-type sub-if) (-if-)] [= (@ expr-type consequent) (-literal-)] (@ expr-value (& expr-literal consequent))) (do
               {gen-cond (@ expr-alternate (& expr-if sub-if)) [cons (@ expr-condition (& expr-if sub-if)) conds ..]})
-            (if (and [= (@ expr-type sub-if) (-if-)] [= (@ expr-type consequent) (-literal-)] (not (@ expr-value consequent))) (do
+            (if (and [= (@ expr-type sub-if) (-if-)] [= (@ expr-type consequent) (-literal-)] (not (@ expr-value (& expr-literal consequent)))) (do
               {gen-cond (@ expr-alternate (& expr-if sub-if)) [cons (@ expr-condition (& expr-if sub-if)) conds ..]})
-            (if (and [= (@ expr-type sub-if) (-if-)] [= (@ expr-type alternate) (-literal-)] (@ expr-value alternate)) (do
+            (if (and [= (@ expr-type sub-if) (-if-)] [= (@ expr-type alternate) (-literal-)] (@ expr-value (& expr-literal alternate))) (do
               {gen-cond (@ expr-consequent (& expr-if sub-if)) [cons (@ expr-condition (& expr-if sub-if)) conds ..]})
-            (if (and [= (@ expr-type sub-if) (-if-)] [= (@ expr-type alternate) (-literal-)] (not (@ expr-value alternate))) (do
+            (if (and [= (@ expr-type sub-if) (-if-)] [= (@ expr-type alternate) (-literal-)] (not (@ expr-value (& expr-literal alternate)))) (do
               {gen-cond (@ expr-consequent (& expr-if sub-if)) [cons (@ expr-condition (& expr-if sub-if)) conds ..]})
             (ignore)))))))))) (do
           
@@ -800,7 +800,7 @@
 
 (function generate-literal (n c relocs r handler) (substitute (.. r handler)
   (let (expr-val-bndg (@ expr-binding-aug n)) (do
-    [prepend(make-instrN(x86-mov)([bndg->op expr-val-bndg relocs ..][make-imm-op #:8 (@ expr-value n)..][make-reg-op (r11)..])..) c ..]))))
+    [prepend(make-instrN(x86-mov)([bndg->op expr-val-bndg relocs ..][make-imm-op #:8 (@ expr-value (& expr-literal n))..][make-reg-op (r11)..])..) c ..]))))
 
 (constrain initialize-literal \:r:(?(a b c d) `:(function ((expr ,:a) ,:b (list initializer) (values ,:b reg-use-vec) region ,:d) ,:c):r r))
 

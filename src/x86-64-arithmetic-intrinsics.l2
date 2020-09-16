@@ -65,6 +65,14 @@
               (,:matcher (& expr-if if?.obj) ,:consequent ,:alternate)
               ,:alternate)):r)):r)
 
+(function literal? (l r)
+  `:(function func (l r)
+      (let (matcher ,:[meta.bq [@fst l] `:r:r r]) (consequent [@frst l]) (alternate [@frrst l])
+        `:(let (literal?.obj ,:[@fst l])
+            (if [= (@ expr-type literal?.obj) (-literal-)]
+              (,:matcher (& expr-literal literal?.obj) ,:consequent ,:alternate)
+              ,:alternate)):r)):r)
+
 (constrain match-undefined-unary-invoke (\ r (?(a b) (`(function (!:Ref:string !:Ref:(expr ,:b) (expr ,:b)) ,:a)r)r)))
 
 (function match-undefined-unary-invoke (name arg1 n)
@@ -425,9 +433,8 @@
         (bndg-name (|[variable name]))))))
     (expr-invoke-arguments (list?
       (|[variable arg1])
-      (property?
-        (expr-type (|[= (-literal-)]))
-        (expr-value (|[variable arg2]))))))) n (true) (false)))
+      (literal? (property?
+        (expr-value (|[variable arg2])))))))) n (true) (false)))
 
 (constrain initialize-binary-right-imm-arithmetic-operators
   (\ r (?(a b c d) (`(function ((expr ,:a) ,:b (list initializer) (values ,:b reg-use-vec) region ,:d) ,:c)r)r)))
@@ -616,15 +623,13 @@
           (expr-invoke-arguments
             (or?
               (list?
-                (property?
-                  (expr-type (|[= (-literal-)]))
-                  (expr-value (|[variable offset])))
+                (literal? (property?
+                  (expr-value (|[variable offset]))))
                 (|[variable base]))
               (list?
                 (|[variable base])
-                (property?
-                  (expr-type (|[= (-literal-)]))
-                  (expr-value (|[variable offset])))))))))))) n (true) (false)))
+                (literal? (property?
+                  (expr-value (|[variable offset]))))))))))))) n (true) (false)))
 
 (constrain initialize-get-base+offset
   (\ r (?(a b c d) (`(function ((expr ,:a) ,:b (list initializer) (values ,:b reg-use-vec) region ,:d) ,:c)r)r)))
@@ -697,15 +702,13 @@
             (expr-invoke-arguments
               (or?
                 (list?
-                  (property?
-                    (expr-type (|[= (-literal-)]))
-                    (expr-value (|[variable offset])))
+                  (literal? (property?
+                    (expr-value (|[variable offset]))))
                   (|[variable base]))
                 (list?
                   (|[variable base])
-                  (property?
-                    (expr-type (|[= (-literal-)]))
-                    (expr-value (|[variable offset]))))))))
+                  (literal? (property?
+                    (expr-value (|[variable offset])))))))))
         (|[variable value]))))) n (true) (false)))
 
 (constrain initialize-set-base+offset
