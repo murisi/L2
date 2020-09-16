@@ -182,7 +182,18 @@
 
 (ignore Only for type(s) (-function-) (-continuation-) (-with-))
 
-  (property expr-parameters #:88 #:8 \:r:(?(a) `:(! static~ (list bndg-aug) (expr ,:a)):r r))
+  (function expr-parameters* (n)
+    (switch = (@ expr-type n)
+      ((-function-) (& expr-function-parameters n))
+      ((-continuation-) (& expr-continuation-parameters n))
+      ((-with-) (& expr-with-parameters n))
+      [print-str (stdout) (" expr-parameters called on incorrect type.) (ignore)]))
+      
+  (property expr-function-parameters #:88 #:8 \:r:(?(a) `:(! static~ (list bndg-aug) (expr ,:a)):r r))
+  
+  (property expr-continuation-parameters #:88 #:8 \:r:(?(a) `:(! static~ (list bndg-aug) (expr ,:a)):r r))
+  
+  (property expr-with-parameters #:88 #:8 \:r:(?(a) `:(! static~ (list bndg-aug) (expr ,:a)):r r))
 
 (ignore Only for type(s) (-function-))
   
@@ -369,7 +380,7 @@
       (expr-function-reference
         [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope)
           (defined-state) ref [vbl->frag [vbl ..]] func ..])
-      (expr-parameters
+      (expr-function-parameters
         [collect-list (map (param (%:list-iter params))
           [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
             (defined-state) param [vbl->frag [vbl ..]] func ..]) nil ..])
@@ -396,7 +407,7 @@
       (expr-continuation-reference
         [make-binding-aug (reference-mode) (intra-function-context) (nil-storage) (local-scope)
           (defined-state) ref [vbl->frag [vbl ..]] cont ..])
-      (expr-parameters
+      (expr-continuation-parameters
         [collect-list (map (param (%:list-iter params))
           [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
             (defined-state) param [vbl->frag [vbl ..]] cont ..]) nil ..])
@@ -423,7 +434,7 @@
       (expr-with-reference
         [make-binding-aug (reference-mode) (intra-function-context) (nil-storage) (local-scope)
           (defined-state) ref [vbl->frag [vbl ..]] wth ..])
-      (expr-parameters [cons
+      (expr-with-parameters [cons
         [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
           (defined-state) empty-string [vbl->frag [vbl ..]] wth ..] nil ..])
       (expr-escapes (false))
@@ -591,7 +602,7 @@
       [print-str (stdout) (" (space)) ..]
       [print-binding $:[expr-reference s] ..]
       [print-str (stdout) (" (space)(lparen)(space)) ..]
-      (for (t (%:list-iter (@ expr-parameters s))) (ignore) (do
+      (for (t (%:list-iter $:[expr-parameters* s])) (ignore) (do
         [print-binding t ..]
         [print-str (stdout) (" (space)) ..]))
       [print-str (stdout) (" (rparen)(space)) ..]
@@ -729,7 +740,7 @@
       (let (func (make-functionN name (empty-string)
           (make-invokeN callee-symbol (arg-a) null-fragment null-expr ..) null-fragment null-expr ..)) (do
         (setf expr-symbol-reference callee-symbol [make-undefined-binding name ..])
-        (setf expr-symbol-reference arg-a [@car (@ expr-parameters func)])
+        (setf expr-symbol-reference arg-a [@car (@ expr-function-parameters func)])
         func)))))
 
 (ignore Performs actions analogous to make-unary-intrinsic, but for binary functions.)
@@ -744,7 +755,7 @@
       (let (func (make-functionN name (empty-string empty-string)
           (make-invokeN callee-symbol (arg-a arg-b) null-fragment null-expr ..) null-fragment null-expr ..)) (do
         (setf expr-symbol-reference callee-symbol [make-undefined-binding name ..])
-        (setf expr-symbol-reference arg-a [@car (@ expr-parameters func)])
-        (setf expr-symbol-reference arg-b [@cadr (@ expr-parameters func)])
+        (setf expr-symbol-reference arg-a [@car (@ expr-function-parameters func)])
+        (setf expr-symbol-reference arg-b [@cadr (@ expr-function-parameters func)])
         func)))))
 
