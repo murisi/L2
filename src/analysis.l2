@@ -119,7 +119,7 @@
   (setf expr-depth e depth)
   (switch = (@ expr-type e)
     ((-function-) (-continuation-) (-with-) (-constrain-)
-      [assign-depths $:[expr-expression* e] [+ depth #:1]])
+      [assign-depths $:[expr-expression e] [+ depth #:1]])
     ((-if-) (do
       [assign-depths (@ expr-condition e) [+ depth #:1]]
       [assign-depths (@ expr-consequent e) [+ depth #:1]]
@@ -258,7 +258,7 @@
       ((-with-) (-continuation-) (do
         [ht-put (@ bndg-name $:[expr-reference s]) $:[expr-reference s] bindings ..]
         (for (u (%:list-iter (@ expr-parameters s))) (ignore) [ht-put (@ bndg-name u) u bindings ..])
-        [link-symbols $:[expr-expression* s] static-storage undefined-bindings static-bindings dynamic-bindings ..]
+        [link-symbols $:[expr-expression s] static-storage undefined-bindings static-bindings dynamic-bindings ..]
         (for (u (%:list-iter (@ expr-parameters s))) (ignore) [ht-remove (@ bndg-name u) bindings])
         [ht-remove (@ bndg-name $:[expr-reference s]) bindings]))
       
@@ -313,7 +313,7 @@
         (if (and escaping [= (@ expr-type s) (-continuation-)])
           (setf expr-escapes s escaping)
           (ignore))
-        [escape-analysis $:[expr-expression* s] (true) ..]))
+        [escape-analysis $:[expr-expression s] (true) ..]))
       
       ((-storage-)
         (for (t (%:list-iter (@ expr-storage-arguments s))) (ignore) [escape-analysis t (true) ..]))
@@ -352,7 +352,7 @@
         [prepend (@ expr-alternate s) (& expr-dependencies s) ..]))
       
       ((-function-) (-with-)
-        [prepend $:[expr-expression* s] (& expr-dependencies s) ..])
+        [prepend $:[expr-expression s] (& expr-dependencies s) ..])
       
       ((-continuation-) (ignore))
       
@@ -536,7 +536,7 @@
       [visit-expressions visitor (& expr-alternate $:s) ctx]))
     
     ((-function-) (-continuation-) (-with-) (-constrain-)
-      [visit-expressions visitor [expr-expression* $:s] ctx])
+      [visit-expressions visitor [expr-expression $:s] ctx])
     
     ((-storage-)
       (for (elt (%:list-ref-iter (@ expr-storage-arguments $:s))) (ignore)
@@ -562,7 +562,7 @@
       [pre-visit-expressions visitor (& expr-alternate $:s) ctx]))
     
     ((-function-) (-continuation-) (-with-) (-constrain-)
-      [pre-visit-expressions visitor [expr-expression* $:s] ctx])
+      [pre-visit-expressions visitor [expr-expression $:s] ctx])
     
     ((-storage-)
       (for (elt (%:list-ref-iter (@ expr-storage-arguments $:s))) (ignore)
@@ -594,7 +594,7 @@
       (setf bndg-context $:[expr-reference expr] (extra-function-context))
       (for (t (%:list-iter (@ expr-parameters expr))) (ignore)
         (setf bndg-context t (extra-function-context)))
-      [classify-program-bindings $:[expr-expression* expr]]))
+      [classify-program-bindings $:[expr-expression expr]]))
     
     ((-if-) (do
       [classify-program-bindings (@ expr-condition expr)]
@@ -608,7 +608,7 @@
 (function setup-collect-static-bindings (n) (do
   (switch = (@ expr-type n)
     ((-continuation-) (-with-) (do
-      [setup-collect-static-bindings $:[expr-expression* n]]
+      [setup-collect-static-bindings $:[expr-expression n]]
       (if (@ expr-escapes n)
         (setf bndg-other $:[expr-reference n] (true)) (ignore))
       (for (t (%:list-iter (@ expr-parameters n))) (ignore)
@@ -648,7 +648,7 @@
   (substitute (.. r handler) (do
     (switch = (@ expr-type n)
       ((-continuation-) (-with-) (do
-        [collect-static-bindings $:[expr-expression* n] binding-augs ..]
+        [collect-static-bindings $:[expr-expression n] binding-augs ..]
         (if (@ expr-escapes n)
           [append-static-binding $:[expr-reference n] binding-augs ..] (ignore))
         (for (t (%:list-iter (@ expr-parameters n))) (ignore)
