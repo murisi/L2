@@ -41,7 +41,7 @@
     (if (and [= (@ expr-type e) (-continuation-)] (not (@ expr-continuation-escapes (& expr-continuation e))) [= [length (@ expr-continuation-jumps (& expr-continuation e))] #:1])
       (do
         (let (jmp [@car (@ expr-continuation-jumps (& expr-continuation e))])
-          (for (u (%:list-iter(@ expr-continuation-parameters (& expr-continuation e)))) (v (%:list-iter(@ expr-jump-arguments jmp))) (ignore)
+          (for (u (%:list-iter(@ expr-continuation-parameters (& expr-continuation e)))) (v (%:list-iter(@ expr-jump-arguments (& expr-jump jmp)))) (ignore)
             (setf bndg-propagate u v)))
         e)
     (if (and [= (@ expr-type e) (-symbol-)] [not= (@ bndg-propagate (@ expr-symbol-reference e)) null-expr]
@@ -319,19 +319,19 @@
         (for (t (%:list-iter (@ expr-storage-arguments s))) (ignore) [escape-analysis t (true) ..]))
       
       ((-jump-) (do
-        (if [= (@ expr-type (@ expr-jump-target s)) (-symbol-)]
-          (let (target-expr (@ bndg-expression (@ expr-symbol-reference (@ expr-jump-target s))))
+        (if [= (@ expr-type (@ expr-jump-target (& expr-jump s))) (-symbol-)]
+          (let (target-expr (@ bndg-expression (@ expr-symbol-reference (@ expr-jump-target (& expr-jump s)))))
           (if (and (or [= (@ expr-type target-expr) (-continuation-)] [= (@ expr-type target-expr) (-with-)])
-              [= $:[expr-reference target-expr] (@ expr-symbol-reference (@ expr-jump-target s))]) (do
+              [= $:[expr-reference target-expr] (@ expr-symbol-reference (@ expr-jump-target (& expr-jump s)))]) (do
             [prepend s [expr-jumps target-expr] ..]
-            (setf expr-short-circuit s target-expr))
+            (setf expr-short-circuit (& expr-jump s) target-expr))
             (ignore)))
-        (if [= (@ expr-type (@ expr-jump-target s)) (-continuation-)] (do
-          [prepend s (& expr-continuation-jumps (& expr-continuation (@ expr-jump-target s))) ..]
-          (setf expr-short-circuit s (@ expr-jump-target s)))
+        (if [= (@ expr-type (@ expr-jump-target (& expr-jump s))) (-continuation-)] (do
+          [prepend s (& expr-continuation-jumps (& expr-continuation (@ expr-jump-target (& expr-jump s)))) ..]
+          (setf expr-short-circuit (& expr-jump s) (@ expr-jump-target (& expr-jump s))))
           (ignore)))
-        [escape-analysis (@ expr-jump-target s) (false) ..]
-        (for (t (%:list-iter (@ expr-jump-arguments s))) (ignore) [escape-analysis t (true) ..])))
+        [escape-analysis (@ expr-jump-target (& expr-jump s)) (false) ..]
+        (for (t (%:list-iter (@ expr-jump-arguments (& expr-jump s)))) (ignore) [escape-analysis t (true) ..])))
       
       ((-invoke-) (do
         [escape-analysis (@ expr-invoke-target s) (true) ..]
@@ -364,9 +364,9 @@
         (for (t (%:list-iter (@ expr-invoke-arguments s))) (ignore) [prepend t (& expr-dependencies s) ..])))
       
       ((-jump-) (do
-        [prepend (@ expr-jump-target s) (& expr-dependencies s) ..]
-        [prepend s (& expr-dependencies (@ expr-jump-target s)) ..]
-        (for (t (%:list-iter (@ expr-jump-arguments s))) (ignore) [prepend t (& expr-dependencies s) ..])))
+        [prepend (@ expr-jump-target (& expr-jump s)) (& expr-dependencies s) ..]
+        [prepend s (& expr-dependencies (@ expr-jump-target (& expr-jump s))) ..]
+        (for (t (%:list-iter (@ expr-jump-arguments (& expr-jump s)))) (ignore) [prepend t (& expr-dependencies s) ..])))
       
       ((-symbol-)
         (let (target-expr (@ bndg-expression (@ expr-symbol-reference s))) (do
@@ -480,8 +480,8 @@
           [prepend [list->fragment [cons function-token [cons params-signature [cons [expr-signature e] nil ..] ..] ..]] rhss ..])))
       
       ((-jump-)
-        (let (params-signature [list->fragment [collect-list (map (arg (%:list-iter (@ expr-jump-arguments e))) [scoped-signature arg scc ..]) nil ..]]) (do
-          [prepend [scoped-signature (@ expr-jump-target e) scc ..] lhss ..]
+        (let (params-signature [list->fragment [collect-list (map (arg (%:list-iter (@ expr-jump-arguments (& expr-jump e)))) [scoped-signature arg scc ..]) nil ..]]) (do
+          [prepend [scoped-signature (@ expr-jump-target (& expr-jump e)) scc ..] lhss ..]
           [prepend [list->fragment [cons continuation-token [cons params-signature nil ..] ..]] rhss ..])))
       
       ((-with-)
@@ -544,7 +544,7 @@
     
     ((-jump-) (-invoke-) (do
       [visit-expressions visitor [expr-target $:s] ctx]
-      (for (elt (%:list-ref-iter (@ expr-jump-arguments $:s))) (ignore)
+      (for (elt (%:list-ref-iter (@ expr-jump-arguments (& expr-jump $:s)))) (ignore)
         [visit-expressions visitor elt ctx])))
     
     (ignore))

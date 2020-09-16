@@ -397,7 +397,7 @@
     
     (loop search (rem-jumps (@ expr-with-jumps (& expr-with n)))
       (if [nil? rem-jumps] (ignore)
-        (let (arg [@car (@ expr-jump-arguments [@car rem-jumps])])
+        (let (arg [@car (@ expr-jump-arguments (& expr-jump [@car rem-jumps]))])
           (if [= (@ expr-type arg) (-symbol-)]
             (let (repl-target (@ expr-symbol-reference arg))
               (if (and [= (@ bndg-mode repl-target) (value-mode)] [> [bndg-depth repl-target] (@ expr-depth n)] (not [bndg-escapes repl-target]))
@@ -463,44 +463,44 @@
 
 (function generate-jump (n c relocs r handler)
   (substitute (.. r handler) (do
-    (if (and [= (@ expr-type (@ expr-jump-target n)) (-continuation-)] (not (@ expr-continuation-escapes (& expr-continuation (@ expr-jump-target n)))))
-      (let (cont (@ expr-jump-target n)) (do
-        (for (t (%:list-iter (@ expr-jump-arguments n))) (ignore) [generate-expression t c relocs ..])
-        (for (t (%:list-iter(@ expr-jump-arguments n))) (u (%:list-iter(@ expr-continuation-parameters (& expr-continuation cont)))) (ignore)
+    (if (and [= (@ expr-type (@ expr-jump-target (& expr-jump n))) (-continuation-)] (not (@ expr-continuation-escapes (& expr-continuation (@ expr-jump-target (& expr-jump n))))))
+      (let (cont (@ expr-jump-target (& expr-jump n))) (do
+        (for (t (%:list-iter (@ expr-jump-arguments (& expr-jump n)))) (ignore) [generate-expression t c relocs ..])
+        (for (t (%:list-iter(@ expr-jump-arguments (& expr-jump n)))) (u (%:list-iter(@ expr-continuation-parameters (& expr-continuation cont)))) (ignore)
           (let (src-bndg (@ expr-binding-aug t)) (dest-bndg u)
             [generate-bndg-bndg-move dest-bndg src-bndg (r11) c relocs ..]))
         [prepend [make-label (@ expr-continuation-instr-bndg (& expr-continuation cont)) ..] c ..]
         [generate-expression (@ expr-continuation-expression (& expr-continuation cont)) c relocs ..]))
     
     (bind-if
-      (loop enter (with-expr (@ expr-short-circuit n)) (current (@ expr-short-circuit n))
+      (loop enter (with-expr (@ expr-short-circuit (& expr-jump n))) (current (@ expr-short-circuit (& expr-jump n)))
         (if [= n current]
           (do [set dest with-expr] (true))
         (if (and [not= current null-expr] [= (@ expr-type current) (-with-)])
           {enter current (@ expr-with-expression (& expr-with current))}
-        (if (and [= (@ expr-type current) (-jump-)] [= (@ expr-type (@ expr-jump-target current)) (-continuation-)])
-          {enter with-expr (@ expr-continuation-expression (& expr-continuation (@ expr-jump-target current)))}
+        (if (and [= (@ expr-type current) (-jump-)] [= (@ expr-type (@ expr-jump-target (& expr-jump current))) (-continuation-)])
+          {enter with-expr (@ expr-continuation-expression (& expr-continuation (@ expr-jump-target (& expr-jump current))))}
           (false)))))
       (dest)
         (let (dest-bndg (@ expr-binding-aug (@ expr-with-expression (& expr-with $:dest))))
-            (src-bndg (@ expr-binding-aug [@car (@ expr-jump-arguments n)])) (do
-          [generate-expression [@car (@ expr-jump-arguments n)] c relocs ..]
+            (src-bndg (@ expr-binding-aug [@car (@ expr-jump-arguments (& expr-jump n))])) (do
+          [generate-expression [@car (@ expr-jump-arguments (& expr-jump n))] c relocs ..]
           [generate-bndg-bndg-move dest-bndg src-bndg (r11) c relocs ..]))
     
-    (if [not= (@ expr-short-circuit n) null-expr]
-      (let (cont-instr-bndg $:[expr-instr-bndg(@ expr-short-circuit n)]) (do
-        (if [= (@ expr-type(@ expr-jump-target n)) (-continuation-)]
-          [generate-expression (@ expr-jump-target n) c relocs ..]
+    (if [not= (@ expr-short-circuit (& expr-jump n)) null-expr]
+      (let (cont-instr-bndg $:[expr-instr-bndg(@ expr-short-circuit (& expr-jump n))]) (do
+        (if [= (@ expr-type(@ expr-jump-target (& expr-jump n))) (-continuation-)]
+          [generate-expression (@ expr-jump-target (& expr-jump n)) c relocs ..]
           (ignore))
-        (for (t (%:list-iter (@ expr-jump-arguments n))) (ignore) [generate-expression t c relocs ..])
-        (for (t (%:list-iter(@ expr-jump-arguments n))) (u (%:list-iter $:[expr-parameters (@ expr-short-circuit n)])) (ignore)
+        (for (t (%:list-iter (@ expr-jump-arguments (& expr-jump n)))) (ignore) [generate-expression t c relocs ..])
+        (for (t (%:list-iter(@ expr-jump-arguments (& expr-jump n)))) (u (%:list-iter $:[expr-parameters (@ expr-short-circuit (& expr-jump n))])) (ignore)
           (let (src-bndg (@ expr-binding-aug t)) (dest-bndg u)
             [generate-bndg-bndg-move dest-bndg src-bndg (r11) c relocs ..]))
         [prepend (make-instrN (x86-jmp) ([make-relative-relocation-immediate #:4 cont-instr-bndg relocs ..]) ..) c ..]))
         
-      (let (ref-val-bndg (@ expr-binding-aug (@ expr-jump-target n))) (do
-        (for (t (%:list-iter (@ expr-jump-arguments n))) (ignore) [generate-expression t c relocs ..])
-        [generate-expression (@ expr-jump-target n) c relocs ..]
+      (let (ref-val-bndg (@ expr-binding-aug (@ expr-jump-target (& expr-jump n)))) (do
+        (for (t (%:list-iter (@ expr-jump-arguments (& expr-jump n)))) (ignore) [generate-expression t c relocs ..])
+        [generate-expression (@ expr-jump-target (& expr-jump n)) c relocs ..]
         [generate-register-bndg-move (r10) ref-val-bndg c relocs ..]
         [generate-buffer-to-dest n (r10) (cont-size) c relocs ..]
         [generate-load-continuation (r10) c relocs ..]))))))))
@@ -509,18 +509,18 @@
 
 (function initialize-jump (n offset inits ret-val buf hdl)
   (and [= (@ expr-type n) (-jump-)] (do
-    (if [= (@ expr-type (@ expr-jump-target n)) (-continuation-)]
+    (if [= (@ expr-type (@ expr-jump-target (& expr-jump n))) (-continuation-)]
       (do
-        (for (u (%:list-iter(@ expr-jump-arguments n))) (v (%:list-iter(@ expr-continuation-parameters (& expr-continuation (@ expr-jump-target n))))) (ignore)
+        (for (u (%:list-iter(@ expr-jump-arguments (& expr-jump n)))) (v (%:list-iter(@ expr-continuation-parameters (& expr-continuation (@ expr-jump-target (& expr-jump n)))))) (ignore)
           (setf expr-binding-aug u v))
-        [initialize-expressions (storage-cons (@ expr-continuation-expression (& expr-continuation (@ expr-jump-target n))) (@ expr-jump-arguments n))
+        [initialize-expressions (storage-cons (@ expr-continuation-expression (& expr-continuation (@ expr-jump-target (& expr-jump n)))) (@ expr-jump-arguments (& expr-jump n)))
           nil offset 0x:FFFFFFFFFFFF0C38 (@ expr-depth n) inits ret-val buf hdl])
-    (if (and [not= (@ expr-short-circuit n) null-expr] [= [length $:[expr-parameters (@ expr-short-circuit n)]] #:1])
+    (if (and [not= (@ expr-short-circuit (& expr-jump n)) null-expr] [= [length $:[expr-parameters (@ expr-short-circuit (& expr-jump n))]] #:1])
       (do
-        (setf expr-binding-aug [@car (@ expr-jump-arguments n)] [@car $:[expr-parameters (@ expr-short-circuit n)]])
-        [initialize-expressions (storage-cons (@ expr-jump-target n) (@ expr-jump-arguments n)) nil offset
+        (setf expr-binding-aug [@car (@ expr-jump-arguments (& expr-jump n))] [@car $:[expr-parameters (@ expr-short-circuit (& expr-jump n))]])
+        [initialize-expressions (storage-cons (@ expr-jump-target (& expr-jump n)) (@ expr-jump-arguments (& expr-jump n))) nil offset
           0x:FFFFFFFFFFFF0C30 (@ expr-depth n) inits ret-val buf hdl])
-      [initialize-expressions (storage-cons (@ expr-jump-target n) (@ expr-jump-arguments n)) nil offset
+      [initialize-expressions (storage-cons (@ expr-jump-target (& expr-jump n)) (@ expr-jump-arguments (& expr-jump n))) nil offset
         0x:FFFFFFFFFFFF0C30 (@ expr-depth n) inits ret-val buf hdl]))
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (setf expr-generator n [function->generator generate-jump])

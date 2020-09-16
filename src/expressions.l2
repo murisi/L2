@@ -126,11 +126,11 @@
   
 (ignore Properies of (-jump-) objects.)
   
-  (property expr-jump-arguments #:80 #:8 \:r:(?(a) `:(! static~ (list (expr ,:a)) (expr ,:a)):r r))
+  (property expr-jump-arguments #:80 #:8 \:r:(?(a) `:(! static~ (list (expr ,:a)) !:Ref:(expr-jump ,:a)):r r))
   
-  (property expr-jump-target #:72 #:8 \:r:(?(a) `:(! static~ (expr ,:a) (expr ,:a)):r r))
+  (property expr-jump-target #:72 #:8 \:r:(?(a) `:(! static~ (expr ,:a) !:Ref:(expr-jump ,:a)):r r))
   
-  (property expr-short-circuit #:104 #:8 \:r:(?(a b) `:(! static~ ,:a (expr ,:b)):r r))
+  (property expr-short-circuit #:104 #:8 \:r:(?(a b) `:(! static~ ,:a !:Ref:(expr-jump ,:b)):r r))
   
 (ignore Properies of (-function-) objects.)
   
@@ -232,7 +232,7 @@
 (function expr-target (n)
   (switch = (@ expr-type n)
     ((-invoke-) (& expr-invoke-target n))
-    ((-jump-) (& expr-jump-target n))
+    ((-jump-) (& expr-jump-target (& expr-jump n)))
     ((-meta-) (& expr-meta-target n))
     ((-constrain-) (& expr-constrain-target n))
     [print-str (stdout) (" expr-target called on incorrect type.) (ignore)]))
@@ -241,7 +241,7 @@
   (switch = (@ expr-type n)
     ((-storage-) (& expr-storage-arguments n))
     ((-invoke-) (& expr-invoke-arguments n))
-    ((-jump-) (& expr-jump-arguments n))
+    ((-jump-) (& expr-jump-arguments (& expr-jump n)))
     [print-str (stdout) (" expr-arguments called on incorrect type.) (ignore)]))
 
 (function expr-reference (n)
@@ -508,9 +508,10 @@
       (expr-binding-aug
         [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
           (defined-state) empty-string [vbl->frag [vbl ..]] u ..])
-      (expr-short-circuit null-expr)
-      (expr-jump-target ref)
-      (expr-jump-arguments args))))
+      (phantom (record (_ (& expr-jump u))
+        (expr-short-circuit null-expr)
+        (expr-jump-target ref)
+        (expr-jump-arguments args))))))
 
 (constrain make-storage (\ r (?(a b) (`(function (string (list (expr ,:a)) frag (expr ,:a) region ,:b) (expr ()))r)r)))
 
