@@ -110,7 +110,7 @@
   
   (property expr-meta #:72 #:48 \:r:(?(b) `:(! static~ (expr-meta ,:b) (expr ,:b)):r r))
   
-  (property expr-constrain #:0 #:48 \:r:(?(b) `:(! static~ (expr-constrain ,:b) (expr ,:b)):r r))
+  (property expr-constrain #:72 #:48 \:r:(?(b) `:(! static~ (expr-constrain ,:b) (expr ,:b)):r r))
   
   (property expr-symbol #:72 #:48 \:r:(?(b) `:(! static~ (expr-symbol ,:b) (expr ,:b)):r r))
 
@@ -186,9 +186,9 @@
 
 (ignore Properies of (-constrain-) objects.)
 
-  (property expr-constrain-target #:72 #:8 \:r:(?(a) `:(! static~ (expr ,:a) (expr ,:a)):r r))
+  (property expr-constrain-target #:0 #:8 \:r:(?(a) `:(! static~ (expr ,:a) !:Ref:(expr-constrain ,:a)):r r))
   
-  (property expr-constrain-expression #:80 #:8 \:r:(?(a) `:(! static~ (expr ,:a) (expr ,:a)):r r))
+  (property expr-constrain-expression #:8 #:8 \:r:(?(a) `:(! static~ (expr ,:a) !:Ref:(expr-constrain ,:a)):r r))
 
 (ignore Properies of (-if-) objects.)
 
@@ -236,7 +236,7 @@
     ((-invoke-) (& expr-invoke-target (& expr-invoke n)))
     ((-jump-) (& expr-jump-target (& expr-jump n)))
     ((-meta-) (& expr-meta-target (& expr-meta n)))
-    ((-constrain-) (& expr-constrain-target n))
+    ((-constrain-) (& expr-constrain-target (& expr-constrain n)))
     [print-str (stdout) (" expr-target called on incorrect type.) (ignore)]))
 
 (function expr-arguments (n)
@@ -260,7 +260,7 @@
     ((-function-) (& expr-function-expression (& expr-function n)))
     ((-continuation-) (& expr-continuation-expression (& expr-continuation n)))
     ((-with-) (& expr-with-expression (& expr-with n)))
-    ((-constrain-) (& expr-constrain-expression n))
+    ((-constrain-) (& expr-constrain-expression (& expr-constrain n)))
     [print-str (stdout) (" expr-target called on incorrect type.) (ignore)]))
 
 (function expr-parameters (n)
@@ -566,8 +566,9 @@
       (expr-binding-aug
         [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
           (defined-state) empty-string [vbl->frag [vbl ..]] u ..])
-      (expr-constrain-target ref)
-      (expr-constrain-expression expr))))
+      (phantom (record (_ (& expr-constrain u))
+        (expr-constrain-target ref)
+        (expr-constrain-expression expr))))))
 
 (constrain make-if (\ r (?(a b) (`(function ((expr ,:a) (expr ,:a) (expr ,:a) frag (expr ,:a) region ,:b) (expr ()))r)r)))
 
@@ -683,7 +684,7 @@
     
     ((-constrain-) (do
       [print-str (stdout) (" (lparen)constrain(space)) ..]
-      [print-expression (@ expr-constrain-expression s) ..]
+      [print-expression (@ expr-constrain-expression (& expr-constrain s)) ..]
       [print-str (stdout) (" (space)) ..]
       [print-fragment (@ bndg-signature (@ expr-binding-aug s)) ..]
       [print-str (stdout) (" (rparen)) ..]))

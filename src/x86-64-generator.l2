@@ -47,7 +47,7 @@
       offset))
     
     ((-constrain-)
-      [place-perm-bindings (@ expr-constrain-expression n) offset])
+      [place-perm-bindings (@ expr-constrain-expression (& expr-constrain n)) offset])
     
     ((-invoke-) (-jump-)
       (let (offset [place-perm-bindings $:[expr-target n] offset])
@@ -746,8 +746,8 @@
   (substitute (.. r handler)
     (let
         (expr-val-bndg (@ expr-binding-aug n))
-        (body-val-bndg (@ expr-binding-aug (@ expr-constrain-expression n))) (do
-      [generate-expression (@ expr-constrain-expression n) c relocs ..]
+        (body-val-bndg (@ expr-binding-aug (@ expr-constrain-expression (& expr-constrain n)))) (do
+      [generate-expression (@ expr-constrain-expression (& expr-constrain n)) c relocs ..]
       [generate-bndg-bndg-move expr-val-bndg body-val-bndg (r11) c relocs ..]))))
 
 (constrain initialize-constrain
@@ -755,8 +755,8 @@
 
 (function initialize-constrain (n offset inits ret-val buf hdl)
   (and [= (@ expr-type n) (-constrain-)] (do
-    (setf expr-binding-aug (@ expr-constrain-expression n) (@ expr-binding-aug n))
-    [initialize-expressions (storage-cons (@ expr-constrain-expression n) nil) nil offset
+    (setf expr-binding-aug (@ expr-constrain-expression (& expr-constrain n)) (@ expr-binding-aug n))
+    [initialize-expressions (storage-cons (@ expr-constrain-expression (& expr-constrain n)) nil) nil offset
       0x:FFFFFFFFFFFF0830 (@ expr-depth n) inits ret-val buf hdl]
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (setf expr-generator n [function->generator generate-constrain])

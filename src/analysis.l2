@@ -28,7 +28,7 @@
 (constrain veliminate-constrain (\ r (?(a) (`(function ((expr ,:a) ()) (expr ,:a))r)r)))
 
 (function veliminate-constrain (e ctx)
-  (if [= (@ expr-type e) (-constrain-)] (@ expr-constrain-expression e) e))
+  (if [= (@ expr-type e) (-constrain-)] (@ expr-constrain-expression (& expr-constrain e)) e))
 
 (ignore
   Replaces symbols with the literal or the symbol they are defined by in the cases in
@@ -164,8 +164,8 @@
       [set-expr-is-read (@ expr-alternate (& expr-if s)) (true)]))
     
     ((-constrain-) (do
-      [assign-expr-is-reads (@ expr-constrain-expression s)]
-      [set-expr-is-read (@ expr-constrain-expression s) (true)]))
+      [assign-expr-is-reads (@ expr-constrain-expression (& expr-constrain s))]
+      [set-expr-is-read (@ expr-constrain-expression (& expr-constrain s)) (true)]))
     
     ((-function-) (do
       (setf bndg-is-read (@ expr-function-reference (& expr-function s)) (true))
@@ -284,7 +284,7 @@
           [link-symbols u static-storage undefined-bindings static-bindings dynamic-bindings ..])))
       
       ((-constrain-)
-        [link-symbols (@ expr-constrain-expression s) static-storage undefined-bindings static-bindings dynamic-bindings ..])
+        [link-symbols (@ expr-constrain-expression (& expr-constrain s)) static-storage undefined-bindings static-bindings dynamic-bindings ..])
       
       (ignore)))))
 
@@ -333,7 +333,7 @@
         [escape-analysis (@ expr-invoke-target (& expr-invoke s)) (true) ..]
         (for (t (%:list-iter (@ expr-invoke-arguments (& expr-invoke s)))) (ignore) [escape-analysis t (true) ..])))
       
-      ((-constrain-) [escape-analysis (@ expr-constrain-expression s) (true) ..])
+      ((-constrain-) [escape-analysis (@ expr-constrain-expression (& expr-constrain s)) (true) ..])
       
       (ignore))))
 
@@ -370,8 +370,8 @@
         [prepend s (& expr-dependencies target-expr) ..])))
       
       ((-constrain-) (do
-        [prepend (@ expr-constrain-expression s) (& expr-dependencies s) ..]
-        [prepend s (& expr-dependencies (@ expr-constrain-expression s)) ..]))
+        [prepend (@ expr-constrain-expression (& expr-constrain s)) (& expr-dependencies s) ..]
+        [prepend s (& expr-dependencies (@ expr-constrain-expression (& expr-constrain s))) ..]))
       
       (ignore))
     s)) (ignore)))
@@ -468,7 +468,7 @@
       
       ((-constrain-) (do
         [prepend [expr-signature e] lhss ..]
-        [prepend [expr-signature (@ expr-constrain-expression e)] rhss ..]))
+        [prepend [expr-signature (@ expr-constrain-expression (& expr-constrain e))] rhss ..]))
       
       ((-invoke-)
         (let (params-signature [list->fragment [collect-list (map (arg (%:list-iter (@ expr-invoke-arguments (& expr-invoke e)))) [scoped-signature arg scc ..]) nil ..]]) (do
@@ -576,7 +576,7 @@
 (function classify-program-bindings (expr) (do
   (setf bndg-context (@ expr-binding-aug expr) (extra-function-context))
   (switch = (@ expr-type expr)
-    ((-constrain-) [classify-program-bindings (@ expr-constrain-expression expr)])
+    ((-constrain-) [classify-program-bindings (@ expr-constrain-expression (& expr-constrain expr))])
     
     ((-storage-) (do
       (setf bndg-context (@ expr-storage-reference (& expr-storage expr)) (extra-function-context))
@@ -624,7 +624,7 @@
       [setup-collect-static-bindings (@ expr-alternate (& expr-if n))]))
     
     ((-constrain-)
-      [setup-collect-static-bindings (@ expr-constrain-expression n)])
+      [setup-collect-static-bindings (@ expr-constrain-expression (& expr-constrain n))])
     
     (ignore))
   
@@ -664,7 +664,7 @@
         [collect-static-bindings (@ expr-alternate (& expr-if n)) binding-augs ..]))
       
       ((-constrain-)
-        [collect-static-bindings (@ expr-constrain-expression n) binding-augs ..])
+        [collect-static-bindings (@ expr-constrain-expression (& expr-constrain n)) binding-augs ..])
       
       (ignore))
       
@@ -714,7 +714,7 @@
             (macro-err (msg) {handler (storage _ meta-expr-error msg)}))))
       
       ((-constrain-)
-        (let (macro [cast [preprocessed-expression-address (@ expr-constrain-target s) inits bindings buf buf2 handler]])
+        (let (macro [cast [preprocessed-expression-address (@ expr-constrain-target (& expr-constrain s)) inits bindings buf buf2 handler]])
           (do (setf bndg-signature (@ expr-binding-aug s) [macro buf]) s)))
       
       s) (ignore)))
