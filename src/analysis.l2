@@ -301,7 +301,7 @@
         (let (target-expr (@ bndg-expression (@ expr-symbol-reference s)))
           (if (and escaping (or [= (@ expr-type target-expr) (-continuation-)] [= (@ expr-type target-expr) (-with-)])
               [= $:[expr-reference target-expr] (@ expr-symbol-reference s)])
-            (do [set [expr-escapes* target-expr] escaping] (ignore))
+            (do [set [expr-escapes target-expr] escaping] (ignore))
             (ignore))))
       
       ((-if-) (do
@@ -311,7 +311,7 @@
       
       ((-function-) (-continuation-) (-with-) (do
         (if (and escaping [= (@ expr-type s) (-continuation-)])
-          [set [expr-escapes* s] escaping]
+          (setf expr-continuation-escapes s escaping)
           (ignore))
         [escape-analysis $:[expr-expression s] (true) ..]))
       
@@ -609,7 +609,7 @@
   (switch = (@ expr-type n)
     ((-continuation-) (-with-) (do
       [setup-collect-static-bindings $:[expr-expression n]]
-      (if $:[expr-escapes* n]
+      (if $:[expr-escapes n]
         (setf bndg-other $:[expr-reference n] (true)) (ignore))
       (for (t (%:list-iter $:[expr-parameters n])) (ignore)
         (setf bndg-other t (true)))))
@@ -649,7 +649,7 @@
     (switch = (@ expr-type n)
       ((-continuation-) (-with-) (do
         [collect-static-bindings $:[expr-expression n] binding-augs ..]
-        (if $:[expr-escapes* n]
+        (if $:[expr-escapes n]
           [append-static-binding $:[expr-reference n] binding-augs ..] (ignore))
         (for (t (%:list-iter $:[expr-parameters n])) (ignore)
           [append-static-binding t binding-augs ..])))

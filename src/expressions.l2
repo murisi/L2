@@ -213,7 +213,7 @@
   
   (property expr-with-instr-bndg #:96 #:8 \:r:(?(a b) `:(! static~ ,:a (expr ,:b)):r r))
 
-  (function expr-escapes* (n)
+  (function expr-escapes (n)
     (switch = (@ expr-type n)
       ((-continuation-) (& expr-continuation-escapes n))
       ((-with-) (& expr-with-escapes n))
@@ -324,7 +324,9 @@
 
 (constrain bndg-escapes (\ r (?(a) (`(function (bndg-aug) ,:a)r)r)))
 
-(function bndg-escapes (bndg) $:[expr-escapes* (@ bndg-expression bndg)])
+(function bndg-escapes (bndg)
+  (let (e (@ bndg-expression bndg))
+    (or (and [not= (@ expr-type e) (-continuation-)] [not= (@ expr-type e) (-with-)]) $:[expr-escapes e])))
 
 (constrain make-literal (\ r (?(a b c) (`(function (,:a frag (expr ,:c) region ,:b) (expr ()))r)r)))
 
