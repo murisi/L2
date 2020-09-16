@@ -43,11 +43,11 @@
 (function place-perm-bindings (n offset)
   (switch = (@ expr-type n)
     ((-function-) (do
-      (setf expr-frame-size n [place-perm-bindings (@ expr-expression n) [- #:0 [* (callee-saved-x64-r64s-len)(word-size)]]])
+      (setf expr-frame-size n [place-perm-bindings (@ expr-function-expression n) [- #:0 [* (callee-saved-x64-r64s-len)(word-size)]]])
       offset))
     
     ((-constrain-)
-      [place-perm-bindings (@ expr-expression n) offset])
+      [place-perm-bindings (@ expr-constrain-expression n) offset])
     
     ((-invoke-) (-jump-)
       (let (offset [place-perm-bindings $:[expr-target n] offset])
@@ -70,12 +70,12 @@
           (setf bndg-storage cont-bndg [context->memory-storage (@ bndg-context cont-bndg)])
           (setf bndg-size cont-bndg (cont-size))
           (setf bndg-offset cont-bndg offset)
-          [place-perm-bindings (@ expr-expression n) offset]))))
+          [place-perm-bindings $:[expr-expression* n] offset]))))
         (let (cont-bndg $:[expr-reference n]) (do
           (setf bndg-storage cont-bndg [context->memory-storage (@ bndg-context cont-bndg)])
           (setf bndg-size cont-bndg #:0)
           (setf bndg-offset cont-bndg offset)
-          [place-perm-bindings (@ expr-expression n) offset]))))
+          [place-perm-bindings $:[expr-expression* n] offset]))))
     
     ((-storage-)
       (let (storage-size [* [length (@ expr-storage-arguments n)] (word-size)])
@@ -232,7 +232,7 @@
   (substitute (.. r handler) (let
       (ref-val-bndg (@ expr-function-reference n))
       (expr-val-bndg (@ expr-binding-aug n))
-      (body-val-bndg (@ expr-binding-aug (@ expr-expression n)))
+      (body-val-bndg (@ expr-binding-aug (@ expr-function-expression n)))
       (after-binding [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope) (defined-state) empty-string null-fragment null-expr ..]) (do
     
     [prepend(make-instrN(x86-lea)([bndg->op expr-val-bndg relocs ..][bndg->op ref-val-bndg relocs ..][make-reg-op(r11)..])..) c ..]
@@ -273,7 +273,7 @@
       [+ offset (word-size)]))))
     
     (ignore Execute the function body)
-    [generate-expression (@ expr-expression n) c relocs ..]
+    [generate-expression (@ expr-function-expression n) c relocs ..]
     [generate-register-bndg-move (rax) body-val-bndg c relocs ..]
     
     (let (save-offset [- #:0 [* (callee-saved-x64-r64s-len)(word-size)]])
@@ -309,11 +309,11 @@
         (setf bndg-preferred-offset [@car u] offset)
         {assign-params [+ offset (word-size)] [@cdr u]})))))
     
-    (setf bndg-preferred-storage (@ expr-binding-aug (@ expr-expression n)) (register-storage))
-    (setf bndg-preferred-offset (@ expr-binding-aug (@ expr-expression n)) (rax))
+    (setf bndg-preferred-storage (@ expr-binding-aug (@ expr-function-expression n)) (register-storage))
+    (setf bndg-preferred-offset (@ expr-binding-aug (@ expr-function-expression n)) (rax))
     
     ((values? .:frame-size .:in-use)
-      [initialize-expressions (storage-cons (@ expr-expression n) nil) (@ expr-parameters n)
+      [initialize-expressions (storage-cons (@ expr-function-expression n) nil) (@ expr-parameters n)
         (@ expr-frame-size n) 0x:FFFFFFFFFFFF0830 (@ expr-depth n) inits ret-val buf hdl] (do
     (setf expr-registers-used n in-use)
     (setf expr-frame-size n frame-size)
@@ -353,7 +353,7 @@
     
     [prepend (make-instrN (x86-jmp) ([make-relative-relocation-immediate #:4 after-binding relocs ..]) ..) c ..]
     [prepend [make-label (@ expr-cont-instr-bndg n) ..] c ..]
-    [generate-expression (@ expr-expression n) c relocs ..]
+    [generate-expression (@ expr-continuation-expression n) c relocs ..]
     [prepend [make-label after-binding ..] c ..]))))
 
 (constrain initialize-continuation
@@ -361,7 +361,7 @@
 
 (function initialize-continuation (n offset inits ret-val buf hdl)
   (and [= (@ expr-type n) (-continuation-)] (do
-    [initialize-expressions (storage-cons (@ expr-expression n) nil) (@ expr-parameters n)
+    [initialize-expressions (storage-cons (@ expr-continuation-expression n) nil) (@ expr-parameters n)
       offset 0x:FFFFFFFFFFFF0C38 (@ expr-depth n) inits ret-val buf hdl]
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (setf expr-generator n [function->generator generate-continuation])
@@ -373,12 +373,12 @@
 (function generate-with (n c relocs r handler)
   (substitute (.. r handler) (let
       (expr-val-bndg (@ expr-binding-aug n))
-      (body-val-bndg (@ expr-binding-aug (@ expr-expression n)))
+      (body-val-bndg (@ expr-binding-aug (@ expr-with-expression n)))
       (param-val-bndg [@car(@ expr-parameters n)])
       (end-instr-binding
         [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope) (defined-state) empty-string null-fragment null-expr ..]) (do
     (if (@ expr-escapes n) [generate-store-continuation n c relocs ..] (ignore))
-    [generate-expression (@ expr-expression n) c relocs ..]
+    [generate-expression (@ expr-with-expression n) c relocs ..]
     [generate-bndg-bndg-move expr-val-bndg body-val-bndg (r11) c relocs ..]
     (if [bndg= expr-val-bndg param-val-bndg]
       [prepend [make-label (@ expr-cont-instr-bndg n) ..] c ..]
@@ -391,8 +391,8 @@
 (constrain initialize-with \:r:(?(a b c d) `:(function ((expr ,:a) ,:b (list initializer) (values ,:b reg-use-vec) region ,:d) ,:c):r r))
 
 (function initialize-with (n offset inits ret-val buf hdl)
-  (and (or [= (@ expr-type n) (-with-)]) (do
-    (setf expr-binding-aug (@ expr-expression n) (@ expr-binding-aug n))
+  (and [= (@ expr-type n) (-with-)] (do
+    (setf expr-binding-aug (@ expr-with-expression n) (@ expr-binding-aug n))
     (if (@ expr-escapes n) (ignore) (setf car (@ expr-parameters n) (@ expr-binding-aug n)))
     
     (loop search (rem-jumps (@ expr-jumps n))
@@ -401,12 +401,12 @@
           (if [= (@ expr-type arg) (-symbol-)]
             (let (repl-target (@ expr-symbol-reference arg))
               (if (and [= (@ bndg-mode repl-target) (value-mode)] [> [bndg-depth repl-target] (@ expr-depth n)] (not [bndg-escapes repl-target]))
-                [visit-expressions vreplace-value-bindings (storage _ (@ expr-expression n))
+                [visit-expressions vreplace-value-bindings (storage _ (@ expr-with-expression n))
                   (values storage repl-target [@car (@ expr-parameters n)])]
                 {search [@cdr rem-jumps]}))
             {search [@cdr rem-jumps]}))))
     
-    [initialize-expressions (storage-cons (@ expr-expression n) nil) (@ expr-parameters n)
+    [initialize-expressions (storage-cons (@ expr-with-expression n) nil) (@ expr-parameters n)
       offset 0x:FFFFFFFFFFFF0C38 (@ expr-depth n) inits ret-val buf hdl]
     
     (setf bndg-size (@ expr-binding-aug n) (word-size))
@@ -470,19 +470,19 @@
           (let (src-bndg (@ expr-binding-aug t)) (dest-bndg u)
             [generate-bndg-bndg-move dest-bndg src-bndg (r11) c relocs ..]))
         [prepend [make-label (@ expr-cont-instr-bndg cont) ..] c ..]
-        [generate-expression (@ expr-expression cont) c relocs ..]))
+        [generate-expression (@ expr-continuation-expression cont) c relocs ..]))
     
     (bind-if
       (loop enter (with-expr (@ expr-short-circuit n)) (current (@ expr-short-circuit n))
         (if [= n current]
           (do [set dest with-expr] (true))
         (if (and [not= current null-expr] [= (@ expr-type current) (-with-)])
-          {enter current (@ expr-expression current)}
+          {enter current (@ expr-with-expression current)}
         (if (and [= (@ expr-type current) (-jump-)] [= (@ expr-type (@ expr-jump-target current)) (-continuation-)])
-          {enter with-expr (@ expr-expression (@ expr-jump-target current))}
+          {enter with-expr (@ expr-continuation-expression (@ expr-jump-target current))}
           (false)))))
       (dest)
-        (let (dest-bndg (@ expr-binding-aug (@ expr-expression $:dest)))
+        (let (dest-bndg (@ expr-binding-aug (@ expr-with-expression $:dest)))
             (src-bndg (@ expr-binding-aug [@car (@ expr-jump-arguments n)])) (do
           [generate-expression [@car (@ expr-jump-arguments n)] c relocs ..]
           [generate-bndg-bndg-move dest-bndg src-bndg (r11) c relocs ..]))
@@ -513,7 +513,7 @@
       (do
         (for (u (%:list-iter(@ expr-jump-arguments n))) (v (%:list-iter(@ expr-parameters (@ expr-jump-target n)))) (ignore)
           (setf expr-binding-aug u v))
-        [initialize-expressions (storage-cons (@ expr-expression (@ expr-jump-target n)) (@ expr-jump-arguments n))
+        [initialize-expressions (storage-cons (@ expr-continuation-expression (@ expr-jump-target n)) (@ expr-jump-arguments n))
           nil offset 0x:FFFFFFFFFFFF0C38 (@ expr-depth n) inits ret-val buf hdl])
     (if (and [not= (@ expr-short-circuit n) null-expr] [= [length (@ expr-parameters (@ expr-short-circuit n))] #:1])
       (do
@@ -746,8 +746,8 @@
   (substitute (.. r handler)
     (let
         (expr-val-bndg (@ expr-binding-aug n))
-        (body-val-bndg (@ expr-binding-aug (@ expr-expression n))) (do
-      [generate-expression (@ expr-expression n) c relocs ..]
+        (body-val-bndg (@ expr-binding-aug (@ expr-constrain-expression n))) (do
+      [generate-expression (@ expr-constrain-expression n) c relocs ..]
       [generate-bndg-bndg-move expr-val-bndg body-val-bndg (r11) c relocs ..]))))
 
 (constrain initialize-constrain
@@ -755,8 +755,8 @@
 
 (function initialize-constrain (n offset inits ret-val buf hdl)
   (and [= (@ expr-type n) (-constrain-)] (do
-    (setf expr-binding-aug (@ expr-expression n) (@ expr-binding-aug n))
-    [initialize-expressions (storage-cons (@ expr-expression n) nil) nil offset
+    (setf expr-binding-aug (@ expr-constrain-expression n) (@ expr-binding-aug n))
+    [initialize-expressions (storage-cons (@ expr-constrain-expression n) nil) nil offset
       0x:FFFFFFFFFFFF0830 (@ expr-depth n) inits ret-val buf hdl]
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (setf expr-generator n [function->generator generate-constrain])

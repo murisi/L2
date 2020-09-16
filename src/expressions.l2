@@ -164,7 +164,21 @@
 
 (ignore Only for type(s) (-function-) (-continuation-) (-with-) (-constrain-))
 
-  (property expr-expression #:80 #:8 \:r:(?(a) `:(! static~ (expr ,:a) (expr ,:a)):r r))
+  (function expr-expression* (n)
+    (switch = (@ expr-type n)
+      ((-function-) (& expr-function-expression n))
+      ((-continuation-) (& expr-continuation-expression n))
+      ((-with-) (& expr-with-expression n))
+      ((-constrain-) (& expr-constrain-expression n))
+      [print-str (stdout) (" expr-target called on incorrect type.) (ignore)]))
+  
+  (property expr-function-expression #:80 #:8 \:r:(?(a) `:(! static~ (expr ,:a) (expr ,:a)):r r))
+  
+  (property expr-continuation-expression #:80 #:8 \:r:(?(a) `:(! static~ (expr ,:a) (expr ,:a)):r r))
+  
+  (property expr-with-expression #:80 #:8 \:r:(?(a) `:(! static~ (expr ,:a) (expr ,:a)):r r))
+  
+  (property expr-constrain-expression #:80 #:8 \:r:(?(a) `:(! static~ (expr ,:a) (expr ,:a)):r r))
 
 (ignore Only for type(s) (-function-) (-continuation-) (-with-))
 
@@ -359,7 +373,7 @@
         [collect-list (map (param (%:list-iter params))
           [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
             (defined-state) param [vbl->frag [vbl ..]] func ..]) nil ..])
-      (expr-expression expr))))
+      (expr-function-expression expr))))
 
 (constrain make-continuation (\ r (?(a b) (`(function (string (list string) (expr ,:a) frag (expr ,:a) region ,:b) (expr ()))r)r)))
 
@@ -387,7 +401,7 @@
           [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
             (defined-state) param [vbl->frag [vbl ..]] cont ..]) nil ..])
       (expr-escapes (false))
-      (expr-expression expr))))
+      (expr-continuation-expression expr))))
 
 (constrain make-with (\ r (?(a b) (`(function (string (expr ,:a) frag (expr ,:a) region ,:b) (expr ()))r)r)))
 
@@ -413,7 +427,7 @@
         [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
           (defined-state) empty-string [vbl->frag [vbl ..]] wth ..] nil ..])
       (expr-escapes (false))
-      (expr-expression expr))))
+      (expr-with-expression expr))))
 
 (constrain make-jump (\ r (?(a b) (`(function ((expr ,:a) (list (expr ,:a)) frag (expr ,:a) region ,:b) (expr ()))r)r)))
 
@@ -481,7 +495,7 @@
         [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
           (defined-state) empty-string [vbl->frag [vbl ..]] u ..])
       (expr-constrain-target ref)
-      (expr-expression expr))))
+      (expr-constrain-expression expr))))
 
 (constrain make-if (\ r (?(a b) (`(function ((expr ,:a) (expr ,:a) (expr ,:a) frag (expr ,:a) region ,:b) (expr ()))r)r)))
 
@@ -536,7 +550,7 @@
       [print-str (stdout) (" (lparen)with(space)) ..]
       [print-binding (@ expr-with-reference s) ..]
       [print-str (stdout) (" (space)) ..]
-      [print-expression (@ expr-expression s) ..]
+      [print-expression (@ expr-with-expression s) ..]
       [print-str (stdout) (" (rparen)) ..]))
     
     ((-storage-) (do
@@ -581,7 +595,7 @@
         [print-binding t ..]
         [print-str (stdout) (" (space)) ..]))
       [print-str (stdout) (" (rparen)(space)) ..]
-      [print-expression (@ expr-expression s) ..]
+      [print-expression $:[expr-expression* s] ..]
       [print-str (stdout) (" (rparen)) ..]))
       
     ((-if-) (do
@@ -595,7 +609,7 @@
     
     ((-constrain-) (do
       [print-str (stdout) (" (lparen)constrain(space)) ..]
-      [print-expression (@ expr-expression s) ..]
+      [print-expression (@ expr-constrain-expression s) ..]
       [print-str (stdout) (" (space)) ..]
       [print-fragment (@ bndg-signature (@ expr-binding-aug s)) ..]
       [print-str (stdout) (" (rparen)) ..]))
