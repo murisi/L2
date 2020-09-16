@@ -49,18 +49,25 @@
 
 (function variable (var val) (do [set var val] (true)))
 
+(function invoke? (l r)
+  `:(function func (l r)
+      (let (matcher ,:[meta.bq [@fst l] `:r:r r]) (consequent [@frst l]) (alternate [@frrst l])
+        `:(let (invoke?.obj ,:[@fst l])
+            (if [= (@ expr-type invoke?.obj) (-invoke-)]
+              (,:matcher (& expr-invoke invoke?.obj) ,:consequent ,:alternate)
+              ,:alternate)):r)):r)
+
 (constrain match-undefined-unary-invoke (\ r (?(a b) (`(function (!:Ref:string !:Ref:(expr ,:b) (expr ,:b)) ,:a)r)r)))
 
 (function match-undefined-unary-invoke (name arg1 n)
-  ((property?
-    (expr-type (|[= (-invoke-)]))
+  ((invoke? (property?
     (expr-invoke-target (property?
       (expr-type (|[= (-symbol-)]))
       (expr-symbol-reference (property?
         (bndg-state (|[= (undefined-state)]))
         (bndg-name (|[variable name]))))))
     (expr-invoke-arguments (list?
-      (|[variable arg1])))) n (true) (false)))
+      (|[variable arg1]))))) n (true) (false)))
 
 (constrain initialize-unary-arithmetic-operators
   (\ r (?(a b c d) (`(function ((expr ,:a) ,:b (list initializer) (values ,:b reg-use-vec) region ,:d) ,:c)r)r)))
@@ -154,8 +161,7 @@
 (constrain match-undefined-binary-invoke (\ r (?(a b) (`(function (!:Ref:string !:Ref:(expr ,:b) !:Ref:(expr ,:b) (expr ,:b)) ,:a)r)r)))
 
 (function match-undefined-binary-invoke (name arg1 arg2 n)
-  ((property?
-    (expr-type (|[= (-invoke-)]))
+  ((invoke? (property?
     (expr-invoke-target (property?
       (expr-type (|[= (-symbol-)]))
       (expr-symbol-reference (property?
@@ -163,7 +169,7 @@
         (bndg-name (|[variable name]))))))
     (expr-invoke-arguments (list?
       (|[variable arg1])
-      (|[variable arg2])))) n (true) (false)))
+      (|[variable arg2]))))) n (true) (false)))
 
 (constrain initialize-binary-arithmetic-operators
   (\ r (?(a b c d) (`(function ((expr ,:a) ,:b (list initializer) (values ,:b reg-use-vec) region ,:d) ,:c)r)r)))
@@ -403,8 +409,7 @@
 (constrain match-undefined-binary-right-imm-invoke (\ r (?(a b c) (`(function (!:Ref:string !:Ref:(expr ,:c) !:Ref:,;b (expr ,:c)) ,:a)r)r)))
 
 (function match-undefined-binary-right-imm-invoke (name arg1 arg2 n)
-  ((property?
-    (expr-type (|[= (-invoke-)]))
+  ((invoke? (property?
     (expr-invoke-target (property?
       (expr-type (|[= (-symbol-)]))
       (expr-symbol-reference (property?
@@ -414,7 +419,7 @@
       (|[variable arg1])
       (property?
         (expr-type (|[= (-literal-)]))
-        (expr-value (|[variable arg2])))))) n (true) (false)))
+        (expr-value (|[variable arg2]))))))) n (true) (false)))
 
 (constrain initialize-binary-right-imm-arithmetic-operators
   (\ r (?(a b c d) (`(function ((expr ,:a) ,:b (list initializer) (values ,:b reg-use-vec) region ,:d) ,:c)r)r)))
@@ -592,14 +597,12 @@
   (or [= val [band val 0x:000000007FFFFFFF]] [= val [bor val 0x:FFFFFFFF80000000]]))
 
 (function match-get-base+offset (name base offset n)
-  ((property?
-      (expr-type (|[= (-invoke-)]))
+  ((invoke? (property?
       (expr-invoke-target (|[undefined-symbol?]))
       (expr-invoke-target (property? (expr-symbol-reference
         (property? (bndg-name (|[variable name]))))))
       (expr-invoke-arguments (list?
-        (property?
-          (expr-type (|[= (-invoke-)]))
+        (invoke? (property?
           (expr-invoke-target (|[undefined-symbol?]))
           (expr-invoke-target (|[symbol-name= (" +)]))
           (expr-invoke-arguments
@@ -613,7 +616,7 @@
                 (|[variable base])
                 (property?
                   (expr-type (|[= (-literal-)]))
-                  (expr-value (|[variable offset])))))))))) n (true) (false)))
+                  (expr-value (|[variable offset])))))))))))) n (true) (false)))
 
 (constrain initialize-get-base+offset
   (\ r (?(a b c d) (`(function ((expr ,:a) ,:b (list initializer) (values ,:b reg-use-vec) region ,:d) ,:c)r)r)))
@@ -675,14 +678,12 @@
       (ignore))))
 
 (function match-set-base+offset (name base offset value n)
-  ((property?
-      (expr-type (|[= (-invoke-)]))
+  ((invoke? (property?
       (expr-invoke-target (|[undefined-symbol?]))
       (expr-invoke-target (property? (expr-symbol-reference
         (property? (bndg-name (|[variable name]))))))
       (expr-invoke-arguments (list?
-        (property?
-            (expr-type (|[= (-invoke-)]))
+        (invoke? (property?
             (expr-invoke-target (|[undefined-symbol?]))
             (expr-invoke-target (|[symbol-name= (" +)]))
             (expr-invoke-arguments
@@ -696,8 +697,8 @@
                   (|[variable base])
                   (property?
                     (expr-type (|[= (-literal-)]))
-                    (expr-value (|[variable offset])))))))
-        (|[variable value])))) n (true) (false)))
+                    (expr-value (|[variable offset]))))))))
+        (|[variable value]))))) n (true) (false)))
 
 (constrain initialize-set-base+offset
   (\ r (?(a b c d) (`(function ((expr ,:a) ,:b (list initializer) (values ,:b reg-use-vec) region ,:d) ,:c)r)r)))

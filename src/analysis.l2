@@ -334,8 +334,8 @@
         (for (t (%:list-iter (@ expr-jump-arguments (& expr-jump s)))) (ignore) [escape-analysis t (true) ..])))
       
       ((-invoke-) (do
-        [escape-analysis (@ expr-invoke-target s) (true) ..]
-        (for (t (%:list-iter (@ expr-invoke-arguments s))) (ignore) [escape-analysis t (true) ..])))
+        [escape-analysis (@ expr-invoke-target (& expr-invoke s)) (true) ..]
+        (for (t (%:list-iter (@ expr-invoke-arguments (& expr-invoke s)))) (ignore) [escape-analysis t (true) ..])))
       
       ((-constrain-) [escape-analysis (@ expr-constrain-expression s) (true) ..])
       
@@ -360,8 +360,8 @@
         (for (t (%:list-iter (@ expr-storage-arguments s))) (ignore) [prepend t (& expr-dependencies s) ..]))
       
       ((-invoke-) (do
-        [prepend (@ expr-invoke-target s) (& expr-dependencies s) ..]
-        (for (t (%:list-iter (@ expr-invoke-arguments s))) (ignore) [prepend t (& expr-dependencies s) ..])))
+        [prepend (@ expr-invoke-target (& expr-invoke s)) (& expr-dependencies s) ..]
+        (for (t (%:list-iter (@ expr-invoke-arguments (& expr-invoke s)))) (ignore) [prepend t (& expr-dependencies s) ..])))
       
       ((-jump-) (do
         [prepend (@ expr-jump-target (& expr-jump s)) (& expr-dependencies s) ..]
@@ -475,8 +475,8 @@
         [prepend [expr-signature (@ expr-constrain-expression e)] rhss ..]))
       
       ((-invoke-)
-        (let (params-signature [list->fragment [collect-list (map (arg (%:list-iter (@ expr-invoke-arguments e))) [scoped-signature arg scc ..]) nil ..]]) (do
-          [prepend [scoped-signature (@ expr-invoke-target e) scc ..] lhss ..]
+        (let (params-signature [list->fragment [collect-list (map (arg (%:list-iter (@ expr-invoke-arguments (& expr-invoke e)))) [scoped-signature arg scc ..]) nil ..]]) (do
+          [prepend [scoped-signature (@ expr-invoke-target (& expr-invoke e)) scc ..] lhss ..]
           [prepend [list->fragment [cons function-token [cons params-signature [cons [expr-signature e] nil ..] ..] ..]] rhss ..])))
       
       ((-jump-)
