@@ -146,13 +146,13 @@
   
 (ignore Properies of (-continuation-) objects.)
   
-  (property expr-continuation-reference #:72 #:8 \:r:(?(a) `:(! static~ bndg-aug (expr ,:a)):r r))
+  (property expr-continuation-reference #:72 #:8 \:r:(?(a) `:(! static~ bndg-aug !:Ref:(expr-continuation ,:a)):r r))
   
-  (property expr-continuation-expression #:80 #:8 \:r:(?(a) `:(! static~ (expr ,:a) (expr ,:a)):r r))
+  (property expr-continuation-expression #:80 #:8 \:r:(?(a) `:(! static~ (expr ,:a) !:Ref:(expr-continuation ,:a)):r r))
   
-  (property expr-continuation-parameters #:88 #:8 \:r:(?(a) `:(! static~ (list bndg-aug) (expr ,:a)):r r))
+  (property expr-continuation-parameters #:88 #:8 \:r:(?(a) `:(! static~ (list bndg-aug) !:Ref:(expr-continuation ,:a)):r r))
   
-  (property expr-continuation-instr-bndg #:96 #:8 \:r:(?(a b) `:(! static~ ,:a (expr ,:b)):r r))
+  (property expr-continuation-instr-bndg #:96 #:8 \:r:(?(a b) `:(! static~ ,:a !:Ref:(expr-continuation ,:b)):r r))
   
   (property expr-continuation-escapes #:104 #:8 \:r:(?(a b) `:(! static~ ,:a (expr ,:b)):r r))
   
@@ -248,7 +248,7 @@
   (switch = (@ expr-type n)
     ((-storage-) (& expr-storage-reference n))
     ((-function-) (& expr-function-reference n))
-    ((-continuation-) (& expr-continuation-reference n))
+    ((-continuation-) (& expr-continuation-reference (& expr-continuation n)))
     ((-with-) (& expr-with-reference (& expr-with n)))
     ((-symbol-) (& expr-symbol-reference n))
     [print-str (stdout) (" expr-reference called on incorrect type.) (ignore)]))
@@ -256,7 +256,7 @@
 (function expr-expression (n)
   (switch = (@ expr-type n)
     ((-function-) (& expr-function-expression n))
-    ((-continuation-) (& expr-continuation-expression n))
+    ((-continuation-) (& expr-continuation-expression (& expr-continuation n)))
     ((-with-) (& expr-with-expression (& expr-with n)))
     ((-constrain-) (& expr-constrain-expression n))
     [print-str (stdout) (" expr-target called on incorrect type.) (ignore)]))
@@ -264,13 +264,13 @@
 (function expr-parameters (n)
   (switch = (@ expr-type n)
     ((-function-) (& expr-function-parameters n))
-    ((-continuation-) (& expr-continuation-parameters n))
+    ((-continuation-) (& expr-continuation-parameters (& expr-continuation n)))
     ((-with-) (& expr-with-parameters (& expr-with n)))
     [print-str (stdout) (" expr-parameters called on incorrect type.) (ignore)]))
 
 (function expr-instr-bndg (n)
   (switch = (@ expr-type n)
-    ((-continuation-) (& expr-continuation-instr-bndg n))
+    ((-continuation-) (& expr-continuation-instr-bndg (& expr-continuation n)))
     ((-with-) (& expr-with-instr-bndg (& expr-with n)))
     [print-str (stdout) (" expr-instr-bndg called on incorrect type.) (ignore)]))
 
@@ -452,18 +452,19 @@
       (expr-binding-aug
         [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
           (defined-state) empty-string [vbl->frag [vbl ..]] cont ..])
-      (expr-continuation-instr-bndg
-        [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope)
-          (defined-state) empty-string null-fragment null-expr ..])
-      (expr-continuation-reference
-        [make-binding-aug (reference-mode) (intra-function-context) (nil-storage) (local-scope)
-          (defined-state) ref [vbl->frag [vbl ..]] cont ..])
-      (expr-continuation-parameters
-        [collect-list (map (param (%:list-iter params))
-          [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
-            (defined-state) param [vbl->frag [vbl ..]] cont ..]) nil ..])
       (expr-continuation-escapes (false))
-      (expr-continuation-expression expr))))
+      (phantom (record (_ (& expr-continuation cont))
+        (expr-continuation-expression expr)
+        (expr-continuation-reference
+          [make-binding-aug (reference-mode) (intra-function-context) (nil-storage) (local-scope)
+            (defined-state) ref [vbl->frag [vbl ..]] cont ..])
+        (expr-continuation-parameters
+          [collect-list (map (param (%:list-iter params))
+            [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
+              (defined-state) param [vbl->frag [vbl ..]] cont ..]) nil ..])
+        (expr-continuation-instr-bndg
+          [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope)
+            (defined-state) empty-string null-fragment null-expr ..]))))))
 
 (constrain make-with (\ r (?(a b) (`(function (string (expr ,:a) frag (expr ,:a) region ,:b) (expr ()))r)r)))
 

@@ -41,7 +41,7 @@
     (if (and [= (@ expr-type e) (-continuation-)] (not (@ expr-continuation-escapes e)) [= [length (@ expr-continuation-jumps e)] #:1])
       (do
         (let (jmp [@car (@ expr-continuation-jumps e)])
-          (for (u (%:list-iter(@ expr-continuation-parameters e))) (v (%:list-iter(@ expr-jump-arguments jmp))) (ignore)
+          (for (u (%:list-iter(@ expr-continuation-parameters (& expr-continuation e)))) (v (%:list-iter(@ expr-jump-arguments jmp))) (ignore)
             (setf bndg-propagate u v)))
         e)
     (if (and [= (@ expr-type e) (-symbol-)] [not= (@ bndg-propagate (@ expr-symbol-reference e)) null-expr]
@@ -183,9 +183,9 @@
       [set-expr-is-read (@ expr-with-expression (& expr-with s)) (true)]))
     
     ((-continuation-) (do
-      (setf bndg-is-read (@ expr-continuation-reference s) (true))
-      [assign-expr-is-reads (@ expr-continuation-expression s)]
-      [set-expr-is-read (@ expr-continuation-expression s) (false)]))
+      (setf bndg-is-read (@ expr-continuation-reference (& expr-continuation s)) (true))
+      [assign-expr-is-reads (@ expr-continuation-expression (& expr-continuation s))]
+      [set-expr-is-read (@ expr-continuation-expression (& expr-continuation s)) (false)]))
     
     ((-storage-) (do
       (setf bndg-is-read (@ expr-storage-reference s) (true))
@@ -465,10 +465,10 @@
             [cons [expr-signature (@ expr-function-expression e)] nil ..] ..] ..]] [prepend (@ bndg-signature (@ expr-function-reference e)) rhss ..] ..])))
       
       ((-continuation-)
-        (let (params-signature [list->fragment [collect-list (map (x (%:list-iter (@ expr-continuation-parameters e))) (@ bndg-signature x)) nil ..]]) (do
+        (let (params-signature [list->fragment [collect-list (map (x (%:list-iter (@ expr-continuation-parameters (& expr-continuation e)))) (@ bndg-signature x)) nil ..]]) (do
           [prepend [expr-signature e] [prepend [expr-signature e] lhss ..] ..]
           [prepend [list->fragment [cons continuation-token [cons params-signature nil ..] ..]]
-            [prepend (@ bndg-signature (@ expr-continuation-reference e)) rhss ..] ..])))
+            [prepend (@ bndg-signature (@ expr-continuation-reference (& expr-continuation e))) rhss ..] ..])))
       
       ((-constrain-) (do
         [prepend [expr-signature e] lhss ..]
