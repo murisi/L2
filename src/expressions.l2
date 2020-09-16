@@ -223,7 +223,15 @@
   
   (property expr-with-escapes #:104 #:8 \:r:(?(a b) `:(! static~ ,:a (expr ,:b)):r r))
   
-  (property expr-jumps #:112 #:8 \:r:(?(a) `:(! static~ (list (expr ,:a)) (expr ,:a)):r r))
+  (function expr-jumps* (n)
+    (switch = (@ expr-type n)
+      ((-continuation-) (& expr-continuation-jumps n))
+      ((-with-) (& expr-with-jumps n))
+      [print-str (stdout) (" expr-jumps called on incorrect type.) (ignore)]))
+  
+  (property expr-continuation-jumps #:112 #:8 \:r:(?(a) `:(! static~ (list (expr ,:a)) (expr ,:a)):r r))
+  
+  (property expr-with-jumps #:112 #:8 \:r:(?(a) `:(! static~ (list (expr ,:a)) (expr ,:a)):r r))
 
 (ignore Only for type(s) (-symbol-))
 
@@ -415,7 +423,7 @@
       (expr-meta meta)
       (expr-lowlink #:0)
       (expr-dependencies nil)
-      (expr-jumps nil)
+      (expr-continuation-jumps nil)
       (expr-binding-aug
         [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
           (defined-state) empty-string [vbl->frag [vbl ..]] cont ..])
@@ -442,7 +450,7 @@
       (expr-meta meta)
       (expr-lowlink #:0)
       (expr-dependencies nil)
-      (expr-jumps nil)
+      (expr-with-jumps nil)
       (expr-binding-aug
         [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
           (defined-state) empty-string [vbl->frag [vbl ..]] wth ..])

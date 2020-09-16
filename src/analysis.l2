@@ -38,9 +38,9 @@
 
 (function vpropagate-expressions (e ctx)
   ((values? .:buf .:handler) ctx
-    (if (and [= (@ expr-type e) (-continuation-)] (not (@ expr-continuation-escapes e)) [= [length (@ expr-jumps e)] #:1])
+    (if (and [= (@ expr-type e) (-continuation-)] (not (@ expr-continuation-escapes e)) [= [length (@ expr-continuation-jumps e)] #:1])
       (do
-        (let (jmp [@car (@ expr-jumps e)])
+        (let (jmp [@car (@ expr-continuation-jumps e)])
           (for (u (%:list-iter(@ expr-continuation-parameters e))) (v (%:list-iter(@ expr-jump-arguments jmp))) (ignore)
             (setf bndg-propagate u v)))
         e)
@@ -323,11 +323,11 @@
           (let (target-expr (@ bndg-expression (@ expr-symbol-reference (@ expr-jump-target s))))
           (if (and (or [= (@ expr-type target-expr) (-continuation-)] [= (@ expr-type target-expr) (-with-)])
               [= $:[expr-reference target-expr] (@ expr-symbol-reference (@ expr-jump-target s))]) (do
-            [prepend s (& expr-jumps target-expr) ..]
+            [prepend s [expr-jumps* target-expr] ..]
             (setf expr-short-circuit s target-expr))
             (ignore)))
         (if [= (@ expr-type (@ expr-jump-target s)) (-continuation-)] (do
-          [prepend s (& expr-jumps (@ expr-jump-target s)) ..]
+          [prepend s (& expr-continuation-jumps (@ expr-jump-target s)) ..]
           (setf expr-short-circuit s (@ expr-jump-target s)))
           (ignore)))
         [escape-analysis (@ expr-jump-target s) (false) ..]
