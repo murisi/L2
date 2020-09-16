@@ -93,11 +93,9 @@
   achieved by making the binding continuation dependent on its body expression.)
 
 (function let (l r)
-  (if [emt? [@rst l]]
-    [@fst l]
-    `:(with let.return
-        {(continuation let.aux ,:[meta.map [@rst [meta.reverse l r]] @fst r]
-          {let.aux {let.return ,:[@fst [meta.reverse l r]]} , [meta.map [@rrst [meta.reverse l r]] @fst r]}) , [meta.map [@rst [meta.reverse l r]] @frst r]}):r))
+  `:(with let.return
+      {(monomorphic let.aux ,:[meta.map [@rst [meta.reverse l r]] @fst r]
+        {let.return ,:[@fst [meta.reverse l r]]}) , [meta.map [@rst [meta.reverse l r]] @frst r]}):r)
 
 (ignore
   The following function implements the switch expression by doing the following transformation:
@@ -175,18 +173,31 @@
               ,:body)r)))) [@fst l] [@rst l] r]))r))
 
 (ignore
-  The following function implements variable binding by do the following transformation:
+  The following function implements a monomorphic version of continuation by doing the
+  following transformation:
+  (monomorphic cont (args ...) expr)
+  ->
+  (continuation cont (arg1 args ...) {cont expr args ...}))
+
+(function monomorphic (l r)
+  (if [emt? [@frst l]]
+    `:(continuation ,:[@fst l] () ,:[@frrst l]):r
+    `:(continuation ,:[@fst l] ,:[@frst l]
+        {,:[@fst l] ,:[@frrst l] , [@rfrst l]}):r))
+
+(ignore
+  The following function implements variable binding by doing the following transformation:
   (loop cont (params args) ... expr0)
   ->
   (with loop.return
-    {(continuation cont (params ...)
+    {(monomorphic cont (params ...)
       {loop.return expr0}) vals ...}))
 
 (function loop (l r)
   (let (bindings [meta.reverse [@rst [meta.reverse [@rst l] r]] r])
-    (`(with loop.return
-      (,[llst (` jump r) (`(continuation (,[@fst l]) (,[meta.map bindings @fst r])
-        {loop.return (,[@fst [meta.reverse l r]])}) r) [meta.map bindings @frst r] r])) r)))
+    `:(with loop.return
+        {(monomorphic ,:[@fst l] ,:[meta.map bindings @fst r]
+          {loop.return ,:[@fst [meta.reverse l r]]}) , [meta.map bindings @frst r]}):r))
 
 (ignore
   The following function implements an anonymous function using the following transformation:
@@ -201,17 +212,17 @@
   (do expr1 expr2 ... exprN)
   ->
   (with do.return
-    {(continuation do.cont (do.arg)
-      {(continuation do.cont (do.arg)
+    {(monomorphic do.cont (do.arg)
+      {(monomorphic do.cont (do.arg)
         {...
-          {(continuation do.cont (do.arg) {do.return do.arg}) exprN}...}) expr2}) expr1}))
+          {(monomorphic do.cont (do.arg) {do.return do.arg}) exprN}...}) expr2}) expr1}))
 
 (function do (l r)
   (`(with do.return
     (,(loop make-do (acc (`{do.return do.arg}r)) (exprs [meta.reverse l r])
         (if [emt? exprs]
           acc
-          {make-do (`{(continuation do.cont (do.arg) ,:acc) (,[@fst exprs])}r) [@rst exprs]}))))r))
+          {make-do (`{(monomorphic do.cont (do.arg) ,:acc) (,[@fst exprs])}r) [@rst exprs]}))))r))
 
 (ignore
   Takes a list of lists and make a list containing their concatenation in the given
