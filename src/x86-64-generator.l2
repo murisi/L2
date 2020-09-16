@@ -346,7 +346,7 @@
       (cont-val-bndg (@ expr-continuation-reference (& expr-continuation n)))
       (expr-val-bndg (@ expr-binding-aug n))
       (after-binding [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope) (defined-state) empty-string null-fragment null-expr ..]) (do
-    (if (@ expr-continuation-escapes n) (do
+    (if (@ expr-continuation-escapes (& expr-continuation n)) (do
       [prepend (make-instrN(x86-lea)([bndg->op expr-val-bndg relocs ..][bndg->op cont-val-bndg relocs ..][make-reg-op (r11) ..]) ..) c ..]
       [generate-store-continuation n c relocs ..])
       (ignore))
@@ -463,7 +463,7 @@
 
 (function generate-jump (n c relocs r handler)
   (substitute (.. r handler) (do
-    (if (and [= (@ expr-type (@ expr-jump-target n)) (-continuation-)] (not (@ expr-continuation-escapes (@ expr-jump-target n))))
+    (if (and [= (@ expr-type (@ expr-jump-target n)) (-continuation-)] (not (@ expr-continuation-escapes (& expr-continuation (@ expr-jump-target n)))))
       (let (cont (@ expr-jump-target n)) (do
         (for (t (%:list-iter (@ expr-jump-arguments n))) (ignore) [generate-expression t c relocs ..])
         (for (t (%:list-iter(@ expr-jump-arguments n))) (u (%:list-iter(@ expr-continuation-parameters (& expr-continuation cont)))) (ignore)

@@ -98,7 +98,7 @@
   
   (property expr-if #:0 #:48 \:r:(?(b) `:(! static~ (expr-if ,:b) (expr ,:b)):r r))
   
-  (property expr-continuation #:0 #:48 \:r:(?(b) `:(! static~ (expr-continuation ,:b) (expr ,:b)):r r))
+  (property expr-continuation #:72 #:48 \:r:(?(b) `:(! static~ (expr-continuation ,:b) (expr ,:b)):r r))
   
   (property expr-with #:72 #:48 \:r:(?(b) `:(! static~ (expr-with ,:b) (expr ,:b)):r r))
   
@@ -146,17 +146,17 @@
   
 (ignore Properies of (-continuation-) objects.)
   
-  (property expr-continuation-reference #:72 #:8 \:r:(?(a) `:(! static~ bndg-aug !:Ref:(expr-continuation ,:a)):r r))
+  (property expr-continuation-reference #:0 #:8 \:r:(?(a) `:(! static~ bndg-aug !:Ref:(expr-continuation ,:a)):r r))
   
-  (property expr-continuation-expression #:80 #:8 \:r:(?(a) `:(! static~ (expr ,:a) !:Ref:(expr-continuation ,:a)):r r))
+  (property expr-continuation-expression #:8 #:8 \:r:(?(a) `:(! static~ (expr ,:a) !:Ref:(expr-continuation ,:a)):r r))
   
-  (property expr-continuation-parameters #:88 #:8 \:r:(?(a) `:(! static~ (list bndg-aug) !:Ref:(expr-continuation ,:a)):r r))
+  (property expr-continuation-parameters #:16 #:8 \:r:(?(a) `:(! static~ (list bndg-aug) !:Ref:(expr-continuation ,:a)):r r))
   
-  (property expr-continuation-instr-bndg #:96 #:8 \:r:(?(a b) `:(! static~ ,:a !:Ref:(expr-continuation ,:b)):r r))
+  (property expr-continuation-instr-bndg #:24 #:8 \:r:(?(a b) `:(! static~ ,:a !:Ref:(expr-continuation ,:b)):r r))
   
-  (property expr-continuation-escapes #:104 #:8 \:r:(?(a b) `:(! static~ ,:a (expr ,:b)):r r))
+  (property expr-continuation-escapes #:32 #:8 \:r:(?(a b) `:(! static~ ,:a !:Ref:(expr-continuation ,:b)):r r))
   
-  (property expr-continuation-jumps #:112 #:8 \:r:(?(a) `:(! static~ (list (expr ,:a)) (expr ,:a)):r r))
+  (property expr-continuation-jumps #:40 #:8 \:r:(?(a) `:(! static~ (list (expr ,:a)) !:Ref:(expr-continuation ,:a)):r r))
 
 (ignore Properies of (-with-) objects.)
   
@@ -276,13 +276,13 @@
 
 (function expr-escapes (n)
   (switch = (@ expr-type n)
-    ((-continuation-) (& expr-continuation-escapes n))
+    ((-continuation-) (& expr-continuation-escapes (& expr-continuation n)))
     ((-with-) (& expr-with-escapes (& expr-with n)))
     [print-str (stdout) (" expr-escapes called on incorrect type.) (ignore)]))
 
 (function expr-jumps (n)
   (switch = (@ expr-type n)
-    ((-continuation-) (& expr-continuation-jumps n))
+    ((-continuation-) (& expr-continuation-jumps (& expr-continuation n)))
     ((-with-) (& expr-with-jumps (& expr-with n)))
     [print-str (stdout) (" expr-jumps called on incorrect type.) (ignore)]))
 
@@ -448,13 +448,13 @@
       (expr-metalink meta)
       (expr-lowlink #:0)
       (expr-dependencies nil)
-      (expr-continuation-jumps nil)
       (expr-binding-aug
         [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
           (defined-state) empty-string [vbl->frag [vbl ..]] cont ..])
-      (expr-continuation-escapes (false))
       (phantom (record (_ (& expr-continuation cont))
         (expr-continuation-expression expr)
+        (expr-continuation-escapes (false))
+        (expr-continuation-jumps nil)
         (expr-continuation-reference
           [make-binding-aug (reference-mode) (intra-function-context) (nil-storage) (local-scope)
             (defined-state) ref [vbl->frag [vbl ..]] cont ..])
