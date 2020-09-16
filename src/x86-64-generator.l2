@@ -163,8 +163,8 @@
   [binding-to-register/memory (@ expr-binding-aug n) offset in-use])
 
 (function coalesce-expr-bndg (n)
-  (if (and [= (@ expr-type n) (-symbol-)] [= (@ bndg-mode (@ expr-symbol-reference n)) (value-mode)])
-    (do (setf expr-binding-aug n (@ expr-symbol-reference n)) n)
+  (if (and [= (@ expr-type n) (-symbol-)] [= (@ bndg-mode (@ expr-symbol-reference (& expr-symbol n))) (value-mode)])
+    (do (setf expr-binding-aug n (@ expr-symbol-reference (& expr-symbol n))) n)
     n))
 
 (function bndg-assigned? (bndg) [not= (@ bndg-storage bndg) (nil-storage)])
@@ -399,7 +399,7 @@
       (if [nil? rem-jumps] (ignore)
         (let (arg [@car (@ expr-jump-arguments (& expr-jump [@car rem-jumps]))])
           (if [= (@ expr-type arg) (-symbol-)]
-            (let (repl-target (@ expr-symbol-reference arg))
+            (let (repl-target (@ expr-symbol-reference (& expr-symbol arg)))
               (if (and [= (@ bndg-mode repl-target) (value-mode)] [> [bndg-depth repl-target] (@ expr-depth n)] (not [bndg-escapes repl-target]))
                 [visit-expressions vreplace-value-bindings (storage _ (@ expr-with-expression (& expr-with n)))
                   (values storage repl-target [@car (@ expr-with-parameters (& expr-with n))])]
@@ -559,7 +559,7 @@
     
     [prepend (make-instrN(x86-xor)([make-reg-op (rax) ..] [make-reg-op (rax) ..])..) c ..]
     (if (and [= (@ expr-type ref-expr) (-symbol-)] [absolute-reference-symbol? ref-expr])
-      (let (ref-sym-bndg (@ expr-symbol-reference ref-expr))
+      (let (ref-sym-bndg (@ expr-symbol-reference (& expr-symbol ref-expr)))
         [prepend (make-instrN(x86-call)([make-relative-relocation-immediate #:4 ref-sym-bndg relocs ..])..) c ..])
       [prepend (make-instrN(x86-call)([bndg->op ref-val-bndg relocs ..])..) c ..])
     [generate-bndg-register-move expr-val-bndg (rax) c relocs ..]
@@ -771,8 +771,8 @@
 (function absolute-reference-symbol? (n)
   (and
     [= (@ expr-type n) (-symbol-)]
-    [= (@ bndg-mode (@ expr-symbol-reference n)) (reference-mode)]
-    [= (@ bndg-storage (@ expr-symbol-reference n)) (absolute-storage)]))
+    [= (@ bndg-mode (@ expr-symbol-reference (& expr-symbol n))) (reference-mode)]
+    [= (@ bndg-storage (@ expr-symbol-reference (& expr-symbol n))) (absolute-storage)]))
 
 (constrain generate-symbol
   \:r:(?(a b c) `:(function ((expr ,:c) !:Ref:(list instr) !:Ref:(list reloc) region ,:a) ,:b):r r))
@@ -780,8 +780,8 @@
 (function generate-symbol (n c relocs r handler)
   (substitute (.. r handler)
     (let (expr-val-bndg (@ expr-binding-aug n))
-        (symbol-val-bndg (@ expr-symbol-reference n)) (do
-      (if [= (@ bndg-mode (@ expr-symbol-reference n)) (value-mode)]
+        (symbol-val-bndg (@ expr-symbol-reference (& expr-symbol n))) (do
+      (if [= (@ bndg-mode (@ expr-symbol-reference (& expr-symbol n))) (value-mode)]
         [generate-bndg-bndg-move expr-val-bndg symbol-val-bndg (r11) c relocs ..]
         [prepend (make-instrN(x86-lea)
           ([bndg->op expr-val-bndg relocs ..][bndg->op symbol-val-bndg relocs ..][make-reg-op(r11)..])..) c ..])))))

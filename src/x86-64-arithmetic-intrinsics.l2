@@ -38,12 +38,12 @@
 
 (function undefined-symbol? (n)
   (and [= (@ expr-type n) (-symbol-)]
-    [= (@ bndg-state (@ expr-symbol-reference n)) (undefined-state)]))
+    [= (@ bndg-state (@ expr-symbol-reference (& expr-symbol n))) (undefined-state)]))
 
 (constrain symbol-name= (\ r (?(a b) (`(function (string (expr ,:b)) ,:a)r)r)))
 
 (function symbol-name= (str n)
-  [str= str (@ bndg-name (@ expr-symbol-reference n))])
+  [str= str (@ bndg-name (@ expr-symbol-reference (& expr-symbol n)))])
 
 (constrain variable (\ r (?(a b) (`(function (!:Ref:,;b ,:b) ,:a)r)r)))
 
@@ -73,15 +73,22 @@
               (,:matcher (& expr-literal literal?.obj) ,:consequent ,:alternate)
               ,:alternate)):r)):r)
 
+(function symbol? (l r)
+  `:(function func (l r)
+      (let (matcher ,:[meta.bq [@fst l] `:r:r r]) (consequent [@frst l]) (alternate [@frrst l])
+        `:(let (symbol?.obj ,:[@fst l])
+            (if [= (@ expr-type symbol?.obj) (-symbol-)]
+              (,:matcher (& expr-symbol symbol?.obj) ,:consequent ,:alternate)
+              ,:alternate)):r)):r)
+
 (constrain match-undefined-unary-invoke (\ r (?(a b) (`(function (!:Ref:string !:Ref:(expr ,:b) (expr ,:b)) ,:a)r)r)))
 
 (function match-undefined-unary-invoke (name arg1 n)
   ((invoke? (property?
-    (expr-invoke-target (property?
-      (expr-type (|[= (-symbol-)]))
+    (expr-invoke-target (symbol? (property?
       (expr-symbol-reference (property?
         (bndg-state (|[= (undefined-state)]))
-        (bndg-name (|[variable name]))))))
+        (bndg-name (|[variable name])))))))
     (expr-invoke-arguments (list?
       (|[variable arg1]))))) n (true) (false)))
 
@@ -178,11 +185,10 @@
 
 (function match-undefined-binary-invoke (name arg1 arg2 n)
   ((invoke? (property?
-    (expr-invoke-target (property?
-      (expr-type (|[= (-symbol-)]))
+    (expr-invoke-target (symbol? (property?
       (expr-symbol-reference (property?
         (bndg-state (|[= (undefined-state)]))
-        (bndg-name (|[variable name]))))))
+        (bndg-name (|[variable name])))))))
     (expr-invoke-arguments (list?
       (|[variable arg1])
       (|[variable arg2]))))) n (true) (false)))
@@ -426,11 +432,10 @@
 
 (function match-undefined-binary-right-imm-invoke (name arg1 arg2 n)
   ((invoke? (property?
-    (expr-invoke-target (property?
-      (expr-type (|[= (-symbol-)]))
+    (expr-invoke-target (symbol? (property?
       (expr-symbol-reference (property?
         (bndg-state (|[= (undefined-state)]))
-        (bndg-name (|[variable name]))))))
+        (bndg-name (|[variable name])))))))
     (expr-invoke-arguments (list?
       (|[variable arg1])
       (literal? (property?
@@ -614,8 +619,8 @@
 (function match-get-base+offset (name base offset n)
   ((invoke? (property?
       (expr-invoke-target (|[undefined-symbol?]))
-      (expr-invoke-target (property? (expr-symbol-reference
-        (property? (bndg-name (|[variable name]))))))
+      (expr-invoke-target (symbol? (property? (expr-symbol-reference
+        (property? (bndg-name (|[variable name])))))))
       (expr-invoke-arguments (list?
         (invoke? (property?
           (expr-invoke-target (|[undefined-symbol?]))
@@ -693,8 +698,8 @@
 (function match-set-base+offset (name base offset value n)
   ((invoke? (property?
       (expr-invoke-target (|[undefined-symbol?]))
-      (expr-invoke-target (property? (expr-symbol-reference
-        (property? (bndg-name (|[variable name]))))))
+      (expr-invoke-target (symbol? (property? (expr-symbol-reference
+        (property? (bndg-name (|[variable name])))))))
       (expr-invoke-arguments (list?
         (invoke? (property?
             (expr-invoke-target (|[undefined-symbol?]))
