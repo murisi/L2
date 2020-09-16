@@ -38,7 +38,7 @@
 
 (function vpropagate-expressions (e ctx)
   ((values? .:buf .:handler) ctx
-    (if (and [= (@ expr-type e) (-continuation-)] (not (@ expr-escapes e)) [= [length (@ expr-jumps e)] #:1])
+    (if (and [= (@ expr-type e) (-continuation-)] (not (@ expr-continuation-escapes e)) [= [length (@ expr-jumps e)] #:1])
       (do
         (let (jmp [@car (@ expr-jumps e)])
           (for (u (%:list-iter(@ expr-continuation-parameters e))) (v (%:list-iter(@ expr-jump-arguments jmp))) (ignore)
@@ -301,7 +301,7 @@
         (let (target-expr (@ bndg-expression (@ expr-symbol-reference s)))
           (if (and escaping (or [= (@ expr-type target-expr) (-continuation-)] [= (@ expr-type target-expr) (-with-)])
               [= $:[expr-reference target-expr] (@ expr-symbol-reference s)])
-            (do (setf expr-escapes target-expr escaping) (ignore))
+            (do [set [expr-escapes* target-expr] escaping] (ignore))
             (ignore))))
       
       ((-if-) (do
@@ -311,7 +311,7 @@
       
       ((-function-) (-continuation-) (-with-) (do
         (if (and escaping [= (@ expr-type s) (-continuation-)])
-          (setf expr-escapes s escaping)
+          [set [expr-escapes* s] escaping]
           (ignore))
         [escape-analysis $:[expr-expression s] (true) ..]))
       
@@ -609,7 +609,7 @@
   (switch = (@ expr-type n)
     ((-continuation-) (-with-) (do
       [setup-collect-static-bindings $:[expr-expression n]]
-      (if (@ expr-escapes n)
+      (if $:[expr-escapes* n]
         (setf bndg-other $:[expr-reference n] (true)) (ignore))
       (for (t (%:list-iter $:[expr-parameters n])) (ignore)
         (setf bndg-other t (true)))))
@@ -649,7 +649,7 @@
     (switch = (@ expr-type n)
       ((-continuation-) (-with-) (do
         [collect-static-bindings $:[expr-expression n] binding-augs ..]
-        (if (@ expr-escapes n)
+        (if $:[expr-escapes* n]
           [append-static-binding $:[expr-reference n] binding-augs ..] (ignore))
         (for (t (%:list-iter $:[expr-parameters n])) (ignore)
           [append-static-binding t binding-augs ..])))

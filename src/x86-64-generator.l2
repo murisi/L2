@@ -60,7 +60,7 @@
         offset))))
     
     ((-continuation-) (-with-)
-      (if (@ expr-escapes n)
+      (if $:[expr-escapes* n]
         (let (offset [- offset [* [length $:[expr-parameters n]] (word-size)]]) (do
           (for (offset (%:range-from offset (word-size))) (t (%:list-iter $:[expr-parameters n])) (ignore) (do
             (setf bndg-preferred-storage t [context->memory-storage (@ bndg-context t)])
@@ -346,7 +346,7 @@
       (cont-val-bndg (@ expr-continuation-reference n))
       (expr-val-bndg (@ expr-binding-aug n))
       (after-binding [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope) (defined-state) empty-string null-fragment null-expr ..]) (do
-    (if (@ expr-escapes n) (do
+    (if (@ expr-continuation-escapes n) (do
       [prepend (make-instrN(x86-lea)([bndg->op expr-val-bndg relocs ..][bndg->op cont-val-bndg relocs ..][make-reg-op (r11) ..]) ..) c ..]
       [generate-store-continuation n c relocs ..])
       (ignore))
@@ -377,7 +377,7 @@
       (param-val-bndg [@car(@ expr-with-parameters n)])
       (end-instr-binding
         [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope) (defined-state) empty-string null-fragment null-expr ..]) (do
-    (if (@ expr-escapes n) [generate-store-continuation n c relocs ..] (ignore))
+    (if (@ expr-with-escapes n) [generate-store-continuation n c relocs ..] (ignore))
     [generate-expression (@ expr-with-expression n) c relocs ..]
     [generate-bndg-bndg-move expr-val-bndg body-val-bndg (r11) c relocs ..]
     (if [bndg= expr-val-bndg param-val-bndg]
@@ -393,7 +393,7 @@
 (function initialize-with (n offset inits ret-val buf hdl)
   (and [= (@ expr-type n) (-with-)] (do
     (setf expr-binding-aug (@ expr-with-expression n) (@ expr-binding-aug n))
-    (if (@ expr-escapes n) (ignore) (setf car (@ expr-with-parameters n) (@ expr-binding-aug n)))
+    (if (@ expr-with-escapes n) (ignore) (setf car (@ expr-with-parameters n) (@ expr-binding-aug n)))
     
     (loop search (rem-jumps (@ expr-jumps n))
       (if [nil? rem-jumps] (ignore)
@@ -463,7 +463,7 @@
 
 (function generate-jump (n c relocs r handler)
   (substitute (.. r handler) (do
-    (if (and [= (@ expr-type (@ expr-jump-target n)) (-continuation-)] (not (@ expr-escapes (@ expr-jump-target n))))
+    (if (and [= (@ expr-type (@ expr-jump-target n)) (-continuation-)] (not (@ expr-continuation-escapes (@ expr-jump-target n))))
       (let (cont (@ expr-jump-target n)) (do
         (for (t (%:list-iter (@ expr-jump-arguments n))) (ignore) [generate-expression t c relocs ..])
         (for (t (%:list-iter(@ expr-jump-arguments n))) (u (%:list-iter(@ expr-continuation-parameters cont))) (ignore)

@@ -213,7 +213,15 @@
   
   (property expr-with-instr-bndg #:96 #:8 \:r:(?(a b) `:(! static~ ,:a (expr ,:b)):r r))
 
-  (property expr-escapes #:104 #:8 \:r:(?(a b) `:(! static~ ,:a (expr ,:b)):r r))
+  (function expr-escapes* (n)
+    (switch = (@ expr-type n)
+      ((-continuation-) (& expr-continuation-escapes n))
+      ((-with-) (& expr-with-escapes n))
+      [print-str (stdout) (" expr-escapes called on incorrect type.) (ignore)]))
+  
+  (property expr-continuation-escapes #:104 #:8 \:r:(?(a b) `:(! static~ ,:a (expr ,:b)):r r))
+  
+  (property expr-with-escapes #:104 #:8 \:r:(?(a b) `:(! static~ ,:a (expr ,:b)):r r))
   
   (property expr-jumps #:112 #:8 \:r:(?(a) `:(! static~ (list (expr ,:a)) (expr ,:a)):r r))
 
@@ -316,7 +324,7 @@
 
 (constrain bndg-escapes (\ r (?(a) (`(function (bndg-aug) ,:a)r)r)))
 
-(function bndg-escapes (bndg) (@ expr-escapes (@ bndg-expression bndg)))
+(function bndg-escapes (bndg) $:[expr-escapes* (@ bndg-expression bndg)])
 
 (constrain make-literal (\ r (?(a b c) (`(function (,:a frag (expr ,:c) region ,:b) (expr ()))r)r)))
 
@@ -419,7 +427,7 @@
         [collect-list (map (param (%:list-iter params))
           [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
             (defined-state) param [vbl->frag [vbl ..]] cont ..]) nil ..])
-      (expr-escapes (false))
+      (expr-continuation-escapes (false))
       (expr-continuation-expression expr))))
 
 (constrain make-with (\ r (?(a b) (`(function (string (expr ,:a) frag (expr ,:a) region ,:b) (expr ()))r)r)))
@@ -445,7 +453,7 @@
       (expr-with-parameters [cons
         [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
           (defined-state) empty-string [vbl->frag [vbl ..]] wth ..] nil ..])
-      (expr-escapes (false))
+      (expr-with-escapes (false))
       (expr-with-expression expr))))
 
 (constrain make-jump (\ r (?(a b) (`(function ((expr ,:a) (list (expr ,:a)) frag (expr ,:a) region ,:b) (expr ()))r)r)))
