@@ -328,7 +328,7 @@
 (function generate-store-continuation (n c relocs r handler)
   (substitute (.. r handler) (let
       (cont-val-bndg $:[expr-reference n])
-      (cont-instr-bndg (@ expr-cont-instr-bndg n)) (do
+      (cont-instr-bndg $:[expr-instr-bndg n]) (do
     [prepend (make-instrN (x86-lea) ([make-reg-op (r11) ..] [bndg->op cont-val-bndg relocs ..]) ..) c ..]
     [prepend (make-instrN (x86-mov) ([make-mem-op(word-size)(r11)(none)#:0(cont-rbx)#:4 ..] [make-reg-op (rbx) ..]) ..) c ..]
     [prepend (make-instrN (x86-mov) ([make-mem-op(word-size)(r11)(none)#:0(cont-r12)#:4 ..] [make-reg-op (r12) ..]) ..) c ..]
@@ -352,7 +352,7 @@
       (ignore))
     
     [prepend (make-instrN (x86-jmp) ([make-relative-relocation-immediate #:4 after-binding relocs ..]) ..) c ..]
-    [prepend [make-label (@ expr-cont-instr-bndg n) ..] c ..]
+    [prepend [make-label (@ expr-continuation-instr-bndg n) ..] c ..]
     [generate-expression (@ expr-continuation-expression n) c relocs ..]
     [prepend [make-label after-binding ..] c ..]))))
 
@@ -381,10 +381,10 @@
     [generate-expression (@ expr-with-expression n) c relocs ..]
     [generate-bndg-bndg-move expr-val-bndg body-val-bndg (r11) c relocs ..]
     (if [bndg= expr-val-bndg param-val-bndg]
-      [prepend [make-label (@ expr-cont-instr-bndg n) ..] c ..]
+      [prepend [make-label (@ expr-with-instr-bndg n) ..] c ..]
       (do
         [prepend (make-instrN (x86-jmp) ([make-relative-relocation-immediate #:4 end-instr-binding relocs ..]) ..) c ..]
-        [prepend [make-label (@ expr-cont-instr-bndg n) ..] c ..]
+        [prepend [make-label (@ expr-with-instr-bndg n) ..] c ..]
         [generate-bndg-bndg-move expr-val-bndg param-val-bndg (r11) c relocs ..]
         [prepend [make-label end-instr-binding ..] c ..]))))))
 
@@ -469,7 +469,7 @@
         (for (t (%:list-iter(@ expr-jump-arguments n))) (u (%:list-iter(@ expr-continuation-parameters cont))) (ignore)
           (let (src-bndg (@ expr-binding-aug t)) (dest-bndg u)
             [generate-bndg-bndg-move dest-bndg src-bndg (r11) c relocs ..]))
-        [prepend [make-label (@ expr-cont-instr-bndg cont) ..] c ..]
+        [prepend [make-label (@ expr-continuation-instr-bndg cont) ..] c ..]
         [generate-expression (@ expr-continuation-expression cont) c relocs ..]))
     
     (bind-if
@@ -488,7 +488,7 @@
           [generate-bndg-bndg-move dest-bndg src-bndg (r11) c relocs ..]))
     
     (if [not= (@ expr-short-circuit n) null-expr]
-      (let (cont-instr-bndg (@ expr-cont-instr-bndg(@ expr-short-circuit n))) (do
+      (let (cont-instr-bndg $:[expr-instr-bndg(@ expr-short-circuit n)]) (do
         (if [= (@ expr-type(@ expr-jump-target n)) (-continuation-)]
           [generate-expression (@ expr-jump-target n) c relocs ..]
           (ignore))

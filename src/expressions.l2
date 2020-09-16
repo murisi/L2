@@ -203,7 +203,15 @@
 
 (ignore Only for type(s) (-continuation-) (-with-))
 
-  (property expr-cont-instr-bndg #:96 #:8 \:r:(?(a b) `:(! static~ ,:a (expr ,:b)):r r))
+  (function expr-instr-bndg (n)
+    (switch = (@ expr-type n)
+      ((-continuation-) (& expr-continuation-instr-bndg n))
+      ((-with-) (& expr-with-instr-bndg n))
+      [print-str (stdout) (" expr-instr-bndg called on incorrect type.) (ignore)]))
+
+  (property expr-continuation-instr-bndg #:96 #:8 \:r:(?(a b) `:(! static~ ,:a (expr ,:b)):r r))
+  
+  (property expr-with-instr-bndg #:96 #:8 \:r:(?(a b) `:(! static~ ,:a (expr ,:b)):r r))
 
   (property expr-escapes #:104 #:8 \:r:(?(a b) `:(! static~ ,:a (expr ,:b)):r r))
   
@@ -401,7 +409,7 @@
       (expr-binding-aug
         [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
           (defined-state) empty-string [vbl->frag [vbl ..]] cont ..])
-      (expr-cont-instr-bndg
+      (expr-continuation-instr-bndg
         [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope)
           (defined-state) empty-string null-fragment null-expr ..])
       (expr-continuation-reference
@@ -428,7 +436,7 @@
       (expr-binding-aug
         [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
           (defined-state) empty-string [vbl->frag [vbl ..]] wth ..])
-      (expr-cont-instr-bndg
+      (expr-with-instr-bndg
         [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope)
           (defined-state) empty-string null-fragment null-expr ..])
       (expr-with-reference
