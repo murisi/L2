@@ -134,15 +134,15 @@
   
 (ignore Properies of (-function-) objects.)
   
-  (property expr-function-reference #:72 #:8 \:r:(?(a) `:(! static~ bndg-aug (expr ,:a)):r r))
+  (property expr-function-reference #:72 #:8 \:r:(?(a) `:(! static~ bndg-aug !:Ref:(expr-function ,:a)):r r))
   
-  (property expr-function-expression #:80 #:8 \:r:(?(a) `:(! static~ (expr ,:a) (expr ,:a)):r r))
+  (property expr-function-expression #:80 #:8 \:r:(?(a) `:(! static~ (expr ,:a) !:Ref:(expr-function ,:a)):r r))
   
-  (property expr-function-parameters #:88 #:8 \:r:(?(a) `:(! static~ (list bndg-aug) (expr ,:a)):r r))
+  (property expr-function-parameters #:88 #:8 \:r:(?(a) `:(! static~ (list bndg-aug) !:Ref:(expr-function ,:a)):r r))
   
-  (property expr-frame-size #:96 #:8 \:r:(?(a b) `:(! static~ ,:a (expr ,:b)):r r))
+  (property expr-frame-size #:96 #:8 \:r:(?(a b) `:(! static~ ,:a !:Ref:(expr-function ,:b)):r r))
   
-  (property expr-registers-used #:104 #:8 \:r:(?(a) `:(! static~ reg-use-vec (expr ,:a)):r r))
+  (property expr-registers-used #:104 #:8 \:r:(?(a) `:(! static~ reg-use-vec !:Ref:(expr-function ,:a)):r r))
   
 (ignore Properies of (-continuation-) objects.)
   
@@ -247,7 +247,7 @@
 (function expr-reference (n)
   (switch = (@ expr-type n)
     ((-storage-) (& expr-storage-reference n))
-    ((-function-) (& expr-function-reference n))
+    ((-function-) (& expr-function-reference (& expr-function n)))
     ((-continuation-) (& expr-continuation-reference (& expr-continuation n)))
     ((-with-) (& expr-with-reference (& expr-with n)))
     ((-symbol-) (& expr-symbol-reference n))
@@ -255,7 +255,7 @@
 
 (function expr-expression (n)
   (switch = (@ expr-type n)
-    ((-function-) (& expr-function-expression n))
+    ((-function-) (& expr-function-expression (& expr-function n)))
     ((-continuation-) (& expr-continuation-expression (& expr-continuation n)))
     ((-with-) (& expr-with-expression (& expr-with n)))
     ((-constrain-) (& expr-constrain-expression n))
@@ -263,7 +263,7 @@
 
 (function expr-parameters (n)
   (switch = (@ expr-type n)
-    ((-function-) (& expr-function-parameters n))
+    ((-function-) (& expr-function-parameters (& expr-function n)))
     ((-continuation-) (& expr-continuation-parameters (& expr-continuation n)))
     ((-with-) (& expr-with-parameters (& expr-with n)))
     [print-str (stdout) (" expr-parameters called on incorrect type.) (ignore)]))
@@ -428,14 +428,15 @@
       (expr-binding-aug
         [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
           (defined-state) empty-string [vbl->frag [vbl ..]] func ..])
-      (expr-function-reference
-        [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope)
-          (defined-state) ref [vbl->frag [vbl ..]] func ..])
-      (expr-function-parameters
-        [collect-list (map (param (%:list-iter params))
-          [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
-            (defined-state) param [vbl->frag [vbl ..]] func ..]) nil ..])
-      (expr-function-expression expr))))
+      (phantom (record (_ (& expr-function func))
+        (expr-function-reference
+          [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope)
+            (defined-state) ref [vbl->frag [vbl ..]] func ..])
+        (expr-function-parameters
+          [collect-list (map (param (%:list-iter params))
+            [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
+              (defined-state) param [vbl->frag [vbl ..]] func ..]) nil ..])
+        (expr-function-expression expr))))))
 
 (constrain make-continuation (\ r (?(a b) (`(function (string (list string) (expr ,:a) frag (expr ,:a) region ,:b) (expr ()))r)r)))
 
@@ -793,7 +794,7 @@
       (let (func (make-functionN name (empty-string)
           (make-invokeN callee-symbol (arg-a) null-fragment null-expr ..) null-fragment null-expr ..)) (do
         (setf expr-symbol-reference callee-symbol [make-undefined-binding name ..])
-        (setf expr-symbol-reference arg-a [@car (@ expr-function-parameters func)])
+        (setf expr-symbol-reference arg-a [@car (@ expr-function-parameters (& expr-function func))])
         func)))))
 
 (ignore Performs actions analogous to make-unary-intrinsic, but for binary functions.)
@@ -808,7 +809,7 @@
       (let (func (make-functionN name (empty-string empty-string)
           (make-invokeN callee-symbol (arg-a arg-b) null-fragment null-expr ..) null-fragment null-expr ..)) (do
         (setf expr-symbol-reference callee-symbol [make-undefined-binding name ..])
-        (setf expr-symbol-reference arg-a [@car (@ expr-function-parameters func)])
-        (setf expr-symbol-reference arg-b [@cadr (@ expr-function-parameters func)])
+        (setf expr-symbol-reference arg-a [@car (@ expr-function-parameters (& expr-function func))])
+        (setf expr-symbol-reference arg-b [@cadr (@ expr-function-parameters (& expr-function func))])
         func)))))
 

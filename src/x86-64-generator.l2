@@ -43,7 +43,7 @@
 (function place-perm-bindings (n offset)
   (switch = (@ expr-type n)
     ((-function-) (do
-      (setf expr-frame-size n [place-perm-bindings (@ expr-function-expression n) [- #:0 [* (callee-saved-x64-r64s-len)(word-size)]]])
+      (setf expr-frame-size (& expr-function n) [place-perm-bindings (@ expr-function-expression (& expr-function n)) [- #:0 [* (callee-saved-x64-r64s-len)(word-size)]]])
       offset))
     
     ((-constrain-)
@@ -230,9 +230,9 @@
 
 (function generate-function (n c relocs r handler)
   (substitute (.. r handler) (let
-      (ref-val-bndg (@ expr-function-reference n))
+      (ref-val-bndg (@ expr-function-reference (& expr-function n)))
       (expr-val-bndg (@ expr-binding-aug n))
-      (body-val-bndg (@ expr-binding-aug (@ expr-function-expression n)))
+      (body-val-bndg (@ expr-binding-aug (@ expr-function-expression (& expr-function n))))
       (after-binding [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope) (defined-state) empty-string null-fragment null-expr ..]) (do
     
     [prepend(make-instrN(x86-lea)([bndg->op expr-val-bndg relocs ..][bndg->op ref-val-bndg relocs ..][make-reg-op(r11)..])..) c ..]
@@ -240,46 +240,46 @@
     [prepend [make-label ref-val-bndg ..] c ..]
     [prepend (make-instrN(x86-push)([make-reg-op (rbp) ..])..) c ..]
     [prepend (make-instrN(x86-mov)([make-reg-op (rbp) ..] [make-reg-op (rsp) ..])..) c ..]
-    [prepend (make-instrN(x86-sub)([make-reg-op (rsp) ..] [make-imm-op #:4 [- #:0 (@ expr-frame-size n)] ..])..) c ..]
+    [prepend (make-instrN(x86-sub)([make-reg-op (rsp) ..] [make-imm-op #:4 [- #:0 (@ expr-frame-size (& expr-function n))] ..])..) c ..]
     
     (let (save-offset [- #:0 [* (callee-saved-x64-r64s-len)(word-size)]])
     (for (i (%:range #:0 (callee-saved-x64-r64s-len))) (ignore)
       (let (current-register ($(loc(word-size)i callee-saved-x64-r64s)))
-        (if [register-in-use? current-register (@ expr-registers-used n)]
+        (if [register-in-use? current-register (@ expr-registers-used (& expr-function n))]
           [prepend (make-instrN (x86-mov)
             ([make-mem-op(word-size)(rbp)(none)#:0[+ save-offset[* i(word-size)]]#:4 ..]
             [make-reg-op current-register ..]) ..) c ..]
           (ignore)))))
      
     (ignore Move first 6 parameters to their slots)
-    (and [> [length (@ expr-function-parameters n)] #:0] (do
-      [generate-bndg-register-move [@car(@ expr-function-parameters n)] (rdi) c relocs ..]
-    (and [> [length (@ expr-function-parameters n)] #:1] (do
-      [generate-bndg-register-move [@cadr(@ expr-function-parameters n)] (rsi) c relocs ..]
-    (and [> [length (@ expr-function-parameters n)] #:2] (do
-      [generate-bndg-register-move [@caddr(@ expr-function-parameters n)] (rdx) c relocs ..]
-    (and [> [length (@ expr-function-parameters n)] #:3] (do
-      [generate-bndg-register-move [@cadddr(@ expr-function-parameters n)] (rcx) c relocs ..]
-    (and [> [length (@ expr-function-parameters n)] #:4] (do
-      [generate-bndg-register-move [@caddddr(@ expr-function-parameters n)] (r8) c relocs ..]
-    (and [> [length (@ expr-function-parameters n)] #:5]
-      [generate-bndg-register-move [@cadddddr(@ expr-function-parameters n)] (r9) c relocs ..])))))))))))
+    (and [> [length (@ expr-function-parameters (& expr-function n))] #:0] (do
+      [generate-bndg-register-move [@car(@ expr-function-parameters (& expr-function n))] (rdi) c relocs ..]
+    (and [> [length (@ expr-function-parameters (& expr-function n))] #:1] (do
+      [generate-bndg-register-move [@cadr(@ expr-function-parameters (& expr-function n))] (rsi) c relocs ..]
+    (and [> [length (@ expr-function-parameters (& expr-function n))] #:2] (do
+      [generate-bndg-register-move [@caddr(@ expr-function-parameters (& expr-function n))] (rdx) c relocs ..]
+    (and [> [length (@ expr-function-parameters (& expr-function n))] #:3] (do
+      [generate-bndg-register-move [@cadddr(@ expr-function-parameters (& expr-function n))] (rcx) c relocs ..]
+    (and [> [length (@ expr-function-parameters (& expr-function n))] #:4] (do
+      [generate-bndg-register-move [@caddddr(@ expr-function-parameters (& expr-function n))] (r8) c relocs ..]
+    (and [> [length (@ expr-function-parameters (& expr-function n))] #:5]
+      [generate-bndg-register-move [@cadddddr(@ expr-function-parameters (& expr-function n))] (r9) c relocs ..])))))))))))
     
     (let (rem-offset [* #:2(word-size)])
-    (let (rem-params (if [>= [length (@ expr-function-parameters n)] #:6] [@cddddddr (@ expr-function-parameters n)] nil))
+    (let (rem-params (if [>= [length (@ expr-function-parameters (& expr-function n))] #:6] [@cddddddr (@ expr-function-parameters (& expr-function n))] nil))
     (fold (offset rem-offset) (u (%:list-iter rem-params)) (do
       [prepend (make-instrN(x86-mov)
         ([bndg->op u relocs ..][make-mem-op(word-size)(rbp)(none)#:0 offset #:4 ..][make-reg-op(r11)..])..) c ..]
       [+ offset (word-size)]))))
     
     (ignore Execute the function body)
-    [generate-expression (@ expr-function-expression n) c relocs ..]
+    [generate-expression (@ expr-function-expression (& expr-function n)) c relocs ..]
     [generate-register-bndg-move (rax) body-val-bndg c relocs ..]
     
     (let (save-offset [- #:0 [* (callee-saved-x64-r64s-len)(word-size)]])
     (for (i (%:range #:0 (callee-saved-x64-r64s-len))) (ignore)
       (let (current-register ($(loc(word-size)i callee-saved-x64-r64s)))
-        (if [register-in-use? current-register (@ expr-registers-used n)]
+        (if [register-in-use? current-register (@ expr-registers-used (& expr-function n))]
           [prepend (make-instrN (x86-mov)
             ([make-reg-op current-register ..]
             [make-mem-op(word-size)(rbp)(none)#:0[+ save-offset[* i(word-size)]]#:4 ..]) ..) c ..]
@@ -295,29 +295,29 @@
 (function initialize-function (n offset inits ret-val buf hdl)
   (and [= (@ expr-type n) (-function-)] (do
     (let (call-regs (storage _ (rdi)(rsi)(rdx)(rcx)(r8)(r9)))
-      (loop set-prefs (rem-params (@ expr-function-parameters n)) (i #:0)
+      (loop set-prefs (rem-params (@ expr-function-parameters (& expr-function n))) (i #:0)
         (if (or [= i #:6] [nil? rem-params]) (ignore) (do
           (setf bndg-preferred-storage [@car rem-params] (register-storage))
           (setf bndg-preferred-offset [@car rem-params] ($(loc (unit) i call-regs)))
           {set-prefs [@cdr rem-params] [+ i #:1]}))))
     
     (let (rem-offset [* #:2(word-size)])
-    (let (rem-params (if [>= [length (@ expr-function-parameters n)] #:6] [@cddddddr (@ expr-function-parameters n)] nil))
+    (let (rem-params (if [>= [length (@ expr-function-parameters (& expr-function n))] #:6] [@cddddddr (@ expr-function-parameters (& expr-function n))] nil))
     (loop assign-params (offset rem-offset) (u rem-params)
       (if [nil? u] (ignore) (do
         (setf bndg-preferred-storage [@car u] (frame-relative-storage))
         (setf bndg-preferred-offset [@car u] offset)
         {assign-params [+ offset (word-size)] [@cdr u]})))))
     
-    (setf bndg-preferred-storage (@ expr-binding-aug (@ expr-function-expression n)) (register-storage))
-    (setf bndg-preferred-offset (@ expr-binding-aug (@ expr-function-expression n)) (rax))
+    (setf bndg-preferred-storage (@ expr-binding-aug (@ expr-function-expression (& expr-function n))) (register-storage))
+    (setf bndg-preferred-offset (@ expr-binding-aug (@ expr-function-expression (& expr-function n))) (rax))
     
     ((values? .:frame-size .:in-use)
-      [initialize-expressions (storage-cons (@ expr-function-expression n) nil) (@ expr-function-parameters n)
-        (@ expr-frame-size n) 0x:FFFFFFFFFFFF0830 (@ expr-depth n) inits ret-val buf hdl] (do
-    (setf expr-registers-used n in-use)
-    (setf expr-frame-size n frame-size)
-    (for (t (%:list-iter (@ expr-function-parameters n))) (ignore) (setf bndg-size t (word-size)))) (ignore))
+      [initialize-expressions (storage-cons (@ expr-function-expression (& expr-function n)) nil) (@ expr-function-parameters (& expr-function n))
+        (@ expr-frame-size (& expr-function n)) 0x:FFFFFFFFFFFF0830 (@ expr-depth n) inits ret-val buf hdl] (do
+    (setf expr-registers-used (& expr-function n) in-use)
+    (setf expr-frame-size (& expr-function n) frame-size)
+    (for (t (%:list-iter (@ expr-function-parameters (& expr-function n)))) (ignore) (setf bndg-size t (word-size)))) (ignore))
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (setf expr-generator n [function->generator generate-function])
     (values (use-storage ret-val) offset 0x:0000000000000800)
@@ -967,6 +967,6 @@
           [generate-expression expr c relocs ..]
           (let (c (storage _ nil)) (relocs (storage _ nil)) (do
             [generate-expression expr c relocs ..]
-            [append (values (region-storage ..) (@ bndg-name (@ expr-function-reference expr)) [reverse $:c ..] $:relocs) func-secs ..]))))
+            [append (values (region-storage ..) (@ bndg-name (@ expr-function-reference (& expr-function expr))) [reverse $:c ..] $:relocs) func-secs ..]))))
       (values (use-storage outs) [reverse $:c ..] $:relocs $:func-secs)))))
 
