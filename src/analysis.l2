@@ -177,10 +177,10 @@
       [set-expr-is-read (@ expr-function-expression s) (true)]))
     
     ((-with-) (do
-      (setf bndg-is-read (@ expr-with-reference s) (true))
-      (setf bndg-is-read [@car (@ expr-with-parameters s)] (true))
-      [assign-expr-is-reads (@ expr-with-expression s)]
-      [set-expr-is-read (@ expr-with-expression s) (true)]))
+      (setf bndg-is-read (@ expr-with-reference (& expr-with s)) (true))
+      (setf bndg-is-read [@car (@ expr-with-parameters (& expr-with s))] (true))
+      [assign-expr-is-reads (@ expr-with-expression (& expr-with s))]
+      [set-expr-is-read (@ expr-with-expression (& expr-with s)) (true)]))
     
     ((-continuation-) (do
       (setf bndg-is-read (@ expr-continuation-reference s) (true))
@@ -486,9 +486,9 @@
       
       ((-with-)
         (let (params-signature [list->fragment [cons [expr-signature e] nil ..]]) (do
-          [prepend (@ bndg-signature (@ expr-with-reference e)) [prepend [expr-signature e] lhss ..] ..]
+          [prepend (@ bndg-signature (@ expr-with-reference (& expr-with e))) [prepend [expr-signature e] lhss ..] ..]
           [prepend [list->fragment [cons continuation-token [cons params-signature nil ..] ..]]
-            [prepend [expr-signature (@ expr-with-expression e)] rhss ..] ..])))
+            [prepend [expr-signature (@ expr-with-expression (& expr-with e))] rhss ..] ..])))
       
       ((-if-)
         (let (consequent-sig [scoped-signature (@ expr-consequent e) scc ..])

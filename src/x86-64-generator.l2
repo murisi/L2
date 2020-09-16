@@ -373,18 +373,18 @@
 (function generate-with (n c relocs r handler)
   (substitute (.. r handler) (let
       (expr-val-bndg (@ expr-binding-aug n))
-      (body-val-bndg (@ expr-binding-aug (@ expr-with-expression n)))
-      (param-val-bndg [@car(@ expr-with-parameters n)])
+      (body-val-bndg (@ expr-binding-aug (@ expr-with-expression (& expr-with n))))
+      (param-val-bndg [@car(@ expr-with-parameters (& expr-with n))])
       (end-instr-binding
         [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope) (defined-state) empty-string null-fragment null-expr ..]) (do
-    (if (@ expr-with-escapes n) [generate-store-continuation n c relocs ..] (ignore))
-    [generate-expression (@ expr-with-expression n) c relocs ..]
+    (if (@ expr-with-escapes (& expr-with n)) [generate-store-continuation n c relocs ..] (ignore))
+    [generate-expression (@ expr-with-expression (& expr-with n)) c relocs ..]
     [generate-bndg-bndg-move expr-val-bndg body-val-bndg (r11) c relocs ..]
     (if [bndg= expr-val-bndg param-val-bndg]
-      [prepend [make-label (@ expr-with-instr-bndg n) ..] c ..]
+      [prepend [make-label (@ expr-with-instr-bndg (& expr-with n)) ..] c ..]
       (do
         [prepend (make-instrN (x86-jmp) ([make-relative-relocation-immediate #:4 end-instr-binding relocs ..]) ..) c ..]
-        [prepend [make-label (@ expr-with-instr-bndg n) ..] c ..]
+        [prepend [make-label (@ expr-with-instr-bndg (& expr-with n)) ..] c ..]
         [generate-bndg-bndg-move expr-val-bndg param-val-bndg (r11) c relocs ..]
         [prepend [make-label end-instr-binding ..] c ..]))))))
 
@@ -392,21 +392,21 @@
 
 (function initialize-with (n offset inits ret-val buf hdl)
   (and [= (@ expr-type n) (-with-)] (do
-    (setf expr-binding-aug (@ expr-with-expression n) (@ expr-binding-aug n))
-    (if (@ expr-with-escapes n) (ignore) (setf car (@ expr-with-parameters n) (@ expr-binding-aug n)))
+    (setf expr-binding-aug (@ expr-with-expression (& expr-with n)) (@ expr-binding-aug n))
+    (if (@ expr-with-escapes (& expr-with n)) (ignore) (setf car (@ expr-with-parameters (& expr-with n)) (@ expr-binding-aug n)))
     
-    (loop search (rem-jumps (@ expr-with-jumps n))
+    (loop search (rem-jumps (@ expr-with-jumps (& expr-with n)))
       (if [nil? rem-jumps] (ignore)
         (let (arg [@car (@ expr-jump-arguments [@car rem-jumps])])
           (if [= (@ expr-type arg) (-symbol-)]
             (let (repl-target (@ expr-symbol-reference arg))
               (if (and [= (@ bndg-mode repl-target) (value-mode)] [> [bndg-depth repl-target] (@ expr-depth n)] (not [bndg-escapes repl-target]))
-                [visit-expressions vreplace-value-bindings (storage _ (@ expr-with-expression n))
-                  (values storage repl-target [@car (@ expr-with-parameters n)])]
+                [visit-expressions vreplace-value-bindings (storage _ (@ expr-with-expression (& expr-with n)))
+                  (values storage repl-target [@car (@ expr-with-parameters (& expr-with n))])]
                 {search [@cdr rem-jumps]}))
             {search [@cdr rem-jumps]}))))
     
-    [initialize-expressions (storage-cons (@ expr-with-expression n) nil) (@ expr-with-parameters n)
+    [initialize-expressions (storage-cons (@ expr-with-expression (& expr-with n)) nil) (@ expr-with-parameters (& expr-with n))
       offset 0x:FFFFFFFFFFFF0C38 (@ expr-depth n) inits ret-val buf hdl]
     
     (setf bndg-size (@ expr-binding-aug n) (word-size))
@@ -477,12 +477,12 @@
         (if [= n current]
           (do [set dest with-expr] (true))
         (if (and [not= current null-expr] [= (@ expr-type current) (-with-)])
-          {enter current (@ expr-with-expression current)}
+          {enter current (@ expr-with-expression (& expr-with current))}
         (if (and [= (@ expr-type current) (-jump-)] [= (@ expr-type (@ expr-jump-target current)) (-continuation-)])
           {enter with-expr (@ expr-continuation-expression (@ expr-jump-target current))}
           (false)))))
       (dest)
-        (let (dest-bndg (@ expr-binding-aug (@ expr-with-expression $:dest)))
+        (let (dest-bndg (@ expr-binding-aug (@ expr-with-expression (& expr-with $:dest))))
             (src-bndg (@ expr-binding-aug [@car (@ expr-jump-arguments n)])) (do
           [generate-expression [@car (@ expr-jump-arguments n)] c relocs ..]
           [generate-bndg-bndg-move dest-bndg src-bndg (r11) c relocs ..]))

@@ -91,6 +91,26 @@
   (property expr-generator #:56 #:8 \:r:(?(a) `:(! static~ generator (expr ,:a)):r r))
   
   (property expr-depth #:64 #:8 \:r:(?(a b) `:(! static~ ,:a (expr ,:b)):r r))
+  
+  (property expr-storage #:0 #:48 \:r:(?(b) `:(! static~ (expr-storage ,:b) (expr ,:b)):r r))
+  
+  (property expr-literal #:0 #:48 \:r:(?(b) `:(! static~ (expr-literal ,:b) (expr ,:b)):r r))
+  
+  (property expr-if #:0 #:48 \:r:(?(b) `:(! static~ (expr-if ,:b) (expr ,:b)):r r))
+  
+  (property expr-continuation #:0 #:48 \:r:(?(b) `:(! static~ (expr-continuation ,:b) (expr ,:b)):r r))
+  
+  (property expr-with #:0 #:48 \:r:(?(b) `:(! static~ (expr-with ,:b) (expr ,:b)):r r))
+  
+  (property expr-jump #:0 #:48 \:r:(?(b) `:(! static~ (expr-jump ,:b) (expr ,:b)):r r))
+  
+  (property expr-invoke #:0 #:48 \:r:(?(b) `:(! static~ (expr-invoke ,:b) (expr ,:b)):r r))
+  
+  (property expr-function #:0 #:48 \:r:(?(b) `:(! static~ (expr-function ,:b) (expr ,:b)):r r))
+  
+  (property expr-meta #:0 #:48 \:r:(?(b) `:(! static~ (expr-meta ,:b) (expr ,:b)):r r))
+  
+  (property expr-constrain #:0 #:48 \:r:(?(b) `:(! static~ (expr-constrain ,:b) (expr ,:b)):r r))
 
 (ignore Properties of (-storage-) objects.)
   
@@ -140,17 +160,17 @@
 
 (ignore Properies of (-with-) objects.)
   
-  (property expr-with-reference #:72 #:8 \:r:(?(a) `:(! static~ bndg-aug (expr ,:a)):r r))
+  (property expr-with-reference #:72 #:8 \:r:(?(a) `:(! static~ bndg-aug !:Ref:(expr-with ,:a)):r r))
   
-  (property expr-with-expression #:80 #:8 \:r:(?(a) `:(! static~ (expr ,:a) (expr ,:a)):r r))
+  (property expr-with-expression #:80 #:8 \:r:(?(a) `:(! static~ (expr ,:a) !:Ref:(expr-with ,:a)):r r))
   
-  (property expr-with-parameters #:88 #:8 \:r:(?(a) `:(! static~ (list bndg-aug) (expr ,:a)):r r))
+  (property expr-with-parameters #:88 #:8 \:r:(?(a) `:(! static~ (list bndg-aug) !:Ref:(expr-with ,:a)):r r))
   
-  (property expr-with-instr-bndg #:96 #:8 \:r:(?(a b) `:(! static~ ,:a (expr ,:b)):r r))
+  (property expr-with-instr-bndg #:96 #:8 \:r:(?(a b) `:(! static~ ,:a !:Ref:(expr-with ,:b)):r r))
   
-  (property expr-with-escapes #:104 #:8 \:r:(?(a b) `:(! static~ ,:a (expr ,:b)):r r))
+  (property expr-with-escapes #:104 #:8 \:r:(?(a b) `:(! static~ ,:a !:Ref:(expr-with ,:b)):r r))
   
-  (property expr-with-jumps #:112 #:8 \:r:(?(a) `:(! static~ (list (expr ,:a)) (expr ,:a)):r r))
+  (property expr-with-jumps #:112 #:8 \:r:(?(a) `:(! static~ (list (expr ,:a)) !:Ref:(expr-with ,:a)):r r))
   
 (ignore Properies of (-symbol-) objects.)
   
@@ -229,7 +249,7 @@
     ((-storage-) (& expr-storage-reference n))
     ((-function-) (& expr-function-reference n))
     ((-continuation-) (& expr-continuation-reference n))
-    ((-with-) (& expr-with-reference n))
+    ((-with-) (& expr-with-reference (& expr-with n)))
     ((-symbol-) (& expr-symbol-reference n))
     [print-str (stdout) (" expr-reference called on incorrect type.) (ignore)]))
 
@@ -237,7 +257,7 @@
   (switch = (@ expr-type n)
     ((-function-) (& expr-function-expression n))
     ((-continuation-) (& expr-continuation-expression n))
-    ((-with-) (& expr-with-expression n))
+    ((-with-) (& expr-with-expression (& expr-with n)))
     ((-constrain-) (& expr-constrain-expression n))
     [print-str (stdout) (" expr-target called on incorrect type.) (ignore)]))
 
@@ -245,25 +265,25 @@
   (switch = (@ expr-type n)
     ((-function-) (& expr-function-parameters n))
     ((-continuation-) (& expr-continuation-parameters n))
-    ((-with-) (& expr-with-parameters n))
+    ((-with-) (& expr-with-parameters (& expr-with n)))
     [print-str (stdout) (" expr-parameters called on incorrect type.) (ignore)]))
 
 (function expr-instr-bndg (n)
   (switch = (@ expr-type n)
     ((-continuation-) (& expr-continuation-instr-bndg n))
-    ((-with-) (& expr-with-instr-bndg n))
+    ((-with-) (& expr-with-instr-bndg (& expr-with n)))
     [print-str (stdout) (" expr-instr-bndg called on incorrect type.) (ignore)]))
 
 (function expr-escapes (n)
   (switch = (@ expr-type n)
     ((-continuation-) (& expr-continuation-escapes n))
-    ((-with-) (& expr-with-escapes n))
+    ((-with-) (& expr-with-escapes (& expr-with n)))
     [print-str (stdout) (" expr-escapes called on incorrect type.) (ignore)]))
 
 (function expr-jumps (n)
   (switch = (@ expr-type n)
     ((-continuation-) (& expr-continuation-jumps n))
-    ((-with-) (& expr-with-jumps n))
+    ((-with-) (& expr-with-jumps (& expr-with n)))
     [print-str (stdout) (" expr-jumps called on incorrect type.) (ignore)]))
 
 (ignore
@@ -455,21 +475,22 @@
       (expr-metalink meta)
       (expr-lowlink #:0)
       (expr-dependencies nil)
-      (expr-with-jumps nil)
       (expr-binding-aug
         [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
           (defined-state) empty-string [vbl->frag [vbl ..]] wth ..])
-      (expr-with-instr-bndg
-        [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope)
-          (defined-state) empty-string null-fragment null-expr ..])
-      (expr-with-reference
-        [make-binding-aug (reference-mode) (intra-function-context) (nil-storage) (local-scope)
-          (defined-state) ref [vbl->frag [vbl ..]] wth ..])
-      (expr-with-parameters [cons
-        [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
-          (defined-state) empty-string [vbl->frag [vbl ..]] wth ..] nil ..])
-      (expr-with-escapes (false))
-      (expr-with-expression expr))))
+      (phantom (record (_(& expr-with wth))
+        (expr-with-escapes (false))
+        (expr-with-expression expr)
+        (expr-with-jumps nil)
+        (expr-with-parameters [cons
+          [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
+            (defined-state) empty-string [vbl->frag [vbl ..]] wth ..] nil ..])
+        (expr-with-reference
+          [make-binding-aug (reference-mode) (intra-function-context) (nil-storage) (local-scope)
+            (defined-state) ref [vbl->frag [vbl ..]] wth ..])
+        (expr-with-instr-bndg
+          [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope)
+            (defined-state) empty-string null-fragment null-expr ..]))))))
 
 (constrain make-jump (\ r (?(a b) (`(function ((expr ,:a) (list (expr ,:a)) frag (expr ,:a) region ,:b) (expr ()))r)r)))
 
@@ -590,9 +611,9 @@
   (switch = (@ expr-type s)
     ((-with-) (do
       [print-str (stdout) (" (lparen)with(space)) ..]
-      [print-binding (@ expr-with-reference s) ..]
+      [print-binding (@ expr-with-reference (& expr-with s)) ..]
       [print-str (stdout) (" (space)) ..]
-      [print-expression (@ expr-with-expression s) ..]
+      [print-expression (@ expr-with-expression (& expr-with s)) ..]
       [print-str (stdout) (" (rparen)) ..]))
     
     ((-storage-) (do
