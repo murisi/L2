@@ -78,16 +78,16 @@
           [place-perm-bindings $:[expr-expression n] offset]))))
     
     ((-storage-)
-      (let (storage-size [* [length (@ expr-storage-arguments n)] (word-size)])
+      (let (storage-size [* [length (@ expr-storage-arguments (& expr-storage n))] (word-size)])
       (let (offset [- offset storage-size]) (do
-      (setf bndg-size (@ expr-storage-reference n) storage-size)
-      (setf bndg-offset (@ expr-storage-reference n) offset)
-      (setf bndg-storage (@ expr-storage-reference n) [context->memory-storage (@ bndg-context (@ expr-storage-reference n))])
-      (for (offset (%:range-from offset (word-size))) (u (%:list-iter (@ expr-storage-arguments n))) (ignore) (do
+      (setf bndg-size (@ expr-storage-reference (& expr-storage n)) storage-size)
+      (setf bndg-offset (@ expr-storage-reference (& expr-storage n)) offset)
+      (setf bndg-storage (@ expr-storage-reference (& expr-storage n)) [context->memory-storage (@ bndg-context (@ expr-storage-reference (& expr-storage n)))])
+      (for (offset (%:range-from offset (word-size))) (u (%:list-iter (@ expr-storage-arguments (& expr-storage n)))) (ignore) (do
         (setf bndg-size (@ expr-binding-aug u) (word-size))
         (setf bndg-preferred-offset (@ expr-binding-aug u) offset)
         (setf bndg-preferred-storage (@ expr-binding-aug u) [context->memory-storage (@ bndg-context (@ expr-binding-aug u))])))
-      (fold (offset offset) (u (%:list-iter (@ expr-storage-arguments n))) [place-perm-bindings u offset])))))
+      (fold (offset offset) (u (%:list-iter (@ expr-storage-arguments (& expr-storage n)))) [place-perm-bindings u offset])))))
     
     offset))
 
@@ -419,8 +419,8 @@
 (function generate-storage (n c relocs r handler)
   (substitute (.. r handler) (let
       (expr-val-bndg (@ expr-binding-aug n))
-      (storage-val-bndg (@ expr-storage-reference n)) (do
-    (for (t (%:list-iter (@ expr-storage-arguments n))) (ignore) [generate-expression t c relocs ..])
+      (storage-val-bndg (@ expr-storage-reference (& expr-storage n))) (do
+    (for (t (%:list-iter (@ expr-storage-arguments (& expr-storage n)))) (ignore) [generate-expression t c relocs ..])
     [prepend(make-instrN(x86-lea)
       ([bndg->op expr-val-bndg relocs ..][bndg->op storage-val-bndg relocs ..][make-reg-op(r11) ..])..) c ..]))))
 
@@ -428,7 +428,7 @@
 
 (function initialize-storage (n offset inits ret-val buf hdl)
   (and [= (@ expr-type n) (-storage-)] (do
-    [initialize-expressions (@ expr-storage-arguments n) nil offset 0x:FFFFFFFFFFFF0C38 (@ expr-depth n) inits ret-val buf hdl]
+    [initialize-expressions (@ expr-storage-arguments (& expr-storage n)) nil offset 0x:FFFFFFFFFFFF0C38 (@ expr-depth n) inits ret-val buf hdl]
     (setf bndg-size (@ expr-binding-aug n) (word-size))
     (setf expr-generator n [function->generator generate-storage])
     (true))))

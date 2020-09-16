@@ -92,7 +92,7 @@
   
   (property expr-depth #:64 #:8 \:r:(?(a b) `:(! static~ ,:a (expr ,:b)):r r))
   
-  (property expr-storage #:0 #:48 \:r:(?(b) `:(! static~ (expr-storage ,:b) (expr ,:b)):r r))
+  (property expr-storage #:72 #:48 \:r:(?(b) `:(! static~ (expr-storage ,:b) (expr ,:b)):r r))
   
   (property expr-literal #:72 #:48 \:r:(?(b) `:(! static~ (expr-literal ,:b) (expr ,:b)):r r))
   
@@ -114,9 +114,9 @@
 
 (ignore Properties of (-storage-) objects.)
   
-  (property expr-storage-arguments #:80 #:8 \:r:(?(a) `:(! static~ (list (expr ,:a)) (expr ,:a)):r r))
+  (property expr-storage-reference #:0 #:8 \:r:(?(a) `:(! static~ bndg-aug !:Ref:(expr-storage ,:a)):r r))
   
-  (property expr-storage-reference #:72 #:8 \:r:(?(a) `:(! static~ bndg-aug (expr ,:a)):r r))
+  (property expr-storage-arguments #:8 #:8 \:r:(?(a) `:(! static~ (list (expr ,:a)) !:Ref:(expr-storage ,:a)):r r))
   
 (ignore Properies of (-invoke-) objects.)
   
@@ -239,14 +239,14 @@
 
 (function expr-arguments (n)
   (switch = (@ expr-type n)
-    ((-storage-) (& expr-storage-arguments n))
+    ((-storage-) (& expr-storage-arguments (& expr-storage n)))
     ((-invoke-) (& expr-invoke-arguments (& expr-invoke n)))
     ((-jump-) (& expr-jump-arguments (& expr-jump n)))
     [print-str (stdout) (" expr-arguments called on incorrect type.) (ignore)]))
 
 (function expr-reference (n)
   (switch = (@ expr-type n)
-    ((-storage-) (& expr-storage-reference n))
+    ((-storage-) (& expr-storage-reference (& expr-storage n)))
     ((-function-) (& expr-function-reference (& expr-function n)))
     ((-continuation-) (& expr-continuation-reference (& expr-continuation n)))
     ((-with-) (& expr-with-reference (& expr-with n)))
@@ -405,7 +405,7 @@
 (function make-undefined-binding (name r handler)
   (substitute (.. r handler)
     (let (stg [make-storage name nil null-fragment null-expr ..])
-    (record (bndg (@ expr-storage-reference stg))
+    (record (bndg (@ expr-storage-reference (& expr-storage stg)))
       (bndg-context (extra-function-context))
       (bndg-storage (absolute-storage))
       (bndg-scope (global-scope))
@@ -528,10 +528,11 @@
       (expr-binding-aug
         [make-binding-aug (value-mode) (intra-function-context) (nil-storage) (local-scope)
           (defined-state) empty-string [vbl->frag [vbl ..]] u ..])
-      (expr-storage-reference
+      (phantom (record (_ (& expr-storage u))
+        (expr-storage-arguments args)
+        (expr-storage-reference
         [make-binding-aug (reference-mode) (intra-function-context) (nil-storage) (local-scope)
-          (defined-state) ref [vbl->frag [vbl ..]] u ..])
-      (expr-storage-arguments args))))
+          (defined-state) ref [vbl->frag [vbl ..]] u ..]))))))
 
 (constrain make-meta (\ r (?(a b) (`(function ((expr ,:a) frag (expr ,:a) region ,:b) (expr ()))r)r)))
 
@@ -624,9 +625,9 @@
     
     ((-storage-) (do
       [print-str (stdout) (" (lparen)storage(space)) ..]
-      [print-binding (@ expr-storage-reference s) ..]
+      [print-binding (@ expr-storage-reference (& expr-storage s)) ..]
       [print-str (stdout) (" (space)) ..]
-      (for (t (%:list-iter (@ expr-storage-arguments s))) (ignore) (do
+      (for (t (%:list-iter (@ expr-storage-arguments (& expr-storage s)))) (ignore) (do
         [print-expression t ..]
         [print-str (stdout) (" (space)) ..]))
       [print-str (stdout) (" (bs)) ..]
