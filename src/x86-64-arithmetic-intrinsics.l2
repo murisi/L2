@@ -49,43 +49,6 @@
 
 (function variable (var val) (do [set var val] (true)))
 
-(ignore
-  The following function takes an equality predicate and the type field of a
-  record and returns a macro that when given a type value and value field,
-  produces a macro that takes a value matcher and produces a matcher macro for
-  the given case of the union. Does the following transformation:
-  ((((union eq tf) tv vf) vm) obj consequent alternate)
-  ->
-  (if [eq (@ tf obj) tv]
-    (vm (& vf obj)
-      consequent
-      alternate)
-    alternate))
-
-(function union (l r)
-  (let (eq [@fst l]) (tf [@frst l])
-  `:(function func (l r)
-      (let (tv [@fst l]) (vf [@frst l])
-      `:(function func (l r)
-          (let (vm [@fst l])
-          `:(function func (l r)
-              (let (consequent [@frst l]) (alternate [@frrst l]) (vm ,:[meta.bq vm `:r:r r])
-                  (tv ,:,;[meta.bqbq tv `:r:r `:r:r r]) (vf ,:,;[meta.bqbq vf `:r:r `:r:r r])
-                  (eq ,:,;(,[meta.bqbqbq eq `:r:r `:r:r `:r:r r])) (tf ,:,;(,[meta.bqbqbq tf `:r:r `:r:r `:r:r r]))
-                `:(let (obj ,:[@fst l]) (if [,:eq (@ ,:tf obj) ,:tv]
-                    (,:vm (& ,:vf obj)
-                      ,:consequent
-                      ,:alternate)
-                    ,:alternate)):r)):r)):r)):r))
-
-(define invoke? ((union = expr-type) (-invoke-) expr-invoke))
-
-(define if? ((union = expr-type) (-if-) expr-if))
-
-(define literal? ((union = expr-type) (-literal-) expr-literal))
-
-(define symbol? ((union = expr-type) (-symbol-) expr-symbol))
-
 (constrain match-undefined-unary-invoke (\ r (?(a b) (`(function (!:Ref:string !:Ref:(expr ,:b) (expr ,:b)) ,:a)r)r)))
 
 (function match-undefined-unary-invoke (name arg1 n)
