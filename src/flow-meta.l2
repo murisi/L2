@@ -124,6 +124,28 @@
         [@rst [meta.reverse [@rrst l] r]] [@fst [meta.reverse l r]]})))r))
 
 (ignore
+  The following function implements the match expression by doing the following transformation:
+  (match val0 (matchers exprs) ... expr0)
+  ->
+  (let (tempval0 val0)
+    (matchers0 tempval0
+      exprs0
+    (matchers1 tempval0
+      exprs1
+    (...
+    (matchersN tempval0
+      exprsN
+      expr0) ...)))))
+
+(function match (l r h)
+  (let (val-sym [meta.concat `:match.val:r [gentok r] r])
+  `:(let (,:val-sym ,:[@fst l])
+    ,:(loop build (remaining [@rst [meta.reverse [@rst l] r]]) (expr [@fst [meta.reverse l r]])
+        (if [emt? remaining]
+          expr
+          {build [@rst remaining] `:(,:[@ffst remaining] ,:val-sym ,:[@frfst remaining] ,:expr):r}))):r))
+
+(ignore
   The following function implements the following transformation:
   (fallthrough expr (labels args exprs) ...)
   ->

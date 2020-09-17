@@ -113,18 +113,18 @@
 
 (function assign-depths (e depth) (do
   (setf expr-depth e depth)
-  (switch = (@ expr-type e)
-    ((-function-) (-continuation-) (-with-) (-constrain-)
+  (match e
+    ((or? (expr-function? .:_) (expr-continuation? .:_) (expr-with? .:_) (expr-constrain? .:_))
       [assign-depths $:[expr-expression e] [+ depth #:1]])
-    ((-if-) (do
-      [assign-depths (@ expr-condition (& expr-if e)) [+ depth #:1]]
-      [assign-depths (@ expr-consequent (& expr-if e)) [+ depth #:1]]
-      [assign-depths (@ expr-alternate (& expr-if e)) [+ depth #:1]]))
-    ((-invoke-) (-jump-)
+    ((expr-if? .:ife) (do
+      [assign-depths (@ expr-condition ife) [+ depth #:1]]
+      [assign-depths (@ expr-consequent ife) [+ depth #:1]]
+      [assign-depths (@ expr-alternate ife) [+ depth #:1]]))
+    ((or? (expr-invoke? .:inve) (expr-jump? .:jmpe))
       (for (u (%:list-iter (storage-cons $:[expr-target e] $:[expr-arguments e]))) (ignore)
         [assign-depths u [+ depth #:1]]))
-    ((-storage-)
-      (for (u (%:list-iter (@ expr-storage-arguments (& expr-storage e)))) (ignore) [assign-depths u [+ depth #:1]]))
+    ((expr-storage? .:stge)
+      (for (u (%:list-iter (@ expr-storage-arguments stge))) (ignore) [assign-depths u [+ depth #:1]]))
     (ignore))))
 
 (ignore
@@ -179,6 +179,7 @@
       [set-expr-is-read (@ expr-with-expression (& expr-with s)) (true)]))
     
     ((-continuation-) (do
+      (for (param (%:list-iter (@ expr-continuation-parameters (& expr-continuation s)))) (ignore) (setf bndg-is-read param (true)))
       (setf bndg-is-read (@ expr-continuation-reference (& expr-continuation s)) (true))
       [assign-expr-is-reads (@ expr-continuation-expression (& expr-continuation s))]
       [set-expr-is-read (@ expr-continuation-expression (& expr-continuation s)) (false)]))
