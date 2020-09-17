@@ -138,67 +138,67 @@
     (if [= (@ expr-binding-aug e) repl-target]
       (setf expr-binding-aug e replacement)
       (ignore))
-    (switch = (@ expr-type e)
-      ((-continuation-) (-with-) (-function-)
+    (match e
+      ((or? (expr-continuation? .:_) (expr-with? .:_) (expr-function? .:_))
         (loop replace (rem-params $:[expr-parameters e])
           (if [nil? rem-params] e
           (if [= [@car rem-params] repl-target]
             (do (setf car rem-params replacement) {replace [@cdr rem-params]})
             {replace [@cdr rem-params]}))))
-      ((-symbol-)
-        (if [= (@ expr-symbol-reference (& expr-symbol e)) repl-target]
-          (do (setf expr-symbol-reference (& expr-symbol e) replacement) e)
+      ((expr-symbol? .:syme)
+        (if [= (@ expr-symbol-reference syme) repl-target]
+          (do (setf expr-symbol-reference syme replacement) e)
           e))
       e)) (ignore)))
 
 (constrain assign-expr-is-reads (\ r (?(a) (`(function ((expr ,:a)) ())r)r)))
 
 (function assign-expr-is-reads (s)
-  (switch = (@ expr-type s)
-    ((-if-) (do
-      [assign-expr-is-reads (@ expr-condition (& expr-if s))]
-      [set-expr-is-read (@ expr-condition (& expr-if s)) (true)]
-      [assign-expr-is-reads (@ expr-consequent (& expr-if s))]
-      [set-expr-is-read (@ expr-consequent (& expr-if s)) (true)]
-      [assign-expr-is-reads (@ expr-alternate (& expr-if s))]
-      [set-expr-is-read (@ expr-alternate (& expr-if s)) (true)]))
+  (match s
+    ((expr-if? (property? (expr-condition .:cond) (expr-consequent .:consq) (expr-alternate .:alte))) (do
+      [assign-expr-is-reads cond]
+      [set-expr-is-read cond (true)]
+      [assign-expr-is-reads consq]
+      [set-expr-is-read consq (true)]
+      [assign-expr-is-reads alte]
+      [set-expr-is-read alte (true)]))
     
-    ((-constrain-) (do
-      [assign-expr-is-reads (@ expr-constrain-expression (& expr-constrain s))]
-      [set-expr-is-read (@ expr-constrain-expression (& expr-constrain s)) (true)]))
+    ((expr-constrain? (property? (expr-constrain-expression .:body))) (do
+      [assign-expr-is-reads body]
+      [set-expr-is-read body (true)]))
     
-    ((-function-) (do
-      (setf bndg-is-read (@ expr-function-reference (& expr-function s)) (true))
-      [assign-expr-is-reads (@ expr-function-expression (& expr-function s))]
-      [set-expr-is-read (@ expr-function-expression (& expr-function s)) (true)]))
+    ((expr-function? (property? (expr-function-reference .:ref) (expr-function-expression .:body))) (do
+      (setf bndg-is-read ref (true))
+      [assign-expr-is-reads body]
+      [set-expr-is-read body (true)]))
     
-    ((-with-) (do
-      (setf bndg-is-read (@ expr-with-reference (& expr-with s)) (true))
-      (setf bndg-is-read [@car (@ expr-with-parameters (& expr-with s))] (true))
-      [assign-expr-is-reads (@ expr-with-expression (& expr-with s))]
-      [set-expr-is-read (@ expr-with-expression (& expr-with s)) (true)]))
+    ((expr-with? (property? (expr-with-reference .:ref) (expr-with-parameters .:params) (expr-with-expression .:body))) (do
+      (setf bndg-is-read ref (true))
+      (setf bndg-is-read [@car params] (true))
+      [assign-expr-is-reads body]
+      [set-expr-is-read body (true)]))
     
-    ((-continuation-) (do
-      (for (param (%:list-iter (@ expr-continuation-parameters (& expr-continuation s)))) (ignore) (setf bndg-is-read param (true)))
-      (setf bndg-is-read (@ expr-continuation-reference (& expr-continuation s)) (true))
-      [assign-expr-is-reads (@ expr-continuation-expression (& expr-continuation s))]
-      [set-expr-is-read (@ expr-continuation-expression (& expr-continuation s)) (false)]))
+    ((expr-continuation? (property? (expr-continuation-parameters .:params) (expr-continuation-reference .:ref) (expr-continuation-expression .:body))) (do
+      (for (param (%:list-iter params)) (ignore) (setf bndg-is-read param (true)))
+      (setf bndg-is-read ref (true))
+      [assign-expr-is-reads body]
+      [set-expr-is-read body (false)]))
     
-    ((-storage-) (do
-      (setf bndg-is-read (@ expr-storage-reference (& expr-storage s)) (true))
-      (for (u (%:list-iter (@ expr-storage-arguments (& expr-storage s)))) (ignore) (do
+    ((expr-storage? (property? (expr-storage-reference .:ref) (expr-storage-arguments .:args))) (do
+      (setf bndg-is-read ref (true))
+      (for (u (%:list-iter args)) (ignore) (do
         [assign-expr-is-reads u]
         [set-expr-is-read u (true)]))))
     
-    ((-jump-) (-invoke-) (do
+    ((or? (expr-jump? .:_) (expr-invoke? .:_)) (do
       [assign-expr-is-reads $:[expr-target s]]
       [set-expr-is-read $:[expr-target s] (true)]
       (for (u (%:list-iter $:[expr-arguments s])) (ignore) (do
         [assign-expr-is-reads u]
         [set-expr-is-read u (true)]))))
     
-    ((-symbol-) (do
-      (setf bndg-is-read (@ expr-symbol-reference (& expr-symbol s)) (true))
+    ((expr-symbol? (property? (expr-symbol-reference .:ref))) (do
+      (setf bndg-is-read ref (true))
       (ignore)))
     
     (ignore)))
