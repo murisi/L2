@@ -689,11 +689,10 @@
             (bndg) (@ bndg-offset $:bndg)
             {handler (storage _ undefined-symbol-error (@ expr-name (& expr-symbol s)))}))
         (do
-          (let (expr-container [make-function empty-string nil s null-fragment null-expr buf2 handler])
-          (let (exprs-preprocessed [generate-metaprogram [cons expr-container nil buf2 handler] inits bindings buf2 buf buf2 handler]) (do
-          [load-program-and-mutate exprs-preprocessed inits bindings buf2 buf handler]
-          (let (expr-container-preprocessed [@car exprs-preprocessed])
-          [(@ bndg-offset (@ expr-function-reference (& expr-function expr-container-preprocessed)))])))))))))
+          (let (expr-container [make-function empty-string nil s null-fragment null-expr buf2 handler]) (do
+          [pre-visit-expressions vgenerate-metas (storage _ expr-container) (values storage inits bindings buf buf2 handler)]
+          [load-program-and-mutate [cons expr-container nil buf2 handler] inits bindings buf buf2 handler]
+          [(@ bndg-offset (@ expr-function-reference (& expr-function expr-container)))])))))))
 
 (ignore The error that wraps errors thrown by macros.)
 
