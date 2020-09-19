@@ -228,8 +228,8 @@
 (function read-fragment2 (l2src l2src-sz pos r handler)
   (substitute (.. r handler)
     (let (sexprs-start (storage _ emt!))
-    (let (sexprs-end [append [read-fragment1 l2src l2src-sz pos ..] sexprs-start ..]) (do
-    (loop cons-frag (sexprs-end sexprs-end)
+    (let (head [read-fragment1 l2src l2src-sz pos ..]) (do
+    (loop cons-frag (sexprs-end sexprs-start)
       (if (not [read-whitespace l2src l2src-sz pos])
         (ignore)
         (let (c [getb [+ l2src $:pos]])
@@ -240,9 +240,9 @@
               [read-whitespace l2src l2src-sz pos]
               {cons-frag [append [read-fragment1 l2src l2src-sz pos ..] sexprs-end ..]})))))
                 
-    (if [emt?! [@cdr $:sexprs-start]]
-      [@car $:sexprs-start]
-      [list->fragment $:sexprs-start]))))))
+    (if [emt?! $:sexprs-start]
+      head
+      [list->fragment [cons head $:sexprs-start ..]]))))))
 
 (ignore Builds a fragment starting at the current position in the buffer. For parameters, see above.)
 
@@ -251,8 +251,8 @@
 (function read-fragment (l2src l2src-sz pos r handler)
   (substitute (.. r handler)
     (let (sexprs-start (storage _ emt!))
-    (let (sexprs-end [append [read-fragment2 l2src l2src-sz pos ..] sexprs-start ..]) (do
-    (loop cons-frag (sexprs-end sexprs-end)
+    (let (head [read-fragment2 l2src l2src-sz pos ..]) (do
+    (loop cons-frag (sexprs-end sexprs-start)
       (if (not [read-whitespace l2src l2src-sz pos])
         (ignore)
         (let (c [getb [+ l2src $:pos]])
@@ -263,9 +263,9 @@
               [read-whitespace l2src l2src-sz pos]
               {cons-frag [append [read-fragment2 l2src l2src-sz pos ..] sexprs-end ..]})))))
                 
-    (if [emt?! [@cdr $:sexprs-start]]
-      [@car $:sexprs-start]
-      [list->fragment $:sexprs-start]))))))
+    (if [emt?! $:sexprs-start]
+      head
+      [list->fragment [cons head $:sexprs-start ..]]))))))
 
 (storage unexpected-char-error (ignore))
 

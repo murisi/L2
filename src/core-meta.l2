@@ -4,6 +4,8 @@
 
 (function @frst (l) [@fst [@rst l]])
 
+(function @rfrst (l) [@rst [@frst l]])
+
 (function @ffrst (l) [@fst [@frst l]])
 
 (function @frfrst (l) [@fst [@rst [@frst l]]])
@@ -22,17 +24,19 @@
 
 (function @frrfst (l) [@fst [@rst [@rfst l]]])
 
-(function @frrst (l) [@fst [@rst [@rst l]]])
+(function @frrst (l) [@frst [@rst l]])
 
-(function @frrrst (l) [@fst [@rst [@rst [@rst l]]]])
+(function @frrrst (l) [@frrst [@rst l]])
 
-(function @frrrrst (l) [@fst [@rst [@rst [@rst [@rst l]]]]])
+(function @frrrrst (l) [@frrrst [@rst l]])
 
-(function @frrrrrst (l) [@fst [@rst [@rst [@rst [@rst [@rst l]]]]]])
+(function @frrrrrst (l) [@frrrrst [@rst l]])
 
-(function @frrrrrrst (l) [@fst [@rst [@rst [@rst [@rst [@rst [@rst l]]]]]]])
+(function @frrrrrrst (l) [@frrrrrst [@rst l]])
 
-(function @frrrrrrrst (l) [@fst [@rst [@rst [@rst [@rst [@rst [@rst [@rst l]]]]]]]])
+(function @frrrrrrrst (l) [@frrrrrrst [@rst l]])
+
+(function @frrrrrrrrst (l) [@frrrrrrrst [@rst l]])
 
 (function @ffst (l) [@fst [@fst l]])
 
@@ -69,14 +73,49 @@
   [fun [@fst tuple] [@frst tuple] [@frrst tuple] [@frrrst tuple] [@frrrrst tuple] [@frrrrrst tuple]])
 
 (ignore
+  The following function makes macros that expand to a unique identifier. Does
+  the following transformation:
+  ((token id)) -> jk344kjh)
+
+(function token (l r)
+  `:(function ,:[@fst l] (l r)
+      ,:[meta.bq [gentok r] `:r:r r]):r)
+
+(ignore Make unique tokens for various type sizes.)
+
+(token 0b) (token 1b) (token 2b) (token 4b) (token 8b)
+
+(ignore
   The following function provides an abbreviation for getting a value from a memory
   address. It implements the transformation $:a -> [get a].)
 
 (function $ (var r) `:[get , var]:r)
 
-(constrain get (\ r (?(a) `:(function ((ref ,:a)) ,:a):r r)))
+(constrain get \:r:(?(a) `:(function ((ref !:8b ,:a)) ,:a):r r))
 
-(constrain set (\ r (?(a) `:(function ((ref ,:a) ,:a) ()):r r)))
+(constrain get0b \:r:(?(a) `:(function ((ref !:0b ,:a)) ,:a):r r))
+
+(constrain get1b \:r:(?(a) `:(function ((ref !:1b ,:a)) ,:a):r r))
+
+(constrain get2b \:r:(?(a) `:(function ((ref !:2b ,:a)) ,:a):r r))
+
+(constrain get4b \:r:(?(a) `:(function ((ref !:4b ,:a)) ,:a):r r))
+
+(constrain get8b \:r:(?(a) `:(function ((ref !:8b ,:a)) ,:a):r r))
+
+(constrain set \:r:(?(a) `:(function ((ref !:8b ,:a) ,:a) ()):r r))
+
+(constrain set0b \:r:(?(a) `:(function ((ref !:0b ,:a) ,:a) ()):r r))
+
+(constrain set1b \:r:(?(a) `:(function ((ref !:1b ,:a) ,:a) ()):r r))
+
+(constrain set2b \:r:(?(a) `:(function ((ref !:2b ,:a) ,:a) ()):r r))
+
+(constrain set4b \:r:(?(a) `:(function ((ref !:4b ,:a) ,:a) ()):r r))
+
+(constrain set8b \:r:(?(a) `:(function ((ref !:8b ,:a) ,:a) ()):r r))
+
+(function Ref (l r) (?(a) `:(ref ,:a , l):r r))
 
 (function meta.lookup-var (key map)
   (with return
@@ -154,9 +193,11 @@
         {(continuation bq.cont ,:[meta.map-values map r] {bq.return ,:s}),
           [meta.map3 map t r (function _(elt t r) bq:[var ,:t]:r) r]}):r)])
 
-(function meta.bq (l buffer r) [`[llst l buffer emt r]r])
+(function meta.bq (l buffer r) [lllst [lst -`- emt r] l buffer emt r])
 
 (function meta.bqbq (l buffer1 buffer2 r) [meta.bq [meta.bq l buffer1 r] buffer2 r])
+
+(function meta.bqbqbq (l buffer1 buffer2 buffer3 r) [meta.bq [meta.bqbq l buffer1 buffer2 r] buffer3 r])
 
 (function meta.unquote (l r) [llst [lst -,- emt r] l emt r])
 
@@ -232,7 +273,7 @@
   item in the fragment l), passing into it offset-aux (the macro that actually
   produces the offset of the field).)
 
-(function offset-of (l r) (`((,[@fst l]) offset-of-aux)r))
+(function offset-of (l r) `:(,:[@fst l] offset-of-aux):r)
 
 (ignore
   This function is not to be called directly. It returns a fragment representing
@@ -240,15 +281,15 @@
   
 (function offset-of-aux (l r) [@fst l])
 
-(function size-of (l r) (`((,[@fst l]) size-of-aux)r))
+(function size-of (l r) `:(,:[@fst l] size-of-aux):r)
 
 (function size-of-aux (l r) [@frst l])
 
-(function getter-of (l r) (`((,[@fst l]) getter-of-aux)r))
+(function getter-of (l r) `:(,:[@fst l] getter-of-aux):r)
 
 (function getter-of-aux (l r) [@frrst l])
 
-(function setter-of (l r) (`((,[@fst l]) setter-of-aux)r))
+(function setter-of (l r) `:(,:[@fst l] setter-of-aux):r)
 
 (function setter-of-aux (l r) [@frrrst l])
 
@@ -259,7 +300,7 @@
   the actual invocation that calculates the address of the field) and the address of
   the struct (the first item in the fragment l).)
 
-(function & (l r) (`((,[@fst l]) &-aux (,[@frst l]))r))
+(function & (l r) `:(,:[@fst l] &-aux ,:[@frst l]):r)
 
 (ignore
   This function is not to be called directly. It generates the actual
@@ -268,12 +309,12 @@
   (the fifth item in the fragment l).)
 
 (function &-aux (l r)
-  (`(with &-aux.ret
-      (let (@-aux.obj (,[@frrrrrrst l]))
+  `:(with &-aux.ret
+      (let (@-aux.obj ,:[@frrrrrrrst l])
         {(constrain (constrain (continuation @-aux.cont (pseudo prop-ref obj) {&-aux.ret prop-ref})
-            (\ &-aux.s (?(a b) (let ((,[@frrrrst l]) &-aux.s) (`(continuation ((,(,[@frrrrrst l])) ,:a ,:b))&-aux.s))&-aux.s)))
-            (\ s (?(a b c d) (`(continuation ((@ ,:a ,:c ,:d ,:b) (ref ,:a) ,:b))s)s)))
-          (ignore) [+ @-aux.obj (,[@fst l])] @-aux.obj}))r))
+            (\ &-aux.s (?(a b) (let (,:[@frrrrst l] &-aux.s) `:(continuation (,:,;[@frrrrrst l] ,:a ,:b)):&-aux.s)&-aux.s)))
+            (\ &-aux.s (?(a b c d) (let (,:[@frrrrst l] &-aux.s) `:(continuation ((@ ,:a ,:c ,:d ,:b) (ref ,:,;[@frrrrrrst l] ,:a) ,:b)):&-aux.s)&-aux.s)))
+          (ignore) [+ @-aux.obj ,:[@fst l]] @-aux.obj})):r)
 
 (ignore
   The following function is a macro for getting the field of a struct. The
@@ -282,7 +323,7 @@
   the actual invocation that gets the field) and the address of the struct (the
   first item in the fragment l).)
   
-(function @ (l r) (`((,[@fst l]) @-aux (,[@frst l]))r))
+(function @ (l r) `:(,:[@fst l] @-aux ,:[@frst l]):r)
 
 (ignore
   This function is not to be called directly. It generates the actual
@@ -292,12 +333,12 @@
   (the fifth item in the fragment l).)
 
 (function @-aux (l r)
-  (`(with @-aux.ret
-      (let (@-aux.obj (,[@frrrrrrst l]))
+  `:(with @-aux.ret
+      (let (@-aux.obj ,:[@frrrrrrrst l])
         {(constrain (constrain (continuation @-aux.cont (pseudo prop obj) {@-aux.ret prop})
-            (\ @-aux.s (?(a b) (let ((,[@frrrrst l]) @-aux.s) (`(continuation ((,(,[@frrrrrst l])) ,:a ,:b))@-aux.s))@-aux.s)))
-            (\ s (?(a b c d) (`(continuation ((@ ,:a ,:c ,:d ,:b) ,:a ,:b))s)s)))
-          (ignore) [(,[@frrst l]) [+ @-aux.obj (,[@fst l])]] @-aux.obj}))r))
+            (\ @-aux.s (?(a b) (let (,:[@frrrrst l] @-aux.s) `:(continuation (,:,;[@frrrrrst l] ,:a ,:b)):@-aux.s)@-aux.s)))
+            (\ s (?(a b c d) `:(continuation ((@ ,:a ,:c ,:d ,:b) ,:a ,:b)):s s)))
+          (ignore) [(,[@frrst l]) [+ @-aux.obj ,:[@fst l]]] @-aux.obj})):r)
 
 (ignore
   The following function is a macro for setting the field of a struct. The
@@ -307,7 +348,7 @@
   first item in the fragment l), and the new value of the field (the third
   item in the fragment l).)
 
-(function setf (l r) (`((,[@fst l]) setf-aux (,[@frst l]) (,[@frrst l]))r))
+(function setf (l r) `:(,:[@fst l] setf-aux ,:[@frst l] ,:[@frrst l]):r)
 
 (ignore
   This function is not to be called directly. It generates the actual
@@ -318,13 +359,14 @@
   fragment l).)
 
 (function setf-aux (l r)
-  (`(with setf-aux.ret
-      (let (setf-aux.obj (,[@frrrrrrst l]))
+  `:(with setf-aux.ret
+      (let (setf-aux.obj ,:[@frrrrrrrst l])
         {(constrain (constrain (continuation setf-aux.cont (pseudo prop obj obj-casted)
-              {setf-aux.ret (do [(,[@frrrst l]) [+ obj (,[@fst l])] prop] obj-casted)})
-            (\ setf-aux.s (?(setf-aux.a setf-aux.b setf-aux.c) (let ((,[@frrrrst l]) setf-aux.s) (`(continuation ((,(,[@frrrrrst l])) ,:setf-aux.a ,:setf-aux.b ,:setf-aux.c))setf-aux.s))setf-aux.s)))
-            (\ s (?(a b c d) (`(continuation ((@ ,:a ,:b ,:c ,:d) ,:a ,:b ,:c))s)s)))
-          (ignore) (,[@frrrrrrrst l]) setf-aux.obj [cast setf-aux.obj]}))r))
+              {setf-aux.ret (do [,:[@frrrst l] [+ obj ,:[@fst l]] prop] obj-casted)})
+            (\ setf-aux.s (?(setf-aux.a setf-aux.b setf-aux.c) (let (,:[@frrrrst l] setf-aux.s)
+              `:(continuation (,:,;[@frrrrrst l] ,:setf-aux.a ,:setf-aux.b ,:setf-aux.c)):setf-aux.s)setf-aux.s)))
+            (\ s (?(a b c d) `:(continuation ((@ ,:a ,:b ,:c ,:d) ,:a ,:b ,:c)):s s)))
+          (ignore) ,:[@frrrrrrrrst l] setf-aux.obj [cast setf-aux.obj]})):r)
 
 (ignore
   This function initializes/updates the values of a record and returns the
@@ -336,11 +378,11 @@
   (let (id obj) (setf fN (... (setf f2 (setf f1 id v1) v2) ...) vN)))
 
 (function record (l r)
-  (`(let (,[@fst l])
-    (,(loop layer-set (acc [@ffst l]) (props [@rst l])
+  `:(let ,:[@fst l]
+    ,:(loop layer-set (acc [@ffst l]) (props [@rst l])
         (if [emt? props]
           acc
-          {layer-set (`(setf (,[@ffst props]) ,:acc (,[@frfst props]))r) [@rst props]}))))r))
+          {layer-set `:(setf ,:[@ffst props] ,:acc ,:[@frfst props]):r [@rst props]}))):r)
 
 (ignore
   The following function is a helper function for generating the fields of
@@ -349,10 +391,12 @@
   the field in addition to the rest of the fragment l.)
 
 (function property-aux (l r offset size sig)
-  [lllllllst [@fst l] [=# offset r] [=# size r]
-    (switch = size (#:0 (` get0b r)) (#:1 (` get1b r)) (#:2 (` get2b r)) (#:4 (` get4b r)) (#:8 (` get8b r)) (`(ignore)r))
-    (switch = size (#:0 (` set0b r)) (#:1 (` set1b r)) (#:2 (` set2b r)) (#:4 (` set4b r)) (#:8 (` set8b r)) (`(ignore)r))
-    (` property-aux.buf r) [`[llst [sig r] (` property-aux.buf r) emt r]r] [@rst l] r])
+  (substitute (.. l r)
+    [llllllllst [@fst l] [=# offset r] [=# size r]
+      (switch = size (#:0 `:get0b:r) (#:1 `:get1b:r) (#:2 `:get2b:r) (#:4 `:get4b:r) (#:8 `:get8b:r) `:(ignore):r)
+      (switch = size (#:0 `:set0b:r) (#:1 `:set1b:r) (#:2 `:set2b:r) (#:4 `:set4b:r) (#:8 `:set8b:r) `:(ignore):r)
+      `:property-aux.buf:r [meta.bq [sig r] `:property-aux.buf:r r]
+      [meta.bq (switch = size (#:0 [0b ..]) (#:1 [1b ..]) (#:2 [2b ..]) (#:4 [4b ..]) (#:8 [8b ..]) [var r]) `:property-aux.buf:r r] [@rst l] r]))
 
 (ignore
   The following function is another helper function for creating properties.
@@ -362,7 +406,7 @@
   (function name (property.l property.r) [property-aux property.l property.r args ...]))
 
 (function property (l r)
-  (`(function (,[@fst l]) (property.l property.r) [property-aux property.l property.r , [@rst l]])r))
+  `:(function ,:[@fst l] (property.l property.r) [property-aux property.l property.r , [@rst l]]):r)
 
 (ignore A basic property's getter and setter operate on exactly the same type.)
 
@@ -371,6 +415,10 @@
 (ignore A dynamic property's setter changes its type. Its getter shouldn't be used.)
 
 (function dynamic~ (l r) (`(@ (,[var r]) (,[@fst l]) (,[@frst l]) (,[var r]))r))
+
+(ignore A phantom property can be used on any type but has no effect when set.)
+
+(property phantom #:0 #:0 \:r:(?(a b c d) `:(@ ,:a ,:b ,:c ,:d):r r))
 
 (ignore
   The following function provides a method for ignoring L2 code. It is being used for this
@@ -404,7 +452,7 @@
             (\ values.r (? ,:vars
               `:(continuation ,:[lst
                   [lst `:values:values.r ,:[meta.bq unquoted-vars `:values.r:r r] values.r]
-                  ,:[`[llst unquoted-vars `:values.r:r emt r]r] values.r]):values.r values.r))):r
+                  ,:[meta.bq unquoted-vars `:values.r:r r] values.r]):values.r values.r))):r
           [llst storer `:values.stor:r params r] params r] emt r] args r]):r))))
 
 (ignore
@@ -448,14 +496,14 @@
     use-stor)))
 
 (function use-storage (use-storage.l use-storage.r)
-  (`(function use-storage.temp (l r)
-      (`(let ((,[@fst l]) (,(,[`[llst [@fst use-storage.l] (` r use-storage.r) emt use-storage.r] use-storage.r])))
-          (,[lst (` do r) [meta.reverse [lst [@fst l]
+  `:(function use-storage.temp (l r)
+      `:(let ((,[@fst l]) ,:,;[meta.bq [@fst use-storage.l] `:r:use-storage.r use-storage.r])
+          ,:[lst `:do:r [meta.reverse [lst [@fst l]
             (loop make-set (identifiers [@rst l]) (idx #:0) (sets emt)
               (if [emt? identifiers]
                 sets
                 {make-set [@rst identifiers] [+ idx #:1]
-                  [lst (`[set [+ (,[@fst l]) [* (,[=# idx r]) (unit)]] (,[@fst identifiers])]r) sets r]})) r] r] r]))r))use-storage.r))
+                  [lst `:[set [+ (,[@fst l]) [* ,:[=# idx r] (unit)]] ,:[@fst identifiers]]:r sets r]})) r] r] r]):r):use-storage.r)
 
 (ignore
   Implements the transformations (@n expr) -> ($[+ expr [* #:n(unit)]]). Designed to
@@ -645,6 +693,35 @@
       (let (consequent [@frst l]) (obj [@fst l]) (alternate [@frrst l])
           (matcher ,:[meta.bq [@fst l] `:r:r r]) (guard ,:[meta.bq [@frst l] `:r:r r])
         (`(,:matcher ,:obj (if ,:guard ,:consequent ,:alternate) ,:alternate)r))):r)
+
+(ignore
+  The following function takes an equality predicate and the type field of a
+  record and returns a macro that when given a type value and value field,
+  produces a macro that takes a value matcher and produces a matcher macro for
+  the given case of the union. Does the following transformation:
+  ((((union eq tf) tv vf) vm) obj consequent alternate)
+  ->
+  (if [eq (@ tf obj) tv]
+    (vm (& vf obj)
+      consequent
+      alternate)
+    alternate))
+
+(function union (l r)
+  (let (eq [@fst l]) (tf [@frst l])
+  `:(function func (l r)
+      (let (tv [@fst l]) (vf [@frst l])
+      `:(function func (l r)
+          (let (vm [@fst l])
+          `:(function func (l r)
+              (let (consequent [@frst l]) (alternate [@frrst l]) (vm ,:[meta.bq vm `:r:r r])
+                  (tv ,:,;[meta.bqbq tv `:r:r `:r:r r]) (vf ,:,;[meta.bqbq vf `:r:r `:r:r r])
+                  (eq ,:,;(,[meta.bqbqbq eq `:r:r `:r:r `:r:r r])) (tf ,:,;(,[meta.bqbqbq tf `:r:r `:r:r `:r:r r]))
+                `:(let (obj ,:[@fst l]) (if [,:eq (@ ,:tf obj) ,:tv]
+                    (,:vm (& ,:vf obj)
+                      ,:consequent
+                      ,:alternate)
+                    ,:alternate)):r)):r)):r)):r))
 
 (ignore
   A variant of the if-expression where the condition and the consequent are evaluated in

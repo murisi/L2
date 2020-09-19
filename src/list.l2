@@ -99,7 +99,7 @@
   (`(function list?.func (l r)
       (let (obj [@fst l]) (alternate [@frrst l]) (consequent [@frst l]) (obj-sym [meta.concat `:list?.temp:r [gentok r] r])
         (`(let (,:obj-sym ,:obj)
-            (,(loop build (expr (`(if [nil? ,:obj-sym] ,:consequent ,:alternate)r)) (parts ,:[`[llst [meta.reverse l r] `:r:r emt r]r])
+            (,(loop build (expr (`(if [nil? ,:obj-sym] ,:consequent ,:alternate)r)) (parts ,:[meta.bq [meta.reverse l r] `:r:r r])
                 (if [emt? parts]
                   expr
                   {build
@@ -135,7 +135,7 @@
   (`(function list-prefix? (l r)
       (let (obj [@fst l]) (consequent [@frst l]) (alternate [@frrst l])
         (`(let (list-prefix?.temp ,:obj)
-            (,(loop build (expr consequent) (parts ,:[`[llst [meta.reverse l r] `:r:r emt r]r])
+            (,(loop build (expr consequent) (parts ,:[meta.bq [meta.reverse l r] `:r:r r])
                 (if [emt? parts]
                   expr
                   {build
@@ -152,14 +152,14 @@
   ->
   (with storage-cons.ret
     {(constrain
-      (continuation storage-cons.cont (storage-cons.data storage-cons.rest)
+      (monomorphic storage-cons.cont (storage-cons.data storage-cons.rest)
         {storage-cons.ret (storage storage-cons.stor storage-cons.data storage-cons.rest)})
       (\ r (?(et) (`(continuation (,:et (list ,:et)))r)r))) data rest}))
 
 (function storage-cons (l r)
   (`(with storage-cons.ret
     {(constrain
-      (continuation storage-cons.cont (storage-cons.data storage-cons.rest)
+      (monomorphic storage-cons.cont (storage-cons.data storage-cons.rest)
         {storage-cons.ret (storage storage-cons.stor storage-cons.data storage-cons.rest)})
       (\ r (?(et) (`(continuation (,:et (list ,:et)))r)r))) (,[@fst l]) (,[@frst l])})r))
 
@@ -224,7 +224,7 @@
   reference to the list that is to be appended to. r is the region into which the extension
   is being placed.)
 
-(constrain append (\ r (?(et b) (`(function (,:et (ref (list ,:et)) region ,:b) (ref (list ,:et)))r)r)))
+(constrain append (\ r (?(et b) (`(function (,:et !:Ref:(list ,:et) region ,:b) !:Ref:(list ,:et))r)r)))
 
 (function append (data l r handler)
   (loop next (l l)
@@ -259,7 +259,7 @@
   Appends the second list onto the first list. fst-ref is a reference to the list that
   will be appended to. snd is the list that will be appended.)
 
-(constrain append-list (\ r (?(et) (`(function ((ref (list ,:et)) (list ,:et)) ())r)r)))
+(constrain append-list (\ r (?(et) (`(function (!:Ref:(list ,:et) (list ,:et)) ())r)r)))
 
 (function append-list (fst-ref snd)
   (loop next (fst-ref fst-ref)
@@ -269,7 +269,7 @@
 
 (ignore Analogous to append above.)
 
-(constrain prepend (\ r (?(et a) (`(function (,:et (ref (list ,:et)) region ,:a) (ref (list ,:et)))r)r)))
+(constrain prepend (\ r (?(et a) (`(function (,:et !:Ref:(list ,:et) region ,:a) !:Ref:(list ,:et))r)r)))
 
 (function prepend (data l-ref r handler)
   (let (ret [region-alloc (list-struct) r handler]) (do
@@ -368,7 +368,7 @@
 
 (ignore Creates an iterator that iterates through references to elements of the given list.)
 
-(constrain list-ref-iter \:r:(?(a b c) (`(function ((continuation ((! iterator (ref ,:a) ,:b))) (list ,:a)) ,:c)r)r))
+(constrain list-ref-iter \:r:(?(a b c) (`(function ((continuation ((! iterator !:Ref:,;a ,:b))) (list ,:a)) ,:c)r)r))
 
 (function list-ref-iter (ret l)
   {ret (continuation cont (end ctx recv)

@@ -133,7 +133,7 @@
     
     (loop add-bindings (objects objects2) (rem-exprs all-exprs)
       (if [nil? rem-exprs] (ignore)
-        (let (obj [load-program [generate-metaprogram rem-exprs inits bindings buf buf2 handler] inits buf buf2 handler])
+        (let (obj [load-program [generate-metaprogram rem-exprs inits bindings buf2 buf buf2 handler] inits buf buf2 handler])
         (let (objects [cons obj objects ..]) (do
           [immutable-bindings obj bindings ..]
           (for (obj (%:list-iter objects)) (ignore) [mutate-bindings obj bindings])
@@ -142,13 +142,12 @@
 (constrain compile-program-to-elf (\ r (?(a b) (`(function ((list (expr ,:b)) (list initializer) string region region ,:a) ())r)r)))
 
 (function compile-program-to-elf (exprs inits outfn buf buf2 handler)
-  (substitute (.. buf handler)
-    (with-region buf2
-      ((values? .:asms .:relocs .:func-secs .:undefined-bindings .:static-bindings) [compile-program exprs inits bind buf2 buf handler]
-      ((values? .:objdest .:objdest-sz) [write-elf asms relocs func-secs undefined-bindings static-bindings bind buf2 buf handler]
-      (let (fd [create outfn handler]) (do
-      [print fd objdest objdest-sz handler]
-      [close fd handler])) (ignore)) (ignore)))))
+  (with-region buf2
+    ((values? .:asms .:relocs .:func-secs .:undefined-bindings .:static-bindings) [compile-program exprs inits bind buf2 buf handler]
+    ((values? .:objdest .:objdest-sz) [write-elf asms relocs func-secs undefined-bindings static-bindings bind buf2 buf handler]
+    (let (fd [create outfn handler]) (do
+    [print fd objdest objdest-sz handler]
+    [close fd handler])) (ignore)) (ignore))))
 
 (ignore
   Takes a list of L2 source files and compiles them into object files. programs is a
