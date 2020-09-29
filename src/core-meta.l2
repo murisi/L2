@@ -570,8 +570,9 @@
           alternate)})}))
 
 (function tuple? (l r)
-  `:(function tuple?.func (l r)
-      (let (obj [@fst l]) (consequent [@frst l]) (alternate [@frrst l]) (matchers ,:[meta.bq l `:r:r r])
+  (let (matchers l)
+    (closure (matchers) (l r)
+      (let (obj [@fst l]) (consequent [@frst l]) (alternate [@frrst l])
       (let (vars [meta.label matchers [meta.concat `:tuple?.var:r [meta.concat [gentok r] `:.:r r] r] r])
         `:(with tuple?.ret
             {,:obj (continuation tuple?.cont ,:vars
@@ -579,7 +580,7 @@
                 ,:(loop build (expr consequent) (matchers [meta.reverse matchers r]) (vars [meta.reverse vars r])
                     (if [emt? matchers]
                       expr
-                      {build `:(,:[@fst matchers] ,:[@fst vars] ,:expr ,:alternate):r [@rst matchers] [@rst vars]}))})}):r))):r)
+                      {build `:(,:[@fst matchers] ,:[@fst vars] ,:expr ,:alternate):r [@rst matchers] [@rst vars]}))})}):r))r)))
 
 (ignore
   A macro to turn a predicate into a branch expression. Does the following transformation:
@@ -588,10 +589,11 @@
   (if (func arg1 arg2 ... argN obj) consequent alternate))
 
 (function | (l r)
-  `:(function |.func (l r)
-      (let (obj [@fst l]) (consequent [@frst l]) (alternate [@frrst l]) (partial ,:[meta.bq [@fst l] `:r:r r])
+  (let (partial [@fst l])
+    (closure (partial) (l r)
+      (let (obj [@fst l]) (consequent [@frst l]) (alternate [@frrst l])
         (let (complete [meta.concat partial [lst obj emt r] r])
-          `:(if ,:complete ,:consequent ,:alternate):r))):r)
+          `:(if ,:complete ,:consequent ,:alternate):r))r)))
 
 (ignore
   A macro for capturing variables. Does the following transformation:
@@ -600,9 +602,9 @@
   (let (id val) consequent))
 
 (function . (l r)
-  (`(function dot.func (l r)
-      (let (id ,:[meta.bq [@fst l] `:r:r r])
-        (`(let (,:id ,:[@fst l]) ,:[@frst l])r)))r))
+  (let (id [@fst l])
+    (closure (id) (l r)
+      `:(let (,:id ,:[@fst l]) ,:[@frst l]):r r)))
 
 (ignore
   A macro for matching objects against certain properties. The macro does the following
@@ -621,15 +623,16 @@
       alternate)))
 
 (function property? (l r)
-  `:(function property?.func (l r)
+  (let (parts [meta.reverse l r])
+    (closure (parts) (l r)
       (let (obj [@fst l]) (alternate [@frrst l]) (consequent [@frst l]) (obj-sym [meta.concat `:property?.obj:r [gentok r] r])
         `:(let (,:obj-sym ,:obj)
-            ,:(loop build (expr consequent) (parts ,:[meta.bq [meta.reverse l r] `:r:r r])
+            ,:(loop build (expr consequent) (parts parts)
               (if [emt? parts]
                 expr
                 (let (matcher [@frfst parts]) (prop [@ffst parts])
                   {build `:(,:matcher (@ ,:prop ,:obj-sym) ,:expr ,:alternate):r
-                    [@rst parts]})))):r)):r)
+                    [@rst parts]})))):r)r)))
 
 (ignore
   A macro for matching objects to at least one of the given matchers. The macro does the
@@ -648,14 +651,15 @@
           ...)))))
 
 (function or? (l r)
-  `:(function or?.func (l r)
+  (let (parts [meta.reverse l r])
+    (closure (parts) (l r)
       (let (obj [@fst l]) (alternate [@frrst l]) (consequent [@frst l])
         `:(let (or?.obj ,:obj)
-            ,:(loop build (expr alternate) (parts ,:[meta.bq [meta.reverse l r] `:r:r r])
+            ,:(loop build (expr alternate) (parts parts)
               (if [emt? parts]
                 expr
                 (let (matcher [@fst parts])
-                  {build `:(,:matcher or?.obj ,:consequent ,:expr):r [@rst parts]})))):r)):r)
+                  {build `:(,:matcher or?.obj ,:consequent ,:expr):r [@rst parts]})))):r)r)))
 
 (ignore
   A macro for matching objects to at least one of the given matchers. The macro does the
@@ -674,14 +678,15 @@
       alternate)))
 
 (function and? (l r)
-  `:(function and?.func (l r)
+  (let (parts [meta.reverse l r])
+    (closure (parts) (l r)
       (let (obj [@fst l]) (consequent [@frst l]) (alternate [@frrst l])
         `:(let (and?.obj ,:obj)
-            ,:(loop build (expr consequent) (parts ,:[meta.bq [meta.reverse l r] `:r:r r])
+            ,:(loop build (expr consequent) (parts parts)
               (if [emt? parts]
                 expr
                 (let (matcher [@fst parts])
-                  {build `:(,:matcher and?.obj ,:expr ,:alternate):r [@rst parts]})))):r)):r)
+                  {build `:(,:matcher and?.obj ,:expr ,:alternate):r [@rst parts]})))):r)r)))
 
 (ignore
   ((guards? matcher guard) obj consequent alternate)
@@ -689,10 +694,10 @@
   (matcher obj (if guard consequent alternate) alternate))
 
 (function guards? (l r)
-  `:(function guards?.func (l r)
+  (let (matcher [@fst l]) (guard [@frst l])
+    (closure (matcher guard) (l r)
       (let (consequent [@frst l]) (obj [@fst l]) (alternate [@frrst l])
-          (matcher ,:[meta.bq [@fst l] `:r:r r]) (guard ,:[meta.bq [@frst l] `:r:r r])
-        (`(,:matcher ,:obj (if ,:guard ,:consequent ,:alternate) ,:alternate)r))):r)
+        `:(,:matcher ,:obj (if ,:guard ,:consequent ,:alternate) ,:alternate):r)r)))
 
 (ignore
   The following function takes an equality predicate and the type field of a
@@ -709,19 +714,17 @@
 
 (function union (l r)
   (let (eq [@fst l]) (tf [@frst l])
-  `:(function func (l r)
+    (closure (eq tf) (l r)
       (let (tv [@fst l]) (vf [@frst l])
-      `:(function func (l r)
+        (closure (tv vf eq tf) (l r)
           (let (vm [@fst l])
-          `:(function func (l r)
-              (let (consequent [@frst l]) (alternate [@frrst l]) (vm ,:[meta.bq vm `:r:r r])
-                  (tv ,:,;[meta.bqbq tv `:r:r `:r:r r]) (vf ,:,;[meta.bqbq vf `:r:r `:r:r r])
-                  (eq ,:,;(,[meta.bqbqbq eq `:r:r `:r:r `:r:r r])) (tf ,:,;(,[meta.bqbqbq tf `:r:r `:r:r `:r:r r]))
+            (closure (vm tv vf eq tf) (l r)
+              (let (consequent [@frst l]) (alternate [@frrst l])
                 `:(let (obj ,:[@fst l]) (if [,:eq (@ ,:tf obj) ,:tv]
                     (,:vm (& ,:vf obj)
                       ,:consequent
                       ,:alternate)
-                    ,:alternate)):r)):r)):r)):r))
+                    ,:alternate)):r)r))r))r)))
 
 (ignore
   A variant of the if-expression where the condition and the consequent are evaluated in
@@ -764,9 +767,9 @@
   (with percent.return [func percent.return arg1 arg2 ... argN]))
 
 (function % (l r)
-  (`(function percent.func (l r)
-      (let (func ,:[meta.bq [@fst l] `:r:r r])
-        (`(with percent.return [,:func percent.return , l])r)))r))
+  (let (func [@fst l])
+    (closure (func) (l r)
+      `:(with percent.return [,:func percent.return , l]):r r)))
 
 (ignore
   A macro to define C-style substitution macros. Does the following transformation:
@@ -869,3 +872,23 @@
                         \:(, buffer):(let (interface.r (, buffer)) (let , [meta.reverse
                           [lst (` `:(continuation ,:,;[meta.bq [meta.map2 sigs r meta.unquote r] buffer r]):interface.r r) var-binds r] r]))))
                       (,:module {,:cont-sym , ids}))):r)):r)):r)))
+
+(ignore
+  A macro closure makes a quoted function with the given arguments in such
+  a way that its body is not quoted. The environment variables are brought
+  in from the lexical scope of the macros usage. This function is useful
+  for avoiding unnecessary recompilations of the bodies of higher order macros.
+  Does the following transformation:
+  (closure (env1 ... envN) (arg1 ... argM) expr r)
+  ->
+  (let (closure.aux (function closure.aux (env1 ... envN arg1 ... argN) expr))
+    `:(function closure.func (arg1 ... argN)
+        [,:[qval closure.aux r] ,:[qval env1 r] ... ,:[qval envN r] arg1 ... argN]):r))
+
+(function closure (l r)
+  (let (envs [@fst l]) (args [@frst l]) (expr [@frrst l]) (reg [@frrrst l])
+  (let (quotes [meta.map3 envs reg r (function _(env reg r) [meta.unquote `:[meta.qval ,:env ,:reg]:r r]) r])
+    `:(let (closure.aux (function closure.aux ,:[meta.concat envs args r] ,:expr)) (closure.reg ,:reg)
+        `:(function closure.func ,:,;[meta.bq args reg r]
+            [,:[meta.qval closure.aux closure.reg] ,
+              [meta.concat ,:[meta.bq quotes reg r] ,:[meta.bq args reg r] closure.reg]]):closure.reg):r)))

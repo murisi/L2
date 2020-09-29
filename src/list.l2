@@ -96,18 +96,19 @@
         alternate))))
 
 (function list? (l r)
-  (`(function list?.func (l r)
+  (let (parts [meta.reverse l r])
+    (closure (parts) (l r)
       (let (obj [@fst l]) (alternate [@frrst l]) (consequent [@frst l]) (obj-sym [meta.concat `:list?.temp:r [gentok r] r])
-        (`(let (,:obj-sym ,:obj)
-            (,(loop build (expr (`(if [nil? ,:obj-sym] ,:consequent ,:alternate)r)) (parts ,:[meta.bq [meta.reverse l r] `:r:r r])
+        `:(let (,:obj-sym ,:obj)
+            ,:(loop build (expr `:(if [nil? ,:obj-sym] ,:consequent ,:alternate):r) (parts parts)
                 (if [emt? parts]
                   expr
                   {build
-                    (`(if [nil? ,:obj-sym]
+                    `:(if [nil? ,:obj-sym]
                         ,:alternate
                         ((,[@fst parts]) [@car ,:obj-sym]
                           (let (,:obj-sym [@cdr ,:obj-sym]) ,:expr)
-                          ,:alternate))r) [@rst parts]}))))r)))r))
+                          ,:alternate)):r [@rst parts]}))):r)r)))
 
 (ignore
   The following macro matches a list by using the matchers given for its constituents.
@@ -132,18 +133,19 @@
         alternate))))
 
 (function list-prefix? (l r)
-  (`(function list-prefix? (l r)
+  (let (parts [meta.reverse l r])
+    (closure (parts) (l r)
       (let (obj [@fst l]) (consequent [@frst l]) (alternate [@frrst l])
-        (`(let (list-prefix?.temp ,:obj)
-            (,(loop build (expr consequent) (parts ,:[meta.bq [meta.reverse l r] `:r:r r])
+        `:(let (list-prefix?.temp ,:obj)
+            ,:(loop build (expr consequent) (parts parts)
                 (if [emt? parts]
                   expr
                   {build
-                    (`(if [nil? list-prefix?.temp]
+                    `:(if [nil? list-prefix?.temp]
                         ,:alternate
                         ((,[@fst parts]) [@car list-prefix?.temp]
                           (let (list-prefix?.temp [@cdr list-prefix?.temp]) ,:expr)
-                          ,:alternate))r) [@rst parts]}))))r)))r))
+                          ,:alternate)):r [@rst parts]}))):r)r)))
 
 (ignore
   The following macro does the same thing as cons except that it uses the stack instead of
