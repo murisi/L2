@@ -461,8 +461,9 @@
   paramj is argj for each j.)
 
 (function values? (l r)
-  `:(function values?.func (l r)
-      (let (matchers ,:[meta.bq l `:r:r r]) (param [@fst l]) (consequent [@frst l]) (alternate [@frrst l])
+  (let (matchers l)
+    (closure (matchers) (l r)
+      (let (param [@fst l]) (consequent [@frst l]) (alternate [@frrst l])
       (let (bind-storage [llst `:storage:r `:bind:r [meta.map2 matchers r (\ l r `:(ignore):r) r] r])
       (let (vars [meta.label matchers `:values.var:r r])
       (let (unquoted-vars [meta.map2 vars r meta.unquote r])
@@ -482,7 +483,7 @@
                   (\ bind.r (? ,:vars
                     `:(continuation ((values , ,:[meta.bq unquoted-vars `:bind.r:r r]) ,
                       ,:[meta.bq unquoted-vars `:bind.r:r r])):bind.r bind.r)))
-                bind.param , param-parts})):r)))))):r)
+                bind.param , param-parts})):r)))))r)))
 
 (ignore
   The following macro implements the following transformation:
@@ -495,15 +496,16 @@
     [set [+ use-stor [* #(N-1)(unit)]] argN]
     use-stor)))
 
-(function use-storage (use-storage.l use-storage.r)
-  `:(function use-storage.temp (l r)
-      `:(let ((,[@fst l]) ,:,;[meta.bq [@fst use-storage.l] `:r:use-storage.r use-storage.r])
+(function use-storage (l r)
+  (let (target-loc [@fst l])
+    (closure (target-loc) (l r)
+      `:(let (,:[@fst l] ,:target-loc)
           ,:[lst `:do:r [meta.reverse [lst [@fst l]
             (loop make-set (identifiers [@rst l]) (idx #:0) (sets emt)
               (if [emt? identifiers]
                 sets
                 {make-set [@rst identifiers] [+ idx #:1]
-                  [lst `:[set [+ (,[@fst l]) [* ,:[=# idx r] (unit)]] ,:[@fst identifiers]]:r sets r]})) r] r] r]):r):use-storage.r)
+                  [lst `:[set [+ ,:[@fst l] [* ,:[=# idx r] (unit)]] ,:[@fst identifiers]]:r sets r]})) r] r] r]):r r)))
 
 (ignore
   Implements the transformations (@n expr) -> ($[+ expr [* #:n(unit)]]). Designed to
@@ -791,9 +793,9 @@
   (use (id1 val1) ... (idN valN) expr))
 
 (function module (l r)
-  `:(function module.func (l r)
-      (let (binds ,:[meta.bq l `:r:r r])
-        `:(use , [meta.reverse [lst [@fst l] binds r] r]):r)):r)
+  (let (binds l)
+    (closure (binds) (l r)
+      `:(use , [meta.reverse [lst [@fst l] binds r] r]):r r)))
 
 (ignore
   Define the empty module. Useful for checking constraint satisfaction of functors
@@ -802,23 +804,23 @@
 (define _ (module))
 
 (ignore
-  A bifunction takes its first argument set by-name and produces a function taking
-  the second argument set by value. The following bifunction macro does the following
+  A method takes its first argument set by-name and produces a function taking
+  the second argument set by value. The following method macro does the following
   transformation:
-  ((bifunction bifunction-a (frag-a frag-b ... frag-z) (param-a param-b ... param-z) expr)
+  ((method method-a (frag-a frag-b ... frag-z) (param-a param-b ... param-z) expr)
     arg-a arg-b ... arg-z)
   ->
-  (function bifuncation-a (param-a param-b ... param-z)
+  (function method-a (param-a param-b ... param-z)
     expr with substitutions
       frag-a -> arg-a, frag-b -> arg-b, ..., frag-z -> arg-z))
 
-(function bifunction (l r)
+(function method (l r)
   (let (name [@fst l]) (ct-params [@frst l]) (rt-params [@frrst l]) (body [@frrrst l])
     `:(function ,:name (l r)
         (let (subs [meta.zip ,:[meta.bq ct-params `:r:r r] l r])
         (let (body-mod [substitute [meta.reverse [lst ,:[meta.bq body `:r:r r] subs r] r] r])
         (let (rt-params ,:[meta.bq rt-params `:r:r r])
-          `:(function bifunction.func ,:rt-params ,:body-mod):r)))):r))
+          `:(function method.func ,:rt-params ,:body-mod):r)))):r))
 
 (ignore
   A functor maps a tuple of modules to a module comprising the given expressions.
@@ -836,13 +838,11 @@
 
 (function functor (l r)
   (let (ct-params [@fst l]) (binds [@rst l])
-    `:(function functor.func (l r)
-        (let (binds ,:[meta.bq binds `:r:r r]) (ct-params ,:[meta.bq ct-params `:r:r r])
-        (let (binds-sub [meta.map3 binds [meta.zip ct-params l r] r
-            (function _ (elt subs r) [lst [@fst elt] [substitute [meta.reverse [lst [@rst elt] subs r] r] r] r]) r])
-          `:(function functor.func (l r)
-              (let (binds-sub ,:[meta.bq binds-sub `:r:r r])
-                `:(use , [meta.reverse [lst [@fst l] binds-sub r] r]):r)):r))):r))
+    (closure (ct-params binds) (l r)
+      (let (binds-sub [meta.map3 binds [meta.zip ct-params l r] r
+          (function _ (elt subs r) [lst [@fst elt] [substitute [meta.reverse [lst [@rst elt] subs r] r] r] r]) r])
+        (closure (binds-sub) (l r)
+          `:(use , [meta.reverse [lst [@fst l] binds-sub r] r]):r r))r)))
 
 (ignore
   A interface exposes and constrains a subset of the functions of a module. The
@@ -862,16 +862,15 @@
 (function interface (l r)
   (let (buffer [@frst l]) (ids [meta.map [@rrst l] @fst r]) (sigs [meta.map [@rrst l] @frst r])
   (let (var-binds [meta.map3 [@fst l] buffer r (function _(elt buffer r) [llst elt `:[var ,:buffer]:r emt r]) r])
-    `:(function interface.func (l r)
-        (let (module [@fst l])
-          `:(function interface.func (l r)
-              (let (var-binds ,:,;[meta.bqbq var-binds `:r:r `:r:r r]) (buffer ,:,;[meta.bqbq buffer `:r:r `:r:r r]) (ids ,:,;[meta.bqbq ids `:r:r `:r:r r])
-                  (sigs ,:,;[meta.bqbq sigs `:r:r `:r:r r]) (module ,:[meta.bq module `:r:r r]) (expr [@fst l]) (cont-sym [meta.concat `:interface.cont:r [gentok r] r])
-                `:(with interface.ret
-                    (let (,:cont-sym (constrain (continuation ,:cont-sym ,:ids {interface.ret ,:expr})
-                        \:(, buffer):(let (interface.r (, buffer)) (let , [meta.reverse
-                          [lst (` `:(continuation ,:,;[meta.bq [meta.map2 sigs r meta.unquote r] buffer r]):interface.r r) var-binds r] r]))))
-                      (,:module {,:cont-sym , ids}))):r)):r)):r)))
+    (closure (var-binds buffer ids sigs) (l r)
+      (let (module [@fst l])
+        (closure (module var-binds buffer ids sigs) (l r)
+          (let (expr [@fst l]) (cont-sym [meta.concat `:interface.cont:r [gentok r] r])
+            `:(with interface.ret
+                (let (,:cont-sym (constrain (continuation ,:cont-sym ,:ids {interface.ret ,:expr})
+                    \:(, buffer):(let (interface.r (, buffer)) (let , [meta.reverse
+                      [lst (` `:(continuation ,:,;[meta.bq [meta.map2 sigs r meta.unquote r] buffer r]):interface.r r) var-binds r] r]))))
+                  (,:module {,:cont-sym , ids}))):r)r))r))))
 
 (ignore
   A macro closure makes a quoted function with the given arguments in such
