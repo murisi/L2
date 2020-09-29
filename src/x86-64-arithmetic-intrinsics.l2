@@ -5,7 +5,7 @@
 (constrain wrap-arithmetic-intrinsics (\ r (?(a b) (`(function (region ,:a) (list (expr ,:b)))r)r)))
 
 (function wrap-arithmetic-intrinsics (buf handler)
-  (substitute (.. buf handler) (list (..)
+  (sub (.. buf handler) (list (..)
     [make-unary-intrinsic [rstrcpy (" get0b) ..] ..]
     [make-unary-intrinsic [rstrcpy (" getb) ..] ..]
     [make-unary-intrinsic [rstrcpy (" get1b) ..] ..]
@@ -88,7 +88,7 @@
   (\ r (?(a) (`(function (register bndg-aug !:Ref:(list instr) !:Ref:(list reloc) region ,:a) register)r)r)))
 
 (function generate-move-to-register (reg bndg c relocs r handler)
-  (substitute (.. r handler)
+  (sub (.. r handler)
     (if [= (@ bndg-storage bndg) (register-storage)]
       (@ bndg-offset bndg)
       (do
@@ -106,7 +106,7 @@
   (\ r (?(a b c) (`(function ((expr ,:c) !:Ref:(list instr) !:Ref:(list reloc) region ,:a) ,:b)r)r)))
 
 (function generate-unary-arithmetic-operators (n c relocs r handler)
-  (substitute (.. r handler)
+  (sub (.. r handler)
     (bind-if [match-undefined-unary-invoke name arg1 n] (name arg1)
       (let
         (arg1-val-bndg (@ expr-binding-aug $:arg1))
@@ -246,7 +246,7 @@
   (\ r (?(a b c) (`(function ((expr ,:c) !:Ref:(list instr) !:Ref:(list reloc) region ,:a) ,:b)r)r)))
 
 (function generate-binary-arithmetic-operators (n c relocs r handler)
-  (substitute (.. r handler)
+  (sub (.. r handler)
     (bind-if [match-undefined-binary-invoke name arg1 arg2 n] (name arg1 arg2)
       (let
         (arg1-val-bndg (@ expr-binding-aug $:arg1))
@@ -468,7 +468,7 @@
   (\ r (?(a b c) (`(function ((expr ,:c) !:Ref:(list instr) !:Ref:(list reloc) region ,:a) ,:b)r)r)))
 
 (function generate-binary-right-imm-arithmetic-operators (n c relocs r handler)
-  (substitute (.. r handler)
+  (sub (.. r handler)
     (bind-if [match-undefined-binary-right-imm-invoke name arg1 arg2 n] (name arg1 arg2)
       (let
         (arg1-val-bndg (@ expr-binding-aug $:arg1))
@@ -628,7 +628,7 @@
   (\ r (?(a b c) (`(function ((expr ,:c) !:Ref:(list instr) !:Ref:(list reloc) region ,:a) ,:b)r)r)))
 
 (function generate-get-base+offset (n c relocs r handler)
-  (substitute (.. r handler)
+  (sub (.. r handler)
     (bind-if [match-get-base+offset name base offset n]
       (name base offset)
         (if [sbyte? $:offset]
@@ -709,7 +709,7 @@
   (\ r (?(a b c) (`(function ((expr ,:c) !:Ref:(list instr) !:Ref:(list reloc) region ,:a) ,:b)r)r)))
 
 (function generate-set-base+offset (n c relocs r handler)
-  (substitute (.. r handler)
+  (sub (.. r handler)
     (bind-if [match-set-base+offset name base offset value n]
       (name base offset value)
         (if [sbyte? $:offset]
@@ -754,7 +754,7 @@
   (\ r (?(a b c d) (`(function ((expr ,:a) ,:b (list initializer) (values ,:b reg-use-vec) region ,:d) ,:c)r)r)))
 
 (function initialize-arithmetic-intrinsics (n offset inits ret-val buf hdl)
-  (substitute (.. buf hdl) (or
+  (sub (.. buf hdl) (or
     [initialize-get-base+offset n offset inits ret-val ..]
     [initialize-set-base+offset n offset inits ret-val ..]
     [initialize-unary-arithmetic-operators n offset inits ret-val ..]

@@ -6,7 +6,7 @@
       (hash-table string bndg-aug) (list bndg-aug)))r)r)))
 
 (function compile-program (exprs inits outs buf buf2 handler)
-  (substitute (.. buf handler)
+  (sub (.. buf handler)
     (let (static-bindings (storage _ nil)) (undefined-bindings [ht-create hash-str str= ..])
         (global-bindings [global-binding-augs-of exprs ..]) (do
       (let (storage-offset
@@ -39,7 +39,7 @@
 (constrain load-program (\ r (?(a b) (`(function ((list (expr ,:b)) (list initializer) region region ,:a) obj)r)r)))
 
 (function load-program (exprs inits buf buf2 handler)
-  (substitute (.. buf handler)
+  (sub (.. buf handler)
     (with-region buf2
       ((values? .:asms .:relocs .:func-secs .:undefined-bindings .:static-bindings) [compile-program exprs inits bind buf2 buf handler]
       ((values? .:objdest .:objdest-sz) [write-elf asms relocs func-secs undefined-bindings static-bindings bind buf2 buf handler]
@@ -88,7 +88,7 @@
 (constrain read-expressions (\ r (?(a b) (`(function (string region region ,:a) (list (expr ,:b)))r)r)))
 
 (function read-expressions (fn buf buf2 handler)
-  (substitute (.. buf handler)
+  (sub (.. buf handler)
     (with-region buf2
       ((values? .:src-buf .:src-sz) [read-to-buffer fn bind buf2 handler]
       (let (pos (storage _ #:0))
@@ -109,7 +109,7 @@
   (\ r (?(a) (`(function ((list string) (list string) (list string) (hash-table string bndg-aug) region region ,:a) ())r)r)))
 
 (function evaluate-files (source-fns object-fns intrinsic-fns bindings buf buf2 handler)
-  (substitute (.. buf handler)
+  (sub (.. buf handler)
     (let (inits [collect-reverse-list (map (intrinsic-fn (%:list-iter intrinsic-fns))
       (switch str= intrinsic-fn
         ((" arithmetic) [function->initializer initialize-arithmetic-intrinsics])
@@ -159,7 +159,7 @@
   (\ r (?(a) (`(function ((list string) (list string) (hash-table string bndg-aug) region region ,:a) ())r)r)))
 
 (function compile-files (file-names intrinsic-fns bndgs buf buf2 handler)
-  (substitute (.. buf handler)
+  (sub (.. buf handler)
     (with-region buf2
       (let (inits [collect-reverse-list (map (intrinsic-fn (%:list-iter intrinsic-fns))
         (switch str= intrinsic-fn
@@ -212,7 +212,7 @@
           [set second-dash-ref nil]
           (ignore These are all the bindings necessary for metaprogramming. Their
             definitions can be found in list.l2 and lexer.l2.)
-          (let (bndgs (substitute (.. buf handler) (ht-putall ([ht-create hash-str str= ..] ..)
+          (let (bndgs (sub (.. buf handler) (ht-putall ([ht-create hash-str str= ..] ..)
             ((" -!-)[make-binding (" -!-)(tkn-char(char !))..]) ((" -!-)[make-binding (" -!-)(tkn-char(char !))..])
             ((" -"-)[make-binding (" -"-)(tkn-char(char "))..]) ((" -#-)[make-binding (" -#-)(tkn-char(char #))..])
             ((" -$-)[make-binding (" -$-)(tkn-char(char $))..]) ((" -%-)[make-binding (" -%-)(tkn-char(char %))..])
@@ -268,7 +268,7 @@
           [compile-files $:source-fns $:intrinsic-fns bndgs buf buf2 handler]
           (storage _ no-error))))))))))))
         
-        (handler err (substitute (.. cleanup) (do
+        (handler err (sub (.. cleanup) (do
           (switch = (@0 err)
             (multiple-definition-error (do
               [print-str (stdout) (" The definition of(space)) ..]

@@ -348,7 +348,7 @@
 (constrain make-relocation (\ r (?(a b c) (`(function (reloc-type operand bndg-aug ,:c ,:a region ,:b) reloc)r)r)))
 
 (function make-relocation (type operand binding ctx addend-func buf handler)
-  (substitute (.. buf handler)
+  (sub (.. buf handler)
     (let (r [region-alloc (relocation) ..]) (do
       (setf reloc-type r type)
       (setf reloc-operand r operand)
@@ -369,7 +369,7 @@
 (constrain make-reg-op (\ r (?(a) (`(function (register region ,:a) operand)r)r)))
 
 (function make-reg-op (reg buf handler)
-  (substitute (.. buf handler)
+  (sub (.. buf handler)
     (let (op [region-alloc (operand) ..]) (do
       (setf op-type op (register-operand))
       (setf op-size op [register-size reg])
@@ -380,7 +380,7 @@
 (constrain make-imm-op (\ r (?(a b c) (`(function (,:b ,:c region ,:a) operand)r)r)))
 
 (function make-imm-op (op-size imm buf handler)
-  (substitute (.. buf handler)
+  (sub (.. buf handler)
     (let (op [region-alloc (operand) ..]) (do
       (setf op-type op (immediate-operand))
       (setf op-size op op-size)
@@ -391,7 +391,7 @@
 (constrain make-none-op (\ r (?(a) (`(function (region ,:a) operand)r)r)))
 
 (function make-none-op (buf handler)
-  (substitute (.. buf handler)
+  (sub (.. buf handler)
     (let (op [region-alloc (operand) ..]) (do
       (setf op-type op (none-operand))
       (setf op-size op #:0)
@@ -400,7 +400,7 @@
 (constrain make-mem-op (\ r (?(a b c d e) (`(function (,:a register register ,:b ,:c ,:d region ,:e) operand)r)r)))
 
 (function make-mem-op (op-size base index scale disp disp-size buf handler)
-  (substitute (.. buf handler)
+  (sub (.. buf handler)
     (let (op [region-alloc (operand) ..]) (do
       (setf op-type op (memory-operand))
       (setf op-size op op-size)
@@ -430,7 +430,7 @@
 (constrain op-lower-8 (\ r (?(a) (`(function (operand region ,:a) operand)r)r)))
 
 (function op-lower-8 (op buf handler)
-  (substitute (.. buf handler)
+  (sub (.. buf handler)
     (switch = (@ op-type op)
       ((register-operand) [make-reg-op [reg-lower-8 (@ op-register op)] ..])
       ((immediate-operand) [make-imm-op #:1 (@ op-immediate op) ..])
@@ -453,7 +453,7 @@
 (constrain op-lower-16 (\ r (?(a) (`(function (operand region ,:a) operand)r)r)))
 
 (function op-lower-16 (op buf handler)
-  (substitute (.. buf handler)
+  (sub (.. buf handler)
     (switch = (@ op-type op)
       ((register-operand) [make-reg-op [reg-lower-16 (@ op-register op)] ..])
       ((immediate-operand) [make-imm-op #:2 (@ op-immediate op) ..])
@@ -474,7 +474,7 @@
 (constrain op-lower-32 (\ r (?(a) (`(function (operand region ,:a) operand)r)r)))
 
 (function op-lower-32 (op buf handler)
-  (substitute (.. buf handler)
+  (sub (.. buf handler)
     (switch = (@ op-type op)
       ((register-operand) [make-reg-op [reg-lower-32 (@ op-register op)] ..])
       ((immediate-operand) [make-imm-op #:4 (@ op-immediate op) ..])
@@ -492,7 +492,7 @@
 (constrain op-lower-64 (\ r (?(a) (`(function (operand region ,:a) operand)r)r)))
 
 (function op-lower-64 (op buf handler)
-  (substitute (.. buf handler)
+  (sub (.. buf handler)
     (switch = (@ op-type op)
       ((register-operand) [make-reg-op [reg-lower-64 (@ op-register op)] ..])
       ((immediate-operand) [make-imm-op #:8 (@ op-immediate op) ..])
@@ -590,7 +590,7 @@
   (\ r (?(a b c d e f) (`(function (,:a !:Ref:,;b ,:c ,:d operand operand operand operand region ,:f) ,:e)r)r)))
 
 (function write-instr (bin pos opcode opcode-size opcode.reg-op modrm.reg-op modrm.rm-op imm-op buf handler)
-  (substitute (.. buf handler)
+  (sub (.. buf handler)
     (let (modrm.rm-op-code [band
       (if [= (@ op-type modrm.rm-op) (register-operand)] (@ op-register modrm.rm-op)
       (if [= (@ op-type modrm.rm-op) (memory-operand)] (@ op-base modrm.rm-op) (ignore))) #:7])
@@ -713,7 +713,7 @@
 (constrain write-nm-instr (\ r (?(f g h i) (`(function (instr ,:f !:Ref:,;g region ,:h) ,:i)r)r)))
 
 (function write-nm-instr (n bin pos buf handler)
-  (substitute (.. buf handler)
+  (sub (.. buf handler)
     ((list-prefix?
         (property? (op-type (|[= (none-operand)])))) (@ instr-operands n)
       (true) (false))))
@@ -721,7 +721,7 @@
 (constrain write-mr-instr (\ r (?(a b c d e f g h i) (`(function (,:a ,:b ,:c ,:d ,:e instr ,:f !:Ref:,;g region ,:h) ,:i)r)r)))
 
 (function write-mr-instr (mask opcode-8 opcode-16 opcode-32 opcode-64 n bin pos buf handler)
-  (substitute (.. buf handler)
+  (sub (.. buf handler)
     ((list-prefix?
         (and? .:op1 (property? (op-type (or? (|[= (memory-operand)]) (|[= (register-operand)])))))
         (and? .:op2 (property? (op-type (|[= (register-operand)])))))
@@ -740,7 +740,7 @@
 (constrain write-rm-instr (\ r (?(a b c d e f g h i) (`(function (,:a ,:b ,:c ,:d ,:e instr ,:f !:Ref:,;g region ,:h) ,:i)r)r)))
 
 (function write-rm-instr (mask opcode-8 opcode-16 opcode-32 opcode-64 n bin pos buf handler)
-  (substitute (.. buf handler)
+  (sub (.. buf handler)
     ((list-prefix?
         (and? .:op1 (property? (op-type (|[= (register-operand)]))))
         (and? .:op2 (property? (op-type (or? (|[= (memory-operand)]) (|[= (register-operand)]))))))
@@ -759,7 +759,7 @@
 (constrain write-mi-instr (\ r (?(a b c d e f g h i) (`(function (,:a ,:b ,:c ,:d ,:e operand instr ,:f !:Ref:,;g region ,:h) ,:i)r)r)))
 
 (function write-mi-instr (mask opcode-8 opcode-16 opcode-32 opcode-64 opcode.reg-op n bin pos buf handler)
-  (substitute (.. buf handler)
+  (sub (.. buf handler)
     ((list-prefix?
         (and? .:op1 (property? (op-type (or? (|[= (memory-operand)]) (|[= (register-operand)])))))
         (and? .:op2 (property? (op-type (|[= (immediate-operand)])))))
@@ -778,7 +778,7 @@
 (constrain write-mi8-instr (\ r (?(a b c d e f g h i) (`(function (,:a ,:b ,:c ,:d ,:e operand instr ,:f !:Ref:,;g region ,:h) ,:i)r)r)))
 
 (function write-mi8-instr (mask opcode-8 opcode-16 opcode-32 opcode-64 opcode.reg-op n bin pos buf handler)
-  (substitute (.. buf handler)
+  (sub (.. buf handler)
     ((list-prefix?
         (and? .:op1 (property? (op-type (or? (|[= (memory-operand)]) (|[= (register-operand)])))))
         (and? .:op2 (property? (op-type (|[= (immediate-operand)])))))
@@ -797,7 +797,7 @@
 (constrain write-mm-instr (\ r (?(a b c d e f g h i) (`(function (,:a ,:b ,:c ,:d ,:e instr ,:f !:Ref:,;g region ,:h) ,:i)r)r)))
 
 (function write-mm-instr (mask opcode-8 opcode-16 opcode-32 opcode-64 n bin pos buf handler)
-  (substitute (.. buf handler)
+  (sub (.. buf handler)
     ((list-prefix?
         (and? .:op1 (property? (op-type (|[= (memory-operand)]))))
         (and? .:op2 (property? (op-type (|[= (memory-operand)]))))
@@ -821,7 +821,7 @@
 (constrain write-m-instr (\ r (?(a b c d e f g h i) (`(function (,:a ,:b ,:c ,:d ,:e operand instr ,:f !:Ref:,;g region ,:h) ,:i)r)r)))
 
 (function write-m-instr (mask opcode-8 opcode-16 opcode-32 opcode-64 opcode.reg-op n bin pos buf handler)
-  (substitute (.. buf handler)
+  (sub (.. buf handler)
     ((list-prefix?
         (and? .:op1 (property? (op-type (or? (|[= (memory-operand)]) (|[= (register-operand)]))))))
       (@ instr-operands n)
@@ -839,7 +839,7 @@
 (constrain write-d-instr (\ r (?(a b c d e f g h i) (`(function (,:a ,:b ,:c ,:d ,:e instr ,:f !:Ref:,;g region ,:h) ,:i)r)r)))
 
 (function write-d-instr (mask opcode-8 opcode-16 opcode-32 opcode-64 n bin pos buf handler)
-  (substitute (.. buf handler)
+  (sub (.. buf handler)
     ((list-prefix?
         (and? .:op1 (property? (op-type (|[= (immediate-operand)])))))
       (@ instr-operands n)
@@ -857,7 +857,7 @@
 (constrain write-mc-instr (\ r (?(a b c d e f g h i) (`(function (,:a ,:b ,:c ,:d ,:e operand instr ,:f !:Ref:,;g region ,:h) ,:i)r)r)))
 
 (function write-mc-instr (mask opcode-8 opcode-16 opcode-32 opcode-64 opcode.reg-op n bin pos buf handler)
-  (substitute (.. buf handler)
+  (sub (.. buf handler)
     ((list-prefix?
         (and? .:op1 (property? (op-type (or? (|[= (memory-operand)]) (|[= (register-operand)])))))
         (property? (op-type (|[= (register-operand)])) (op-register (|[= (cl)]))))
@@ -878,7 +878,7 @@
 (constrain assemble (\ r (?(a b c e) (`(function ((list instr) ,:a region ,:e) (values ,:b ,:c))r)r)))
 
 (function assemble (instrs ret-val buf handler)
-  (substitute (.. buf handler)
+  (sub (.. buf handler)
     (let (pos (storage _ #:0))
     (let (max-text-sec-len [pad-size [* (write-elf-max-instr-len) [length instrs]] (write-elf-alignment)])
     (let (bin [region-alloc max-text-sec-len ..]) (do

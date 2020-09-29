@@ -355,7 +355,7 @@
   (\ r (?(a b) (`(function (bndg-mode bndg-context bndg-storage bndg-scope bndg-state string frag (expr ,:b) region ,:a) bndg-aug)r)r)))
 
 (function make-binding-aug (mode context stg scope state name sig expression r handler)
-  (substitute (.. r handler)
+  (sub (.. r handler)
     (record (_[region-alloc (binding-aug) ..])
       (bndg-context context)
       (bndg-storage stg)
@@ -394,7 +394,7 @@
 (constrain make-literal (\ r (?(a b c) (`(function (,:a frag (expr ,:c) region ,:b) (expr ()))r)r)))
 
 (function make-literal (value frag meta reg handler)
-  (substitute (.. reg handler)
+  (sub (.. reg handler)
     (record (t [region-alloc (expression) ..])
       (expr-new (ignore))
       (expr-type (-literal-))
@@ -411,7 +411,7 @@
 (constrain make-symbol (\ r (?(a b) (`(function (string frag (expr ,:a) region ,:b) (expr ()))r)r)))
 
 (function make-symbol (name frag meta reg handler)
-  (substitute (.. reg handler)
+  (sub (.. reg handler)
     (record (sym [region-alloc (expression) ..])
       (expr-new (ignore))
       (expr-type (-symbol-))
@@ -434,7 +434,7 @@
 (constrain make-undefined-binding (\ r (?(b) (`(function (string region ,:b) bndg-aug)r)r)))
 
 (function make-undefined-binding (name r handler)
-  (substitute (.. r handler)
+  (sub (.. r handler)
     (let (stg [make-storage name nil null-fragment null-expr ..])
     (record (bndg (@ expr-storage-reference (& expr-storage stg)))
       (bndg-context (extra-function-context))
@@ -449,7 +449,7 @@
 (constrain make-function (\ r (?(a b) (`(function (string (list string) (expr ,:a) frag (expr ,:a) region ,:b) (expr ()))r)r)))
 
 (function make-function (ref params expr frag meta reg handler)
-  (substitute (.. reg handler)
+  (sub (.. reg handler)
     (record (func [region-alloc (expression) ..])
       (expr-new (ignore))
       (expr-type (-function-))
@@ -473,7 +473,7 @@
 (constrain make-continuation (\ r (?(a b) (`(function (string (list string) (expr ,:a) frag (expr ,:a) region ,:b) (expr ()))r)r)))
 
 (function make-continuation (ref params expr frag meta reg handler)
-  (substitute (.. reg handler)
+  (sub (.. reg handler)
     (record (cont [region-alloc (expression) ..])
       (expr-new (ignore))
       (expr-type (-continuation-))
@@ -502,7 +502,7 @@
 (constrain make-with (\ r (?(a b) (`(function (string (expr ,:a) frag (expr ,:a) region ,:b) (expr ()))r)r)))
 
 (function make-with (ref expr frag meta reg handler)
-  (substitute (.. reg handler)
+  (sub (.. reg handler)
     (record (wth [region-alloc (expression) ..])
       (expr-type (-with-))
       (expr-fragment frag)
@@ -529,7 +529,7 @@
 (constrain make-jump (\ r (?(a b) (`(function ((expr ,:a) (list (expr ,:a)) frag (expr ,:a) region ,:b) (expr ()))r)r)))
 
 (function make-jump (ref args frag meta reg handler)
-  (substitute (.. reg handler)
+  (sub (.. reg handler)
     (record (u [region-alloc (expression) ..])
       (expr-new (ignore))
       (expr-type (-jump-))
@@ -548,7 +548,7 @@
 (constrain make-storage (\ r (?(a b) (`(function (string (list (expr ,:a)) frag (expr ,:a) region ,:b) (expr ()))r)r)))
 
 (function make-storage (ref args frag meta reg handler)
-  (substitute (.. reg handler)
+  (sub (.. reg handler)
     (record (u [region-alloc (expression) ..])
       (expr-new (ignore))
       (expr-type (-storage-))
@@ -568,7 +568,7 @@
 (constrain make-meta (\ r (?(a b) (`(function ((expr ,:a) frag (expr ,:a) region ,:b) (expr ()))r)r)))
 
 (function make-meta (ref frag meta reg handler)
-  (substitute (.. reg handler)
+  (sub (.. reg handler)
     (record (u [region-alloc (expression) ..])
       (expr-new (ignore))
       (expr-type (-meta-))
@@ -583,7 +583,7 @@
 (constrain make-constrain (\ r (?(a b) (`(function ((expr ,:a) (expr ,:a) frag (expr ,:a) region ,:b) (expr ()))r)r)))
 
 (function make-constrain (expr ref frag meta reg handler)
-  (substitute (.. reg handler)
+  (sub (.. reg handler)
     (record (u [region-alloc (expression) ..])
       (expr-new (ignore))
       (expr-type (-constrain-))
@@ -601,7 +601,7 @@
 (constrain make-if (\ r (?(a b) (`(function ((expr ,:a) (expr ,:a) (expr ,:a) frag (expr ,:a) region ,:b) (expr ()))r)r)))
 
 (function make-if (condition consequent alternate frag meta reg handler)
-  (substitute (.. reg handler)
+  (sub (.. reg handler)
     (record (u [region-alloc (expression) ..])
       (expr-new (ignore))
       (expr-type (-if-))
@@ -620,7 +620,7 @@
 (constrain make-invoke (\ r (?(a b) (`(function ((expr ,:a) (list (expr ,:a)) frag (expr ,:a) region ,:b) (expr ()))r)r)))
 
 (function make-invoke (ref args frag meta reg handler)
-  (substitute (.. reg handler)
+  (sub (.. reg handler)
     (record (u [region-alloc (expression) ..])
       (expr-new (ignore))
       (expr-type (-invoke-))
@@ -637,7 +637,7 @@
 
 (ignore Prints the given expression as it would be written in an L2 source file. s is an expression.)
 
-(function print-binding (bndg hdl) (substitute (.. hdl)
+(function print-binding (bndg hdl) (sub (.. hdl)
   (if [getb (@ bndg-name bndg)]
     [print-str (stdout) (@ bndg-name bndg) ..]
     (do
@@ -647,7 +647,7 @@
 
 (constrain print-expression (\ r (?(a b) (`(function ((expr ,:b) ,:a) ())r)r)))
 
-(function print-expression (s hdl) (substitute (.. hdl)
+(function print-expression (s hdl) (sub (.. hdl)
   (switch = (@ expr-type s)
     ((-with-) (do
       [print-str (stdout) (" (lparen)with(space)) ..]
@@ -741,7 +741,7 @@
 
 (constrain build-expression (\ r (?(a b) (`(function (frag (expr ,:b) region ,:a) (expr ()))r)r)))
 
-(function build-expression (frag meta reg handler) (substitute (.. reg handler)
+(function build-expression (frag meta reg handler) (sub (.. reg handler)
   (if [i/f.token? frag] [make-symbol [to-string [fragment->token frag] ..] frag meta ..]
   (let (d [frag->list frag])
     (if [= [length d] #:0] {handler (storage _ special-form-error d null-fragment)}
@@ -826,7 +826,7 @@
 (constrain make-unary-intrinsic (\ r (?(a b) (`(function (string region ,:a) (expr ,:b))r)r)))
 
 (function make-unary-intrinsic (name buf handler)
-  (substitute (.. buf handler)
+  (sub (.. buf handler)
     (let (callee-symbol [make-symbol empty-string null-fragment null-expr ..])
         (arg-a [make-symbol empty-string null-fragment null-expr ..])
       (let (func (make-functionN name (empty-string)
@@ -840,7 +840,7 @@
 (constrain make-binary-intrinsic (\ r (?(a b) (`(function (string region ,:a) (expr ,:b))r)r)))
 
 (function make-binary-intrinsic (name buf handler)
-  (substitute (.. buf handler)
+  (sub (.. buf handler)
     (let (callee-symbol [make-symbol empty-string null-fragment null-expr ..])
         (arg-a [make-symbol empty-string null-fragment null-expr ..])
         (arg-b [make-symbol empty-string null-fragment null-expr ..])

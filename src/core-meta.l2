@@ -237,13 +237,13 @@
 
 (ignore
   The following macro does the following transformation:
-  (substitute (tkn1 repl1 ...) ... (tknN replN ...) frag)
+  (sub (tkn1 repl1 ...) ... (tknN replN ...) frag)
   ->
   frag but with the fragments repl inserted in order at all the places that the token tkn
   occurred. An example usage is when the arguments a group of functions are called with
   have a common sublist.)
 
-(function substitute (l r)
+(function sub (l r)
   (loop do-sub (subs [@rst [meta.reverse l r]]) (body [@fst [meta.reverse l r]])
     (if [emt? subs]
       body
@@ -391,7 +391,7 @@
   the field in addition to the rest of the fragment l.)
 
 (function property-aux (l r offset size sig)
-  (substitute (.. l r)
+  (sub (.. l r)
     [llllllllst [@fst l] [=# offset r] [=# size r]
       (switch = size (#:0 `:get0b:r) (#:1 `:get1b:r) (#:2 `:get2b:r) (#:4 `:get4b:r) (#:8 `:get8b:r) `:(ignore):r)
       (switch = size (#:0 `:set0b:r) (#:1 `:set1b:r) (#:2 `:set2b:r) (#:4 `:set4b:r) (#:8 `:set8b:r) `:(ignore):r)
@@ -818,7 +818,7 @@
   (let (name [@fst l]) (ct-params [@frst l]) (rt-params [@frrst l]) (body [@frrrst l])
     `:(function ,:name (l r)
         (let (subs [meta.zip ,:[meta.bq ct-params `:r:r r] l r])
-        (let (body-mod [substitute [meta.reverse [lst ,:[meta.bq body `:r:r r] subs r] r] r])
+        (let (body-mod [sub [meta.reverse [lst ,:[meta.bq body `:r:r r] subs r] r] r])
         (let (rt-params ,:[meta.bq rt-params `:r:r r])
           `:(function method.func ,:rt-params ,:body-mod):r)))):r))
 
@@ -840,7 +840,7 @@
   (let (ct-params [@fst l]) (binds [@rst l])
     (closure (ct-params binds) (l r)
       (let (binds-sub [meta.map3 binds [meta.zip ct-params l r] r
-          (function _ (elt subs r) [lst [@fst elt] [substitute [meta.reverse [lst [@rst elt] subs r] r] r] r]) r])
+          (function _ (elt subs r) [lst [@fst elt] [sub [meta.reverse [lst [@rst elt] subs r] r] r] r]) r])
         (closure (binds-sub) (l r)
           `:(use , [meta.reverse [lst [@fst l] binds-sub r] r]):r r))r)))
 

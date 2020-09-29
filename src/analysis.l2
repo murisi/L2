@@ -206,7 +206,7 @@
 (constrain global-binding-augs-of (\ r (?(a b) (`(function ((list (expr ,:b)) region ,:a) (hash-table string bndg-aug))r)r)))
 
 (function global-binding-augs-of (exprs r handler)
-  (substitute (.. r handler)
+  (sub (.. r handler)
     (let (binding-augs [ht-create hash-str str= ..])
     (loop add-binding (exprs exprs)
       (if [nil? exprs]
@@ -241,7 +241,7 @@
     (`(function ((expr ,:c) ,:a (hash-table string bndg-aug) (hash-table string bndg-aug) (hash-table string bndg-aug) region ,:b) ())r)r)))
 
 (function link-symbols (s static-storage undefined-bindings static-bindings dynamic-bindings r handler)
-  (substitute (.. r handler)
+  (sub (.. r handler)
     (let (bindings (if static-storage static-bindings dynamic-bindings))
     
     (switch = (@ expr-type s)
@@ -292,7 +292,7 @@
 (constrain escape-analysis (\ r (?(a b c) (`(function ((expr ,:c) ,:a region ,:b) ())r)r)))
 
 (function escape-analysis (s escaping r handler)
-  (substitute (.. r handler)
+  (sub (.. r handler)
     (switch = (@ expr-type s)
       ((-symbol-)
         (let (target-expr (@ bndg-expression (@ expr-symbol-reference (& expr-symbol s))))
@@ -341,7 +341,7 @@
 (constrain vfind-dependencies (\ r (?(a b) (`(function ((expr ,:b) (values region ,:a)) (expr ,:b))r)r)))
 
 (function vfind-dependencies (s ctx)
-  ((values? .:r .:handler) ctx (substitute (.. r handler) (do
+  ((values? .:r .:handler) ctx (sub (.. r handler) (do
     (switch = (@ expr-type s)
       ((-if-) (do
         [prepend (@ expr-condition (& expr-if s)) (& expr-dependencies s) ..]
@@ -380,7 +380,7 @@
 (constrain construct-sccs (\ r (?(a b c) (`(function ((expr ,:c) ,:a !:Ref:(list (expr ,:c)) !:Ref:(list (list (expr ,:c))) region ,:b) ())r)r)))
 
 (function construct-sccs (s preorder stack sccs r handler)
-  (substitute (.. r handler)
+  (sub (.. r handler)
     (if [= (@ expr-lowlink s) #:0]
       (let (marker $:stack) (do
       (setf expr-lowlink s preorder)
@@ -415,14 +415,14 @@
 (constrain unify-var (\ r (?(a c) (`(function (vbl frag (hash-table vbl frag) region ,:c) ,:a)r)r)))
 
 (function unify-var (var val assigns buf hdl)
-  (substitute (.. buf hdl)
+  (sub (.. buf hdl)
     (if [occurs-in? var val assigns] (false)
       (do [ht-put var val assigns ..] (true)))))
 
 (constrain unify (\ r (?(a c) (`(function (frag frag (hash-table vbl frag) region ,:c) ,:a)r)r)))
 
 (function unify (x y assigns buf hdl)
-  (substitute (.. buf hdl)
+  (sub (.. buf hdl)
     (let (xl [evaluate x assigns]) (yl [evaluate y assigns])
       (if (and [vbl? xl] [vbl? yl] [vbl= [frag->vbl xl] [frag->vbl yl]]) (true)
       (if [vbl? xl] [unify-var [frag->vbl xl] yl assigns ..]
@@ -443,7 +443,7 @@
 (constrain scoped-signature (\ r (?(a b) (`(function ((expr ,:b) (list (expr ,:b)) region ,:a) frag)r)r)))
 
 (function scoped-signature (e scc r handler)
-  (substitute (.. r handler)
+  (sub (.. r handler)
     (if (not [nil? (find (x scc) [= x e])])
       [expr-signature e]
       (let (var-map [ht-create hash-ptr = ..])
@@ -453,7 +453,7 @@
   (\ r (?(a b c) (`(function ((expr ,:c) (list (expr ,:c)) frag frag !:Ref:(list frag) !:Ref:(list frag) region ,:a) ,:b)r)r)))
 
 (function generate-equations (e scc function-token continuation-token lhss rhss buf handler)
-  (substitute (.. buf handler)
+  (sub (.. buf handler)
     (switch = (@ expr-type e)
       ((-function-)
         (let (params-signature [list->fragment [collect-list (map (x (%:list-iter (@ expr-function-parameters (& expr-function e)))) (@ bndg-signature x)) nil ..]]) (do
@@ -504,7 +504,7 @@
 (constrain infer-types (\ r (?(a b) (`(function ((list (expr ,:b)) region ,:a) ())r)r)))
 
 (function infer-types (exprs buf handler)
-  (substitute (.. buf handler) (do
+  (sub (.. buf handler) (do
     (ignore Type inferencing is done on strongly connected components)
     (let (stack (storage _ nil))
     (let (sccs (storage _ nil)) (do
@@ -634,7 +634,7 @@
 (constrain append-static-binding (\ r (?(a b) (`(function (bndg-aug !:Ref:(list bndg-aug) region ,:a) ,:b)r)r)))
 
 (function append-static-binding (bndg binding-augs r handler)
-  (substitute (.. r handler)
+  (sub (.. r handler)
     (if (and [= (@ bndg-storage bndg) (absolute-storage)] (@ bndg-other bndg))
       (do (setf bndg-other bndg (false)) [append bndg binding-augs ..])
       (ignore))))
@@ -642,7 +642,7 @@
 (constrain collect-static-bindings (\ r (?(a b c) (`(function ((expr ,:c) !:Ref:(list bndg-aug) region ,:a) ,:b)r)r)))
 
 (function collect-static-bindings (n binding-augs r handler)
-  (substitute (.. r handler) (do
+  (sub (.. r handler) (do
     (switch = (@ expr-type n)
       ((-continuation-) (-with-) (do
         [collect-static-bindings $:[expr-expression n] binding-augs ..]
@@ -677,7 +677,7 @@
   (\ r (?(a b c) (`(function ((expr ,:c) (list initializer) (hash-table string bndg-aug) region region ,:a) ,:b)r)r)))
 
 (function preprocessed-expression-address (s inits bindings buf buf2 handler)
-  (substitute (.. buf handler)
+  (sub (.. buf handler)
     (with-region buf2
       (if [= (@ expr-type s) (-symbol-)]
         (do
@@ -725,7 +725,7 @@
   (\ r (?(a b c) (`(function ((expr ,:c) (list initializer) (hash-table string bndg-aug) region region ,:a !:Ref:,;b) ,:b)r)r)))
 
 (function init-function (function-expr inits bindings buf buf2 handler cache)
-  (substitute (.. buf handler)
+  (sub (.. buf handler)
     (with-region buf2
       (if [not= $:cache null-cache]
         $:cache
@@ -746,7 +746,7 @@
   (\ r (?(a b) (`(function ((list (expr ,:b)) (list initializer) (hash-table string bndg-aug) region region region ,:a) (list (expr ,:b)))r)r)))
 
 (function generate-metaprogram (exprs inits bindings buf buf1 buf2 handler)
-  (substitute (.. buf handler)
+  (sub (.. buf handler)
     [reverse (fold (c nil) (s (%:list-iter exprs))
       (if [not= (@ expr-type s) (-function-)] c
         (let (cache [region-alloc (unit) buf1 handler])
@@ -771,7 +771,7 @@
   (\ r (?(a b) (`(function ((list (expr ,:b)) (list initializer) (hash-table string bndg-aug) region region ,:a) (list (expr ,:b)))r)r)))
 
 (function try-generate-metas (exprs inits bindings buf1 buf2 handler)
-  (substitute (.. buf1 handler)
+  (sub (.. buf1 handler)
     (with-region buf2
       (fold (c nil) (s (%:list-ref-iter exprs))
         (if [= (@ expr-type $:s) (-meta-)]
