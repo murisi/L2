@@ -228,29 +228,31 @@
 
 (ignore Matchers for the various expression types.)
 
-  (define expr-union (union = expr-type))
+(define expr-union (union = expr-type))
 
-  (define expr-invoke? (expr-union (-invoke-) expr-invoke))
+(define exprm (module
 
-  (define expr-jump? (expr-union (-jump-) expr-jump))
+  (invoke? (expr-union (-invoke-) expr-invoke))
+  
+  (jump? (expr-union (-jump-) expr-jump))
+  
+  (continuation? (expr-union (-continuation-) expr-continuation))
 
-  (define expr-continuation? (expr-union (-continuation-) expr-continuation))
+  (with? (expr-union (-with-) expr-with))
 
-  (define expr-with? (expr-union (-with-) expr-with))
+  (function? (expr-union (-function-) expr-function))
 
-  (define expr-function? (expr-union (-function-) expr-function))
+  (storage? (expr-union (-storage-) expr-storage))
 
-  (define expr-storage? (expr-union (-storage-) expr-storage))
+  (if? (expr-union (-if-) expr-if))
 
-  (define expr-if? (expr-union (-if-) expr-if))
+  (literal? (expr-union (-literal-) expr-literal))
 
-  (define expr-literal? (expr-union (-literal-) expr-literal))
+  (symbol? (expr-union (-symbol-) expr-symbol))
 
-  (define expr-symbol? (expr-union (-symbol-) expr-symbol))
+  (meta? (expr-union (-meta-) expr-meta))
 
-  (define expr-meta? (expr-union (-meta-) expr-meta))
-
-  (define expr-constrain? (expr-union (-constrain-) expr-constrain))
+  (constrain? (expr-union (-constrain-) expr-constrain))))
 
 (ignore
   Some expressions resemble each other in different ways and hence are treated
@@ -259,59 +261,59 @@
 
 (function expr-target (n)
   (match n
-    ((expr-invoke? .:inve) (& expr-invoke-target inve))
-    ((expr-jump? .:jmpe) (& expr-jump-target jmpe))
-    ((expr-meta? .:mete) (& expr-meta-target mete))
-    ((expr-constrain? .:ctne) (& expr-constrain-target ctne))
+    ((exprm:invoke? .:inve) (& expr-invoke-target inve))
+    ((exprm:jump? .:jmpe) (& expr-jump-target jmpe))
+    ((exprm:meta? .:mete) (& expr-meta-target mete))
+    ((exprm:constrain? .:ctne) (& expr-constrain-target ctne))
     [print-str (stdout) (" expr-target called on incorrect type.) (ignore)]))
 
 (function expr-arguments (n)
   (match n
-    ((expr-storage? .:stge) (& expr-storage-arguments stge))
-    ((expr-invoke? .:inve) (& expr-invoke-arguments inve))
-    ((expr-jump? .:jmpe) (& expr-jump-arguments jmpe))
+    ((exprm:storage? .:stge) (& expr-storage-arguments stge))
+    ((exprm:invoke? .:inve) (& expr-invoke-arguments inve))
+    ((exprm:jump? .:jmpe) (& expr-jump-arguments jmpe))
     [print-str (stdout) (" expr-arguments called on incorrect type.) (ignore)]))
 
 (function expr-reference (n)
   (match n
-    ((expr-storage? .:stge) (& expr-storage-reference stge))
-    ((expr-function? .:funce) (& expr-function-reference funce))
-    ((expr-continuation? .:conte) (& expr-continuation-reference conte))
-    ((expr-with? .:wthe) (& expr-with-reference wthe))
-    ((expr-symbol? .:syme) (& expr-symbol-reference syme))
+    ((exprm:storage? .:stge) (& expr-storage-reference stge))
+    ((exprm:function? .:funce) (& expr-function-reference funce))
+    ((exprm:continuation? .:conte) (& expr-continuation-reference conte))
+    ((exprm:with? .:wthe) (& expr-with-reference wthe))
+    ((exprm:symbol? .:syme) (& expr-symbol-reference syme))
     [print-str (stdout) (" expr-reference called on incorrect type.) (ignore)]))
 
 (function expr-expression (n)
   (match n
-    ((expr-function? .:funce) (& expr-function-expression funce))
-    ((expr-continuation? .:conte) (& expr-continuation-expression conte))
-    ((expr-with? .:wthe) (& expr-with-expression wthe))
-    ((expr-constrain? .:ctne) (& expr-constrain-expression ctne))
+    ((exprm:function? .:funce) (& expr-function-expression funce))
+    ((exprm:continuation? .:conte) (& expr-continuation-expression conte))
+    ((exprm:with? .:wthe) (& expr-with-expression wthe))
+    ((exprm:constrain? .:ctne) (& expr-constrain-expression ctne))
     [print-str (stdout) (" expr-target called on incorrect type.) (ignore)]))
 
 (function expr-parameters (n)
   (match n
-    ((expr-function? .:funce) (& expr-function-parameters funce))
-    ((expr-continuation? .:conte) (& expr-continuation-parameters conte))
-    ((expr-with? .:wthe) (& expr-with-parameters wthe))
+    ((exprm:function? .:funce) (& expr-function-parameters funce))
+    ((exprm:continuation? .:conte) (& expr-continuation-parameters conte))
+    ((exprm:with? .:wthe) (& expr-with-parameters wthe))
     [print-str (stdout) (" expr-parameters called on incorrect type.) (ignore)]))
 
 (function expr-instr-bndg (n)
   (match n
-    ((expr-continuation? .:conte) (& expr-continuation-instr-bndg conte))
-    ((expr-with? .:wthe) (& expr-with-instr-bndg wthe))
+    ((exprm:continuation? .:conte) (& expr-continuation-instr-bndg conte))
+    ((exprm:with? .:wthe) (& expr-with-instr-bndg wthe))
     [print-str (stdout) (" expr-instr-bndg called on incorrect type.) (ignore)]))
 
 (function expr-escapes (n)
   (match n
-    ((expr-continuation? .:conte) (& expr-continuation-escapes conte))
-    ((expr-with? .:wthe) (& expr-with-escapes wthe))
+    ((exprm:continuation? .:conte) (& expr-continuation-escapes conte))
+    ((exprm:with? .:wthe) (& expr-with-escapes wthe))
     [print-str (stdout) (" expr-escapes called on incorrect type.) (ignore)]))
 
 (function expr-jumps (n)
   (match n
-    ((expr-continuation? .:conte) (& expr-continuation-jumps conte))
-    ((expr-with? .:wthe) (& expr-with-jumps wthe))
+    ((exprm:continuation? .:conte) (& expr-continuation-jumps conte))
+    ((exprm:with? .:wthe) (& expr-with-jumps wthe))
     [print-str (stdout) (" expr-jumps called on incorrect type.) (ignore)]))
 
 (ignore

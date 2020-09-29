@@ -52,8 +52,8 @@
 (constrain match-undefined-unary-invoke (\ r (?(a b) (`(function (!:Ref:string !:Ref:(expr ,:b) (expr ,:b)) ,:a)r)r)))
 
 (function match-undefined-unary-invoke (name arg1 n)
-  ((expr-invoke? (property?
-    (expr-invoke-target (expr-symbol? (property?
+  ((exprm:invoke? (property?
+    (expr-invoke-target (exprm:symbol? (property?
       (expr-symbol-reference (property?
         (bndg-state (|[= (undefined-state)]))
         (bndg-name (|[variable name])))))))
@@ -152,8 +152,8 @@
 (constrain match-undefined-binary-invoke (\ r (?(a b) (`(function (!:Ref:string !:Ref:(expr ,:b) !:Ref:(expr ,:b) (expr ,:b)) ,:a)r)r)))
 
 (function match-undefined-binary-invoke (name arg1 arg2 n)
-  ((expr-invoke? (property?
-    (expr-invoke-target (expr-symbol? (property?
+  ((exprm:invoke? (property?
+    (expr-invoke-target (exprm:symbol? (property?
       (expr-symbol-reference (property?
         (bndg-state (|[= (undefined-state)]))
         (bndg-name (|[variable name])))))))
@@ -399,14 +399,14 @@
 (constrain match-undefined-binary-right-imm-invoke (\ r (?(a b c) (`(function (!:Ref:string !:Ref:(expr ,:c) !:Ref:,;b (expr ,:c)) ,:a)r)r)))
 
 (function match-undefined-binary-right-imm-invoke (name arg1 arg2 n)
-  ((expr-invoke? (property?
-    (expr-invoke-target (expr-symbol? (property?
+  ((exprm:invoke? (property?
+    (expr-invoke-target (exprm:symbol? (property?
       (expr-symbol-reference (property?
         (bndg-state (|[= (undefined-state)]))
         (bndg-name (|[variable name])))))))
     (expr-invoke-arguments (list?
       (|[variable arg1])
-      (expr-literal? (property?
+      (exprm:literal? (property?
         (expr-value (|[variable arg2])))))))) n (true) (false)))
 
 (constrain initialize-binary-right-imm-arithmetic-operators
@@ -585,23 +585,23 @@
   (or [= val [band val 0x:000000007FFFFFFF]] [= val [bor val 0x:FFFFFFFF80000000]]))
 
 (function match-get-base+offset (name base offset n)
-  ((expr-invoke? (property?
+  ((exprm:invoke? (property?
       (expr-invoke-target (|[undefined-symbol?]))
-      (expr-invoke-target (expr-symbol? (property? (expr-symbol-reference
+      (expr-invoke-target (exprm:symbol? (property? (expr-symbol-reference
         (property? (bndg-name (|[variable name])))))))
       (expr-invoke-arguments (list?
-        (expr-invoke? (property?
+        (exprm:invoke? (property?
           (expr-invoke-target (|[undefined-symbol?]))
           (expr-invoke-target (|[symbol-name= (" +)]))
           (expr-invoke-arguments
             (or?
               (list?
-                (expr-literal? (property?
+                (exprm:literal? (property?
                   (expr-value (|[variable offset]))))
                 (|[variable base]))
               (list?
                 (|[variable base])
-                (expr-literal? (property?
+                (exprm:literal? (property?
                   (expr-value (|[variable offset]))))))))))))) n (true) (false)))
 
 (constrain initialize-get-base+offset
@@ -664,23 +664,23 @@
       (ignore))))
 
 (function match-set-base+offset (name base offset value n)
-  ((expr-invoke? (property?
+  ((exprm:invoke? (property?
       (expr-invoke-target (|[undefined-symbol?]))
-      (expr-invoke-target (expr-symbol? (property? (expr-symbol-reference
+      (expr-invoke-target (exprm:symbol? (property? (expr-symbol-reference
         (property? (bndg-name (|[variable name])))))))
       (expr-invoke-arguments (list?
-        (expr-invoke? (property?
+        (exprm:invoke? (property?
             (expr-invoke-target (|[undefined-symbol?]))
             (expr-invoke-target (|[symbol-name= (" +)]))
             (expr-invoke-arguments
               (or?
                 (list?
-                  (expr-literal? (property?
+                  (exprm:literal? (property?
                     (expr-value (|[variable offset]))))
                   (|[variable base]))
                 (list?
                   (|[variable base])
-                  (expr-literal? (property?
+                  (exprm:literal? (property?
                     (expr-value (|[variable offset])))))))))
         (|[variable value]))))) n (true) (false)))
 
