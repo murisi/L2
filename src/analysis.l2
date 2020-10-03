@@ -11,8 +11,8 @@
 (constrain vfind-multiple-definitions (\ r (?(a b) (`(function ((expr ,:b) ,:a) (expr ,:b))r)r)))
 
 (function vfind-multiple-definitions (e handler)
-  (switch = (@ expr-type e)
-    ((-continuation-) (-function-) (do
+  (match e
+    ((or? (exprm:continuation? .:_) (exprm:function? .:_)) (do
       (let (ref-with-params (storage-cons $:[expr-reference e] $:[expr-parameters e]))
       (for (partial (%:sublist-iter ref-with-params)) (ignore)
         (if [nil? (find (f [@cdr partial]) [bndg-name= f [@car partial]])] (ignore)
@@ -93,17 +93,15 @@
 (constrain vdominate-jumps (\ r (?(a) (`(function ((expr ,:a) ()) (expr ,:a))r)r)))
 
 (function vdominate-jumps (e ctx)
-  (switch = (@ expr-type e)
-    ((-invoke-) (-jump-)
+  (match e
+    ((or? (exprm:invoke? .:_) (exprm:jump? .:_))
       (loop search (exprs (storage-cons $:[expr-target e] $:[expr-arguments e]))
         (if [nil? exprs] e
         (if [= (@ expr-type [@car exprs]) (-jump-)] [@car exprs]
           {search [@cdr exprs]}))))
     
-    ((-if-)
-      (if [= (@ expr-type (@ expr-condition (& expr-if e))) (-jump-)]
-        (@ expr-condition (& expr-if e))
-        e))
+    ((exprm:if? (property? (expr-condition .:cond)))
+      ((exprm:jump? .:_) cond cond e))
     
     e))
 
