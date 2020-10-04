@@ -143,34 +143,16 @@
 
 (ignore
   Grammar being lexed:
-  program = <ignore> (<fragment> <ignore>)*
-  fragment = <fragment1> | <sublist> | <subsublist>
-  sublist = <fragment1> (<ignore> ':' <ignore> <fragment1>)+
-  fragment1 = <fragment2> | <subsublist>
-  subsublist = <fragment2> (<ignore> ';' <ignore> <fragment2>)+
-  fragment2 = <token> | <list> | <clist> | <slist>
-  list = '(' <ignore> (<fragment> <ignore>)* ')'
-  clist = '{' <ignore> (<fragment> <ignore>)* '}'
-  slist = '[' <ignore> (<fragment> <ignore>)* ']'
-  token = <character>+
-  <ignore> = (<comment> | <whitespace>)*
-  <comment> = '«' <ignore> (<fragment> <ignore>)* '»')
-
-(constrain read-comment (\ r (?(a b c d e) (`(function (,:a ,:b ,:c ,:d ,:e) frag)r)r)))
-
-(function read-comment (l2src l2src-sz pos r handler)
-  (sub (.. r handler)
-    (if [= $:pos l2src-sz]
-      {handler (storage _ unexpected-char-error $:pos)}
-      (let (c [getb [+ l2src $:pos]])
-        (if [not= c (langle)]
-          {handler (storage _ unexpected-char-error c $:pos)}
-          (let (sexprs-start (storage _ emt!)) (do
-            [set+ pos #:1]
-            (loop cons-frag (sexprs-end sexprs-start)
-              (if (and [read-ignore l2src l2src-sz pos ..] [= [getb [+ l2src $:pos]] (rangle)])
-                (do [set+ pos #:1] [- l2src-sz $:pos])
-                {cons-frag [append [read-fragment l2src l2src-sz pos ..] sexprs-end ..]})))))))))
+  program = <space> (<fragment> <space>)*
+  fragment = <fragment2> | <sublist> | <subsublist>
+  sublist = <fragment2> (<space> ':' <space> <fragment2>)+
+  fragment2 = <fragment1> | <subsublist>
+  subsublist = <fragment1> (<space> ';' <space> <fragment1>)+
+  fragment1 = <token> | <list> | <clist> | <slist>
+  list = '(' <space> (<fragment> <space>)* ')'
+  clist = '{' <space> (<fragment> <space>)* '}'
+  slist = '[' <space> (<fragment> <space>)* ']'
+  token = <character>+)
 
 (ignore
   Moves the supplied index forward to the first non-space character. l2src is a
@@ -179,18 +161,13 @@
   will be increased. Return value is the number of remaining characters in the
   buffer.)
 
-(constrain read-ignore (\ r (?(a b c d e) (`(function (,:a ,:b ,:c ,:d ,:e) frag)r)r)))
+(constrain read-whitespace (\ r (?(a b c) (`(function (,:a ,:b ,:c) frag)r)r)))
 
-(function read-ignore (l2src l2src-sz pos r handler)
-  (sub (.. r handler)
-    (loop find-ignore
-      (if [< $:pos l2src-sz]
-        (if [isspace [getb[+ l2src $:pos]]]
-          (do [set+ pos #:1] {find-ignore})
-        (if [= [getb[+ l2src $:pos]] (langle)]
-          (do [read-comment l2src l2src-sz pos ..] {find-ignore})
-          [- l2src-sz $:pos]))
-        [- l2src-sz $:pos]))))
+(function read-whitespace (l2src l2src-sz pos)
+  (loop find-space
+    (if (and [< $:pos l2src-sz] [isspace [getb[+ l2src $:pos]]])
+      (do [set+ pos #:1] {find-space})
+      [- l2src-sz $:pos])))
 
 (constrain read-token (\ r (?(a b c d e) (`(function (,:a ,:b ,:c ,:d ,:e) frag)r)r)))
 
@@ -199,7 +176,7 @@
     (if [= $:pos l2src-sz]
       {handler (storage _ unexpected-char-error (nul) $:pos)}
       (let (c [getb [+ l2src $:pos]])
-        (if (or [isspace c] (switch = c ((lparen)(rparen)(lbrace)(rbrace)(lbracket)(rbracket)(colon)(scolon)(langle)(rangle) (true)) (false)))
+        (if (or [isspace c] (switch = c ((lparen)(rparen)(lbrace)(rbrace)(lbracket)(rbracket)(colon)(scolon) (true)) (false)))
           {handler (storage _ unexpected-char-error c $:pos)}
           (do
             [set+ pos #:1]
@@ -208,7 +185,7 @@
                 (let (le [append (tkn-char c) le ..])
                 (if [= $:pos l2src-sz] $:ls
                   (let (c [getb [+ l2src $:pos]])
-                  (if (or [isspace c] (switch = c ((lparen)(rparen)(lbrace)(rbrace)(lbracket)(rbracket)(colon)(scolon)(langle)(rangle) (true)) (false))) $:ls
+                  (if (or [isspace c] (switch = c ((lparen)(rparen)(lbrace)(rbrace)(lbracket)(rbracket)(colon)(scolon) (true)) (false))) $:ls
                     (do [set+ pos #:1] {cons-char le c})))))))]))))))
 
 (constrain read-list (\ r (?(a b c d e) (`(function (,:a ,:b ,:c ,:d ,:e) frag)r)r)))
@@ -231,13 +208,13 @@
                 (rbracket))
                 (rparen))))
             (loop cons-frag (sexprs-end sexprs-start)
-              (if (and [read-ignore l2src l2src-sz pos ..] [= [getb [+ l2src $:pos]] delimiter])
+              (if (and [read-whitespace l2src l2src-sz pos] [= [getb [+ l2src $:pos]] delimiter])
                 (do [set+ pos #:1] [list->fragment $:sexprs-start])
                 {cons-frag [append [read-fragment l2src l2src-sz pos ..] sexprs-end ..]}))))))))))
 
-(constrain read-fragment2 (\ r (?(a b c d e) (`(function (,:a ,:b ,:c ,:d ,:e) frag)r)r)))
+(constrain read-fragment1 (\ r (?(a b c d e) (`(function (,:a ,:b ,:c ,:d ,:e) frag)r)r)))
 
-(function read-fragment2 (l2src l2src-sz pos r handler)
+(function read-fragment1 (l2src l2src-sz pos r handler)
   (sub (.. r handler)
     (if [= $:pos l2src-sz]
       {handler (storage _ unexpected-char-error (nul))}
@@ -246,22 +223,22 @@
           [read-list l2src l2src-sz pos ..]
           [read-token l2src l2src-sz pos ..])))))
 
-(constrain read-fragment1 (\ r (?(a b c d e) (`(function (,:a ,:b ,:c ,:d ,:e) frag)r)r)))
+(constrain read-fragment2 (\ r (?(a b c d e) (`(function (,:a ,:b ,:c ,:d ,:e) frag)r)r)))
 
-(function read-fragment1 (l2src l2src-sz pos r handler)
+(function read-fragment2 (l2src l2src-sz pos r handler)
   (sub (.. r handler)
     (let (sexprs-start (storage _ emt!))
-    (let (head [read-fragment2 l2src l2src-sz pos ..]) (do
+    (let (head [read-fragment1 l2src l2src-sz pos ..]) (do
     (loop cons-frag (sexprs-end sexprs-start)
-      (if (not [read-ignore l2src l2src-sz pos ..])
+      (if (not [read-whitespace l2src l2src-sz pos])
         (ignore)
         (let (c [getb [+ l2src $:pos]])
           (if (not [= c (scolon)])
             (ignore)
             (do
               [set+ pos #:1]
-              [read-ignore l2src l2src-sz pos ..]
-              {cons-frag [append [read-fragment2 l2src l2src-sz pos ..] sexprs-end ..]})))))
+              [read-whitespace l2src l2src-sz pos]
+              {cons-frag [append [read-fragment1 l2src l2src-sz pos ..] sexprs-end ..]})))))
                 
     (if [emt?! $:sexprs-start]
       head
@@ -274,17 +251,17 @@
 (function read-fragment (l2src l2src-sz pos r handler)
   (sub (.. r handler)
     (let (sexprs-start (storage _ emt!))
-    (let (head [read-fragment1 l2src l2src-sz pos ..]) (do
+    (let (head [read-fragment2 l2src l2src-sz pos ..]) (do
     (loop cons-frag (sexprs-end sexprs-start)
-      (if (not [read-ignore l2src l2src-sz pos ..])
+      (if (not [read-whitespace l2src l2src-sz pos])
         (ignore)
         (let (c [getb [+ l2src $:pos]])
           (if (not [= c (colon)])
             (ignore)
             (do
               [set+ pos #:1]
-              [read-ignore l2src l2src-sz pos ..]
-              {cons-frag [append [read-fragment1 l2src l2src-sz pos ..] sexprs-end ..]})))))
+              [read-whitespace l2src l2src-sz pos]
+              {cons-frag [append [read-fragment2 l2src l2src-sz pos ..] sexprs-end ..]})))))
                 
     (if [emt?! $:sexprs-start]
       head

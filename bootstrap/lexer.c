@@ -15,7 +15,7 @@ list get_val(list var) {
 }
 
 struct character {
-  unsigned char character;
+  char character;
   void *flag;
 };
 
@@ -23,8 +23,6 @@ bool char_equals(struct character *a, struct character *b) {
   return a->character == b->character;
 }
 
-#define LANGLE 0xAB /*<<*/
-#define RANGLE 0xBB /*>>*/
 #define char_init(ch) {{ .character = ch, .flag = NULL }}
 
 struct character chars[][1] = {
@@ -47,7 +45,7 @@ struct character chars[][1] = {
 
 #define _char(d) (chars[d])
 
-list build_token(unsigned char *str, region r) {
+list build_token(char *str, region r) {
   list sexprs = nil;
   for(; *str; str++) {
     append(_char(*str), &sexprs, r);
@@ -58,67 +56,37 @@ list build_token(unsigned char *str, region r) {
 unsigned long gentok_counter = 0;
 
 list gentok(region r) {
-  unsigned char buf[21];
+  char buf[21];
   return build_token(ulong_to_str(++gentok_counter, buf), r);
+}
+
+int read_whitespace(char *l2src, int l2src_sz, int *pos) {
+  for(; *pos < l2src_sz && isspace(l2src[*pos]); (*pos)++);
+  return l2src_sz - *pos;
 }
 
 /*
  * Grammar being lexed:
- * program = <ignore> (<fragment> <ignore>)*
- * fragment = <fragment1> | <sublist>
- * sublist = <fragment1> (<ignore> ':' <ignore> <fragment1>)+
- * fragment1 = <fragment2> | <subsublist>
- * subsublist = <fragment2> (<ignore> ';' <ignore> <fragment2>)+
- * fragment2 = <token> | <list> | <clist> | <slist>
- * list = '(' <ignore> (<fragment> <ignore>)* ')'
- * clist = '{' <ignore> (<fragment> <ignore>)* '}'
- * slist = '[' <ignore> (<fragment> <ignore>)* ']'
+ * program = <space> (<fragment> <space>)*
+ * fragment = <fragment2> | <sublist>
+ * sublist = <fragment2> (<space> ':' <space> <fragment2>)+
+ * fragment2 = <fragment1> | <subsublist>
+ * subsublist = <fragment1> (<space> ';' <space> <fragment1>)+
+ * fragment1 = <token> | <list> | <clist> | <slist>
+ * list = '(' <space> (<fragment> <space>)* ')'
+ * clist = '{' <space> (<fragment> <space>)* '}'
+ * slist = '[' <space> (<fragment> <space>)* ']'
  * token = <character>+
- * <ignore> = (<comment> | <whitespace>)*
- * <comment> = '<<' <ignore> (<fragment> <ignore>)* '>>'
  */
 
-list read_fragment(unsigned char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler);
-int read_ignore(unsigned char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler);
+list read_fragment(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler);
 
-int read_comment(unsigned char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
+list read_token(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
   if(l2src_sz == *pos) {
     throw_unexpected_character(0, *pos, handler);
   } else {
-    unsigned char c = l2src[*pos];
-    if(c == LANGLE) {
-      (*pos) ++;
-      list sexprs = nil;
-      for(;;) {
-        if(read_ignore(l2src, l2src_sz, pos, r, handler) && l2src[*pos] == RANGLE) {
-          (*pos) ++;
-          return l2src_sz - *pos;
-        }
-        append(read_fragment(l2src, l2src_sz, pos, r, handler), &sexprs, r);
-      }
-    } else {
-      throw_unexpected_character(c, *pos, handler);
-    }
-  }
-}
-
-int read_ignore(unsigned char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
-  while(*pos < l2src_sz) {
-    if(isspace(l2src[*pos])) {
-      (*pos)++;
-    } else if(l2src[*pos] == LANGLE) {
-      read_comment(l2src, l2src_sz, pos, r, handler);
-    } else break;
-  }
-  return l2src_sz - *pos;
-}
-
-list read_token(unsigned char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
-  if(l2src_sz == *pos) {
-    throw_unexpected_character(0, *pos, handler);
-  } else {
-    unsigned char c = l2src[*pos];
-    if(isspace(c) || c == '(' || c == ')' || c == '{' || c == '}' || c == '[' || c == ']' || c == ':' || c == ';' || c == LANGLE || c == RANGLE) {
+    char c = l2src[*pos];
+    if(isspace(c) || c == '(' || c == ')' || c == '{' || c == '}' || c == '[' || c == ']' || c == ':' || c == ';') {
       throw_unexpected_character(c, *pos, handler);
     } else {
       (*pos) ++;
@@ -129,21 +97,21 @@ list read_token(unsigned char *l2src, int l2src_sz, int *pos, region r, jumpbuf 
           return l;
         }
         c = l2src[(*pos)++];
-      } while(!isspace(c) && c != '(' && c != ')' && c != '{' && c != '}' && c != '[' && c != ']' && c != ':' && c != ';' && c != LANGLE && c != RANGLE);
+      } while(!isspace(c) && c != '(' && c != ')' && c != '{' && c != '}' && c != '[' && c != ']' && c != ':' && c != ';');
       (*pos)--;
       return l;
     }
   }
 }
 
-list read_list(unsigned char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
+list read_list(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
   if(l2src_sz == *pos) {
     throw_unexpected_character(0, *pos, handler);
   } else {
-    unsigned char c = l2src[*pos];
+    char c = l2src[*pos];
     if(c == '(' || c == '{' || c == '[') {
       (*pos) ++;
-      unsigned char delimiter;
+      char delimiter;
       list sexprs = nil;
       if(c == '{') {
         append(build_token("jump", r), &sexprs, r);
@@ -155,7 +123,7 @@ list read_list(unsigned char *l2src, int l2src_sz, int *pos, region r, jumpbuf *
         delimiter = ')';
       }
       for(;;) {
-        if(read_ignore(l2src, l2src_sz, pos, r, handler) && l2src[*pos] == delimiter) {
+        if(read_whitespace(l2src, l2src_sz, pos) && l2src[*pos] == delimiter) {
           (*pos) ++;
           return sexprs;
         }
@@ -167,11 +135,11 @@ list read_list(unsigned char *l2src, int l2src_sz, int *pos, region r, jumpbuf *
   }
 }
 
-list read_fragment2(unsigned char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
+list read_fragment1(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
   if(*pos == l2src_sz) {
     throw_unexpected_character(0, *pos, handler);
   } else {
-    unsigned char c = l2src[*pos];
+    char c = l2src[*pos];
     if(c == '(' || c == '{' || c == '[') {
       return read_list(l2src, l2src_sz, pos, r, handler);
     } else {
@@ -180,15 +148,15 @@ list read_fragment2(unsigned char *l2src, int l2src_sz, int *pos, region r, jump
   }
 }
 
-list read_fragment1(unsigned char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
+list read_fragment2(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
   list sexprs = nil;
-  append(read_fragment2(l2src, l2src_sz, pos, r, handler), &sexprs, r);
-  while(read_ignore(l2src, l2src_sz, pos, r, handler)) {
-    unsigned char c = l2src[*pos];
+  append(read_fragment1(l2src, l2src_sz, pos, r, handler), &sexprs, r);
+  while(read_whitespace(l2src, l2src_sz, pos)) {
+    char c = l2src[*pos];
     if(c == ';') {
       (*pos) ++;
-      read_ignore(l2src, l2src_sz, pos, r, handler);
-      append(read_fragment2(l2src, l2src_sz, pos, r, handler), &sexprs, r);
+      read_whitespace(l2src, l2src_sz, pos);
+      append(read_fragment1(l2src, l2src_sz, pos, r, handler), &sexprs, r);
     } else {
       break;
     }
@@ -200,15 +168,15 @@ list read_fragment1(unsigned char *l2src, int l2src_sz, int *pos, region r, jump
   }
 }
 
-list read_fragment(unsigned char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
+list read_fragment(char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler) {
   list sexprs = nil;
-  append(read_fragment1(l2src, l2src_sz, pos, r, handler), &sexprs, r);
-  while(read_ignore(l2src, l2src_sz, pos, r, handler)) {
-    unsigned char c = l2src[*pos];
+  append(read_fragment2(l2src, l2src_sz, pos, r, handler), &sexprs, r);
+  while(read_whitespace(l2src, l2src_sz, pos)) {
+    char c = l2src[*pos];
     if(c == ':') {
       (*pos) ++;
-      read_ignore(l2src, l2src_sz, pos, r, handler);
-      append(read_fragment1(l2src, l2src_sz, pos, r, handler), &sexprs, r);
+      read_whitespace(l2src, l2src_sz, pos);
+      append(read_fragment2(l2src, l2src_sz, pos, r, handler), &sexprs, r);
     } else {
       break;
     }
@@ -224,8 +192,8 @@ bool is_token(list d) {
   return !is_var(d) && length(d) && !((struct character *) d->fst)->flag;
 }
 
-unsigned char *to_string(list d, region r) {
-  unsigned char *str = region_alloc(r, (length(d) + 1) * sizeof(unsigned char));
+char *to_string(list d, region r) {
+  char *str = region_alloc(r, (length(d) + 1) * sizeof(char));
   int i = 0;
   
   struct character *t;

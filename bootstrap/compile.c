@@ -68,7 +68,7 @@ list read_expressions(unsigned char *src, region expr_buf, jumpbuf *handler) {
   
   list expressions = nil;
   int pos = 0;
-  while(read_ignore(src_buf, src_sz, &pos, expr_buf, handler)) {
+  while(read_whitespace(src_buf, src_sz, &pos)) {
     append(build_expression(read_fragment(src_buf, src_sz, &pos, expr_buf, handler), NULL, expr_buf, handler), &expressions, expr_buf);
   }
   return expressions;
