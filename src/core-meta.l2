@@ -240,11 +240,14 @@
     (if [emt? subs]
       body
       {do-sub [@rst subs] [(function aux (frag fnd repl r)
-          (if (or [token? frag] [emt? frag])
+          (if [token? frag]
             frag
+          (loop do-sub (frag frag) (build emt)
+            (if [emt? frag]
+              [meta.reverse build r]
             (if (and [token? [@fst frag]] [token= [@fst frag] fnd])
-              [meta.concat repl [@rst frag] r]
-              [lst [aux [@fst frag] fnd repl r] [aux [@rst frag] fnd repl r] r])))
+              {do-sub [@rst frag] [meta.concat [meta.reverse repl r] build r]}
+              {do-sub [@rst frag] [lst [aux [@fst frag] fnd repl r] build r]})))))
         body [@ffst subs] [@rfst subs] r]})))
 
 (-- This function enables comments within the expression supplied to it. Unlike
@@ -424,6 +427,10 @@
   comment to work.)
 
 (function -- (l r) [=# 0x:DEADBEEF r])
+
+(-- The following function can be used when a certain context requires an expression, but
+  you do not want anything to happen. Unlike --, uses of this macro will not be deleted by
+  the ++ macro.)
 
 (function ~ (l r) [=# 0x:DEADBEEF r])
 
@@ -778,11 +785,6 @@
   (let (binds l)
     (closure (binds) (l r)
       `:(use , [meta.reverse [lst [@fst l] binds r] r]):r r)))
-
-(-- Define the empty module. Useful for checking constraint satisfaction of functors
-  without a module that implements the required signature.)
-
-(define _ (module))
 
 (-- A method takes its first argument set by-name and produces a function taking
   the second argument set by value. The following method macro does the following
