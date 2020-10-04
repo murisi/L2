@@ -1,15 +1,14 @@
-(ignore Most macros that are about modifying control flow and their helper functions are here.)
+<<Most macros that are about modifying control flow and their helper functions are here.>>
 
-(ignore This is false.)
+<<This is false.>>
 
 (function false (l r) [=# #:0 r])
 
 (function true (l r) [=# #:1 r])
 
-(ignore
-  The following macro iterates through its arguments in order and returns (true) upon
+<<The following macro iterates through its arguments in order and returns (true) upon
   encountering the first non-zero argument supplied to it. If all the arguments are zero,
-  then it returns (false).)
+  then it returns (false).>>
 
 (function or (l r)
   (loop prepend-or (l [meta.reverse l r]) (sexpr `:(false):r)
@@ -17,10 +16,9 @@
       sexpr
       {prepend-or [@rst l] `:(if ,:[@fst l] (true) ,:sexpr):r})))
 
-(ignore
-  The following macro iterates through its arguments in order and returns (false) upon
+<<The following macro iterates through its arguments in order and returns (false) upon
   encountering the first zero argument supplied to it. If all the arguments are non-zero,
-  then it returns (true).)
+  then it returns (true).>>
 
 (function and (l r)
   (loop prepend-and (l [meta.reverse l r]) (sexpr `:(true):r)
@@ -28,15 +26,13 @@
       sexpr
       {prepend-and [@rst l] `:(if ,:[@fst l] ,:sexpr (false)):r})))
 
-(ignore
-  The following macro returns (false) if the single argument supplied to it is non-zero.
-  Otherwise it returns (true).)
+<<The following macro returns (false) if the single argument supplied to it is non-zero.
+  Otherwise it returns (true).>>
 
 (function not (l r) (`(if (,[@fst l]) (false) (true))r))
 
-(ignore
-  Reverses the given list. l is the list to be reversed. r is the region into which the
-  reversed list will be put. Return value is the reversed list.)
+<<Reverses the given list. l is the list to be reversed. r is the region into which the
+  reversed list will be put. Return value is the reversed list.>>
 
 (function meta.reverse (l r)
   (with return
@@ -45,13 +41,12 @@
         {return reversed}
         {_ [@rst l] [lst [@fst l] reversed r]})) l emt}))
 
-(ignore
-  Maps the given list using the given function. l is the list to be mapped. ctx
+<<Maps the given list using the given function. l is the list to be mapped. ctx
   is always passed as a second argument to the mapper. mapper is the two argument
   function that will be supplied a list item as its first argument and ctx as its
   second argument and will return an argument that will be put into the corresponding
   position of another list. r is the region into which the list being constructed
-  will be put. Return value is the mapped list.)
+  will be put. Return value is the mapped list.>>
 
 (function meta.map (l mapper r)
   (with return
@@ -74,31 +69,28 @@
         {return [meta.reverse out r]}
         {aux [@rst in] [lst [mapper [@fst in] ctx1 ctx2] out r]})) l emt}))
 
-(ignore
-  The following function implements variable binding by do the following transformation:
+<<The following function implements variable binding by do the following transformation:
   (use (params vals) ... expr0)
   TO
   (with use.return
     {(continuation use.aux (params ...)
-      {use.return expr0}) vals ...}))
+      {use.return expr0}) vals ...})>>
 
 (function use (l r)
   `:(with use.return
       {(continuation use.aux (,[meta.map [@rst [meta.reverse l r]] @fst r])
         {use.return ,:[@fst [meta.reverse l r]]}) , [meta.map [@rst [meta.reverse l r]] @frst r]}):r)
 
-(ignore
-  The following function implements a monomorphic use. This is useful in cases where
+<<The following function implements a monomorphic use. This is useful in cases where
   bindings are mutated in such a way that their type is fixed. This monomorphization is
-  achieved by making the binding continuation dependent on its body expression.)
+  achieved by making the binding continuation dependent on its body expression.>>
 
 (function let (l r)
   `:(with let.return
       {(monomorphic let.aux ,:[meta.map [@rst [meta.reverse l r]] @fst r]
         {let.return ,:[@fst [meta.reverse l r]]}) , [meta.map [@rst [meta.reverse l r]] @frst r]}):r)
 
-(ignore
-  The following function implements the switch expression by doing the following transformation:
+<<The following function implements the switch expression by doing the following transformation:
   (switch eq0 val0 (vals exprs) ... expr0)
   TO
   (let (tempeq0 eq0) (tempval0 val0)
@@ -109,7 +101,7 @@
         ...
           (if [tempeq0 tempval0 valsN]
             exprsN
-            expr0)))))
+            expr0))))>>
 
 (function switch (l r)
   (`(let (switch.= (,[@fst l])) (switch.val (,[@frst l]))
@@ -123,8 +115,7 @@
               (,[@fst [meta.reverse [@fst remaining] r]]) ,:else-clause) r)}))
         [@rst [meta.reverse [@rrst l] r]] [@fst [meta.reverse l r]]})))r))
 
-(ignore
-  The following function implements the match expression by doing the following transformation:
+<<The following function implements the match expression by doing the following transformation:
   (match val0 (matchers exprs) ... expr0)
   TO
   (let (tempval0 val0)
@@ -135,7 +126,7 @@
     (...
     (matchersN tempval0
       exprsN
-      expr0) ...)))))
+      expr0) ...))))>>
 
 (function match (l r h)
   (let (val-sym [meta.concat `:match.val:r [gentok r] r])
@@ -145,8 +136,7 @@
           expr
           {build [@rst remaining] `:(,:[@ffst remaining] ,:val-sym ,:[@frfst remaining] ,:expr):r}))):r))
 
-(ignore
-  The following function implements the following transformation:
+<<The following function implements the following transformation:
   (fallthrough expr (labels args exprs) ...)
   TO
   (let (argN (with labelN
@@ -159,7 +149,7 @@
                 expr1)
             ...))
         exprN-1)))
-    exprN))
+    exprN)>>
 
 (function fallthrough (l r)
   (loop do-layer (acc [@fst l]) (exprs [@rst l])
@@ -167,8 +157,7 @@
       acc
       {do-layer (`(let ((,[@frfst exprs]) (with (,[@ffst exprs]) ,:acc)) (,[@frrfst exprs]))r) [@rst exprs]})))
 
-(ignore
-  Syntactic sugar for continuation passing style. The next continuations is always bound.
+<<Syntactic sugar for continuation passing style. The next continuations is always bound.
   Transformation is as follows:
   (cps expr (conts (args ...) exprs) ...)
   TO
@@ -183,7 +172,7 @@
                   exprN-2)
               ...}))
           expr1)}))
-      expr)))
+      expr))>>
 
 (function cps (l r) (`(with cps.return
   (,[(function cps-aux (body rem-exprs r)
@@ -194,12 +183,11 @@
                 {cps.return (,[cps-aux cont-expr [@rst rem-exprs] r])}))
               ,:body)r)))) [@fst l] [@rst l] r]))r))
 
-(ignore
-  The following function implements a monomorphic version of continuation by doing the
+<<The following function implements a monomorphic version of continuation by doing the
   following transformation:
   (monomorphic cont (args ...) expr)
   TO
-  (continuation cont (arg1 args ...) {cont expr args ...}))
+  (continuation cont (arg1 args ...) {cont expr args ...})>>
 
 (function monomorphic (l r)
   (if [emt? [@frst l]]
@@ -207,13 +195,12 @@
     `:(continuation ,:[@fst l] ,:[@frst l]
         {,:[@fst l] ,:[@frrst l] , [@rfrst l]}):r))
 
-(ignore
-  The following function implements variable binding by doing the following transformation:
+<<The following function implements variable binding by doing the following transformation:
   (loop cont (params args) ... expr0)
   TO
   (with loop.return
     {(monomorphic cont (params ...)
-      {loop.return expr0}) vals ...}))
+      {loop.return expr0}) vals ...})>>
 
 (function loop (l r)
   (let (bindings [meta.reverse [@rst [meta.reverse [@rst l] r]] r])
@@ -221,23 +208,21 @@
         {(monomorphic ,:[@fst l] ,:[meta.map bindings @fst r]
           {loop.return ,:[@fst [meta.reverse l r]]}) , [meta.map bindings @frst r]}):r))
 
-(ignore
-  The following function implements an anonymous function using the following transformation:
+<<The following function implements an anonymous function using the following transformation:
   (\ params ... body)
   TO
-  (function \.self (params ...) body))
+  (function \.self (params ...) body)>>
 
 (function \ (l r) (`(function \.self (,[meta.reverse [@rst [meta.reverse l r]]r]) (,[@fst [meta.reverse l r]]))r))
 
-(ignore
-  The following function implements sequencing by doing the following transformation:
+<<The following function implements sequencing by doing the following transformation:
   (do expr1 expr2 ... exprN)
   TO
   (with do.return
     {(monomorphic do.cont (do.arg)
       {(monomorphic do.cont (do.arg)
         {...
-          {(monomorphic do.cont (do.arg) {do.return do.arg}) exprN}...}) expr2}) expr1}))
+          {(monomorphic do.cont (do.arg) {do.return do.arg}) exprN}...}) expr2}) expr1})>>
 
 (function do (l r)
   (`(with do.return
@@ -246,9 +231,8 @@
           acc
           {make-do (`{(monomorphic do.cont (do.arg) ,:acc) (,[@fst exprs])}r) [@rst exprs]}))))r))
 
-(ignore
-  Takes a list of lists and make a list containing their concatenation in the given
-  buffer.)
+<<Takes a list of lists and make a list containing their concatenation in the given
+  buffer.>>
 
 (function meta.flatten (lsts r)
   (loop flatten (acc emt) (lsts lsts)
@@ -256,27 +240,25 @@
       acc
       {flatten [meta.concat acc [@fst lsts] r] [@rst lsts]})))
 
-(ignore
-  An iterator is a continuation that is parameterized by a context and a value type. It takes
+<<An iterator is a continuation that is parameterized by a context and a value type. It takes
   an exit continuation receiving a context, an initial context, and body continuation which
   takes a context, a value, and a next continuation. The next continuation in turn receives
   an updated context and the next body continuation to jump to. The following is a type synonym
   for iterators. Does the following transformation:
-  (iterator a b) = (continuation ((continuation (b)) b (continuation ((continuation (c b)) b a)))))
+  (iterator a b) = (continuation ((continuation (b)) b (continuation ((continuation (c b)) b a))))>>
 
 (function iterator (l r)
   (let (a [@fst l]) (b [@frst l])
     (?(c) (`(continuation ((continuation (,:b)) ,:b (continuation ((continuation (,:c ,:b)) ,:b ,:a))))r)r)))
 
-(ignore
-  Loops through the given iterator. Performs the following transformation:
+<<Loops through the given iterator. Performs the following transformation:
   (fold (y acc) (x iter) expr)
   TO
   (with fold.return
     (let (fold.iter iter)
       {fold.iter fold.return acc
         (continuation fold.cont (fold.next y x)
-          {fold.next [cast fold.cont] expr})})))
+          {fold.next [cast fold.cont] expr})}))>>
 
 (function fold (l r)
   `:(with fold.return
@@ -285,8 +267,7 @@
           (continuation fold.cont (fold.next ,:[@ffst l] ,:[@ffrst l])
             {fold.next [cast fold.cont] ,:[@frrst l]})})):r)
 
-(ignore
-  Loops through the given iterator and executes the body for successfully matched
+<<Loops through the given iterator and executes the body for successfully matched
   objects. Performs the following transformation:
   (select matcher iter def expr)
   TO
@@ -294,7 +275,7 @@
     (let (select.iter iter)
       {select.iter select.return def
         (continuation select.cont (select.next select.ctx select.x)
-          {select.next [cast select.cont] (matcher select.x expr select.ctx)})})))
+          {select.next [cast select.cont] (matcher select.x expr select.ctx)})}))>>
 
 (function select (l r)
   `:(with select.return
@@ -303,7 +284,7 @@
           (continuation select.cont (select.next select.ctx select.x)
             {select.next [cast select.cont] (,:[@fst l] select.x ,:[@frrrst l] select.ctx)})})):r)
 
-(ignore Creates an iterator from from (inclusive) to to (exclusive).)
+<<Creates an iterator from from (inclusive) to to (exclusive).>>
 
 (constrain range \:r:(?(a b c) (`(function ((continuation ((! iterator ,:a ,:b))) ,:a ,:a) ,:c)r)r))
 
@@ -323,7 +304,7 @@
       (cps {recv next ctx idx}
         (next (new-recv new-ctx) {count [cast new-recv] [+ idx step] new-ctx}))))})
 
-(ignore Zips the two given iterators into one that yields pairs of values.)
+<<Zips the two given iterators into one that yields pairs of values.>>
 
 (constrain zip \:r:(?(a b c d)
   (`(function ((continuation ((! iterator (! tuple- ,:a ,:d) ,:b))) (! iterator ,:a ,:b) (! iterator ,:d ,:b)) ,:c)r)r))
@@ -347,11 +328,10 @@
     (body4 (next4 ctx4 val4)
       {new-recv (continuation _(new-recv new-ctx) {[cast body2] next3 next4 new-recv new-ctx}) ctx4 (tuple val3 val4)})))})
 
-(ignore
-  Takes two lists of the same length and produces a list of pairs of which the first
+<<Takes two lists of the same length and produces a list of pairs of which the first
   element comes from the first list and the second element comes from the second list. a
   is the list from which the first elements of the zip will come from. b is the list from
-  which the second elements of the zip will come from.)
+  which the second elements of the zip will come from.>>
 
 (function meta.zip (a b r) (with return
   {(continuation aux (output a b)
@@ -359,9 +339,8 @@
       {aux [lst [llst [@fst a] [@fst b] emt r] output r] [@rst a] [@rst b]}
       {return [meta.reverse output r]})) emt a b}))
 
-(ignore
-  A macro to loop through all the given iterators at the same time. The syntax is as follows:
-  (for (v1 l1) (v2 l2) ... (vN lN) else expr) where l1, l2, ..., lN are iterators.)
+<<A macro to loop through all the given iterators at the same time. The syntax is as follows:
+  (for (v1 l1) (v2 l2) ... (vN lN) else expr) where l1, l2, ..., lN are iterators.>>
 
 (function for (s r)
   (let (bs [@rrst [meta.reverse s r]]) (body [@fst [meta.reverse s r]]) (else [@frst [meta.reverse s r]])
@@ -374,8 +353,7 @@
           `:(select ,:mat ,:ite ,:else ,:body):r
           {build [@rst bs] `:(tuple? .:,;[@ffst bs] ,:mat):r `:(%:zip ,:[@frfst bs] ,:ite):r}))))))
 
-(ignore
-  A macro to map an iterator to another iterator. Does the following transformation:
+<<A macro to map an iterator to another iterator. Does the following transformation:
   (map (x l) expr)
   TO
   (continuation map.cont (map.end map.ictx map.recv)
@@ -383,7 +361,7 @@
       (fold (map.acc (tuple map.recv map.ictx)) (x l)
         ((tuple? .:map.recv .:map.ictx) map.acc
           (cps {map.recv next map.ictx expr}
-            (next (new-recv new-ctx) (tuple [cast new-recv] new-ctx))) (ignore))) {map.end map.ictx} (ignore))))
+            (next (new-recv new-ctx) (tuple [cast new-recv] new-ctx))) (~))) {map.end map.ictx} (~)))>>
 
 (function map (l r)
   `:(continuation map.cont (map.end map.ictx map.recv)
@@ -391,4 +369,4 @@
       (fold (map.acc (tuple map.recv map.ictx)) (,:[@ffst l] ,:[@frfst l])
         ((tuple? .:map.recv .:map.ictx) map.acc
           (cps {map.recv next map.ictx ,:[@frst l]}
-            (next (new-recv new-ctx) (tuple [cast new-recv] new-ctx))) (ignore))) {map.end map.ictx} (ignore))):r)
+            (next (new-recv new-ctx) (tuple [cast new-recv] new-ctx))) (~))) {map.end map.ictx} (~))):r)
