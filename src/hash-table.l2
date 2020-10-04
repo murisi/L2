@@ -42,7 +42,7 @@
 
 (function ht-resize (ht buf hdl)
   (sub (.. buf hdl)
-    (if [> [* (@ ht-element-count ht) (ht-load-factor-den)] [* (@ ht-bucket-count ht) (ht-load-factor-num)]]
+    (if [gt [* (@ ht-element-count ht) (ht-load-factor-den)] [* (@ ht-bucket-count ht) (ht-load-factor-num)]]
       (let (new-bucket-count [* (@ ht-bucket-count ht) (ht-resize-factor)])
       (let (new-values [region-alloc [* new-bucket-count(unit)] ..]) (do
         (for (i (%:range #:0 new-bucket-count)) (ignore) [set (loc(unit)i new-values) nil])
@@ -146,7 +146,7 @@
   Puts all the given associations into the given hash table. Does the following
   transformation.
   (ht-putall (ht ..) (k1 v1) (k2 v2) ... (kN vN))
-  ->
+  TO
   [ht-put kN vN [... [ht-put k2 v2 [ht-put k1 v1 ht ..] ..] ...] ..])
 
 (function ht-putall (l r)
@@ -157,7 +157,7 @@
 (ignore
   Find a value under the given key in the given hash table satisfying the given predicate:
   (ht-find (value key ht) expr)
-  ->
+  TO
   (let (ht-find.key key) (ht-find.ht ht)
   (let (ht-find.bucket-idx [rem [(@ ht-hash-func ht-find.ht) ht-find.key] (@ ht-bucket-count ht-find.ht)])
   (let (ht-find.bucket ($(loc(unit)ht-find.bucket-idx(@ ht-values ht-find.ht))))
@@ -187,9 +187,9 @@
   (loop do-hash (i #:0) (h #:0)
     (let (ch [getb [+ str i]])
       (if ch
-        (let (h [+ [<< h #:4] ch])
+        (let (h [+ [shl h #:4] ch])
         (let (g [band h 0x:F0000000])
-        (let (h (if g [bxor h [>> g #:24]] h))
+        (let (h (if g [bxor h [shr g #:24]] h))
         (let (h [band h [bnot g]])
           {do-hash [+ i #:1] h})))) h))))
 

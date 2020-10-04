@@ -18,10 +18,10 @@
 .global divide
 .global rem
 .global equals
-.global greaterthan
-.global lesserthan
-.global leftshift
-.global rightshift
+.global gt
+.global lt
+.global shl
+.global shr
 .global band
 .global bor
 .global bnot
@@ -114,25 +114,25 @@ subq %rsi, %rdi
 setz %al
 ret
 
-greaterthan:
+gt:
 xorq %rax, %rax
 subq %rdi, %rsi
 setc %al
 ret
 
-lesserthan:
+lt:
 xorq %rax, %rax
 subq %rsi, %rdi
 setc %al
 ret
 
-leftshift:
+shl:
 movq %rdi, %rax
 movq %rsi, %rcx
 shl %cl, %rax
 ret
 
-rightshift:
+shr:
 movq %rdi, %rax
 movq %rsi, %rcx
 shr %cl, %rax

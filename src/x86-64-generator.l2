@@ -24,9 +24,9 @@
 
 (ignore Looks up the (non-register) memory storage associated with a given context.)
 
-(constrain context->memory-storage \:r:(`(function (bndg-context) bndg-storage)r))
+(constrain context-to-memory-storage \:r:(`(function (bndg-context) bndg-storage)r))
 
-(function context->memory-storage (context)
+(function context-to-memory-storage (context)
   (switch = context
     ((intra-function-context) (frame-relative-storage))
     ((extra-function-context) (absolute-storage))
@@ -63,16 +63,16 @@
       (if $:[expr-escapes n]
         (let (offset [- offset [* [length $:[expr-parameters n]] (word-size)]]) (do
           (for (offset (%:range-from offset (word-size))) (t (%:list-iter $:[expr-parameters n])) (ignore) (do
-            (setf bndg-preferred-storage t [context->memory-storage (@ bndg-context t)])
+            (setf bndg-preferred-storage t [context-to-memory-storage (@ bndg-context t)])
             (setf bndg-preferred-offset t offset)
             (setf bndg-size t (word-size))))
           (let (cont-bndg $:[expr-reference n]) (offset [- offset (cont-size)]) (do
-          (setf bndg-storage cont-bndg [context->memory-storage (@ bndg-context cont-bndg)])
+          (setf bndg-storage cont-bndg [context-to-memory-storage (@ bndg-context cont-bndg)])
           (setf bndg-size cont-bndg (cont-size))
           (setf bndg-offset cont-bndg offset)
           [place-perm-bindings $:[expr-expression n] offset]))))
         (let (cont-bndg $:[expr-reference n]) (do
-          (setf bndg-storage cont-bndg [context->memory-storage (@ bndg-context cont-bndg)])
+          (setf bndg-storage cont-bndg [context-to-memory-storage (@ bndg-context cont-bndg)])
           (setf bndg-size cont-bndg #:0)
           (setf bndg-offset cont-bndg offset)
           [place-perm-bindings $:[expr-expression n] offset]))))
@@ -82,11 +82,11 @@
       (let (offset [- offset storage-size]) (do
       (setf bndg-size (@ expr-storage-reference (& expr-storage n)) storage-size)
       (setf bndg-offset (@ expr-storage-reference (& expr-storage n)) offset)
-      (setf bndg-storage (@ expr-storage-reference (& expr-storage n)) [context->memory-storage (@ bndg-context (@ expr-storage-reference (& expr-storage n)))])
+      (setf bndg-storage (@ expr-storage-reference (& expr-storage n)) [context-to-memory-storage (@ bndg-context (@ expr-storage-reference (& expr-storage n)))])
       (for (offset (%:range-from offset (word-size))) (u (%:list-iter (@ expr-storage-arguments (& expr-storage n)))) (ignore) (do
         (setf bndg-size (@ expr-binding-aug u) (word-size))
         (setf bndg-preferred-offset (@ expr-binding-aug u) offset)
-        (setf bndg-preferred-storage (@ expr-binding-aug u) [context->memory-storage (@ bndg-context (@ expr-binding-aug u))])))
+        (setf bndg-preferred-storage (@ expr-binding-aug u) [context-to-memory-storage (@ bndg-context (@ expr-binding-aug u))])))
       (fold (offset offset) (u (%:list-iter (@ expr-storage-arguments (& expr-storage n)))) [place-perm-bindings u offset])))))
     
     offset))
@@ -99,7 +99,7 @@
 
 (function register-in-use? (reg reg-use-vec)
   (let (reg-idx [band reg 0x:F])
-  (if [band [<< #:1 reg-idx] reg-use-vec] (true) (false))))
+  (if [band [shl #:1 reg-idx] reg-use-vec] (true) (false))))
 
 (ignore
   Takes a binding, a register to assign it to, and a bit-vector indicating the registers
@@ -118,14 +118,14 @@
     ((register-storage)
       (let (reg (@ bndg-preferred-offset bndg))
       (let (reg-idx [band reg 0x:F])
-      (let (reg-occupied? [band [<< #:1 reg-idx] in-use])
+      (let (reg-occupied? [band [shl #:1 reg-idx] in-use])
       (if (or reg-occupied? [= reg (none)])
         in-use
         (do
           (setf bndg-size bndg (word-size))
           (setf bndg-storage bndg (register-storage))
           (setf bndg-offset bndg reg)
-          [bor [<< #:1 reg-idx] in-use]))))))
+          [bor [shl #:1 reg-idx] in-use]))))))
           
     (ignore)))
 
@@ -145,7 +145,7 @@
   (if [= in-use 0x:FFFFFFFFFFFFFFFF]
     (do
       (setf bndg-size bndg (word-size))
-      (setf bndg-storage bndg [context->memory-storage (@ bndg-context bndg)])
+      (setf bndg-storage bndg [context-to-memory-storage (@ bndg-context bndg)])
       (setf bndg-offset bndg offset)
       in-use)
     (do
@@ -155,7 +155,7 @@
         (loop search (i #:0)
           (let (test-reg ($(loc (unit) i binding-to-register/memory-prefs)))
             (if [register-in-use? test-reg in-use] {search [+ i #:1]} test-reg))))
-      (let (new-in-use [bor in-use [<< #:1 [band free-register 0x:0F]]]) (do
+      (let (new-in-use [bor in-use [shl #:1 [band free-register 0x:0F]]]) (do
       (setf bndg-offset bndg free-register)
       new-in-use))))))
 
@@ -171,17 +171,17 @@
 
 (function expr-assigned? (expr) [bndg-assigned? (@ expr-binding-aug expr)])
 
-(constrain initializer->function
+(constrain initializer-to-function
   \:r:(?(a b c d) `:(function (initializer)
     (function ((expr ,:a) ,:b (list initializer) (values ,:b reg-use-vec) region ,:d) ,:c)):r r))
 
-(function initializer->function (x) [cast x])
+(function initializer-to-function (x) [cast x])
 
-(constrain function->initializer
+(constrain function-to-initializer
   \:r:(?(a b c d) `:(function
     ((function ((expr ,:a) ,:b (list initializer) (values ,:b reg-use-vec) region ,:d) ,:c)) initializer):r r))
 
-(function function->initializer (x) [cast x])
+(function function-to-initializer (x) [cast x])
 
 (constrain initialize-expressions
   \:r:(?(a b c d e)
@@ -198,11 +198,11 @@
   (for (u (%:list-iter exprs)) (ignore) (setf bndg-storage (@ expr-binding-aug u) (nil-storage)))
   (for (u (%:list-iter bndgs)) (ignore) (setf bndg-storage u (nil-storage)))
   (let (in-use (fold (in-use in-use) (u (%:list-iter exprs))
-    (if (and [> [expr-binding-depth u] depth] (@ bndg-is-read (@ expr-binding-aug u)))
+    (if (and [gt [expr-binding-depth u] depth] (@ bndg-is-read (@ expr-binding-aug u)))
       [try-expr-to-preferred-location u in-use]
       in-use)))
   (let (in-use (fold (in-use in-use) (u (%:list-iter bndgs))
-    (if (and [>= [bndg-depth u] depth] (@ bndg-is-read u))
+    (if (and [ge [bndg-depth u] depth] (@ bndg-is-read u))
       [try-bndg-to-preferred-location u in-use]
       in-use)))
   (let (in-use
@@ -211,7 +211,7 @@
         in-use
         (let (v [@car u])
           {assign-args [+ offset (word-size)]
-            (if (and [> [expr-binding-depth v] depth] (not [expr-assigned? v]) (@ bndg-is-read (@ expr-binding-aug v)))
+            (if (and [gt [expr-binding-depth v] depth] (not [expr-assigned? v]) (@ bndg-is-read (@ expr-binding-aug v)))
               [expr-to-register/memory v offset in-use]
               in-use) [@cdr u]}))))
   (let (in-use
@@ -220,7 +220,7 @@
         in-use
         (let (v [@car u])
           {assign-args [+ offset (word-size)]
-            (if (and [>= [bndg-depth v] depth] (not [bndg-assigned? v]) (@ bndg-is-read v))
+            (if (and [ge [bndg-depth v] depth] (not [bndg-assigned? v]) (@ bndg-is-read v))
               [binding-to-register/memory v offset in-use]
               in-use) [@cdr u]}))))
   (values (use-storage ret-val) bottom-offset in-use)))))) (ignore))))
@@ -235,7 +235,7 @@
       (body-val-bndg (@ expr-binding-aug (@ expr-function-expression (& expr-function n))))
       (after-binding [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope) (defined-state) empty-string null-fragment null-expr ..]) (do
     
-    [prepend(make-instrN(x86-lea)([bndg->op expr-val-bndg relocs ..][bndg->op ref-val-bndg relocs ..][make-reg-op(r11)..])..) c ..]
+    [prepend(make-instrN(x86-lea)([bndg-to-op expr-val-bndg relocs ..][bndg-to-op ref-val-bndg relocs ..][make-reg-op(r11)..])..) c ..]
     [prepend (make-instrN (x86-jmp)([make-relative-relocation-immediate #:4 after-binding relocs ..])..) c ..]
     [prepend [make-label ref-val-bndg ..] c ..]
     [prepend (make-instrN(x86-push)([make-reg-op (rbp) ..])..) c ..]
@@ -252,24 +252,24 @@
           (ignore)))))
      
     (ignore Move first 6 parameters to their slots)
-    (and [> [length (@ expr-function-parameters (& expr-function n))] #:0] (do
+    (and [gt [length (@ expr-function-parameters (& expr-function n))] #:0] (do
       [generate-bndg-register-move [@car(@ expr-function-parameters (& expr-function n))] (rdi) c relocs ..]
-    (and [> [length (@ expr-function-parameters (& expr-function n))] #:1] (do
+    (and [gt [length (@ expr-function-parameters (& expr-function n))] #:1] (do
       [generate-bndg-register-move [@cadr(@ expr-function-parameters (& expr-function n))] (rsi) c relocs ..]
-    (and [> [length (@ expr-function-parameters (& expr-function n))] #:2] (do
+    (and [gt [length (@ expr-function-parameters (& expr-function n))] #:2] (do
       [generate-bndg-register-move [@caddr(@ expr-function-parameters (& expr-function n))] (rdx) c relocs ..]
-    (and [> [length (@ expr-function-parameters (& expr-function n))] #:3] (do
+    (and [gt [length (@ expr-function-parameters (& expr-function n))] #:3] (do
       [generate-bndg-register-move [@cadddr(@ expr-function-parameters (& expr-function n))] (rcx) c relocs ..]
-    (and [> [length (@ expr-function-parameters (& expr-function n))] #:4] (do
+    (and [gt [length (@ expr-function-parameters (& expr-function n))] #:4] (do
       [generate-bndg-register-move [@caddddr(@ expr-function-parameters (& expr-function n))] (r8) c relocs ..]
-    (and [> [length (@ expr-function-parameters (& expr-function n))] #:5]
+    (and [gt [length (@ expr-function-parameters (& expr-function n))] #:5]
       [generate-bndg-register-move [@cadddddr(@ expr-function-parameters (& expr-function n))] (r9) c relocs ..])))))))))))
     
     (let (rem-offset [* #:2(word-size)])
-    (let (rem-params (if [>= [length (@ expr-function-parameters (& expr-function n))] #:6] [@cddddddr (@ expr-function-parameters (& expr-function n))] nil))
+    (let (rem-params (if [ge [length (@ expr-function-parameters (& expr-function n))] #:6] [@cddddddr (@ expr-function-parameters (& expr-function n))] nil))
     (fold (offset rem-offset) (u (%:list-iter rem-params)) (do
       [prepend (make-instrN(x86-mov)
-        ([bndg->op u relocs ..][make-mem-op(word-size)(rbp)(none)#:0 offset #:4 ..][make-reg-op(r11)..])..) c ..]
+        ([bndg-to-op u relocs ..][make-mem-op(word-size)(rbp)(none)#:0 offset #:4 ..][make-reg-op(r11)..])..) c ..]
       [+ offset (word-size)]))))
     
     (ignore Execute the function body)
@@ -302,7 +302,7 @@
           {set-prefs [@cdr rem-params] [+ i #:1]}))))
     
     (let (rem-offset [* #:2(word-size)])
-    (let (rem-params (if [>= [length (@ expr-function-parameters (& expr-function n))] #:6] [@cddddddr (@ expr-function-parameters (& expr-function n))] nil))
+    (let (rem-params (if [ge [length (@ expr-function-parameters (& expr-function n))] #:6] [@cddddddr (@ expr-function-parameters (& expr-function n))] nil))
     (loop assign-params (offset rem-offset) (u rem-params)
       (if [nil? u] (ignore) (do
         (setf bndg-preferred-storage [@car u] (frame-relative-storage))
@@ -319,7 +319,7 @@
     (setf expr-frame-size (& expr-function n) frame-size)
     (for (t (%:list-iter (@ expr-function-parameters (& expr-function n)))) (ignore) (setf bndg-size t (word-size)))) (ignore))
     (setf bndg-size (@ expr-binding-aug n) (word-size))
-    (setf expr-generator n [function->generator generate-function])
+    (setf expr-generator n [function-to-generator generate-function])
     (values (use-storage ret-val) offset 0x:0000000000000800)
     (true))))
 
@@ -329,13 +329,13 @@
   (sub (.. r handler) (let
       (cont-val-bndg $:[expr-reference n])
       (cont-instr-bndg $:[expr-instr-bndg n]) (do
-    [prepend (make-instrN (x86-lea) ([make-reg-op (r11) ..] [bndg->op cont-val-bndg relocs ..]) ..) c ..]
+    [prepend (make-instrN (x86-lea) ([make-reg-op (r11) ..] [bndg-to-op cont-val-bndg relocs ..]) ..) c ..]
     [prepend (make-instrN (x86-mov) ([make-mem-op(word-size)(r11)(none)#:0(cont-rbx)#:4 ..] [make-reg-op (rbx) ..]) ..) c ..]
     [prepend (make-instrN (x86-mov) ([make-mem-op(word-size)(r11)(none)#:0(cont-r12)#:4 ..] [make-reg-op (r12) ..]) ..) c ..]
     [prepend (make-instrN (x86-mov) ([make-mem-op(word-size)(r11)(none)#:0(cont-r13)#:4 ..] [make-reg-op (r13) ..]) ..) c ..]
     [prepend (make-instrN (x86-mov) ([make-mem-op(word-size)(r11)(none)#:0(cont-r14)#:4 ..] [make-reg-op (r14) ..]) ..) c ..]
     [prepend (make-instrN (x86-mov) ([make-mem-op(word-size)(r11)(none)#:0(cont-r15)#:4 ..] [make-reg-op (r15) ..]) ..) c ..]
-    [prepend (make-instrN (x86-lea) ([make-mem-op(word-size)(r11)(none)#:0(cont-cir)#:4 ..] [bndg->op cont-instr-bndg relocs ..] [make-reg-op (r10) ..]) ..) c ..]
+    [prepend (make-instrN (x86-lea) ([make-mem-op(word-size)(r11)(none)#:0(cont-cir)#:4 ..] [bndg-to-op cont-instr-bndg relocs ..] [make-reg-op (r10) ..]) ..) c ..]
     [prepend (make-instrN (x86-mov) ([make-mem-op(word-size)(r11)(none)#:0(cont-rbp)#:4 ..] [make-reg-op (rbp) ..]) ..) c ..]))))
 
 (constrain generate-continuation
@@ -347,7 +347,7 @@
       (expr-val-bndg (@ expr-binding-aug n))
       (after-binding [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope) (defined-state) empty-string null-fragment null-expr ..]) (do
     (if (@ expr-continuation-escapes (& expr-continuation n)) (do
-      [prepend (make-instrN(x86-lea)([bndg->op expr-val-bndg relocs ..][bndg->op cont-val-bndg relocs ..][make-reg-op (r11) ..]) ..) c ..]
+      [prepend (make-instrN(x86-lea)([bndg-to-op expr-val-bndg relocs ..][bndg-to-op cont-val-bndg relocs ..][make-reg-op (r11) ..]) ..) c ..]
       [generate-store-continuation n c relocs ..])
       (ignore))
     
@@ -364,7 +364,7 @@
     [initialize-expressions (storage-cons (@ expr-continuation-expression (& expr-continuation n)) nil) (@ expr-continuation-parameters (& expr-continuation n))
       offset 0x:FFFFFFFFFFFF0C38 (@ expr-depth n) inits ret-val buf hdl]
     (setf bndg-size (@ expr-binding-aug n) (word-size))
-    (setf expr-generator n [function->generator generate-continuation])
+    (setf expr-generator n [function-to-generator generate-continuation])
     (true))))
 
 (constrain generate-with
@@ -400,7 +400,7 @@
         (let (arg [@car (@ expr-jump-arguments (& expr-jump [@car rem-jumps]))])
           (if [= (@ expr-type arg) (-symbol-)]
             (let (repl-target (@ expr-symbol-reference (& expr-symbol arg)))
-              (if (and [= (@ bndg-mode repl-target) (value-mode)] [> [bndg-depth repl-target] (@ expr-depth n)] (not [bndg-escapes repl-target]))
+              (if (and [= (@ bndg-mode repl-target) (value-mode)] [gt [bndg-depth repl-target] (@ expr-depth n)] (not [bndg-escapes repl-target]))
                 [visit-expressions vreplace-value-bindings (storage _ (@ expr-with-expression (& expr-with n)))
                   (values storage repl-target [@car (@ expr-with-parameters (& expr-with n))])]
                 {search [@cdr rem-jumps]}))
@@ -410,7 +410,7 @@
       offset 0x:FFFFFFFFFFFF0C38 (@ expr-depth n) inits ret-val buf hdl]
     
     (setf bndg-size (@ expr-binding-aug n) (word-size))
-    (setf expr-generator n [function->generator generate-with])
+    (setf expr-generator n [function-to-generator generate-with])
     (true))))
 
 (constrain generate-storage
@@ -422,7 +422,7 @@
       (storage-val-bndg (@ expr-storage-reference (& expr-storage n))) (do
     (for (t (%:list-iter (@ expr-storage-arguments (& expr-storage n)))) (ignore) [generate-expression t c relocs ..])
     [prepend(make-instrN(x86-lea)
-      ([bndg->op expr-val-bndg relocs ..][bndg->op storage-val-bndg relocs ..][make-reg-op(r11) ..])..) c ..]))))
+      ([bndg-to-op expr-val-bndg relocs ..][bndg-to-op storage-val-bndg relocs ..][make-reg-op(r11) ..])..) c ..]))))
 
 (constrain initialize-storage \:r:(?(a b c d) `:(function ((expr ,:a) ,:b (list initializer) (values ,:b reg-use-vec) region ,:d) ,:c):r r))
 
@@ -430,7 +430,7 @@
   (and [= (@ expr-type n) (-storage-)] (do
     [initialize-expressions (@ expr-storage-arguments (& expr-storage n)) nil offset 0x:FFFFFFFFFFFF0C38 (@ expr-depth n) inits ret-val buf hdl]
     (setf bndg-size (@ expr-binding-aug n) (word-size))
-    (setf expr-generator n [function->generator generate-storage])
+    (setf expr-generator n [function-to-generator generate-storage])
     (true))))
 
 (constrain generate-buffer-to-dest
@@ -441,7 +441,7 @@
     (for (dest-offset (%:range-from offset (word-size))) (t (%:list-iter $:[expr-arguments n])) (ignore)
       (let (arg-val-bndg (@ expr-binding-aug t)) (do
         [prepend (make-instrN (x86-mov)
-          ([make-mem-op(word-size)dest-reg(none)#:0 dest-offset #:4 ..][bndg->op arg-val-bndg relocs ..][make-reg-op(r11)..]) ..) c ..]
+          ([make-mem-op(word-size)dest-reg(none)#:0 dest-offset #:4 ..][bndg-to-op arg-val-bndg relocs ..][make-reg-op(r11)..]) ..) c ..]
         (ignore))))))
 
 (constrain generate-load-continuation
@@ -523,7 +523,7 @@
       [initialize-expressions (storage-cons (@ expr-jump-target (& expr-jump n)) (@ expr-jump-arguments (& expr-jump n))) nil offset
         0x:FFFFFFFFFFFF0C30 (@ expr-depth n) inits ret-val buf hdl]))
     (setf bndg-size (@ expr-binding-aug n) (word-size))
-    (setf expr-generator n [function->generator generate-jump])
+    (setf expr-generator n [function-to-generator generate-jump])
     (true))))
 
 (constrain generate-invoke
@@ -540,31 +540,31 @@
       (ignore)
       [generate-expression (@ expr-invoke-target (& expr-invoke n)) c relocs ..])
     (for (t (%:list-iter (@ expr-invoke-arguments (& expr-invoke n)))) (ignore) [generate-expression t c relocs ..])
-    (for (t (%:list-iter [reverse (if [> [length (@ expr-invoke-arguments (& expr-invoke n))] #:6] [@cddddddr(@ expr-invoke-arguments (& expr-invoke n))] nil) ..])) (ignore)
+    (for (t (%:list-iter [reverse (if [gt [length (@ expr-invoke-arguments (& expr-invoke n))] #:6] [@cddddddr(@ expr-invoke-arguments (& expr-invoke n))] nil) ..])) (ignore)
       (let (src-val-bndg (@ expr-binding-aug t))
-        [prepend (make-instrN(x86-push) ([bndg->op src-val-bndg relocs ..]) ..) c ..]))
+        [prepend (make-instrN(x86-push) ([bndg-to-op src-val-bndg relocs ..]) ..) c ..]))
     
-    (and [> [length (@ expr-invoke-arguments (& expr-invoke n))] #:0] (do
+    (and [gt [length (@ expr-invoke-arguments (& expr-invoke n))] #:0] (do
       [generate-register-bndg-move (rdi) (@ expr-binding-aug [@car(@ expr-invoke-arguments (& expr-invoke n))]) c relocs ..]
-    (and [> [length (@ expr-invoke-arguments (& expr-invoke n))] #:1] (do
+    (and [gt [length (@ expr-invoke-arguments (& expr-invoke n))] #:1] (do
       [generate-register-bndg-move (rsi) (@ expr-binding-aug [@cadr(@ expr-invoke-arguments (& expr-invoke n))]) c relocs ..]
-    (and [> [length (@ expr-invoke-arguments (& expr-invoke n))] #:2] (do
+    (and [gt [length (@ expr-invoke-arguments (& expr-invoke n))] #:2] (do
       [generate-register-bndg-move (rdx) (@ expr-binding-aug [@caddr(@ expr-invoke-arguments (& expr-invoke n))]) c relocs ..]
-    (and [> [length (@ expr-invoke-arguments (& expr-invoke n))] #:3] (do
+    (and [gt [length (@ expr-invoke-arguments (& expr-invoke n))] #:3] (do
       [generate-register-bndg-move (rcx) (@ expr-binding-aug [@cadddr(@ expr-invoke-arguments (& expr-invoke n))]) c relocs ..]
-    (and [> [length (@ expr-invoke-arguments (& expr-invoke n))] #:4] (do
+    (and [gt [length (@ expr-invoke-arguments (& expr-invoke n))] #:4] (do
       [generate-register-bndg-move (r8) (@ expr-binding-aug [@caddddr(@ expr-invoke-arguments (& expr-invoke n))]) c relocs ..]
-    (and [> [length (@ expr-invoke-arguments (& expr-invoke n))] #:5]
+    (and [gt [length (@ expr-invoke-arguments (& expr-invoke n))] #:5]
       [generate-register-bndg-move (r9) (@ expr-binding-aug [@cadddddr(@ expr-invoke-arguments (& expr-invoke n))]) c relocs ..])))))))))))
     
     [prepend (make-instrN(x86-xor)([make-reg-op (rax) ..] [make-reg-op (rax) ..])..) c ..]
     (if (and [= (@ expr-type ref-expr) (-symbol-)] [absolute-reference-symbol? ref-expr])
       (let (ref-sym-bndg (@ expr-symbol-reference (& expr-symbol ref-expr)))
         [prepend (make-instrN(x86-call)([make-relative-relocation-immediate #:4 ref-sym-bndg relocs ..])..) c ..])
-      [prepend (make-instrN(x86-call)([bndg->op ref-val-bndg relocs ..])..) c ..])
+      [prepend (make-instrN(x86-call)([bndg-to-op ref-val-bndg relocs ..])..) c ..])
     [generate-bndg-register-move expr-val-bndg (rax) c relocs ..]
     
-    (if [> [length (@ expr-invoke-arguments (& expr-invoke n))] #:6]
+    (if [gt [length (@ expr-invoke-arguments (& expr-invoke n))] #:6]
       (let (drop [*(word-size)[-[length(@ expr-invoke-arguments (& expr-invoke n))]#:6]])
         [prepend (make-instrN(x86-add)([make-reg-op (rsp) ..] [make-imm-op #:4 drop ..])..) c ..])
       (ignore))))))
@@ -583,7 +583,7 @@
       [initialize-expressions (storage-cons (@ expr-invoke-target (& expr-invoke n)) (@ expr-invoke-arguments (& expr-invoke n))) nil offset
         0x:FFFFFFFFFFFF0031 (@ expr-depth n) inits ret-val buf hdl] (do
     (setf bndg-size (@ expr-binding-aug n) (word-size))
-    (setf expr-generator n [function->generator generate-invoke])
+    (setf expr-generator n [function-to-generator generate-invoke])
     (values (use-storage ret-val) bottom-offset [bor in-use 0x:FFFFFFFFFFFF0FF7])
     (true)) (ignore)))))
 
@@ -605,7 +605,7 @@
           [make-binding-aug (reference-mode) (extra-function-context) (absolute-storage) (local-scope) (defined-state) empty-string null-fragment null-expr ..]) (do
       
       [generate-expression (@ expr-condition (& expr-if n)) c relocs ..]
-      [prepend (make-instrN(x86-or)([bndg->op condition-val-bndg relocs ..][bndg->op condition-val-bndg relocs ..][make-reg-op(r11)..])..) c ..]
+      [prepend (make-instrN(x86-or)([bndg-to-op condition-val-bndg relocs ..][bndg-to-op condition-val-bndg relocs ..][make-reg-op(r11)..])..) c ..]
       [prepend (make-instrN (x86-jz) ([make-relative-relocation-immediate #:4 alternate-instr-bndg relocs ..]) ..) c ..]
       [prepend [make-label consequent-instr-bndg ..] c ..]
       [generate-expression (@ expr-consequent (& expr-if n)) c relocs ..]
@@ -626,7 +626,7 @@
       [initialize-expressions
         (storage-cons (@ expr-consequent (& expr-if n)) (storage-cons (@ expr-alternate (& expr-if n)) (storage-cons (@ expr-condition (& expr-if n)) nil)))
         nil offset 0x:FFFFFFFFFFFF0830 (@ expr-depth n) inits ret-val buf hdl]
-      (setf expr-generator n [function->generator generate-if])
+      (setf expr-generator n [function-to-generator generate-if])
       (setf bndg-size (@ expr-binding-aug n) (word-size))
       (true))))))
 
@@ -670,7 +670,7 @@
             (let (sub-if-bndg (@ expr-binding-aug sub-if))
             (if [= (@ bndg-condition-jump sub-if-bndg) (x86-nop)]
               (do
-                [prepend (make-instrN(x86-or)([bndg->op sub-if-bndg relocs ..][bndg->op sub-if-bndg relocs ..][make-reg-op(r11)..])..) c ..]
+                [prepend (make-instrN(x86-or)([bndg-to-op sub-if-bndg relocs ..][bndg-to-op sub-if-bndg relocs ..][make-reg-op(r11)..])..) c ..]
                 [prepend (make-instrN (x86-jz) ([make-relative-relocation-immediate #:4 alternate-instr-bndg relocs ..]) ..) c ..])
               [prepend (make-instrN [negate-jump-condition (@ bndg-condition-jump sub-if-bndg)] ([make-relative-relocation-immediate #:4 alternate-instr-bndg relocs ..]) ..) c ..])))
           (let (sub-if-val-bndg (@ expr-binding-aug (@ expr-condition (& expr-if sub-if))))
@@ -679,7 +679,7 @@
             [generate-expression (@ expr-condition (& expr-if sub-if)) c relocs ..]
             (let (jmp-instr (if [= (@ bndg-condition-jump (@ expr-binding-aug (@ expr-condition (& expr-if sub-if)))) (x86-nop)]
               (do
-                [prepend (make-instrN(x86-or)([bndg->op sub-if-val-bndg relocs ..][bndg->op sub-if-val-bndg relocs ..][make-reg-op(r11)..])..) c ..]
+                [prepend (make-instrN(x86-or)([bndg-to-op sub-if-val-bndg relocs ..][bndg-to-op sub-if-val-bndg relocs ..][make-reg-op(r11)..])..) c ..]
                 (x86-jnz))
               (@ bndg-condition-jump (@ expr-binding-aug (@ expr-condition (& expr-if sub-if))))))
             
@@ -735,7 +735,7 @@
       [initialize-expressions
         (storage-cons (@ expr-consequent (& expr-if n)) (storage-cons (@ expr-alternate (& expr-if n)) conds))
         nil offset 0x:FFFFFFFFFFFF0830 (@ expr-depth n) inits ret-val buf hdl]
-      (setf expr-generator n [function->generator generate-optimized-if])
+      (setf expr-generator n [function-to-generator generate-optimized-if])
       (setf bndg-size (@ expr-binding-aug n) (word-size))
       (true)))))))
 
@@ -759,7 +759,7 @@
     [initialize-expressions (storage-cons (@ expr-constrain-expression (& expr-constrain n)) nil) nil offset
       0x:FFFFFFFFFFFF0830 (@ expr-depth n) inits ret-val buf hdl]
     (setf bndg-size (@ expr-binding-aug n) (word-size))
-    (setf expr-generator n [function->generator generate-constrain])
+    (setf expr-generator n [function-to-generator generate-constrain])
     (true))))
 
 (ignore
@@ -784,14 +784,14 @@
       (if [= (@ bndg-mode (@ expr-symbol-reference (& expr-symbol n))) (value-mode)]
         [generate-bndg-bndg-move expr-val-bndg symbol-val-bndg (r11) c relocs ..]
         [prepend (make-instrN(x86-lea)
-          ([bndg->op expr-val-bndg relocs ..][bndg->op symbol-val-bndg relocs ..][make-reg-op(r11)..])..) c ..])))))
+          ([bndg-to-op expr-val-bndg relocs ..][bndg-to-op symbol-val-bndg relocs ..][make-reg-op(r11)..])..) c ..])))))
 
 (constrain initialize-symbol \:r:(?(a b c d) `:(function ((expr ,:a) ,:b (list initializer) (values ,:b reg-use-vec) region ,:d) ,:c):r r))
 
 (function initialize-symbol (n offset inits ret-val buf hdl)
   (and [= (@ expr-type n) (-symbol-)] (do
     (setf bndg-size (@ expr-binding-aug n) (word-size))
-    (setf expr-generator n [function->generator generate-symbol])
+    (setf expr-generator n [function-to-generator generate-symbol])
     (values (use-storage ret-val) offset 0x:0000000000000800)
     (true))))
 
@@ -800,14 +800,14 @@
 
 (function generate-literal (n c relocs r handler) (sub (.. r handler)
   (let (expr-val-bndg (@ expr-binding-aug n)) (do
-    [prepend(make-instrN(x86-mov)([bndg->op expr-val-bndg relocs ..][make-imm-op #:8 (@ expr-value (& expr-literal n))..][make-reg-op (r11)..])..) c ..]))))
+    [prepend(make-instrN(x86-mov)([bndg-to-op expr-val-bndg relocs ..][make-imm-op #:8 (@ expr-value (& expr-literal n))..][make-reg-op (r11)..])..) c ..]))))
 
 (constrain initialize-literal \:r:(?(a b c d) `:(function ((expr ,:a) ,:b (list initializer) (values ,:b reg-use-vec) region ,:d) ,:c):r r))
 
 (function initialize-literal (n offset inits ret-val buf hdl)
   (and [= (@ expr-type n) (-literal-)] (do
     (setf bndg-size (@ expr-binding-aug n) (word-size))
-    (setf expr-generator n [function->generator generate-literal])
+    (setf expr-generator n [function-to-generator generate-literal])
     (values (use-storage ret-val) offset 0x:0000000000000800)
     (true))))
 
@@ -815,7 +815,7 @@
 
 (function initialize-expression (n offset inits ret-val buf hdl)
   (sub (.. buf hdl) (do (or
-    (fold (found? (false)) (init (%:list-iter inits)) (or found? [[initializer->function init] n offset inits ret-val ..]))
+    (fold (found? (false)) (init (%:list-iter inits)) (or found? [[initializer-to-function init] n offset inits ret-val ..]))
     [initialize-function n offset inits ret-val ..]
     [initialize-continuation n offset inits ret-val ..]
     [initialize-with n offset inits ret-val ..]
@@ -828,17 +828,17 @@
     [initialize-literal n offset inits ret-val ..])
     ret-val)))
 
-(constrain generator->function
+(constrain generator-to-function
   \:r:(?(a b c) `:(function (generator)
     (function ((expr ,:c) !:Ref:(list instr) !:Ref:(list reloc) region ,:a) ,:b)):r r))
 
-(function generator->function (x) [cast x])
+(function generator-to-function (x) [cast x])
 
-(constrain function->generator
+(constrain function-to-generator
   \:r:(?(a b c) `:(function
     ((function ((expr ,:c) !:Ref:(list instr) !:Ref:(list reloc) region ,:a) ,:b)) generator):r r))
 
-(function function->generator (x) [cast x])
+(function function-to-generator (x) [cast x])
 
 (constrain make-absolute-relocation-immediate
   \:r:(?(a b c) `:(function (,:a ,:b bndg-aug !:Ref:(list reloc) region ,:c) operand):r r))
@@ -881,9 +881,9 @@
       (setf instr-binding lbl bndg)
       lbl))))
 
-(constrain bndg->partial-op \:r:(?(a b) `:(function (,:b bndg-aug !:Ref:(list reloc) region ,:a) operand):r r))
+(constrain bndg-to-partial-op \:r:(?(a b) `:(function (,:b bndg-aug !:Ref:(list reloc) region ,:a) operand):r r))
 
-(function bndg->partial-op (op-size bndg relocs buf handler)
+(function bndg-to-partial-op (op-size bndg relocs buf handler)
   (sub (.. buf handler)
     (if [= (@ bndg-storage bndg) (nil-storage)]
       [make-none-op ..]
@@ -909,10 +909,10 @@
     
       (ignore)))))))
 
-(constrain bndg->op \:r:(?(a) `:(function (bndg-aug !:Ref:(list reloc) region ,:a) operand):r r))
+(constrain bndg-to-op \:r:(?(a) `:(function (bndg-aug !:Ref:(list reloc) region ,:a) operand):r r))
 
-(function bndg->op (bndg relocs buf handler)
-  [bndg->partial-op (@ bndg-size bndg) bndg relocs buf handler])
+(function bndg-to-op (bndg relocs buf handler)
+  [bndg-to-partial-op (@ bndg-size bndg) bndg relocs buf handler])
 
 (constrain bndg= \:r:(?(a) `:(function (bndg-aug bndg-aug) ,:a):r r))
 
@@ -928,7 +928,7 @@
   (sub (.. r handler)
     (if [bndg= dst src]
       (ignore)
-      [prepend (make-instrN(x86-mov)([bndg->op dst relocs ..][bndg->op src relocs ..][make-reg-op tmp ..])..) c ..])))
+      [prepend (make-instrN(x86-mov)([bndg-to-op dst relocs ..][bndg-to-op src relocs ..][make-reg-op tmp ..])..) c ..])))
 
 (constrain generate-register-bndg-move
   \:r:(?(a b) `:(function (register bndg-aug !:Ref:(list instr) !:Ref:(list reloc) region ,:a) ,:b):r r))
@@ -937,7 +937,7 @@
   (sub (.. r handler)
     (if (and [= (@ bndg-storage src) (register-storage)] [= dst (@ bndg-offset src)])
       (ignore)
-      [prepend (make-instrN(x86-mov)([make-reg-op dst ..][bndg->op src relocs ..])..) c ..])))
+      [prepend (make-instrN(x86-mov)([make-reg-op dst ..][bndg-to-op src relocs ..])..) c ..])))
 
 (constrain generate-bndg-register-move
   \:r:(?(a b) `:(function (bndg-aug register !:Ref:(list instr) !:Ref:(list reloc) region ,:a) ,:b):r r))
@@ -946,14 +946,14 @@
   (sub (.. r handler)
     (if (and [= (@ bndg-storage dst) (register-storage)] [= src (@ bndg-offset dst)])
       (ignore)
-      [prepend (make-instrN(x86-mov)([bndg->op dst relocs ..][make-reg-op src ..])..) c ..])))
+      [prepend (make-instrN(x86-mov)([bndg-to-op dst relocs ..][make-reg-op src ..])..) c ..])))
 
 (constrain generate-expression
   \:r:(?(a b c) `:(function ((expr ,:c) !:Ref:(list instr) !:Ref:(list reloc) region ,:a) ,:b):r r))
 
 (function generate-expression (n c relocs r handler)
   (sub (.. r handler)
-    [[generator->function (@ expr-generator n)] n c relocs ..]))
+    [[generator-to-function (@ expr-generator n)] n c relocs ..]))
 
 (constrain generate-program
   \:r:(?(a b c) `:(function ((list (expr ,:c)) ,:b region ,:a)

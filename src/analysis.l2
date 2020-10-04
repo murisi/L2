@@ -57,11 +57,11 @@
 
 (ignore Does the following optimizations:
   (if (if cond <zero literal> <non-zero literal>) <consequent> <alternate>)
-  ->
+  TO
   (if cond <alternate> <consequent>)
   AND
   (if (if cond <non-zero literal> <zero literal>) <consequent> <alternate>)
-  ->
+  TO
   (if cond <consequent> <alternate>))
 
 (constrain vswap-branches (\ r (?(a) (`(function ((expr ,:a) ()) (expr ,:a))r)r)))
@@ -86,9 +86,9 @@
     e))
 
 (ignore Does the following optimizations:
-  [... {expr1 ... exprN} ...] -> {expr1 ... exprN}
-  {... {expr1 ... exprN} ...} -> {expr1 ... exprN}
-  (if {expr1 ... exprN} cons alt) -> {expr1 ... exprN})
+  [... {expr1 ... exprN} ...] TO {expr1 ... exprN}
+  {... {expr1 ... exprN} ...} TO {expr1 ... exprN}
+  (if {expr1 ... exprN} cons alt) TO {expr1 ... exprN})
 
 (constrain vdominate-jumps (\ r (?(a) (`(function ((expr ,:a) ()) (expr ,:a))r)r)))
 
@@ -384,7 +384,7 @@
       (setf expr-lowlink s preorder)
       (for (t (%:list-iter (@ expr-dependencies s))) (ignore) (do
         [construct-sccs t [+ preorder #:1] stack sccs ..]
-        (if [< (@ expr-lowlink t) (@ expr-lowlink s)]
+        (if [lt (@ expr-lowlink t) (@ expr-lowlink s)]
           (setf expr-lowlink s (@ expr-lowlink t))
           (ignore))))
       [prepend s stack ..]
@@ -404,11 +404,11 @@
 (function occurs-in? (var val assigns)
   (let (eval [evaluate val assigns])
     (if [vbl? eval]
-      [vbl= var [frag->vbl eval]]
-    (if (or [i/f.token? eval] [nil? [frag->list eval]])
+      [vbl= var [frag-to-vbl eval]]
+    (if (or [i/f.token? eval] [nil? [frag-to-list eval]])
       (false)
-      (let (a [frag->list eval])
-        (or [occurs-in? var [@car a] assigns] [occurs-in? var [list->fragment [@cdr a]] assigns]))))))
+      (let (a [frag-to-list eval])
+        (or [occurs-in? var [@car a] assigns] [occurs-in? var [list-to-fragment [@cdr a]] assigns]))))))
 
 (constrain unify-var (\ r (?(a c) (`(function (vbl frag (hash-table vbl frag) region ,:c) ,:a)r)r)))
 
@@ -422,17 +422,17 @@
 (function unify (x y assigns buf hdl)
   (sub (.. buf hdl)
     (let (xl [evaluate x assigns]) (yl [evaluate y assigns])
-      (if (and [vbl? xl] [vbl? yl] [vbl= [frag->vbl xl] [frag->vbl yl]]) (true)
-      (if [vbl? xl] [unify-var [frag->vbl xl] yl assigns ..]
-      (if [vbl? yl] [unify-var [frag->vbl yl] xl assigns ..]
+      (if (and [vbl? xl] [vbl? yl] [vbl= [frag-to-vbl xl] [frag-to-vbl yl]]) (true)
+      (if [vbl? xl] [unify-var [frag-to-vbl xl] yl assigns ..]
+      (if [vbl? yl] [unify-var [frag-to-vbl yl] xl assigns ..]
       (if (and [i/f.token? xl] [i/f.token? yl])
-        [i/f.token= [fragment->token xl] [fragment->token yl]]
+        [i/f.token= [fragment-to-token xl] [fragment-to-token yl]]
       (if (or [i/f.token? xl] [i/f.token? yl]) (false)
-      (let (xl [frag->list xl]) (yl [frag->list yl])
+      (let (xl [frag-to-list xl]) (yl [frag-to-list yl])
         (if (and [emt?! xl] [emt?! yl]) (true)
         (if (or [emt?! xl] [emt?! yl]) (false)
           (and [unify [@car xl] [@car yl] assigns ..]
-            [unify [list->fragment [@cdr xl]] [list->fragment [@cdr yl]] assigns ..]))))))))))))
+            [unify [list-to-fragment [@cdr xl]] [list-to-fragment [@cdr yl]] assigns ..]))))))))))))
 
 (ignore
   The same function may be called with different type parameters in the same strongly connected
@@ -454,15 +454,15 @@
   (sub (.. buf handler)
     (switch = (@ expr-type e)
       ((-function-)
-        (let (params-signature [list->fragment [collect-list (map (x (%:list-iter (@ expr-function-parameters (& expr-function e)))) (@ bndg-signature x)) nil ..]]) (do
+        (let (params-signature [list-to-fragment [collect-list (map (x (%:list-iter (@ expr-function-parameters (& expr-function e)))) (@ bndg-signature x)) nil ..]]) (do
           [prepend [expr-signature e] [prepend [expr-signature e] lhss ..] ..]
-          [prepend [list->fragment [cons function-token [cons params-signature
+          [prepend [list-to-fragment [cons function-token [cons params-signature
             [cons [expr-signature (@ expr-function-expression (& expr-function e))] nil ..] ..] ..]] [prepend (@ bndg-signature (@ expr-function-reference (& expr-function e))) rhss ..] ..])))
       
       ((-continuation-)
-        (let (params-signature [list->fragment [collect-list (map (x (%:list-iter (@ expr-continuation-parameters (& expr-continuation e)))) (@ bndg-signature x)) nil ..]]) (do
+        (let (params-signature [list-to-fragment [collect-list (map (x (%:list-iter (@ expr-continuation-parameters (& expr-continuation e)))) (@ bndg-signature x)) nil ..]]) (do
           [prepend [expr-signature e] [prepend [expr-signature e] lhss ..] ..]
-          [prepend [list->fragment [cons continuation-token [cons params-signature nil ..] ..]]
+          [prepend [list-to-fragment [cons continuation-token [cons params-signature nil ..] ..]]
             [prepend (@ bndg-signature (@ expr-continuation-reference (& expr-continuation e))) rhss ..] ..])))
       
       ((-constrain-) (do
@@ -470,19 +470,19 @@
         [prepend [expr-signature (@ expr-constrain-expression (& expr-constrain e))] rhss ..]))
       
       ((-invoke-)
-        (let (params-signature [list->fragment [collect-list (map (arg (%:list-iter (@ expr-invoke-arguments (& expr-invoke e)))) [scoped-signature arg scc ..]) nil ..]]) (do
+        (let (params-signature [list-to-fragment [collect-list (map (arg (%:list-iter (@ expr-invoke-arguments (& expr-invoke e)))) [scoped-signature arg scc ..]) nil ..]]) (do
           [prepend [scoped-signature (@ expr-invoke-target (& expr-invoke e)) scc ..] lhss ..]
-          [prepend [list->fragment [cons function-token [cons params-signature [cons [expr-signature e] nil ..] ..] ..]] rhss ..])))
+          [prepend [list-to-fragment [cons function-token [cons params-signature [cons [expr-signature e] nil ..] ..] ..]] rhss ..])))
       
       ((-jump-)
-        (let (params-signature [list->fragment [collect-list (map (arg (%:list-iter (@ expr-jump-arguments (& expr-jump e)))) [scoped-signature arg scc ..]) nil ..]]) (do
+        (let (params-signature [list-to-fragment [collect-list (map (arg (%:list-iter (@ expr-jump-arguments (& expr-jump e)))) [scoped-signature arg scc ..]) nil ..]]) (do
           [prepend [scoped-signature (@ expr-jump-target (& expr-jump e)) scc ..] lhss ..]
-          [prepend [list->fragment [cons continuation-token [cons params-signature nil ..] ..]] rhss ..])))
+          [prepend [list-to-fragment [cons continuation-token [cons params-signature nil ..] ..]] rhss ..])))
       
       ((-with-)
-        (let (params-signature [list->fragment [cons [expr-signature e] nil ..]]) (do
+        (let (params-signature [list-to-fragment [cons [expr-signature e] nil ..]]) (do
           [prepend (@ bndg-signature (@ expr-with-reference (& expr-with e))) [prepend [expr-signature e] lhss ..] ..]
-          [prepend [list->fragment [cons continuation-token [cons params-signature nil ..] ..]]
+          [prepend [list-to-fragment [cons continuation-token [cons params-signature nil ..] ..]]
             [prepend [expr-signature (@ expr-with-expression (& expr-with e))] rhss ..] ..])))
       
       ((-if-)
@@ -510,12 +510,12 @@
     (for (expr (%:list-iter exprs)) (ignore) [construct-sccs expr #:1 stack sccs ..])
     
     (let (assigns [ht-create hash-ptr = ..])
-    (let (function-token [token->fragment [build-token [rstrcpy (" function) ..] ..]])
-    (let (continuation-token [token->fragment [build-token [rstrcpy (" continuation) ..] ..]])
+    (let (function-token [token-to-fragment [build-token [rstrcpy (" function) ..] ..]])
+    (let (continuation-token [token-to-fragment [build-token [rstrcpy (" continuation) ..] ..]])
     (for (scc (%:list-iter [reverse $:sccs ..])) (ignore)
       (let (lhss (storage _ nil)) (rhss (storage _ nil)) (do
         (for (e (%:list-iter scc)) (ignore) [generate-equations e scc function-token continuation-token lhss rhss ..])
-        (if [unify [list->fragment $:lhss] [list->fragment $:rhss] assigns ..] (ignore)
+        (if [unify [list-to-fragment $:lhss] [list-to-fragment $:rhss] assigns ..] (ignore)
           {handler (storage _ unification-error)})
         (for (e (%:list-iter scc)) (ignore) (do
           (setf bndg-signature (@ expr-binding-aug e) [recursive-evaluate [expr-signature e] assigns ..])
@@ -710,7 +710,7 @@
       (switch = (@ expr-type s)
         ((-meta-)
           (let (macro [cast [preprocessed-expression-address (@ expr-meta-target (& expr-meta s)) inits bindings buf buf2 handler]])
-            (cps [vgenerate-metas [build-expression [macro [list->fragment [@cdr [frag->list (@ expr-fragment s)]]] buf macro-err] s buf handler] ctx]
+            (cps [vgenerate-metas [build-expression [macro [list-to-fragment [@cdr [frag-to-list (@ expr-fragment s)]]] buf macro-err] s buf handler] ctx]
               (macro-err (msg) {handler (storage _ meta-expr-error msg)}))))
         
         ((-constrain-)

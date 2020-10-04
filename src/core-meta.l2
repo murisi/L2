@@ -75,7 +75,7 @@
 (ignore
   The following function makes macros that expand to a unique identifier. Does
   the following transformation:
-  ((token id)) -> jk344kjh)
+  ((token id)) TO jk344kjh)
 
 (function token (l r)
   `:(function ,:[@fst l] (l r)
@@ -87,7 +87,7 @@
 
 (ignore
   The following function provides an abbreviation for getting a value from a memory
-  address. It implements the transformation $:a -> [get a].)
+  address. It implements the transformation $:a TO [get a].)
 
 (function $ (var r) `:[get , var]:r)
 
@@ -206,7 +206,7 @@
   following transformation:
   
   (?(vars ...) expr region)
-  ->
+  TO
   (let (var0 [var region]) ... (varN [var region]) expr))
 
 (function ?(l r)
@@ -238,7 +238,7 @@
 (ignore
   The following macro does the following transformation:
   (sub (tkn1 repl1 ...) ... (tknN replN ...) frag)
-  ->
+  TO
   frag but with the fragments repl inserted in order at all the places that the token tkn
   occurred. An example usage is when the arguments a group of functions are called with
   have a common sublist.)
@@ -374,7 +374,7 @@
   in a certain order for type checking to pass. This macro does the following
   transformation:
   (record (id obj) (f1 v1) (f2 v2) ... (fN vN))
-  ->
+  TO
   (let (id obj) (setf fN (... (setf f2 (setf f1 id v1) v2) ...) vN)))
 
 (function record (l r)
@@ -402,7 +402,7 @@
   The following function is another helper function for creating properties.
   Performs the following transformation:
   (property name args ...)
-  ->
+  TO
   (function name (property.l property.r) [property-aux property.l property.r args ...]))
 
 (function property (l r)
@@ -436,7 +436,7 @@
         {aux [lst [meta.concat prefix [gentok r] r] labels r] [@rst list]})) emt list}))
 
 (ignore
-  Does the transformation (values storer arg1 arg2 ...) -> (storer values.stor arg1 arg2 ...).
+  Does the transformation (values storer arg1 arg2 ...) TO (storer values.stor arg1 arg2 ...).
   (values storer arg1 arg2 ...) has the type (values sig1 sig2 ...) where sigj is the signature
   of argj.)
 
@@ -488,7 +488,7 @@
 (ignore
   The following macro implements the following transformation:
   ((use-storage stor) use-stor arg1 arg2 ... argN)
-  ->
+  TO
   (let (use-stor stor) (do
     [set [+ use-stor [* #:0(unit)]] arg1]
     [set [+ use-stor [* #:1(unit)]] arg2]
@@ -508,7 +508,7 @@
                   [lst `:[set [+ ,:[@fst l] [* ,:[=# idx r] (unit)]] ,:[@fst identifiers]]:r sets r]})) r] r] r]):r r)))
 
 (ignore
-  Implements the transformations (@n expr) -> ($[+ expr [* #:n(unit)]]). Designed to
+  Implements the transformations (@n expr) TO ($[+ expr [* #:n(unit)]]). Designed to
   evaluate to the nth argument of a storage expression.)
 
 (function @0 (l r) (`($[+ (,[@fst l]) [* #:0(unit)]])r))
@@ -538,7 +538,7 @@
   to it. The following macro creates an appropriate tuple signature by do the
   following transformation:
   (tuple- t1 t2 ... tN)
-  ->
+  TO
   (continuation ((continuation (t1 t2 ... tN)))))
 
 (function tuple- (l r) `:(continuation ((continuation ,:l))):r)
@@ -546,7 +546,7 @@
 (ignore
   A macro to create a local tuple. Does the following transformation:
   (tuple val1 val2 ... valN)
-  ->
+  TO
   (continuation tuple.cont (tuple.target)
     {tuple.target val1 val2 ... valN}))
 
@@ -557,7 +557,7 @@
 (ignore
   A macro to match a local tuple. Does the following transformation:
   ((tuple? matcher1 matcher2 ... matcherN) obj consequent alternate)
-  ->
+  TO
   (with tuple?.ret
     {obj (continuation tuple?.cont (val1 val2 ... valN)
       {tuple?.ret
@@ -587,7 +587,7 @@
 (ignore
   A macro to turn a predicate into a branch expression. Does the following transformation:
   ((| (func arg1 arg2 ... argN)) obj consequent alternate)
-  ->
+  TO
   (if (func arg1 arg2 ... argN obj) consequent alternate))
 
 (function | (l r)
@@ -600,7 +600,7 @@
 (ignore
   A macro for capturing variables. Does the following transformation:
   (.:id val consequent alternate)
-  ->
+  TO
   (let (id val) consequent))
 
 (function . (l r)
@@ -612,7 +612,7 @@
   A macro for matching objects against certain properties. The macro does the following
   transformation:
   ((property? (prop1 matcher1) (prop2 matcher2) ... (propN matcherN)) obj consequent alternate)
-  ->
+  TO
   (let (property?.obj obj)
     (matcher1 (@ prop1 property?.obj)
       (matcher2 (@ prop2 property?.obj)
@@ -640,7 +640,7 @@
   A macro for matching objects to at least one of the given matchers. The macro does the
   following transformation:
   (or? (matcher1 matcher2 ... matcherN) obj consequent alternate)
-  ->
+  TO
   (let (or?.obj obj)
     (matcher1 or?.obj
       consequent
@@ -667,7 +667,7 @@
   A macro for matching objects to at least one of the given matchers. The macro does the
   following transformation:
   ((and? matcher1 matcher2 ... matcherN) obj consequent alternate)
-  ->
+  TO
   (let (and?.obj obj)
     (matcher1 and?.obj
       (matcher2 and?.obj
@@ -692,7 +692,7 @@
 
 (ignore
   ((guards? matcher guard) obj consequent alternate)
-  ->
+  TO
   (matcher obj (if guard consequent alternate) alternate))
 
 (function guards? (l r)
@@ -707,7 +707,7 @@
   produces a macro that takes a value matcher and produces a matcher macro for
   the given case of the union. Does the following transformation:
   ((((union eq tf) tv vf) vm) obj consequent alternate)
-  ->
+  TO
   (if [eq (@ tf obj) tv]
     (vm (& vf obj)
       consequent
@@ -735,7 +735,7 @@
   (bind-if cond (param1 param2 ... paramN)
     consequent
     alternate)
-  ->
+  TO
   (with bind-if.return (do
     (let
         (param1 (storage bind-if.temp (ignore)))
@@ -765,7 +765,7 @@
 (ignore
   A macro to keep the callee's stack frame alive. Does the following transformation:
   (%:func arg1 arg2 ... argN)
-  ->
+  TO
   (with percent.return [func percent.return arg1 arg2 ... argN]))
 
 (function % (l r)
@@ -776,7 +776,7 @@
 (ignore
   A macro to define C-style substitution macros. Does the following transformation:
   ((define id macro) frags ...)
-  ->
+  TO
   (macro frags ...))
 
 (function define (l r)
@@ -789,7 +789,7 @@
   a macro to execute an expression in the context of the aforementioned module.
   Does the following transformation:
   ((module (id1 val1) ... (idN valN)) expr)
-  ->
+  TO
   (use (id1 val1) ... (idN valN) expr))
 
 (function module (l r)
@@ -809,10 +809,10 @@
   transformation:
   ((method method-a (frag-a frag-b ... frag-z) (param-a param-b ... param-z) expr)
     arg-a arg-b ... arg-z)
-  ->
+  TO
   (function method-a (param-a param-b ... param-z)
     expr with substitutions
-      frag-a -> arg-a, frag-b -> arg-b, ..., frag-z -> arg-z))
+      frag-a TO arg-a, frag-b TO arg-b, ..., frag-z TO arg-z))
 
 (function method (l r)
   (let (name [@fst l]) (ct-params [@frst l]) (rt-params [@frrst l]) (body [@frrrst l])
@@ -829,7 +829,7 @@
     (id1 val1)
     ...
     (idN valN)) args ...) expr)
-  ->
+  TO
   (use
       (id1 <val1 with args ... substituted for params ...>)
       ...
@@ -852,7 +852,7 @@
     (id-b sig-b)
     ...
     (id-z sig-z)) module-a) expr)
-  ->
+  TO
   (with interface.ret
     (let (interface.cont (constrain (continuation interface.cont (id-a id-b ... id-z) {interface.ret expr})
         \:r:(let (var-a [var r]) (var-b [var r]) ... (var-z [var r])
@@ -879,7 +879,7 @@
   for avoiding unnecessary recompilations of the bodies of higher order macros.
   Does the following transformation:
   (closure (env1 ... envN) (arg1 ... argM) expr r)
-  ->
+  TO
   (let (closure.aux (function closure.aux (env1 ... envN arg1 ... argN) expr))
     `:(function closure.func (arg1 ... argN)
         [,:[qval closure.aux r] ,:[qval env1 r] ... ,:[qval envN r] arg1 ... argN]):r))
