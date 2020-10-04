@@ -1,4 +1,4 @@
-<<Compiles a program into a list of assembly expressions.>>
+(ignore Compiles a program into a list of assembly expressions.)
 
 (constrain compile-program
   (\ r (?(a b c) (`(function ((list (expr ,:c)) (list initializer) ,:b region region ,:a)
@@ -12,28 +12,29 @@
       (let (storage-offset
           (fold (storage-offset [- #:0 (word-size)]) (expr (%:list-ref-iter exprs)) (do
             [visit-expressions vfind-multiple-definitions expr handler]
-            [visit-expressions veliminate-constrain expr (~)]
-            [visit-expressions vswap-branches expr (~)]
-            [visit-expressions vdominate-jumps expr (~)]
+            [visit-expressions veliminate-constrain expr (ignore)]
+            [visit-expressions vswap-branches expr (ignore)]
+            [visit-expressions vdominate-jumps expr (ignore)]
             [classify-program-bindings $:expr]
-            [link-symbols $:expr (true) undefined-bindings global-bindings (~) ..]
-            <<[infer-types $:expr ..]>>
+            [link-symbols $:expr (true) undefined-bindings global-bindings (ignore) ..]
+            (ignore[infer-types $:expr ..])
             [escape-analysis $:expr (true) ..]
             [pre-visit-expressions vpropagate-expressions expr (values storage buf2 handler)]
             [assign-expr-is-reads $:expr]
             [place-perm-bindings $:expr storage-offset])))
-        (for (expr (%:list-iter exprs)) (~) (do
+        (for (expr (%:list-iter exprs)) (ignore) (do
           [assign-depths expr #:0]
           [initialize-expressions (storage-cons expr nil) nil [- storage-offset (word-size)]
-            #:0 #:0 inits (values storage (~)(~)) buf2 handler]
+            #:0 #:0 inits (values storage (ignore)(ignore)) buf2 handler]
           [setup-collect-static-bindings expr]
           [collect-static-bindings expr static-bindings ..])))
       ((values? .:instrs .:relocs .:func-secs) [generate-program exprs bind ..]
-        (values (use-storage outs) instrs relocs func-secs undefined-bindings $:static-bindings) (~))))))
+        (values (use-storage outs) instrs relocs func-secs undefined-bindings $:static-bindings) (ignore))))))
 
-<<Loads a program into memory and returns a handle to it. program is a program expression.
+(ignore
+  Loads a program into memory and returns a handle to it. program is a program expression.
   expr-buf is the region into which the results of compilation will be put. obj-buf is the
-  region into which the object code will be put. Return value is an object.>>
+  region into which the object code will be put. Return value is an object.)
 
 (constrain load-program (\ r (?(a b) (`(function ((list (expr ,:b)) (list initializer) region region ,:a) obj)r)r)))
 
@@ -44,11 +45,12 @@
       ((values? .:objdest .:objdest-sz) [write-elf asms relocs func-secs undefined-bindings static-bindings bind buf2 buf handler]
       (let (obj [load objdest objdest-sz buf handler]) (do
       [binding-offsets-to-addresses asms func-secs static-bindings obj buf handler]
-      obj)) (~)) (~)))))
+      obj)) (ignore)) (ignore)))))
 
-<<Behavior is the same as load-program, but with the following addition: bndgs is a map
+(ignore
+  Behavior is the same as load-program, but with the following addition: bndgs is a map
   of object bindings, and after the loading is done, the undefined bindings of the loaded
-  program will take on the addresses supplied in the list.>>
+  program will take on the addresses supplied in the list.)
 
 (constrain load-program-and-mutate
   (\ r (?(a b) (`(function ((list (expr ,:b)) (list initializer) (hash-table string bndg-aug) region region ,:a) obj)r)r)))
@@ -57,8 +59,8 @@
   (with-region buf2
     (let (obj [load-program exprs inits buf buf2 handler])
     (let (ms [mutable-bindings obj [ht-create hash-str str= buf2 handler] buf2 handler]) (do
-      (select (tuple? .:d-name .:d) (%:ht-iter ms) (~)
-        (if [ht-contains d-name bndgs (storage _ (~))] (~)
+      (select (tuple? .:d-name .:d) (%:ht-iter ms) (ignore)
+        (if [ht-contains d-name bndgs (storage _ (ignore))] (ignore)
           {handler (storage _ undefined-symbol-error d-name)}))
       [mutate-bindings obj bndgs]
       obj)))))
@@ -78,9 +80,10 @@
         [close fd handler]
         (if [= (@0 err) no-error] (values (use-storage outs) (@1 err) (@2 err)) {handler err}))))))
 
-<<Reads a list of expressions from a given file. fn is a string containing the filename.
+(ignore
+  Reads a list of expressions from a given file. fn is a string containing the filename.
   buf is the region into which the constructed expressions will be put. Return value is a
-  list of expressions.>>
+  list of expressions.)
 
 (constrain read-expressions (\ r (?(a b) (`(function (string region region ,:a) (list (expr ,:b)))r)r)))
 
@@ -93,13 +96,14 @@
       (loop cons-expr (exprs-end exprs-start)
         (if [read-ignore src-buf src-sz pos ..]
           {cons-expr [append [build-expression [read-fragment src-buf src-sz pos ..] null-expr ..] exprs-end ..]}
-          $:exprs-start)))) (~)))))
+          $:exprs-start)))) (ignore)))))
 
-(storage unsupported-intrinsics-error (~))
+(storage unsupported-intrinsics-error (ignore))
 
-<<Takes a list of L2 and object file names, loads their contents into memory, and links
+(ignore
+  Takes a list of L2 and object file names, loads their contents into memory, and links
   them together. The global symbols of the object code are then added to the list of
-  bindings.>>
+  bindings.)
 
 (constrain evaluate-files
   (\ r (?(a) (`(function ((list string) (list string) (list string) (hash-table string bndg-aug) region region ,:a) ())r)r)))
@@ -114,7 +118,7 @@
     (let (objects1 (fold (objects nil) (src (%:list-iter object-fns))
       ((values? .:obj-buf .:obj-sz) [read-to-buffer src bind ..]
       (let (obj [load obj-buf obj-sz ..])
-        (do [immutable-bindings obj bindings ..] [cons obj objects ..])) (~))))
+        (do [immutable-bindings obj bindings ..] [cons obj objects ..])) (ignore))))
     
     (let (objects2 (fold (objects objects1) (intrinsic-fn (%:list-iter intrinsic-fns))
       (switch str= intrinsic-fn
@@ -128,11 +132,11 @@
       all-exprs))))
     
     (loop add-bindings (objects objects2) (rem-exprs all-exprs)
-      (if [nil? rem-exprs] (~)
+      (if [nil? rem-exprs] (ignore)
         (let (obj [load-program [generate-metaprogram rem-exprs inits bindings buf2 buf buf2 handler] inits buf buf2 handler])
         (let (objects [cons obj objects ..]) (do
           [immutable-bindings obj bindings ..]
-          (for (obj (%:list-iter objects)) (~) [mutate-bindings obj bindings])
+          (for (obj (%:list-iter objects)) (ignore) [mutate-bindings obj bindings])
           {add-bindings objects [try-generate-metas rem-exprs inits bindings buf buf2 handler]})))))))))))
 
 (constrain compile-program-to-elf (\ r (?(a b) (`(function ((list (expr ,:b)) (list initializer) string region region ,:a) ())r)r)))
@@ -143,12 +147,13 @@
     ((values? .:objdest .:objdest-sz) [write-elf asms relocs func-secs undefined-bindings static-bindings bind buf2 buf handler]
     (let (fd [create outfn handler]) (do
     [print fd objdest objdest-sz handler]
-    [close fd handler])) (~)) (~))))
+    [close fd handler])) (ignore)) (ignore))))
 
-<<Takes a list of L2 source files and compiles them into object files. programs is a
+(ignore
+  Takes a list of L2 source files and compiles them into object files. programs is a
   list of strings containing paths to L2 source files. bndgs is a list of bindings
   pointing to the macros to be used during the meta-expression expansions. buf is the
-  region into which constructed expressions and object code will be put.>>
+  region into which constructed expressions and object code will be put.)
 
 (constrain compile-files
   (\ r (?(a) (`(function ((list string) (list string) (hash-table string bndg-aug) region region ,:a) ())r)r)))
@@ -168,27 +173,28 @@
             
       (let (all-exprs [reverse-flatten file-exprss ..])
         (let (undefined-bindings [ht-create hash-str str= ..]) (global-bindings [global-binding-augs-of all-exprs ..]) (do
-          (for (expr (%:list-iter all-exprs)) (~) [link-symbols expr (true) undefined-bindings global-bindings (~) ..])
+          (for (expr (%:list-iter all-exprs)) (ignore) [link-symbols expr (true) undefined-bindings global-bindings (ignore) ..])
           [infer-types all-exprs ..]
-          (for (expr (%:list-iter all-exprs)) (~) [pre-visit-expressions vunlink-symbols (storage _ expr) (values storage global-bindings ..)])
-          (for (expr (%:list-iter all-exprs)) (~) [pre-visit-expressions vunlink-symbols (storage _ expr) (values storage undefined-bindings ..)]))))
+          (for (expr (%:list-iter all-exprs)) (ignore) [pre-visit-expressions vunlink-symbols (storage _ expr) (values storage global-bindings ..)])
+          (for (expr (%:list-iter all-exprs)) (ignore) [pre-visit-expressions vunlink-symbols (storage _ expr) (values storage undefined-bindings ..)]))))
         
-      (for (infn (%:list-iter file-names)) (exprs (%:list-iter file-exprss)) (~)
+      (for (infn (%:list-iter file-names)) (exprs (%:list-iter file-exprss)) (ignore)
         [compile-program-to-elf exprs inits [rstrcat infn (" .o) buf2 handler] buf2 buf handler])
       
-      (for (intrinsic-fn (%:list-iter intrinsic-fns)) (~)
+      (for (intrinsic-fn (%:list-iter intrinsic-fns)) (ignore)
         (switch str= intrinsic-fn
           ((" arithmetic) [compile-program-to-elf [wrap-arithmetic-intrinsics ..] inits (" arithmetic.o) buf buf2 handler])
           {handler (storage _ unsupported-intrinsics-error intrinsic-fn)}))))))))
 
-(storage arguments-error (~))
+(storage arguments-error (ignore))
 
-(storage no-error (~))
+(storage no-error (ignore))
 
-<<This is where program execution starts. The following code essentially loads up and
+(ignore
+  This is where program execution starts. The following code essentially loads up and
   executes the code specified in the command line arguments and then compiles the
   separately specified code using the already loaded up functions as macros. It also
-  prints out the error messages if there are any.>>
+  prints out the error messages if there are any.)
 
 (fallthrough
     (let (buf [create-region #:0 exit-cont]) (buf2 [create-region #:0 exit-cont])
@@ -201,11 +207,11 @@
           (let (second-dash-ref (locate (arg intrinsic-fns) [str= arg (" -)]))
           (if [nil? $:second-dash-ref] {handler (storage _ arguments-error)}
           (let (object-fns (storage _ [@cdr $:second-dash-ref])) (do
-          <<Cut the source filenames and object filenames list short.>>
+          (ignore Cut the source filenames and object filenames list short.)
           [set first-dash-ref nil]
           [set second-dash-ref nil]
-          <<These are all the bindings necessary for metaprogramming. Their
-            definitions can be found in list.l2 and lexer.l2.>>
+          (ignore These are all the bindings necessary for metaprogramming. Their
+            definitions can be found in list.l2 and lexer.l2.)
           (let (bndgs (sub (.. buf handler) (ht-putall ([ht-create hash-str str= ..] ..)
             ((" -!-)[make-binding (" -!-)(tkn-char(char !))..]) ((" -!-)[make-binding (" -!-)(tkn-char(char !))..])
             ((" -"-)[make-binding (" -"-)(tkn-char(char "))..]) ((" -#-)[make-binding (" -#-)(tkn-char(char #))..])
@@ -255,9 +261,9 @@
             ((" emt)[make-binding (" emt) emt! ..]) ((" char=)[make-binding (" char=) i/f.char= ..])
             ((" var=)[make-binding (" var=) vbl= ..]) ((" var?)[make-binding (" var?) vbl? ..])
             ((" var)[make-binding (" var) vbl ..]) ((" gentok)[make-binding (" gentok) i/f.gentok ..])))) (do
-          <<Evaluate the metaprogram>>
+          (ignore Evaluate the metaprogram)
           [evaluate-files $:source-fns $:object-fns $:intrinsic-fns bndgs buf buf2 handler]
-          <<Compile the program in the metaprogram's environment>>
+          (ignore Compile the program in the metaprogram's environment)
           [compile-files $:source-fns $:intrinsic-fns bndgs buf buf2 handler]
           (storage _ no-error))))))))))))
         
@@ -330,7 +336,7 @@
               [print-fragment (@1 err) ..]
               [print-str (stdout) (" .(lf)) ..]))
             
-            (~))
+            (ignore))
             
           err)))
   

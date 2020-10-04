@@ -1,6 +1,6 @@
-<<x86-64 Linux specific constants.>>
+(ignore x86-64 Linux specific constants.)
 
-<<x86-64 Linux system-call numbers.>>
+(ignore x86-64 Linux system-call numbers.)
 
   (constant sys-read #:0 \:r:(` syscall-num r))
 
@@ -20,7 +20,7 @@
 
   (constant sys-clock-gettime #:228 \:r:(` syscall-num r))
 
-<<Linux open access modes.>>
+(ignore Linux open access modes.)
 
   (constant o-rdonly #:0 \:r:[var r])
 
@@ -30,7 +30,7 @@
 
   (constant o-creat #:64 \:r:[var r])
 
-<<Linux open file modes.>>
+(ignore Linux open file modes.)
 
   (constant s-irwxu #:448 \:r:[var r])
 
@@ -38,7 +38,7 @@
 
   (constant s-irwxo #:7 \:r:[var r])
 
-<<Valid memory protections for mappings.>>
+(ignore Valid memory protections for mappings.)
 
   (constant prot-read #:1 \:r:[var r])
 
@@ -48,7 +48,7 @@
 
   (constant prot-none #:0 \:r:[var r])
 
-<<Valid flags for mmap.>>
+(ignore Valid flags for mmap.)
 
   (constant map-private #:2 \:r:[var r])
 
@@ -72,39 +72,39 @@
 
 (constant alloc-alignment #:8 \:r:[var r])
 
-<<Layout of the header of our endogenous linked list of mmaped regions.>>
+(ignore Layout of the header of our endogenous linked list of mmaped regions.)
 
   (constant region-element #:48 \:r:[var r])
   
-  <<Contains reference to previous mmaped region. Is null-element otherwise.>>
+  (ignore Contains reference to previous mmaped region. Is null-element otherwise.)
   
   (property reg-prev-elt #:0 #:8 \:r:(`(! static~ region region)r))
 
-  <<Contains reference to next mmaped region. Is null-element otherwise.>>
+  (ignore Contains reference to next mmaped region. Is null-element otherwise.)
 
   (property reg-next-elt #:8 #:8 \:r:(`(! static~ region region)r))
 
-  <<Contains reference to last mmaped region in region. Field required to reduce allocation time.>>
+  (ignore Contains reference to last mmaped region in region. Field required to reduce allocation time.)
 
   (property reg-last-elt #:16 #:8 \:r:(`(! static~ region region)r))
 
-  <<Contains reference to next aligned free memory in region element.>>
+  (ignore Contains reference to next aligned free memory in region element.)
 
   (property reg-curr-pos #:24 #:8 \:r:(`(! static~ ,:[var r] region)r))
 
-  <<Contains reference to the end of the region element.>>
+  (ignore Contains reference to the end of the region element.)
 
   (property reg-end-pos #:32 #:8 \:r:(`(! static~ ,:[var r] region)r))
 
-  <<Contains magic debug value.>>
+  (ignore Contains magic debug value.)
 
   (property reg-magic-dbg #:40 #:8 \:r:(`(! static~ ,:[var r] region)r))
 
-<<Defined in assembly file that will be linked with this file.>>
+(ignore Defined in assembly file that will be linked with this file.)
 
 (constrain syscall (\ r (?(a b c d e f g) (`(function (syscall-num ,:a ,:b ,:c ,:d ,:e ,:f) ,:g)r)r)))
 
-(function exit (code) [syscall (sys-exit) code (~) (~) (~) (~) (~)])
+(function exit (code) [syscall (sys-exit) code (ignore) (ignore) (ignore) (ignore) (ignore)])
 
 (function memcpy (dest src n)
   (loop do-cpy (dest dest) (src src) (n n)
@@ -112,7 +112,7 @@
       (do
         [setb dest [getb src]]
         {do-cpy [+ dest #:1] [+ src #:1] [- n #:1]})
-      (~))))
+      (ignore))))
 
 (function memset (s c n)
   (loop do-set (s s) (n n)
@@ -120,22 +120,23 @@
       (do
         [setb s c]
         {do-set [+ s #:1] [- n #:1]})
-      (~))))
+      (ignore))))
 
 (function isspace (c) (switch = c
   ((space)(ff)(lf)(cr)(ht)(vt) (true))
   (false)))
 
-<<What follows is essentially wrappers for Linux syscalls. The only twist is that if the
+(ignore
+  What follows is essentially wrappers for Linux syscalls. The only twist is that if the
   actual syscall returns an error code, then these functions will follow the error
-  continuation instead of returning.>>
+  continuation instead of returning.)
 
-(storage file-access-error (~))
+(storage file-access-error (ignore))
 
 (constrain open (\ r (?(b) (`(function (string ,:b) fd)r)r)))
 
 (function open (path handler)
-  (let (ret [syscall (sys-open) path (o-rdonly) (~) (~) (~) (~)])
+  (let (ret [syscall (sys-open) path (o-rdonly) (ignore) (ignore) (ignore) (ignore)])
     (if (and [le [- #:0 #:4095] ret] [le ret [- #:0 #:1]])
       {handler (storage _ file-access-error path)}
       ret)))
@@ -143,7 +144,7 @@
 (constrain create (\ r (?(b) (`(function (string ,:b) fd)r)r)))
 
 (function create (path handler)
-  (let (ret [syscall (sys-open) path [bor (o-wronly) (o-creat)] [bor (s-irwxu) [bor (s-irwxg) (s-irwxo)]]  (~) (~) (~)])
+  (let (ret [syscall (sys-open) path [bor (o-wronly) (o-creat)] [bor (s-irwxu) [bor (s-irwxg) (s-irwxo)]]  (ignore) (ignore) (ignore)])
     (if (and [le [- #:0 #:4095] ret] [le ret [- #:0 #:1]])
       {handler (storage _ file-access-error path)}
       ret)))
@@ -151,7 +152,7 @@
 (constrain print (\ r (?(a b c e) (`(function (fd ,:a ,:b ,:c) ,:e)r)r)))
 
 (function print (fd d len handler)
-  (let (ret [syscall (sys-write) fd d len (~) (~) (~)])
+  (let (ret [syscall (sys-write) fd d len (ignore) (ignore) (ignore)])
     (if (and [le [- #:0 #:4095] ret] [le ret [- #:0 #:1]])
       {handler (storage _ file-access-error empty-string)}
       ret)))
@@ -167,16 +168,16 @@
 (constrain print-uint (\ r (?(a b e) (`(function (fd ,:a ,:b) ,:e)r)r)))
 
 (function print-uint (fd i handler)
-  (let (str (storage _ (~) (~) (~)))
+  (let (str (storage _ (ignore) (ignore) (ignore)))
     [print-str fd [dec-to-str i str] handler]))
 
 (constrain print-hex (\ r (?(a b e) (`(function (fd ,:a ,:b) ,:e)r)r)))
 
 (function print-hex (fd i handler)
   (let (j (storage _ #:16))
-  (let (str (storage _ (~) (~))) (do
+  (let (str (storage _ (ignore) (ignore))) (do
   (loop next-digit (i i)
-    (if [= i #:0] (~) (do
+    (if [= i #:0] (ignore) (do
       [setb [+ str $:j] [hex-to-char [rem i #:16]]]
       [set j [- $:j #:1]]
       {next-digit [/ i #:16]})))
@@ -192,14 +193,14 @@
   (\ r (?(a b h i) (`(function (fd ,:a ,:b ,:h) ,:i)r)r)))
 
 (function print-bytes (fd bs sz handler)
-  (for (i (%:range #:0 sz)) (~) (do
+  (for (i (%:range #:0 sz)) (ignore) (do
     [print-char fd [hex-to-char [shr [getb[+ bs i]] #:4]] handler]
     [print-char fd [hex-to-char [band [getb[+ bs i]] 0x:0F]] handler])))
 
 (constrain read (\ r (?(a b c e) (`(function (fd ,:a ,:b ,:c) ,:e)r)r)))
 
 (function read (fd buf cnt handler)
-  (let (ret [syscall (sys-read) fd buf cnt (~) (~) (~)])
+  (let (ret [syscall (sys-read) fd buf cnt (ignore) (ignore) (ignore)])
     (if (and [le [- #:0 #:4095] ret] [le ret [- #:0 #:1]])
       {handler (storage _ file-access-error empty-string)}
       ret)))
@@ -207,7 +208,7 @@
 (constrain close (\ r (?(a c) (`(function (fd ,:a) ,:c)r)r)))
 
 (function close (fd handler)
-  (let (ret [syscall (sys-close) fd (~) (~) (~) (~) (~)])
+  (let (ret [syscall (sys-close) fd (ignore) (ignore) (ignore) (ignore) (ignore)])
     (if (and [le [- #:0 #:4095] ret] [le ret [- #:0 #:1]])
       {handler (storage _ file-access-error empty-string)}
       ret)))
@@ -215,16 +216,16 @@
 (constrain size (\ r (?(a c) (`(function (fd ,:a) ,:c)r)r)))
 
 (function size (fd handler)
-  (let (statbuf (storage _ (~)(~)(~)(~)(~)(~)(~)(~)(~)
-    (~)(~)(~)(~)(~)(~)(~)(~)(~)))
-  (let (ret [syscall (sys-fstat) fd statbuf (~) (~) (~) (~)])
+  (let (statbuf (storage _ (ignore)(ignore)(ignore)(ignore)(ignore)(ignore)(ignore)(ignore)(ignore)
+    (ignore)(ignore)(ignore)(ignore)(ignore)(ignore)(ignore)(ignore)(ignore)))
+  (let (ret [syscall (sys-fstat) fd statbuf (ignore) (ignore) (ignore) (ignore)])
     (if (and [le [- #:0 #:4095] ret] [le ret [- #:0 #:1]])
       {handler (storage _ file-access-error empty-string)}
       [get [+ statbuf #:48]]))))
 
-(storage memory-access-error (~))
+(storage memory-access-error (ignore))
 
-<<Creates a new virtual address mapping of the size in bytes given at len.>>
+(ignore Creates a new virtual address mapping of the size in bytes given at len.)
 
 (function mmap (len handler)
   (let (ret [syscall (sys-mmap) #:0 len [bor (prot-read) (prot-write)] [bor (map-private) [bor (map-anonymous) (map-32bit)]] [bnot #:0] #:0])
@@ -232,11 +233,12 @@
       {handler (storage _ memory-access-error [- #:0 ret])}
       ret)))
 
-<<Deletes virtual address mappings coinciding with the range starting with the value at
-  ptr and having an extent of the value given at len.>>
+(ignore
+  Deletes virtual address mappings coinciding with the range starting with the value at
+  ptr and having an extent of the value given at len.)
 
 (function munmap (ptr len handler)
-  (let (ret [syscall (sys-munmap) ptr len (~) (~) (~) (~)])
+  (let (ret [syscall (sys-munmap) ptr len (ignore) (ignore) (ignore) (ignore)])
     (if (and [le [- #:0 #:4095] ret] [le ret [- #:0 #:1]])
       {handler (storage _ memory-access-error)}
       ret)))
@@ -245,10 +247,10 @@
 
 (constrain null-element (\ r (` region r)))
 
-(storage null-element (~))
+(storage null-element (ignore))
 
-<<Creates a new region with a minimum capacity in bytes given by the value at
-  min-capacity.>>
+(ignore Creates a new region with a minimum capacity in bytes given by the value at
+  min-capacity.)
 
 (constrain create-region (\ r (?(a b) (`(function (,:a ,:b) region)r)r)))
 
@@ -263,7 +265,8 @@
       (setf reg-magic-dbg reg 0x:DEADBEEFDEADBEEF)
       reg))))
 
-<<Allocates memory in the region at reg of an amount in bytes equal to the integer at len.>>
+(ignore
+  Allocates memory in the region at reg of an amount in bytes equal to the integer at len.)
 
 (constrain region-alloc (\ r (?(a b d) (`(function (,:a region ,:b) ,:d)r)r)))
 
@@ -281,7 +284,8 @@
   (setf reg-curr-pos new-last-elt [+(@ reg-curr-pos new-last-elt)len])
   [-(@ reg-curr-pos new-last-elt)len]))))
 
-<<The following macro implements the following transformation:
+(ignore
+  The following macro implements the following transformation:
   ((region-storage buf hdl) buf-storage arg1 arg2 ... argN)
   TO
   (let (buf-storage [region-alloc [* N(unit)] buf hdl]) (do
@@ -289,7 +293,7 @@
     [set [+ buf-storage [* #:1(unit)]] arg2]
     ...
     [set [+ buf-storage [* #(N-1)(unit)]] argN]
-    buf-storage))>>
+    buf-storage)))
 
 (function region-storage (region-storage.l region-storage.r)
   (`(function region-storage.temp (l r)
@@ -303,7 +307,8 @@
                 {make-set [@rst identifiers] [+ idx #:1]
                   [lst (`[set [+ (,[@fst l]) [* (,[=# idx r]) (unit)]] (,[@fst identifiers])]r) sets r]})) r] r] r]))r))region-storage.r))
 
-<<Frees the given reference and everything allocated afterwards in the given region.>>
+(ignore
+  Frees the given reference and everything allocated afterwards in the given region.)
 
 (constrain region-free (\ r (?(a b d) (`(function (,:a region ,:b) ,:d)r)r)))
 
@@ -318,25 +323,27 @@
         [munmap last-elt [- (@ reg-end-pos last-elt) last-elt] handler]
         {do-free prev-elt})))))
 
-<<A macro to ensure that allocated memory is freed. The following macro saves the supplied
+(ignore
+  A macro to ensure that allocated memory is freed. The following macro saves the supplied
   region's current position, evaluates the given expression, and then resets the region's
   position to the saved value. It is implemented by the following transformation:
   (with-region buf expr)
   TO
-  (let (with-region.position [region-alloc #:0 buf (~)])
+  (let (with-region.position [region-alloc #:0 buf (ignore)])
     (let (with-region.val expr) (do
-      [region-free with-region.position buf (~)]
-      with-region.val)))>>
+      [region-free with-region.position buf (ignore)]
+      with-region.val))))
 
 (function with-region (l r)
   (`(let (with-region.region (,[@car l]))
-      (let (with-region.position [region-alloc #:0 with-region.region (~)])
+      (let (with-region.position [region-alloc #:0 with-region.region (ignore)])
         (let (with-region.val (,[@cadr l])) (do
-          [region-free with-region.position with-region.region (~)]
+          [region-free with-region.position with-region.region (ignore)]
           with-region.val))))r))
 
-<<Releases the memory associated with the region reg. After a call to this function, it is
-  invalid to read or write data to the memory allocated on this region.>>
+(ignore
+  Releases the memory associated with the region reg. After a call to this function, it is
+  invalid to read or write data to the memory allocated on this region.)
 
 (constrain destroy-region (\ r (?(b) (`(function (region ,:b) ())r)r)))
 
@@ -345,11 +352,12 @@
     (let (next-reg (@ reg-next-elt reg)) (do
       [munmap reg [- (@ reg-end-pos reg) reg] handler]
       (if [= next-reg null-element]
-        (~)
+        (ignore)
         {do-destroy next-reg})))))
 
-<<Returns a list containing the the command line arguments. The returned list and its
-  dependencies will all reside in the region reg.>>
+(ignore
+  Returns a list containing the the command line arguments. The returned list and its
+  dependencies will all reside in the region reg.)
 
 (constrain argv (\ r (?(a) (`(function (region ,:a) (list string))r)r)))
 
@@ -368,18 +376,19 @@
         [close f handler]
         (if [= (@0 err) no-error] (@1 err) {handler err}))))))
 
-(storage time-error (~))
+(storage time-error (ignore))
 
 (constrain clock-gettime (\ r (?(a b) (`(function (,:a) ,:b)r)r)))
 
 (function clock-gettime (handler)
-  (let (t (storage _ (~)(~)))
-    (let (ret [syscall (sys-clock-gettime) (clock-process-cputime-id) t (~) (~) (~) (~)])
+  (let (t (storage _ (ignore)(ignore)))
+    (let (ret [syscall (sys-clock-gettime) (clock-process-cputime-id) t (ignore) (ignore) (ignore) (ignore)])
       (if (and [le [- #:0 #:4095] ret] [le ret [- #:0 #:1]])
         {handler (storage _ time-error)}
         [+ [* $:t #:1000000000] ($[+ t (unit)])]))))
 
-<<Times the execution of the given expression in nanoseconds and adds it
+(ignore
+  Times the execution of the given expression in nanoseconds and adds it
   to the given accumulator. This expression evaluates to the values of its
   inner expression. Does the following transformation:
   
@@ -389,7 +398,7 @@
     (let (time.start [clock-gettime time.handler])
       (let (time.val expr) (do
         [set+ acc [- [clock-gettime time.handler] time.start]]
-        time.val))))>>
+        time.val)))))
 
 (function time (l r)
   (`(let (time.handler (,[@frrst l]))

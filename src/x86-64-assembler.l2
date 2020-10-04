@@ -1,4 +1,4 @@
-<<The constants to be used in x86-64-assembler.l2>>
+(ignore The constants to be used in x86-64-assembler.l2)
 
 (constant write-elf-sh-count #:7 \:r:[var r])
 
@@ -6,7 +6,7 @@
 
 (constant write-elf-max-instr-len #:15 \:r:[var r])
 
-<<A representation of an object code relocation.>>
+(ignore A representation of an object code relocation.)
 
   (constant relocation #:40 \:r:[var r])
 
@@ -18,12 +18,13 @@
   
   (property reloc-context #:24 #:8 (\ r (`(! static~ (,[var r]) reloc)r)))
   
-  <<reloc-addend-func takes as its arguments context, operand location, operand size,
-    instruction location, instruction size, and computes an addend for the relocation.>>
+  (ignore
+    reloc-addend-func takes as its arguments context, operand location, operand size,
+    instruction location, instruction size, and computes an addend for the relocation.)
     
   (property reloc-addend-func #:32 #:8 (\ r (?(a b c d e f) (`(! static~ (function (,:f ,:b ,:c ,:d ,:e) ,:a) reloc)r)r)))
 
-<<A representation of an instruction.>>
+(ignore A representation of an instruction.)
 
   (constant instruction #:24 \:r:[var r])
 
@@ -33,7 +34,7 @@
   
   (property instr-binding #:16 #:8 (\ r (`(! static~ bndg-aug instr)r)))
 
-<<x86-64 instruction codes.>>
+(ignore x86-64 instruction codes.)
   
   (constant label #:33 \:r:(` instr-code r))
 
@@ -115,7 +116,7 @@
   
   (constant x86-ja #:57 \:r:(` instr-code r))
 
-<<A representation of an operand.>>
+(ignore A representation of an operand.)
   
   (constant operand #:64 \:r:[var r])
   
@@ -125,15 +126,15 @@
   
   (property op-locations #:16 #:8 (\ r (?(a b c d) (`(! static~ (list (values ,:a ,:b ,:c ,:d)) operand)r)r)))
 
-<<Only for type(s) (register-operand)>>
+(ignore Only for type(s) (register-operand))
 
   (property op-register #:24 #:8 (\ r (`(! static~ register operand)r)))
 
-<<Only for type(s) (immediate-operand)>>
+(ignore Only for type(s) (immediate-operand))
 
   (property op-immediate #:24 #:8 (\ r (`(! static~ (,[var r]) operand)r)))
 
-<<Only for type(s) (memory-operand)>>
+(ignore Only for type(s) (memory-operand))
 
   (property op-base #:24 #:8 \:r:(`(! static~ register operand)r))
   
@@ -145,7 +146,7 @@
   
   (property op-disp-size #:56 #:8 \:r:(`(! static~ ,:[var r] operand)r))
 
-<<x86-64 operand types.>>
+(ignore x86-64 operand types.)
 
   (constant register-operand #:0 (\ r (` operand-type r)))
   
@@ -155,7 +156,7 @@
   
   (constant none-operand #:3 (\ r (` operand-type r)))
 
-<<x86-64 registers.>>
+(ignore x86-64 registers.)
   
   (constant r/m8 [shl #:1 #:5] \:r:[var r])
   
@@ -325,12 +326,12 @@
   
   (constant rip [bor [bor #:16(r/m64)] (w/rex)] \:r:(` register r))
 
-<<Defined to enable the x64 registers to be indexed dynamically.>>
+(ignore Defined to enable the x64 registers to be indexed dynamically.)
 
 (storage x64-r64s
   (rax)(rcx)(rdx)(rbx)(rsp)(rbp)(rsi)(rdi)(r8)(r9)(r10)(r11)(r12)(r13)(r14)(r15))
 
-<<Usage (make-instrN opcode (ops ...) buf handler)>>
+(ignore Usage (make-instrN opcode (ops ...) buf handler))
 
 (function make-instrN (l r)
   `:[make-instruction ,:[@fst l] (list ,:[@rrst l] , [@frst l]) , [@rrst l]]:r)
@@ -363,7 +364,7 @@
   (if [band reg(r/m16)] #:2
   (if [band reg(r/m32)] #:4
   (if [band reg(r/m64)] #:8
-    (~))))))
+    (ignore))))))
 
 (constrain make-reg-op (\ r (?(a) (`(function (register region ,:a) operand)r)r)))
 
@@ -424,7 +425,7 @@
   ((r12d)(r12l)) ((r13d)(r13l)) ((r14d)(r14l)) ((r15d)(r15l)) ((rax)(al)) ((rbx)(bl))
   ((rcx)(cl)) ((rdx)(dl)) ((rdi)(dil)) ((rsi)(sil)) ((rbp)(bpl)) ((rsp)(spl)) ((r8)(r8l))
   ((r9)(r9l)) ((r10)(r10l)) ((r11)(r11l)) ((r12)(r12l)) ((r13)(r13l)) ((r14)(r14l))
-  ((r15)(r15l)) (~)))
+  ((r15)(r15l)) (ignore)))
 
 (constrain op-lower-8 (\ r (?(a) (`(function (operand region ,:a) operand)r)r)))
 
@@ -435,7 +436,7 @@
       ((immediate-operand) [make-imm-op #:1 (@ op-immediate op) ..])
       ((memory-operand) [make-mem-op #:1 (@ op-base op) (@ op-index op) (@ op-scale op)
         (@ op-disp op) (@ op-disp-size op) ..])
-      (~))))
+      (ignore))))
 
 (constrain reg-lower-16 (\ r (`(function (register) register)r)))
 
@@ -447,7 +448,7 @@
   ((r12d)(r12w)) ((r13d)(r13w)) ((r14d)(r14w)) ((r15d)(r15w)) ((rax)(ax)) ((rbx)(bx))
   ((rcx)(cx)) ((rdx)(dx)) ((rdi)(di)) ((rsi)(si)) ((rbp)(bp)) ((rsp)(sp)) ((r8)(r8w))
   ((r9)(r9w)) ((r10)(r10w)) ((r11)(r11w)) ((r12)(r12w)) ((r13)(r13w)) ((r14)(r14w))
-  ((r15)(r15w)) (~)))
+  ((r15)(r15w)) (ignore)))
 
 (constrain op-lower-16 (\ r (?(a) (`(function (operand region ,:a) operand)r)r)))
 
@@ -458,7 +459,7 @@
       ((immediate-operand) [make-imm-op #:2 (@ op-immediate op) ..])
       ((memory-operand) [make-mem-op #:2 (@ op-base op) (@ op-index op) (@ op-scale op)
         (@ op-disp op) (@ op-disp-size op) ..])
-      (~))))
+      (ignore))))
 
 (constrain reg-lower-32 (\ r (`(function (register) register)r)))
 
@@ -468,7 +469,7 @@
   ((r13d)(r13d)) ((r14d)(r14d)) ((r15d)(r15d)) ((rax)(eax)) ((rbx)(ebx)) ((rcx)(ecx))
   ((rdx)(edx)) ((rdi)(edi)) ((rsi)(esi)) ((rbp)(ebp)) ((rsp)(esp)) ((r8)(r8d)) ((r9)(r9d))
   ((r10)(r10d)) ((r11)(r11d)) ((r12)(r12d)) ((r13)(r13d)) ((r14)(r14d)) ((r15)(r15d))
-  (~)))
+  (ignore)))
 
 (constrain op-lower-32 (\ r (?(a) (`(function (operand region ,:a) operand)r)r)))
 
@@ -479,14 +480,14 @@
       ((immediate-operand) [make-imm-op #:4 (@ op-immediate op) ..])
       ((memory-operand) [make-mem-op #:4 (@ op-base op) (@ op-index op) (@ op-scale op)
         (@ op-disp op) (@ op-disp-size op) ..])
-      (~))))
+      (ignore))))
 
 (constrain reg-lower-64 (\ r (`(function (register) register)r)))
 
 (function reg-lower-64 (reg) (switch = reg
   ((rax)(rax)) ((rbx)(rbx)) ((rcx)(rcx)) ((rdx)(rdx)) ((rdi)(rdi)) ((rsi)(rsi)) ((rbp)(rbp))
   ((rsp)(rsp)) ((r8)(r8)) ((r9)(r9)) ((r10)(r10)) ((r11)(r11)) ((r12)(r12)) ((r13)(r13))
-  ((r14)(r14)) ((r15)(r15)) (~)))
+  ((r14)(r14)) ((r15)(r15)) (ignore)))
 
 (constrain op-lower-64 (\ r (?(a) (`(function (operand region ,:a) operand)r)r)))
 
@@ -497,7 +498,7 @@
       ((immediate-operand) [make-imm-op #:8 (@ op-immediate op) ..])
       ((memory-operand) [make-mem-op #:8 (@ op-base op) (@ op-index op) (@ op-scale op)
         (@ op-disp op) (@ op-disp-size op) ..])
-      (~))))
+      (ignore))))
 
 (constrain print-instr-code (\ r (?(a) (`(function (instr-code ,:a) ())r)r)))
 
@@ -510,7 +511,7 @@
     ((x86-shr) (" shr)) ((x86-and) (" and)) ((x86-not) (" not)) ((x86-xor) (" xor))
     ((x86-div) (" div)) ((x86-setz) (" setz)) ((x86-setc) (" setc)) ((x86-jae) (" jae))
     ((x86-jne) (" jne)) ((x86-cmp) (" cmp)) ((x86-seta) (" seta)) ((x86-jbe) (" jbe))
-    ((x86-ja) (" ja)) ((x86-jb) (" jb)) (~)) handler])
+    ((x86-ja) (" ja)) ((x86-jb) (" jb)) (ignore)) handler])
 
 (constrain print-register (\ r (?(a) (`(function (register ,:a) ())r)r)))
 
@@ -529,7 +530,7 @@
     ((rax)(" rax)) ((rcx)(" rcx)) ((rdx)(" rdx)) ((rbx)(" rbx)) ((rsp)(" rsp))
     ((rbp)(" rbp)) ((rsi)(" rsi)) ((rdi)(" rdi)) ((r8)(" r8)) ((r9)(" r9)) ((r10)(" r10))
     ((r11)(" r11)) ((r12)(" r12)) ((r13)(" r13)) ((r14)(" r14)) ((r15)(" r15))  
-    ((rip)(" rip)) (~)) handler])
+    ((rip)(" rip)) (ignore)) handler])
 
 (constrain print-operand (\ r (?(a) (`(function (operand ,:a) ())r)r)))
 
@@ -543,35 +544,35 @@
       [print-char (stdout) (lbracket) handler]
       (if [not= (@ op-base op) (none)]
         [print-register (@ op-base op) handler]
-        (~))
+        (ignore))
       (if (and [not= (@ op-base op) (none)] [not= (@ op-index op) (none)])
         [print-str (stdout) ("(space)+(space)) handler]
-        (~))
+        (ignore))
       (if [not= (@ op-index op) (none)] (do
         [print-register (@ op-index op) handler]
         [print-str (stdout) (" *) handler]
         [print-uint (stdout) (@ op-scale op) handler])
-        (~))
+        (ignore))
       (if (and (or [not= (@ op-base op) (none)] [not= (@ op-index op) (none)])
           [not= (@ op-disp-size op) #:0])
         [print-str (stdout) ("(space)+(space)) handler]
-        (~))
+        (ignore))
       (if [not= (@ op-disp-size op) #:0]
         [print-uint (stdout) (@ op-disp op) handler]
-        (~))
+        (ignore))
       [print-char (stdout) (rbracket) handler]))
     ((none-operand)
       [print-str (stdout) ("(lparen)none(rparen)) handler])
-    (~)))
+    (ignore)))
 
 (constrain print-instr (\ r (?(a) (`(function (instr ,:a) ())r)r)))
 
 (function print-instr (instr handler) (do
   [print-instr-code (@ instr-code instr) handler]
-  (if [nil? (@ instr-operands instr)] (~) (do
+  (if [nil? (@ instr-operands instr)] (ignore) (do
     [print-str (stdout) ("(space)) handler]
     [print-operand [@car (@ instr-operands instr)] handler]
-    (for (op (%:list-iter [@cdr (@ instr-operands instr)])) (~) (do
+    (for (op (%:list-iter [@cdr (@ instr-operands instr)])) (ignore) (do
       [print-str (stdout) (" ,(space)) handler]
       [print-operand op handler]))))))
 
@@ -580,7 +581,7 @@
 (function mem-write (mem idx bytes cnt)
   (let (end [+ $:idx cnt])
   (loop write-bytes (bytes bytes)
-    (if [= $:idx end] (~) (do
+    (if [= $:idx end] (ignore) (do
       [setb [+ mem $:idx] [getb bytes]]
       [set+ idx #:1]
       {write-bytes [+ bytes #:1]})))))
@@ -592,7 +593,7 @@
   (sub (.. buf handler)
     (let (modrm.rm-op-code [band
       (if [= (@ op-type modrm.rm-op) (register-operand)] (@ op-register modrm.rm-op)
-      (if [= (@ op-type modrm.rm-op) (memory-operand)] (@ op-base modrm.rm-op) (~))) #:7])
+      (if [= (@ op-type modrm.rm-op) (memory-operand)] (@ op-base modrm.rm-op) (ignore))) #:7])
     
     (let (modrm.reg-op-code [band (@ op-register modrm.reg-op) #:7])
     
@@ -605,7 +606,7 @@
       (if [= (@ op-type modrm.rm-op) (register-operand)] #:3
       (if (or [= (@ op-disp-size modrm.rm-op) #:0] [= (@ op-base modrm.rm-op) (none)] [= (@ op-base modrm.rm-op) (rip)]) #:0
       (if [= (@ op-disp-size modrm.rm-op) #:1] #:1
-      (if [= (@ op-disp-size modrm.rm-op) #:4] #:2 (~))))))
+      (if [= (@ op-disp-size modrm.rm-op) #:4] #:2 (ignore))))))
     
     (let (has-sib? (and [= (@ op-type modrm.rm-op) (memory-operand)]
       (or [not= (@ op-index modrm.rm-op) (none)] [= modrm.rm-op-code [band (rsp) #:7]]
@@ -620,7 +621,7 @@
     
     (let (modrm.reg modrm.reg-op-code)
             
-    (let (sib.scale (switch = (@ op-scale modrm.rm-op) (#:1 #:0) (#:2 #:1) (#:4 #:2) (#:8 #:3) (~)))
+    (let (sib.scale (switch = (@ op-scale modrm.rm-op) (#:1 #:0) (#:2 #:1) (#:4 #:2) (#:8 #:3) (ignore)))
     
     (let (sib.index (if [= (@ op-index modrm.rm-op) (none)] #:4 (@ op-index modrm.rm-op)))
     
@@ -653,9 +654,9 @@
     
     (let (instr-start-pos $:pos) (do
     
-    (if has-oso? [mem-write bin pos (storage _ 0x:66) #:1] (~))
+    (if has-oso? [mem-write bin pos (storage _ 0x:66) #:1] (ignore))
     
-    (if has-aso? [mem-write bin pos (storage _ 0x:67) #:1] (~))
+    (if has-aso? [mem-write bin pos (storage _ 0x:67) #:1] (ignore))
     
     (if has-rex?
       [mem-write bin pos (storage _
@@ -664,7 +665,7 @@
         [bor [shl rex.r #:2]
         [bor [shl rex.x #:1]
         [bor [shl rex.b #:0]
-          #:0]]]]]) #:1] (~))
+          #:0]]]]]) #:1] (ignore))
           
     [mem-write bin pos (storage _ opcode) opcode-size]
     
@@ -680,32 +681,32 @@
           [bor [shl sib.scale #:6]
           [bor [shl sib.index #:3]
           [bor [shl sib.base #:0]
-            #:0]]]) #:1] (~)))
+            #:0]]]) #:1] (ignore)))
             
-      (~))
+      (ignore))
     
     (let (disp-pos $:pos) (do
     
     (if [= (@ op-type modrm.rm-op) (memory-operand)]
       [mem-write bin pos (storage _ (@ op-disp modrm.rm-op)) (@ op-disp-size modrm.rm-op)]
-      (~))
+      (ignore))
     
     (let (imm-pos $:pos) (do
     
     (if [= (@ op-type imm-op) (immediate-operand)]
       [mem-write bin pos (storage _ (@ op-immediate imm-op)) (@ op-size imm-op)]
-      (~))
+      (ignore))
     
     (let (instr-size [- $:pos instr-start-pos]) (do
     
     (if [= (@ op-type modrm.rm-op) (memory-operand)]
       [prepend (values (region-storage ..) disp-pos (@ op-disp-size modrm.rm-op) instr-start-pos instr-size)
         (& op-locations modrm.rm-op) ..]
-      (~))
+      (ignore))
     
     (if [= (@ op-type imm-op) (immediate-operand)]
       [prepend (values (region-storage ..) imm-pos (@ op-size imm-op) instr-start-pos instr-size) (& op-locations imm-op) ..]
-      (~))
+      (ignore))
     
     (true)))))))))))))))))))))))))))))
 
@@ -872,7 +873,7 @@
           (false)))))
         (false))))
 
-(storage unsupported-instruction-error (~))
+(storage unsupported-instruction-error (ignore))
 
 (constrain assemble (\ r (?(a b c e) (`(function ((list instr) ,:a region ,:e) (values ,:b ,:c))r)r)))
 
@@ -881,23 +882,23 @@
     (let (pos (storage _ #:0))
     (let (max-text-sec-len [pad-size [* (write-elf-max-instr-len) [length instrs]] (write-elf-alignment)])
     (let (bin [region-alloc max-text-sec-len ..]) (do
-    (for (n (%:list-iter instrs)) (~) (do
+    (for (n (%:list-iter instrs)) (ignore) (do
       (let (instr-bndg (@ instr-binding n))
         (if [not= instr-bndg null-binding] (do
           (setf bndg-storage instr-bndg (absolute-storage))
           (setf bndg-offset instr-bndg $:pos)
           (setf st-value (@ lkdst-raw (@ bndg-other instr-bndg)) $:pos))
-          (~)))
+          (ignore)))
       
       (switch = (@ instr-code n)
-        ((label) (~))
+        ((label) (ignore))
         ((x86-nop)
           [write-instr bin pos 0x:90 #:1 [make-none-op ..] [make-none-op ..] [make-none-op ..] [make-none-op ..] ..])
         ((x86-push) (or
-          [write-m-instr 0x:1E (~) 0x:FF 0x:FF 0x:FF [make-reg-op (x86-/6) ..] n bin pos ..]
+          [write-m-instr 0x:1E (ignore) 0x:FF 0x:FF 0x:FF [make-reg-op (x86-/6) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
         ((x86-pop) (or
-          [write-m-instr 0x:1E (~) 0x:8F 0x:8F 0x:8F [make-reg-op (x86-/0) ..] n bin pos ..]
+          [write-m-instr 0x:1E (ignore) 0x:8F 0x:8F 0x:8F [make-reg-op (x86-/0) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
         ((x86-xor) (or
           [write-mi-instr 0x:1F 0x:80 0x:81 0x:81 0x:81 [make-reg-op (x86-/6) ..] n bin pos ..]
@@ -907,13 +908,13 @@
           [write-mi8-instr 0x:1F 0x:80 0x:83 0x:83 0x:83 [make-reg-op (x86-/6) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
         ((x86-setz) (or
-          [write-m-instr 0x:21 0x:940F (~) (~) (~) [make-none-op ..] n bin pos ..]
+          [write-m-instr 0x:21 0x:940F (ignore) (ignore) (ignore) [make-none-op ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
         ((x86-setc) (or
-          [write-m-instr 0x:21 0x:920F (~) (~) (~) [make-none-op ..] n bin pos ..]
+          [write-m-instr 0x:21 0x:920F (ignore) (ignore) (ignore) [make-none-op ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
         ((x86-seta) (or
-          [write-m-instr 0x:21 0x:970F (~) (~) (~) [make-none-op ..] n bin pos ..]
+          [write-m-instr 0x:21 0x:970F (ignore) (ignore) (ignore) [make-none-op ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
         ((x86-mul) (or
           [write-m-instr 0x:1F 0x:F6 0x:F7 0x:F7 0x:F7 [make-reg-op (x86-/4) ..] n bin pos ..]
@@ -922,29 +923,29 @@
           [write-m-instr 0x:1F 0x:F6 0x:F7 0x:F7 0x:F7 [make-reg-op (x86-/6) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
         ((x86-jmp) (or
-          [write-m-instr 0x:1E (~) 0x:FF 0x:FF 0x:FF [make-reg-op (x86-/4) ..] n bin pos ..]
-          [write-d-instr 0x:17 0x:EB 0x:E9 0x:E9 (~) n bin pos ..]
+          [write-m-instr 0x:1E (ignore) 0x:FF 0x:FF 0x:FF [make-reg-op (x86-/4) ..] n bin pos ..]
+          [write-d-instr 0x:17 0x:EB 0x:E9 0x:E9 (ignore) n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
         ((x86-sub) (or
           [write-rm-instr 0x:1F 0x:2A 0x:2B 0x:2B 0x:2B n bin pos ..]
           [write-mr-instr 0x:1F 0x:28 0x:29 0x:29 0x:29 n bin pos ..]
           [write-mi-instr 0x:1F 0x:80 0x:81 0x:81 0x:81 [make-reg-op (x86-/5) ..] n bin pos ..]
           [write-mm-instr 0x:1F 0x:28 0x:29 0x:29 0x:29 n bin pos ..]
-          [write-mi8-instr 0x:1E (~) 0x:83 0x:83 0x:83 [make-reg-op (x86-/5) ..] n bin pos ..]
+          [write-mi8-instr 0x:1E (ignore) 0x:83 0x:83 0x:83 [make-reg-op (x86-/5) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
         ((x86-cmp) (or
           [write-rm-instr 0x:1F 0x:3A 0x:3B 0x:3B 0x:3B n bin pos ..]
           [write-mr-instr 0x:1F 0x:38 0x:39 0x:39 0x:39 n bin pos ..]
           [write-mi-instr 0x:1F 0x:80 0x:81 0x:81 0x:81 [make-reg-op (x86-/7) ..] n bin pos ..]
           [write-mm-instr 0x:1F 0x:38 0x:39 0x:39 0x:39 n bin pos ..]
-          [write-mi8-instr 0x:1E (~) 0x:83 0x:83 0x:83 [make-reg-op (x86-/7) ..] n bin pos ..]
+          [write-mi8-instr 0x:1E (ignore) 0x:83 0x:83 0x:83 [make-reg-op (x86-/7) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
         ((x86-add) (or
           [write-rm-instr 0x:1F 0x:02 0x:03 0x:03 0x:03 n bin pos ..]
           [write-mr-instr 0x:1F 0x:00 0x:01 0x:01 0x:01 n bin pos ..]
           [write-mi-instr 0x:1F 0x:80 0x:81 0x:81 0x:81 [make-reg-op (x86-/0) ..] n bin pos ..]
           [write-mm-instr 0x:1F 0x:00 0x:01 0x:01 0x:01 n bin pos ..]
-          [write-mi8-instr 0x:1E (~) 0x:83 0x:83 0x:83 [make-reg-op (x86-/0) ..] n bin pos ..]
+          [write-mi8-instr 0x:1E (ignore) 0x:83 0x:83 0x:83 [make-reg-op (x86-/0) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
         ((x86-or) (or
           [write-rm-instr 0x:1F 0x:0A 0x:0B 0x:0B 0x:0B n bin pos ..]
@@ -964,26 +965,26 @@
           [write-m-instr 0x:1F 0x:F6 0x:F7 0x:F7 0x:F7 [make-reg-op (x86-/2) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
         ((x86-call) (or
-          [write-m-instr 0x:1E (~) 0x:FF 0x:FF 0x:FF [make-reg-op (x86-/2) ..] n bin pos ..]
-          [write-d-instr 0x:16 (~) 0x:E8 0x:E8 (~) n bin pos ..]
+          [write-m-instr 0x:1E (ignore) 0x:FF 0x:FF 0x:FF [make-reg-op (x86-/2) ..] n bin pos ..]
+          [write-d-instr 0x:16 (ignore) 0x:E8 0x:E8 (ignore) n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
         ((x86-je) (x86-jz) (or
-          [write-d-instr 0x:24 (~) (~) 0x:840F (~) n bin pos ..]
+          [write-d-instr 0x:24 (ignore) (ignore) 0x:840F (ignore) n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
         ((x86-jnz) (x86-jne) (or
-          [write-d-instr 0x:24 (~) (~) 0x:850F (~) n bin pos ..]
+          [write-d-instr 0x:24 (ignore) (ignore) 0x:850F (ignore) n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
         ((x86-jnc) (x86-jnb) (x86-jae) (or
-          [write-d-instr 0x:24 (~) (~) 0x:830F (~) n bin pos ..]
+          [write-d-instr 0x:24 (ignore) (ignore) 0x:830F (ignore) n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
         ((x86-jbe) (x86-jna) (or
-          [write-d-instr 0x:24 (~) (~) 0x:860F (~) n bin pos ..]
+          [write-d-instr 0x:24 (ignore) (ignore) 0x:860F (ignore) n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
         ((x86-jnbe) (x86-ja) (or
-          [write-d-instr 0x:24 (~) (~) 0x:870F (~) n bin pos ..]
+          [write-d-instr 0x:24 (ignore) (ignore) 0x:870F (ignore) n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
         ((x86-jnae) (x86-jb) (x86-jc) (or
-          [write-d-instr 0x:24 (~) (~) 0x:820F (~) n bin pos ..]
+          [write-d-instr 0x:24 (ignore) (ignore) 0x:820F (ignore) n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
         ((x86-shl) (or
           [write-mc-instr 0x:1F 0x:D2 0x:D3 0x:D3 0x:D3 [make-reg-op (x86-/4) ..] n bin pos ..]
@@ -1113,7 +1114,7 @@
   (setf sh-entsize text-shdr #:0)
   [append lkd-text-shdr (& lkde-sh lkd-ehdr) temp-buf cleanup]
   
-  (for (e (%:list-iter instrs)) (~)
+  (for (e (%:list-iter instrs)) (ignore)
     (let (instr-bndg (@ instr-binding e))
       (if [not= instr-bndg null-binding]
         (let (sym-name (if [getb (@ bndg-name instr-bndg)]
@@ -1128,17 +1129,17 @@
             (switch = (@ bndg-scope instr-bndg)
               ((local-scope)(stb-local))
               ((global-scope)(stb-global))
-              (~)) (stt-notype)))
+              (ignore)) (stt-notype)))
           (setf st-other sym #:0)
           (setf bndg-other instr-bndg lkd-sym)
           [append lkd-sym (& lkdsh-symtab lkd-symtab-shdr) temp-buf cleanup]))))
-        (~))))
+        (ignore))))
         
   ((values? .:text .:text-len) [assemble instrs bind temp-buf cleanup] (do
   (setf sh-size (@ lkdsh-raw lkd-text-shdr) text-len)
   (setf lkdsh-offset lkd-text-shdr text)
   
-  lkd-text-shdr) (~)))))))
+  lkd-text-shdr) (ignore)))))))
 
 (constrain make-function-relocation-section
   (\ r (?(a) (`(function ((list reloc) string linked-elf64-e linked-elf64-sh linked-elf64-sh region ,:a) linked-elf64-sh)r)r)))
@@ -1155,21 +1156,22 @@
   (setf sh-entsize rela-shdr (elf64-rela))
   [append lkd-rela-shdr (& lkde-sh lkd-ehdr) temp-buf cleanup]
 
-  (for (reloc (%:list-iter relocations)) (~)
-    (for (loca (%:list-iter (@ op-locations (@ reloc-operand reloc)))) (~)
+  (for (reloc (%:list-iter relocations)) (ignore)
+    (for (loca (%:list-iter (@ op-locations (@ reloc-operand reloc)))) (ignore)
       ((values? .:operand-pos .:operand-size .:instr-pos .:instr-size) loca
         (let (lkd-rela [make-lkdr (@ bndg-other(@ reloc-binding reloc)) temp-buf cleanup])
         (let (rela (@ lkdr-raw lkd-rela)) (do
         (setf r-offset rela operand-pos)
-        (setf r-info rela (elf64-r-info (~) (@ reloc-type reloc)))
+        (setf r-info rela (elf64-r-info (ignore) (@ reloc-type reloc)))
         (setf r-addend rela
           [(@ reloc-addend-func reloc) (@ reloc-context reloc) operand-pos operand-size instr-pos instr-size])
-        [append lkd-rela (& lkdsh-rela lkd-rela-shdr) temp-buf cleanup]))) (~))))
+        [append lkd-rela (& lkdsh-rela lkd-rela-shdr) temp-buf cleanup]))) (ignore))))
   
   lkd-rela-shdr)))))
 
-<<The following functions are for ensuring that truncating the outcome of a relocation
-  computation preserves its value.>>
+(ignore
+  The following functions are for ensuring that truncating the outcome of a relocation
+  computation preserves its value.)
 
 (function assert-byte (val handler)
   (if [= val [band val 0x:00000000000000FF]]
@@ -1199,7 +1201,7 @@
 
 (function do-relocation (target rela sym addend handler)
 	(switch = (elf64-r-type (@ r-info rela))
-    ((r-x86-64-none) (~))
+    ((r-x86-64-none) (ignore))
     ((r-x86-64-64) [memcpy target (storage _[+(@ st-value sym)addend]) #:8])
     ((r-x86-64-pc32) [memcpy target (storage _[assert-sword [-[+(@ st-value sym)addend](@ r-offset rela)] handler]) #:4])
     ((r-x86-64-glob-dat) [memcpy target (storage _(@ st-value sym)) #:8])
@@ -1214,11 +1216,12 @@
     ((r-x86-64-size64) [memcpy target (storage _[+(@ st-size sym)addend]) #:8])
     {handler (storage _ object-error)}))
 
-<<Takes assembly code and a list of symbols as constructs an object file.
+(ignore
+  Takes assembly code and a list of symbols as constructs an object file.
   instrs is a list of assembly expressions. symbols is a list of the static
   symbols used in the assembly expressions. reg is the region into which the generated
   object code should be put. Returns a pair containing a reference to the generated object
-  code and the size of the generated object code.>>
+  code and the size of the generated object code.)
 
 (constrain write-elf
   (\ r (?(a b c d) (`(function ((list instr) (list reloc) (list (values string (list instr) (list reloc)))
@@ -1226,7 +1229,7 @@
 
 (function write-elf (instrs relocations function-sections undefined-bindings static-bindings outs rgn1 rgn2 handler)
   (with-region rgn2 (do
-    (let (lkd-ehdr [make-lkde nil nil (~) (~) rgn2 handler])
+    (let (lkd-ehdr [make-lkde nil nil (ignore) (ignore) rgn2 handler])
     (let (ehdr (@ lkde-raw lkd-ehdr)) (do
     (setf ei-mag0 (& e-ident ehdr) (elfmag0))
     (setf ei-mag1 (& e-ident ehdr) (elfmag1))
@@ -1238,7 +1241,7 @@
     (setf ei-osabi (& e-ident ehdr) (elfosabi-sysv))
     (setf ei-abiversion (& e-ident ehdr) #:0)
 
-    (for (i (%:range #:7 (ei-nident))) (~) [setb (loc(byte)i(& e-ident ehdr)) #:0])
+    (for (i (%:range #:7 (ei-nident))) (ignore) [setb (loc(byte)i(& e-ident ehdr)) #:0])
 
     (setf e-type ehdr (et-rel))
     (setf e-machine ehdr (em-x86-64))
@@ -1255,7 +1258,7 @@
     (setf e-shstrndx ehdr #:1)
     
     (let (shstrtab-name [make-lkdstrt (" .shstrtab) rgn2 handler])
-    (let (lkd-shstrtab-shdr [make-lkdstrtab shstrtab-name (~) nil rgn2 handler])
+    (let (lkd-shstrtab-shdr [make-lkdstrtab shstrtab-name (ignore) nil rgn2 handler])
     (let (shstrtab-shdr (@ lkdsh-raw lkd-shstrtab-shdr)) (do
     [append shstrtab-name (& lkdsh-strtab lkd-shstrtab-shdr) rgn2 handler]
     (setf sh-type shstrtab-shdr (sht-strtab))
@@ -1267,9 +1270,9 @@
     [append lkd-shstrtab-shdr (& lkde-sh lkd-ehdr) rgn2 handler]
     (setf lkde-shstr lkd-ehdr lkd-shstrtab-shdr)
     
-    <<Mandatory undefined section>>
+    (ignore Mandatory undefined section)
     (let (shstrtab-null-name [make-lkdstrt (" ) rgn2 handler])
-    (let (lkd-undef-shdr [make-lkds shstrtab-null-name (~) rgn2 handler])
+    (let (lkd-undef-shdr [make-lkds shstrtab-null-name (ignore) rgn2 handler])
     (let (undef-shdr (@ lkdsh-raw lkd-undef-shdr)) (do
     [prepend shstrtab-null-name (& lkdsh-strtab lkd-shstrtab-shdr) rgn2 handler]
     (setf lkdsh-link lkd-undef-shdr lkd-undef-shdr)
@@ -1329,7 +1332,7 @@
     (let (strtab-null-name [make-lkdstrt (" ) rgn2 handler])
     (let (lkd-und-sym [make-lkdst strtab-null-name lkd-undef-shdr rgn2 handler])
     (let (und-sym (@ lkdst-raw lkd-und-sym)) (do
-    <<Mandatory undefined symbol>>
+    (ignore Mandatory undefined symbol)
     [append strtab-null-name (& lkdsh-strtab lkd-strtab-shdr) rgn2 handler]
     (setf st-name und-sym #:0)
     (setf st-value und-sym #:0)
@@ -1346,7 +1349,7 @@
     (setf st-other bss-sym #:0)
     [append lkd-bss-sym (& lkdsh-symtab lkd-symtab-shdr) rgn2 handler]
     
-    (for (bndg (%:list-iter static-bindings)) (~)
+    (for (bndg (%:list-iter static-bindings)) (ignore)
       (if [= (@ bndg-state bndg) (defined-state)]
         (let (sym-name (if [getb (@ bndg-name bndg)]
             (let (sym-name [make-lkdstrt (@ bndg-name bndg) rgn2 handler])
@@ -1361,13 +1364,13 @@
             (switch = (@ bndg-scope bndg)
               ((local-scope)(stb-local))
               ((global-scope)(stb-global))
-              (~)) (stt-notype)))
+              (ignore)) (stt-notype)))
           (setf st-other sym #:0)
           (setf bndg-other bndg lkd-sym)
           [append lkd-sym (& lkdsh-symtab lkd-symtab-shdr) rgn2 handler]))))
-        (~)))
+        (ignore)))
     
-    (select (tuple? .:bndg-name .:bndg) (%:ht-iter undefined-bindings) (~)
+    (select (tuple? .:bndg-name .:bndg) (%:ht-iter undefined-bindings) (ignore)
       (if (and [= (@ bndg-scope bndg) (global-scope)] [= (@ bndg-state bndg) (undefined-state)])
         (let (sym-name (if [getb (@ bndg-name bndg)]
             (let (sym-name [make-lkdstrt (@ bndg-name bndg) rgn2 handler])
@@ -1381,34 +1384,35 @@
           (setf st-other sym #:0)
           (setf bndg-other bndg lkd-sym)
           [append lkd-sym (& lkdsh-symtab lkd-symtab-shdr) rgn2 handler]))))
-        (~)))
+        (ignore)))
     
     (let (main-text-sec [make-function-text-section instrs (" .text) lkd-ehdr lkd-strtab-shdr lkd-symtab-shdr rgn2 handler])
     
     (let (func-text-secs [collect-list (map (func-sec (%:list-iter function-sections))
       ((values? .:name .:instrs .:relocs) func-sec
         [make-function-text-section instrs [rstrcat (" .text.) name rgn2 handler]
-          lkd-ehdr lkd-strtab-shdr lkd-symtab-shdr rgn2 handler] (~))) nil rgn2 handler]) (do
+          lkd-ehdr lkd-strtab-shdr lkd-symtab-shdr rgn2 handler] (ignore))) nil rgn2 handler]) (do
     
     [make-function-relocation-section relocations (" .rela.text) lkd-ehdr main-text-sec lkd-symtab-shdr rgn2 handler]
     
-    (for (func-sec (%:list-iter function-sections)) (func-text-sec (%:list-iter func-text-secs)) (~)
+    (for (func-sec (%:list-iter function-sections)) (func-text-sec (%:list-iter func-text-secs)) (ignore)
       ((values? .:name .:instrs .:relocs) func-sec
         [make-function-relocation-section relocs [rstrcat (" .rela.text.) name rgn2 handler]
-          lkd-ehdr func-text-sec lkd-symtab-shdr rgn2 handler] (~))))))
+          lkd-ehdr func-text-sec lkd-symtab-shdr rgn2 handler] (ignore))))))
     
-    <<Mark every symbol as false in preparation for the usage analysis.>>
+    (ignore Mark every symbol as false in preparation for the usage analysis.)
     
-    (for (sec (%:list-iter (@ lkde-sh lkd-ehdr))) (~)
+    (for (sec (%:list-iter (@ lkde-sh lkd-ehdr))) (ignore)
       (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-symtab)]
-        (for (sym (%:list-iter (@ lkdsh-symtab sec))) (~)
-          (setf lkdst-other sym (false))) (~)))
+        (for (sym (%:list-iter (@ lkdsh-symtab sec))) (ignore)
+          (setf lkdst-other sym (false))) (ignore)))
     
-    <<Find relocations such that their symbol's section matches the target section,
+    (ignore
+      Find relocations such that their symbol's section matches the target section,
       apply them, and remove them from the relocations list. For the relocations that
-      remain, mark the symbols that they refer to.>>
+      remain, mark the symbols that they refer to.)
     
-    (for (sec (%:list-iter (@ lkde-sh lkd-ehdr))) (~)
+    (for (sec (%:list-iter (@ lkde-sh lkd-ehdr))) (ignore)
       (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-rela)]
         (filter (lkd-rela (& lkdsh-rela sec))
           (let (rela (@ lkdr-raw lkd-rela))
@@ -1426,52 +1430,53 @@
             (do
               (setf lkdst-other (@ lkdr-info-sym lkd-rela) (true))
               (true))))))))
-        (~)))
+        (ignore)))
     
-    <<Filter all the symbol tables keeping only the symbols that are referred to
-      in relocations or have non-local binding.>>
+    (ignore
+      Filter all the symbol tables keeping only the symbols that are referred to
+      in relocations or have non-local binding.)
     
     (setf lkdst-other lkd-und-sym (true))
     (setf lkdst-other lkd-bss-sym (true))
     
-    (for (sec (%:list-iter (@ lkde-sh lkd-ehdr))) (~)
+    (for (sec (%:list-iter (@ lkde-sh lkd-ehdr))) (ignore)
       (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-symtab)]
         (filter (sym (& lkdsh-symtab sec))
           (or
             (@ lkdst-other sym)
-            [not= (elf64-st-bind (@ st-info (@ lkdst-raw sym))) (stb-local)])) (~)))
+            [not= (elf64-st-bind (@ st-info (@ lkdst-raw sym))) (stb-local)])) (ignore)))
     
-    <<Assign the strings in the string table indicies.>>
+    (ignore Assign the strings in the string table indicies.)
     
-    (for (sec (%:list-iter (@ lkde-sh lkd-ehdr))) (~)
+    (for (sec (%:list-iter (@ lkde-sh lkd-ehdr))) (ignore)
       (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-strtab)]
         (fold (acc #:0) (str (%:list-iter (@ lkdsh-strtab sec))) (do
           (setf lkdstrt-ndx str acc)
-          [+ acc [+ #:1 [strlen (@ lkdstrt-raw str)]]])) (~)))
+          [+ acc [+ #:1 [strlen (@ lkdstrt-raw str)]]])) (ignore)))
     
-    <<Give each section an index.>>
+    (ignore Give each section an index.)
     
     (fold (idx #:0) (sec (%:list-iter (storage-cons lkd-undef-shdr (@ lkde-sh lkd-ehdr))))
       (do (setf lkdsh-ndx sec idx) [+ idx #:1]))
     
-    <<Substitute into ELF Section sh-names and sh-links, and sh-infos if possible.>>
+    (ignore Substitute into ELF Section sh-names and sh-links, and sh-infos if possible.)
     
-    (for (sec (%:list-iter (@ lkde-sh lkd-ehdr))) (~) (do
+    (for (sec (%:list-iter (@ lkde-sh lkd-ehdr))) (ignore) (do
       (setf sh-link (@ lkdsh-raw sec) (@ lkdsh-ndx (@ lkdsh-link sec)))
       (setf sh-name (@ lkdsh-raw sec) (@ lkdstrt-ndx (@ lkdsh-name sec)))
       (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-rela)]
         (setf sh-info (@ lkdsh-raw sec) (@ lkdsh-ndx (@ lkdsh-rela-info sec)))
-        (~))))
+        (ignore))))
     
-    <<Substitute into ELF Header e-shstrndx, e-shnum, and e-shoff>>
+    (ignore Substitute into ELF Header e-shstrndx, e-shnum, and e-shoff)
     
     (setf e-shstrndx (@ lkde-raw lkd-ehdr) (@ lkdsh-ndx (@ lkde-shstr lkd-ehdr)))
     (setf e-shnum (@ lkde-raw lkd-ehdr) [+ [length (@ lkde-sh lkd-ehdr)] #:1])
     (setf e-shoff (@ lkde-raw lkd-ehdr) (elf64-ehdr))
     
-    <<Assign the symbols in each symbol table consecutive indicies.>>
+    (ignore Assign the symbols in each symbol table consecutive indicies.)
     
-    (for (sec (%:list-iter (@ lkde-sh lkd-ehdr))) (~)
+    (for (sec (%:list-iter (@ lkde-sh lkd-ehdr))) (ignore)
       (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-symtab)]
         (let (local-end-idx
             (fold (acc #:0) (sym (%:list-iter (@ lkdsh-symtab sec)))
@@ -1482,11 +1487,11 @@
           (fold (acc local-end-idx) (sym (%:list-iter (@ lkdsh-symtab sec)))
             (if [= (elf64-st-bind (@ st-info (@ lkdst-raw sym))) (stb-local)]
               acc
-              (do (setf lkdst-ndx sym acc) [+ acc #:1]))))) (~)))
+              (do (setf lkdst-ndx sym acc) [+ acc #:1]))))) (ignore)))
     
-    <<Calculate the sizes of the individual sections.>>
+    (ignore Calculate the sizes of the individual sections.)
     
-    (for (sec (%:list-iter (@ lkde-sh lkd-ehdr))) (~)
+    (for (sec (%:list-iter (@ lkde-sh lkd-ehdr))) (ignore)
       (switch = (@ sh-type (@ lkdsh-raw sec))
         ((sht-symtab) (setf sh-size (@ lkdsh-raw sec)
           [* [length (@ lkdsh-symtab sec)] (elf64-sym)]))
@@ -1495,26 +1500,26 @@
         ((sht-strtab) (setf sh-size (@ lkdsh-raw sec)
           (fold (acc #:0) (str (%:list-iter (@ lkdsh-strtab sec)))
             [+ acc [+ #:1 [strlen (@ lkdstrt-raw str)]]])))
-        (~)))
+        (ignore)))
     
-    <<Substitute into symbol table entry shndxs and names.>>
+    (ignore Substitute into symbol table entry shndxs and names.)
     
-    (for (sec (%:list-iter (@ lkde-sh lkd-ehdr))) (~)
+    (for (sec (%:list-iter (@ lkde-sh lkd-ehdr))) (ignore)
       (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-symtab)] (do
-        (for (sym (%:list-iter (@ lkdsh-symtab sec))) (~) (do
+        (for (sym (%:list-iter (@ lkdsh-symtab sec))) (ignore) (do
           (setf st-shndx (@ lkdst-raw sym) (@ lkdsh-ndx (@ lkdst-sh sym)))
-          (setf st-name (@ lkdst-raw sym) (@ lkdstrt-ndx (@ lkdst-name sym)))))) (~)))
+          (setf st-name (@ lkdst-raw sym) (@ lkdstrt-ndx (@ lkdst-name sym)))))) (ignore)))
     
-    <<Substitute into relocation r-info.syms.>>
+    (ignore Substitute into relocation r-info.syms.)
     
-    (for (sec (%:list-iter (@ lkde-sh lkd-ehdr))) (~)
+    (for (sec (%:list-iter (@ lkde-sh lkd-ehdr))) (ignore)
       (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-rela)]
-        (for (rela (%:list-iter (@ lkdsh-rela sec))) (~)
+        (for (rela (%:list-iter (@ lkdsh-rela sec))) (ignore)
           (setf r-info (@ lkdr-raw rela) (elf64-r-info
             (@ lkdst-ndx (@ lkdr-info-sym rela))
-            (elf64-r-type (@ r-info (@ lkdr-raw rela)))))) (~)))
+            (elf64-r-type (@ r-info (@ lkdr-raw rela)))))) (ignore)))
     
-    <<Assign an offset to each section and record ELF size.>>
+    (ignore Assign an offset to each section and record ELF size.)
     
     (let (elf-size [pad-size (fold (offset [+ (elf64-ehdr) [* (elf64-shdr) [+ [length (@ lkde-sh lkd-ehdr)] #:1]]])
         (sec (%:list-iter (@ lkde-sh lkd-ehdr))) (do
@@ -1523,57 +1528,60 @@
         offset
         [+ offset [pad-size (@ sh-size (@ lkdsh-raw sec)) (write-elf-alignment)]]))) (write-elf-alignment)]) (do
     
-    <<Write out the ELF file.>>
+    (ignore Write out the ELF file.)
     
     (let (pos (storage _ #:0))
     (let (bin [region-alloc elf-size rgn1 handler]) (do
     [mem-write bin pos (@ lkde-raw lkd-ehdr) (elf64-ehdr)]
-    (for (sec (%:list-iter (storage-cons lkd-undef-shdr (@ lkde-sh lkd-ehdr)))) (~)
+    (for (sec (%:list-iter (storage-cons lkd-undef-shdr (@ lkde-sh lkd-ehdr)))) (ignore)
       [mem-write bin pos (@ lkdsh-raw sec) (elf64-shdr)])
-    (for (sec (%:list-iter (@ lkde-sh lkd-ehdr))) (~) (do
+    (for (sec (%:list-iter (@ lkde-sh lkd-ehdr))) (ignore) (do
       (switch = (@ sh-type (@ lkdsh-raw sec))
         ((sht-symtab) (do
-          (for (sym (%:list-iter (@ lkdsh-symtab sec))) (~)
+          (for (sym (%:list-iter (@ lkdsh-symtab sec))) (ignore)
             (if [= (elf64-st-bind (@ st-info (@ lkdst-raw sym))) (stb-local)]
-              [mem-write bin pos (@ lkdst-raw sym) (elf64-sym)] (~)))
-          (for (sym (%:list-iter (@ lkdsh-symtab sec))) (~)
-            (if [= (elf64-st-bind (@ st-info (@ lkdst-raw sym))) (stb-local)] (~)
+              [mem-write bin pos (@ lkdst-raw sym) (elf64-sym)] (ignore)))
+          (for (sym (%:list-iter (@ lkdsh-symtab sec))) (ignore)
+            (if [= (elf64-st-bind (@ st-info (@ lkdst-raw sym))) (stb-local)] (ignore)
               [mem-write bin pos (@ lkdst-raw sym) (elf64-sym)]))))
         ((sht-rela)
-          (for (rela (%:list-iter (@ lkdsh-rela sec))) (~)
+          (for (rela (%:list-iter (@ lkdsh-rela sec))) (ignore)
             [mem-write bin pos (@ lkdr-raw rela) (elf64-rela)]))
         ((sht-strtab)
-          (for (str (%:list-iter (@ lkdsh-strtab sec))) (~)
+          (for (str (%:list-iter (@ lkdsh-strtab sec))) (ignore)
             [mem-write bin pos (@ lkdstrt-raw str) [+ [strlen (@ lkdstrt-raw str)] #:1]]))
-        ((sht-nobits) (~))
+        ((sht-nobits) (ignore))
         [mem-write bin pos (@ lkdsh-offset sec) (@ sh-size (@ lkdsh-raw sec))])
       [set pos [pad-size $:pos (write-elf-alignment)]]))
     
     (values (use-storage outs) bin $:pos)))))))))))))))))))))))))))))))))))))))))
 
-<<Converts the offsets of the static bindings associated with L2 source code that has now
+(ignore
+  Converts the offsets of the static bindings associated with L2 source code that has now
   been loaded into addresses. asms is a list of assembly expressions containing bindings
   that need to be converted. bindings is a list of augmented bindings corresponding to the
-  assembly expressions that also need to be converted.>>
+  assembly expressions that also need to be converted.)
 
 (constrain binding-offsets-to-addresses
   (\ r (?(a) (`(function ((list instr) (list (values string (list instr) (list reloc))) (list bndg-aug) obj region ,:a) ())r)r)))
 
 (function binding-offsets-to-addresses (asms function-sections static-bindings obj reg hdl)
   (with-region reg (do
-    (for (sym (%:list-iter static-bindings)) (~)
+    (for (sym (%:list-iter static-bindings)) (ignore)
       (if (and [= (@ bndg-storage sym) (absolute-storage)] [= (@ bndg-state sym) (defined-state)])
-        [set+ (& bndg-offset sym) [segment obj (" .bss)]] (~)))
+        [set+ (& bndg-offset sym) [segment obj (" .bss)]]
+        (ignore)))
     
-    (for (l (%:list-iter asms)) (~)
+    (for (l (%:list-iter asms)) (ignore)
       (let (instr-bndg (@ instr-binding l))
         (if [not= instr-bndg null-binding]
-          [set+ (& bndg-offset instr-bndg) [segment obj (" .text)]] (~))))
+          [set+ (& bndg-offset instr-bndg) [segment obj (" .text)]]
+          (ignore))))
     
-    (for (func-sec (%:list-iter function-sections)) (~)
+    (for (func-sec (%:list-iter function-sections)) (ignore)
       ((values? .:name .:instrs .:relocs) func-sec
-        (for (l (%:list-iter instrs)) (~)
+        (for (l (%:list-iter instrs)) (ignore)
           (let (instr-bndg (@ instr-binding l))
             (if [not= instr-bndg null-binding]
               [set+ (& bndg-offset instr-bndg) [segment obj [rstrcat (" .text.) name reg hdl]]]
-              (~)))) (~))))))
+              (ignore)))) (ignore))))))

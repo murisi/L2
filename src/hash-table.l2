@@ -6,7 +6,7 @@
 
 (constant ht-load-factor-den #:4 \:r:[var r])
 
-<<The hash-table data structure. Note that it is parameterized by a hash function and an equality function.>>
+(ignore The hash-table data structure. Note that it is parameterized by a hash function and an equality function.)
 
   (constant hash-table-struct #:40 \:r:[var r])
 
@@ -30,12 +30,13 @@
       (setf ht-hash-func ht hash-func)
       (setf ht-equals-func ht equals-func)
       (setf ht-values ht [region-alloc [*(ht-initial-bucket-count)(unit)] ..])
-      (for (i (%:range #:0 (ht-initial-bucket-count))) (~) [set (loc(unit)i (@ ht-values ht)) nil])
+      (for (i (%:range #:0 (ht-initial-bucket-count))) (ignore) [set (loc(unit)i (@ ht-values ht)) nil])
       ht))))
 
-<<Checks to see if the number of elements in the hash table exceeds the load
+(ignore
+  Checks to see if the number of elements in the hash table exceeds the load
   factor and if so, scales the number of uckets in the hash table by the
-  resize factor.>>
+  resize factor.)
 
 (constrain ht-resize (\ r (?(a b c d) `:(function ((hash-table ,:a ,:b) region ,:c) ,:d):r r)))
 
@@ -44,20 +45,20 @@
     (if [gt [* (@ ht-element-count ht) (ht-load-factor-den)] [* (@ ht-bucket-count ht) (ht-load-factor-num)]]
       (let (new-bucket-count [* (@ ht-bucket-count ht) (ht-resize-factor)])
       (let (new-values [region-alloc [* new-bucket-count(unit)] ..]) (do
-        (for (i (%:range #:0 new-bucket-count)) (~) [set (loc(unit)i new-values) nil])
-        (for (i (%:range #:0 (@ ht-bucket-count ht))) (~)
+        (for (i (%:range #:0 new-bucket-count)) (ignore) [set (loc(unit)i new-values) nil])
+        (for (i (%:range #:0 (@ ht-bucket-count ht))) (ignore)
           (let (bucket ($(loc(unit)i(@ ht-values ht))))
           (loop move-node (bucket bucket)
-            (if [nil? bucket] (~)
+            (if [nil? bucket] (ignore)
               ((values? .:key .:value) [@car bucket]
               (let (next [@cdr bucket])
               (let (new-bucket-idx [rem [(@ ht-hash-func ht) key] new-bucket-count])
               (let (new-bucket (loc(unit)new-bucket-idx new-values)) (do
               (setf cdr bucket nil)
               [append-list new-bucket bucket]
-              {move-node next})))) (~))))))
+              {move-node next})))) (ignore))))))
         (setf ht-bucket-count ht new-bucket-count)
-        (setf ht-values ht new-values)))) (~))))
+        (setf ht-values ht new-values)))) (ignore))))
 
 (constrain ht-put (\ r (?(a b c) `:(function (,:a ,:b (hash-table ,:a ,:b) region ,:c) (hash-table ,:a ,:b)):r r)))
 
@@ -81,7 +82,7 @@
       ((values? .:k .:v) [@car bucket]
         (if [(@ ht-equals-func ht) key k]
           (do [set out v] (true))
-          {find-end [@cdr bucket]}) (~)))))))
+          {find-end [@cdr bucket]}) (ignore)))))))
 
 (constrain ht-get (\ r (?(a b) `:(function (,:a (hash-table ,:a ,:b)) ,:b):r r)))
 
@@ -92,7 +93,7 @@
     ((values? .:k .:v) [@car bucket]
       (if [(@ ht-equals-func ht) key k]
         v
-        {find-end [@cdr bucket]}) (~))))))
+        {find-end [@cdr bucket]}) (ignore))))))
 
 (constrain ht-iter-key (\ r (?(a b c d) `:(function ((continuation ((! iterator ,:b ,:c))) ,:a (hash-table ,:a ,:b)) ,:d):r r)))
 
@@ -107,7 +108,7 @@
           (if [(@ ht-equals-func ht) key k]
             (cps {recv next ctx v}
               (next (new-recv new-ctx) {find-end [@cdr bucket] [cast new-recv] new-ctx}))
-            {find-end [@cdr bucket] recv ctx}) (~)))))))})
+            {find-end [@cdr bucket] recv ctx}) (ignore)))))))})
 
 (constrain ht-remove (\ r (?(a b d) `:(function (,:a (hash-table ,:a ,:b)) ,:d):r r)))
 
@@ -116,16 +117,16 @@
   (let (bucket (loc(unit)bucket-idx(@ ht-values ht)))
   (loop find-end (bucket bucket)
     (if [nil? $:bucket]
-      (~)
+      (ignore)
       ((values? .:k .:v) [@car $:bucket]
         (if [(@ ht-equals-func ht) key k]
           (do [set bucket [@cdr $:bucket]] [set- (& ht-element-count ht) #:1])
-          {find-end (& cdr $:bucket)}) (~)))))))
+          {find-end (& cdr $:bucket)}) (ignore)))))))
 
 (constrain ht-removeall (\ r (?(a b d) `:(function ((hash-table ,:a ,:b)) ,:d):r r)))
 
 (function ht-removeall (ht)
-  (for (bucket-idx (%:range #:0 (@ ht-bucket-count ht))) (~) (do
+  (for (bucket-idx (%:range #:0 (@ ht-bucket-count ht))) (ignore) (do
     (let (bucket (loc(unit)bucket-idx(@ ht-values ht))) [set bucket nil])
     [set (& ht-element-count ht) #:0])))
 
@@ -139,20 +140,22 @@
           ((tuple? .:recv .:ictx) ctx
             ((values? .:key .:val) assoc
               (cps {recv next ictx (tuple key val)}
-                (next (new-recv new-ctx) (tuple [cast new-recv] new-ctx))) (~)) (~)))) {end ictx} (~)))})
+                (next (new-recv new-ctx) (tuple [cast new-recv] new-ctx))) (ignore)) (ignore)))) {end ictx} (ignore)))})
 
-<<Puts all the given associations into the given hash table. Does the following
+(ignore
+  Puts all the given associations into the given hash table. Does the following
   transformation.
   (ht-putall (ht ..) (k1 v1) (k2 v2) ... (kN vN))
   TO
-  [ht-put kN vN [... [ht-put k2 v2 [ht-put k1 v1 ht ..] ..] ...] ..]>>
+  [ht-put kN vN [... [ht-put k2 v2 [ht-put k1 v1 ht ..] ..] ...] ..])
 
 (function ht-putall (l r)
   (loop build-expr (expr [@ffst l]) (rem [@rst l])
     (if [emt? rem] expr
       {build-expr [lllllst (` invoke r) (` ht-put r) [@ffst rem] [@frfst rem] expr [@rfst l] r] [@rst rem]})))
 
-<<Find a value under the given key in the given hash table satisfying the given predicate:
+(ignore
+  Find a value under the given key in the given hash table satisfying the given predicate:
   (ht-find (value key ht) expr)
   TO
   (let (ht-find.key key) (ht-find.ht ht)
@@ -164,7 +167,7 @@
       ((values? .:ht-find.k .:value) [@car ht-find.bucket]
         (if (and [(@ ht-equals-func ht) ht-find.key ht-find.k] expr)
           (true)
-          {ht-find.find-end [@cdr ht-find.bucket]}) (~)))))))>>
+          {ht-find.find-end [@cdr ht-find.bucket]}) (ignore))))))))
 
 (function ht-find (l r)
   (`(let (ht-find.key (,[@frfst l])) (ht-find.ht (,[@frrfst l]))
@@ -176,7 +179,7 @@
         ((values? .:ht-find.k .:(,[@ffst l])) [@car ht-find.bucket]
           (if (and [(@ ht-equals-func ht-find.ht) ht-find.key ht-find.k] (,[@frst l]))
             (true)
-            {ht-find.find-end [@cdr ht-find.bucket]}) (~)))))))r))
+            {ht-find.find-end [@cdr ht-find.bucket]}) (ignore)))))))r))
 
 (constrain hash-str (\ r (?(a) `:(function (string) ,:a):r r)))
 
