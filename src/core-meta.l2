@@ -774,6 +774,22 @@
       (let (macro ,:[meta.bq [@frst l] `:r:r r])
         [lst macro l r])):r)
 
+(-- This macro exists to form a pair with Value.)
+
+(function value (l r) [@fst l])
+
+(-- A Value constrains the signature of a value. The following macro does the
+  following transformation:
+  ((Value func) expr)
+  ->
+  (constrain expr func))
+
+(function Value (l r)
+  (let (func [@fst l])
+    (closure (func) (l r)
+      (let (expr [@fst l])
+        `:(constrain ,:expr ,:func):r)r)))
+
 (-- A module is a set of bindings. The following macro takes a module and produces
   a macro to execute an expression in the context of the aforementioned module.
   Does the following transformation:
@@ -785,6 +801,33 @@
   (let (binds l)
     (closure (binds) (l r)
       `:(use , [meta.reverse [lst [@fst l] binds r] r]):r r)))
+
+(-- A Module exposes and constrains a subset of the functions of a module. The
+  Module macro does the following transformation:
+  (((Module (var-a var-b ... var-z) r
+    (id-a sig-a)
+    (id-b sig-b)
+    ...
+    (id-z sig-z)) module-a) expr)
+  ->
+  (with Module.ret
+    (let (Module.cont (constrain (continuation Module.cont (id-a id-b ... id-z) {Module.ret expr})
+        \:r:(let (var-a [var r]) (var-b [var r]) ... (var-z [var r])
+          `:(continuation (,:sig-a ,:sig-b ... ,:sig-z)):r)))
+      (module-a {Module.cont id-a id-b ... id-z}))))
+
+(function Module (l r)
+  (let (buffer [@frst l]) (ids [meta.map [@rrst l] @fst r]) (sigs [meta.map [@rrst l] @frst r])
+  (let (var-binds [meta.map3 [@fst l] buffer r (function _(elt buffer r) [llst elt `:[var ,:buffer]:r emt r]) r])
+    (closure (var-binds buffer ids sigs) (l r)
+      (let (module [@fst l])
+        (closure (module var-binds buffer ids sigs) (l r)
+          (let (expr [@fst l]) (cont-sym [meta.concat `:Module.cont:r [gentok r] r])
+            `:(with Module.ret
+                (let (,:cont-sym (constrain (continuation ,:cont-sym ,:ids {Module.ret ,:expr})
+                    \:(, buffer):(let (Module.r (, buffer)) (let , [meta.reverse
+                      [lst (` `:(continuation ,:,;[meta.bq [meta.map2 sigs r meta.unquote r] buffer r]):Module.r r) var-binds r] r]))))
+                  (,:module {,:cont-sym , ids}))):r)r))r))))
 
 (-- A functor is essentially a C-style macro. Or yet again, it is a call-by-name
   function. The following method macro does the following transformation:
@@ -799,32 +842,19 @@
       (let (subs [meta.zip params l r])
         [sub [meta.reverse [lst body subs r] r] r])r)))
 
-(-- A interface exposes and constrains a subset of the functions of a module. The
-  interface macro does the following transformation:
-  (((interface (var-a var-b ... var-z) r
-    (id-a sig-a)
-    (id-b sig-b)
-    ...
-    (id-z sig-z)) module-a) expr)
+(-- A Functor constrains the signature of a functor. The Functor macro does
+  the following transformation:
+  (((Functor (p1 p2 ... pN) e) expr) a1 a2 ... aN)
   ->
-  (with interface.ret
-    (let (interface.cont (constrain (continuation interface.cont (id-a id-b ... id-z) {interface.ret expr})
-        \:r:(let (var-a [var r]) (var-b [var r]) ... (var-z [var r])
-          `:(continuation (,:sig-a ,:sig-b ... ,:sig-z)):r)))
-      (module-a {interface.cont id-a id-b ... id-z}))))
+  (e (expr (p1 a1) (p2 a2) ... (pN aN))))
 
-(function interface (l r)
-  (let (buffer [@frst l]) (ids [meta.map [@rrst l] @fst r]) (sigs [meta.map [@rrst l] @frst r])
-  (let (var-binds [meta.map3 [@fst l] buffer r (function _(elt buffer r) [llst elt `:[var ,:buffer]:r emt r]) r])
-    (closure (var-binds buffer ids sigs) (l r)
-      (let (module [@fst l])
-        (closure (module var-binds buffer ids sigs) (l r)
-          (let (expr [@fst l]) (cont-sym [meta.concat `:interface.cont:r [gentok r] r])
-            `:(with interface.ret
-                (let (,:cont-sym (constrain (continuation ,:cont-sym ,:ids {interface.ret ,:expr})
-                    \:(, buffer):(let (interface.r (, buffer)) (let , [meta.reverse
-                      [lst (` `:(continuation ,:,;[meta.bq [meta.map2 sigs r meta.unquote r] buffer r]):interface.r r) var-binds r] r]))))
-                  (,:module {,:cont-sym , ids}))):r)r))r))))
+(function Functor (l r)
+  (let (Params [@fst l]) (Body [@frst l])
+    (closure (Params Body) (l r)
+      (let (body [@fst l])
+        (closure (body Params Body) (l r)
+          (let (args l)
+            [llst Body [lst body [meta.zip Params args r] r] emt r])r))r)))
 
 (-- A macro closure makes a quoted function with the given arguments in such
   a way that its body is not quoted. The environment variables are brought
