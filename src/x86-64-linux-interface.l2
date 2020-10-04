@@ -137,7 +137,7 @@
 
 (function open (path handler)
   (let (ret [syscall (sys-open) path (o-rdonly) (ignore) (ignore) (ignore) (ignore)])
-    (if (and [le [- #:0 #:4095] ret] [le ret [- #:0 #:1]])
+    (if (and [<= [- #:0 #:4095] ret] [<= ret [- #:0 #:1]])
       {handler (storage _ file-access-error path)}
       ret)))
 
@@ -145,7 +145,7 @@
 
 (function create (path handler)
   (let (ret [syscall (sys-open) path [bor (o-wronly) (o-creat)] [bor (s-irwxu) [bor (s-irwxg) (s-irwxo)]]  (ignore) (ignore) (ignore)])
-    (if (and [le [- #:0 #:4095] ret] [le ret [- #:0 #:1]])
+    (if (and [<= [- #:0 #:4095] ret] [<= ret [- #:0 #:1]])
       {handler (storage _ file-access-error path)}
       ret)))
 
@@ -153,7 +153,7 @@
 
 (function print (fd d len handler)
   (let (ret [syscall (sys-write) fd d len (ignore) (ignore) (ignore)])
-    (if (and [le [- #:0 #:4095] ret] [le ret [- #:0 #:1]])
+    (if (and [<= [- #:0 #:4095] ret] [<= ret [- #:0 #:1]])
       {handler (storage _ file-access-error empty-string)}
       ret)))
 
@@ -169,7 +169,7 @@
 
 (function print-uint (fd i handler)
   (let (str (storage _ (ignore) (ignore) (ignore)))
-    [print-str fd [dec-to-str i str] handler]))
+    [print-str fd [dec->str i str] handler]))
 
 (constrain print-hex (\ r (?(a b e) (`(function (fd ,:a ,:b) ,:e)r)r)))
 
@@ -178,7 +178,7 @@
   (let (str (storage _ (ignore) (ignore))) (do
   (loop next-digit (i i)
     (if [= i #:0] (ignore) (do
-      [setb [+ str $:j] [hex-to-char [rem i #:16]]]
+      [setb [+ str $:j] [hex->char [rem i #:16]]]
       [set j [- $:j #:1]]
       {next-digit [/ i #:16]})))
   [print fd [+ str [+ $:j #:1]] [- #:16 $:j] handler]))))
@@ -194,14 +194,14 @@
 
 (function print-bytes (fd bs sz handler)
   (for (i (%:range #:0 sz)) (ignore) (do
-    [print-char fd [hex-to-char [shr [getb[+ bs i]] #:4]] handler]
-    [print-char fd [hex-to-char [band [getb[+ bs i]] 0x:0F]] handler])))
+    [print-char fd [hex->char [>> [getb[+ bs i]] #:4]] handler]
+    [print-char fd [hex->char [band [getb[+ bs i]] 0x:0F]] handler])))
 
 (constrain read (\ r (?(a b c e) (`(function (fd ,:a ,:b ,:c) ,:e)r)r)))
 
 (function read (fd buf cnt handler)
   (let (ret [syscall (sys-read) fd buf cnt (ignore) (ignore) (ignore)])
-    (if (and [le [- #:0 #:4095] ret] [le ret [- #:0 #:1]])
+    (if (and [<= [- #:0 #:4095] ret] [<= ret [- #:0 #:1]])
       {handler (storage _ file-access-error empty-string)}
       ret)))
 
@@ -209,7 +209,7 @@
 
 (function close (fd handler)
   (let (ret [syscall (sys-close) fd (ignore) (ignore) (ignore) (ignore) (ignore)])
-    (if (and [le [- #:0 #:4095] ret] [le ret [- #:0 #:1]])
+    (if (and [<= [- #:0 #:4095] ret] [<= ret [- #:0 #:1]])
       {handler (storage _ file-access-error empty-string)}
       ret)))
 
@@ -219,7 +219,7 @@
   (let (statbuf (storage _ (ignore)(ignore)(ignore)(ignore)(ignore)(ignore)(ignore)(ignore)(ignore)
     (ignore)(ignore)(ignore)(ignore)(ignore)(ignore)(ignore)(ignore)(ignore)))
   (let (ret [syscall (sys-fstat) fd statbuf (ignore) (ignore) (ignore) (ignore)])
-    (if (and [le [- #:0 #:4095] ret] [le ret [- #:0 #:1]])
+    (if (and [<= [- #:0 #:4095] ret] [<= ret [- #:0 #:1]])
       {handler (storage _ file-access-error empty-string)}
       [get [+ statbuf #:48]]))))
 
@@ -229,7 +229,7 @@
 
 (function mmap (len handler)
   (let (ret [syscall (sys-mmap) #:0 len [bor (prot-read) (prot-write)] [bor (map-private) [bor (map-anonymous) (map-32bit)]] [bnot #:0] #:0])
-    (if (and [le [- #:0 #:4095] ret] [le ret [- #:0 #:1]])
+    (if (and [<= [- #:0 #:4095] ret] [<= ret [- #:0 #:1]])
       {handler (storage _ memory-access-error [- #:0 ret])}
       ret)))
 
@@ -239,7 +239,7 @@
 
 (function munmap (ptr len handler)
   (let (ret [syscall (sys-munmap) ptr len (ignore) (ignore) (ignore) (ignore)])
-    (if (and [le [- #:0 #:4095] ret] [le ret [- #:0 #:1]])
+    (if (and [<= [- #:0 #:4095] ret] [<= ret [- #:0 #:1]])
       {handler (storage _ memory-access-error)}
       ret)))
 
@@ -274,7 +274,7 @@
   (let (len [pad-size len (alloc-alignment)])
   (let (new-last-elt
     (let (curr-last-elt (@ reg-last-elt reg))
-    (if [gt [+(@ reg-curr-pos curr-last-elt)len] (@ reg-end-pos curr-last-elt)]
+    (if [> [+(@ reg-curr-pos curr-last-elt)len] (@ reg-end-pos curr-last-elt)]
       (let (new-last-elt [create-region len handler]) (do
         (setf reg-next-elt curr-last-elt new-last-elt)
         (setf reg-last-elt reg new-last-elt)
@@ -287,7 +287,7 @@
 (ignore
   The following macro implements the following transformation:
   ((region-storage buf hdl) buf-storage arg1 arg2 ... argN)
-  TO
+  ->
   (let (buf-storage [region-alloc [* N(unit)] buf hdl]) (do
     [set [+ buf-storage [* #:0(unit)]] arg1]
     [set [+ buf-storage [* #:1(unit)]] arg2]
@@ -314,7 +314,7 @@
 
 (function region-free (ref reg handler)
   (loop do-free (last-elt (@ reg-last-elt reg))
-    (if (and [le [+ last-elt (region-element)] ref] [le ref (@ reg-end-pos last-elt)])
+    (if (and [<= [+ last-elt (region-element)] ref] [<= ref (@ reg-end-pos last-elt)])
       (do
         (setf reg-curr-pos last-elt ref)
         (setf reg-last-elt reg last-elt)
@@ -328,7 +328,7 @@
   region's current position, evaluates the given expression, and then resets the region's
   position to the saved value. It is implemented by the following transformation:
   (with-region buf expr)
-  TO
+  ->
   (let (with-region.position [region-alloc #:0 buf (ignore)])
     (let (with-region.val expr) (do
       [region-free with-region.position buf (ignore)]
@@ -383,7 +383,7 @@
 (function clock-gettime (handler)
   (let (t (storage _ (ignore)(ignore)))
     (let (ret [syscall (sys-clock-gettime) (clock-process-cputime-id) t (ignore) (ignore) (ignore) (ignore)])
-      (if (and [le [- #:0 #:4095] ret] [le ret [- #:0 #:1]])
+      (if (and [<= [- #:0 #:4095] ret] [<= ret [- #:0 #:1]])
         {handler (storage _ time-error)}
         [+ [* $:t #:1000000000] ($[+ t (unit)])]))))
 
@@ -393,7 +393,7 @@
   inner expression. Does the following transformation:
   
   (time acc expr handler)
-  TO
+  ->
   (let (time.handler handler)
     (let (time.start [clock-gettime time.handler])
       (let (time.val expr) (do

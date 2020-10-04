@@ -77,7 +77,7 @@
 (ignore
   The following function implements variable binding by do the following transformation:
   (use (params vals) ... expr0)
-  TO
+  ->
   (with use.return
     {(continuation use.aux (params ...)
       {use.return expr0}) vals ...}))
@@ -100,7 +100,7 @@
 (ignore
   The following function implements the switch expression by doing the following transformation:
   (switch eq0 val0 (vals exprs) ... expr0)
-  TO
+  ->
   (let (tempeq0 eq0) (tempval0 val0)
     (if [tempeq0 tempval0 vals1]
       exprs1
@@ -126,7 +126,7 @@
 (ignore
   The following function implements the match expression by doing the following transformation:
   (match val0 (matchers exprs) ... expr0)
-  TO
+  ->
   (let (tempval0 val0)
     (matchers0 tempval0
       exprs0
@@ -148,7 +148,7 @@
 (ignore
   The following function implements the following transformation:
   (fallthrough expr (labels args exprs) ...)
-  TO
+  ->
   (let (argN (with labelN
       (let (argN-1 (with labelN-1
           ...
@@ -171,7 +171,7 @@
   Syntactic sugar for continuation passing style. The next continuations is always bound.
   Transformation is as follows:
   (cps expr (conts (args ...) exprs) ...)
-  TO
+  ->
   (with cps.return
     (let (cont1 (continuation cont1 (arg11 arg12 ...) {cps.return
         (let (cont2 (continuation cont2 (arg21 arg22 ...) {cps.return
@@ -198,7 +198,7 @@
   The following function implements a monomorphic version of continuation by doing the
   following transformation:
   (monomorphic cont (args ...) expr)
-  TO
+  ->
   (continuation cont (arg1 args ...) {cont expr args ...}))
 
 (function monomorphic (l r)
@@ -210,7 +210,7 @@
 (ignore
   The following function implements variable binding by doing the following transformation:
   (loop cont (params args) ... expr0)
-  TO
+  ->
   (with loop.return
     {(monomorphic cont (params ...)
       {loop.return expr0}) vals ...}))
@@ -224,7 +224,7 @@
 (ignore
   The following function implements an anonymous function using the following transformation:
   (\ params ... body)
-  TO
+  ->
   (function \.self (params ...) body))
 
 (function \ (l r) (`(function \.self (,[meta.reverse [@rst [meta.reverse l r]]r]) (,[@fst [meta.reverse l r]]))r))
@@ -232,7 +232,7 @@
 (ignore
   The following function implements sequencing by doing the following transformation:
   (do expr1 expr2 ... exprN)
-  TO
+  ->
   (with do.return
     {(monomorphic do.cont (do.arg)
       {(monomorphic do.cont (do.arg)
@@ -271,7 +271,7 @@
 (ignore
   Loops through the given iterator. Performs the following transformation:
   (fold (y acc) (x iter) expr)
-  TO
+  ->
   (with fold.return
     (let (fold.iter iter)
       {fold.iter fold.return acc
@@ -289,7 +289,7 @@
   Loops through the given iterator and executes the body for successfully matched
   objects. Performs the following transformation:
   (select matcher iter def expr)
-  TO
+  ->
   (with select.return
     (let (select.iter iter)
       {select.iter select.return def
@@ -310,7 +310,7 @@
 (function range (ret from to)
   {ret (continuation cont (end ctx recv)
     (loop count (recv recv) (idx from) (ctx ctx)
-      (if [lt idx to]
+      (if [< idx to]
         (cps {recv next ctx idx}
           (next (new-recv new-ctx) {count [cast new-recv] [+ idx #:1] new-ctx}))
         {end ctx})))})
@@ -377,7 +377,7 @@
 (ignore
   A macro to map an iterator to another iterator. Does the following transformation:
   (map (x l) expr)
-  TO
+  ->
   (continuation map.cont (map.end map.ictx map.recv)
     ((tuple? .:map.recv .:map.ictx)
       (fold (map.acc (tuple map.recv map.ictx)) (x l)

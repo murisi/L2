@@ -23,6 +23,8 @@ bool char_equals(struct character *a, struct character *b) {
   return a->character == b->character;
 }
 
+#define LANGLE 0xAB /*<<*/
+#define RANGLE 0xBB /*>>*/
 #define char_init(ch) {{ .character = ch, .flag = NULL }}
 
 struct character chars[][1] = {
@@ -31,7 +33,7 @@ struct character chars[][1] = {
   char_init('"'), char_init('#'), char_init('$'), char_init('%'), char_init('&'), char_init('\''), {0}, {0}, char_init('*'),
   char_init('+'), char_init(','), char_init('-'), char_init('.'), char_init('/'), char_init('0'), char_init('1'),
   char_init('2'), char_init('3'), char_init('4'), char_init('5'), char_init('6'), char_init('7'), char_init('8'),
-  char_init('9'), {0}, {0}, {0}, char_init('='), {0}, char_init('?'),
+  char_init('9'), {0}, {0}, char_init('<'), char_init('='), char_init('>'), char_init('?'),
   char_init('@'), char_init('A'), char_init('B'), char_init('C'), char_init('D'), char_init('E'), char_init('F'),
   char_init('G'), char_init('H'), char_init('I'), char_init('J'), char_init('K'), char_init('L'), char_init('M'),
   char_init('N'), char_init('O'), char_init('P'), char_init('Q'), char_init('R'), char_init('S'), char_init('T'),
@@ -73,7 +75,7 @@ list gentok(region r) {
  * slist = '[' <ignore> (<fragment> <ignore>)* ']'
  * token = <character>+
  * <ignore> = (<comment> | <whitespace>)*
- * <comment> = '<' <ignore> (<fragment> <ignore>)* '>'
+ * <comment> = '<<' <ignore> (<fragment> <ignore>)* '>>'
  */
 
 list read_fragment(unsigned char *l2src, int l2src_sz, int *pos, region r, jumpbuf *handler);
@@ -84,11 +86,11 @@ int read_comment(unsigned char *l2src, int l2src_sz, int *pos, region r, jumpbuf
     throw_unexpected_character(0, *pos, handler);
   } else {
     unsigned char c = l2src[*pos];
-    if(c == '<') {
+    if(c == LANGLE) {
       (*pos) ++;
       list sexprs = nil;
       for(;;) {
-        if(read_ignore(l2src, l2src_sz, pos, r, handler) && l2src[*pos] == '>') {
+        if(read_ignore(l2src, l2src_sz, pos, r, handler) && l2src[*pos] == RANGLE) {
           (*pos) ++;
           return l2src_sz - *pos;
         }
@@ -104,7 +106,7 @@ int read_ignore(unsigned char *l2src, int l2src_sz, int *pos, region r, jumpbuf 
   while(*pos < l2src_sz) {
     if(isspace(l2src[*pos])) {
       (*pos)++;
-    } else if(l2src[*pos] == '<') {
+    } else if(l2src[*pos] == LANGLE) {
       read_comment(l2src, l2src_sz, pos, r, handler);
     } else break;
   }
@@ -116,7 +118,7 @@ list read_token(unsigned char *l2src, int l2src_sz, int *pos, region r, jumpbuf 
     throw_unexpected_character(0, *pos, handler);
   } else {
     unsigned char c = l2src[*pos];
-    if(isspace(c) || c == '(' || c == ')' || c == '{' || c == '}' || c == '[' || c == ']' || c == ':' || c == ';' || c == '<' || c == '>') {
+    if(isspace(c) || c == '(' || c == ')' || c == '{' || c == '}' || c == '[' || c == ']' || c == ':' || c == ';' || c == LANGLE || c == RANGLE) {
       throw_unexpected_character(c, *pos, handler);
     } else {
       (*pos) ++;
@@ -127,7 +129,7 @@ list read_token(unsigned char *l2src, int l2src_sz, int *pos, region r, jumpbuf 
           return l;
         }
         c = l2src[(*pos)++];
-      } while(!isspace(c) && c != '(' && c != ')' && c != '{' && c != '}' && c != '[' && c != ']' && c != ':' && c != ';' && c != '<' && c != '>');
+      } while(!isspace(c) && c != '(' && c != ')' && c != '{' && c != '}' && c != '[' && c != ']' && c != ':' && c != ';' && c != LANGLE && c != RANGLE);
       (*pos)--;
       return l;
     }
