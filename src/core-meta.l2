@@ -1,5 +1,5 @@
-< The following functions are abbreviations of sequences of list operations that are
-  frequently useful when working with s-expressions.>
+<<The following functions are abbreviations of sequences of list operations that are
+  frequently useful when working with s-expressions.>>
 
 (function @frst (l) [@fst [@rst l]])
 
@@ -55,8 +55,8 @@
 
 (function lllllllllst (a b c d e f g h i j r) [lst a [llllllllst b c d e f g h i j r] r])
 
-< When bootstrapping macros, it is very inconvenient to manually use continuations to
-  bind variables, hence the following transformations.>
+<<When bootstrapping macros, it is very inconvenient to manually use continuations to
+  bind variables, hence the following transformations.>>
 
 (function meta.bind1 (tuple fun)
   [fun [@fst tuple]])
@@ -70,20 +70,20 @@
 (function meta.bind6 (tuple fun)
   [fun [@fst tuple] [@frst tuple] [@frrst tuple] [@frrrst tuple] [@frrrrst tuple] [@frrrrrst tuple]])
 
-< The following function makes macros that expand to a unique identifier. Does
+<<The following function makes macros that expand to a unique identifier. Does
   the following transformation:
-  ((token id)) TO jk344kjh>
+  ((token id)) TO jk344kjh>>
 
 (function token (l r)
   `:(function ,:[@fst l] (l r)
       ,:[meta.bq [gentok r] `:r:r r]):r)
 
-< Make unique tokens for various type sizes.>
+<<Make unique tokens for various type sizes.>>
 
 (token 0b) (token 1b) (token 2b) (token 4b) (token 8b)
 
-< The following function provides an abbreviation for getting a value from a memory
-  address. It implements the transformation $:a TO [get a].>
+<<The following function provides an abbreviation for getting a value from a memory
+  address. It implements the transformation $:a TO [get a].>>
 
 (function $ (var r) `:[get , var]:r)
 
@@ -129,8 +129,8 @@
         {return values}
         {extract [@rst map] [lst [@frfst map] values r]})) map emt}))
 
-< The following function generates the L2 code to generate a fragment corresponding to the
-  supplied fragment. Known as backquote in other languages.>
+<<The following function generates the L2 code to generate a fragment corresponding to the
+  supplied fragment. Known as backquote in other languages.>>
 
 (function bq-aux-aux (s t level map r)
   [meta.bind6
@@ -174,12 +174,12 @@
 
   [bq-aux-aux s t level map r])))))))
 
-< Quote macro that only works for fragments not containing variables.>
+<<Quote macro that only works for fragments not containing variables.>>
 
 (function bq (l r)
   [@fst [bq-aux [@fst l] [@frst l] #:0 emt r]])
 
-< Quote macro that works for fragments containing variables.>
+<<Quote macro that works for fragments containing variables.>>
 
 (function ` (l r)
   [meta.bind4 [bq-aux [@fst l] [@frst l] #:0 emt r]
@@ -196,18 +196,18 @@
 
 (function meta.unquote (l r) [llst [lst -,- emt r] l emt r])
 
-< The following function generates code to create variables and bind them. It does the
+<<The following function generates code to create variables and bind them. It does the
   following transformation:
   
   (?(vars ...) expr region)
   TO
-  (let (var0 [var region]) ... (varN [var region]) expr)>
+  (let (var0 [var region]) ... (varN [var region]) expr)>>
 
 (function ?(l r)
   (let (bindings [meta.map3 [@fst l] [@frrst l] r (\ e s r (`(,:e [var ,:s])r)) r])
     [lst (` let r) [meta.reverse [lst [@frst l] [meta.reverse bindings r] r] r] r]))
 
-< The following function checks if the tokens a and b are equal.>
+<<The following function checks if the tokens a and b are equal.>>
 
 (function token= (a b)
   (loop check (a a) (b b)
@@ -219,8 +219,8 @@
       {check [@rst a] [@rst b]}
       (false))))))
 
-< The following function concatenates lists a and b. A part of the constructed list will
-  lie in the region r.>
+<<The following function concatenates lists a and b. A part of the constructed list will
+  lie in the region r.>>
 
 (function meta.concat (a b r)
   (loop do-prepend (rem-list [meta.reverse a r]) (constr b)
@@ -228,12 +228,12 @@
       constr
       {do-prepend [@rst rem-list] [lst [@fst rem-list] constr r]})))
 
-< The following macro does the following transformation:
+<<The following macro does the following transformation:
   (sub (tkn1 repl1 ...) ... (tknN replN ...) frag)
   TO
   frag but with the fragments repl inserted in order at all the places that the token tkn
   occurred. An example usage is when the arguments a group of functions are called with
-  have a common sublist.>
+  have a common sublist.>>
 
 (function sub (l r)
   (loop do-sub (subs [@rst [meta.reverse l r]]) (body [@fst [meta.reverse l r]])
@@ -247,7 +247,7 @@
               [lst [aux [@fst frag] fnd repl r] [aux [@rst frag] fnd repl r] r])))
         body [@ffst subs] [@rfst subs] r]})))
 
-< A set of macros to provide struct functionality in L2. The most naive way
+<<A set of macros to provide struct functionality in L2. The most naive way
   to do structs in L2 would be to create a getter function, setter function,
   and offset calculation function for every field where these functions
   simply access the desired memory locations. However this solution is
@@ -256,17 +256,17 @@
   getter, and setter of each field into a higher-order macro that supplies
   this information into any macro that is passed to it. This way, generic
   getter, setter, address-of, offset-of, and sizeof functions can be defined
-  once and used on any field.>
+  once and used on any field.>>
 
-< The following function is a macro for getting the offset of a field of a struct.
+<<The following function is a macro for getting the offset of a field of a struct.
   The macro expands into a macro invocation of the supplied field (the second
   item in the fragment l), passing into it offset-aux (the macro that actually
-  produces the offset of the field).>
+  produces the offset of the field).>>
 
 (function offset-of (l r) `:(,:[@fst l] offset-of-aux):r)
 
-< This function is not to be called directly. It returns a fragment representing
-  the offset of the field. That is, it returns the first item in the fragment l.>
+<<This function is not to be called directly. It returns a fragment representing
+  the offset of the field. That is, it returns the first item in the fragment l.>>
   
 (function offset-of-aux (l r) [@fst l])
 
@@ -282,18 +282,18 @@
 
 (function setter-of-aux (l r) [@frrrst l])
 
-< The following function is a macro for getting the address of a field of a struct.
+<<The following function is a macro for getting the address of a field of a struct.
   The macro expands into a macro invocation of the supplied field (the second
   item in the fragment l), passing into it &-aux (the macro that will generate
   the actual invocation that calculates the address of the field) and the address of
-  the struct (the first item in the fragment l).>
+  the struct (the first item in the fragment l).>>
 
 (function & (l r) `:(,:[@fst l] &-aux ,:[@frst l]):r)
 
-< This function is not to be called directly. It generates the actual
+<<This function is not to be called directly. It generates the actual
   invocation to calculate the address of the field. When macro-called, it
   adds the offset (the first item in the fragment l) to the base
-  (the fifth item in the fragment l).>
+  (the fifth item in the fragment l).>>
 
 (function &-aux (l r)
   `:(with &-aux.ret
@@ -303,19 +303,19 @@
             (\ &-aux.s (?(a b c d) (let (,:[@frrrrst l] &-aux.s) `:(continuation ((@ ,:a ,:c ,:d ,:b) (ref ,:,;[@frrrrrrst l] ,:a) ,:b)):&-aux.s)&-aux.s)))
           (~) [+ @-aux.obj ,:[@fst l]] @-aux.obj})):r)
 
-< The following function is a macro for getting the field of a struct. The
+<<The following function is a macro for getting the field of a struct. The
   macro expands into a macro invocation of the supplied field (the second
   item in the fragment l), passing into it @-aux (the macro that will generate
   the actual invocation that gets the field) and the address of the struct (the
-  first item in the fragment l).>
+  first item in the fragment l).>>
   
 (function @ (l r) `:(,:[@fst l] @-aux ,:[@frst l]):r)
 
-< This function is not to be called directly. It generates the actual
+<<This function is not to be called directly. It generates the actual
   invocation to get the field. When macro-called, it invokes the getter
   function (the fourth item in the fragment l) with an address formed by
   adding the offset (the first item in the fragment l) to the base
-  (the fifth item in the fragment l).>
+  (the fifth item in the fragment l).>>
 
 (function @-aux (l r)
   `:(with @-aux.ret
@@ -325,21 +325,21 @@
             (\ s (?(a b c d) `:(continuation ((@ ,:a ,:c ,:d ,:b) ,:a ,:b)):s s)))
           (~) [(,[@frrst l]) [+ @-aux.obj ,:[@fst l]]] @-aux.obj})):r)
 
-< The following function is a macro for setting the field of a struct. The
+<<The following function is a macro for setting the field of a struct. The
   macro expands into a macro invocation of the supplied field (the second
   item in the fragment l), passing into it setf-aux (the macro that will generate
   the actual invocation that sets the field), the address of the struct (the
   first item in the fragment l), and the new value of the field (the third
-  item in the fragment l).>
+  item in the fragment l).>>
 
 (function setf (l r) `:(,:[@fst l] setf-aux ,:[@frst l] ,:[@frrst l]):r)
 
-< This function is not to be called directly. It generates the actual
+<<This function is not to be called directly. It generates the actual
   invocation to set the field. When macro-called, it invokes the setter
   function (the fourth item in the fragment l) with an address formed by
   adding the offset (the first item in the fragment l) to the base
   (the fifth item in the fragment l) and a value (the sixth item in the
-  fragment l).>
+  fragment l).>>
 
 (function setf-aux (l r)
   `:(with setf-aux.ret
@@ -351,13 +351,13 @@
             (\ s (?(a b c d) `:(continuation ((@ ,:a ,:b ,:c ,:d) ,:a ,:b ,:c)):s s)))
           (~) ,:[@frrrrrrrrst l] setf-aux.obj [cast setf-aux.obj]})):r)
 
-< This function initializes/updates the values of a record and returns the
+<<This function initializes/updates the values of a record and returns the
   record with the correct type. Note that fields may have to be initialized
   in a certain order for type checking to pass. This macro does the following
   transformation:
   (record (id obj) (f1 v1) (f2 v2) ... (fN vN))
   TO
-  (let (id obj) (setf fN (... (setf f2 (setf f1 id v1) v2) ...) vN))>
+  (let (id obj) (setf fN (... (setf f2 (setf f1 id v1) v2) ...) vN))>>
 
 (function record (l r)
   `:(let ,:[@fst l]
@@ -366,10 +366,10 @@
           acc
           {layer-set `:(setf ,:[@ffst props] ,:acc ,:[@frfst props]):r [@rst props]}))):r)
 
-< The following function is a helper function for generating the fields of
+<<The following function is a helper function for generating the fields of
   structs. All that it does is create a macro invocation on the first token
   in the fragment l supplying to it the offset, size, getter, and setter of
-  the field in addition to the rest of the fragment l.>
+  the field in addition to the rest of the fragment l.>>
 
 (function property-aux (l r offset size sig)
   (sub (.. l r)
@@ -379,33 +379,33 @@
       `:property-aux.buf:r [meta.bq [sig r] `:property-aux.buf:r r]
       [meta.bq (switch = size (#:0 [0b ..]) (#:1 [1b ..]) (#:2 [2b ..]) (#:4 [4b ..]) (#:8 [8b ..]) [var r]) `:property-aux.buf:r r] [@rst l] r]))
 
-< The following function is another helper function for creating properties.
+<<The following function is another helper function for creating properties.
   Performs the following transformation:
   (property name args ...)
   TO
-  (function name (property.l property.r) [property-aux property.l property.r args ...])>
+  (function name (property.l property.r) [property-aux property.l property.r args ...])>>
 
 (function property (l r)
   `:(function ,:[@fst l] (property.l property.r) [property-aux property.l property.r , [@rst l]]):r)
 
-< A basic property's getter and setter operate on exactly the same type.>
+<<A basic property's getter and setter operate on exactly the same type.>>
 
 (function static~ (l r) (`(@ (,[@fst l]) (,[@frst l]) (,[@frst l]) (,[@frst l]))r))
 
-< A dynamic property's setter changes its type. Its getter shouldn't be used.>
+<<A dynamic property's setter changes its type. Its getter shouldn't be used.>>
 
 (function dynamic~ (l r) (`(@ (,[var r]) (,[@fst l]) (,[@frst l]) (,[var r]))r))
 
-< A phantom property can be used on any type but has no effect when set.>
+<<A phantom property can be used on any type but has no effect when set.>>
 
 (property phantom #:0 #:0 \:r:(?(a b c d) `:(@ ,:a ,:b ,:c ,:d):r r))
 
-< The following function provides a method for ignoring L2 code. It is being used for this
-  comment to work.>
+<<The following function provides a method for ignoring L2 code. It is being used for this
+  comment to work.>>
 
 (function ~ (l r) [=# 0x:DEADBEEF r])
 
-< Takes a list and produces a list of unique tokens that are prefixed by the given prefix.>
+<<Takes a list and produces a list of unique tokens that are prefixed by the given prefix.>>
 
 (function meta.label (list prefix r)
   (with return
@@ -414,9 +414,9 @@
         {return labels}
         {aux [lst [meta.concat prefix [gentok r] r] labels r] [@rst list]})) emt list}))
 
-< Does the transformation (values storer arg1 arg2 ...) TO (storer values.stor arg1 arg2 ...).
+<<Does the transformation (values storer arg1 arg2 ...) TO (storer values.stor arg1 arg2 ...).
   (values storer arg1 arg2 ...) has the type (values sig1 sig2 ...) where sigj is the signature
-  of argj.>
+  of argj.>>
 
 (function values (l r)
   (let (storer [@fst l]) (args [@rst l])
@@ -433,9 +433,9 @@
                   ,:[meta.bq unquoted-vars `:values.r:r r] values.r]):values.r values.r))):r
           [llst storer `:values.stor:r params r] params r] emt r] args r]):r))))
 
-< Binds values bound by values. I.e. evaluating ((values? matcher1 matcher2 ... matcherN) x consequent alternate) where
+<<Binds values bound by values. I.e. evaluating ((values? matcher1 matcher2 ... matcherN) x consequent alternate) where
   x is (values storer arg1 arg2 ...) is the same as evaluating expr in an environment where
-  paramj is argj for each j.>
+  paramj is argj for each j.>>
 
 (function values? (l r)
   (let (matchers l)
@@ -462,7 +462,7 @@
                       ,:[meta.bq unquoted-vars `:bind.r:r r])):bind.r bind.r)))
                 bind.param , param-parts})):r)))))r)))
 
-< The following macro implements the following transformation:
+<<The following macro implements the following transformation:
   ((use-storage stor) use-stor arg1 arg2 ... argN)
   TO
   (let (use-stor stor) (do
@@ -470,7 +470,7 @@
     [set [+ use-stor [* #:1(unit)]] arg2]
     ...
     [set [+ use-stor [* #(N-1)(unit)]] argN]
-    use-stor))>
+    use-stor))>>
 
 (function use-storage (l r)
   (let (target-loc [@fst l])
@@ -483,8 +483,8 @@
                 {make-set [@rst identifiers] [+ idx #:1]
                   [lst `:[set [+ ,:[@fst l] [* ,:[=# idx r] (unit)]] ,:[@fst identifiers]]:r sets r]})) r] r] r]):r r)))
 
-< Implements the transformations (@n expr) TO ($[+ expr [* #:n(unit)]]). Designed to
-  evaluate to the nth argument of a storage expression.>
+<<Implements the transformations (@n expr) TO ($[+ expr [* #:n(unit)]]). Designed to
+  evaluate to the nth argument of a storage expression.>>
 
 (function @0 (l r) (`($[+ (,[@fst l]) [* #:0(unit)]])r))
 
@@ -496,9 +496,9 @@
 
 (function @4 (l r) (`($[+ (,[@fst l]) [* #:4(unit)]])r))
 
-< A macro to produce the address of an element of a multi-dimensional array.
+<<A macro to produce the address of an element of a multi-dimensional array.
   For example, (loc(unit) #:4 $:arr) gets the address corresponding to unit 4
-  from $:arr. The signature of the expression is the same as that of the base.>
+  from $:arr. The signature of the expression is the same as that of the base.>>
 
 (function loc (l r)
   (`(with loc.return
@@ -507,26 +507,26 @@
             (\ r (?(a) (`(continuation (,:a ,:a))r)r)))
           loc.base [+ [* (,[@fst l]) (,[@frst l])] loc.base]}))r))
 
-< A tuple is a continuation that supplies its values to any continuation passed
+<<A tuple is a continuation that supplies its values to any continuation passed
   to it. The following macro creates an appropriate tuple signature by do the
   following transformation:
   (tuple- t1 t2 ... tN)
   TO
-  (continuation ((continuation (t1 t2 ... tN))))>
+  (continuation ((continuation (t1 t2 ... tN))))>>
 
 (function tuple- (l r) `:(continuation ((continuation ,:l))):r)
 
-< A macro to create a local tuple. Does the following transformation:
+<<A macro to create a local tuple. Does the following transformation:
   (tuple val1 val2 ... valN)
   TO
   (continuation tuple.cont (tuple.target)
-    {tuple.target val1 val2 ... valN})>
+    {tuple.target val1 val2 ... valN})>>
 
 (function tuple (l r)
   `:(continuation tuple.cont (tuple.target)
       {tuple.target , l}):r)
 
-< A macro to match a local tuple. Does the following transformation:
+<<A macro to match a local tuple. Does the following transformation:
   ((tuple? matcher1 matcher2 ... matcherN) obj consequent alternate)
   TO
   (with tuple?.ret
@@ -540,7 +540,7 @@
                 alternate)
               ...)
             alternate)
-          alternate)})})>
+          alternate)})})>>
 
 (function tuple? (l r)
   (let (matchers l)
@@ -555,10 +555,10 @@
                       expr
                       {build `:(,:[@fst matchers] ,:[@fst vars] ,:expr ,:alternate):r [@rst matchers] [@rst vars]}))})}):r))r)))
 
-< A macro to turn a predicate into a branch expression. Does the following transformation:
+<<A macro to turn a predicate into a branch expression. Does the following transformation:
   ((| (func arg1 arg2 ... argN)) obj consequent alternate)
   TO
-  (if (func arg1 arg2 ... argN obj) consequent alternate)>
+  (if (func arg1 arg2 ... argN obj) consequent alternate)>>
 
 (function | (l r)
   (let (partial [@fst l])
@@ -567,17 +567,17 @@
         (let (complete [meta.concat partial [lst obj emt r] r])
           `:(if ,:complete ,:consequent ,:alternate):r))r)))
 
-< A macro for capturing variables. Does the following transformation:
+<<A macro for capturing variables. Does the following transformation:
   (.:id val consequent alternate)
   TO
-  (let (id val) consequent)>
+  (let (id val) consequent)>>
 
 (function . (l r)
   (let (id [@fst l])
     (closure (id) (l r)
       `:(let (,:id ,:[@fst l]) ,:[@frst l]):r r)))
 
-< A macro for matching objects against certain properties. The macro does the following
+<<A macro for matching objects against certain properties. The macro does the following
   transformation:
   ((property? (prop1 matcher1) (prop2 matcher2) ... (propN matcherN)) obj consequent alternate)
   TO
@@ -590,7 +590,7 @@
             alternate)
           ...)
         alternate)
-      alternate))>
+      alternate))>>
 
 (function property? (l r)
   (let (parts [meta.reverse l r])
@@ -604,7 +604,7 @@
                   {build `:(,:matcher (@ ,:prop ,:obj-sym) ,:expr ,:alternate):r
                     [@rst parts]})))):r)r)))
 
-< A macro for matching objects to at least one of the given matchers. The macro does the
+<<A macro for matching objects to at least one of the given matchers. The macro does the
   following transformation:
   (or? (matcher1 matcher2 ... matcherN) obj consequent alternate)
   TO
@@ -617,7 +617,7 @@
           (matcherN or?.obj
             consequent
             alternate)
-          ...))))>
+          ...))))>>
 
 (function or? (l r)
   (let (parts [meta.reverse l r])
@@ -630,7 +630,7 @@
                 (let (matcher [@fst parts])
                   {build `:(,:matcher or?.obj ,:consequent ,:expr):r [@rst parts]})))):r)r)))
 
-< A macro for matching objects to at least one of the given matchers. The macro does the
+<<A macro for matching objects to at least one of the given matchers. The macro does the
   following transformation:
   ((and? matcher1 matcher2 ... matcherN) obj consequent alternate)
   TO
@@ -643,7 +643,7 @@
             alternate)
           ...)
         alternate)
-      alternate))>
+      alternate))>>
 
 (function and? (l r)
   (let (parts [meta.reverse l r])
@@ -656,9 +656,9 @@
                 (let (matcher [@fst parts])
                   {build `:(,:matcher and?.obj ,:expr ,:alternate):r [@rst parts]})))):r)r)))
 
-< ((guards? matcher guard) obj consequent alternate)
+<<((guards? matcher guard) obj consequent alternate)
   TO
-  (matcher obj (if guard consequent alternate) alternate)>
+  (matcher obj (if guard consequent alternate) alternate)>>
 
 (function guards? (l r)
   (let (matcher [@fst l]) (guard [@frst l])
@@ -666,7 +666,7 @@
       (let (consequent [@frst l]) (obj [@fst l]) (alternate [@frrst l])
         `:(,:matcher ,:obj (if ,:guard ,:consequent ,:alternate) ,:alternate):r)r)))
 
-< The following function takes an equality predicate and the type field of a
+<<The following function takes an equality predicate and the type field of a
   record and returns a macro that when given a type value and value field,
   produces a macro that takes a value matcher and produces a matcher macro for
   the given case of the union. Does the following transformation:
@@ -676,7 +676,7 @@
     (vm (& vf obj)
       consequent
       alternate)
-    alternate)>
+    alternate)>>
 
 (function union (l r)
   (let (eq [@fst l]) (tf [@frst l])
@@ -692,7 +692,7 @@
                       ,:alternate)
                     ,:alternate)):r)r))r))r)))
 
-< A variant of the if-expression where the condition and the consequent are evaluated in
+<<A variant of the if-expression where the condition and the consequent are evaluated in
   the environment of the given storage bindings. The macro performs the following
   transformation:
   (bind-if cond (param1 param2 ... paramN)
@@ -708,7 +708,7 @@
       (if cond
         {bind-if.return consequent}
         (~)))
-    alternate))>
+    alternate))>>
 
 (function bind-if (l r)
   (let (cond [@fst l]) (params [@frst l]) (consequent [@frrst l]) (alternate [@frrrst l])
@@ -719,45 +719,45 @@
             [meta.reverse [lst (`(if ,:cond {bind-if.return ,:consequent} (~))r) bindings r] r] r])
         ,:alternate))r))))
 
-< The following function measures the length of the list given as its argument.>
+<<The following function measures the length of the list given as its argument.>>
 
 (function meta.length (l)
   (loop measure (l l) (len #:0)
     (if [emt? l] len {measure [@rst l] [+ len #:1]})))
 
-< A macro to keep the callee's stack frame alive. Does the following transformation:
+<<A macro to keep the callee's stack frame alive. Does the following transformation:
   (%:func arg1 arg2 ... argN)
   TO
-  (with percent.return [func percent.return arg1 arg2 ... argN])>
+  (with percent.return [func percent.return arg1 arg2 ... argN])>>
 
 (function % (l r)
   (let (func [@fst l])
     (closure (func) (l r)
       `:(with percent.return [,:func percent.return , l]):r r)))
 
-< A macro to define C-style substitution macros. Does the following transformation:
+<<A macro to define C-style substitution macros. Does the following transformation:
   ((define id macro) frags ...)
   TO
-  (macro frags ...)>
+  (macro frags ...)>>
 
 (function define (l r)
   `:(function ,:[@fst l] (l r)
       (let (macro ,:[meta.bq [@frst l] `:r:r r])
         [lst macro l r])):r)
 
-< A module is a set of bindings. The following macro takes a module and produces
+<<A module is a set of bindings. The following macro takes a module and produces
   a macro to execute an expression in the context of the aforementioned module.
   Does the following transformation:
   ((module (id1 val1) ... (idN valN)) expr)
   TO
-  (use (id1 val1) ... (idN valN) expr)>
+  (use (id1 val1) ... (idN valN) expr)>>
 
 (function module (l r)
   (let (binds l)
     (closure (binds) (l r)
       `:(use , [meta.reverse [lst [@fst l] binds r] r]):r r)))
 
-< A method takes its first argument set by-name and produces a function taking
+<<A method takes its first argument set by-name and produces a function taking
   the second argument set by value. The following method macro does the following
   transformation:
   ((method method-a (frag-a frag-b ... frag-z) (param-a param-b ... param-z) expr)
@@ -765,7 +765,7 @@
   TO
   (function method-a (param-a param-b ... param-z)
     expr with substitutions
-      frag-a TO arg-a, frag-b TO arg-b, ..., frag-z TO arg-z)>
+      frag-a TO arg-a, frag-b TO arg-b, ..., frag-z TO arg-z)>>
 
 (function method (l r)
   (let (name [@fst l]) (ct-params [@frst l]) (rt-params [@frrst l]) (body [@frrrst l])
@@ -775,7 +775,7 @@
         (let (rt-params ,:[meta.bq rt-params `:r:r r])
           `:(function method.func ,:rt-params ,:body-mod):r)))):r))
 
-< A functor maps a tuple of modules to a module comprising the given expressions.
+<<A functor maps a tuple of modules to a module comprising the given expressions.
   Does the following transformation:
   (((functor (params ...)
     (id1 val1)
@@ -786,7 +786,7 @@
       (id1 <val1 with args ... substituted for params ...>)
       ...
       (idN <valN with args ... substituted for params ...>)
-    expr)>
+    expr)>>
 
 (function functor (l r)
   (let (ct-params [@fst l]) (binds [@rst l])
@@ -796,7 +796,7 @@
         (closure (binds-sub) (l r)
           `:(use , [meta.reverse [lst [@fst l] binds-sub r] r]):r r))r)))
 
-< A interface exposes and constrains a subset of the functions of a module. The
+<<A interface exposes and constrains a subset of the functions of a module. The
   interface macro does the following transformation:
   (((interface (var-a var-b ... var-z) r
     (id-a sig-a)
@@ -808,7 +808,7 @@
     (let (interface.cont (constrain (continuation interface.cont (id-a id-b ... id-z) {interface.ret expr})
         \:r:(let (var-a [var r]) (var-b [var r]) ... (var-z [var r])
           `:(continuation (,:sig-a ,:sig-b ... ,:sig-z)):r)))
-      (module-a {interface.cont id-a id-b ... id-z})))>
+      (module-a {interface.cont id-a id-b ... id-z})))>>
 
 (function interface (l r)
   (let (buffer [@frst l]) (ids [meta.map [@rrst l] @fst r]) (sigs [meta.map [@rrst l] @frst r])
@@ -823,7 +823,7 @@
                       [lst (` `:(continuation ,:,;[meta.bq [meta.map2 sigs r meta.unquote r] buffer r]):interface.r r) var-binds r] r]))))
                   (,:module {,:cont-sym , ids}))):r)r))r))))
 
-< A macro closure makes a quoted function with the given arguments in such
+<<A macro closure makes a quoted function with the given arguments in such
   a way that its body is not quoted. The environment variables are brought
   in from the lexical scope of the macros usage. This function is useful
   for avoiding unnecessary recompilations of the bodies of higher order macros.
@@ -832,7 +832,7 @@
   TO
   (let (closure.aux (function closure.aux (env1 ... envN arg1 ... argN) expr))
     `:(function closure.func (arg1 ... argN)
-        [,:[qval closure.aux r] ,:[qval env1 r] ... ,:[qval envN r] arg1 ... argN]):r)>
+        [,:[qval closure.aux r] ,:[qval env1 r] ... ,:[qval envN r] arg1 ... argN]):r)>>
 
 (function closure (l r)
   (let (envs [@fst l]) (args [@frst l]) (expr [@frrst l]) (reg [@frrrst l])

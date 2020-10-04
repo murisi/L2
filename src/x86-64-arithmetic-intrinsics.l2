@@ -1,5 +1,5 @@
-< The following function wraps the arithmetic intrinsics so that the addresses of
-  functions like + and - can be taken like non-intrinsic functions.>
+<<The following function wraps the arithmetic intrinsics so that the addresses of
+  functions like + and - can be taken like non-intrinsic functions.>>
 
 (constrain wrap-arithmetic-intrinsics (\ r (?(a b) (`(function (region ,:a) (list (expr ,:b)))r)r)))
 
@@ -78,9 +78,9 @@
         (false)))
     (false)))
 
-< If the given binding is not already in a register, a move is generated from the binding
+<<If the given binding is not already in a register, a move is generated from the binding
   to the given register. Returns the register in which the value at the binding can be
-  found.>
+  found.>>
 
 (constrain generate-move-to-register
   (\ r (?(a) (`(function (register bndg-aug !:Ref:(list instr) !:Ref:(list reloc) region ,:a) register)r)r)))
@@ -93,11 +93,11 @@
         [prepend (make-instrN (x86-mov) ([make-reg-op reg ..] [bndg-to-op bndg relocs ..]) ..) c ..]
         reg))))
 
-< The following function generates inline assembly for the following functions: getb,
+<<The following function generates inline assembly for the following functions: getb,
   get1b, get2b, get4b, get8b, get, setb, set1b, set2b, set4b, set8b, set, +, -, *, /, rem,
   =, lt, gt, shl, shr, bor, bxor, band, bnot. This function only applies to invocations of functions
   with the aforementioned names that are undefined in the invocation's lexical
-  environment.>
+  environment.>>
 
 (constrain generate-unary-arithmetic-operators
   (\ r (?(a b c) (`(function ((expr ,:c) !:Ref:(list instr) !:Ref:(list reloc) region ,:a) ,:b)r)r)))
@@ -583,23 +583,23 @@
 
 (function match-get-base+offset (name base offset n)
   ((exprm:invoke? (property?
-    (expr-invoke-target (|[undefined-symbol?]))
-    (expr-invoke-target (exprm:symbol? (property? (expr-symbol-reference
-      (property? (bndg-name (|[variable name])))))))
-    (expr-invoke-arguments (list?
-      (exprm:invoke? (property?
-        (expr-invoke-target (|[undefined-symbol?]))
-        (expr-invoke-target (|[symbol-name= (" +)]))
-        (expr-invoke-arguments
-          (or?
-            (list?
-              (exprm:literal? (property?
-                (expr-value (|[variable offset]))))
-              (|[variable base]))
-            (list?
-              (|[variable base])
-              (exprm:literal? (property?
-                (expr-value (|[variable offset]))))))))))))) n (true) (false)))
+      (expr-invoke-target (|[undefined-symbol?]))
+      (expr-invoke-target (exprm:symbol? (property? (expr-symbol-reference
+        (property? (bndg-name (|[variable name])))))))
+      (expr-invoke-arguments (list?
+        (exprm:invoke? (property?
+          (expr-invoke-target (|[undefined-symbol?]))
+          (expr-invoke-target (|[symbol-name= (" +)]))
+          (expr-invoke-arguments
+            (or?
+              (list?
+                (exprm:literal? (property?
+                  (expr-value (|[variable offset]))))
+                (|[variable base]))
+              (list?
+                (|[variable base])
+                (exprm:literal? (property?
+                  (expr-value (|[variable offset]))))))))))))) n (true) (false)))
 
 (constrain initialize-get-base+offset
   (\ r (?(a b c d) (`(function ((expr ,:a) ,:b (list initializer) (values ,:b reg-use-vec) region ,:d) ,:c)r)r)))
@@ -662,24 +662,24 @@
 
 (function match-set-base+offset (name base offset value n)
   ((exprm:invoke? (property?
-    (expr-invoke-target (|[undefined-symbol?]))
-    (expr-invoke-target (exprm:symbol? (property? (expr-symbol-reference
-      (property? (bndg-name (|[variable name])))))))
-    (expr-invoke-arguments (list?
-      (exprm:invoke? (property?
-          (expr-invoke-target (|[undefined-symbol?]))
-          (expr-invoke-target (|[symbol-name= (" +)]))
-          (expr-invoke-arguments
-            (or?
-              (list?
-                (exprm:literal? (property?
-                  (expr-value (|[variable offset]))))
-                (|[variable base]))
-              (list?
-                (|[variable base])
-                (exprm:literal? (property?
-                  (expr-value (|[variable offset])))))))))
-      (|[variable value]))))) n (true) (false)))
+      (expr-invoke-target (|[undefined-symbol?]))
+      (expr-invoke-target (exprm:symbol? (property? (expr-symbol-reference
+        (property? (bndg-name (|[variable name])))))))
+      (expr-invoke-arguments (list?
+        (exprm:invoke? (property?
+            (expr-invoke-target (|[undefined-symbol?]))
+            (expr-invoke-target (|[symbol-name= (" +)]))
+            (expr-invoke-arguments
+              (or?
+                (list?
+                  (exprm:literal? (property?
+                    (expr-value (|[variable offset]))))
+                  (|[variable base]))
+                (list?
+                  (|[variable base])
+                  (exprm:literal? (property?
+                    (expr-value (|[variable offset])))))))))
+        (|[variable value]))))) n (true) (false)))
 
 (constrain initialize-set-base+offset
   (\ r (?(a b c d) (`(function ((expr ,:a) ,:b (list initializer) (values ,:b reg-use-vec) region ,:d) ,:c)r)r)))

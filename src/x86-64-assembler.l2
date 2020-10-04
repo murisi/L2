@@ -1,4 +1,4 @@
-< The constants to be used in x86-64-assembler.l2>
+<<The constants to be used in x86-64-assembler.l2>>
 
 (constant write-elf-sh-count #:7 \:r:[var r])
 
@@ -6,7 +6,7 @@
 
 (constant write-elf-max-instr-len #:15 \:r:[var r])
 
-< A representation of an object code relocation.>
+<<A representation of an object code relocation.>>
 
   (constant relocation #:40 \:r:[var r])
 
@@ -18,12 +18,12 @@
   
   (property reloc-context #:24 #:8 (\ r (`(! static~ (,[var r]) reloc)r)))
   
-  < reloc-addend-func takes as its arguments context, operand location, operand size,
-    instruction location, instruction size, and computes an addend for the relocation.>
+  <<reloc-addend-func takes as its arguments context, operand location, operand size,
+    instruction location, instruction size, and computes an addend for the relocation.>>
     
   (property reloc-addend-func #:32 #:8 (\ r (?(a b c d e f) (`(! static~ (function (,:f ,:b ,:c ,:d ,:e) ,:a) reloc)r)r)))
 
-< A representation of an instruction.>
+<<A representation of an instruction.>>
 
   (constant instruction #:24 \:r:[var r])
 
@@ -33,7 +33,7 @@
   
   (property instr-binding #:16 #:8 (\ r (`(! static~ bndg-aug instr)r)))
 
-< x86-64 instruction codes.>
+<<x86-64 instruction codes.>>
   
   (constant label #:33 \:r:(` instr-code r))
 
@@ -115,7 +115,7 @@
   
   (constant x86-ja #:57 \:r:(` instr-code r))
 
-< A representation of an operand.>
+<<A representation of an operand.>>
   
   (constant operand #:64 \:r:[var r])
   
@@ -125,15 +125,15 @@
   
   (property op-locations #:16 #:8 (\ r (?(a b c d) (`(! static~ (list (values ,:a ,:b ,:c ,:d)) operand)r)r)))
 
-< Only for type(s) (register-operand)>
+<<Only for type(s) (register-operand)>>
 
   (property op-register #:24 #:8 (\ r (`(! static~ register operand)r)))
 
-< Only for type(s) (immediate-operand)>
+<<Only for type(s) (immediate-operand)>>
 
   (property op-immediate #:24 #:8 (\ r (`(! static~ (,[var r]) operand)r)))
 
-< Only for type(s) (memory-operand)>
+<<Only for type(s) (memory-operand)>>
 
   (property op-base #:24 #:8 \:r:(`(! static~ register operand)r))
   
@@ -145,7 +145,7 @@
   
   (property op-disp-size #:56 #:8 \:r:(`(! static~ ,:[var r] operand)r))
 
-< x86-64 operand types.>
+<<x86-64 operand types.>>
 
   (constant register-operand #:0 (\ r (` operand-type r)))
   
@@ -155,7 +155,7 @@
   
   (constant none-operand #:3 (\ r (` operand-type r)))
 
-< x86-64 registers.>
+<<x86-64 registers.>>
   
   (constant r/m8 [shl #:1 #:5] \:r:[var r])
   
@@ -325,12 +325,12 @@
   
   (constant rip [bor [bor #:16(r/m64)] (w/rex)] \:r:(` register r))
 
-< Defined to enable the x64 registers to be indexed dynamically.>
+<<Defined to enable the x64 registers to be indexed dynamically.>>
 
 (storage x64-r64s
   (rax)(rcx)(rdx)(rbx)(rsp)(rbp)(rsi)(rdi)(r8)(r9)(r10)(r11)(r12)(r13)(r14)(r15))
 
-< Usage (make-instrN opcode (ops ...) buf handler)>
+<<Usage (make-instrN opcode (ops ...) buf handler)>>
 
 (function make-instrN (l r)
   `:[make-instruction ,:[@fst l] (list ,:[@rrst l] , [@frst l]) , [@rrst l]]:r)
@@ -1168,8 +1168,8 @@
   
   lkd-rela-shdr)))))
 
-< The following functions are for ensuring that truncating the outcome of a relocation
-  computation preserves its value.>
+<<The following functions are for ensuring that truncating the outcome of a relocation
+  computation preserves its value.>>
 
 (function assert-byte (val handler)
   (if [= val [band val 0x:00000000000000FF]]
@@ -1214,11 +1214,11 @@
     ((r-x86-64-size64) [memcpy target (storage _[+(@ st-size sym)addend]) #:8])
     {handler (storage _ object-error)}))
 
-< Takes assembly code and a list of symbols as constructs an object file.
+<<Takes assembly code and a list of symbols as constructs an object file.
   instrs is a list of assembly expressions. symbols is a list of the static
   symbols used in the assembly expressions. reg is the region into which the generated
   object code should be put. Returns a pair containing a reference to the generated object
-  code and the size of the generated object code.>
+  code and the size of the generated object code.>>
 
 (constrain write-elf
   (\ r (?(a b c d) (`(function ((list instr) (list reloc) (list (values string (list instr) (list reloc)))
@@ -1267,7 +1267,7 @@
     [append lkd-shstrtab-shdr (& lkde-sh lkd-ehdr) rgn2 handler]
     (setf lkde-shstr lkd-ehdr lkd-shstrtab-shdr)
     
-    < Mandatory undefined section>
+    <<Mandatory undefined section>>
     (let (shstrtab-null-name [make-lkdstrt (" ) rgn2 handler])
     (let (lkd-undef-shdr [make-lkds shstrtab-null-name (~) rgn2 handler])
     (let (undef-shdr (@ lkdsh-raw lkd-undef-shdr)) (do
@@ -1329,7 +1329,7 @@
     (let (strtab-null-name [make-lkdstrt (" ) rgn2 handler])
     (let (lkd-und-sym [make-lkdst strtab-null-name lkd-undef-shdr rgn2 handler])
     (let (und-sym (@ lkdst-raw lkd-und-sym)) (do
-    < Mandatory undefined symbol>
+    <<Mandatory undefined symbol>>
     [append strtab-null-name (& lkdsh-strtab lkd-strtab-shdr) rgn2 handler]
     (setf st-name und-sym #:0)
     (setf st-value und-sym #:0)
@@ -1397,16 +1397,16 @@
         [make-function-relocation-section relocs [rstrcat (" .rela.text.) name rgn2 handler]
           lkd-ehdr func-text-sec lkd-symtab-shdr rgn2 handler] (~))))))
     
-    < Mark every symbol as false in preparation for the usage analysis.>
+    <<Mark every symbol as false in preparation for the usage analysis.>>
     
     (for (sec (%:list-iter (@ lkde-sh lkd-ehdr))) (~)
       (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-symtab)]
         (for (sym (%:list-iter (@ lkdsh-symtab sec))) (~)
           (setf lkdst-other sym (false))) (~)))
     
-    < Find relocations such that their symbol's section matches the target section,
+    <<Find relocations such that their symbol's section matches the target section,
       apply them, and remove them from the relocations list. For the relocations that
-      remain, mark the symbols that they refer to.>
+      remain, mark the symbols that they refer to.>>
     
     (for (sec (%:list-iter (@ lkde-sh lkd-ehdr))) (~)
       (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-rela)]
@@ -1428,8 +1428,8 @@
               (true))))))))
         (~)))
     
-    < Filter all the symbol tables keeping only the symbols that are referred to
-      in relocations or have non-local binding.>
+    <<Filter all the symbol tables keeping only the symbols that are referred to
+      in relocations or have non-local binding.>>
     
     (setf lkdst-other lkd-und-sym (true))
     (setf lkdst-other lkd-bss-sym (true))
@@ -1441,7 +1441,7 @@
             (@ lkdst-other sym)
             [not= (elf64-st-bind (@ st-info (@ lkdst-raw sym))) (stb-local)])) (~)))
     
-    < Assign the strings in the string table indicies.>
+    <<Assign the strings in the string table indicies.>>
     
     (for (sec (%:list-iter (@ lkde-sh lkd-ehdr))) (~)
       (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-strtab)]
@@ -1449,12 +1449,12 @@
           (setf lkdstrt-ndx str acc)
           [+ acc [+ #:1 [strlen (@ lkdstrt-raw str)]]])) (~)))
     
-    < Give each section an index.>
+    <<Give each section an index.>>
     
     (fold (idx #:0) (sec (%:list-iter (storage-cons lkd-undef-shdr (@ lkde-sh lkd-ehdr))))
       (do (setf lkdsh-ndx sec idx) [+ idx #:1]))
     
-    < Substitute into ELF Section sh-names and sh-links, and sh-infos if possible.>
+    <<Substitute into ELF Section sh-names and sh-links, and sh-infos if possible.>>
     
     (for (sec (%:list-iter (@ lkde-sh lkd-ehdr))) (~) (do
       (setf sh-link (@ lkdsh-raw sec) (@ lkdsh-ndx (@ lkdsh-link sec)))
@@ -1463,13 +1463,13 @@
         (setf sh-info (@ lkdsh-raw sec) (@ lkdsh-ndx (@ lkdsh-rela-info sec)))
         (~))))
     
-    < Substitute into ELF Header e-shstrndx, e-shnum, and e-shoff>
+    <<Substitute into ELF Header e-shstrndx, e-shnum, and e-shoff>>
     
     (setf e-shstrndx (@ lkde-raw lkd-ehdr) (@ lkdsh-ndx (@ lkde-shstr lkd-ehdr)))
     (setf e-shnum (@ lkde-raw lkd-ehdr) [+ [length (@ lkde-sh lkd-ehdr)] #:1])
     (setf e-shoff (@ lkde-raw lkd-ehdr) (elf64-ehdr))
     
-    < Assign the symbols in each symbol table consecutive indicies.>
+    <<Assign the symbols in each symbol table consecutive indicies.>>
     
     (for (sec (%:list-iter (@ lkde-sh lkd-ehdr))) (~)
       (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-symtab)]
@@ -1484,7 +1484,7 @@
               acc
               (do (setf lkdst-ndx sym acc) [+ acc #:1]))))) (~)))
     
-    < Calculate the sizes of the individual sections.>
+    <<Calculate the sizes of the individual sections.>>
     
     (for (sec (%:list-iter (@ lkde-sh lkd-ehdr))) (~)
       (switch = (@ sh-type (@ lkdsh-raw sec))
@@ -1497,7 +1497,7 @@
             [+ acc [+ #:1 [strlen (@ lkdstrt-raw str)]]])))
         (~)))
     
-    < Substitute into symbol table entry shndxs and names.>
+    <<Substitute into symbol table entry shndxs and names.>>
     
     (for (sec (%:list-iter (@ lkde-sh lkd-ehdr))) (~)
       (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-symtab)] (do
@@ -1505,7 +1505,7 @@
           (setf st-shndx (@ lkdst-raw sym) (@ lkdsh-ndx (@ lkdst-sh sym)))
           (setf st-name (@ lkdst-raw sym) (@ lkdstrt-ndx (@ lkdst-name sym)))))) (~)))
     
-    < Substitute into relocation r-info.syms.>
+    <<Substitute into relocation r-info.syms.>>
     
     (for (sec (%:list-iter (@ lkde-sh lkd-ehdr))) (~)
       (if [= (@ sh-type (@ lkdsh-raw sec)) (sht-rela)]
@@ -1514,7 +1514,7 @@
             (@ lkdst-ndx (@ lkdr-info-sym rela))
             (elf64-r-type (@ r-info (@ lkdr-raw rela)))))) (~)))
     
-    < Assign an offset to each section and record ELF size.>
+    <<Assign an offset to each section and record ELF size.>>
     
     (let (elf-size [pad-size (fold (offset [+ (elf64-ehdr) [* (elf64-shdr) [+ [length (@ lkde-sh lkd-ehdr)] #:1]]])
         (sec (%:list-iter (@ lkde-sh lkd-ehdr))) (do
@@ -1523,7 +1523,7 @@
         offset
         [+ offset [pad-size (@ sh-size (@ lkdsh-raw sec)) (write-elf-alignment)]]))) (write-elf-alignment)]) (do
     
-    < Write out the ELF file.>
+    <<Write out the ELF file.>>
     
     (let (pos (storage _ #:0))
     (let (bin [region-alloc elf-size rgn1 handler]) (do
@@ -1551,10 +1551,10 @@
     
     (values (use-storage outs) bin $:pos)))))))))))))))))))))))))))))))))))))))))
 
-< Converts the offsets of the static bindings associated with L2 source code that has now
+<<Converts the offsets of the static bindings associated with L2 source code that has now
   been loaded into addresses. asms is a list of assembly expressions containing bindings
   that need to be converted. bindings is a list of augmented bindings corresponding to the
-  assembly expressions that also need to be converted.>
+  assembly expressions that also need to be converted.>>
 
 (constrain binding-offsets-to-addresses
   (\ r (?(a) (`(function ((list instr) (list (values string (list instr) (list reloc))) (list bndg-aug) obj region ,:a) ())r)r)))

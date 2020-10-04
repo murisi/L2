@@ -6,7 +6,7 @@
 
 (constant ht-load-factor-den #:4 \:r:[var r])
 
-< The hash-table data structure. Note that it is parameterized by a hash function and an equality function.>
+<<The hash-table data structure. Note that it is parameterized by a hash function and an equality function.>>
 
   (constant hash-table-struct #:40 \:r:[var r])
 
@@ -33,9 +33,9 @@
       (for (i (%:range #:0 (ht-initial-bucket-count))) (~) [set (loc(unit)i (@ ht-values ht)) nil])
       ht))))
 
-< Checks to see if the number of elements in the hash table exceeds the load
+<<Checks to see if the number of elements in the hash table exceeds the load
   factor and if so, scales the number of uckets in the hash table by the
-  resize factor.>
+  resize factor.>>
 
 (constrain ht-resize (\ r (?(a b c d) `:(function ((hash-table ,:a ,:b) region ,:c) ,:d):r r)))
 
@@ -141,18 +141,18 @@
               (cps {recv next ictx (tuple key val)}
                 (next (new-recv new-ctx) (tuple [cast new-recv] new-ctx))) (~)) (~)))) {end ictx} (~)))})
 
-< Puts all the given associations into the given hash table. Does the following
+<<Puts all the given associations into the given hash table. Does the following
   transformation.
   (ht-putall (ht ..) (k1 v1) (k2 v2) ... (kN vN))
   TO
-  [ht-put kN vN [... [ht-put k2 v2 [ht-put k1 v1 ht ..] ..] ...] ..]>
+  [ht-put kN vN [... [ht-put k2 v2 [ht-put k1 v1 ht ..] ..] ...] ..]>>
 
 (function ht-putall (l r)
   (loop build-expr (expr [@ffst l]) (rem [@rst l])
     (if [emt? rem] expr
       {build-expr [lllllst (` invoke r) (` ht-put r) [@ffst rem] [@frfst rem] expr [@rfst l] r] [@rst rem]})))
 
-< Find a value under the given key in the given hash table satisfying the given predicate:
+<<Find a value under the given key in the given hash table satisfying the given predicate:
   (ht-find (value key ht) expr)
   TO
   (let (ht-find.key key) (ht-find.ht ht)
@@ -164,7 +164,7 @@
       ((values? .:ht-find.k .:value) [@car ht-find.bucket]
         (if (and [(@ ht-equals-func ht) ht-find.key ht-find.k] expr)
           (true)
-          {ht-find.find-end [@cdr ht-find.bucket]}) (~)))))))>
+          {ht-find.find-end [@cdr ht-find.bucket]}) (~)))))))>>
 
 (function ht-find (l r)
   (`(let (ht-find.key (,[@frfst l])) (ht-find.ht (,[@frrfst l]))

@@ -1,6 +1,6 @@
 (constant word-size #:8 \:r:[var r])
 
-< Offsets for the register contents in the continuation buffer.>
+<<Offsets for the register contents in the continuation buffer.>>
 
   (constant cont-size [* #:7 (word-size)] \:r:[var r])
 
@@ -22,7 +22,7 @@
 
 (storage callee-saved-x64-r64s (rbx)(r12)(r13)(r14)(r15))
 
-< Looks up the (non-register) memory storage associated with a given context.>
+<<Looks up the (non-register) memory storage associated with a given context.>>
 
 (constrain context-to-memory-storage \:r:(`(function (bndg-context) bndg-storage)r))
 
@@ -32,10 +32,10 @@
     ((extra-function-context) (absolute-storage))
     (~)))
 
-< Storage expressions and escaping continuations need to store data that persists beyond
+<<Storage expressions and escaping continuations need to store data that persists beyond
   the evaluation of the expression. That is, the buffers associated with the
   aforementioned expressions cannot be overwritten. Hence we need to place them in
-  distinct locations.>
+  distinct locations.>>
 
 (constrain place-perm-bindings \:r:(?(a b) (`(function ((expr ,:b) ,:a) ,:a)r)r))
 
@@ -90,8 +90,8 @@
     
     offset))
 
-< Checks whether the given register is in use according to the given register usage
-  vector.>
+<<Checks whether the given register is in use according to the given register usage
+  vector.>>
 
 (constrain register-in-use? \:r:(`(function (register reg-use-vec) ())r))
 
@@ -99,9 +99,9 @@
   (let (reg-idx [band reg 0x:F])
   (if [band [shl #:1 reg-idx] reg-use-vec] (true) (false))))
 
-< Takes a binding, a register to assign it to, and a bit-vector indicating the registers
+<<Takes a binding, a register to assign it to, and a bit-vector indicating the registers
   already in use. Assigns the given binding to the given register if it is not already in
-  use and returns an indication to that effect, otherwise it fails.>
+  use and returns an indication to that effect, otherwise it fails.>>
 
 (function try-bndg-to-preferred-location (bndg in-use)
   (switch = (@ bndg-preferred-storage bndg)
@@ -129,9 +129,9 @@
 (function try-expr-to-preferred-location (n in-use)
   [try-bndg-to-preferred-location (@ expr-binding-aug n) in-use])
 
-< Takes a binding, the current offset in the stack frame, and a bit-vector indicating the
+<<Takes a binding, the current offset in the stack frame, and a bit-vector indicating the
   registers that are currently in use. Returns the new stack offset and register usage
-  bit-vector after the given bit-vector is placed.>
+  bit-vector after the given bit-vector is placed.>>
 
 (storage binding-to-register/memory-prefs (r10)(r11)(rax)(r9)(r8)(rcx)(rdx)(rsi)(rdi)(r12)(r13)(r14)(r15)(rbx)(rsp)(rbp))
 
@@ -247,7 +247,7 @@
             [make-reg-op current-register ..]) ..) c ..]
           (~)))))
      
-    < Move first 6 parameters to their slots>
+    <<Move first 6 parameters to their slots>>
     (and [gt [length (@ expr-function-parameters (& expr-function n))] #:0] (do
       [generate-bndg-register-move [@car(@ expr-function-parameters (& expr-function n))] (rdi) c relocs ..]
     (and [gt [length (@ expr-function-parameters (& expr-function n))] #:1] (do
@@ -268,7 +268,7 @@
         ([bndg-to-op u relocs ..][make-mem-op(word-size)(rbp)(none)#:0 offset #:4 ..][make-reg-op(r11)..])..) c ..]
       [+ offset (word-size)]))))
     
-    < Execute the function body>
+    <<Execute the function body>>
     [generate-expression (@ expr-function-expression (& expr-function n)) c relocs ..]
     [generate-register-bndg-move (rax) body-val-bndg c relocs ..]
     
@@ -530,8 +530,8 @@
       (expr-val-bndg (@ expr-binding-aug n))
       (ref-expr (@ expr-invoke-target (& expr-invoke n)))
       (ref-val-bndg (@ expr-binding-aug (@ expr-invoke-target (& expr-invoke n)))) (do
-    < If the invoke expression's reference is not an absolute symbol, then put the
-      target address into a register and then emit a call on that register.>
+    <<If the invoke expression's reference is not an absolute symbol, then put the
+      target address into a register and then emit a call on that register.>>
     (if (and [= (@ expr-type ref-expr) (-symbol-)] [absolute-reference-symbol? ref-expr]) (~)
       [generate-expression (@ expr-invoke-target (& expr-invoke n)) c relocs ..])
     (for (t (%:list-iter (@ expr-invoke-arguments (& expr-invoke n)))) (~) [generate-expression t c relocs ..])
@@ -757,8 +757,8 @@
     (setf expr-generator n [function-to-generator generate-constrain])
     (true))))
 
-< Checks if a symbol is a reference symbol that is bound to an absolute location in
-  memory.>
+<<Checks if a symbol is a reference symbol that is bound to an absolute location in
+  memory.>>
 
 (constrain absolute-reference-symbol? \:r:(?(a b) `:(function ((expr ,:b)) ,:a):r r))
 
