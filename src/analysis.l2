@@ -6,7 +6,7 @@
 
 (function bndg-name= (a b) [defined-str= (@ bndg-name a) (@ bndg-name b)])
 
-(storage multiple-definition-error (ignore))
+(storage multiple-definition-error (~))
 
 (constrain vfind-multiple-definitions (\ r (?(a b) (`(function ((expr ,:b) ,:a) (expr ,:b))r)r)))
 
@@ -14,15 +14,14 @@
   (match e
     ((or? (exprm:continuation? .:_) (exprm:function? .:_)) (do
       (let (ref-with-params (storage-cons $:[expr-reference e] $:[expr-parameters e]))
-      (for (partial (%:sublist-iter ref-with-params)) (ignore)
-        (if [nil? (find (f [@cdr partial]) [bndg-name= f [@car partial]])] (ignore)
+      (for (partial (%:sublist-iter ref-with-params)) (~)
+        (if [nil? (find (f [@cdr partial]) [bndg-name= f [@car partial]])] (~)
           (let (dup-ref-name (@ bndg-name[@car partial]))
             {handler (storage _ multiple-definition-error dup-ref-name)}))))
       e))
     e))
 
-(ignore
-  A visitor to remove constrain expressions. This is a harmless operation providing that
+(-- A visitor to remove constrain expressions. This is a harmless operation providing that
   type-checking has been completed.)
 
 (constrain veliminate-constrain (\ r (?(a) (`(function ((expr ,:a) ()) (expr ,:a))r)r)))
@@ -30,8 +29,7 @@
 (function veliminate-constrain (e ctx)
   (if [= (@ expr-type e) (-constrain-)] (@ expr-constrain-expression (& expr-constrain e)) e))
 
-(ignore
-  Replaces symbols with the literal or the symbol they are defined by in the cases in
+(-- Replaces symbols with the literal or the symbol they are defined by in the cases in
   which it is possible.)
 
 (constrain vpropagate-expressions (\ r (?(a b) (`(function ((expr ,:b) (values region ,:a)) (expr ,:b))r)r)))
@@ -41,7 +39,7 @@
     (if (and [= (@ expr-type e) (-continuation-)] (not (@ expr-continuation-escapes (& expr-continuation e))) [= [length (@ expr-continuation-jumps (& expr-continuation e))] #:1])
       (do
         (let (jmp [@car (@ expr-continuation-jumps (& expr-continuation e))])
-          (for (u (%:list-iter(@ expr-continuation-parameters (& expr-continuation e)))) (v (%:list-iter(@ expr-jump-arguments (& expr-jump jmp)))) (ignore)
+          (for (u (%:list-iter(@ expr-continuation-parameters (& expr-continuation e)))) (v (%:list-iter(@ expr-jump-arguments (& expr-jump jmp)))) (~)
             (setf bndg-propagate u v)))
         e)
     (if (and [= (@ expr-type e) (-symbol-)] [not= (@ bndg-propagate (@ expr-symbol-reference (& expr-symbol e))) null-expr]
@@ -53,9 +51,9 @@
         [= (@ expr-type (@ bndg-propagate (@ expr-symbol-reference (& expr-symbol e)))) (-literal-)])
       (do
         [make-literal (@ expr-value (& expr-literal (@ bndg-propagate (@ expr-symbol-reference (& expr-symbol e))))) null-fragment null-expr buf handler])
-      e))) (ignore)))
+      e))) (~)))
 
-(ignore Does the following optimizations:
+(-- Does the following optimizations:
   (if (if cond <zero literal> <non-zero literal>) <consequent> <alternate>)
   ->
   (if cond <alternate> <consequent>)
@@ -81,11 +79,11 @@
       (setf expr-condition (& expr-if e) cond)
       (if alt-val (do
         (setf expr-consequent (& expr-if e) alternate)
-        (setf expr-alternate (& expr-if e) consequent)) (ignore))
+        (setf expr-alternate (& expr-if e) consequent)) (~))
       e)
     e))
 
-(ignore Does the following optimizations:
+(-- Does the following optimizations:
   [... {expr1 ... exprN} ...] -> {expr1 ... exprN}
   {... {expr1 ... exprN} ...} -> {expr1 ... exprN}
   (if {expr1 ... exprN} cons alt) -> {expr1 ... exprN})
@@ -105,7 +103,7 @@
     
     e))
 
-(ignore Assigns depths to the given expression and its descendents.)
+(-- Assigns depths to the given expression and its descendents.)
 
 (constrain assign-depths (\ r (?(a b) (`(function ((expr ,:b) ,:a) ())r)r)))
 
@@ -119,14 +117,13 @@
       [assign-depths (@ expr-consequent ife) [+ depth #:1]]
       [assign-depths (@ expr-alternate ife) [+ depth #:1]]))
     ((or? (exprm:invoke? .:inve) (exprm:jump? .:jmpe))
-      (for (u (%:list-iter (storage-cons $:[expr-target e] $:[expr-arguments e]))) (ignore)
+      (for (u (%:list-iter (storage-cons $:[expr-target e] $:[expr-arguments e]))) (~)
         [assign-depths u [+ depth #:1]]))
     ((exprm:storage? .:stge)
-      (for (u (%:list-iter (@ expr-storage-arguments stge))) (ignore) [assign-depths u [+ depth #:1]]))
-    (ignore))))
+      (for (u (%:list-iter (@ expr-storage-arguments stge))) (~) [assign-depths u [+ depth #:1]]))
+    (~))))
 
-(ignore
-  A visitor that replaces all occurences of the first binding in function/continuation
+(-- A visitor that replaces all occurences of the first binding in function/continuation
   /with parameters, symbol references, and expression bindings with the second binding.)
 
 (constrain vreplace-value-bindings (\ r (?(a) (`(function ((expr ,:a) (values bndg-aug bndg-aug)) (expr ,:a))r)r)))
@@ -135,7 +132,7 @@
   ((values? .:repl-target .:replacement) ctx (do
     (if [= (@ expr-binding-aug e) repl-target]
       (setf expr-binding-aug e replacement)
-      (ignore))
+      (~))
     (match e
       ((or? (exprm:continuation? .:_) (exprm:with? .:_) (exprm:function? .:_))
         (loop replace (rem-params $:[expr-parameters e])
@@ -147,7 +144,7 @@
         (if [= (@ expr-symbol-reference syme) repl-target]
           (do (setf expr-symbol-reference syme replacement) e)
           e))
-      e)) (ignore)))
+      e)) (~)))
 
 (constrain assign-expr-is-reads (\ r (?(a) (`(function ((expr ,:a)) ())r)r)))
 
@@ -177,29 +174,29 @@
       [set-expr-is-read body (true)]))
     
     ((exprm:continuation? (property? (expr-continuation-parameters .:params) (expr-continuation-reference .:ref) (expr-continuation-expression .:body))) (do
-      (for (param (%:list-iter params)) (ignore) (setf bndg-is-read param (true)))
+      (for (param (%:list-iter params)) (~) (setf bndg-is-read param (true)))
       (setf bndg-is-read ref (true))
       [assign-expr-is-reads body]
       [set-expr-is-read body (false)]))
     
     ((exprm:storage? (property? (expr-storage-reference .:ref) (expr-storage-arguments .:args))) (do
       (setf bndg-is-read ref (true))
-      (for (u (%:list-iter args)) (ignore) (do
+      (for (u (%:list-iter args)) (~) (do
         [assign-expr-is-reads u]
         [set-expr-is-read u (true)]))))
     
     ((or? (exprm:jump? .:_) (exprm:invoke? .:_)) (do
       [assign-expr-is-reads $:[expr-target s]]
       [set-expr-is-read $:[expr-target s] (true)]
-      (for (u (%:list-iter $:[expr-arguments s])) (ignore) (do
+      (for (u (%:list-iter $:[expr-arguments s])) (~) (do
         [assign-expr-is-reads u]
         [set-expr-is-read u (true)]))))
     
     ((exprm:symbol? (property? (expr-symbol-reference .:ref))) (do
       (setf bndg-is-read ref (true))
-      (ignore)))
+      (~)))
     
-    (ignore)))
+    (~)))
 
 (constrain global-binding-augs-of (\ r (?(a b) (`(function ((list (expr ,:b)) region ,:a) (hash-table string bndg-aug))r)r)))
 
@@ -225,7 +222,7 @@
       (if (and [= (@ expr-type s) (-symbol-)] [not= (@ expr-symbol-reference (& expr-symbol s)) null-binding]
           [contains (@ expr-symbol-reference (& expr-symbol s)) [collect-list (%:ht-iter-key (@ bndg-name (@ expr-symbol-reference (& expr-symbol s))) blacklist) nil buf hdl]])
         (do (setf expr-symbol-reference (& expr-symbol s) null-binding) s)
-        s)) (ignore)))
+        s)) (~)))
 
 (constrain assign-binding (\ r (?(a b) (`(function ((expr ,:b) (hash-table string bndg-aug)) ,:a)r)r)))
 
@@ -246,20 +243,20 @@
       ((-function-) (do
         [ht-put (@ bndg-name(@ expr-function-reference (& expr-function s))) (@ expr-function-reference (& expr-function s)) static-bindings ..]
         (let (dynamic-bindings [ht-create hash-str str= ..]) (do
-        (for (u (%:list-iter (@ expr-function-parameters (& expr-function s)))) (ignore) [ht-put (@ bndg-name u) u dynamic-bindings ..])
+        (for (u (%:list-iter (@ expr-function-parameters (& expr-function s)))) (~) [ht-put (@ bndg-name u) u dynamic-bindings ..])
         [link-symbols (@ expr-function-expression (& expr-function s)) (false) undefined-bindings static-bindings dynamic-bindings ..]))
         [ht-remove (@ bndg-name(@ expr-function-reference (& expr-function s))) static-bindings]))
       
       ((-with-) (-continuation-) (do
         [ht-put (@ bndg-name $:[expr-reference s]) $:[expr-reference s] bindings ..]
-        (for (u (%:list-iter $:[expr-parameters s])) (ignore) [ht-put (@ bndg-name u) u bindings ..])
+        (for (u (%:list-iter $:[expr-parameters s])) (~) [ht-put (@ bndg-name u) u bindings ..])
         [link-symbols $:[expr-expression s] static-storage undefined-bindings static-bindings dynamic-bindings ..]
-        (for (u (%:list-iter $:[expr-parameters s])) (ignore) [ht-remove (@ bndg-name u) bindings])
+        (for (u (%:list-iter $:[expr-parameters s])) (~) [ht-remove (@ bndg-name u) bindings])
         [ht-remove (@ bndg-name $:[expr-reference s]) bindings]))
       
       ((-storage-) (do
         [ht-put (@ bndg-name (@ expr-storage-reference (& expr-storage s))) (@ expr-storage-reference (& expr-storage s)) bindings ..]
-        (for (u (%:list-iter (@ expr-storage-arguments (& expr-storage s)))) (ignore)
+        (for (u (%:list-iter (@ expr-storage-arguments (& expr-storage s)))) (~)
           [link-symbols u static-storage undefined-bindings static-bindings dynamic-bindings ..])
         [ht-remove (@ bndg-name (@ expr-storage-reference (& expr-storage s))) bindings]))
       
@@ -269,8 +266,8 @@
           (let (bndg [make-undefined-binding (@ expr-name (& expr-symbol s)) ..]) (do
             (setf expr-symbol-reference (& expr-symbol s) bndg)
             [ht-put (@ bndg-name(@ expr-symbol-reference (& expr-symbol s))) (@ expr-symbol-reference (& expr-symbol s)) undefined-bindings ..]
-            (ignore)))
-          (ignore)))
+            (~)))
+          (~)))
       
       ((-if-) (do
         [link-symbols (@ expr-condition (& expr-if s)) static-storage undefined-bindings static-bindings dynamic-bindings ..]
@@ -279,13 +276,13 @@
       
       ((-invoke-) (-jump-) (do
         [link-symbols $:[expr-target s] static-storage undefined-bindings static-bindings dynamic-bindings ..]
-        (for (u (%:list-iter $:[expr-arguments s])) (ignore)
+        (for (u (%:list-iter $:[expr-arguments s])) (~)
           [link-symbols u static-storage undefined-bindings static-bindings dynamic-bindings ..])))
       
       ((-constrain-)
         [link-symbols (@ expr-constrain-expression (& expr-constrain s)) static-storage undefined-bindings static-bindings dynamic-bindings ..])
       
-      (ignore)))))
+      (~)))))
 
 (constrain escape-analysis (\ r (?(a b c) (`(function ((expr ,:c) ,:a region ,:b) ())r)r)))
 
@@ -296,8 +293,8 @@
         (let (target-expr (@ bndg-expression (@ expr-symbol-reference (& expr-symbol s))))
           (if (and escaping (or [= (@ expr-type target-expr) (-continuation-)] [= (@ expr-type target-expr) (-with-)])
               [= $:[expr-reference target-expr] (@ expr-symbol-reference (& expr-symbol s))])
-            (do [set [expr-escapes target-expr] escaping] (ignore))
-            (ignore))))
+            (do [set [expr-escapes target-expr] escaping] (~))
+            (~))))
       
       ((-if-) (do
         [escape-analysis (@ expr-condition (& expr-if s)) (true) ..]
@@ -307,11 +304,11 @@
       ((-function-) (-continuation-) (-with-) (do
         (if (and escaping [= (@ expr-type s) (-continuation-)])
           (setf expr-continuation-escapes (& expr-continuation s) escaping)
-          (ignore))
+          (~))
         [escape-analysis $:[expr-expression s] (true) ..]))
       
       ((-storage-)
-        (for (t (%:list-iter (@ expr-storage-arguments (& expr-storage s)))) (ignore) [escape-analysis t (true) ..]))
+        (for (t (%:list-iter (@ expr-storage-arguments (& expr-storage s)))) (~) [escape-analysis t (true) ..]))
       
       ((-jump-) (do
         (if [= (@ expr-type (@ expr-jump-target (& expr-jump s))) (-symbol-)]
@@ -320,21 +317,21 @@
               [= $:[expr-reference target-expr] (@ expr-symbol-reference (& expr-symbol (@ expr-jump-target (& expr-jump s))))]) (do
             [prepend s [expr-jumps target-expr] ..]
             (setf expr-short-circuit (& expr-jump s) target-expr))
-            (ignore)))
+            (~)))
         (if [= (@ expr-type (@ expr-jump-target (& expr-jump s))) (-continuation-)] (do
           [prepend s (& expr-continuation-jumps (& expr-continuation (@ expr-jump-target (& expr-jump s)))) ..]
           (setf expr-short-circuit (& expr-jump s) (@ expr-jump-target (& expr-jump s))))
-          (ignore)))
+          (~)))
         [escape-analysis (@ expr-jump-target (& expr-jump s)) (false) ..]
-        (for (t (%:list-iter (@ expr-jump-arguments (& expr-jump s)))) (ignore) [escape-analysis t (true) ..])))
+        (for (t (%:list-iter (@ expr-jump-arguments (& expr-jump s)))) (~) [escape-analysis t (true) ..])))
       
       ((-invoke-) (do
         [escape-analysis (@ expr-invoke-target (& expr-invoke s)) (true) ..]
-        (for (t (%:list-iter (@ expr-invoke-arguments (& expr-invoke s)))) (ignore) [escape-analysis t (true) ..])))
+        (for (t (%:list-iter (@ expr-invoke-arguments (& expr-invoke s)))) (~) [escape-analysis t (true) ..])))
       
       ((-constrain-) [escape-analysis (@ expr-constrain-expression (& expr-constrain s)) (true) ..])
       
-      (ignore))))
+      (~))))
 
 (constrain vfind-dependencies (\ r (?(a b) (`(function ((expr ,:b) (values region ,:a)) (expr ,:b))r)r)))
 
@@ -349,19 +346,19 @@
       ((-function-) (-with-)
         [prepend $:[expr-expression s] (& expr-dependencies s) ..])
       
-      ((-continuation-) (ignore))
+      ((-continuation-) (~))
       
       ((-storage-)
-        (for (t (%:list-iter (@ expr-storage-arguments (& expr-storage s)))) (ignore) [prepend t (& expr-dependencies s) ..]))
+        (for (t (%:list-iter (@ expr-storage-arguments (& expr-storage s)))) (~) [prepend t (& expr-dependencies s) ..]))
       
       ((-invoke-) (do
         [prepend (@ expr-invoke-target (& expr-invoke s)) (& expr-dependencies s) ..]
-        (for (t (%:list-iter (@ expr-invoke-arguments (& expr-invoke s)))) (ignore) [prepend t (& expr-dependencies s) ..])))
+        (for (t (%:list-iter (@ expr-invoke-arguments (& expr-invoke s)))) (~) [prepend t (& expr-dependencies s) ..])))
       
       ((-jump-) (do
         [prepend (@ expr-jump-target (& expr-jump s)) (& expr-dependencies s) ..]
         [prepend s (& expr-dependencies (@ expr-jump-target (& expr-jump s))) ..]
-        (for (t (%:list-iter (@ expr-jump-arguments (& expr-jump s)))) (ignore) [prepend t (& expr-dependencies s) ..])))
+        (for (t (%:list-iter (@ expr-jump-arguments (& expr-jump s)))) (~) [prepend t (& expr-dependencies s) ..])))
       
       ((-symbol-)
         (let (target-expr (@ bndg-expression (@ expr-symbol-reference (& expr-symbol s)))) (do
@@ -372,8 +369,8 @@
         [prepend (@ expr-constrain-expression (& expr-constrain s)) (& expr-dependencies s) ..]
         [prepend s (& expr-dependencies (@ expr-constrain-expression (& expr-constrain s))) ..]))
       
-      (ignore))
-    s)) (ignore)))
+      (~))
+    s)) (~)))
 
 (constrain construct-sccs (\ r (?(a b c) (`(function ((expr ,:c) ,:a !:Ref:(list (expr ,:c)) !:Ref:(list (list (expr ,:c))) region ,:b) ())r)r)))
 
@@ -382,11 +379,11 @@
     (if [= (@ expr-lowlink s) #:0]
       (let (marker $:stack) (do
       (setf expr-lowlink s preorder)
-      (for (t (%:list-iter (@ expr-dependencies s))) (ignore) (do
+      (for (t (%:list-iter (@ expr-dependencies s))) (~) (do
         [construct-sccs t [+ preorder #:1] stack sccs ..]
         (if [< (@ expr-lowlink t) (@ expr-lowlink s)]
           (setf expr-lowlink s (@ expr-lowlink t))
-          (ignore))))
+          (~))))
       [prepend s stack ..]
       
       (if [= (@ expr-lowlink s) preorder] (do
@@ -396,8 +393,8 @@
             (setf expr-lowlink u [- #:0 #:1])
             {add [@cdr t] [cons u scc ..]})))) sccs ..]
         [set stack marker])
-        (ignore))))
-      (ignore))))
+        (~))))
+      (~))))
 
 (constrain occurs-in? (\ r (?(a) (`(function (vbl frag (hash-table vbl frag)) ,:a)r)r)))
 
@@ -434,8 +431,7 @@
           (and [unify [@car xl] [@car yl] assigns ..]
             [unify [list->fragment [@cdr xl]] [list->fragment [@cdr yl]] assigns ..]))))))))))))
 
-(ignore
-  The same function may be called with different type parameters in the same strongly connected
+(-- The same function may be called with different type parameters in the same strongly connected
   component, hence we need to make sure that each equation has its own fresh type variables.)
 
 (constrain scoped-signature (\ r (?(a b) (`(function ((expr ,:b) (list (expr ,:b)) region ,:a) frag)r)r)))
@@ -495,31 +491,31 @@
         [prepend [expr-signature e] lhss ..]
         [prepend (@ bndg-signature (@ expr-symbol-reference (& expr-symbol e))) rhss ..]))
       
-      (ignore))))
+      (~))))
 
-(storage unification-error (ignore))
+(storage unification-error (~))
 
 (constrain infer-types (\ r (?(a b) (`(function ((list (expr ,:b)) region ,:a) ())r)r)))
 
 (function infer-types (exprs buf handler)
   (sub (.. buf handler) (do
-    (ignore Type inferencing is done on strongly connected components)
+    (-- Type inferencing is done on strongly connected components)
     (let (stack (storage _ nil))
     (let (sccs (storage _ nil)) (do
-    (for (expr (%:list-iter exprs)) (ignore) [visit-expressions vfind-dependencies (storage _ expr) (values storage ..)])
-    (for (expr (%:list-iter exprs)) (ignore) [construct-sccs expr #:1 stack sccs ..])
+    (for (expr (%:list-iter exprs)) (~) [visit-expressions vfind-dependencies (storage _ expr) (values storage ..)])
+    (for (expr (%:list-iter exprs)) (~) [construct-sccs expr #:1 stack sccs ..])
     
     (let (assigns [ht-create hash-ptr = ..])
     (let (function-token [token->fragment [build-token [rstrcpy (" function) ..] ..]])
     (let (continuation-token [token->fragment [build-token [rstrcpy (" continuation) ..] ..]])
-    (for (scc (%:list-iter [reverse $:sccs ..])) (ignore)
+    (for (scc (%:list-iter [reverse $:sccs ..])) (~)
       (let (lhss (storage _ nil)) (rhss (storage _ nil)) (do
-        (for (e (%:list-iter scc)) (ignore) [generate-equations e scc function-token continuation-token lhss rhss ..])
-        (if [unify [list->fragment $:lhss] [list->fragment $:rhss] assigns ..] (ignore)
+        (for (e (%:list-iter scc)) (~) [generate-equations e scc function-token continuation-token lhss rhss ..])
+        (if [unify [list->fragment $:lhss] [list->fragment $:rhss] assigns ..] (~)
           {handler (storage _ unification-error)})
-        (for (e (%:list-iter scc)) (ignore) (do
+        (for (e (%:list-iter scc)) (~) (do
           (setf bndg-signature (@ expr-binding-aug e) [recursive-evaluate [expr-signature e] assigns ..])
-          (ignore)))))))))))))))
+          (~)))))))))))))))
 
 (constrain visit-expressions (\ r (?(a b) (`(function ((function ((expr ,:b) ,:a) (expr ,:b)) !:Ref:(expr ,:b) ,:a) ())r)r)))
 
@@ -534,15 +530,15 @@
       [visit-expressions visitor [expr-expression $:s] ctx])
     
     ((-storage-)
-      (for (elt (%:list-ref-iter (@ expr-storage-arguments (& expr-storage $:s)))) (ignore)
+      (for (elt (%:list-ref-iter (@ expr-storage-arguments (& expr-storage $:s)))) (~)
         [visit-expressions visitor elt ctx]))
     
     ((-jump-) (-invoke-) (do
       [visit-expressions visitor [expr-target $:s] ctx]
-      (for (elt (%:list-ref-iter (@ expr-jump-arguments (& expr-jump $:s)))) (ignore)
+      (for (elt (%:list-ref-iter (@ expr-jump-arguments (& expr-jump $:s)))) (~)
         [visit-expressions visitor elt ctx])))
     
-    (ignore))
+    (~))
   [set s [visitor $:s ctx]]))
 
 (constrain pre-visit-expressions (\ r (?(a b) (`(function ((function ((expr ,:b) ,:a) (expr ,:b)) !:Ref:(expr ,:b) ,:a) ())r)r)))
@@ -560,15 +556,15 @@
       [pre-visit-expressions visitor [expr-expression $:s] ctx])
     
     ((-storage-)
-      (for (elt (%:list-ref-iter (@ expr-storage-arguments (& expr-storage $:s)))) (ignore)
+      (for (elt (%:list-ref-iter (@ expr-storage-arguments (& expr-storage $:s)))) (~)
         [pre-visit-expressions visitor elt ctx]))
     
     ((-jump-) (-invoke-) (do
       [pre-visit-expressions visitor [expr-target $:s] ctx]
-      (for (elt (%:list-ref-iter $:[expr-arguments $:s])) (ignore)
+      (for (elt (%:list-ref-iter $:[expr-arguments $:s])) (~)
         [pre-visit-expressions visitor elt ctx])))
     
-    (ignore))))
+    (~))))
 
 (constrain classify-program-bindings (\ r (?(a) (`(function ((expr ,:a)) ())r)r)))
 
@@ -579,15 +575,15 @@
     
     ((-storage-) (do
       (setf bndg-context (@ expr-storage-reference (& expr-storage expr)) (extra-function-context))
-      (for (t (%:list-iter (@ expr-storage-arguments (& expr-storage expr)))) (ignore) [classify-program-bindings t])))
+      (for (t (%:list-iter (@ expr-storage-arguments (& expr-storage expr)))) (~) [classify-program-bindings t])))
     
     ((-jump-) (-invoke-) (do
       [classify-program-bindings $:[expr-target expr]]
-      (for (t (%:list-iter $:[expr-arguments expr])) (ignore) [classify-program-bindings t])))
+      (for (t (%:list-iter $:[expr-arguments expr])) (~) [classify-program-bindings t])))
     
     ((-continuation-) (-with-) (do
       (setf bndg-context $:[expr-reference expr] (extra-function-context))
-      (for (t (%:list-iter $:[expr-parameters expr])) (ignore)
+      (for (t (%:list-iter $:[expr-parameters expr])) (~)
         (setf bndg-context t (extra-function-context)))
       [classify-program-bindings $:[expr-expression expr]]))
     
@@ -596,7 +592,7 @@
       [classify-program-bindings (@ expr-consequent (& expr-if expr))]
       [classify-program-bindings (@ expr-alternate (& expr-if expr))]))
     
-    (ignore))))
+    (~))))
 
 (constrain setup-collect-static-bindings (\ r (?(a b) (`(function ((expr ,:a)) ,:b)r)r)))
 
@@ -605,17 +601,17 @@
     ((-continuation-) (-with-) (do
       [setup-collect-static-bindings $:[expr-expression n]]
       (if $:[expr-escapes n]
-        (setf bndg-other $:[expr-reference n] (true)) (ignore))
-      (for (t (%:list-iter $:[expr-parameters n])) (ignore)
+        (setf bndg-other $:[expr-reference n] (true)) (~))
+      (for (t (%:list-iter $:[expr-parameters n])) (~)
         (setf bndg-other t (true)))))
     
     ((-storage-) (do
       (setf bndg-other (@ expr-storage-reference (& expr-storage n)) (true))
-      (for (u (%:list-iter (@ expr-storage-arguments (& expr-storage n)))) (ignore) [setup-collect-static-bindings u])))
+      (for (u (%:list-iter (@ expr-storage-arguments (& expr-storage n)))) (~) [setup-collect-static-bindings u])))
     
     ((-jump-) (-invoke-) (do
       [setup-collect-static-bindings $:[expr-target n]]
-      (for (u (%:list-iter $:[expr-arguments n])) (ignore) [setup-collect-static-bindings u])))
+      (for (u (%:list-iter $:[expr-arguments n])) (~) [setup-collect-static-bindings u])))
     
     ((-if-) (do
       [setup-collect-static-bindings (@ expr-condition (& expr-if n))]
@@ -625,7 +621,7 @@
     ((-constrain-)
       [setup-collect-static-bindings (@ expr-constrain-expression (& expr-constrain n))])
     
-    (ignore))
+    (~))
   
   (setf bndg-other (@ expr-binding-aug n) (true))))
 
@@ -635,7 +631,7 @@
   (sub (.. r handler)
     (if (and [= (@ bndg-storage bndg) (absolute-storage)] (@ bndg-other bndg))
       (do (setf bndg-other bndg (false)) [append bndg binding-augs ..])
-      (ignore))))
+      (~))))
 
 (constrain collect-static-bindings (\ r (?(a b c) (`(function ((expr ,:c) !:Ref:(list bndg-aug) region ,:a) ,:b)r)r)))
 
@@ -645,17 +641,17 @@
       ((-continuation-) (-with-) (do
         [collect-static-bindings $:[expr-expression n] binding-augs ..]
         (if $:[expr-escapes n]
-          [append-static-binding $:[expr-reference n] binding-augs ..] (ignore))
-        (for (t (%:list-iter $:[expr-parameters n])) (ignore)
+          [append-static-binding $:[expr-reference n] binding-augs ..] (~))
+        (for (t (%:list-iter $:[expr-parameters n])) (~)
           [append-static-binding t binding-augs ..])))
       
       ((-storage-) (do
         [append-static-binding (@ expr-storage-reference (& expr-storage n)) binding-augs ..]
-        (for (u (%:list-iter (@ expr-storage-arguments (& expr-storage n)))) (ignore) [collect-static-bindings u binding-augs ..])))
+        (for (u (%:list-iter (@ expr-storage-arguments (& expr-storage n)))) (~) [collect-static-bindings u binding-augs ..])))
       
       ((-jump-) (-invoke-) (do
         [collect-static-bindings $:[expr-target n] binding-augs ..]
-        (for (u (%:list-iter $:[expr-arguments n])) (ignore) [collect-static-bindings u binding-augs ..])))
+        (for (u (%:list-iter $:[expr-arguments n])) (~) [collect-static-bindings u binding-augs ..])))
       
       ((-if-) (do
         [collect-static-bindings (@ expr-condition (& expr-if n)) binding-augs ..]
@@ -665,11 +661,11 @@
       ((-constrain-)
         [collect-static-bindings (@ expr-constrain-expression (& expr-constrain n)) binding-augs ..])
       
-      (ignore))
+      (~))
       
     [append-static-binding (@ expr-binding-aug n) binding-augs ..])))
 
-(storage undefined-symbol-error (ignore))
+(storage undefined-symbol-error (~))
 
 (constrain preprocessed-expression-address
   (\ r (?(a b c) (`(function ((expr ,:c) (list initializer) (hash-table string bndg-aug) region region ,:a) ,:b)r)r)))
@@ -679,8 +675,7 @@
     (with-region buf2
       (if [= (@ expr-type s) (-symbol-)]
         (do
-          (ignore
-            If the expression, s, is a mere symbol, then we can just lookup its value in
+          (-- If the expression, s, is a mere symbol, then we can just lookup its value in
             the bindings list instead of preprocessing, compiling, and then evaluating
             the expression.)
           (bind-if [ht-contains (@ expr-name (& expr-symbol s)) bindings bndg]
@@ -692,12 +687,11 @@
           [load-program-and-mutate [cons expr-container nil buf2 handler] inits bindings buf buf2 handler]
           [(@ bndg-offset (@ expr-function-reference (& expr-function expr-container)))])))))))
 
-(ignore The error that wraps errors thrown by macros.)
+(-- The error that wraps errors thrown by macros.)
 
-(storage meta-expr-error (ignore))
+(storage meta-expr-error (~))
 
-(ignore
-  This function replaces meta-expressions with the code generated by calling the
+(-- This function replaces meta-expressions with the code generated by calling the
   corresponding expression builder. It also sets the signatures of constrain-expressions
   to the result of evaluating a signature builder.)
 
@@ -717,7 +711,7 @@
           (let (macro [cast [preprocessed-expression-address (@ expr-constrain-target (& expr-constrain s)) inits bindings buf buf2 handler]])
             (do (setf bndg-signature (@ expr-binding-aug s) [macro buf]) s)))
         
-        s)) (ignore)))
+        s)) (~)))
 
 (constrain init-function
   (\ r (?(a b c) (`(function ((expr ,:c) (list initializer) (hash-table string bndg-aug) region region ,:a !:Ref:,;b) ,:b)r)r)))
@@ -733,10 +727,9 @@
           [set cache (@ bndg-offset (@ expr-function-reference (& expr-function $:function-expr-ref)))]
           $:cache))))))
 
-(storage null-cache (ignore))
+(storage null-cache (~))
 
-(ignore
-  From the supplied list of expressions, returns lazy versions of the
+(-- From the supplied list of expressions, returns lazy versions of the
   contained functions. That is, the meta-expressions within the functions are
   expanded only when they are first called.)
 
@@ -758,11 +751,10 @@
           [make-literal cache null-fragment null-expr ..]) null-fragment null-expr ..) args null-fragment null-expr ..]
           null-fragment null-expr ..]) (do
         [set cache null-cache]
-        (for (a (%:list-iter(@ expr-function-parameters (& expr-function thunk)))) (t (%:list-iter args)) (ignore) (setf expr-symbol-reference (& expr-symbol t) a))
+        (for (a (%:list-iter(@ expr-function-parameters (& expr-function thunk)))) (t (%:list-iter args)) (~) (setf expr-symbol-reference (& expr-symbol t) a))
         [cons thunk c ..]))))))) ..]))
 
-(ignore
-  Try to expand the meta-expressions in the given list and return the
+(-- Try to expand the meta-expressions in the given list and return the
   sucessful expansions.)
 
 (constrain try-generate-metas

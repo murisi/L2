@@ -1,5 +1,4 @@
-(ignore
-  The following function wraps the arithmetic intrinsics so that the addresses of
+(-- The following function wraps the arithmetic intrinsics so that the addresses of
   functions like + and - can be taken like non-intrinsic functions.)
 
 (constrain wrap-arithmetic-intrinsics (\ r (?(a b) (`(function (region ,:a) (list (expr ,:b)))r)r)))
@@ -79,8 +78,7 @@
         (false)))
     (false)))
 
-(ignore
-  If the given binding is not already in a register, a move is generated from the binding
+(-- If the given binding is not already in a register, a move is generated from the binding
   to the given register. Returns the register in which the value at the binding can be
   found.)
 
@@ -95,8 +93,7 @@
         [prepend (make-instrN (x86-mov) ([make-reg-op reg ..] [bndg->op bndg relocs ..]) ..) c ..]
         reg))))
 
-(ignore
-  The following function generates inline assembly for the following functions: getb,
+(-- The following function generates inline assembly for the following functions: getb,
   get1b, get2b, get4b, get8b, get, setb, set1b, set2b, set4b, set8b, set, +, -, *, /, rem,
   =, <, >, <<, >>, bor, bxor, band, bnot. This function only applies to invocations of functions
   with the aforementioned names that are undefined in the invocation's lexical
@@ -146,8 +143,8 @@
             ([bndg->op expr-val-bndg relocs ..][bndg->op arg1-val-bndg relocs ..][make-reg-op (r11)..]) ..) c ..]
           [prepend (make-instrN (x86-not) ([bndg->op expr-val-bndg relocs ..]) ..) c ..]))
           
-        (ignore)))
-      (ignore))))
+        (~)))
+      (~))))
 
 (constrain match-undefined-binary-invoke (\ r (?(a b) (`(function (!:Ref:string !:Ref:(expr ,:b) !:Ref:(expr ,:b) (expr ,:b)) ,:a)r)r)))
 
@@ -228,7 +225,7 @@
         (setf bndg-size (@ expr-binding-aug n) (word-size))
         (setf expr-generator n [function->generator generate-binary-arithmetic-operators])
         (values (use-storage ret-val) bottom-offset [bor in-use 0x:0000000000000004])
-        (true)) (ignore))))
+        (true)) (~))))
       
       ((" <<) (" >>) (do
         (setf bndg-preferred-storage arg2-val-bndg (register-storage))
@@ -326,34 +323,34 @@
         ((" =) (do
           [generate-expression $:arg1 c relocs ..]
           [generate-expression $:arg2 c relocs ..]
-          (if (@ bndg-is-condition expr-val-bndg) (ignore)
+          (if (@ bndg-is-condition expr-val-bndg) (~)
             [prepend (make-instrN(x86-xor)
               ([bndg->op expr-val-bndg relocs ..][bndg->op expr-val-bndg relocs ..][make-reg-op (r11)..])..) c ..])
           [prepend (make-instrN(x86-cmp)
             ([bndg->op arg1-val-bndg relocs ..][bndg->op arg2-val-bndg relocs ..][make-reg-op (r11)..])..) c ..]
-          (if (@ bndg-is-condition expr-val-bndg) (ignore)
+          (if (@ bndg-is-condition expr-val-bndg) (~)
             [prepend (make-instrN (x86-setz) ([bndg->partial-op #:1 expr-val-bndg relocs ..]) ..) c ..])))
         
         ((" <) (do
           [generate-expression $:arg1 c relocs ..]
           [generate-expression $:arg2 c relocs ..]
-          (if (@ bndg-is-condition expr-val-bndg) (ignore)
+          (if (@ bndg-is-condition expr-val-bndg) (~)
             [prepend (make-instrN(x86-xor)
               ([bndg->op expr-val-bndg relocs ..][bndg->op expr-val-bndg relocs ..][make-reg-op (r11)..])..) c ..])
           [prepend (make-instrN(x86-cmp)
             ([bndg->op arg1-val-bndg relocs ..][bndg->op arg2-val-bndg relocs ..][make-reg-op (r11)..])..) c ..]
-          (if (@ bndg-is-condition expr-val-bndg) (ignore)
+          (if (@ bndg-is-condition expr-val-bndg) (~)
             [prepend (make-instrN (x86-setb) ([bndg->partial-op #:1 expr-val-bndg relocs ..]) ..) c ..])))
         
         ((" >) (do
           [generate-expression $:arg1 c relocs ..]
           [generate-expression $:arg2 c relocs ..]
-          (if (@ bndg-is-condition expr-val-bndg) (ignore)
+          (if (@ bndg-is-condition expr-val-bndg) (~)
             [prepend (make-instrN(x86-xor)
               ([bndg->op expr-val-bndg relocs ..][bndg->op expr-val-bndg relocs ..][make-reg-op (r11)..])..) c ..])
           [prepend (make-instrN(x86-cmp)
             ([bndg->op arg1-val-bndg relocs ..][bndg->op arg2-val-bndg relocs ..][make-reg-op (r11)..])..) c ..]
-          (if (@ bndg-is-condition expr-val-bndg) (ignore)
+          (if (@ bndg-is-condition expr-val-bndg) (~)
             [prepend (make-instrN (x86-seta) ([bndg->partial-op #:1 expr-val-bndg relocs ..]) ..) c ..])))
         
         ((" <<) (do
@@ -393,8 +390,8 @@
           [prepend (make-instrN(x86-and)
             ([bndg->op expr-val-bndg relocs ..][bndg->op arg2-val-bndg relocs ..][make-reg-op (r11)..]) ..) c ..]))
           
-        (ignore)))
-      (ignore))))
+        (~)))
+      (~))))
 
 (constrain match-undefined-binary-right-imm-invoke (\ r (?(a b c) (`(function (!:Ref:string !:Ref:(expr ,:c) !:Ref:,;b (expr ,:c)) ,:a)r)r)))
 
@@ -473,7 +470,7 @@
       (let
         (arg1-val-bndg (@ expr-binding-aug $:arg1))
         (expr-val-bndg (@ expr-binding-aug n))
-        (imm-size (if [sbyte? $:arg2] #:1 (if [sword? $:arg2] #:4 (ignore))))
+        (imm-size (if [sbyte? $:arg2] #:1 (if [sword? $:arg2] #:4 (~))))
         
       (switch str= $:name
         ((" set0b) (do
@@ -517,32 +514,32 @@
         
         ((" =) (do
           [generate-expression $:arg1 c relocs ..]
-          (if (@ bndg-is-condition expr-val-bndg) (ignore)
+          (if (@ bndg-is-condition expr-val-bndg) (~)
             [prepend (make-instrN(x86-xor)
               ([bndg->op expr-val-bndg relocs ..][bndg->op expr-val-bndg relocs ..][make-reg-op (r11)..])..) c ..])
           [prepend (make-instrN(x86-cmp)
             ([bndg->op arg1-val-bndg relocs ..][make-imm-op imm-size $:arg2 ..][make-reg-op (r11)..])..) c ..]
-          (if (@ bndg-is-condition expr-val-bndg) (ignore)
+          (if (@ bndg-is-condition expr-val-bndg) (~)
             [prepend (make-instrN (x86-setz) ([bndg->partial-op #:1 expr-val-bndg relocs ..]) ..) c ..])))
         
         ((" <) (do
           [generate-expression $:arg1 c relocs ..]
-          (if (@ bndg-is-condition expr-val-bndg) (ignore)
+          (if (@ bndg-is-condition expr-val-bndg) (~)
             [prepend (make-instrN(x86-xor)
               ([bndg->op expr-val-bndg relocs ..][bndg->op expr-val-bndg relocs ..][make-reg-op (r11)..])..) c ..])
           [prepend (make-instrN(x86-cmp)
             ([bndg->op arg1-val-bndg relocs ..][make-imm-op imm-size $:arg2 ..][make-reg-op (r11)..])..) c ..]
-          (if (@ bndg-is-condition expr-val-bndg) (ignore)
+          (if (@ bndg-is-condition expr-val-bndg) (~)
             [prepend (make-instrN (x86-setc) ([bndg->partial-op #:1 expr-val-bndg relocs ..]) ..) c ..])))
         
         ((" >) (do
           [generate-expression $:arg1 c relocs ..]
-          (if (@ bndg-is-condition expr-val-bndg) (ignore)
+          (if (@ bndg-is-condition expr-val-bndg) (~)
             [prepend (make-instrN(x86-xor)
               ([bndg->op expr-val-bndg relocs ..][bndg->op expr-val-bndg relocs ..][make-reg-op (r11)..])..) c ..])
           [prepend (make-instrN(x86-cmp)
             ([bndg->op arg1-val-bndg relocs ..][make-imm-op imm-size $:arg2 ..][make-reg-op (r11)..])..) c ..]
-          (if (@ bndg-is-condition expr-val-bndg) (ignore)
+          (if (@ bndg-is-condition expr-val-bndg) (~)
             [prepend (make-instrN (x86-seta) ([bndg->partial-op #:1 expr-val-bndg relocs ..]) ..) c ..])))
         
         ((" <<) (do
@@ -575,8 +572,8 @@
           [prepend (make-instrN(x86-and)
             ([bndg->op expr-val-bndg relocs ..][make-imm-op imm-size $:arg2 ..][make-reg-op (r11)..]) ..) c ..]))
           
-        (ignore)))
-      (ignore))))
+        (~)))
+      (~))))
 
 (function sbyte? (val)
   (or [= val [band val 0x:000000000000007F]] [= val [bor val 0x:FFFFFFFFFFFFFF80]]))
@@ -659,9 +656,9 @@
               (let (base-reg [generate-move-to-register (r11) (@ expr-binding-aug $:base) c relocs ..])
                 [prepend (make-instrN (x86-mov) ([bndg->op (@ expr-binding-aug n) relocs ..]
                   [make-mem-op(word-size)base-reg(none)#:0 $:offset #:1 ..] [make-reg-op(r11)..]) ..) c ..])))
-            (ignore))
-          (ignore))
-      (ignore))))
+            (~))
+          (~))
+      (~))))
 
 (function match-set-base+offset (name base offset value n)
   ((exprm:invoke? (property?
@@ -746,9 +743,9 @@
                 [prepend (make-instrN (x86-mov) ([make-mem-op(word-size)base-reg(none)#:0 $:offset #:1 ..]
                   [bndg->op (@ expr-binding-aug $:value) relocs ..] [make-reg-op(r11)..]) ..) c ..])))
                   
-            (ignore))
-          (ignore))
-      (ignore))))
+            (~))
+          (~))
+      (~))))
 
 (constrain initialize-arithmetic-intrinsics
   (\ r (?(a b c d) (`(function ((expr ,:a) ,:b (list initializer) (values ,:b reg-use-vec) region ,:d) ,:c)r)r)))

@@ -1,5 +1,4 @@
-(ignore
-  Does an in-place filter over a list. Does the following transformation:
+(-- Does an in-place filter over a list. Does the following transformation:
   (filter (x l) expr)
   ->
   (let (filter.l l)
@@ -23,8 +22,7 @@
               [set filter.m [@cdr $:filter.m]]
               {filter.loop filter.m})))))r))
 
-(ignore
-  Like a C-array initializer, but for lists. Does the following transformation:
+(-- Like a C-array initializer, but for lists. Does the following transformation:
   (list (..) expr1 expr2 ... exprN)
   ->
   [cons expr1 [cons expr2 [... [cons exprN nil ..] ...] ..] ..])
@@ -35,8 +33,7 @@
       out
       {add-item [llllst (` invoke r) (` cons r) [@fst in] out [@fst l] r] [@rst in]})))
 
-(ignore
-  A macro to do a find. Does the following transformation:
+(-- A macro to do a find. Does the following transformation:
   (find (x l) expr)
   ->
   (loop find.loop (find.l l)
@@ -54,8 +51,7 @@
           find.l
           {find.loop [@cdr find.l]})))r))
 
-(ignore
-  A macro to do a locate. Does the following transformation:
+(-- A macro to do a locate. Does the following transformation:
   (locate (x l-ref) expr)
   ->
   (loop locate.loop (locate.l-ref l-ref)
@@ -73,8 +69,7 @@
           locate.l-ref
           {locate.loop (& cdr $:locate.l-ref)})))r))
 
-(ignore
-  The following macro matches a list by using the matchers given for its constituents.
+(-- The following macro matches a list by using the matchers given for its constituents.
   ((list? matcher1 matcher2 matcher3 ... matcherN) obj consequent alternate)
   ->
   (let (list?.temp obj)
@@ -110,8 +105,7 @@
                           (let (,:obj-sym [@cdr ,:obj-sym]) ,:expr)
                           ,:alternate)):r [@rst parts]}))):r)r)))
 
-(ignore
-  The following macro matches a list by using the matchers given for its constituents.
+(-- The following macro matches a list by using the matchers given for its constituents.
   ((list-prefix? matcher1 matcher2 matcher3 ... matcherN) obj consequent alternate)
   ->
   (let (list-prefix?.temp obj)
@@ -147,8 +141,7 @@
                           (let (list-prefix?.temp [@cdr list-prefix?.temp]) ,:expr)
                           ,:alternate)):r [@rst parts]}))):r)r)))
 
-(ignore
-  The following macro does the same thing as cons except that it uses the stack instead of
+(-- The following macro does the same thing as cons except that it uses the stack instead of
   the heap. It does the following transformation:
   (storage-cons data rest)
   ->
@@ -171,8 +164,7 @@
 
 (property cdr #:8 #:8 (\ r (?(a) (`(! static~ (list ,:a) (list ,:a))r)r)))
 
-(ignore
-  Convenience functions for accessing elements of program internal lists. Note that the
+(-- Convenience functions for accessing elements of program internal lists. Note that the
   @fst and @rst functions are list accessor functions only for the fragments supplied to
   macros.)
 
@@ -200,7 +192,7 @@
 
 (function @cadddddr (l) [@car [@cdddddr l]])
 
-(ignore Initialize the given buffer so that it satisfies the nil predicate.)
+(-- Initialize the given buffer so that it satisfies the nil predicate.)
 
 (constrain init-nil (\ r (?(a) (`(function ((list ,:a)) (list ,:a))r)r)))
 
@@ -213,16 +205,15 @@
 
 (function nil? (l) (and [= (@ cdr l) l] [= (@ car l) [cast init-nil]]))
 
-(ignore Declare and initialize a global nil value using init-nil.)
+(-- Declare and initialize a global nil value using init-nil.)
 
 (constrain nil (\ r (?(et) (`(list ,:et)r)r)))
 
-(storage nil (ignore) (ignore))
+(storage nil (~) (~))
 
 [init-nil nil]
 
-(ignore
-  Appends an item to the given list. data is the data that is to be appended. l is a
+(-- Appends an item to the given list. data is the data that is to be appended. l is a
   reference to the list that is to be appended to. r is the region into which the extension
   is being placed.)
 
@@ -238,8 +229,7 @@
         (setf cdr $:l end)
         (& cdr $:l))))))
 
-(ignore
-  Makes a new list with the given head and tail. data is what is going to be put at the
+(-- Makes a new list with the given head and tail. data is what is going to be put at the
   head. rest is the list that will be the tail of the new list. r is the region into which
   the extension is being placed. Return value is the new list.)
 
@@ -257,8 +247,7 @@
   (sub (.. r handler)
     [cons data1 [cons data2 rest ..] ..]))
 
-(ignore
-  Appends the second list onto the first list. fst-ref is a reference to the list that
+(-- Appends the second list onto the first list. fst-ref is a reference to the list that
   will be appended to. snd is the list that will be appended.)
 
 (constrain append-list (\ r (?(et) (`(function (!:Ref:(list ,:et) (list ,:et)) ())r)r)))
@@ -269,7 +258,7 @@
       [set fst-ref snd]
       {next (& cdr $:fst-ref)})))
 
-(ignore Analogous to append above.)
+(-- Analogous to append above.)
 
 (constrain prepend (\ r (?(et a) (`(function (,:et !:Ref:(list ,:et) region ,:a) !:Ref:(list ,:et))r)r)))
 
@@ -280,7 +269,7 @@
     [set l-ref ret]
     l-ref)))
 
-(ignore Computes the length of the given list. l is the list whose length will be computed.)
+(-- Computes the length of the given list. l is the list whose length will be computed.)
 
 (constrain length (\ r (?(et nt) (`(function ((list ,:et)) ,:nt)r)r)))
 
@@ -290,7 +279,7 @@
       size
       {next [@cdr l] [+ #:1 size]})))
 
-(ignore Flattens the given list of lists and reverses them.)
+(-- Flattens the given list of lists and reverses them.)
 
 (constrain reverse-flatten (\ r (?(a b) (`(function ((list (list ,:a)) region ,:b) (list ,:a))r)r)))
 
@@ -299,8 +288,7 @@
     (fold (all nil) (s (%:list-iter l))
       (fold (t all) (u (%:list-iter s)) [cons u t ..] ..) ..)))
 
-(ignore
-  Constructs a reverse of the given list. l is the list that is to be reversed. r is the
+(-- Constructs a reverse of the given list. l is the list that is to be reversed. r is the
   region into which the reversed list should be placed. Return value is the reversed list.)
 
 (constrain reverse (\ r (?(et a) (`(function ((list ,:et) region ,:a) (list ,:et))r)r)))
@@ -309,8 +297,7 @@
   (sub (.. r handler)
     [collect-reverse-list (%:list-iter l) [nil-of l] ..]))
 
-(ignore
-  Searches for the given element in the given list and returns (true) if it is found.
+(-- Searches for the given element in the given list and returns (true) if it is found.
   Otherwise returns (false).)
 
 (constrain contains (\ r (?(et a) (`(function (,:et (list ,:et)) ,:a)r)r)))
@@ -323,7 +310,7 @@
       (true)
       {search [@cdr sub]}))))
 
-(ignore Because there can be several instances of nil, it makes sense to get a list's nil.)
+(-- Because there can be several instances of nil, it makes sense to get a list's nil.)
 
 (constrain nil-of (\ r (?(et) (`(function ((list ,:et)) (list ,:et))r)r)))
 
@@ -331,20 +318,20 @@
   (loop find (l l)
     (if [nil? l] l {find [@cdr l]})))
 
-(ignore Prints the given list using the given function to print each element.)
+(-- Prints the given list using the given function to print each element.)
 
 (constrain print-list (\ r (?(et a) (`(function ((function (,:et ,:a) ()) (list ,:et) ,:a) ())r)r)))
 
 (function print-list (printer l handler) (do
   [print-char (stdout) (lparen) handler]
-  (if [nil? l] (ignore) (do
+  (if [nil? l] (~) (do
     [printer [@car l] handler]
-    (for (u (%:list-iter [@cdr l])) (ignore) (do
+    (for (u (%:list-iter [@cdr l])) (~) (do
       [print-char (stdout) (lf) handler]
       [printer u handler]))))
   [print-char (stdout) (rparen) handler]))
 
-(ignore Creates an iterator that iterates through elements of the given list.)
+(-- Creates an iterator that iterates through elements of the given list.)
 
 (constrain list-iter \:r:(?(a b c) (`(function ((continuation ((! iterator ,:a ,:b))) (list ,:a)) ,:c)r)r))
 
@@ -356,7 +343,7 @@
         (cps {recv next ctx [@car list]}
           (next (new-recv new-ctx) {lop [cast new-recv] new-ctx [@cdr list]})))))})
 
-(ignore Creates an iterator that iterates through sublists of the given list.)
+(-- Creates an iterator that iterates through sublists of the given list.)
 
 (constrain sublist-iter \:r:(?(a b c) (`(function ((continuation ((! iterator (list ,:a) ,:b))) (list ,:a)) ,:c)r)r))
 
@@ -368,7 +355,7 @@
         (cps {recv next ctx list}
           (next (new-recv new-ctx) {lop [cast new-recv] new-ctx [@cdr list]})))))})
 
-(ignore Creates an iterator that iterates through references to elements of the given list.)
+(-- Creates an iterator that iterates through references to elements of the given list.)
 
 (constrain list-ref-iter \:r:(?(a b c) (`(function ((continuation ((! iterator !:Ref:,;a ,:b))) (list ,:a)) ,:c)r)r))
 
@@ -380,7 +367,7 @@
         (cps {recv next ctx (& car list)}
           (next (new-recv new-ctx) {lop [cast new-recv] new-ctx [@cdr list]})))))})
 
-(ignore Collect the values yielded by the iterator into a list of the same order.)
+(-- Collect the values yielded by the iterator into a list of the same order.)
 
 (constrain collect-list \:r:(?(a b c d) (`(function ((! iterator ,:a ,:b) (list ,:d) region ,:c) (list ,:a))r)r))
 
@@ -390,7 +377,7 @@
       (fold (end start) (x ite) [append x end ..])
       $:start))))
 
-(ignore Collect the values yielded by the iterator into a list of the reverse order.)
+(-- Collect the values yielded by the iterator into a list of the reverse order.)
 
 (constrain collect-reverse-list \:r:(?(a b c d) (`(function ((! iterator ,:a ,:b) (list ,:d) region ,:c) (list ,:a))r)r))
 

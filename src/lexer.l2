@@ -1,4 +1,4 @@
-(ignore Casts to/from fragment and its various subtypes.)
+(-- Casts to/from fragment and its various subtypes.)
 
   (constrain frag->list (\ r (`(function (frag) (list frag))r)))
 
@@ -24,11 +24,11 @@
 
   (function vbl->frag (x) [cast x])
 
-(ignore Declaration of emt and emt? which is used by macros being compiled.)
+(-- Declaration of emt and emt? which is used by macros being compiled.)
 
   (constrain emt! (\ r (?(et) (`(list ,:et)r)r)))
 
-  (storage emt! (ignore)(ignore))
+  (storage emt! (~)(~))
 
   [init-nil emt!]
 
@@ -36,7 +36,7 @@
   
   (function emt?! (x) [= x emt!])
 
-(ignore Functions to create variables and evaluate fragments containing variables.)
+(-- Functions to create variables and evaluate fragments containing variables.)
 
   (constrain vbl (\ r (?(a) (`(function (region ,:a) vbl)r)r)))
 
@@ -73,45 +73,42 @@
           (let (pair [frag->list d])
             [list->fragment [cons [recursive-evaluate [@car pair] assigns ..] [frag->list [recursive-evaluate [list->fragment [@cdr pair]] assigns ..]] ..]])))))
 
-(ignore
-  What follows is a struct for representing fragment characters. It is conceptually in
+(-- What follows is a struct for representing fragment characters. It is conceptually in
   union with the list-struct.)
 
   (constant character-struct #:16 \:r:[var r])
 
-  (ignore
-    This field should be set to character-flag to indicate that a given reference is a
+  (-- This field should be set to character-flag to indicate that a given reference is a
     character rather than a list.)
     
   (property cs-flag #:8 #:8 (\ r (`(! static~ (,[var r]) (,[var r]))r)))
 
-  (ignore This field contains the ASCII character represented by the this fragment character.)
+  (-- This field contains the ASCII character represented by the this fragment character.)
     
   (property cs-character #:0 #:8 (\ r (`(! static~ (,[var r]) (,[var r]))r)))
 
-(ignore Functions for creating, accessing, and comparing characters.)
+(-- Functions for creating, accessing, and comparing characters.)
 
-  (ignore Returns a reference to a fragment character representing the supplied ASCII character.)
+  (-- Returns a reference to a fragment character representing the supplied ASCII character.)
 
   (function char-init (s r) (`(storage _ (char (,[@fst s])) character-flag)r))
 
-  (ignore Returns the fragment character representing the supplied ASCII character.)
+  (-- Returns the fragment character representing the supplied ASCII character.)
 
   (function tkn-char (s r) (`(constrain ($(loc (unit) (,[@fst s]) characters)) (\ r (` tchar r)))r))
 
-  (storage null-fragment (ignore))
+  (storage null-fragment (~))
 
-  (ignore
-    Checks if two fragment characters are equal. a is a fragment character. b is a fragment
+  (-- Checks if two fragment characters are equal. a is a fragment character. b is a fragment
     character. Return value is (true) if they are equal and (false) otherwise.)
 
   (function i/f.char= (a b) [= (@ cs-character a) (@ cs-character b)])
 
-(ignore If a fragment is neither a variable nor a token, then it's a list of fragments.)
+(-- If a fragment is neither a variable nor a token, then it's a list of fragments.)
 
 (function lst? (frag) (not (or [i/f.token? frag] [vbl? frag])))
 
-(ignore Following array is used to lookup fragment character corresponding to ASCII character.)
+(-- Following array is used to lookup fragment character corresponding to ASCII character.)
 
 (storage characters
   #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0 #:0
@@ -127,8 +124,7 @@
   (char-init s) (char-init t) (char-init u) (char-init v) (char-init w) (char-init x) (char-init y) (char-init z) #:0
   (char-init |) #:0 (char-init ~) #:0)
 
-(ignore
-  Builds a token from a given C-string. str is the C-string that the constructed token
+(-- Builds a token from a given C-string. str is the C-string that the constructed token
   will be based on. r is the region in which the token will be constructed. Return value
   is the constructed token.)
 
@@ -141,8 +137,7 @@
         {cons-char [append (tkn-char [getb strptr]) sexprs-end r handler] [+ strptr #:1]}
         $:sexprs-start))))
 
-(ignore
-  Grammar being lexed:
+(-- Grammar being lexed:
   program = <space> (<fragment> <space>)*
   fragment = <fragment2> | <sublist> | <subsublist>
   sublist = <fragment2> (<space> ':' <space> <fragment2>)+
@@ -154,8 +149,7 @@
   slist = '[' <space> (<fragment> <space>)* ']'
   token = <character>+)
 
-(ignore
-  Moves the supplied index forward to the first non-space character. l2src is a
+(-- Moves the supplied index forward to the first non-space character. l2src is a
   reference to the beginning of a buffer containing characters. l2src-sz contains
   the size in bytes of the buffer. pos is the reference to an index integer that
   will be increased. Return value is the number of remaining characters in the
@@ -231,10 +225,10 @@
     (let (head [read-fragment1 l2src l2src-sz pos ..]) (do
     (loop cons-frag (sexprs-end sexprs-start)
       (if (not [read-whitespace l2src l2src-sz pos])
-        (ignore)
+        (~)
         (let (c [getb [+ l2src $:pos]])
           (if (not [= c (scolon)])
-            (ignore)
+            (~)
             (do
               [set+ pos #:1]
               [read-whitespace l2src l2src-sz pos]
@@ -244,7 +238,7 @@
       head
       [list->fragment [cons head $:sexprs-start ..]]))))))
 
-(ignore Builds a fragment starting at the current position in the buffer. For parameters, see above.)
+(-- Builds a fragment starting at the current position in the buffer. For parameters, see above.)
 
 (constrain read-fragment (\ r (?(a b c d e) (`(function (,:a ,:b ,:c ,:d ,:e) frag)r)r)))
 
@@ -254,10 +248,10 @@
     (let (head [read-fragment2 l2src l2src-sz pos ..]) (do
     (loop cons-frag (sexprs-end sexprs-start)
       (if (not [read-whitespace l2src l2src-sz pos])
-        (ignore)
+        (~)
         (let (c [getb [+ l2src $:pos]])
           (if (not [= c (colon)])
-            (ignore)
+            (~)
             (do
               [set+ pos #:1]
               [read-whitespace l2src l2src-sz pos]
@@ -267,11 +261,11 @@
       head
       [list->fragment [cons head $:sexprs-start ..]]))))))
 
-(storage unexpected-char-error (ignore))
+(storage unexpected-char-error (~))
 
-(storage character-flag (ignore))
+(storage character-flag (~))
 
-(ignore Checks if the fragment d is a token. A token is a non-empty list of characters.)
+(-- Checks if the fragment d is a token. A token is a non-empty list of characters.)
 
 (constrain i/f.token? (\ r (?(a) (`(function (frag) ,:a)r)r)))
 
@@ -284,9 +278,9 @@
 (constrain i/f.gentok (\ r (`(function (region) frag)r)))
 
 (function i/f.gentok (r)
-  (let (str (storage _ (ignore) (ignore) (ignore))) (do
+  (let (str (storage _ (~) (~) (~))) (do
     [set+ gentok-counter #:1]
-    [token->fragment [build-token [dec->str $:gentok-counter str] r (ignore)]])))
+    [token->fragment [build-token [dec->str $:gentok-counter str] r (~)]])))
 
 (constrain i/f.token= (\ r (?(a) (`(function ((list tchar) (list tchar)) ,:a)r)r)))
 
@@ -300,8 +294,7 @@
       {check-car [@cdr a] [@cdr b]}
       (false))))))
 
-(ignore
-  Converts the given token into an ASCII string. d is the token that is to be converted.
+(-- Converts the given token into an ASCII string. d is the token that is to be converted.
   r is the region into which the string should be put. The return value is the constructed
   string.)
 
@@ -318,8 +311,7 @@
           [setb [+ str i] (@ cs-character [@car d])]
           {put-char [@cdr d] [+ i #:1]})))))
 
-(ignore
-  Copies the given fragment into the given region. l is the fragment that is to
+(-- Copies the given fragment into the given region. l is the fragment that is to
   be copied. r is the region into which the fragment should be copied. The return
   value is the copied fragment.)
 
@@ -336,7 +328,7 @@
       [token->fragment [collect-list (map (s (%:list-iter [fragment->token l])) (tkn-char (@ cs-character s))) [nil-of [fragment->token l]] ..]]
       [list->fragment [collect-list (map (s (%:list-iter [frag->list l])) [copy-fragment s var-map ..]) [nil-of [frag->list l]] ..]]))))
 
-(ignore Checks whether two fragments are equal modulo variable identity.)
+(-- Checks whether two fragments are equal modulo variable identity.)
 
 (constrain fragment= (\ r (?(a b) (`(function (frag frag (hash-table vbl vbl) region ,:a) ,:b)r)r)))
 
@@ -360,7 +352,7 @@
         {elt= [@cdr l1] [@cdr l2]}
         (false)))))))))))
 
-(ignore Prints the given fragment out to standard output. d is the fragment that is to be printed.)
+(-- Prints the given fragment out to standard output. d is the fragment that is to be printed.)
 
 (constrain print-fragment (\ r (?(b) (`(function (frag ,:b) ())r)r)))
 
@@ -370,10 +362,10 @@
       [print-char (stdout) (char !) hdl]
       [print-uint (stdout) [rem d #:8192] hdl])
   (if [i/f.token? d]
-    (for (t (%:list-iter [fragment->token d])) (ignore) [print-char (stdout) (@ cs-character t) hdl])
+    (for (t (%:list-iter [fragment->token d])) (~) [print-char (stdout) (@ cs-character t) hdl])
     (do
       [print-char (stdout) (lparen) hdl]
-      (for (fl (%:list-iter [frag->list d])) (ignore) (do
+      (for (fl (%:list-iter [frag->list d])) (~) (do
         [print-fragment fl hdl]
         [print-str (stdout) ("(space)) hdl]))
       [print-char (stdout) (rparen) hdl]))))
