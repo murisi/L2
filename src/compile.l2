@@ -1,4 +1,4 @@
-<<Compiles a program into a list of assembly expressions.>>
+< Compiles a program into a list of assembly expressions.>
 
 (constrain compile-program
   (\ r (?(a b c) (`(function ((list (expr ,:c)) (list initializer) ,:b region region ,:a)
@@ -17,7 +17,7 @@
             [visit-expressions vdominate-jumps expr (~)]
             [classify-program-bindings $:expr]
             [link-symbols $:expr (true) undefined-bindings global-bindings (~) ..]
-            <<[infer-types $:expr ..]>>
+            < [infer-types $:expr ..]>
             [escape-analysis $:expr (true) ..]
             [pre-visit-expressions vpropagate-expressions expr (values storage buf2 handler)]
             [assign-expr-is-reads $:expr]
@@ -31,9 +31,9 @@
       ((values? .:instrs .:relocs .:func-secs) [generate-program exprs bind ..]
         (values (use-storage outs) instrs relocs func-secs undefined-bindings $:static-bindings) (~))))))
 
-<<Loads a program into memory and returns a handle to it. program is a program expression.
+< Loads a program into memory and returns a handle to it. program is a program expression.
   expr-buf is the region into which the results of compilation will be put. obj-buf is the
-  region into which the object code will be put. Return value is an object.>>
+  region into which the object code will be put. Return value is an object.>
 
 (constrain load-program (\ r (?(a b) (`(function ((list (expr ,:b)) (list initializer) region region ,:a) obj)r)r)))
 
@@ -46,9 +46,9 @@
       [binding-offsets-to-addresses asms func-secs static-bindings obj buf handler]
       obj)) (~)) (~)))))
 
-<<Behavior is the same as load-program, but with the following addition: bndgs is a map
+< Behavior is the same as load-program, but with the following addition: bndgs is a map
   of object bindings, and after the loading is done, the undefined bindings of the loaded
-  program will take on the addresses supplied in the list.>>
+  program will take on the addresses supplied in the list.>
 
 (constrain load-program-and-mutate
   (\ r (?(a b) (`(function ((list (expr ,:b)) (list initializer) (hash-table string bndg-aug) region region ,:a) obj)r)r)))
@@ -78,9 +78,9 @@
         [close fd handler]
         (if [= (@0 err) no-error] (values (use-storage outs) (@1 err) (@2 err)) {handler err}))))))
 
-<<Reads a list of expressions from a given file. fn is a string containing the filename.
+< Reads a list of expressions from a given file. fn is a string containing the filename.
   buf is the region into which the constructed expressions will be put. Return value is a
-  list of expressions.>>
+  list of expressions.>
 
 (constrain read-expressions (\ r (?(a b) (`(function (string region region ,:a) (list (expr ,:b)))r)r)))
 
@@ -97,9 +97,9 @@
 
 (storage unsupported-intrinsics-error (~))
 
-<<Takes a list of L2 and object file names, loads their contents into memory, and links
+< Takes a list of L2 and object file names, loads their contents into memory, and links
   them together. The global symbols of the object code are then added to the list of
-  bindings.>>
+  bindings.>
 
 (constrain evaluate-files
   (\ r (?(a) (`(function ((list string) (list string) (list string) (hash-table string bndg-aug) region region ,:a) ())r)r)))
@@ -145,10 +145,10 @@
     [print fd objdest objdest-sz handler]
     [close fd handler])) (~)) (~))))
 
-<<Takes a list of L2 source files and compiles them into object files. programs is a
+< Takes a list of L2 source files and compiles them into object files. programs is a
   list of strings containing paths to L2 source files. bndgs is a list of bindings
   pointing to the macros to be used during the meta-expression expansions. buf is the
-  region into which constructed expressions and object code will be put.>>
+  region into which constructed expressions and object code will be put.>
 
 (constrain compile-files
   (\ r (?(a) (`(function ((list string) (list string) (hash-table string bndg-aug) region region ,:a) ())r)r)))
@@ -185,10 +185,10 @@
 
 (storage no-error (~))
 
-<<This is where program execution starts. The following code essentially loads up and
+< This is where program execution starts. The following code essentially loads up and
   executes the code specified in the command line arguments and then compiles the
   separately specified code using the already loaded up functions as macros. It also
-  prints out the error messages if there are any.>>
+  prints out the error messages if there are any.>
 
 (fallthrough
     (let (buf [create-region #:0 exit-cont]) (buf2 [create-region #:0 exit-cont])
@@ -201,11 +201,11 @@
           (let (second-dash-ref (locate (arg intrinsic-fns) [str= arg (" -)]))
           (if [nil? $:second-dash-ref] {handler (storage _ arguments-error)}
           (let (object-fns (storage _ [@cdr $:second-dash-ref])) (do
-          <<Cut the source filenames and object filenames list short.>>
+          < Cut the source filenames and object filenames list short.>
           [set first-dash-ref nil]
           [set second-dash-ref nil]
-          <<These are all the bindings necessary for metaprogramming. Their
-            definitions can be found in list.l2 and lexer.l2.>>
+          < These are all the bindings necessary for metaprogramming. Their
+            definitions can be found in list.l2 and lexer.l2.>
           (let (bndgs (sub (.. buf handler) (ht-putall ([ht-create hash-str str= ..] ..)
             ((" -!-)[make-binding (" -!-)(tkn-char(char !))..]) ((" -!-)[make-binding (" -!-)(tkn-char(char !))..])
             ((" -"-)[make-binding (" -"-)(tkn-char(char "))..]) ((" -#-)[make-binding (" -#-)(tkn-char(char #))..])
@@ -255,9 +255,9 @@
             ((" emt)[make-binding (" emt) emt! ..]) ((" char=)[make-binding (" char=) i/f.char= ..])
             ((" var=)[make-binding (" var=) vbl= ..]) ((" var?)[make-binding (" var?) vbl? ..])
             ((" var)[make-binding (" var) vbl ..]) ((" gentok)[make-binding (" gentok) i/f.gentok ..])))) (do
-          <<Evaluate the metaprogram>>
+          < Evaluate the metaprogram>
           [evaluate-files $:source-fns $:object-fns $:intrinsic-fns bndgs buf buf2 handler]
-          <<Compile the program in the metaprogram's environment>>
+          < Compile the program in the metaprogram's environment>
           [compile-files $:source-fns $:intrinsic-fns bndgs buf buf2 handler]
           (storage _ no-error))))))))))))
         

@@ -1,4 +1,4 @@
-<<The constants and fields to be used in x86-64-object.l2>>
+< The constants and fields to be used in x86-64-object.l2>
 
 (constant object [* #:6(unit)] \:r:[var r])
 
@@ -16,9 +16,9 @@
 
 (constant binding [* #:2(unit)] \:r:[var r])
 
-<<Does the relocations specified in the object file in light of the current binding
+< Does the relocations specified in the object file in light of the current binding
   addresses. The continuation handler is followed with the singleton (object-error) if
-  relocation type is unrecognized.>>
+  relocation type is unrecognized.>
 
 (constrain do-relocations (\ r (?(a) (`(function (obj ,:a) ())r)r)))
 
@@ -37,9 +37,9 @@
           [do-relocation (@ r-offset rela) rela sym addend handler]))))))))
       (~)))))
 
-<<Stores the relocation addends somewhere out of the way because it may be the case that
+< Stores the relocation addends somewhere out of the way because it may be the case that
   the contents of the addend field may be overwritten by a relocation, which is a problem
-  because the future relocations may depend on the value of the addend.>>
+  because the future relocations may depend on the value of the addend.>
 
 (constrain store-addends (\ r (?(a) (`(function (obj region ,:a) ())r)r)))
 
@@ -72,8 +72,8 @@
     
     (~))))))
 
-<<The offsets specified in the object file need to be turned into addresses for the code
-  to execute correctly.>>
+< The offsets specified in the object file need to be turned into addresses for the code
+  to execute correctly.>
 
 (constrain offsets-to-addresses (\ r (`(function (obj) ())r)))
 
@@ -104,9 +104,9 @@
             
     (~))))))
 
-<<Reformats the raw object code into a format more amenable for extraction of information
+< Reformats the raw object code into a format more amenable for extraction of information
   and updating. Constructs an object containing everything of interest in the object code
-  in the region reg and returns it.>>
+  in the region reg and returns it.>
 
 (constrain read-object (\ r (?(c d e) (`(function (,:c ,:d region ,:e) obj)r)r)))
 
@@ -133,7 +133,7 @@
     (if [= (@ sh-type shdr-buf) (sht-symtab)]
       (let (symnum [/ (@ sh-size shdr-buf) (@ sh-entsize shdr-buf)])
       (let (syms-buf (loc (unit) sec-idx (@ obj-syms obj))) (do
-      <<Following code copies recognized information from the symbol table into (@ obj-syms obj)>>
+      < Following code copies recognized information from the symbol table into (@ obj-syms obj)>
       [set syms-buf [region-alloc [* symnum (elf64-sym)] reg handler]]
       (for (sym-idx (%:range #:0 symnum)) (~)
         [memcpy (loc (elf64-sym) sym-idx $:syms-buf) (loc (@ sh-entsize shdr-buf) sym-idx $:seg-buf)
@@ -142,7 +142,7 @@
     (if (or [= (@ sh-type shdr-buf) (sht-rela)] [= (@ sh-type shdr-buf) (sht-rel)])
       (let (relanum [/ (@ sh-size shdr-buf) (@ sh-entsize shdr-buf)])
       (let (relas-buf (loc (unit) sec-idx (@ obj-relas obj))) (do
-      <<Following code copies recognized information from the relocations into (@ obj-relas obj)>>
+      < Following code copies recognized information from the relocations into (@ obj-relas obj)>
       [set relas-buf [region-alloc [* relanum (elf64-rela)] reg handler]]
       (for (rela-idx (%:range #:0 relanum)) (~)
         [memcpy (loc (elf64-rela) rela-idx $:relas-buf) (loc (@ sh-entsize shdr-buf) rela-idx $:seg-buf)
@@ -154,9 +154,9 @@
 
 (storage object-error (~))
 
-<<Constructs a handle to the specified object code. objsrc is a reference to the buffer
+< Constructs a handle to the specified object code. objsrc is a reference to the buffer
   containing the object code. objsrc-sz is the size of the buffer. reg is the region in
-  which our handle will be constructed. Return value is a handle to the object.>>
+  which our handle will be constructed. Return value is a handle to the object.>
 
 (constrain load (\ r (?(c d e) (`(function (,:c ,:d region ,:e) obj)r)r)))
 
@@ -173,9 +173,9 @@
   (let (seg-buf ($(loc (unit) (@ sh-link shdr) (@ obj-segs obj))))
     [+ seg-buf (@ st-name sym)]))
 
-<<Makes a binding with the given name and address. name is a string containg the name of
+< Makes a binding with the given name and address. name is a string containg the name of
   the binding. address is the address of the binding. reg is the region in which the
-  binding should be constructed. Return value is the constructed binding.>>
+  binding should be constructed. Return value is the constructed binding.>
 
 (constrain make-binding (\ r (?(a b) (`(function (string ,:a region ,:b) bndg-aug)r)r)))
 
@@ -185,9 +185,9 @@
     (setf bndg-offset sym address)
     sym)))
 
-<<Updates the bindings in the given object. obj is the object whose bindings need
+< Updates the bindings in the given object. obj is the object whose bindings need
   updating. updates is a list of bindings representing the updates that need to be applied
-  to obj.>>
+  to obj.>
 
 (constrain mutate-bindings (\ r (`(function (obj (hash-table string bndg-aug)) ())r)))
 
@@ -204,10 +204,10 @@
             (or [= (elf64-st-bind (@ st-info sym)) (stb-global)]
               [= (elf64-st-bind (@ st-info sym)) (stb-weak)]))
           (bndg) (setf st-value sym (@ bndg-offset $:bndg)) (~)))))) (~))))
-  <<If obj was created using load, the following invocation cannot produce an error; hence the unspecified handler arguments.>>
+  < If obj was created using load, the following invocation cannot produce an error; hence the unspecified handler arguments.>
   [do-relocations obj (~)]))
 
-<<Returns the bindings in the given object.>>
+< Returns the bindings in the given object.>
 
 (constrain bindings (\ r (?(a b) (`(function (,:a obj (hash-table string bndg-aug) region ,:b) (hash-table string bndg-aug))r)r)))
 
@@ -226,25 +226,25 @@
             reg handler] (~)))))) (~))))
   ht))
 
-<<Returns a list of the mutable bindings in the given object. obj is the object whose
+< Returns a list of the mutable bindings in the given object. obj is the object whose
   mutable bindings are being queried. reg is the region in which the list of mutable
-  bindings will be constructed. Return value is the list of mutable bindings.>>
+  bindings will be constructed. Return value is the list of mutable bindings.>
 
 (constrain mutable-bindings
   (\ r (?(b) (`(function (obj (hash-table string bndg-aug) region ,:b) (hash-table string bndg-aug))r)r)))
 
 (function mutable-bindings (obj ht reg handler) [bindings #:1 obj ht reg handler])
 
-<<Analogous to above.>>
+< Analogous to above.>
 
 (constrain immutable-bindings
   (\ r (?(b) (`(function (obj (hash-table string bndg-aug) region ,:b) (hash-table string bndg-aug))r)r)))
 
 (function immutable-bindings (obj ht reg handler) [bindings #:0 obj ht reg handler])
 
-<<Returns the address of the segment of the given object that has a particular name. obj
+< Returns the address of the segment of the given object that has a particular name. obj
   is the object whose segment addresses is being queried. name is the name of the segment
-  that is to be found.>>
+  that is to be found.>
 
 (constrain segment (\ r (?(a) (`(function (obj string) ,:a)r)r)))
 
