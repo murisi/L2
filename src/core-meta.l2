@@ -815,17 +815,18 @@
   (let (binds l)
     (closure (binds) (l r)
       (let (expr [@fst l])
+      (let (gen-expr `:(use , [meta.reverse [lst expr binds r] r]):r)
         (if [token? expr]
           (loop search (binds binds)
             (if [emt? binds]
-              `:(use , [meta.reverse [lst expr binds r] r]):r
+              gen-expr
             (if [token= [@ffst binds] expr]
               [@frfst binds]
               {search [@rst binds]})))
-          `:(use , [meta.reverse [lst expr binds r] r]):r)) r)))
+          gen-expr))) r)))
 
 (-- A Module exposes and constrains a subset of the functions of a module. The
-  Module macro does the following transformation:
+  Module macro is equivalent the following transformation:
   (((Module
     (id-a sig-a)
     (id-b sig-b)
@@ -833,16 +834,28 @@
     (id-z sig-z)) module-a) expr)
   ->
   (cps (module-a {Module.cont (sig-a id-a) (sig-b id-b) ... (sig-z id-z)})
-    (Module.cont (id-a id-b ... id-z) expr)))
+    (Module.cont (id-a id-b ... id-z) expr))
+  However, in the case that expr is a token, the token is instead passed directly
+  to the supplied module and the entire expression is constrained by the signature
+  associated with the matching binding as this reduces code generation.)
 
 (function Module (l r)
-  (let (ids [meta.map l @fst r]) (sigs [meta.map l @frst r])
-    (closure (ids sigs) (l r)
+  (let (binds l)
+    (closure (binds) (l r)
       (let (module [@fst l])
-        (closure (module ids sigs) (l r)
+        (closure (module binds) (l r)
           (let (expr [@fst l]) (cont-sym [meta.concat `:Module.cont:r [gentok r] r])
-            `:(cps (,:module {,:cont-sym , [meta.zip sigs ids r]})
-                (,:cont-sym ,:ids ,:expr)):r)r))r)))
+              (ids [meta.map binds @fst r]) (sigs [meta.map binds @frst r])
+          (let (gen-expr `:(cps (,:module {,:cont-sym , [meta.zip sigs ids r]})
+              (,:cont-sym ,:ids ,:expr)):r)
+            (if [token? expr]
+              (loop search (binds binds)
+                (if [emt? binds]
+                  gen-expr
+                (if [token= [@ffst binds] expr]
+                  `:(,:[@frfst binds] (,:module ,:expr)):r
+                  {search [@rst binds]})))
+              gen-expr)))r))r)))
 
 (-- A functor is essentially a C-style macro. Or yet again, it is a call-by-name
   function. The following method macro does the following transformation:
