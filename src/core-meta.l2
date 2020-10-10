@@ -790,6 +790,18 @@
       (let (expr [@fst l])
         `:(constrain ,:expr ,:func):r)r)))
 
+(-- A Vars is a functor that takes a module with free variables and produces a
+  module that instantiates with fresh variables. Does the following transformation:
+  ((Vars (v1 v2 ... vN) m) expr)
+  ->
+  (m expr) where m has fresh variables.)
+
+(function Vars (l r)
+  (let (vars [@fst l]) (mod [@frst l])
+    (closure (vars mod) (l r h)
+      (let (expr [@fst l]) (binds [meta.map2 vars r \:v:r:[llst v [meta.qval [var r] r] emt r] r])
+        [llst [sub [meta.reverse [lst mod binds r] r] r] expr emt r])r)))
+
 (-- A module is a set of bindings. The following macro takes a module and produces
   a macro to execute an expression in the context of the aforementioned module.
   Effectively does the following transformation:
