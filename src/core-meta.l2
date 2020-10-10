@@ -792,15 +792,25 @@
 
 (-- A module is a set of bindings. The following macro takes a module and produces
   a macro to execute an expression in the context of the aforementioned module.
-  Does the following transformation:
+  Effectively does the following transformation:
   ((module (id1 val1) ... (idN valN)) expr)
   ->
-  (use (id1 val1) ... (idN valN) expr))
+  (use (id1 val1) ... (idN valN) expr)
+  However, in the case that expr is a token, the entire expression is instead
+  replaced by the value of a matching binding as this reduces code generation.)
 
 (function module (l r)
   (let (binds l)
     (closure (binds) (l r)
-      `:(use , [meta.reverse [lst [@fst l] binds r] r]):r r)))
+      (let (expr [@fst l])
+        (if [token? expr]
+          (loop search (binds binds)
+            (if [emt? binds]
+              `:(use , [meta.reverse [lst expr binds r] r]):r
+            (if [token= [@ffst binds] expr]
+              [@frfst binds]
+              {search [@rst binds]})))
+          `:(use , [meta.reverse [lst expr binds r] r]):r)) r)))
 
 (-- A Module exposes and constrains a subset of the functions of a module. The
   Module macro does the following transformation:
