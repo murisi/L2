@@ -814,30 +814,23 @@
 
 (-- A Module exposes and constrains a subset of the functions of a module. The
   Module macro does the following transformation:
-  (((Module (var-a var-b ... var-z) r
+  (((Module
     (id-a sig-a)
     (id-b sig-b)
     ...
     (id-z sig-z)) module-a) expr)
   ->
-  (with Module.ret
-    (let (Module.cont (constrain (continuation Module.cont (id-a id-b ... id-z) {Module.ret expr})
-        \:r:(let (var-a [var r]) (var-b [var r]) ... (var-z [var r])
-          `:(continuation (,:sig-a ,:sig-b ... ,:sig-z)):r)))
-      (module-a {Module.cont id-a id-b ... id-z}))))
+  (cps (module-a {Module.cont (sig-a id-a) (sig-b id-b) ... (sig-z id-z)})
+    (Module.cont (id-a id-b ... id-z) expr)))
 
 (function Module (l r)
-  (let (buffer [@frst l]) (ids [meta.map [@rrst l] @fst r]) (sigs [meta.map [@rrst l] @frst r])
-  (let (var-binds [meta.map3 [@fst l] buffer r (function _(elt buffer r) [llst elt `:[var ,:buffer]:r emt r]) r])
-    (closure (var-binds buffer ids sigs) (l r)
+  (let (ids [meta.map l @fst r]) (sigs [meta.map l @frst r])
+    (closure (ids sigs) (l r)
       (let (module [@fst l])
-        (closure (module var-binds buffer ids sigs) (l r)
+        (closure (module ids sigs) (l r)
           (let (expr [@fst l]) (cont-sym [meta.concat `:Module.cont:r [gentok r] r])
-            `:(with Module.ret
-                (let (,:cont-sym (constrain (continuation ,:cont-sym ,:ids {Module.ret ,:expr})
-                    \:(, buffer):(let (Module.r (, buffer)) (let , [meta.reverse
-                      [lst (` `:(continuation ,:,;[meta.bq [meta.map2 sigs r meta.unquote r] buffer r]):Module.r r) var-binds r] r]))))
-                  (,:module {,:cont-sym , ids}))):r)r))r))))
+            `:(cps (,:module {,:cont-sym , [meta.zip sigs ids r]})
+                (,:cont-sym ,:ids ,:expr)):r)r))r)))
 
 (-- A functor is essentially a C-style macro. Or yet again, it is a call-by-name
   function. The following method macro does the following transformation:
