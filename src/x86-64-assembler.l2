@@ -23,312 +23,314 @@
     
   (property reloc-addend-func #:32 #:8 (\ r (?(a b c d e f) (`(! static~ (function (,:f ,:b ,:c ,:d ,:e) ,:a) reloc)r)r)))
 
-(-- A representation of an instruction.)
-
-  (constant instruction #:24 \:r:[var r])
-
-  (property instr-code #:0 #:8 (\ r (`(! static~ instr-code instr)r)))
-  
-  (property instr-operands #:8 #:8 (\ r (`(! static~ (list operand) instr)r)))
-  
-  (property instr-binding #:16 #:8 (\ r (`(! static~ bndg-aug instr)r)))
-
-(-- x86-64 instruction codes.)
-  
-  (constant label #:33 \:r:(` instr-code r))
-
-  (constant x86-lea #:17 \:r:(` instr-code r))
-
-  (constant x86-mov #:18 \:r:(` instr-code r))
-
-  (constant x86-jmp #:19 \:r:(` instr-code r))
-  
-  (constant x86-movzx #:20 \:r:(` instr-code r))
-
-  (constant x86-push #:21 \:r:(` instr-code r))
-
-  (constant x86-sub #:23 \:r:(` instr-code r))
-
-  (constant x86-add #:24 \:r:(` instr-code r))
-
-  (constant x86-pop #:25 \:r:(` instr-code r))
-
-  (constant x86-leave #:26 \:r:(` instr-code r))
-
-  (constant x86-ret #:27 \:r:(` instr-code r))
-
-  (constant x86-or #:30 \:r:(` instr-code r))
-
-  (constant x86-call #:32 \:r:(` instr-code r))
-  
-  (constant x86-mul #:38 \:r:(` instr-code r))
-  
-  (constant x86-shl #:39 \:r:(` instr-code r))
-  
-  (constant x86-shr #:40 \:r:(` instr-code r))
-  
-  (constant x86-and #:41 \:r:(` instr-code r))
-  
-  (constant x86-not #:42 \:r:(` instr-code r))
-  
-  (constant x86-xor #:44 \:r:(` instr-code r))
-  
-  (constant x86-div #:47 \:r:(` instr-code r))
-  
-  (constant x86-setz #:48 \:r:(` instr-code r))
-  
-  (constant x86-setc #:49 \:r:(` instr-code r))
-  
-  (constant x86-setb #:49 \:r:(` instr-code r))
-  
-  (constant x86-nop #:50 \:r:(` instr-code r))
-  
-  (constant x86-cmp #:51 \:r:(` instr-code r))
-  
-  (constant x86-je #:29 \:r:(` instr-code r))
-  
-  (constant x86-jz #:29 \:r:(` instr-code r))
-  
-  (constant x86-jnz #:52 \:r:(` instr-code r))
-  
-  (constant x86-jne #:52 \:r:(` instr-code r))
-  
-  (constant x86-jnc #:53 \:r:(` instr-code r))
-  
-  (constant x86-jae #:53 \:r:(` instr-code r))
-  
-  (constant x86-jnb #:53 \:r:(` instr-code r))
-  
-  (constant x86-seta #:54 \:r:(` instr-code r))
-  
-  (constant x86-jbe #:55 \:r:(` instr-code r))
-  
-  (constant x86-jna #:55 \:r:(` instr-code r))
-  
-  (constant x86-jnae #:56 \:r:(` instr-code r))
-  
-  (constant x86-jb #:56 \:r:(` instr-code r))
-  
-  (constant x86-jc #:56 \:r:(` instr-code r))
-  
-  (constant x86-jnbe #:57 \:r:(` instr-code r))
-  
-  (constant x86-ja #:57 \:r:(` instr-code r))
-
-(-- A representation of an operand.)
-  
-  (constant operand #:64 \:r:[var r])
-  
-  (property op-type #:0 #:8 (\ r (`(! static~ operand-type operand)r)))
-  
-  (property op-size #:8 #:8 (\ r (`(! static~ (,[var r]) operand)r)))
-  
-  (property op-locations #:16 #:8 (\ r (?(a b c d) (`(! static~ (list (values ,:a ,:b ,:c ,:d)) operand)r)r)))
+(define x86 (++ (sub (X x86) (module
+
+  (-- A representation of an instruction.)
+
+    (instruction (constant instruction #:24 \:r:[var r]))
+
+    (instr-code (property instr-code #:0 #:8 (\ r (`(! static~ instr-code instr)r))))
+    
+    (instr-operands (property instr-operands #:8 #:8 (\ r (`(! static~ (list operand) instr)r))))
+    
+    (instr-binding (property instr-binding #:16 #:8 (\ r (`(! static~ bndg-aug instr)r))))
+
+  (-- x86-64 instruction codes.)
+    
+    (label (constant label #:33 \:r:(` instr-code r)))
+
+    (lea (constant x86-lea #:17 \:r:(` instr-code r)))
+
+    (mov (constant x86-mov #:18 \:r:(` instr-code r)))
+
+    (jmp (constant x86-jmp #:19 \:r:(` instr-code r)))
+    
+    (movzx (constant x86-movzx #:20 \:r:(` instr-code r)))
+
+    (push (constant x86-push #:21 \:r:(` instr-code r)))
+
+    (sub (constant x86-sub #:23 \:r:(` instr-code r)))
+
+    (add (constant x86-add #:24 \:r:(` instr-code r)))
+
+    (pop (constant x86-pop #:25 \:r:(` instr-code r)))
+
+    (leave (constant x86-leave #:26 \:r:(` instr-code r)))
+
+    (ret (constant x86-ret #:27 \:r:(` instr-code r)))
+
+    (or (constant x86-or #:30 \:r:(` instr-code r)))
+
+    (call (constant x86-call #:32 \:r:(` instr-code r)))
+    
+    (mul (constant x86-mul #:38 \:r:(` instr-code r)))
+    
+    (shl (constant x86-shl #:39 \:r:(` instr-code r)))
+    
+    (shr (constant x86-shr #:40 \:r:(` instr-code r)))
+    
+    (and (constant x86-and #:41 \:r:(` instr-code r)))
+    
+    (not (constant x86-not #:42 \:r:(` instr-code r)))
+    
+    (xor (constant x86-xor #:44 \:r:(` instr-code r)))
+    
+    (div (constant x86-div #:47 \:r:(` instr-code r)))
+    
+    (setz (constant x86-setz #:48 \:r:(` instr-code r)))
+    
+    (setc (constant x86-setc #:49 \:r:(` instr-code r)))
+    
+    (setb (constant x86-setb #:49 \:r:(` instr-code r)))
+    
+    (nop (constant x86-nop #:50 \:r:(` instr-code r)))
+    
+    (cmp (constant x86-cmp #:51 \:r:(` instr-code r)))
+    
+    (je (constant x86-je #:29 \:r:(` instr-code r)))
+    
+    (jz (constant x86-jz #:29 \:r:(` instr-code r)))
+    
+    (jnz (constant x86-jnz #:52 \:r:(` instr-code r)))
+    
+    (jne (constant x86-jne #:52 \:r:(` instr-code r)))
+    
+    (jnc (constant x86-jnc #:53 \:r:(` instr-code r)))
+    
+    (jae (constant x86-jae #:53 \:r:(` instr-code r)))
+    
+    (jnb (constant x86-jnb #:53 \:r:(` instr-code r)))
+    
+    (seta (constant x86-seta #:54 \:r:(` instr-code r)))
+    
+    (jbe (constant x86-jbe #:55 \:r:(` instr-code r)))
+    
+    (jna (constant x86-jna #:55 \:r:(` instr-code r)))
+    
+    (jnae (constant x86-jnae #:56 \:r:(` instr-code r)))
+    
+    (jb (constant x86-jb #:56 \:r:(` instr-code r)))
+    
+    (jc (constant x86-jc #:56 \:r:(` instr-code r)))
+    
+    (jnbe (constant x86-jnbe #:57 \:r:(` instr-code r)))
+    
+    (ja (constant x86-ja #:57 \:r:(` instr-code r)))
+
+  (-- A representation of an operand.)
+    
+    (operand (constant operand #:64 \:r:[var r]))
+    
+    (op-type (property op-type #:0 #:8 (\ r (`(! static~ operand-type operand)r))))
+    
+    (op-size (property op-size #:8 #:8 (\ r (`(! static~ (,[var r]) operand)r))))
+    
+    (op-locations (property op-locations #:16 #:8 (\ r (?(a b c d) (`(! static~ (list (values ,:a ,:b ,:c ,:d)) operand)r)r))))
 
-(-- Only for type(s) (register-operand))
+  (-- Only for type(s) (register-operand))
 
-  (property op-register #:24 #:8 (\ r (`(! static~ register operand)r)))
+    (op-register (property op-register #:24 #:8 (\ r (`(! static~ register operand)r))))
 
-(-- Only for type(s) (immediate-operand))
+  (-- Only for type(s) (immediate-operand))
 
-  (property op-immediate #:24 #:8 (\ r (`(! static~ (,[var r]) operand)r)))
+    (op-immediate (property op-immediate #:24 #:8 (\ r (`(! static~ (,[var r]) operand)r))))
 
-(-- Only for type(s) (memory-operand))
+  (-- Only for type(s) (memory-operand))
 
-  (property op-base #:24 #:8 \:r:(`(! static~ register operand)r))
-  
-  (property op-index #:32 #:8 \:r:(`(! static~ register operand)r))
-  
-  (property op-scale #:40 #:8 \:r:(`(! static~ ,:[var r] operand)r))
-  
-  (property op-disp #:48 #:8 \:r:(`(! static~ ,:[var r] operand)r))
-  
-  (property op-disp-size #:56 #:8 \:r:(`(! static~ ,:[var r] operand)r))
+    (op-base (property op-base #:24 #:8 \:r:(`(! static~ register operand)r)))
+    
+    (op-index (property op-index #:32 #:8 \:r:(`(! static~ register operand)r)))
+    
+    (op-scale (property op-scale #:40 #:8 \:r:(`(! static~ ,:[var r] operand)r)))
+    
+    (op-disp (property op-disp #:48 #:8 \:r:(`(! static~ ,:[var r] operand)r)))
+    
+    (op-disp-size (property op-disp-size #:56 #:8 \:r:(`(! static~ ,:[var r] operand)r)))
 
-(-- x86-64 operand types.)
+  (-- x86-64 operand types.)
 
-  (constant register-operand #:0 (\ r (` operand-type r)))
-  
-  (constant immediate-operand #:1 (\ r (` operand-type r)))
-  
-  (constant memory-operand #:2 (\ r (` operand-type r)))
-  
-  (constant none-operand #:3 (\ r (` operand-type r)))
+    (register-operand (constant register-operand #:0 (\ r (` operand-type r))))
+    
+    (immediate-operand (constant immediate-operand #:1 (\ r (` operand-type r))))
+    
+    (memory-operand (constant memory-operand #:2 (\ r (` operand-type r))))
+    
+    (none-operand (constant none-operand #:3 (\ r (` operand-type r))))
 
-(-- x86-64 registers.)
-  
-  (constant r/m8 [<< #:1 #:5] \:r:[var r])
-  
-  (constant r/m16 [<< #:1 #:6] \:r:[var r])
-  
-  (constant r/m32 [<< #:1 #:7] \:r:[var r])
-  
-  (constant r/m64 [<< #:1 #:8] \:r:[var r])
-  
-  (constant w/rex [<< #:1 #:9] \:r:[var r])
-  
-  (constant w/orex [<< #:1 #:10] \:r:[var r])
-  
-  (constant none #:17 \:r:(` register r))
-  
-  (constant x86-/0 [bor #:0(r/m32)] \:r:(` register r))
+  (-- x86-64 registers.)
+    
+    (r/m8 (constant r/m8 [<< #:1 #:5] \:r:[var r]))
+    
+    (r/m16 (constant r/m16 [<< #:1 #:6] \:r:[var r]))
+    
+    (r/m32 (constant r/m32 [<< #:1 #:7] \:r:[var r]))
+    
+    (r/m64 (constant r/m64 [<< #:1 #:8] \:r:[var r]))
+    
+    (w/rex (constant w/rex [<< #:1 #:9] \:r:[var r]))
+    
+    (w/orex (constant w/orex [<< #:1 #:10] \:r:[var r]))
+    
+    (none (constant none #:17 \:r:(` register r)))
+    
+    (/0 (constant x86-/0 [bor #:0(X:r/m32)] \:r:(` register r)))
 
-  (constant x86-/1 [bor #:1(r/m32)] \:r:(` register r))
+    (/1 (constant x86-/1 [bor #:1(X:r/m32)] \:r:(` register r)))
 
-  (constant x86-/2 [bor #:2(r/m32)] \:r:(` register r))
+    (/2 (constant x86-/2 [bor #:2(X:r/m32)] \:r:(` register r)))
 
-  (constant x86-/3 [bor #:3(r/m32)] \:r:(` register r))
+    (/3 (constant x86-/3 [bor #:3(X:r/m32)] \:r:(` register r)))
 
-  (constant x86-/4 [bor #:4(r/m32)] \:r:(` register r))
+    (/4 (constant x86-/4 [bor #:4(X:r/m32)] \:r:(` register r)))
 
-  (constant x86-/5 [bor #:5(r/m32)] \:r:(` register r))
+    (/5 (constant x86-/5 [bor #:5(X:r/m32)] \:r:(` register r)))
 
-  (constant x86-/6 [bor #:6(r/m32)] \:r:(` register r))
+    (/6 (constant x86-/6 [bor #:6(X:r/m32)] \:r:(` register r)))
 
-  (constant x86-/7 [bor #:7(r/m32)] \:r:(` register r))
+    (/7 (constant x86-/7 [bor #:7(X:r/m32)] \:r:(` register r)))
 
-  (constant al [bor #:0(r/m8)] \:r:(` register r))
+    (al (constant al [bor #:0(X:r/m8)] \:r:(` register r)))
 
-  (constant cl [bor #:1(r/m8)] \:r:(` register r))
+    (cl (constant cl [bor #:1(X:r/m8)] \:r:(` register r)))
 
-  (constant dl [bor #:2(r/m8)] \:r:(` register r))
+    (dl (constant dl [bor #:2(X:r/m8)] \:r:(` register r)))
 
-  (constant bl [bor #:3(r/m8)] \:r:(` register r))
+    (bl (constant bl [bor #:3(X:r/m8)] \:r:(` register r)))
 
-  (constant ah [bor #:4(r/m8)] \:r:(` register r))
+    (ah (constant ah [bor #:4(X:r/m8)] \:r:(` register r)))
 
-  (constant ch [bor #:5(r/m8)] \:r:(` register r))
+    (ch (constant ch [bor #:5(X:r/m8)] \:r:(` register r)))
 
-  (constant dh [bor #:6(r/m8)] \:r:(` register r))
+    (dh (constant dh [bor #:6(X:r/m8)] \:r:(` register r)))
 
-  (constant bh [bor #:7(r/m8)] \:r:(` register r))
-  
-  (constant spl [bor [bor #:4(r/m8)] (w/rex)] \:r:(` register r))
+    (bh (constant bh [bor #:7(X:r/m8)] \:r:(` register r)))
+    
+    (spl (constant spl [bor [bor #:4(X:r/m8)] (X:w/rex)] \:r:(` register r)))
 
-  (constant bpl [bor [bor #:5(r/m8)] (w/rex)] \:r:(` register r))
+    (bpl (constant bpl [bor [bor #:5(X:r/m8)] (X:w/rex)] \:r:(` register r)))
 
-  (constant sil [bor [bor #:6(r/m8)] (w/rex)] \:r:(` register r))
+    (sil (constant sil [bor [bor #:6(X:r/m8)] (X:w/rex)] \:r:(` register r)))
 
-  (constant dil [bor [bor #:7(r/m8)] (w/rex)] \:r:(` register r))
+    (dil (constant dil [bor [bor #:7(X:r/m8)] (X:w/rex)] \:r:(` register r)))
 
-  (constant r8l [bor [bor #:8(r/m8)] (w/rex)] \:r:(` register r))
+    (r8l (constant r8l [bor [bor #:8(X:r/m8)] (X:w/rex)] \:r:(` register r)))
 
-  (constant r9l [bor [bor #:9(r/m8)] (w/rex)] \:r:(` register r))
+    (r9l (constant r9l [bor [bor #:9(X:r/m8)] (X:w/rex)] \:r:(` register r)))
 
-  (constant r10l [bor [bor #:10(r/m8)] (w/rex)] \:r:(` register r))
+    (r10l (constant r10l [bor [bor #:10(X:r/m8)] (X:w/rex)] \:r:(` register r)))
 
-  (constant r11l [bor [bor #:11(r/m8)] (w/rex)] \:r:(` register r))
+    (r11l (constant r11l [bor [bor #:11(X:r/m8)] (X:w/rex)] \:r:(` register r)))
 
-  (constant r12l [bor [bor #:12(r/m8)] (w/rex)] \:r:(` register r))
+    (r12l (constant r12l [bor [bor #:12(X:r/m8)] (X:w/rex)] \:r:(` register r)))
 
-  (constant r13l [bor [bor #:13(r/m8)] (w/rex)] \:r:(` register r))
+    (r13l (constant r13l [bor [bor #:13(X:r/m8)] (X:w/rex)] \:r:(` register r)))
 
-  (constant r14l [bor [bor #:14(r/m8)] (w/rex)] \:r:(` register r))
+    (r14l (constant r14l [bor [bor #:14(X:r/m8)] (X:w/rex)] \:r:(` register r)))
 
-  (constant r15l [bor [bor #:15(r/m8)] (w/rex)] \:r:(` register r))
-  
-  (constant ax [bor #:0(r/m16)] \:r:(` register r))
+    (r15l (constant r15l [bor [bor #:15(X:r/m8)] (X:w/rex)] \:r:(` register r)))
+    
+    (ax (constant ax [bor #:0(X:r/m16)] \:r:(` register r)))
 
-  (constant cx [bor #:1(r/m16)] \:r:(` register r))
+    (cx (constant cx [bor #:1(X:r/m16)] \:r:(` register r)))
 
-  (constant dx [bor #:2(r/m16)] \:r:(` register r))
+    (dx (constant dx [bor #:2(X:r/m16)] \:r:(` register r)))
 
-  (constant bx [bor #:3(r/m16)] \:r:(` register r))
+    (bx (constant bx [bor #:3(X:r/m16)] \:r:(` register r)))
 
-  (constant sp [bor #:4(r/m16)] \:r:(` register r))
+    (sp (constant sp [bor #:4(X:r/m16)] \:r:(` register r)))
 
-  (constant bp [bor #:5(r/m16)] \:r:(` register r))
+    (bp (constant bp [bor #:5(X:r/m16)] \:r:(` register r)))
 
-  (constant si [bor #:6(r/m16)] \:r:(` register r))
+    (si (constant si [bor #:6(X:r/m16)] \:r:(` register r)))
 
-  (constant di [bor #:7(r/m16)] \:r:(` register r))
-  
-  (constant r8w [bor [bor #:8(r/m16)] (w/rex)] \:r:(` register r))
+    (di (constant di [bor #:7(X:r/m16)] \:r:(` register r)))
+    
+    (r8w (constant r8w [bor [bor #:8(X:r/m16)] (X:w/rex)] \:r:(` register r)))
 
-  (constant r9w [bor [bor #:9(r/m16)] (w/rex)] \:r:(` register r))
+    (r9w (constant r9w [bor [bor #:9(X:r/m16)] (X:w/rex)] \:r:(` register r)))
 
-  (constant r10w [bor [bor #:10(r/m16)] (w/rex)] \:r:(` register r))
+    (r10w (constant r10w [bor [bor #:10(X:r/m16)] (X:w/rex)] \:r:(` register r)))
 
-  (constant r11w [bor [bor #:11(r/m16)] (w/rex)] \:r:(` register r))
+    (r11w (constant r11w [bor [bor #:11(X:r/m16)] (X:w/rex)] \:r:(` register r)))
 
-  (constant r12w [bor [bor #:12(r/m16)] (w/rex)] \:r:(` register r))
+    (r12w (constant r12w [bor [bor #:12(X:r/m16)] (X:w/rex)] \:r:(` register r)))
 
-  (constant r13w [bor [bor #:13(r/m16)] (w/rex)] \:r:(` register r))
+    (r13w (constant r13w [bor [bor #:13(X:r/m16)] (X:w/rex)] \:r:(` register r)))
 
-  (constant r14w [bor [bor #:14(r/m16)] (w/rex)] \:r:(` register r))
+    (r14w (constant r14w [bor [bor #:14(X:r/m16)] (X:w/rex)] \:r:(` register r)))
 
-  (constant r15w [bor [bor #:15(r/m16)] (w/rex)] \:r:(` register r))
-  
-  (constant eax [bor #:0(r/m32)] \:r:(` register r))
+    (r15w (constant r15w [bor [bor #:15(X:r/m16)] (X:w/rex)] \:r:(` register r)))
+    
+    (eax (constant eax [bor #:0(X:r/m32)] \:r:(` register r)))
 
-  (constant ecx [bor #:1(r/m32)] \:r:(` register r))
+    (ecx (constant ecx [bor #:1(X:r/m32)] \:r:(` register r)))
 
-  (constant edx [bor #:2(r/m32)] \:r:(` register r))
+    (edx (constant edx [bor #:2(X:r/m32)] \:r:(` register r)))
 
-  (constant ebx [bor #:3(r/m32)] \:r:(` register r))
+    (ebx (constant ebx [bor #:3(X:r/m32)] \:r:(` register r)))
 
-  (constant esp [bor #:4(r/m32)] \:r:(` register r))
+    (esp (constant esp [bor #:4(X:r/m32)] \:r:(` register r)))
 
-  (constant ebp [bor #:5(r/m32)] \:r:(` register r))
+    (ebp (constant ebp [bor #:5(X:r/m32)] \:r:(` register r)))
 
-  (constant esi [bor #:6(r/m32)] \:r:(` register r))
+    (esi (constant esi [bor #:6(X:r/m32)] \:r:(` register r)))
 
-  (constant edi [bor #:7(r/m32)] \:r:(` register r))
-  
-  (constant r8d [bor [bor #:8(r/m32)] (w/rex)] \:r:(` register r))
+    (edi (constant edi [bor #:7(X:r/m32)] \:r:(` register r)))
+    
+    (r8d (constant r8d [bor [bor #:8(X:r/m32)] (X:w/rex)] \:r:(` register r)))
 
-  (constant r9d [bor [bor #:9(r/m32)] (w/rex)] \:r:(` register r))
+    (r9d (constant r9d [bor [bor #:9(X:r/m32)] (X:w/rex)] \:r:(` register r)))
 
-  (constant r10d [bor [bor #:10(r/m32)] (w/rex)] \:r:(` register r))
+    (r10d (constant r10d [bor [bor #:10(X:r/m32)] (X:w/rex)] \:r:(` register r)))
 
-  (constant r11d [bor [bor #:11(r/m32)] (w/rex)] \:r:(` register r))
+    (r11d (constant r11d [bor [bor #:11(X:r/m32)] (X:w/rex)] \:r:(` register r)))
 
-  (constant r12d [bor [bor #:12(r/m32)] (w/rex)] \:r:(` register r))
+    (r12d (constant r12d [bor [bor #:12(X:r/m32)] (X:w/rex)] \:r:(` register r)))
 
-  (constant r13d [bor [bor #:13(r/m32)] (w/rex)] \:r:(` register r))
+    (r13d (constant r13d [bor [bor #:13(X:r/m32)] (X:w/rex)] \:r:(` register r)))
 
-  (constant r14d [bor [bor #:14(r/m32)] (w/rex)] \:r:(` register r))
+    (r14d (constant r14d [bor [bor #:14(X:r/m32)] (X:w/rex)] \:r:(` register r)))
 
-  (constant r15d [bor [bor #:15(r/m32)] (w/rex)] \:r:(` register r))
-  
-  (constant rax [bor [bor #:0(r/m64)] (w/rex)] \:r:(` register r))
+    (r15d (constant r15d [bor [bor #:15(X:r/m32)] (X:w/rex)] \:r:(` register r)))
+    
+    (rax (constant rax [bor [bor #:0(X:r/m64)] (X:w/rex)] \:r:(` register r)))
 
-  (constant rcx [bor [bor #:1(r/m64)] (w/rex)] \:r:(` register r))
+    (rcx (constant rcx [bor [bor #:1(X:r/m64)] (X:w/rex)] \:r:(` register r)))
 
-  (constant rdx [bor [bor #:2(r/m64)] (w/rex)] \:r:(` register r))
+    (rdx (constant rdx [bor [bor #:2(X:r/m64)] (X:w/rex)] \:r:(` register r)))
 
-  (constant rbx [bor [bor #:3(r/m64)] (w/rex)] \:r:(` register r))
+    (rbx (constant rbx [bor [bor #:3(X:r/m64)] (X:w/rex)] \:r:(` register r)))
 
-  (constant rsp [bor [bor #:4(r/m64)] (w/rex)] \:r:(` register r))
+    (rsp (constant rsp [bor [bor #:4(X:r/m64)] (X:w/rex)] \:r:(` register r)))
 
-  (constant rbp [bor [bor #:5(r/m64)] (w/rex)] \:r:(` register r))
+    (rbp (constant rbp [bor [bor #:5(X:r/m64)] (X:w/rex)] \:r:(` register r)))
 
-  (constant rsi [bor [bor #:6(r/m64)] (w/rex)] \:r:(` register r))
+    (rsi (constant rsi [bor [bor #:6(X:r/m64)] (X:w/rex)] \:r:(` register r)))
 
-  (constant rdi [bor [bor #:7(r/m64)] (w/rex)] \:r:(` register r))
+    (rdi (constant rdi [bor [bor #:7(X:r/m64)] (X:w/rex)] \:r:(` register r)))
 
-  (constant r8 [bor [bor #:8(r/m64)] (w/rex)] \:r:(` register r))
+    (r8 (constant r8 [bor [bor #:8(X:r/m64)] (X:w/rex)] \:r:(` register r)))
 
-  (constant r9 [bor [bor #:9(r/m64)] (w/rex)] \:r:(` register r))
+    (r9 (constant r9 [bor [bor #:9(X:r/m64)] (X:w/rex)] \:r:(` register r)))
 
-  (constant r10 [bor [bor #:10(r/m64)] (w/rex)] \:r:(` register r))
+    (r10 (constant r10 [bor [bor #:10(X:r/m64)] (X:w/rex)] \:r:(` register r)))
 
-  (constant r11 [bor [bor #:11(r/m64)] (w/rex)] \:r:(` register r))
+    (r11 (constant r11 [bor [bor #:11(X:r/m64)] (X:w/rex)] \:r:(` register r)))
 
-  (constant r12 [bor [bor #:12(r/m64)] (w/rex)] \:r:(` register r))
+    (r12 (constant r12 [bor [bor #:12(X:r/m64)] (X:w/rex)] \:r:(` register r)))
 
-  (constant r13 [bor [bor #:13(r/m64)] (w/rex)] \:r:(` register r))
+    (r13 (constant r13 [bor [bor #:13(X:r/m64)] (X:w/rex)] \:r:(` register r)))
 
-  (constant r14 [bor [bor #:14(r/m64)] (w/rex)] \:r:(` register r))
+    (r14 (constant r14 [bor [bor #:14(X:r/m64)] (X:w/rex)] \:r:(` register r)))
 
-  (constant r15 [bor [bor #:15(r/m64)] (w/rex)] \:r:(` register r))
-  
-  (constant rip [bor [bor #:16(r/m64)] (w/rex)] \:r:(` register r))
+    (r15 (constant r15 [bor [bor #:15(X:r/m64)] (X:w/rex)] \:r:(` register r)))
+    
+    (rip (constant rip [bor [bor #:16(X:r/m64)] (X:w/rex)] \:r:(` register r)))))))
 
 (-- Defined to enable the x64 registers to be indexed dynamically.)
 
-(storage x64-r64s
-  (rax)(rcx)(rdx)(rbx)(rsp)(rbp)(rsi)(rdi)(r8)(r9)(r10)(r11)(r12)(r13)(r14)(r15))
+(sub (X x86) (storage x64-r64s
+  (X:rax)(X:rcx)(X:rdx)(X:rbx)(X:rsp)(X:rbp)(X:rsi)(X:rdi)(X:r8)(X:r9)(X:r10)(X:r11)(X:r12)(X:r13)(X:r14)(X:r15)))
 
 (-- Usage (make-instrN opcode (ops ...) buf handler))
 
@@ -338,11 +340,12 @@
 (constrain make-instruction (\ r (?(b) (`(function (instr-code (list operand) region ,:b) instr)r)r)))
 
 (function make-instruction (code operands reg handler)
-  (let (u [region-alloc (instruction) reg handler]) (do
-    (setf instr-code u code)
-    (setf instr-operands u operands)
-    (setf instr-binding u null-binding)
-    u)))
+  (sub (X x86)
+    (let (u [region-alloc (X:instruction) reg handler]) (do
+      (setf X:instr-code u code)
+      (setf X:instr-operands u operands)
+      (setf X:instr-binding u null-binding)
+      u))))
 
 (constrain make-relocation (\ r (?(a b c) (`(function (reloc-type operand bndg-aug ,:c ,:a region ,:b) reloc)r)r)))
 
@@ -359,221 +362,223 @@
 (constrain register-size (\ r (?(a) (`(function (register) ,:a)r)r)))
 
 (function register-size (reg)
-  (if [band reg(r/m8)] #:1
-  (if [band reg(r/m16)] #:2
-  (if [band reg(r/m32)] #:4
-  (if [band reg(r/m64)] #:8
-    (~))))))
+  (sub (X x86)
+    (if [band reg(X:r/m8)] #:1
+    (if [band reg(X:r/m16)] #:2
+    (if [band reg(X:r/m32)] #:4
+    (if [band reg(X:r/m64)] #:8
+      (~)))))))
 
 (constrain make-reg-op (\ r (?(a) (`(function (register region ,:a) operand)r)r)))
 
 (function make-reg-op (reg buf handler)
-  (sub (.. buf handler)
-    (let (op [region-alloc (operand) ..]) (do
-      (setf op-type op (register-operand))
-      (setf op-size op [register-size reg])
-      (setf op-register op reg)
-      (setf op-locations op nil)
+  (sub (X x86) (.. buf handler)
+    (let (op [region-alloc (X:operand) ..]) (do
+      (setf X:op-type op (X:register-operand))
+      (setf X:op-size op [register-size reg])
+      (setf X:op-register op reg)
+      (setf X:op-locations op nil)
       op))))
 
 (constrain make-imm-op (\ r (?(a b c) (`(function (,:b ,:c region ,:a) operand)r)r)))
 
 (function make-imm-op (op-size imm buf handler)
-  (sub (.. buf handler)
-    (let (op [region-alloc (operand) ..]) (do
-      (setf op-type op (immediate-operand))
-      (setf op-size op op-size)
-      (setf op-immediate op imm)
-      (setf op-locations op nil)
+  (sub (X x86) (.. buf handler)
+    (let (op [region-alloc (X:operand) ..]) (do
+      (setf X:op-type op (X:immediate-operand))
+      (setf X:op-size op op-size)
+      (setf X:op-immediate op imm)
+      (setf X:op-locations op nil)
       op))))
 
 (constrain make-none-op (\ r (?(a) (`(function (region ,:a) operand)r)r)))
 
 (function make-none-op (buf handler)
-  (sub (.. buf handler)
-    (let (op [region-alloc (operand) ..]) (do
-      (setf op-type op (none-operand))
-      (setf op-size op #:0)
+  (sub (X x86) (.. buf handler)
+    (let (op [region-alloc (X:operand) ..]) (do
+      (setf X:op-type op (X:none-operand))
+      (setf X:op-size op #:0)
       op))))
 
 (constrain make-mem-op (\ r (?(a b c d e) (`(function (,:a register register ,:b ,:c ,:d region ,:e) operand)r)r)))
 
 (function make-mem-op (op-size base index scale disp disp-size buf handler)
-  (sub (.. buf handler)
-    (let (op [region-alloc (operand) ..]) (do
-      (setf op-type op (memory-operand))
-      (setf op-size op op-size)
-      (setf op-base op base)
-      (setf op-index op index)
-      (setf op-scale op scale)
-      (setf op-disp op disp)
-      (setf op-disp-size op disp-size)
-      (setf op-locations op nil)
+  (sub (X x86) (.. buf handler)
+    (let (op [region-alloc (X:operand) ..]) (do
+      (setf X:op-type op (X:memory-operand))
+      (setf X:op-size op op-size)
+      (setf X:op-base op base)
+      (setf X:op-index op index)
+      (setf X:op-scale op scale)
+      (setf X:op-disp op disp)
+      (setf X:op-disp-size op disp-size)
+      (setf X:op-locations op nil)
       op))))
 
 (constrain reg-lower-8 (\ r (`(function (register) register)r)))
 
-(function reg-lower-8 (reg) (switch = reg
-  ((ah)(ah)) ((bh)(bh)) ((ch)(ch)) ((dh)(dh)) ((al)(al)) ((bl)(bl)) ((cl)(cl)) ((dl)(dl))
-  ((dil)(dil)) ((sil)(sil)) ((bpl) (bpl)) ((spl)(spl)) ((r8l)(r8l)) ((r9l)(r9l)) ((r10l)(r10l))
-  ((r11l)(r11l)) ((r12l)(r12l)) ((r13l)(r13l)) ((r14l)(r14l)) ((r15l)(r15l)) ((ax)(al))
-  ((bx)(bl)) ((cx)(cl)) ((dx)(dl)) ((di)(dil)) ((si)(sil)) ((bp)(bpl)) ((sp)(spl)) ((r8w)(r8l))
-  ((r9w)(r9l)) ((r10w)(r10l)) ((r11w)(r11l)) ((r12w)(r12l)) ((r13w)(r13l)) ((r14w)(r14l))
-  ((r15w)(r15l)) ((eax)(al)) ((ebx)(bl)) ((ecx)(cl)) ((edx)(dl)) ((edi)(dl)) ((esi)(sil))
-  ((ebp)(bpl)) ((esp)(spl)) ((r8d)(r8l)) ((r9d)(r9l)) ((r10d)(r10l)) ((r11d)(r11l))
-  ((r12d)(r12l)) ((r13d)(r13l)) ((r14d)(r14l)) ((r15d)(r15l)) ((rax)(al)) ((rbx)(bl))
-  ((rcx)(cl)) ((rdx)(dl)) ((rdi)(dil)) ((rsi)(sil)) ((rbp)(bpl)) ((rsp)(spl)) ((r8)(r8l))
-  ((r9)(r9l)) ((r10)(r10l)) ((r11)(r11l)) ((r12)(r12l)) ((r13)(r13l)) ((r14)(r14l))
-  ((r15)(r15l)) (~)))
+(function reg-lower-8 (reg) (sub (X x86) (switch = reg
+  ((X:ah)(X:ah)) ((X:bh)(X:bh)) ((X:ch)(X:ch)) ((X:dh)(X:dh)) ((X:al)(X:al)) ((X:bl)(X:bl)) ((X:cl)(X:cl)) ((X:dl)(X:dl))
+  ((X:dil)(X:dil)) ((X:sil)(X:sil)) ((X:bpl) (X:bpl)) ((X:spl)(X:spl)) ((X:r8l)(X:r8l)) ((X:r9l)(X:r9l)) ((X:r10l)(X:r10l))
+  ((X:r11l)(X:r11l)) ((X:r12l)(X:r12l)) ((X:r13l)(X:r13l)) ((X:r14l)(X:r14l)) ((X:r15l)(X:r15l)) ((X:ax)(X:al))
+  ((X:bx)(X:bl)) ((X:cx)(X:cl)) ((X:dx)(X:dl)) ((X:di)(X:dil)) ((X:si)(X:sil)) ((X:bp)(X:bpl)) ((X:sp)(X:spl)) ((X:r8w)(X:r8l))
+  ((X:r9w)(X:r9l)) ((X:r10w)(X:r10l)) ((X:r11w)(X:r11l)) ((X:r12w)(X:r12l)) ((X:r13w)(X:r13l)) ((X:r14w)(X:r14l))
+  ((X:r15w)(X:r15l)) ((X:eax)(X:al)) ((X:ebx)(X:bl)) ((X:ecx)(X:cl)) ((X:edx)(X:dl)) ((X:edi)(X:dl)) ((X:esi)(X:sil))
+  ((X:ebp)(X:bpl)) ((X:esp)(X:spl)) ((X:r8d)(X:r8l)) ((X:r9d)(X:r9l)) ((X:r10d)(X:r10l)) ((X:r11d)(X:r11l))
+  ((X:r12d)(X:r12l)) ((X:r13d)(X:r13l)) ((X:r14d)(X:r14l)) ((X:r15d)(X:r15l)) ((X:rax)(X:al)) ((X:rbx)(X:bl))
+  ((X:rcx)(X:cl)) ((X:rdx)(X:dl)) ((X:rdi)(X:dil)) ((X:rsi)(X:sil)) ((X:rbp)(X:bpl)) ((X:rsp)(X:spl)) ((X:r8)(X:r8l))
+  ((X:r9)(X:r9l)) ((X:r10)(X:r10l)) ((X:r11)(X:r11l)) ((X:r12)(X:r12l)) ((X:r13)(X:r13l)) ((X:r14)(X:r14l))
+  ((X:r15)(X:r15l)) (~))))
 
 (constrain op-lower-8 (\ r (?(a) (`(function (operand region ,:a) operand)r)r)))
 
 (function op-lower-8 (op buf handler)
-  (sub (.. buf handler)
-    (switch = (@ op-type op)
-      ((register-operand) [make-reg-op [reg-lower-8 (@ op-register op)] ..])
-      ((immediate-operand) [make-imm-op #:1 (@ op-immediate op) ..])
-      ((memory-operand) [make-mem-op #:1 (@ op-base op) (@ op-index op) (@ op-scale op)
-        (@ op-disp op) (@ op-disp-size op) ..])
+  (sub (X x86) (.. buf handler)
+    (switch = (@ X:op-type op)
+      ((X:register-operand) [make-reg-op [reg-lower-8 (@ X:op-register op)] ..])
+      ((X:immediate-operand) [make-imm-op #:1 (@ X:op-immediate op) ..])
+      ((X:memory-operand) [make-mem-op #:1 (@ X:op-base op) (@ X:op-index op) (@ X:op-scale op)
+        (@ X:op-disp op) (@ X:op-disp-size op) ..])
       (~))))
 
 (constrain reg-lower-16 (\ r (`(function (register) register)r)))
 
-(function reg-lower-16 (reg) (switch = reg
-  ((ax)(ax)) ((bx)(bx)) ((cx)(cx)) ((dx)(dx)) ((di)(di)) ((si)(si)) ((bp)(bp)) ((sp)(sp))
-  ((r8w)(r8w)) ((r9w)(r9w)) ((r10w)(r10w)) ((r11w)(r11w)) ((r12w)(r12w)) ((r13w)(r13w))
-  ((r14w)(r14w)) ((r15w)(r15w)) ((eax)(ax)) ((ebx)(bx)) ((ecx)(cx)) ((edx)(dx)) ((edi)(di))
-  ((esi)(si)) ((ebp)(bp)) ((esp)(sp)) ((r8d)(r8w)) ((r9d)(r9w)) ((r10d)(r10w)) ((r11d)(r11w))
-  ((r12d)(r12w)) ((r13d)(r13w)) ((r14d)(r14w)) ((r15d)(r15w)) ((rax)(ax)) ((rbx)(bx))
-  ((rcx)(cx)) ((rdx)(dx)) ((rdi)(di)) ((rsi)(si)) ((rbp)(bp)) ((rsp)(sp)) ((r8)(r8w))
-  ((r9)(r9w)) ((r10)(r10w)) ((r11)(r11w)) ((r12)(r12w)) ((r13)(r13w)) ((r14)(r14w))
-  ((r15)(r15w)) (~)))
+(function reg-lower-16 (reg) (sub (X x86) (switch = reg
+  ((X:ax)(X:ax)) ((X:bx)(X:bx)) ((X:cx)(X:cx)) ((X:dx)(X:dx)) ((X:di)(X:di)) ((X:si)(X:si)) ((X:bp)(X:bp)) ((X:sp)(X:sp))
+  ((X:r8w)(X:r8w)) ((X:r9w)(X:r9w)) ((X:r10w)(X:r10w)) ((X:r11w)(X:r11w)) ((X:r12w)(X:r12w)) ((X:r13w)(X:r13w))
+  ((X:r14w)(X:r14w)) ((X:r15w)(X:r15w)) ((X:eax)(X:ax)) ((X:ebx)(X:bx)) ((X:ecx)(X:cx)) ((X:edx)(X:dx)) ((X:edi)(X:di))
+  ((X:esi)(X:si)) ((X:ebp)(X:bp)) ((X:esp)(X:sp)) ((X:r8d)(X:r8w)) ((X:r9d)(X:r9w)) ((X:r10d)(X:r10w)) ((X:r11d)(X:r11w))
+  ((X:r12d)(X:r12w)) ((X:r13d)(X:r13w)) ((X:r14d)(X:r14w)) ((X:r15d)(X:r15w)) ((X:rax)(X:ax)) ((X:rbx)(X:bx))
+  ((X:rcx)(X:cx)) ((X:rdx)(X:dx)) ((X:rdi)(X:di)) ((X:rsi)(X:si)) ((X:rbp)(X:bp)) ((X:rsp)(X:sp)) ((X:r8)(X:r8w))
+  ((X:r9)(X:r9w)) ((X:r10)(X:r10w)) ((X:r11)(X:r11w)) ((X:r12)(X:r12w)) ((X:r13)(X:r13w)) ((X:r14)(X:r14w))
+  ((X:r15)(X:r15w)) (~))))
 
 (constrain op-lower-16 (\ r (?(a) (`(function (operand region ,:a) operand)r)r)))
 
 (function op-lower-16 (op buf handler)
-  (sub (.. buf handler)
-    (switch = (@ op-type op)
-      ((register-operand) [make-reg-op [reg-lower-16 (@ op-register op)] ..])
-      ((immediate-operand) [make-imm-op #:2 (@ op-immediate op) ..])
-      ((memory-operand) [make-mem-op #:2 (@ op-base op) (@ op-index op) (@ op-scale op)
-        (@ op-disp op) (@ op-disp-size op) ..])
+  (sub (X x86) (.. buf handler)
+    (switch = (@ X:op-type op)
+      ((X:register-operand) [make-reg-op [reg-lower-16 (@ X:op-register op)] ..])
+      ((X:immediate-operand) [make-imm-op #:2 (@ X:op-immediate op) ..])
+      ((X:memory-operand) [make-mem-op #:2 (@ X:op-base op) (@ X:op-index op) (@ X:op-scale op)
+        (@ X:op-disp op) (@ X:op-disp-size op) ..])
       (~))))
 
 (constrain reg-lower-32 (\ r (`(function (register) register)r)))
 
-(function reg-lower-32 (reg) (switch = reg
-  ((eax)(eax)) ((ebx)(ebx)) ((ecx)(ecx)) ((edx)(edx)) ((edi)(edi)) ((esi)(esi)) ((ebp)(ebp))
-  ((esp)(esp)) ((r8d)(r8d)) ((r9d)(r9d)) ((r10d)(r10d)) ((r11d)(r11d)) ((r12d)(r12d))
-  ((r13d)(r13d)) ((r14d)(r14d)) ((r15d)(r15d)) ((rax)(eax)) ((rbx)(ebx)) ((rcx)(ecx))
-  ((rdx)(edx)) ((rdi)(edi)) ((rsi)(esi)) ((rbp)(ebp)) ((rsp)(esp)) ((r8)(r8d)) ((r9)(r9d))
-  ((r10)(r10d)) ((r11)(r11d)) ((r12)(r12d)) ((r13)(r13d)) ((r14)(r14d)) ((r15)(r15d))
-  (~)))
+(function reg-lower-32 (reg) (sub (X x86) (switch = reg
+  ((X:eax)(X:eax)) ((X:ebx)(X:ebx)) ((X:ecx)(X:ecx)) ((X:edx)(X:edx)) ((X:edi)(X:edi)) ((X:esi)(X:esi)) ((X:ebp)(X:ebp))
+  ((X:esp)(X:esp)) ((X:r8d)(X:r8d)) ((X:r9d)(X:r9d)) ((X:r10d)(X:r10d)) ((X:r11d)(X:r11d)) ((X:r12d)(X:r12d))
+  ((X:r13d)(X:r13d)) ((X:r14d)(X:r14d)) ((X:r15d)(X:r15d)) ((X:rax)(X:eax)) ((X:rbx)(X:ebx)) ((X:rcx)(X:ecx))
+  ((X:rdx)(X:edx)) ((X:rdi)(X:edi)) ((X:rsi)(X:esi)) ((X:rbp)(X:ebp)) ((X:rsp)(X:esp)) ((X:r8)(X:r8d)) ((X:r9)(X:r9d))
+  ((X:r10)(X:r10d)) ((X:r11)(X:r11d)) ((X:r12)(X:r12d)) ((X:r13)(X:r13d)) ((X:r14)(X:r14d)) ((X:r15)(X:r15d))
+  (~))))
 
 (constrain op-lower-32 (\ r (?(a) (`(function (operand region ,:a) operand)r)r)))
 
 (function op-lower-32 (op buf handler)
-  (sub (.. buf handler)
-    (switch = (@ op-type op)
-      ((register-operand) [make-reg-op [reg-lower-32 (@ op-register op)] ..])
-      ((immediate-operand) [make-imm-op #:4 (@ op-immediate op) ..])
-      ((memory-operand) [make-mem-op #:4 (@ op-base op) (@ op-index op) (@ op-scale op)
-        (@ op-disp op) (@ op-disp-size op) ..])
+  (sub (X x86) (.. buf handler)
+    (switch = (@ X:op-type op)
+      ((X:register-operand) [make-reg-op [reg-lower-32 (@ X:op-register op)] ..])
+      ((X:immediate-operand) [make-imm-op #:4 (@ X:op-immediate op) ..])
+      ((X:memory-operand) [make-mem-op #:4 (@ X:op-base op) (@ X:op-index op) (@ X:op-scale op)
+        (@ X:op-disp op) (@ X:op-disp-size op) ..])
       (~))))
 
 (constrain reg-lower-64 (\ r (`(function (register) register)r)))
 
-(function reg-lower-64 (reg) (switch = reg
-  ((rax)(rax)) ((rbx)(rbx)) ((rcx)(rcx)) ((rdx)(rdx)) ((rdi)(rdi)) ((rsi)(rsi)) ((rbp)(rbp))
-  ((rsp)(rsp)) ((r8)(r8)) ((r9)(r9)) ((r10)(r10)) ((r11)(r11)) ((r12)(r12)) ((r13)(r13))
-  ((r14)(r14)) ((r15)(r15)) (~)))
+(function reg-lower-64 (reg) (sub (X x86) (switch = reg
+  ((X:rax)(X:rax)) ((X:rbx)(X:rbx)) ((X:rcx)(X:rcx)) ((X:rdx)(X:rdx)) ((X:rdi)(X:rdi)) ((X:rsi)(X:rsi)) ((X:rbp)(X:rbp))
+  ((X:rsp)(X:rsp)) ((X:r8)(X:r8)) ((X:r9)(X:r9)) ((X:r10)(X:r10)) ((X:r11)(X:r11)) ((X:r12)(X:r12)) ((X:r13)(X:r13))
+  ((X:r14)(X:r14)) ((X:r15)(X:r15)) (~))))
 
 (constrain op-lower-64 (\ r (?(a) (`(function (operand region ,:a) operand)r)r)))
 
 (function op-lower-64 (op buf handler)
-  (sub (.. buf handler)
-    (switch = (@ op-type op)
-      ((register-operand) [make-reg-op [reg-lower-64 (@ op-register op)] ..])
-      ((immediate-operand) [make-imm-op #:8 (@ op-immediate op) ..])
-      ((memory-operand) [make-mem-op #:8 (@ op-base op) (@ op-index op) (@ op-scale op)
-        (@ op-disp op) (@ op-disp-size op) ..])
+  (sub (X x86) (.. buf handler)
+    (switch = (@ X:op-type op)
+      ((X:register-operand) [make-reg-op [reg-lower-64 (@ X:op-register op)] ..])
+      ((X:immediate-operand) [make-imm-op #:8 (@ X:op-immediate op) ..])
+      ((X:memory-operand) [make-mem-op #:8 (@ X:op-base op) (@ X:op-index op) (@ X:op-scale op)
+        (@ X:op-disp op) (@ X:op-disp-size op) ..])
       (~))))
 
 (constrain print-instr-code (\ r (?(a) (`(function (instr-code ,:a) ())r)r)))
 
 (function print-instr-code (code handler)
   [print-str (stdout) (switch = code
-    ((label) (" label)) ((x86-lea) (" lea)) ((x86-mov) (" mov)) ((x86-jmp) (" jmp))
-    ((x86-movzx) (" movzx)) ((x86-push) (" push)) ((x86-sub) (" sub)) ((x86-add) (" add))
-    ((x86-pop) (" pop)) ((x86-leave) (" leave)) ((x86-ret) (" ret)) ((x86-je) (" je))
-    ((x86-or) (" or)) ((x86-call) (" call)) ((x86-mul) (" mul)) ((x86-shl) (" shl))
-    ((x86-shr) (" shr)) ((x86-and) (" and)) ((x86-not) (" not)) ((x86-xor) (" xor))
-    ((x86-div) (" div)) ((x86-setz) (" setz)) ((x86-setc) (" setc)) ((x86-jae) (" jae))
-    ((x86-jne) (" jne)) ((x86-cmp) (" cmp)) ((x86-seta) (" seta)) ((x86-jbe) (" jbe))
-    ((x86-ja) (" ja)) ((x86-jb) (" jb)) (~)) handler])
+    ((x86:label) (" label)) ((x86:lea) (" lea)) ((x86:mov) (" mov)) ((x86:jmp) (" jmp))
+    ((x86:movzx) (" movzx)) ((x86:push) (" push)) ((x86:sub) (" sub)) ((x86:add) (" add))
+    ((x86:pop) (" pop)) ((x86:leave) (" leave)) ((x86:ret) (" ret)) ((x86:je) (" je))
+    ((x86:or) (" or)) ((x86:call) (" call)) ((x86:mul) (" mul)) ((x86:shl) (" shl))
+    ((x86:shr) (" shr)) ((x86:and) (" and)) ((x86:not) (" not)) ((x86:xor) (" xor))
+    ((x86:div) (" div)) ((x86:setz) (" setz)) ((x86:setc) (" setc)) ((x86:jae) (" jae))
+    ((x86:jne) (" jne)) ((x86:cmp) (" cmp)) ((x86:seta) (" seta)) ((x86:jbe) (" jbe))
+    ((x86:ja) (" ja)) ((x86:jb) (" jb)) (~)) handler])
 
 (constrain print-register (\ r (?(a) (`(function (register ,:a) ())r)r)))
 
-(function print-register (reg handler)
+(function print-register (reg handler) (sub (X x86)
   [print-str (stdout) (switch = reg
-    ((none)(" (lparen)none(rparen))) ((al)(" al)) ((cl)(" cl)) ((dl)(" dl)) ((bl)(" bl))
-    ((ah)(" ah)) ((ch)(" ch)) ((dh)(" dh)) ((bh)(" bh)) ((spl)(" spl)) ((bpl)(" bpl))
-    ((sil)(" sil)) ((dil)(" dil)) ((r8l)(" r8l)) ((r9l)(" r9l)) ((r10l)(" r10l))
-    ((r11l)(" r11l)) ((r12l)(" r12l)) ((r13l)(" r13l)) ((r14l)(" r14l)) ((r15l)(" r15l))  
-    ((ax)(" ax)) ((cx)(" cx)) ((dx)(" dx)) ((bx)(" bx)) ((sp)(" sp)) ((bp)(" bp))
-    ((si)(" si)) ((di)(" di)) ((r8w)(" r8w)) ((r9w)(" r9w)) ((r10w)(" r10w)) ((r11w)(" r11w))
-    ((r12w)(" r12w)) ((r13w)(" r13w)) ((r14w)(" r14w)) ((r15w)(" r15w)) ((eax)(" eax))
-    ((ecx)(" ecx)) ((edx)(" edx)) ((ebx)(" ebx)) ((esp)(" esp)) ((ebp)(" ebp))
-    ((esi)(" esi)) ((edi)(" edi)) ((r8d)(" r8d)) ((r9d)(" r9d)) ((r10d)(" r10d))
-    ((r11d)(" r11d)) ((r12d)(" r12d)) ((r13d)(" r13d)) ((r14d)(" r14d)) ((r15d)(" r15d))  
-    ((rax)(" rax)) ((rcx)(" rcx)) ((rdx)(" rdx)) ((rbx)(" rbx)) ((rsp)(" rsp))
-    ((rbp)(" rbp)) ((rsi)(" rsi)) ((rdi)(" rdi)) ((r8)(" r8)) ((r9)(" r9)) ((r10)(" r10))
-    ((r11)(" r11)) ((r12)(" r12)) ((r13)(" r13)) ((r14)(" r14)) ((r15)(" r15))  
-    ((rip)(" rip)) (~)) handler])
+    ((X:none)(" (lparen)none(rparen))) ((X:al)(" al)) ((X:cl)(" cl)) ((X:dl)(" dl)) ((X:bl)(" bl))
+    ((X:ah)(" ah)) ((X:ch)(" ch)) ((X:dh)(" dh)) ((X:bh)(" bh)) ((X:spl)(" spl)) ((X:bpl)(" bpl))
+    ((X:sil)(" sil)) ((X:dil)(" dil)) ((X:r8l)(" r8l)) ((X:r9l)(" r9l)) ((X:r10l)(" r10l))
+    ((X:r11l)(" r11l)) ((X:r12l)(" r12l)) ((X:r13l)(" r13l)) ((X:r14l)(" r14l)) ((X:r15l)(" r15l))  
+    ((X:ax)(" ax)) ((X:cx)(" cx)) ((X:dx)(" dx)) ((X:bx)(" bx)) ((X:sp)(" sp)) ((X:bp)(" bp))
+    ((X:si)(" si)) ((X:di)(" di)) ((X:r8w)(" r8w)) ((X:r9w)(" r9w)) ((X:r10w)(" r10w)) ((X:r11w)(" r11w))
+    ((X:r12w)(" r12w)) ((X:r13w)(" r13w)) ((X:r14w)(" r14w)) ((X:r15w)(" r15w)) ((X:eax)(" eax))
+    ((X:ecx)(" ecx)) ((X:edx)(" edx)) ((X:ebx)(" ebx)) ((X:esp)(" esp)) ((X:ebp)(" ebp))
+    ((X:esi)(" esi)) ((X:edi)(" edi)) ((X:r8d)(" r8d)) ((X:r9d)(" r9d)) ((X:r10d)(" r10d))
+    ((X:r11d)(" r11d)) ((X:r12d)(" r12d)) ((X:r13d)(" r13d)) ((X:r14d)(" r14d)) ((X:r15d)(" r15d))  
+    ((X:rax)(" rax)) ((X:rcx)(" rcx)) ((X:rdx)(" rdx)) ((X:rbx)(" rbx)) ((X:rsp)(" rsp))
+    ((X:rbp)(" rbp)) ((X:rsi)(" rsi)) ((X:rdi)(" rdi)) ((X:r8)(" r8)) ((X:r9)(" r9)) ((X:r10)(" r10))
+    ((X:r11)(" r11)) ((X:r12)(" r12)) ((X:r13)(" r13)) ((X:r14)(" r14)) ((X:r15)(" r15))  
+    ((X:rip)(" rip)) (~)) handler]))
 
 (constrain print-operand (\ r (?(a) (`(function (operand ,:a) ())r)r)))
 
 (function print-operand (op handler)
-  (switch = (@ op-type op)
-    ((register-operand)
-      [print-register (@ op-register op) handler])
-    ((immediate-operand)
-      [print-uint (stdout) (@ op-immediate op) handler])
-    ((memory-operand) (do
+  (sub (X x86) (switch = (@ X:op-type op)
+    ((X:register-operand)
+      [print-register (@ X:op-register op) handler])
+    ((X:immediate-operand)
+      [print-uint (stdout) (@ X:op-immediate op) handler])
+    ((X:memory-operand) (do
       [print-char (stdout) (lbracket) handler]
-      (if [not= (@ op-base op) (none)]
-        [print-register (@ op-base op) handler]
+      (if [not= (@ X:op-base op) (X:none)]
+        [print-register (@ X:op-base op) handler]
         (~))
-      (if (and [not= (@ op-base op) (none)] [not= (@ op-index op) (none)])
+      (if (and [not= (@ X:op-base op) (X:none)] [not= (@ X:op-index op) (X:none)])
         [print-str (stdout) ("(space)+(space)) handler]
         (~))
-      (if [not= (@ op-index op) (none)] (do
-        [print-register (@ op-index op) handler]
+      (if [not= (@ X:op-index op) (X:none)] (do
+        [print-register (@ X:op-index op) handler]
         [print-str (stdout) (" *) handler]
-        [print-uint (stdout) (@ op-scale op) handler])
+        [print-uint (stdout) (@ X:op-scale op) handler])
         (~))
-      (if (and (or [not= (@ op-base op) (none)] [not= (@ op-index op) (none)])
-          [not= (@ op-disp-size op) #:0])
+      (if (and (or [not= (@ X:op-base op) (X:none)] [not= (@ X:op-index op) (X:none)])
+          [not= (@ X:op-disp-size op) #:0])
         [print-str (stdout) ("(space)+(space)) handler]
         (~))
-      (if [not= (@ op-disp-size op) #:0]
-        [print-uint (stdout) (@ op-disp op) handler]
+      (if [not= (@ X:op-disp-size op) #:0]
+        [print-uint (stdout) (@ X:op-disp op) handler]
         (~))
       [print-char (stdout) (rbracket) handler]))
-    ((none-operand)
+    ((X:none-operand)
       [print-str (stdout) ("(lparen)none(rparen)) handler])
-    (~)))
+    (~))))
 
 (constrain print-instr (\ r (?(a) (`(function (instr ,:a) ())r)r)))
 
-(function print-instr (instr handler) (do
-  [print-instr-code (@ instr-code instr) handler]
-  (if [nil? (@ instr-operands instr)] (~) (do
-    [print-str (stdout) ("(space)) handler]
-    [print-operand [@car (@ instr-operands instr)] handler]
-    (for (op (%:list-iter [@cdr (@ instr-operands instr)])) (~) (do
-      [print-str (stdout) (" ,(space)) handler]
-      [print-operand op handler]))))))
+(function print-instr (instr handler)
+  (sub (X x86) (do
+    [print-instr-code (@ X:instr-code instr) handler]
+    (if [nil? (@ X:instr-operands instr)] (~) (do
+      [print-str (stdout) ("(space)) handler]
+      [print-operand [@car (@ X:instr-operands instr)] handler]
+      (for (op (%:list-iter [@cdr (@ X:instr-operands instr)])) (~) (do
+        [print-str (stdout) (" ,(space)) handler]
+        [print-operand op handler])))))))
 
 (constrain mem-write (\ r (?(a b c d) (`(function (,:a !:Ref:,;b ,:c ,:d) ())r)r)))
 
@@ -589,67 +594,67 @@
   (\ r (?(a b c d e f) (`(function (,:a !:Ref:,;b ,:c ,:d operand operand operand operand region ,:f) ,:e)r)r)))
 
 (function write-instr (bin pos opcode opcode-size opcode.reg-op modrm.reg-op modrm.rm-op imm-op buf handler)
-  (sub (.. buf handler)
+  (sub (X x86) (.. buf handler)
     (let (modrm.rm-op-code [band
-      (if [= (@ op-type modrm.rm-op) (register-operand)] (@ op-register modrm.rm-op)
-      (if [= (@ op-type modrm.rm-op) (memory-operand)] (@ op-base modrm.rm-op) (~))) #:7])
+      (if [= (@ X:op-type modrm.rm-op) (X:register-operand)] (@ X:op-register modrm.rm-op)
+      (if [= (@ X:op-type modrm.rm-op) (X:memory-operand)] (@ X:op-base modrm.rm-op) (~))) #:7])
     
-    (let (modrm.reg-op-code [band (@ op-register modrm.reg-op) #:7])
+    (let (modrm.reg-op-code [band (@ X:op-register modrm.reg-op) #:7])
     
     (let (opcode [+ opcode
-      (if [= (@ op-type opcode.reg-op) (register-operand)] [band (@ op-register opcode.reg-op) #:7] #:0)])
+      (if [= (@ X:op-type opcode.reg-op) (X:register-operand)] [band (@ X:op-register opcode.reg-op) #:7] #:0)])
     
-    (let (has-modrm? (or [not= (@ op-type modrm.reg-op) (none-operand)] [not= (@ op-type modrm.rm-op) (none-operand)]))
+    (let (has-modrm? (or [not= (@ X:op-type modrm.reg-op) (X:none-operand)] [not= (@ X:op-type modrm.rm-op) (X:none-operand)]))
     
     (let (modrm.mod
-      (if [= (@ op-type modrm.rm-op) (register-operand)] #:3
-      (if (or [= (@ op-disp-size modrm.rm-op) #:0] [= (@ op-base modrm.rm-op) (none)] [= (@ op-base modrm.rm-op) (rip)]) #:0
-      (if [= (@ op-disp-size modrm.rm-op) #:1] #:1
-      (if [= (@ op-disp-size modrm.rm-op) #:4] #:2 (~))))))
+      (if [= (@ X:op-type modrm.rm-op) (X:register-operand)] #:3
+      (if (or [= (@ X:op-disp-size modrm.rm-op) #:0] [= (@ X:op-base modrm.rm-op) (X:none)] [= (@ X:op-base modrm.rm-op) (X:rip)]) #:0
+      (if [= (@ X:op-disp-size modrm.rm-op) #:1] #:1
+      (if [= (@ X:op-disp-size modrm.rm-op) #:4] #:2 (~))))))
     
-    (let (has-sib? (and [= (@ op-type modrm.rm-op) (memory-operand)]
-      (or [not= (@ op-index modrm.rm-op) (none)] [= modrm.rm-op-code [band (rsp) #:7]]
-        (and [= modrm.rm-op-code [band (rbp) #:7]] [= (@ op-disp-size modrm.rm-op) #:0]))))
+    (let (has-sib? (and [= (@ X:op-type modrm.rm-op) (X:memory-operand)]
+      (or [not= (@ X:op-index modrm.rm-op) (X:none)] [= modrm.rm-op-code [band (X:rsp) #:7]]
+        (and [= modrm.rm-op-code [band (X:rbp) #:7]] [= (@ X:op-disp-size modrm.rm-op) #:0]))))
     
     (let (modrm.rm
-      (if [= (@ op-type modrm.rm-op) (register-operand)] modrm.rm-op-code
+      (if [= (@ X:op-type modrm.rm-op) (X:register-operand)] modrm.rm-op-code
       (if has-sib? #:4
-      (if [= (@ op-base modrm.rm-op) (none)] #:5
-      (if [= (@ op-base modrm.rm-op) (rip)] #:5
+      (if [= (@ X:op-base modrm.rm-op) (X:none)] #:5
+      (if [= (@ X:op-base modrm.rm-op) (X:rip)] #:5
         modrm.rm-op-code)))))
     
     (let (modrm.reg modrm.reg-op-code)
             
-    (let (sib.scale (switch = (@ op-scale modrm.rm-op) (#:1 #:0) (#:2 #:1) (#:4 #:2) (#:8 #:3) (~)))
+    (let (sib.scale (switch = (@ X:op-scale modrm.rm-op) (#:1 #:0) (#:2 #:1) (#:4 #:2) (#:8 #:3) (~)))
     
-    (let (sib.index (if [= (@ op-index modrm.rm-op) (none)] #:4 (@ op-index modrm.rm-op)))
+    (let (sib.index (if [= (@ X:op-index modrm.rm-op) (X:none)] #:4 (@ X:op-index modrm.rm-op)))
     
-    (let (sib.base (if (or [= (@ op-base modrm.rm-op) (none)]) #:5 modrm.rm-op-code))
+    (let (sib.base (if (or [= (@ X:op-base modrm.rm-op) (X:none)]) #:5 modrm.rm-op-code))
     
-    (let (has-rex? (or [band [bor (@ op-register modrm.reg-op) [bor (@ op-register modrm.rm-op) (@ op-register opcode.reg-op)]] (w/rex)]
-      (and [= (@ op-type modrm.rm-op) (memory-operand)] (or
-        (and [not= (@ op-base modrm.rm-op) (none)] [= [register-size (@ op-base modrm.rm-op)] #:8])
-        (and [not= (@ op-index modrm.rm-op) (none)] [= [register-size (@ op-index modrm.rm-op)] #:8])
-        [= (@ op-disp-size modrm.rm-op) #:8]))))
+    (let (has-rex? (or [band [bor (@ X:op-register modrm.reg-op) [bor (@ X:op-register modrm.rm-op) (@ X:op-register opcode.reg-op)]] (X:w/rex)]
+      (and [= (@ X:op-type modrm.rm-op) (X:memory-operand)] (or
+        (and [not= (@ X:op-base modrm.rm-op) (X:none)] [= [register-size (@ X:op-base modrm.rm-op)] #:8])
+        (and [not= (@ X:op-index modrm.rm-op) (X:none)] [= [register-size (@ X:op-index modrm.rm-op)] #:8])
+        [= (@ X:op-disp-size modrm.rm-op) #:8]))))
     
-    (let (rex.w (if (or [= (@ op-size modrm.reg-op) #:8] [= (@ op-size modrm.rm-op) #:8] [= (@ op-size opcode.reg-op) #:8]) #:1 #:0))
+    (let (rex.w (if (or [= (@ X:op-size modrm.reg-op) #:8] [= (@ X:op-size modrm.rm-op) #:8] [= (@ X:op-size opcode.reg-op) #:8]) #:1 #:0))
     
-    (let (rex.r (if (and [= (@ op-type modrm.reg-op) (register-operand)] [band (@ op-register modrm.reg-op) #:8]) #:1 #:0))
+    (let (rex.r (if (and [= (@ X:op-type modrm.reg-op) (X:register-operand)] [band (@ X:op-register modrm.reg-op) #:8]) #:1 #:0))
     
-    (let (rex.x (if (and [= (@ op-type modrm.rm-op) (memory-operand)] [not= (@ op-index modrm.rm-op) (none)]
-      [band (@ op-index modrm.rm-op) #:8]) #:1 #:0))
+    (let (rex.x (if (and [= (@ X:op-type modrm.rm-op) (X:memory-operand)] [not= (@ X:op-index modrm.rm-op) (X:none)]
+      [band (@ X:op-index modrm.rm-op) #:8]) #:1 #:0))
     
-    (let (rex.b (if (or (and [= (@ op-type modrm.rm-op) (memory-operand)] [not= (@ op-base modrm.rm-op) (none)]
-      [band (@ op-base modrm.rm-op) #:8]) (and [= (@ op-type modrm.rm-op) (register-operand)] [not= (@ op-register modrm.rm-op) (none)]
-      [band (@ op-register modrm.rm-op) #:8]) (and [= (@ op-type opcode.reg-op) (register-operand)]
-      [not= (@ op-register opcode.reg-op) (none)] [band (@ op-register opcode.reg-op) #:8])) #:1 #:0))
+    (let (rex.b (if (or (and [= (@ X:op-type modrm.rm-op) (X:memory-operand)] [not= (@ X:op-base modrm.rm-op) (X:none)]
+      [band (@ X:op-base modrm.rm-op) #:8]) (and [= (@ X:op-type modrm.rm-op) (X:register-operand)] [not= (@ X:op-register modrm.rm-op) (X:none)]
+      [band (@ X:op-register modrm.rm-op) #:8]) (and [= (@ X:op-type opcode.reg-op) (X:register-operand)]
+      [not= (@ X:op-register opcode.reg-op) (X:none)] [band (@ X:op-register opcode.reg-op) #:8])) #:1 #:0))
     
-    (let (has-oso? [= [max (@ op-size modrm.reg-op) (@ op-size modrm.rm-op)] #:2])
+    (let (has-oso? [= [max (@ X:op-size modrm.reg-op) (@ X:op-size modrm.rm-op)] #:2])
     
-    (let (has-aso? (and [= (@ op-type modrm.rm-op) (memory-operand)] (or
-        (and [not= (@ op-base modrm.rm-op) (none)] [= [register-size (@ op-base modrm.rm-op)] #:2])
-        (and [not= (@ op-index modrm.rm-op) (none)] [= [register-size (@ op-index modrm.rm-op)] #:2])
-        [= (@ op-disp-size modrm.rm-op) #:2])))
+    (let (has-aso? (and [= (@ X:op-type modrm.rm-op) (X:memory-operand)] (or
+        (and [not= (@ X:op-base modrm.rm-op) (X:none)] [= [register-size (@ X:op-base modrm.rm-op)] #:2])
+        (and [not= (@ X:op-index modrm.rm-op) (X:none)] [= [register-size (@ X:op-index modrm.rm-op)] #:2])
+        [= (@ X:op-disp-size modrm.rm-op) #:2])))
     
     (let (instr-start-pos $:pos) (do
     
@@ -686,25 +691,25 @@
     
     (let (disp-pos $:pos) (do
     
-    (if [= (@ op-type modrm.rm-op) (memory-operand)]
-      [mem-write bin pos (storage _ (@ op-disp modrm.rm-op)) (@ op-disp-size modrm.rm-op)]
+    (if [= (@ X:op-type modrm.rm-op) (X:memory-operand)]
+      [mem-write bin pos (storage _ (@ X:op-disp modrm.rm-op)) (@ X:op-disp-size modrm.rm-op)]
       (~))
     
     (let (imm-pos $:pos) (do
     
-    (if [= (@ op-type imm-op) (immediate-operand)]
-      [mem-write bin pos (storage _ (@ op-immediate imm-op)) (@ op-size imm-op)]
+    (if [= (@ X:op-type imm-op) (X:immediate-operand)]
+      [mem-write bin pos (storage _ (@ X:op-immediate imm-op)) (@ X:op-size imm-op)]
       (~))
     
     (let (instr-size [- $:pos instr-start-pos]) (do
     
-    (if [= (@ op-type modrm.rm-op) (memory-operand)]
-      [prepend (values (region-storage ..) disp-pos (@ op-disp-size modrm.rm-op) instr-start-pos instr-size)
-        (& op-locations modrm.rm-op) ..]
+    (if [= (@ X:op-type modrm.rm-op) (X:memory-operand)]
+      [prepend (values (region-storage ..) disp-pos (@ X:op-disp-size modrm.rm-op) instr-start-pos instr-size)
+        (& X:op-locations modrm.rm-op) ..]
       (~))
     
-    (if [= (@ op-type imm-op) (immediate-operand)]
-      [prepend (values (region-storage ..) imm-pos (@ op-size imm-op) instr-start-pos instr-size) (& op-locations imm-op) ..]
+    (if [= (@ X:op-type imm-op) (X:immediate-operand)]
+      [prepend (values (region-storage ..) imm-pos (@ X:op-size imm-op) instr-start-pos instr-size) (& X:op-locations imm-op) ..]
       (~))
     
     (true)))))))))))))))))))))))))))))
@@ -712,26 +717,26 @@
 (constrain write-nm-instr (\ r (?(f g h i) (`(function (instr ,:f !:Ref:,;g region ,:h) ,:i)r)r)))
 
 (function write-nm-instr (n bin pos buf handler)
-  (sub (.. buf handler)
+  (sub (X x86) (.. buf handler)
     ((list-prefix?
-        (property? (op-type (|[= (none-operand)])))) (@ instr-operands n)
+        (property? (X:op-type (|[= (X:none-operand)])))) (@ X:instr-operands n)
       (true) (false))))
 
 (constrain write-mr-instr (\ r (?(a b c d e f g h i) (`(function (,:a ,:b ,:c ,:d ,:e instr ,:f !:Ref:,;g region ,:h) ,:i)r)r)))
 
 (function write-mr-instr (mask opcode-8 opcode-16 opcode-32 opcode-64 n bin pos buf handler)
-  (sub (.. buf handler)
+  (sub (X x86) (.. buf handler)
     ((list-prefix?
-        (and? .:op1 (property? (op-type (or? (|[= (memory-operand)]) (|[= (register-operand)])))))
-        (and? .:op2 (property? (op-type (|[= (register-operand)])))))
-      (@ instr-operands n)
-        (if (and [band mask #:1] [= (@ op-size op1) #:1] [= (@ op-size op2) #:1])
+        (and? .:op1 (property? (X:op-type (or? (|[= (X:memory-operand)]) (|[= (X:register-operand)])))))
+        (and? .:op2 (property? (X:op-type (|[= (X:register-operand)])))))
+      (@ X:instr-operands n)
+        (if (and [band mask #:1] [= (@ X:op-size op1) #:1] [= (@ X:op-size op2) #:1])
           [write-instr bin pos opcode-8 [>> mask #:4] [make-none-op ..] op2 op1 [make-none-op ..] ..]
-        (if (and [band mask #:2] [= (@ op-size op1) #:2] [= (@ op-size op2) #:2])
+        (if (and [band mask #:2] [= (@ X:op-size op1) #:2] [= (@ X:op-size op2) #:2])
           [write-instr bin pos opcode-16 [>> mask #:4] [make-none-op ..] op2 op1 [make-none-op ..] ..]
-        (if (and [band mask #:4] [= (@ op-size op1) #:4] [= (@ op-size op2) #:4])
+        (if (and [band mask #:4] [= (@ X:op-size op1) #:4] [= (@ X:op-size op2) #:4])
           [write-instr bin pos opcode-32 [>> mask #:4] [make-none-op ..] op2 op1 [make-none-op ..] ..]
-        (if (and [band mask #:8] [= (@ op-size op1) #:8] [= (@ op-size op2) #:8])
+        (if (and [band mask #:8] [= (@ X:op-size op1) #:8] [= (@ X:op-size op2) #:8])
           [write-instr bin pos opcode-64 [>> mask #:4] [make-none-op ..] op2 op1 [make-none-op ..] ..]
           (false)))))
         (false))))
@@ -739,18 +744,18 @@
 (constrain write-rm-instr (\ r (?(a b c d e f g h i) (`(function (,:a ,:b ,:c ,:d ,:e instr ,:f !:Ref:,;g region ,:h) ,:i)r)r)))
 
 (function write-rm-instr (mask opcode-8 opcode-16 opcode-32 opcode-64 n bin pos buf handler)
-  (sub (.. buf handler)
+  (sub (X x86) (.. buf handler)
     ((list-prefix?
-        (and? .:op1 (property? (op-type (|[= (register-operand)]))))
-        (and? .:op2 (property? (op-type (or? (|[= (memory-operand)]) (|[= (register-operand)]))))))
-      (@ instr-operands n)
-        (if (and [band mask #:1] [= (@ op-size op1) #:1] [= (@ op-size op2) #:1])
+        (and? .:op1 (property? (X:op-type (|[= (X:register-operand)]))))
+        (and? .:op2 (property? (X:op-type (or? (|[= (X:memory-operand)]) (|[= (X:register-operand)]))))))
+      (@ X:instr-operands n)
+        (if (and [band mask #:1] [= (@ X:op-size op1) #:1] [= (@ X:op-size op2) #:1])
           [write-instr bin pos opcode-8 [>> mask #:4] [make-none-op ..] op1 op2 [make-none-op ..] ..]
-        (if (and [band mask #:2] [= (@ op-size op1) #:2] [= (@ op-size op2) #:2])
+        (if (and [band mask #:2] [= (@ X:op-size op1) #:2] [= (@ X:op-size op2) #:2])
           [write-instr bin pos opcode-16 [>> mask #:4] [make-none-op ..] op1 op2 [make-none-op ..] ..]
-        (if (and [band mask #:4] [= (@ op-size op1) #:4] [= (@ op-size op2) #:4])
+        (if (and [band mask #:4] [= (@ X:op-size op1) #:4] [= (@ X:op-size op2) #:4])
           [write-instr bin pos opcode-32 [>> mask #:4] [make-none-op ..] op1 op2 [make-none-op ..] ..]
-        (if (and [band mask #:8] [= (@ op-size op1) #:8] [= (@ op-size op2) #:8])
+        (if (and [band mask #:8] [= (@ X:op-size op1) #:8] [= (@ X:op-size op2) #:8])
           [write-instr bin pos opcode-64 [>> mask #:4] [make-none-op ..] op1 op2 [make-none-op ..] ..]
           (false)))))
         (false))))
@@ -758,18 +763,18 @@
 (constrain write-mi-instr (\ r (?(a b c d e f g h i) (`(function (,:a ,:b ,:c ,:d ,:e operand instr ,:f !:Ref:,;g region ,:h) ,:i)r)r)))
 
 (function write-mi-instr (mask opcode-8 opcode-16 opcode-32 opcode-64 opcode.reg-op n bin pos buf handler)
-  (sub (.. buf handler)
+  (sub (X x86) (.. buf handler)
     ((list-prefix?
-        (and? .:op1 (property? (op-type (or? (|[= (memory-operand)]) (|[= (register-operand)])))))
-        (and? .:op2 (property? (op-type (|[= (immediate-operand)])))))
-      (@ instr-operands n)
-        (if (and [= (@ op-size op1) #:1] [= (@ op-size op2) #:1])
+        (and? .:op1 (property? (X:op-type (or? (|[= (X:memory-operand)]) (|[= (X:register-operand)])))))
+        (and? .:op2 (property? (X:op-type (|[= (X:immediate-operand)])))))
+      (@ X:instr-operands n)
+        (if (and [= (@ X:op-size op1) #:1] [= (@ X:op-size op2) #:1])
           [write-instr bin pos opcode-8 [>> mask #:4] [make-none-op ..] opcode.reg-op op1 op2 ..]
-        (if (and [= (@ op-size op1) #:2] [= (@ op-size op2) #:2])
+        (if (and [= (@ X:op-size op1) #:2] [= (@ X:op-size op2) #:2])
           [write-instr bin pos opcode-16 [>> mask #:4] [make-none-op ..] opcode.reg-op op1 op2 ..]
-        (if (and [= (@ op-size op1) #:4] [= (@ op-size op2) #:4])
+        (if (and [= (@ X:op-size op1) #:4] [= (@ X:op-size op2) #:4])
           [write-instr bin pos opcode-32 [>> mask #:4] [make-none-op ..] opcode.reg-op op1 op2 ..]
-        (if (and [= (@ op-size op1) #:8] [= (@ op-size op2) #:4])
+        (if (and [= (@ X:op-size op1) #:8] [= (@ X:op-size op2) #:4])
           [write-instr bin pos opcode-64 [>> mask #:4] [make-none-op ..] opcode.reg-op op1 op2 ..]
           (false)))))
         (false))))
@@ -777,18 +782,18 @@
 (constrain write-mi8-instr (\ r (?(a b c d e f g h i) (`(function (,:a ,:b ,:c ,:d ,:e operand instr ,:f !:Ref:,;g region ,:h) ,:i)r)r)))
 
 (function write-mi8-instr (mask opcode-8 opcode-16 opcode-32 opcode-64 opcode.reg-op n bin pos buf handler)
-  (sub (.. buf handler)
+  (sub (X x86) (.. buf handler)
     ((list-prefix?
-        (and? .:op1 (property? (op-type (or? (|[= (memory-operand)]) (|[= (register-operand)])))))
-        (and? .:op2 (property? (op-type (|[= (immediate-operand)])))))
-      (@ instr-operands n)
-        (if (and [band mask #:1] [= (@ op-size op1) #:1] [= (@ op-size op2) #:1])
+        (and? .:op1 (property? (X:op-type (or? (|[= (X:memory-operand)]) (|[= (X:register-operand)])))))
+        (and? .:op2 (property? (X:op-type (|[= (X:immediate-operand)])))))
+      (@ X:instr-operands n)
+        (if (and [band mask #:1] [= (@ X:op-size op1) #:1] [= (@ X:op-size op2) #:1])
           [write-instr bin pos opcode-8 [>> mask #:4] [make-none-op ..] opcode.reg-op op1 op2 ..]
-        (if (and [band mask #:2] [= (@ op-size op1) #:2] [= (@ op-size op2) #:1])
+        (if (and [band mask #:2] [= (@ X:op-size op1) #:2] [= (@ X:op-size op2) #:1])
           [write-instr bin pos opcode-16 [>> mask #:4] [make-none-op ..] opcode.reg-op op1 op2 ..]
-        (if (and [band mask #:4] [= (@ op-size op1) #:4] [= (@ op-size op2) #:1])
+        (if (and [band mask #:4] [= (@ X:op-size op1) #:4] [= (@ X:op-size op2) #:1])
           [write-instr bin pos opcode-32 [>> mask #:4] [make-none-op ..] opcode.reg-op op1 op2 ..]
-        (if (and [band mask #:8] [= (@ op-size op1) #:8] [= (@ op-size op2) #:1])
+        (if (and [band mask #:8] [= (@ X:op-size op1) #:8] [= (@ X:op-size op2) #:1])
           [write-instr bin pos opcode-64 [>> mask #:4] [make-none-op ..] opcode.reg-op op1 op2 ..]
           (false)))))
         (false))))
@@ -796,22 +801,22 @@
 (constrain write-mm-instr (\ r (?(a b c d e f g h i) (`(function (,:a ,:b ,:c ,:d ,:e instr ,:f !:Ref:,;g region ,:h) ,:i)r)r)))
 
 (function write-mm-instr (mask opcode-8 opcode-16 opcode-32 opcode-64 n bin pos buf handler)
-  (sub (.. buf handler)
+  (sub (X x86) (.. buf handler)
     ((list-prefix?
-        (and? .:op1 (property? (op-type (|[= (memory-operand)]))))
-        (and? .:op2 (property? (op-type (|[= (memory-operand)]))))
+        (and? .:op1 (property? (X:op-type (|[= (X:memory-operand)]))))
+        (and? .:op2 (property? (X:op-type (|[= (X:memory-operand)]))))
         .:op3)
-      (@ instr-operands n)
-        (if (and [band mask #:1] [= (@ op-size op1) #:1] [= (@ op-size op2) #:1]) (do
+      (@ X:instr-operands n)
+        (if (and [band mask #:1] [= (@ X:op-size op1) #:1] [= (@ X:op-size op2) #:1]) (do
           [write-instr bin pos 0x:8A #:1 [make-none-op ..] op3 op2 [make-none-op ..] ..]
           [write-instr bin pos opcode-8 [>> mask #:4] [make-none-op ..] op3 op1 [make-none-op ..] ..])
-        (if (and [band mask #:2] [= (@ op-size op1) #:2] [= (@ op-size op2) #:2]) (do
+        (if (and [band mask #:2] [= (@ X:op-size op1) #:2] [= (@ X:op-size op2) #:2]) (do
           [write-instr bin pos 0x:8B #:1 [make-none-op ..] op3 op2 [make-none-op ..] ..]
           [write-instr bin pos opcode-16 [>> mask #:4] [make-none-op ..] op3 op1 [make-none-op ..] ..])
-        (if (and [band mask #:4] [= (@ op-size op1) #:4] [= (@ op-size op2) #:4]) (do
+        (if (and [band mask #:4] [= (@ X:op-size op1) #:4] [= (@ X:op-size op2) #:4]) (do
           [write-instr bin pos 0x:8B #:1 [make-none-op ..] op3 op2 [make-none-op ..] ..]
           [write-instr bin pos opcode-32 [>> mask #:4] [make-none-op ..] op3 op1 [make-none-op ..] ..])
-        (if (and [band mask #:8] [= (@ op-size op1) #:8] [= (@ op-size op2) #:8]) (do
+        (if (and [band mask #:8] [= (@ X:op-size op1) #:8] [= (@ X:op-size op2) #:8]) (do
           [write-instr bin pos 0x:8B #:1 [make-none-op ..] op3 op2 [make-none-op ..] ..]
           [write-instr bin pos opcode-64 [>> mask #:4] [make-none-op ..] op3 op1 [make-none-op ..] ..])
           (false)))))
@@ -820,17 +825,17 @@
 (constrain write-m-instr (\ r (?(a b c d e f g h i) (`(function (,:a ,:b ,:c ,:d ,:e operand instr ,:f !:Ref:,;g region ,:h) ,:i)r)r)))
 
 (function write-m-instr (mask opcode-8 opcode-16 opcode-32 opcode-64 opcode.reg-op n bin pos buf handler)
-  (sub (.. buf handler)
+  (sub (X x86) (.. buf handler)
     ((list-prefix?
-        (and? .:op1 (property? (op-type (or? (|[= (memory-operand)]) (|[= (register-operand)]))))))
-      (@ instr-operands n)
-        (if (and [band mask #:1] [= (@ op-size op1) #:1])
+        (and? .:op1 (property? (X:op-type (or? (|[= (X:memory-operand)]) (|[= (X:register-operand)]))))))
+      (@ X:instr-operands n)
+        (if (and [band mask #:1] [= (@ X:op-size op1) #:1])
           [write-instr bin pos opcode-8 [>> mask #:4] [make-none-op ..] opcode.reg-op op1 [make-none-op ..] ..]
-        (if (and [band mask #:2] [= (@ op-size op1) #:2])
+        (if (and [band mask #:2] [= (@ X:op-size op1) #:2])
           [write-instr bin pos opcode-16 [>> mask #:4] [make-none-op ..] opcode.reg-op op1 [make-none-op ..] ..]
-        (if (and [band mask #:4] [= (@ op-size op1) #:4])
+        (if (and [band mask #:4] [= (@ X:op-size op1) #:4])
           [write-instr bin pos opcode-32 [>> mask #:4] [make-none-op ..] opcode.reg-op op1 [make-none-op ..] ..]
-        (if (and [band mask #:8] [= (@ op-size op1) #:8])
+        (if (and [band mask #:8] [= (@ X:op-size op1) #:8])
           [write-instr bin pos opcode-64 [>> mask #:4] [make-none-op ..] opcode.reg-op op1 [make-none-op ..] ..]
           (false)))))
         (false))))
@@ -838,17 +843,17 @@
 (constrain write-d-instr (\ r (?(a b c d e f g h i) (`(function (,:a ,:b ,:c ,:d ,:e instr ,:f !:Ref:,;g region ,:h) ,:i)r)r)))
 
 (function write-d-instr (mask opcode-8 opcode-16 opcode-32 opcode-64 n bin pos buf handler)
-  (sub (.. buf handler)
+  (sub (X x86) (.. buf handler)
     ((list-prefix?
-        (and? .:op1 (property? (op-type (|[= (immediate-operand)])))))
-      (@ instr-operands n)
-        (if (and [band mask #:1] [= (@ op-size op1) #:1])
+        (and? .:op1 (property? (X:op-type (|[= (X:immediate-operand)])))))
+      (@ X:instr-operands n)
+        (if (and [band mask #:1] [= (@ X:op-size op1) #:1])
           [write-instr bin pos opcode-8 [>> mask #:4] [make-none-op ..] [make-none-op ..] [make-none-op ..] op1 ..]
-        (if (and [band mask #:2] [= (@ op-size op1) #:2])
+        (if (and [band mask #:2] [= (@ X:op-size op1) #:2])
           [write-instr bin pos opcode-16 [>> mask #:4] [make-none-op ..] [make-none-op ..] [make-none-op ..] op1 ..]
-        (if (and [band mask #:4] [= (@ op-size op1) #:4])
+        (if (and [band mask #:4] [= (@ X:op-size op1) #:4])
           [write-instr bin pos opcode-32 [>> mask #:4] [make-none-op ..] [make-none-op ..] [make-none-op ..] op1 ..]
-        (if (and [band mask #:8] [= (@ op-size op1) #:8])
+        (if (and [band mask #:8] [= (@ X:op-size op1) #:8])
           [write-instr bin pos opcode-64 [>> mask #:4] [make-none-op ..] [make-none-op ..] [make-none-op ..] op1 ..]
           (false)))))
         (false))))
@@ -856,18 +861,18 @@
 (constrain write-mc-instr (\ r (?(a b c d e f g h i) (`(function (,:a ,:b ,:c ,:d ,:e operand instr ,:f !:Ref:,;g region ,:h) ,:i)r)r)))
 
 (function write-mc-instr (mask opcode-8 opcode-16 opcode-32 opcode-64 opcode.reg-op n bin pos buf handler)
-  (sub (.. buf handler)
+  (sub (X x86) (.. buf handler)
     ((list-prefix?
-        (and? .:op1 (property? (op-type (or? (|[= (memory-operand)]) (|[= (register-operand)])))))
-        (property? (op-type (|[= (register-operand)])) (op-register (|[= (cl)]))))
-      (@ instr-operands n)
-        (if (and [band mask #:1] [= (@ op-size op1) #:1])
+        (and? .:op1 (property? (X:op-type (or? (|[= (X:memory-operand)]) (|[= (X:register-operand)])))))
+        (property? (X:op-type (|[= (X:register-operand)])) (X:op-register (|[= (X:cl)]))))
+      (@ X:instr-operands n)
+        (if (and [band mask #:1] [= (@ X:op-size op1) #:1])
           [write-instr bin pos opcode-8 [>> mask #:4] [make-none-op ..] opcode.reg-op op1 [make-none-op ..] ..]
-        (if (and [band mask #:2] [= (@ op-size op1) #:2])
+        (if (and [band mask #:2] [= (@ X:op-size op1) #:2])
           [write-instr bin pos opcode-16 [>> mask #:4] [make-none-op ..] opcode.reg-op op1 [make-none-op ..] ..]
-        (if (and [band mask #:4] [= (@ op-size op1) #:4])
+        (if (and [band mask #:4] [= (@ X:op-size op1) #:4])
           [write-instr bin pos opcode-32 [>> mask #:4] [make-none-op ..] opcode.reg-op op1 [make-none-op ..] ..]
-        (if (and [band mask #:8] [= (@ op-size op1) #:8])
+        (if (and [band mask #:8] [= (@ X:op-size op1) #:8])
           [write-instr bin pos opcode-64 [>> mask #:4] [make-none-op ..] opcode.reg-op op1 [make-none-op ..] ..]
           (false)))))
         (false))))
@@ -877,218 +882,218 @@
 (constrain assemble (\ r (?(a b c e) (`(function ((list instr) ,:a region ,:e) (values ,:b ,:c))r)r)))
 
 (function assemble (instrs ret-val buf handler)
-  (sub (.. buf handler)
+  (sub (X x86) (.. buf handler)
     (let (pos (storage _ #:0))
     (let (max-text-sec-len [pad-size [* (write-elf-max-instr-len) [length instrs]] (write-elf-alignment)])
     (let (bin [region-alloc max-text-sec-len ..]) (do
     (for (n (%:list-iter instrs)) (~) (do
-      (let (instr-bndg (@ instr-binding n))
+      (let (instr-bndg (@ X:instr-binding n))
         (if [not= instr-bndg null-binding] (do
           (setf bndg-storage instr-bndg (absolute-storage))
           (setf bndg-offset instr-bndg $:pos)
           (setf st-value (@ lkdst-raw (@ bndg-other instr-bndg)) $:pos))
           (~)))
       
-      (switch = (@ instr-code n)
-        ((label) (~))
-        ((x86-nop)
+      (switch = (@ X:instr-code n)
+        ((X:label) (~))
+        ((x86:nop)
           [write-instr bin pos 0x:90 #:1 [make-none-op ..] [make-none-op ..] [make-none-op ..] [make-none-op ..] ..])
-        ((x86-push) (or
-          [write-m-instr 0x:1E (~) 0x:FF 0x:FF 0x:FF [make-reg-op (x86-/6) ..] n bin pos ..]
+        ((x86:push) (or
+          [write-m-instr 0x:1E (~) 0x:FF 0x:FF 0x:FF [make-reg-op (x86:/6) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-pop) (or
-          [write-m-instr 0x:1E (~) 0x:8F 0x:8F 0x:8F [make-reg-op (x86-/0) ..] n bin pos ..]
+        ((x86:pop) (or
+          [write-m-instr 0x:1E (~) 0x:8F 0x:8F 0x:8F [make-reg-op (x86:/0) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-xor) (or
-          [write-mi-instr 0x:1F 0x:80 0x:81 0x:81 0x:81 [make-reg-op (x86-/6) ..] n bin pos ..]
+        ((x86:xor) (or
+          [write-mi-instr 0x:1F 0x:80 0x:81 0x:81 0x:81 [make-reg-op (x86:/6) ..] n bin pos ..]
           [write-mr-instr 0x:1F 0x:30 0x:31 0x:31 0x:31 n bin pos ..]
           [write-rm-instr 0x:1F 0x:32 0x:33 0x:33 0x:33 n bin pos ..]
           [write-mm-instr 0x:1F 0x:30 0x:31 0x:31 0x:31 n bin pos ..]
-          [write-mi8-instr 0x:1F 0x:80 0x:83 0x:83 0x:83 [make-reg-op (x86-/6) ..] n bin pos ..]
+          [write-mi8-instr 0x:1F 0x:80 0x:83 0x:83 0x:83 [make-reg-op (x86:/6) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-setz) (or
+        ((x86:setz) (or
           [write-m-instr 0x:21 0x:940F (~) (~) (~) [make-none-op ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-setc) (or
+        ((x86:setc) (or
           [write-m-instr 0x:21 0x:920F (~) (~) (~) [make-none-op ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-seta) (or
+        ((x86:seta) (or
           [write-m-instr 0x:21 0x:970F (~) (~) (~) [make-none-op ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-mul) (or
-          [write-m-instr 0x:1F 0x:F6 0x:F7 0x:F7 0x:F7 [make-reg-op (x86-/4) ..] n bin pos ..]
+        ((x86:mul) (or
+          [write-m-instr 0x:1F 0x:F6 0x:F7 0x:F7 0x:F7 [make-reg-op (x86:/4) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-div) (or
-          [write-m-instr 0x:1F 0x:F6 0x:F7 0x:F7 0x:F7 [make-reg-op (x86-/6) ..] n bin pos ..]
+        ((x86:div) (or
+          [write-m-instr 0x:1F 0x:F6 0x:F7 0x:F7 0x:F7 [make-reg-op (x86:/6) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-jmp) (or
-          [write-m-instr 0x:1E (~) 0x:FF 0x:FF 0x:FF [make-reg-op (x86-/4) ..] n bin pos ..]
+        ((x86:jmp) (or
+          [write-m-instr 0x:1E (~) 0x:FF 0x:FF 0x:FF [make-reg-op (x86:/4) ..] n bin pos ..]
           [write-d-instr 0x:17 0x:EB 0x:E9 0x:E9 (~) n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-sub) (or
+        ((x86:sub) (or
           [write-rm-instr 0x:1F 0x:2A 0x:2B 0x:2B 0x:2B n bin pos ..]
           [write-mr-instr 0x:1F 0x:28 0x:29 0x:29 0x:29 n bin pos ..]
-          [write-mi-instr 0x:1F 0x:80 0x:81 0x:81 0x:81 [make-reg-op (x86-/5) ..] n bin pos ..]
+          [write-mi-instr 0x:1F 0x:80 0x:81 0x:81 0x:81 [make-reg-op (x86:/5) ..] n bin pos ..]
           [write-mm-instr 0x:1F 0x:28 0x:29 0x:29 0x:29 n bin pos ..]
-          [write-mi8-instr 0x:1E (~) 0x:83 0x:83 0x:83 [make-reg-op (x86-/5) ..] n bin pos ..]
+          [write-mi8-instr 0x:1E (~) 0x:83 0x:83 0x:83 [make-reg-op (x86:/5) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-cmp) (or
+        ((x86:cmp) (or
           [write-rm-instr 0x:1F 0x:3A 0x:3B 0x:3B 0x:3B n bin pos ..]
           [write-mr-instr 0x:1F 0x:38 0x:39 0x:39 0x:39 n bin pos ..]
-          [write-mi-instr 0x:1F 0x:80 0x:81 0x:81 0x:81 [make-reg-op (x86-/7) ..] n bin pos ..]
+          [write-mi-instr 0x:1F 0x:80 0x:81 0x:81 0x:81 [make-reg-op (x86:/7) ..] n bin pos ..]
           [write-mm-instr 0x:1F 0x:38 0x:39 0x:39 0x:39 n bin pos ..]
-          [write-mi8-instr 0x:1E (~) 0x:83 0x:83 0x:83 [make-reg-op (x86-/7) ..] n bin pos ..]
+          [write-mi8-instr 0x:1E (~) 0x:83 0x:83 0x:83 [make-reg-op (x86:/7) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-add) (or
+        ((x86:add) (or
           [write-rm-instr 0x:1F 0x:02 0x:03 0x:03 0x:03 n bin pos ..]
           [write-mr-instr 0x:1F 0x:00 0x:01 0x:01 0x:01 n bin pos ..]
-          [write-mi-instr 0x:1F 0x:80 0x:81 0x:81 0x:81 [make-reg-op (x86-/0) ..] n bin pos ..]
+          [write-mi-instr 0x:1F 0x:80 0x:81 0x:81 0x:81 [make-reg-op (x86:/0) ..] n bin pos ..]
           [write-mm-instr 0x:1F 0x:00 0x:01 0x:01 0x:01 n bin pos ..]
-          [write-mi8-instr 0x:1E (~) 0x:83 0x:83 0x:83 [make-reg-op (x86-/0) ..] n bin pos ..]
+          [write-mi8-instr 0x:1E (~) 0x:83 0x:83 0x:83 [make-reg-op (x86:/0) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-or) (or
+        ((x86:or) (or
           [write-rm-instr 0x:1F 0x:0A 0x:0B 0x:0B 0x:0B n bin pos ..]
           [write-mr-instr 0x:1F 0x:08 0x:09 0x:09 0x:09 n bin pos ..]
           [write-mm-instr 0x:1F 0x:08 0x:09 0x:09 0x:09 n bin pos ..]
-          [write-mi-instr 0x:1F 0x:80 0x:81 0x:81 0x:81 [make-reg-op (x86-/1) ..] n bin pos ..]
-          [write-mi8-instr 0x:1F 0x:80 0x:83 0x:83 0x:83 [make-reg-op (x86-/1) ..] n bin pos ..]
+          [write-mi-instr 0x:1F 0x:80 0x:81 0x:81 0x:81 [make-reg-op (x86:/1) ..] n bin pos ..]
+          [write-mi8-instr 0x:1F 0x:80 0x:83 0x:83 0x:83 [make-reg-op (x86:/1) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-and) (or
+        ((x86:and) (or
           [write-rm-instr 0x:1F 0x:22 0x:23 0x:23 0x:23 n bin pos ..]
           [write-mr-instr 0x:1F 0x:20 0x:21 0x:21 0x:21 n bin pos ..]
           [write-mm-instr 0x:1F 0x:20 0x:21 0x:21 0x:21 n bin pos ..]
-          [write-mi-instr 0x:1F 0x:80 0x:81 0x:81 0x:81 [make-reg-op (x86-/4) ..] n bin pos ..]
-          [write-mi8-instr 0x:1F 0x:80 0x:83 0x:83 0x:83 [make-reg-op (x86-/4) ..] n bin pos ..]
+          [write-mi-instr 0x:1F 0x:80 0x:81 0x:81 0x:81 [make-reg-op (x86:/4) ..] n bin pos ..]
+          [write-mi8-instr 0x:1F 0x:80 0x:83 0x:83 0x:83 [make-reg-op (x86:/4) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-not) (or
-          [write-m-instr 0x:1F 0x:F6 0x:F7 0x:F7 0x:F7 [make-reg-op (x86-/2) ..] n bin pos ..]
+        ((x86:not) (or
+          [write-m-instr 0x:1F 0x:F6 0x:F7 0x:F7 0x:F7 [make-reg-op (x86:/2) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-call) (or
-          [write-m-instr 0x:1E (~) 0x:FF 0x:FF 0x:FF [make-reg-op (x86-/2) ..] n bin pos ..]
+        ((x86:call) (or
+          [write-m-instr 0x:1E (~) 0x:FF 0x:FF 0x:FF [make-reg-op (x86:/2) ..] n bin pos ..]
           [write-d-instr 0x:16 (~) 0x:E8 0x:E8 (~) n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-je) (x86-jz) (or
+        ((x86:je) (x86:jz) (or
           [write-d-instr 0x:24 (~) (~) 0x:840F (~) n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-jnz) (x86-jne) (or
+        ((x86:jnz) (x86:jne) (or
           [write-d-instr 0x:24 (~) (~) 0x:850F (~) n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-jnc) (x86-jnb) (x86-jae) (or
+        ((x86:jnc) (x86:jnb) (x86:jae) (or
           [write-d-instr 0x:24 (~) (~) 0x:830F (~) n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-jbe) (x86-jna) (or
+        ((x86:jbe) (x86:jna) (or
           [write-d-instr 0x:24 (~) (~) 0x:860F (~) n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-jnbe) (x86-ja) (or
+        ((x86:jnbe) (x86:ja) (or
           [write-d-instr 0x:24 (~) (~) 0x:870F (~) n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-jnae) (x86-jb) (x86-jc) (or
+        ((x86:jnae) (x86:jb) (x86:jc) (or
           [write-d-instr 0x:24 (~) (~) 0x:820F (~) n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-shl) (or
-          [write-mc-instr 0x:1F 0x:D2 0x:D3 0x:D3 0x:D3 [make-reg-op (x86-/4) ..] n bin pos ..]
-          [write-mi8-instr 0x:1F 0x:C0 0x:C1 0x:C1 0x:C1 [make-reg-op (x86-/4) ..] n bin pos ..]
+        ((x86:shl) (or
+          [write-mc-instr 0x:1F 0x:D2 0x:D3 0x:D3 0x:D3 [make-reg-op (x86:/4) ..] n bin pos ..]
+          [write-mi8-instr 0x:1F 0x:C0 0x:C1 0x:C1 0x:C1 [make-reg-op (x86:/4) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-shr) (or
-          [write-mc-instr 0x:1F 0x:D2 0x:D3 0x:D3 0x:D3 [make-reg-op (x86-/5) ..] n bin pos ..]
-          [write-mi8-instr 0x:1F 0x:C0 0x:C1 0x:C1 0x:C1 [make-reg-op (x86-/5) ..] n bin pos ..]
+        ((x86:shr) (or
+          [write-mc-instr 0x:1F 0x:D2 0x:D3 0x:D3 0x:D3 [make-reg-op (x86:/5) ..] n bin pos ..]
+          [write-mi8-instr 0x:1F 0x:C0 0x:C1 0x:C1 0x:C1 [make-reg-op (x86:/5) ..] n bin pos ..]
           {handler (storage _ unsupported-instruction-error n)}))
-        ((x86-leave)
+        ((x86:leave)
           [write-instr bin pos 0x:C9 #:1 [make-none-op ..] [make-none-op ..] [make-none-op ..] [make-none-op ..] ..])
-        ((x86-ret)
+        ((x86:ret)
           [write-instr bin pos 0x:C3 #:1 [make-none-op ..] [make-none-op ..] [make-none-op ..] [make-none-op ..] ..])
         
-        ((x86-movzx) (or
+        ((x86:movzx) (or
           ((list-prefix?
-              (and? .:op1 (property? (op-type (|[= (register-operand)]))))
-              (and? .:op2 (property? (op-type (or? (|[= (memory-operand)]) (|[= (register-operand)]))))))
-            (@ instr-operands n)
-              (if (and [= (@ op-size op1) #:2] [= (@ op-size op2) #:1])
+              (and? .:op1 (property? (X:op-type (|[= (X:register-operand)]))))
+              (and? .:op2 (property? (X:op-type (or? (|[= (X:memory-operand)]) (|[= (X:register-operand)]))))))
+            (@ X:instr-operands n)
+              (if (and [= (@ X:op-size op1) #:2] [= (@ X:op-size op2) #:1])
                 [write-instr bin pos 0x:B60F #:2 [make-none-op ..] op1 op2 [make-none-op ..] ..]
-              (if (and [= (@ op-size op1) #:4] [= (@ op-size op2) #:1])
+              (if (and [= (@ X:op-size op1) #:4] [= (@ X:op-size op2) #:1])
                 [write-instr bin pos 0x:B60F #:2 [make-none-op ..] op1 op2 [make-none-op ..] ..]
-              (if (and [= (@ op-size op1) #:8] [= (@ op-size op2) #:1])
+              (if (and [= (@ X:op-size op1) #:8] [= (@ X:op-size op2) #:1])
                 [write-instr bin pos 0x:B60F #:2 [make-none-op ..] op1 op2 [make-none-op ..] ..]
-              (if (and [= (@ op-size op1) #:4] [= (@ op-size op2) #:2])
+              (if (and [= (@ X:op-size op1) #:4] [= (@ X:op-size op2) #:2])
                 [write-instr bin pos 0x:B70F #:2 [make-none-op ..] op1 op2 [make-none-op ..] ..]
-              (if (and [= (@ op-size op1) #:8] [= (@ op-size op2) #:2])
+              (if (and [= (@ X:op-size op1) #:8] [= (@ X:op-size op2) #:2])
                 [write-instr bin pos 0x:B70F #:2 [make-none-op ..] op1 op2 [make-none-op ..] ..]
-              (if (and [= (@ op-size op1) #:8] [= (@ op-size op2) #:4])
+              (if (and [= (@ X:op-size op1) #:8] [= (@ X:op-size op2) #:4])
                 [write-instr bin pos 0x:8B #:1 [make-none-op ..] [op-lower-32 op1 ..] op2 [make-none-op ..] ..]
                 (false))))))) (false))
           ((list-prefix?
-              (and? .:op1 (property? (op-type (|[= (memory-operand)]))))
-              (and? .:op2 (property? (op-type (or? (|[= (memory-operand)]) (|[= (register-operand)])))))
+              (and? .:op1 (property? (X:op-type (|[= (X:memory-operand)]))))
+              (and? .:op2 (property? (X:op-type (or? (|[= (X:memory-operand)]) (|[= (X:register-operand)])))))
               .:op3)
-            (@ instr-operands n)
-              (if (and [= (@ op-size op1) #:2] [= (@ op-size op2) #:1]) (do
+            (@ X:instr-operands n)
+              (if (and [= (@ X:op-size op1) #:2] [= (@ X:op-size op2) #:1]) (do
                 [write-instr bin pos 0x:B60F #:2 [make-none-op ..] op3 op2 [make-none-op ..] ..]
                 [write-instr bin pos 0x:89 #:1 [make-none-op ..] op3 op1 [make-none-op ..] ..])
-              (if (and [= (@ op-size op1) #:4] [= (@ op-size op2) #:1]) (do
+              (if (and [= (@ X:op-size op1) #:4] [= (@ X:op-size op2) #:1]) (do
                 [write-instr bin pos 0x:B60F #:2 [make-none-op ..] op3 op2 [make-none-op ..] ..]
                 [write-instr bin pos 0x:89 #:1 [make-none-op ..] op3 op1 [make-none-op ..] ..])
-              (if (and [= (@ op-size op1) #:8] [= (@ op-size op2) #:1]) (do
+              (if (and [= (@ X:op-size op1) #:8] [= (@ X:op-size op2) #:1]) (do
                 [write-instr bin pos 0x:B60F #:2 [make-none-op ..] op3 op2 [make-none-op ..] ..]
                 [write-instr bin pos 0x:89 #:1 [make-none-op ..] op3 op1 [make-none-op ..] ..])
-              (if (and [= (@ op-size op1) #:4] [= (@ op-size op2) #:2]) (do
+              (if (and [= (@ X:op-size op1) #:4] [= (@ X:op-size op2) #:2]) (do
                 [write-instr bin pos 0x:B70F #:2 [make-none-op ..] op3 op2 [make-none-op ..] ..]
                 [write-instr bin pos 0x:89 #:1 [make-none-op ..] op3 op1 [make-none-op ..] ..])
-              (if (and [= (@ op-size op1) #:8] [= (@ op-size op2) #:2]) (do
+              (if (and [= (@ X:op-size op1) #:8] [= (@ X:op-size op2) #:2]) (do
                 [write-instr bin pos 0x:B70F #:2 [make-none-op ..] op3 op2 [make-none-op ..] ..]
                 [write-instr bin pos 0x:89 #:1 [make-none-op ..] op3 op1 [make-none-op ..] ..])
-              (if (and [= (@ op-size op1) #:8] [= (@ op-size op2) #:4]) (do
+              (if (and [= (@ X:op-size op1) #:8] [= (@ X:op-size op2) #:4]) (do
                 [write-instr bin pos 0x:8B #:1 [make-none-op ..] [op-lower-32 op3 ..] op2 [make-none-op ..] ..]
                 [write-instr bin pos 0x:89 #:1 [make-none-op ..] op3 op1 [make-none-op ..] ..])
                 (false))))))) (false))
           {handler (storage _ unsupported-instruction-error n)}))
         
-        ((x86-mov) (or
+        ((x86:mov) (or
           [write-nm-instr n bin pos ..]
           [write-mr-instr 0x:1F 0x:88 0x:89 0x:89 0x:89 n bin pos ..]
           [write-rm-instr 0x:1F 0x:8A 0x:8B 0x:8B 0x:8B n bin pos ..]
           [write-mm-instr 0x:1F 0x:88 0x:89 0x:89 0x:89 n bin pos ..]
-          [write-mi-instr 0x:1F 0x:C6 0x:C7 0x:C7 0x:C7 [make-reg-op (x86-/0) ..] n bin pos ..]
+          [write-mi-instr 0x:1F 0x:C6 0x:C7 0x:C7 0x:C7 [make-reg-op (x86:/0) ..] n bin pos ..]
           ((list-prefix?
               (and? .:op1 (property?
-                (op-type (|[= (register-operand)]))
-                (op-size (|[= #:8]))))
+                (X:op-type (|[= (X:register-operand)]))
+                (X:op-size (|[= #:8]))))
               (and? .:op2 (property?
-                (op-type (|[= (immediate-operand)]))
-                (op-size (|[= #:8]))))) (@ instr-operands n)
+                (X:op-type (|[= (X:immediate-operand)]))
+                (X:op-size (|[= #:8]))))) (@ X:instr-operands n)
             [write-instr bin pos 0x:B8 #:1 op1 [make-none-op ..] [make-none-op ..] op2 ..] (false))
           ((list-prefix?
-              (and? .:op1 (property? (op-type (|[= (memory-operand)])) (op-size (|[= #:8]))))
-              (and? .:op2 (property? (op-type (|[= (immediate-operand)])) (op-size (|[= #:8]))))
-              .:op3) (@ instr-operands n) (do
+              (and? .:op1 (property? (X:op-type (|[= (X:memory-operand)])) (X:op-size (|[= #:8]))))
+              (and? .:op2 (property? (X:op-type (|[= (X:immediate-operand)])) (X:op-size (|[= #:8]))))
+              .:op3) (@ X:instr-operands n) (do
             [write-instr bin pos 0x:B8 #:1 op3 [make-none-op ..] [make-none-op ..] op2 ..]
             [write-instr bin pos 0x:89 #:1 [make-none-op ..] op3 op1 [make-none-op ..] ..]) (false))
           {handler (storage _ unsupported-instruction-error n)}))
         
-        ((x86-lea) (or
+        ((x86:lea) (or
           [write-nm-instr n bin pos ..]
           ((list-prefix?
-              (and? .:op1 (property? (op-type (|[= (register-operand)]))))
-              (and? .:op2 (property? (op-type (|[= (memory-operand)])))))
-            (@ instr-operands n)
-              (if (and [= (@ op-size op1) #:2])
+              (and? .:op1 (property? (X:op-type (|[= (X:register-operand)]))))
+              (and? .:op2 (property? (X:op-type (|[= (X:memory-operand)])))))
+            (@ X:instr-operands n)
+              (if (and [= (@ X:op-size op1) #:2])
                 [write-instr bin pos 0x:8D #:1 [make-none-op ..] op1 op2 [make-none-op ..] ..]
-              (if (and [= (@ op-size op1) #:4])
+              (if (and [= (@ X:op-size op1) #:4])
                 [write-instr bin pos 0x:8D #:1 [make-none-op ..] op1 op2 [make-none-op ..] ..]
-              (if (and [= (@ op-size op1) #:8])
+              (if (and [= (@ X:op-size op1) #:8])
                 [write-instr bin pos 0x:8D #:1 [make-none-op ..] op1 op2 [make-none-op ..] ..]
                 (false)))) (false))
           ((list-prefix?
-              (and? .:op1 (property? (op-type (|[= (memory-operand)]))))
-              (and? .:op2 (property? (op-type (|[= (memory-operand)]))))
+              (and? .:op1 (property? (X:op-type (|[= (X:memory-operand)]))))
+              (and? .:op2 (property? (X:op-type (|[= (X:memory-operand)]))))
               .:op3)
-            (@ instr-operands n)
-              (if (and [= (@ op-size op1) #:2]) (do
+            (@ X:instr-operands n)
+              (if (and [= (@ X:op-size op1) #:2]) (do
                 [write-instr bin pos 0x:8D #:1 [make-none-op ..] op3 op2 [make-none-op ..] ..]
                 [write-instr bin pos 0x:89 #:1 [make-none-op ..] op3 op1 [make-none-op ..] ..])
-              (if (and [= (@ op-size op1) #:4]) (do
+              (if (and [= (@ X:op-size op1) #:4]) (do
                 [write-instr bin pos 0x:8D #:1 [make-none-op ..] op3 op2 [make-none-op ..] ..]
                 [write-instr bin pos 0x:89 #:1 [make-none-op ..] op3 op1 [make-none-op ..] ..])
-              (if (and [= (@ op-size op1) #:8]) (do
+              (if (and [= (@ X:op-size op1) #:8]) (do
                 [write-instr bin pos 0x:8D #:1 [make-none-op ..] op3 op2 [make-none-op ..] ..]
                 [write-instr bin pos 0x:89 #:1 [make-none-op ..] op3 op1 [make-none-op ..] ..])
                 (false)))) (false))
@@ -1101,72 +1106,74 @@
   (\ r (?(a) (`(function ((list instr) string linked-elf64-e linked-elf64-sh linked-elf64-sh region ,:a) linked-elf64-sh)r)r)))
 
 (function make-function-text-section (instrs text-name-str lkd-ehdr lkd-strtab-shdr lkd-symtab-shdr temp-buf cleanup)
-  (let (text-name [make-lkdstrt text-name-str temp-buf cleanup])
-  (let (lkd-text-shdr [make-lkds text-name (@ lkde-undef lkd-ehdr) temp-buf cleanup])
-  (let (text-shdr (@ lkdsh-raw lkd-text-shdr)) (do
-  [append text-name (& lkdsh-strtab (@ lkde-shstr lkd-ehdr)) temp-buf cleanup]
-  (setf sh-type text-shdr (sht-progbits))
-  (setf sh-flags text-shdr [bor (shf-alloc) (shf-execinstr)])
-  (setf sh-addr text-shdr #:0)
-  (setf sh-info text-shdr #:0)
-  (setf sh-addralign text-shdr #:1)
-  (setf sh-entsize text-shdr #:0)
-  [append lkd-text-shdr (& lkde-sh lkd-ehdr) temp-buf cleanup]
-  
-  (for (e (%:list-iter instrs)) (~)
-    (let (instr-bndg (@ instr-binding e))
-      (if [not= instr-bndg null-binding]
-        (let (sym-name (if [getb (@ bndg-name instr-bndg)]
-            (let (sym-name [make-lkdstrt (@ bndg-name instr-bndg) temp-buf cleanup])
-              (do [append sym-name (& lkdsh-strtab lkd-strtab-shdr) temp-buf cleanup] sym-name))
-            [@car (@ lkdsh-strtab lkd-strtab-shdr)]))
-          (let (lkd-sym [make-lkdst sym-name lkd-text-shdr temp-buf cleanup])
-          (let (sym (@ lkdst-raw lkd-sym)) (do
-          (setf st-value sym #:0)
-          (setf st-size sym #:0)
-          (setf st-info sym (elf64-st-info
-            (switch = (@ bndg-scope instr-bndg)
-              ((local-scope)(stb-local))
-              ((global-scope)(stb-global))
-              (~)) (stt-notype)))
-          (setf st-other sym #:0)
-          (setf bndg-other instr-bndg lkd-sym)
-          [append lkd-sym (& lkdsh-symtab lkd-symtab-shdr) temp-buf cleanup]))))
-        (~))))
-        
-  ((values? .:text .:text-len) [assemble instrs bind temp-buf cleanup] (do
-  (setf sh-size (@ lkdsh-raw lkd-text-shdr) text-len)
-  (setf lkdsh-offset lkd-text-shdr text)
-  
-  lkd-text-shdr) (~)))))))
+  (sub (X x86)
+    (let (text-name [make-lkdstrt text-name-str temp-buf cleanup])
+    (let (lkd-text-shdr [make-lkds text-name (@ lkde-undef lkd-ehdr) temp-buf cleanup])
+    (let (text-shdr (@ lkdsh-raw lkd-text-shdr)) (do
+    [append text-name (& lkdsh-strtab (@ lkde-shstr lkd-ehdr)) temp-buf cleanup]
+    (setf sh-type text-shdr (sht-progbits))
+    (setf sh-flags text-shdr [bor (shf-alloc) (shf-execinstr)])
+    (setf sh-addr text-shdr #:0)
+    (setf sh-info text-shdr #:0)
+    (setf sh-addralign text-shdr #:1)
+    (setf sh-entsize text-shdr #:0)
+    [append lkd-text-shdr (& lkde-sh lkd-ehdr) temp-buf cleanup]
+    
+    (for (e (%:list-iter instrs)) (~)
+      (let (instr-bndg (@ X:instr-binding e))
+        (if [not= instr-bndg null-binding]
+          (let (sym-name (if [getb (@ bndg-name instr-bndg)]
+              (let (sym-name [make-lkdstrt (@ bndg-name instr-bndg) temp-buf cleanup])
+                (do [append sym-name (& lkdsh-strtab lkd-strtab-shdr) temp-buf cleanup] sym-name))
+              [@car (@ lkdsh-strtab lkd-strtab-shdr)]))
+            (let (lkd-sym [make-lkdst sym-name lkd-text-shdr temp-buf cleanup])
+            (let (sym (@ lkdst-raw lkd-sym)) (do
+            (setf st-value sym #:0)
+            (setf st-size sym #:0)
+            (setf st-info sym (elf64-st-info
+              (switch = (@ bndg-scope instr-bndg)
+                ((local-scope)(stb-local))
+                ((global-scope)(stb-global))
+                (~)) (stt-notype)))
+            (setf st-other sym #:0)
+            (setf bndg-other instr-bndg lkd-sym)
+            [append lkd-sym (& lkdsh-symtab lkd-symtab-shdr) temp-buf cleanup]))))
+          (~))))
+          
+    ((values? .:text .:text-len) [assemble instrs bind temp-buf cleanup] (do
+    (setf sh-size (@ lkdsh-raw lkd-text-shdr) text-len)
+    (setf lkdsh-offset lkd-text-shdr text)
+    
+    lkd-text-shdr) (~))))))))
 
 (constrain make-function-relocation-section
   (\ r (?(a) (`(function ((list reloc) string linked-elf64-e linked-elf64-sh linked-elf64-sh region ,:a) linked-elf64-sh)r)r)))
 
 (function make-function-relocation-section (relocations rela-name-str lkd-ehdr lkd-text-shdr lkd-symtab-shdr temp-buf cleanup)
-  (let (rela-name [make-lkdstrt rela-name-str temp-buf cleanup])
-  (let (lkd-rela-shdr [make-lkdrela rela-name lkd-symtab-shdr lkd-text-shdr nil temp-buf cleanup])
-  (let (rela-shdr (@ lkdsh-raw lkd-rela-shdr)) (do
-  [append rela-name (& lkdsh-strtab (@ lkde-shstr lkd-ehdr)) temp-buf cleanup]
-  (setf sh-type rela-shdr (sht-rela))
-  (setf sh-flags rela-shdr #:0)
-  (setf sh-addr rela-shdr #:0)
-  (setf sh-addralign rela-shdr #:0)
-  (setf sh-entsize rela-shdr (elf64-rela))
-  [append lkd-rela-shdr (& lkde-sh lkd-ehdr) temp-buf cleanup]
+  (sub (X x86)
+    (let (rela-name [make-lkdstrt rela-name-str temp-buf cleanup])
+    (let (lkd-rela-shdr [make-lkdrela rela-name lkd-symtab-shdr lkd-text-shdr nil temp-buf cleanup])
+    (let (rela-shdr (@ lkdsh-raw lkd-rela-shdr)) (do
+    [append rela-name (& lkdsh-strtab (@ lkde-shstr lkd-ehdr)) temp-buf cleanup]
+    (setf sh-type rela-shdr (sht-rela))
+    (setf sh-flags rela-shdr #:0)
+    (setf sh-addr rela-shdr #:0)
+    (setf sh-addralign rela-shdr #:0)
+    (setf sh-entsize rela-shdr (elf64-rela))
+    [append lkd-rela-shdr (& lkde-sh lkd-ehdr) temp-buf cleanup]
 
-  (for (reloc (%:list-iter relocations)) (~)
-    (for (loca (%:list-iter (@ op-locations (@ reloc-operand reloc)))) (~)
-      ((values? .:operand-pos .:operand-size .:instr-pos .:instr-size) loca
-        (let (lkd-rela [make-lkdr (@ bndg-other(@ reloc-binding reloc)) temp-buf cleanup])
-        (let (rela (@ lkdr-raw lkd-rela)) (do
-        (setf r-offset rela operand-pos)
-        (setf r-info rela (elf64-r-info (~) (@ reloc-type reloc)))
-        (setf r-addend rela
-          [(@ reloc-addend-func reloc) (@ reloc-context reloc) operand-pos operand-size instr-pos instr-size])
-        [append lkd-rela (& lkdsh-rela lkd-rela-shdr) temp-buf cleanup]))) (~))))
-  
-  lkd-rela-shdr)))))
+    (for (reloc (%:list-iter relocations)) (~)
+      (for (loca (%:list-iter (@ X:op-locations (@ reloc-operand reloc)))) (~)
+        ((values? .:operand-pos .:operand-size .:instr-pos .:instr-size) loca
+          (let (lkd-rela [make-lkdr (@ bndg-other(@ reloc-binding reloc)) temp-buf cleanup])
+          (let (rela (@ lkdr-raw lkd-rela)) (do
+          (setf r-offset rela operand-pos)
+          (setf r-info rela (elf64-r-info (~) (@ reloc-type reloc)))
+          (setf r-addend rela
+            [(@ reloc-addend-func reloc) (@ reloc-context reloc) operand-pos operand-size instr-pos instr-size])
+          [append lkd-rela (& lkdsh-rela lkd-rela-shdr) temp-buf cleanup]))) (~))))
+    
+    lkd-rela-shdr))))))
 
 (-- The following functions are for ensuring that truncating the outcome of a relocation
   computation preserves its value.)
@@ -1560,14 +1567,14 @@
   (\ r (?(a) (`(function ((list instr) (list (values string (list instr) (list reloc))) (list bndg-aug) obj region ,:a) ())r)r)))
 
 (function binding-offsets-to-addresses (asms function-sections static-bindings obj reg hdl)
-  (with-region reg (do
+  (sub (X x86) (with-region reg (do
     (for (sym (%:list-iter static-bindings)) (~)
       (if (and [= (@ bndg-storage sym) (absolute-storage)] [= (@ bndg-state sym) (defined-state)])
         [set+ (& bndg-offset sym) [segment obj (" .bss)]]
         (~)))
     
     (for (l (%:list-iter asms)) (~)
-      (let (instr-bndg (@ instr-binding l))
+      (let (instr-bndg (@ X:instr-binding l))
         (if [not= instr-bndg null-binding]
           [set+ (& bndg-offset instr-bndg) [segment obj (" .text)]]
           (~))))
@@ -1575,7 +1582,7 @@
     (for (func-sec (%:list-iter function-sections)) (~)
       ((values? .:name .:instrs .:relocs) func-sec
         (for (l (%:list-iter instrs)) (~)
-          (let (instr-bndg (@ instr-binding l))
+          (let (instr-bndg (@ X:instr-binding l))
             (if [not= instr-bndg null-binding]
               [set+ (& bndg-offset instr-bndg) [segment obj [rstrcat (" .text.) name reg hdl]]]
-              (~)))) (~))))))
+              (~)))) (~)))))))
