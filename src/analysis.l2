@@ -668,24 +668,35 @@
 (storage undefined-symbol-error (~))
 
 (constrain preprocessed-expression-address
-  (\ r (?(a b c) (`(function ((expr ,:c) (list initializer) (hash-table string bndg-aug) region region ,:a) ,:b)r)r)))
+  (\ r (?(a b c) (`(function ((expr ,:c) (list initializer) (hash-table string (expr ,:c)) (hash-table string bndg-aug) region region ,:a) ,:b)r)r)))
 
-(function preprocessed-expression-address (s inits bindings buf buf2 handler)
+(function preprocessed-expression-address (s inits func-exprs bindings buf buf2 handler)
   (sub (.. buf handler)
     (with-region buf2
-      (if [= (@ expr:type s) (-symbol-)]
-        (do
+      (match s
+        ((expr:symbol? .:sym) (do
           (-- If the expression, s, is a mere symbol, then we can just lookup its value in
             the bindings list instead of preprocessing, compiling, and then evaluating
             the expression.)
-          (bind-if [ht-contains (@ expr:name (& expr:symbol s)) bindings bndg]
+          (bind-if [ht-contains (@ expr:name sym) bindings bndg]
             (bndg) (@ bndg-offset $:bndg)
-            {handler (storage _ undefined-symbol-error (@ expr:name (& expr:symbol s)))}))
+          (bind-if [ht-contains (@ expr:name sym) func-exprs func-expr]
+            (func-expr) [preprocessed-expression-address $:func-expr inits func-exprs bindings buf buf2 handler]
+            {handler (storage _ undefined-symbol-error (@ expr:name sym))}))))
+        ((expr:function? .:func) (do
+          [pre-visit-expressions vgenerate-metas (storage _ s) (values storage inits func-exprs bindings buf buf2 handler)]
+          (let (obj [load-program [cons s nil buf2 handler] inits buf buf2 handler]) (do
+            (select (tuple? .:d-name .:d) (%:ht-iter [immutable-bindings obj [ht-create hash-str str= buf2 handler] ..]) (~)
+              (do[print-str (stdout) d-name handler][ht-put d-name d bindings ..]))
+          (let (ms [mutable-bindings obj [ht-create hash-str str= buf2 handler] buf2 handler]) (do
+            (select (tuple? .:d-name .:d) (%:ht-iter ms) (~)
+              (if [ht-contains d-name bindings (storage _ (~))] (~)
+                [preprocessed-expression-address [make-symbol d-name null-fragment null-expr buf2 handler] inits func-exprs bindings buf buf2 handler]))
+            [mutate-bindings obj bindings]))))
+          (@ bndg-offset (@ expr:function-reference func))))
         (do
-          (let (expr-container [make-function empty-string nil s null-fragment null-expr buf2 handler]) (do
-          [pre-visit-expressions vgenerate-metas (storage _ expr-container) (values storage inits bindings buf buf2 handler)]
-          [load-program-and-mutate [cons expr-container nil buf2 handler] inits bindings buf buf2 handler]
-          [(@ bndg-offset (@ expr:function-reference (& expr:function expr-container)))])))))))
+          (let (expr-container [make-function empty-string nil s null-fragment null-expr buf2 handler])
+          [[cast [preprocessed-expression-address expr-container inits func-exprs bindings buf buf2 handler]]]))))))
 
 (-- The error that wraps errors thrown by macros.)
 
@@ -696,78 +707,19 @@
   to the result of evaluating a signature builder.)
 
 (constrain vgenerate-metas
-  (\ r (?(a b) (`(function ((expr ,:b) (values (list initializer) (hash-table string bndg-aug) region region ,:a)) (expr ,:b))r)r)))
+  (\ r (?(a b) (`(function ((expr ,:b) (values (list initializer) (hash-table string (expr ,:b)) (hash-table string bndg-aug) region region ,:a)) (expr ,:b))r)r)))
 
 (function vgenerate-metas (s ctx)
-  ((values? .:inits .:bindings .:buf .:buf2 .:handler) ctx
+  ((values? .:inits .:func-exprs .:bindings .:buf .:buf2 .:handler) ctx
     (with-region buf2
       (switch = (@ expr:type s)
         ((-meta-)
-          (let (macro [cast [preprocessed-expression-address (@ expr:meta-target (& expr:meta s)) inits bindings buf buf2 handler]])
+          (let (macro [cast [preprocessed-expression-address (@ expr:meta-target (& expr:meta s)) inits func-exprs bindings buf buf2 handler]])
             (cps [vgenerate-metas [build-expression [macro [list->fragment [@cdr [frag->list (@ expr:fragment s)]]] buf macro-err] s buf handler] ctx]
               (macro-err (msg) {handler (storage _ meta-expr-error msg)}))))
         
         ((-constrain-)
-          (let (macro [cast [preprocessed-expression-address (@ expr:constrain-target (& expr:constrain s)) inits bindings buf buf2 handler]])
+          (let (macro [cast [preprocessed-expression-address (@ expr:constrain-target (& expr:constrain s)) inits func-exprs bindings buf buf2 handler]])
             (do (setf bndg-signature (@ expr:binding-aug s) [macro buf]) s)))
         
         s)) (~)))
-
-(constrain init-function
-  (\ r (?(a b c) (`(function ((expr ,:c) (list initializer) (hash-table string bndg-aug) region region ,:a !:Ref:,;b) ,:b)r)r)))
-
-(function init-function (function-expr inits bindings buf buf2 handler cache)
-  (sub (.. buf handler)
-    (with-region buf2
-      (if [not= $:cache null-cache]
-        $:cache
-        (let (function-expr-ref (storage _ function-expr)) (do
-          [pre-visit-expressions vgenerate-metas function-expr-ref (values storage inits bindings buf buf2 handler)]
-          [load-program-and-mutate [cons $:function-expr-ref nil ..] inits bindings buf buf2 handler]
-          [set cache (@ bndg-offset (@ expr:function-reference (& expr:function $:function-expr-ref)))]
-          $:cache))))))
-
-(storage null-cache (~))
-
-(-- From the supplied list of expressions, returns lazy versions of the
-  contained functions. That is, the meta-expressions within the functions are
-  expanded only when they are first called.)
-
-(constrain generate-metaprogram
-  (\ r (?(a b) (`(function ((list (expr ,:b)) (list initializer) (hash-table string bndg-aug) region region region ,:a) (list (expr ,:b)))r)r)))
-
-(function generate-metaprogram (exprs inits bindings buf buf1 buf2 handler)
-  (sub (.. buf handler)
-    [reverse (fold (c nil) (s (%:list-iter exprs))
-      (if [not= (@ expr:type s) (-function-)] c
-        (let (cache [region-alloc (unit) buf1 handler])
-        (let (params [collect-list (map (_ (%:list-iter (@ expr:function-parameters (& expr:function s)))) empty-string) nil ..])
-        (let (args [collect-list (map (_ (%:list-iter (@ expr:function-parameters (& expr:function s)))) [make-symbol empty-string null-fragment null-expr ..]) nil ..])
-        (let (thunk [make-function (@ bndg-name (@ expr:function-reference (& expr:function s))) params
-          [make-invoke (make-invokeN [make-literal init-function null-fragment null-expr ..]
-          ([make-literal s null-fragment null-expr ..] [make-literal inits null-fragment null-expr ..]
-          [make-literal bindings null-fragment null-expr ..] [make-literal buf1 null-fragment null-expr ..]
-          [make-literal buf2 null-fragment null-expr ..] [make-literal handler null-fragment null-expr ..]
-          [make-literal cache null-fragment null-expr ..]) null-fragment null-expr ..) args null-fragment null-expr ..]
-          null-fragment null-expr ..]) (do
-        [set cache null-cache]
-        (for (a (%:list-iter(@ expr:function-parameters (& expr:function thunk)))) (t (%:list-iter args)) (~) (setf expr:symbol-reference (& expr:symbol t) a))
-        [cons thunk c ..]))))))) ..]))
-
-(-- Try to expand the meta-expressions in the given list and return the
-  sucessful expansions.)
-
-(constrain try-generate-metas
-  (\ r (?(a b) (`(function ((list (expr ,:b)) (list initializer) (hash-table string bndg-aug) region region ,:a) (list (expr ,:b)))r)r)))
-
-(function try-generate-metas (exprs inits bindings buf1 buf2 handler)
-  (sub (.. buf1 handler)
-    (with-region buf2
-      (fold (c nil) (s (%:list-ref-iter exprs))
-        (if [= (@ expr:type $:s) (-meta-)]
-          (cps (do
-              [set s [vgenerate-metas $:s (values storage inits bindings buf1 buf2 check-error)]]
-              [cons $:s c ..])
-            (check-error (err)
-              (if [= (@0 err) undefined-symbol-error] c {handler err})))
-          c)))))

@@ -46,23 +46,6 @@
       [binding-offsets-to-addresses asms func-secs static-bindings obj buf handler]
       obj)) (~)) (~)))))
 
-(-- Behavior is the same as load-program, but with the following addition: bndgs is a map
-  of object bindings, and after the loading is done, the undefined bindings of the loaded
-  program will take on the addresses supplied in the list.)
-
-(constrain load-program-and-mutate
-  (\ r (?(a b) (`(function ((list (expr ,:b)) (list initializer) (hash-table string bndg-aug) region region ,:a) obj)r)r)))
-
-(function load-program-and-mutate (exprs inits bndgs buf buf2 handler)
-  (with-region buf2
-    (let (obj [load-program exprs inits buf buf2 handler])
-    (let (ms [mutable-bindings obj [ht-create hash-str str= buf2 handler] buf2 handler]) (do
-      (select (tuple? .:d-name .:d) (%:ht-iter ms) (~)
-        (if [ht-contains d-name bndgs (storage _ (~))] (~)
-          {handler (storage _ undefined-symbol-error d-name)}))
-      [mutate-bindings obj bndgs]
-      obj)))))
-
 (constrain read-to-buffer (\ r (?(a b c d) (`(function (string ,:a region ,:b) (values ,:c ,:d))r)r)))
 
 (function read-to-buffer (fn outs buf handler)
@@ -102,9 +85,9 @@
   bindings.)
 
 (constrain evaluate-files
-  (\ r (?(a) (`(function ((list string) (list string) (list string) (hash-table string bndg-aug) region region ,:a) ())r)r)))
+  (\ r (?(a b) (`(function ((list string) (list string) (list string) (hash-table string (expr ,:b)) (hash-table string bndg-aug) region region ,:a) ())r)r)))
 
-(function evaluate-files (source-fns object-fns intrinsic-fns bindings buf buf2 handler)
+(function evaluate-files (source-fns object-fns intrinsic-fns func-exprs bindings buf buf2 handler)
   (sub (.. buf handler)
     (let (inits [collect-reverse-list (map (intrinsic-fn (%:list-iter intrinsic-fns))
       (switch str= intrinsic-fn
@@ -121,19 +104,12 @@
         ((" arithmetic)
           (let (obj [load-program [wrap-arithmetic-intrinsics ..] inits buf buf2 handler])
             (do [immutable-bindings obj bindings ..] [cons obj objects ..])))
-        {handler (storage _ unsupported-intrinsics-error intrinsic-fn)})))
+        {handler (storage _ unsupported-intrinsics-error intrinsic-fn)}))) (do
     
-    (let (all-exprs ($(fold (all-exprs (storage _ nil)) (src (%:list-iter source-fns)) (do
-      [append-list all-exprs [read-expressions src buf buf2 handler]]
-      all-exprs))))
-    
-    (loop add-bindings (objects objects2) (rem-exprs all-exprs)
-      (if [nil? rem-exprs] (~)
-        (let (obj [load-program [generate-metaprogram rem-exprs inits bindings buf2 buf buf2 handler] inits buf buf2 handler])
-        (let (objects [cons obj objects ..]) (do
-          [immutable-bindings obj bindings ..]
-          (for (obj (%:list-iter objects)) (~) [mutate-bindings obj bindings])
-          {add-bindings objects [try-generate-metas rem-exprs inits bindings buf buf2 handler]})))))))))))
+    (for (src (%:list-iter source-fns)) (~)
+      (for (expr (%:list-iter [read-expressions src buf buf2 handler])) (~)
+        ((expr:function? .:func) expr
+          [ht-put (@ bndg-name (@ expr:function-reference func)) expr func-exprs ..] (~)))) (~)))))))
 
 (constrain compile-program-to-elf (\ r (?(a b) (`(function ((list (expr ,:b)) (list initializer) string region region ,:a) ())r)r)))
 
@@ -151,9 +127,9 @@
   region into which constructed expressions and object code will be put.)
 
 (constrain compile-files
-  (\ r (?(a) (`(function ((list string) (list string) (hash-table string bndg-aug) region region ,:a) ())r)r)))
+  (\ r (?(a b) (`(function ((list string) (list string) (hash-table string (expr ,:b)) (hash-table string bndg-aug) region region ,:a) ())r)r)))
 
-(function compile-files (file-names intrinsic-fns bndgs buf buf2 handler)
+(function compile-files (file-names intrinsic-fns func-exprs bndgs buf buf2 handler)
   (sub (.. buf handler)
     (with-region buf2
       (let (inits [collect-reverse-list (map (intrinsic-fn (%:list-iter intrinsic-fns))
@@ -164,7 +140,7 @@
       (let (file-exprss [collect-list (map (infn (%:list-iter file-names))
         [collect-list (map (e (%:list-iter[read-expressions infn buf buf2 handler]))
           (let (f (storage _ e))
-            (do [pre-visit-expressions vgenerate-metas f (values storage inits bndgs buf buf2 handler)] $:f))) nil ..]) nil ..]) (do
+            (do [pre-visit-expressions vgenerate-metas f (values storage inits func-exprs bndgs buf buf2 handler)] $:f))) nil ..]) nil ..]) (do
             
       (let (all-exprs [reverse-flatten file-exprss ..])
         (let (undefined-bindings [ht-create hash-str str= ..]) (global-bindings [global-binding-augs-of all-exprs ..]) (do
@@ -206,7 +182,7 @@
           [set second-dash-ref nil]
           (-- These are all the bindings necessary for metaprogramming. Their
             definitions can be found in list.l2 and lexer.l2.)
-          (let (bndgs (sub (.. buf handler) (ht-putall ([ht-create hash-str str= ..] ..)
+          (let (func-exprs [ht-create hash-str str= buf handler]) (bndgs (sub (.. buf handler) (ht-putall ([ht-create hash-str str= ..] ..)
             ((" -!-)[make-binding (" -!-)(tkn-char(char !))..]) ((" -!-)[make-binding (" -!-)(tkn-char(char !))..])
             ((" -"-)[make-binding (" -"-)(tkn-char(char "))..]) ((" -#-)[make-binding (" -#-)(tkn-char(char #))..])
             ((" -$-)[make-binding (" -$-)(tkn-char(char $))..]) ((" -%-)[make-binding (" -%-)(tkn-char(char %))..])
@@ -257,9 +233,9 @@
             ((" var=)[make-binding (" var=) vbl= ..]) ((" var?)[make-binding (" var?) vbl? ..])
             ((" var)[make-binding (" var) vbl ..]) ((" gentok)[make-binding (" gentok) i/f.gentok ..])))) (do
           (-- Evaluate the metaprogram)
-          [evaluate-files $:source-fns $:object-fns $:intrinsic-fns bndgs buf buf2 handler]
+          [evaluate-files $:source-fns $:object-fns $:intrinsic-fns func-exprs bndgs buf buf2 handler]
           (-- Compile the program in the metaprogram's environment)
-          [compile-files $:source-fns $:intrinsic-fns bndgs buf buf2 handler]
+          [compile-files $:source-fns $:intrinsic-fns func-exprs bndgs buf buf2 handler]
           (storage _ no-error))))))))))))
         
         (handler err (sub (.. cleanup) (do
