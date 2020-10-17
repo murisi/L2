@@ -85,9 +85,9 @@
   bindings.)
 
 (constrain evaluate-files
-  (\ r (?(a b) (`(function ((list string) (list string) (list string) (hash-table string (expr ,:b)) (hash-table string bndg-aug) region region ,:a) ())r)r)))
+  (\ r (?(a b) (`(function ((list string) (list string) (list string) !:Ref:(list (expr ,:b)) (hash-table string (expr ,:b)) (hash-table string bndg-aug) region region ,:a) ())r)r)))
 
-(function evaluate-files (source-fns object-fns intrinsic-fns func-exprs bindings buf buf2 handler)
+(function evaluate-files (source-fns object-fns intrinsic-fns meta-exprs func-exprs bindings buf buf2 handler)
   (sub (.. buf handler)
     (let (inits [collect-reverse-list (map (intrinsic-fn (%:list-iter intrinsic-fns))
       (switch str= intrinsic-fn
@@ -108,8 +108,10 @@
     
     (for (src (%:list-iter source-fns)) (~)
       (for (expr (%:list-iter [read-expressions src buf buf2 handler])) (~)
-        ((expr:function? .:func) expr
-          [ht-put (@ bndg-name (@ expr:function-reference func)) expr func-exprs ..] (~)))) (~)))))))
+        (match expr
+          ((expr:meta? .:meta) (do [prepend expr meta-exprs ..] (~)))
+          ((expr:function? .:func) (do [ht-put (@ bndg-name (@ expr:function-reference func)) expr func-exprs ..] (~)))
+          (~)))) (~)))))))
 
 (constrain compile-program-to-elf (\ r (?(a b) (`(function ((list (expr ,:b)) (list initializer) string region region ,:a) ())r)r)))
 
@@ -127,9 +129,9 @@
   region into which constructed expressions and object code will be put.)
 
 (constrain compile-files
-  (\ r (?(a b) (`(function ((list string) (list string) (hash-table string (expr ,:b)) (hash-table string bndg-aug) region region ,:a) ())r)r)))
+  (\ r (?(a b) (`(function ((list string) (list string) !:Ref:(list (expr ,:b)) (hash-table string (expr ,:b)) (hash-table string bndg-aug) region region ,:a) ())r)r)))
 
-(function compile-files (file-names intrinsic-fns func-exprs bndgs buf buf2 handler)
+(function compile-files (file-names intrinsic-fns meta-exprs func-exprs bndgs buf buf2 handler)
   (sub (.. buf handler)
     (with-region buf2
       (let (inits [collect-reverse-list (map (intrinsic-fn (%:list-iter intrinsic-fns))
@@ -140,7 +142,7 @@
       (let (file-exprss [collect-list (map (infn (%:list-iter file-names))
         [collect-list (map (e (%:list-iter[read-expressions infn buf buf2 handler]))
           (let (f (storage _ e))
-            (do [pre-visit-expressions vgenerate-metas f (values storage inits func-exprs bndgs buf buf2 handler)] $:f))) nil ..]) nil ..]) (do
+            (do [pre-visit-expressions vgenerate-metas f (values storage inits meta-exprs func-exprs bndgs buf buf2 handler)] $:f))) nil ..]) nil ..]) (do
             
       (let (all-exprs [reverse-flatten file-exprss ..])
         (let (undefined-bindings [ht-create hash-str str= ..]) (global-bindings [global-binding-augs-of all-exprs ..]) (do
@@ -182,60 +184,61 @@
           [set second-dash-ref nil]
           (-- These are all the bindings necessary for metaprogramming. Their
             definitions can be found in list.l2 and lexer.l2.)
-          (let (func-exprs [ht-create hash-str str= buf handler]) (bndgs (sub (.. buf handler) (ht-putall ([ht-create hash-str str= ..] ..)
-            ((" -!-)[make-binding (" -!-)(tkn-char(char !))..]) ((" -!-)[make-binding (" -!-)(tkn-char(char !))..])
-            ((" -"-)[make-binding (" -"-)(tkn-char(char "))..]) ((" -#-)[make-binding (" -#-)(tkn-char(char #))..])
-            ((" -$-)[make-binding (" -$-)(tkn-char(char $))..]) ((" -%-)[make-binding (" -%-)(tkn-char(char %))..])
-            ((" -&-)[make-binding (" -&-)(tkn-char(char &))..]) ((" -'-)[make-binding (" -'-)(tkn-char(char '))..])
-            ((" -*-)[make-binding (" -*-)(tkn-char(char *))..]) ((" -+-)[make-binding (" -+-)(tkn-char(char +))..])
-            ((" -,-)[make-binding (" -,-)(tkn-char(char ,))..]) ((" ---)[make-binding (" ---)(tkn-char(char -))..])
-            ((" -.-)[make-binding (" -.-)(tkn-char(char .))..]) ((" -/-)[make-binding (" -/-)(tkn-char(char /))..])
-            ((" -0-)[make-binding (" -0-)(tkn-char(char 0))..]) ((" -1-)[make-binding (" -1-)(tkn-char(char 1))..])
-            ((" -2-)[make-binding (" -2-)(tkn-char(char 2))..]) ((" -3-)[make-binding (" -3-)(tkn-char(char 3))..])
-            ((" -4-)[make-binding (" -4-)(tkn-char(char 4))..]) ((" -5-)[make-binding (" -5-)(tkn-char(char 5))..])
-            ((" -6-)[make-binding (" -6-)(tkn-char(char 6))..]) ((" -7-)[make-binding (" -7-)(tkn-char(char 7))..])
-            ((" -8-)[make-binding (" -8-)(tkn-char(char 8))..]) ((" -9-)[make-binding (" -9-)(tkn-char(char 9))..])
-            ((" -<-)[make-binding (" -<-)(tkn-char(char <))..]) ((" -=-)[make-binding (" -=-)(tkn-char(char =))..])
-            ((" ->-)[make-binding (" ->-)(tkn-char(char >))..]) ((" -?-)[make-binding (" -?-)(tkn-char(char ?))..])
-            ((" -@-)[make-binding (" -@-)(tkn-char(char @))..]) ((" -A-)[make-binding (" -A-)(tkn-char(char A))..])
-            ((" -B-)[make-binding (" -B-)(tkn-char(char B))..]) ((" -C-)[make-binding (" -C-)(tkn-char(char C))..])
-            ((" -D-)[make-binding (" -D-)(tkn-char(char D))..]) ((" -E-)[make-binding (" -E-)(tkn-char(char E))..])
-            ((" -F-)[make-binding (" -F-)(tkn-char(char F))..]) ((" -G-)[make-binding (" -G-)(tkn-char(char G))..])
-            ((" -H-)[make-binding (" -H-)(tkn-char(char H))..]) ((" -I-)[make-binding (" -I-)(tkn-char(char I))..])
-            ((" -J-)[make-binding (" -J-)(tkn-char(char J))..]) ((" -K-)[make-binding (" -K-)(tkn-char(char K))..])
-            ((" -L-)[make-binding (" -L-)(tkn-char(char L))..]) ((" -M-)[make-binding (" -M-)(tkn-char(char M))..])
-            ((" -N-)[make-binding (" -N-)(tkn-char(char N))..]) ((" -O-)[make-binding (" -O-)(tkn-char(char O))..])
-            ((" -P-)[make-binding (" -P-)(tkn-char(char P))..]) ((" -Q-)[make-binding (" -Q-)(tkn-char(char Q))..])
-            ((" -R-)[make-binding (" -R-)(tkn-char(char R))..]) ((" -S-)[make-binding (" -S-)(tkn-char(char S))..])
-            ((" -T-)[make-binding (" -T-)(tkn-char(char T))..]) ((" -U-)[make-binding (" -U-)(tkn-char(char U))..])
-            ((" -V-)[make-binding (" -V-)(tkn-char(char V))..]) ((" -W-)[make-binding (" -W-)(tkn-char(char W))..])
-            ((" -X-)[make-binding (" -X-)(tkn-char(char X))..]) ((" -Y-)[make-binding (" -Y-)(tkn-char(char Y))..])
-            ((" -Z-)[make-binding (" -Z-)(tkn-char(char Z))..]) ((" -\-)[make-binding (" -\-)(tkn-char(char \))..])
-            ((" -^-)[make-binding (" -^-)(tkn-char(char ^))..]) ((" -_-)[make-binding (" -_-)(tkn-char(char _))..])
-            ((" -`-)[make-binding (" -`-)(tkn-char(char `))..]) ((" -a-)[make-binding (" -a-)(tkn-char(char a))..])
-            ((" -b-)[make-binding (" -b-)(tkn-char(char b))..]) ((" -c-)[make-binding (" -c-)(tkn-char(char c))..])
-            ((" -d-)[make-binding (" -d-)(tkn-char(char d))..]) ((" -e-)[make-binding (" -e-)(tkn-char(char e))..])
-            ((" -f-)[make-binding (" -f-)(tkn-char(char f))..]) ((" -g-)[make-binding (" -g-)(tkn-char(char g))..])
-            ((" -h-)[make-binding (" -h-)(tkn-char(char h))..]) ((" -i-)[make-binding (" -i-)(tkn-char(char i))..])
-            ((" -j-)[make-binding (" -j-)(tkn-char(char j))..]) ((" -k-)[make-binding (" -k-)(tkn-char(char k))..])
-            ((" -l-)[make-binding (" -l-)(tkn-char(char l))..]) ((" -m-)[make-binding (" -m-)(tkn-char(char m))..])
-            ((" -n-)[make-binding (" -n-)(tkn-char(char n))..]) ((" -o-)[make-binding (" -o-)(tkn-char(char o))..])
-            ((" -p-)[make-binding (" -p-)(tkn-char(char p))..]) ((" -q-)[make-binding (" -q-)(tkn-char(char q))..])
-            ((" -r-)[make-binding (" -r-)(tkn-char(char r))..]) ((" -s-)[make-binding (" -s-)(tkn-char(char s))..])
-            ((" -t-)[make-binding (" -t-)(tkn-char(char t))..]) ((" -u-)[make-binding (" -u-)(tkn-char(char u))..])
-            ((" -v-)[make-binding (" -v-)(tkn-char(char v))..]) ((" -w-)[make-binding (" -w-)(tkn-char(char w))..])
-            ((" -x-)[make-binding (" -x-)(tkn-char(char x))..]) ((" -y-)[make-binding (" -y-)(tkn-char(char y))..])
-            ((" -z-)[make-binding (" -z-)(tkn-char(char z))..]) ((" -|-)[make-binding (" -|-)(tkn-char(char |))..])
-            ((" -~-)[make-binding (" -~-)(tkn-char(char ~))..]) ((" @fst)[make-binding (" @fst) @car ..])
-            ((" @rst)[make-binding (" @rst) @cdr ..]) ((" lst)[make-binding (" lst) cons ..])
-            ((" token?)[make-binding (" token?) i/f.token? ..]) ((" emt?)[make-binding (" emt?) emt?! ..])
-            ((" emt)[make-binding (" emt) emt! ..]) ((" char=)[make-binding (" char=) i/f.char= ..])
-            ((" var=)[make-binding (" var=) vbl= ..]) ((" var?)[make-binding (" var?) vbl? ..])
-            ((" var)[make-binding (" var) vbl ..]) ((" gentok)[make-binding (" gentok) i/f.gentok ..])))) (do
+          (let (func-exprs [ht-create hash-str str= buf handler]) (meta-exprs (storage _ nil))
+            (bndgs (sub (.. buf handler) (ht-putall ([ht-create hash-str str= ..] ..)
+              ((" -!-)[make-binding (" -!-)(tkn-char(char !))..]) ((" -!-)[make-binding (" -!-)(tkn-char(char !))..])
+              ((" -"-)[make-binding (" -"-)(tkn-char(char "))..]) ((" -#-)[make-binding (" -#-)(tkn-char(char #))..])
+              ((" -$-)[make-binding (" -$-)(tkn-char(char $))..]) ((" -%-)[make-binding (" -%-)(tkn-char(char %))..])
+              ((" -&-)[make-binding (" -&-)(tkn-char(char &))..]) ((" -'-)[make-binding (" -'-)(tkn-char(char '))..])
+              ((" -*-)[make-binding (" -*-)(tkn-char(char *))..]) ((" -+-)[make-binding (" -+-)(tkn-char(char +))..])
+              ((" -,-)[make-binding (" -,-)(tkn-char(char ,))..]) ((" ---)[make-binding (" ---)(tkn-char(char -))..])
+              ((" -.-)[make-binding (" -.-)(tkn-char(char .))..]) ((" -/-)[make-binding (" -/-)(tkn-char(char /))..])
+              ((" -0-)[make-binding (" -0-)(tkn-char(char 0))..]) ((" -1-)[make-binding (" -1-)(tkn-char(char 1))..])
+              ((" -2-)[make-binding (" -2-)(tkn-char(char 2))..]) ((" -3-)[make-binding (" -3-)(tkn-char(char 3))..])
+              ((" -4-)[make-binding (" -4-)(tkn-char(char 4))..]) ((" -5-)[make-binding (" -5-)(tkn-char(char 5))..])
+              ((" -6-)[make-binding (" -6-)(tkn-char(char 6))..]) ((" -7-)[make-binding (" -7-)(tkn-char(char 7))..])
+              ((" -8-)[make-binding (" -8-)(tkn-char(char 8))..]) ((" -9-)[make-binding (" -9-)(tkn-char(char 9))..])
+              ((" -<-)[make-binding (" -<-)(tkn-char(char <))..]) ((" -=-)[make-binding (" -=-)(tkn-char(char =))..])
+              ((" ->-)[make-binding (" ->-)(tkn-char(char >))..]) ((" -?-)[make-binding (" -?-)(tkn-char(char ?))..])
+              ((" -@-)[make-binding (" -@-)(tkn-char(char @))..]) ((" -A-)[make-binding (" -A-)(tkn-char(char A))..])
+              ((" -B-)[make-binding (" -B-)(tkn-char(char B))..]) ((" -C-)[make-binding (" -C-)(tkn-char(char C))..])
+              ((" -D-)[make-binding (" -D-)(tkn-char(char D))..]) ((" -E-)[make-binding (" -E-)(tkn-char(char E))..])
+              ((" -F-)[make-binding (" -F-)(tkn-char(char F))..]) ((" -G-)[make-binding (" -G-)(tkn-char(char G))..])
+              ((" -H-)[make-binding (" -H-)(tkn-char(char H))..]) ((" -I-)[make-binding (" -I-)(tkn-char(char I))..])
+              ((" -J-)[make-binding (" -J-)(tkn-char(char J))..]) ((" -K-)[make-binding (" -K-)(tkn-char(char K))..])
+              ((" -L-)[make-binding (" -L-)(tkn-char(char L))..]) ((" -M-)[make-binding (" -M-)(tkn-char(char M))..])
+              ((" -N-)[make-binding (" -N-)(tkn-char(char N))..]) ((" -O-)[make-binding (" -O-)(tkn-char(char O))..])
+              ((" -P-)[make-binding (" -P-)(tkn-char(char P))..]) ((" -Q-)[make-binding (" -Q-)(tkn-char(char Q))..])
+              ((" -R-)[make-binding (" -R-)(tkn-char(char R))..]) ((" -S-)[make-binding (" -S-)(tkn-char(char S))..])
+              ((" -T-)[make-binding (" -T-)(tkn-char(char T))..]) ((" -U-)[make-binding (" -U-)(tkn-char(char U))..])
+              ((" -V-)[make-binding (" -V-)(tkn-char(char V))..]) ((" -W-)[make-binding (" -W-)(tkn-char(char W))..])
+              ((" -X-)[make-binding (" -X-)(tkn-char(char X))..]) ((" -Y-)[make-binding (" -Y-)(tkn-char(char Y))..])
+              ((" -Z-)[make-binding (" -Z-)(tkn-char(char Z))..]) ((" -\-)[make-binding (" -\-)(tkn-char(char \))..])
+              ((" -^-)[make-binding (" -^-)(tkn-char(char ^))..]) ((" -_-)[make-binding (" -_-)(tkn-char(char _))..])
+              ((" -`-)[make-binding (" -`-)(tkn-char(char `))..]) ((" -a-)[make-binding (" -a-)(tkn-char(char a))..])
+              ((" -b-)[make-binding (" -b-)(tkn-char(char b))..]) ((" -c-)[make-binding (" -c-)(tkn-char(char c))..])
+              ((" -d-)[make-binding (" -d-)(tkn-char(char d))..]) ((" -e-)[make-binding (" -e-)(tkn-char(char e))..])
+              ((" -f-)[make-binding (" -f-)(tkn-char(char f))..]) ((" -g-)[make-binding (" -g-)(tkn-char(char g))..])
+              ((" -h-)[make-binding (" -h-)(tkn-char(char h))..]) ((" -i-)[make-binding (" -i-)(tkn-char(char i))..])
+              ((" -j-)[make-binding (" -j-)(tkn-char(char j))..]) ((" -k-)[make-binding (" -k-)(tkn-char(char k))..])
+              ((" -l-)[make-binding (" -l-)(tkn-char(char l))..]) ((" -m-)[make-binding (" -m-)(tkn-char(char m))..])
+              ((" -n-)[make-binding (" -n-)(tkn-char(char n))..]) ((" -o-)[make-binding (" -o-)(tkn-char(char o))..])
+              ((" -p-)[make-binding (" -p-)(tkn-char(char p))..]) ((" -q-)[make-binding (" -q-)(tkn-char(char q))..])
+              ((" -r-)[make-binding (" -r-)(tkn-char(char r))..]) ((" -s-)[make-binding (" -s-)(tkn-char(char s))..])
+              ((" -t-)[make-binding (" -t-)(tkn-char(char t))..]) ((" -u-)[make-binding (" -u-)(tkn-char(char u))..])
+              ((" -v-)[make-binding (" -v-)(tkn-char(char v))..]) ((" -w-)[make-binding (" -w-)(tkn-char(char w))..])
+              ((" -x-)[make-binding (" -x-)(tkn-char(char x))..]) ((" -y-)[make-binding (" -y-)(tkn-char(char y))..])
+              ((" -z-)[make-binding (" -z-)(tkn-char(char z))..]) ((" -|-)[make-binding (" -|-)(tkn-char(char |))..])
+              ((" -~-)[make-binding (" -~-)(tkn-char(char ~))..]) ((" @fst)[make-binding (" @fst) @car ..])
+              ((" @rst)[make-binding (" @rst) @cdr ..]) ((" lst)[make-binding (" lst) cons ..])
+              ((" token?)[make-binding (" token?) i/f.token? ..]) ((" emt?)[make-binding (" emt?) emt?! ..])
+              ((" emt)[make-binding (" emt) emt! ..]) ((" char=)[make-binding (" char=) i/f.char= ..])
+              ((" var=)[make-binding (" var=) vbl= ..]) ((" var?)[make-binding (" var?) vbl? ..])
+              ((" var)[make-binding (" var) vbl ..]) ((" gentok)[make-binding (" gentok) i/f.gentok ..])))) (do
           (-- Evaluate the metaprogram)
-          [evaluate-files $:source-fns $:object-fns $:intrinsic-fns func-exprs bndgs buf buf2 handler]
+          [evaluate-files $:source-fns $:object-fns $:intrinsic-fns meta-exprs func-exprs bndgs buf buf2 handler]
           (-- Compile the program in the metaprogram's environment)
-          [compile-files $:source-fns $:intrinsic-fns func-exprs bndgs buf buf2 handler]
+          [compile-files $:source-fns $:intrinsic-fns meta-exprs func-exprs bndgs buf buf2 handler]
           (storage _ no-error))))))))))))
         
         (handler err (sub (.. cleanup) (do
