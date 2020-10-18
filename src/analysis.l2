@@ -665,11 +665,11 @@
       
     [append-static-binding (@ expr:binding-aug n) binding-augs ..])))
 
-(constrain set-bindings-state (\ r (?(a c) (`(function ((hash-table ,:c bndg-aug) ,:a) (hash-table ,:c bndg-aug))r)r)))
+(constrain set-bindings-resolved (\ r (?(a c) (`(function ((hash-table ,:c bndg-aug) ,:a) (hash-table ,:c bndg-aug))r)r)))
 
-(function set-bindings-state (bindings val)
+(function set-bindings-resolved (bindings val)
   (select (tuple? .:_ .:binding) (%:ht-iter bindings) bindings (do
-    (setf bndg-other binding val)
+    (setf bndg-resolved binding val)
     bindings)))
 
 (storage undefined-symbol-error (~))
@@ -693,21 +693,25 @@
           (if [nil? $:meta-exprs]
             {handler (storage _ undefined-symbol-error (@ expr:name sym))}
             (let (meta-expr [@car $:meta-exprs]) (do
-              [set meta-exprs [@cdr $:meta-exprs]]
-              [evaluate-expr meta-expr inits meta-exprs func-exprs bindings buf buf2 handler]
-              [evaluate-expr s inits meta-exprs func-exprs bindings buf buf2 handler])))))))
+              (cps (do
+                  [evaluate-expr meta-expr inits (& cdr $:meta-exprs) func-exprs bindings buf buf2 failure]
+                  [set meta-exprs [@cdr $:meta-exprs]]
+                  [evaluate-expr s inits meta-exprs func-exprs bindings buf buf2 handler])
+                (failure (arg) (if [= (@0 arg) undefined-symbol-error]
+                  [evaluate-expr s inits (& cdr $:meta-exprs) func-exprs bindings buf buf2 handler]
+                  {handler arg}))))))))))
         ((expr:function? .:func) (do
           [pre-visit-expressions vgenerate-metas (storage _ s) (values storage inits meta-exprs func-exprs bindings buf buf2 handler)]
           (let (obj [load-program [cons s nil buf2 handler] inits buf buf2 handler]) (do
-          (setf bndg-other (@ expr:function-reference func) #:0)
+          (setf bndg-resolved (@ expr:function-reference func) #:0)
           [ht-put (@ bndg-name (@ expr:function-reference func)) (@ expr:function-reference func) bindings ..]
           (let (ms [mutable-bindings obj [ht-create hash-str str= buf2 handler] buf2 handler]) (do
             (select (tuple? .:d-name .:d) (%:ht-iter ms) (~) (do
-              [prepend d (& bndg-dependencies (@ expr:function-reference func)) ..]
-              (if [ht-contains d-name bindings (storage _ (~))] (~)
-                [evaluate-expr [make-symbol d-name null-fragment null-expr buf2 handler] inits meta-exprs func-exprs bindings buf buf2 handler])))
+              [prepend (bind-if [ht-contains d-name bindings bndg] (bndg)
+                $:bndg
+                [evaluate-expr [make-symbol d-name null-fragment null-expr buf2 handler] inits meta-exprs func-exprs bindings buf buf2 handler]) (& bndg-dependencies (@ expr:function-reference func)) ..]))
             [mutate-bindings obj bindings]))))
-          (setf bndg-other (@ expr:function-reference func) #:1)
+          (setf bndg-resolved (@ expr:function-reference func) #:1)
           (@ expr:function-reference func)))
         ((expr:meta? .:meta)
           (let (s-container (storage _ s)) (do
@@ -721,15 +725,14 @@
 (constrain assert-binding-defined (\ r (?(a c) (`(function (bndg-aug ,:c) ,:a)r)r)))
 
 (function assert-binding-defined (bndg handler)
-  (if [band (@ bndg-other bndg) 0x:2] bndg (do
-    (setf bndg-other bndg [bor (@ bndg-other bndg) 0x:2])
-    (and [band (@ bndg-other bndg) 0x:1]
+  (if [band (@ bndg-resolved bndg) 0x:2] bndg (do
+    (setf bndg-resolved bndg [bor (@ bndg-resolved bndg) 0x:2])
+    (if [band (@ bndg-resolved bndg) 0x:1]
       (loop assert-depends (deps (@ bndg-dependencies bndg))
-        (if [nil? deps]
-          bndg
-        (if [assert-binding-defined [@car deps] handler]
-          {assert-depends [@cdr deps]}
-          {handler (storage _ undefined-symbol-error (@ bndg-name bndg))})))))))
+        (if [nil? deps] bndg (do
+          [assert-binding-defined [@car deps] handler]
+          {assert-depends [@cdr deps]})))
+      {handler (storage _ undefined-symbol-error (@ bndg-name bndg))}))))
 
 (-- The error that wraps errors thrown by macros.)
 
