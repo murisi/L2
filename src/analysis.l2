@@ -707,9 +707,8 @@
           [ht-put (@ bndg-name (@ expr:function-reference func)) (@ expr:function-reference func) bindings ..]
           (let (ms [mutable-bindings obj [ht-create hash-str str= buf2 handler] buf2 handler]) (do
             (select (tuple? .:d-name .:d) (%:ht-iter ms) (~) (do
-              [prepend (bind-if [ht-contains d-name bindings bndg] (bndg)
-                $:bndg
-                [evaluate-expr [make-symbol d-name null-fragment null-expr buf2 handler] inits meta-exprs func-exprs bindings buf buf2 handler]) (& bndg-dependencies (@ expr:function-reference func)) ..]))
+              [prepend [evaluate-expr [make-symbol d-name null-fragment null-expr buf2 handler] inits meta-exprs func-exprs bindings buf buf2 handler]
+                (& bndg-dependencies (@ expr:function-reference func)) ..]))
             [mutate-bindings obj bindings]))))
           (setf bndg-resolved (@ expr:function-reference func) #:1)
           (@ expr:function-reference func)))
@@ -719,8 +718,10 @@
             [evaluate-expr $:s-container inits meta-exprs func-exprs bindings buf buf2 handler])))
         (do
           (let (expr-container [make-function empty-string nil s null-fragment null-expr buf2 handler])
-          (let (expr-val [(@ bndg-offset [evaluate-expr expr-container inits meta-exprs func-exprs bindings buf buf2 handler])])
-          [make-binding empty-string expr-val buf handler])))))))
+          (let (expr-val [(@ bndg-offset [assert-binding-defined [evaluate-expr expr-container inits meta-exprs func-exprs bindings buf buf2 handler] handler])])
+          (let (bndg [make-binding empty-string expr-val buf handler]) (do
+            (setf bndg-resolved bndg #:1)
+            bndg)))))))))
 
 (constrain assert-binding-defined (\ r (?(a c) (`(function (bndg-aug ,:c) ,:a)r)r)))
 
