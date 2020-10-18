@@ -668,7 +668,7 @@
 (storage undefined-symbol-error (~))
 
 (constrain evaluate-expr
-  (\ r (?(a b c) (`(function ((expr ,:c) (list initializer) !:Ref:(list (expr ,:b)) (hash-table string (expr ,:c)) (hash-table string bndg-aug) region region ,:a) ,:b)r)r)))
+  (\ r (?(a c) (`(function ((expr ,:c) (list initializer) !:Ref:(list (expr ,:c)) (hash-table string (expr ,:c)) (hash-table string bndg-aug) region region ,:a) bndg-aug)r)r)))
 
 (function evaluate-expr (s inits meta-exprs func-exprs bindings buf buf2 handler)
   (sub (.. buf handler)
@@ -678,8 +678,9 @@
           (-- If the expression, s, is a mere symbol, then we can just lookup its value in
             the bindings list instead of preprocessing, compiling, and then evaluating
             the expression.)
+          [print-str (stdout) (@ expr:name sym) handler]
           (bind-if [ht-contains (@ expr:name sym) bindings bndg]
-            (bndg) (@ bndg-offset $:bndg)
+            (bndg) $:bndg
           (bind-if [ht-contains (@ expr:name sym) func-exprs func-expr]
             (func-expr) [evaluate-expr $:func-expr inits meta-exprs func-exprs bindings buf buf2 handler]
           (if [nil? $:meta-exprs]
@@ -697,14 +698,15 @@
               (if [ht-contains d-name bindings (storage _ (~))] (~)
                 [evaluate-expr [make-symbol d-name null-fragment null-expr buf2 handler] inits meta-exprs func-exprs bindings buf buf2 handler]))
             [mutate-bindings obj bindings]))))
-          (@ bndg-offset (@ expr:function-reference func))))
+          (@ expr:function-reference func)))
         ((expr:meta? .:meta)
           (let (s-container (storage _ s)) (do
             [pre-visit-expressions vgenerate-metas s-container (values storage inits meta-exprs func-exprs bindings buf buf2 handler)]
             [evaluate-expr $:s-container inits meta-exprs func-exprs bindings buf buf2 handler])))
         (do
           (let (expr-container [make-function empty-string nil s null-fragment null-expr buf2 handler])
-          [[cast [evaluate-expr expr-container inits meta-exprs func-exprs bindings buf buf2 handler]]]))))))
+          (let (expr-val [(@ bndg-offset [evaluate-expr expr-container inits meta-exprs func-exprs bindings buf buf2 handler])])
+          [make-binding empty-string expr-val buf handler])))))))
 
 (-- The error that wraps errors thrown by macros.)
 
@@ -722,12 +724,12 @@
     (with-region buf2
       (switch = (@ expr:type s)
         ((-meta-)
-          (let (macro [cast [evaluate-expr (@ expr:meta-target (& expr:meta s)) inits meta-exprs func-exprs bindings buf buf2 handler]])
+          (let (macro (@ bndg-offset [evaluate-expr (@ expr:meta-target (& expr:meta s)) inits meta-exprs func-exprs bindings buf buf2 handler]))
             (cps [vgenerate-metas [build-expression [macro [list->fragment [@cdr [frag->list (@ expr:fragment s)]]] buf macro-err] s buf handler] ctx]
               (macro-err (msg) {handler (storage _ meta-expr-error msg)}))))
         
         ((-constrain-)
-          (let (macro [cast [evaluate-expr (@ expr:constrain-target (& expr:constrain s)) inits meta-exprs func-exprs bindings buf buf2 handler]])
+          (let (macro (@ bndg-offset [evaluate-expr (@ expr:constrain-target (& expr:constrain s)) inits meta-exprs func-exprs bindings buf buf2 handler]))
             (do (setf bndg-signature (@ expr:binding-aug s) [macro buf]) s)))
         
         s)) (~)))
