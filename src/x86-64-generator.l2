@@ -839,14 +839,14 @@
   \:r:(?(a b c) `:(function (,:a ,:b bndg-aug !:Ref:(list reloc) region ,:c) operand):r r))
 
 (function make-absolute-relocation-immediate (size addend bndg relocs r handler)
-  (sub (.. r handler)
+  (sub (L elf64) (.. r handler)
     (let (op [make-imm-op size #:0 ..]) (do
       [prepend [make-relocation
         (switch = size
-          (#:1 (r-x86-64-8))
-          (#:2 (r-x86-64-16))
-          (#:4 (r-x86-64-32))
-          (#:8 (r-x86-64-64))
+          (#:1 (L:r-x86-64-8))
+          (#:2 (L:r-x86-64-16))
+          (#:4 (L:r-x86-64-32))
+          (#:8 (L:r-x86-64-64))
           (~)) op bndg addend
         (function _(ctx ofst size instr-pos instr-size) ctx) ..] relocs ..]
       op))))
@@ -855,14 +855,14 @@
   \:r:(?(a b) `:(function (,:a bndg-aug !:Ref:(list reloc) region ,:b) operand):r r))
 
 (function make-relative-relocation-immediate (size bndg relocs r handler)
-  (sub (.. r handler)
+  (sub (L elf64) (.. r handler)
     (let (op [make-imm-op size #:0 ..]) (do
       [prepend [make-relocation
         (switch = size
-          (#:1 (r-x86-64-pc8))
-          (#:2 (r-x86-64-pc16))
-          (#:4 (r-x86-64-pc32))
-          (#:8 (r-x86-64-pc64))
+          (#:1 (L:r-x86-64-pc8))
+          (#:2 (L:r-x86-64-pc16))
+          (#:4 (L:r-x86-64-pc32))
+          (#:8 (L:r-x86-64-pc64))
           (~)) op bndg (~)
         (function _(ctx ofst size instr-pos instr-size)
           [- ofst [+ instr-pos instr-size]]) ..] relocs ..]
@@ -885,7 +885,7 @@
       
     (if [= (@ bndg-storage bndg) (absolute-storage)]
       (let (op [make-mem-op op-size (X:rip) (X:none) #:0 #:0 #:4 ..]) (do
-        [prepend [make-relocation (r-x86-64-pc32) op bndg (~)
+        [prepend [make-relocation (elf64:r-x86-64-pc32) op bndg (~)
           (function _(ctx ofst size instr-pos instr-size)
             [- ofst [+ instr-pos instr-size]]) ..] relocs ..]
         op))
