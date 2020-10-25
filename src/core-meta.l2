@@ -764,15 +764,14 @@
     (closure (func) (l r)
       `:(with percent.return [,:func percent.return , l]):r r)))
 
-(-- A macro to define C-style substitution macros. Does the following transformation:
-  ((define id macro) frags ...)
+(-- A macro to alias a macro. Does the following transformation:
+  (define id macro)
   ->
-  (macro frags ...))
+  (function id (l r) [macro l r]))
 
 (function define (l r)
-  `:(function ,:[@fst l] (l r)
-      (let (macro ,:[meta.qval [@frst l] r])
-        [lst macro l r])):r)
+  `:(function ,:[@fst l] (define.l define.r)
+      [,:[@frst l] define.l define.r]):r)
 
 (-- This macro exists to form a pair with Value.)
 
