@@ -674,6 +674,28 @@
 
 (storage undefined-symbol-error (~))
 
+(constrain assert-binding-resolved (\ r (?(c) (`(function (bndg-aug ,:c) bndg-aug)r)r)))
+
+(function assert-binding-resolved (bndg handler)
+  (if [band (@ bndg-resolved bndg) 0x:1]
+    (if [band (@ bndg-resolved bndg) 0x:2] bndg (do
+      (setf bndg-resolved bndg [bor (@ bndg-resolved bndg) 0x:2])
+      (loop assert-depends (deps (@ bndg-dependencies bndg))
+        (if [nil? deps] bndg (do
+          [assert-binding-resolved [@car deps] handler]
+          {assert-depends [@cdr deps]})))))
+    {handler (storage _ undefined-symbol-error (@ bndg-name bndg))}))
+
+(constrain unvisit-binding-resolved (\ r (`(function (bndg-aug) bndg-aug)r)))
+
+(function unvisit-binding-resolved (bndg)
+  (if [band (@ bndg-resolved bndg) 0x:2] (do
+    (setf bndg-resolved bndg [band (@ bndg-resolved bndg) [bnot 0x:2]])
+    (loop unvisit-depends (deps (@ bndg-dependencies bndg))
+      (if [nil? deps] bndg (do
+        [unvisit-binding-resolved [@car deps]]
+        {unvisit-depends [@cdr deps]})))) bndg))
+
 (constrain evaluate-expr
   (\ r (?(a c) (`(function ((expr ,:c) (list initializer) !:Ref:(list (expr ,:c)) (hash-table string (expr ,:c)) (hash-table string bndg-aug) region region ,:a) bndg-aug)r)r)))
 
@@ -699,7 +721,7 @@
                 [evaluate-expr s inits (& cdr $:meta-exprs) func-exprs bindings buf buf2 handler]
                 {handler arg}))))))))))
       ((expr:function? .:func) (do
-        [pre-visit-expressions vgenerate-metas (storage _ s) (values storage inits meta-exprs func-exprs bindings buf buf2 handler)]
+        [pre-visit-expressions vgenerate-expr (storage _ s) (values storage inits meta-exprs func-exprs bindings buf buf2 handler)]
         (let (obj [load-program [cons s nil buf2 handler] inits buf buf2 handler]) (do
         (setf bndg-resolved (@ expr:function-reference func) #:0)
         [ht-put (@ bndg-name (@ expr:function-reference func)) (@ expr:function-reference func) bindings ..]
@@ -712,7 +734,7 @@
         (@ expr:function-reference func)))
       ((expr:meta? .:meta)
         (let (s-container (storage _ s)) (do
-          [pre-visit-expressions vgenerate-metas s-container (values storage inits meta-exprs func-exprs bindings buf buf2 handler)]
+          [pre-visit-expressions vgenerate-expr s-container (values storage inits meta-exprs func-exprs bindings buf buf2 handler)]
           [evaluate-expr $:s-container inits meta-exprs func-exprs bindings buf buf2 handler])))
       (do
         (let (expr-container [make-function empty-string nil s null-fragment null-expr buf2 handler])
@@ -722,28 +744,6 @@
           (setf bndg-resolved bndg #:1)
           bndg)))))))))
 
-(constrain assert-binding-resolved (\ r (?(c) (`(function (bndg-aug ,:c) bndg-aug)r)r)))
-
-(function assert-binding-resolved (bndg handler)
-  (if [band (@ bndg-resolved bndg) 0x:1]
-    (if [band (@ bndg-resolved bndg) 0x:2] bndg (do
-      (setf bndg-resolved bndg [bor (@ bndg-resolved bndg) 0x:2])
-      (loop assert-depends (deps (@ bndg-dependencies bndg))
-        (if [nil? deps] bndg (do
-          [assert-binding-resolved [@car deps] handler]
-          {assert-depends [@cdr deps]})))))
-    {handler (storage _ undefined-symbol-error (@ bndg-name bndg))}))
-
-(constrain unvisit-binding-resolved (\ r (`(function (bndg-aug) bndg-aug)r)))
-
-(function unvisit-binding-resolved (bndg)
-  (if [band (@ bndg-resolved bndg) 0x:2] (do
-    (setf bndg-resolved bndg [band (@ bndg-resolved bndg) [bnot 0x:2]])
-    (loop unvisit-depends (deps (@ bndg-dependencies bndg))
-      (if [nil? deps] bndg (do
-        [unvisit-binding-resolved [@car deps]]
-        {unvisit-depends [@cdr deps]})))) bndg))
-
 (-- The error that wraps errors thrown by macros.)
 
 (storage meta-expr-error (~))
@@ -752,17 +752,17 @@
   corresponding expression builder. It also sets the signatures of constrain-expressions
   to the result of evaluating a signature builder.)
 
-(constrain vgenerate-metas
+(constrain vgenerate-expr
   (\ r (?(a b) (`(function ((expr ,:b) (values (list initializer) !:Ref:(list (expr ,:b)) (hash-table string (expr ,:b)) (hash-table string bndg-aug) region region ,:a)) (expr ,:b))r)r)))
 
-(function vgenerate-metas (s ctx)
+(function vgenerate-expr (s ctx)
   ((values? .:inits .:meta-exprs .:func-exprs .:bindings .:buf .:buf2 .:handler) ctx
     (with-region buf2
       (switch = (@ expr:type s)
         ((-meta-)
           (let (macro (@ bndg-offset [assert-binding-resolved [unvisit-binding-resolved
               [evaluate-expr (@ expr:meta-target (& expr:meta s)) inits meta-exprs func-exprs bindings buf buf2 handler]] handler]))
-            (cps [vgenerate-metas [build-expression [macro [list->fragment [@cdr [frag->list (@ expr:fragment s)]]] buf macro-err] s buf handler] ctx]
+            (cps [vgenerate-expr [build-expression [macro [list->fragment [@cdr [frag->list (@ expr:fragment s)]]] buf macro-err] s buf handler] ctx]
               (macro-err (msg) {handler (storage _ meta-expr-error msg)}))))
         
         ((-constrain-)
